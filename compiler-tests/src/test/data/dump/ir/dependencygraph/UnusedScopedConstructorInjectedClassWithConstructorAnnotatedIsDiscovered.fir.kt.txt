@@ -92,23 +92,6 @@ class Dependency {
 
 @DependencyGraph(scope = AppScope::class, isExtendable = true)
 interface ExampleGraph : $$MetroContributionToAppScope {
-  @DependencyGraph(scope = LoggedInScope::class, isExtendable = false)
-  class $$ContributedLoggedInGraph : LoggedInGraph {
-    private /* final field */ val dependencyProvider: Provider<Dependency> = Companion.provider<Provider<Dependency>, Dependency>(delegate = $$MetroFactory.create())
-    private /* final field */ val childDependencyProvider: Provider<ChildDependency> = Companion.provider<Provider<ChildDependency>, ChildDependency>(delegate = Companion.create(dep = <this>.#dependencyProvider))
-    constructor(@Extends exampleGraph: ExampleGraph) /* primary */ {
-      super/*Any*/()
-      /* <init>() */
-
-    }
-
-    override val childDependency: ChildDependency
-      override get(): ChildDependency {
-        return <this>.#childDependencyProvider.invoke()
-      }
-
-  }
-
   companion object Companion {
     private constructor() /* primary */ {
       super/*Any*/()
@@ -126,7 +109,24 @@ interface ExampleGraph : $$MetroContributionToAppScope {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class $$MetroGraph : ExampleGraph {
     private /* final field */ val thisGraphInstance: ExampleGraph = <this>
-    private /* final field */ val exampleGraphProvider: Provider<ExampleGraph> = Companion.invoke<ExampleGraph>(value = <this>.#thisGraphInstance)
+    private /* final field */ val thisGraphInstanceProvider: Provider<ExampleGraph> = Companion.invoke<ExampleGraph>(value = <this>.#thisGraphInstance)
+    @DependencyGraph(scope = LoggedInScope::class, isExtendable = false)
+    class $$ContributedLoggedInGraph : LoggedInGraph {
+      private /* final field */ val dependencyProvider: Provider<Dependency> = Companion.provider<Provider<Dependency>, Dependency>(delegate = $$MetroFactory.create())
+      private /* final field */ val childDependencyProvider: Provider<ChildDependency> = Companion.provider<Provider<ChildDependency>, ChildDependency>(delegate = Companion.create(dep = <this>.#dependencyProvider))
+      constructor(@Extends $$MetroGraph: $$MetroGraph) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      override val childDependency: ChildDependency
+        override get(): ChildDependency {
+          return <this>.#childDependencyProvider.invoke()
+        }
+
+    }
+
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -134,19 +134,19 @@ interface ExampleGraph : $$MetroContributionToAppScope {
     }
 
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-    @MetroAccessor
-    fun exampleGraphProvider_metroAccessor(): Provider<ExampleGraph> {
-      return <this>.#exampleGraphProvider
-    }
-
-    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
     @MetroAccessor(isInstanceAccessor = true)
-    fun thisGraphInstance_metroAccessor(): ExampleGraph {
+    fun accessor_GEvyBX8(): ExampleGraph {
       return <this>.#thisGraphInstance
     }
 
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @MetroAccessor
+    fun accessor_GEvyBX8_provider(): Provider<ExampleGraph> {
+      return <this>.#thisGraphInstanceProvider
+    }
+
     override fun createLoggedInGraph(): LoggedInGraph {
-      return $$ContributedLoggedInGraph(exampleGraph = <this>)
+      return $$ContributedLoggedInGraph($$MetroGraph = <this>)
     }
 
   }

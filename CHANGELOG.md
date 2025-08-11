@@ -32,6 +32,7 @@ Changelog
 - **Fix**: Don't chunk parent graph validation statements as these must be in the original constructor body.
 - **Fix**: Fix wrong receiver context for chunked field initializers.
 - [internal change] Simplify metadata and just use accessor annotations.
+- [internal change] Contributed graphs are now generated as nested classes within the generated metro graph that they are contributed to.
 
 0.5.5
 -----

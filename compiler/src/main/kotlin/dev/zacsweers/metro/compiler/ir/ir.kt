@@ -15,6 +15,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.metroAnnotations
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.singleOrError
 import java.io.File
 import java.util.Objects
@@ -25,6 +26,7 @@ import org.jetbrains.kotlin.backend.common.ir.createExtensionReceiver
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.backend.jvm.ir.isWithFlexibleNullability
+import org.jetbrains.kotlin.backend.konan.ir.getSuperClassNotAny
 import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
@@ -1031,15 +1033,28 @@ internal fun buildAnnotation(
 }
 
 internal val IrClass.metroGraphOrFail: IrClass
-  get() = metroGraphOrNull ?: error("No generated MetroGraph for $classId")
+  get() = metroGraphOrNull ?: error("No generated MetroGraph found: $classId")
 
 internal val IrClass.metroGraphOrNull: IrClass?
   get() =
-    if (origin === Origins.ContributedGraph) {
-      this
-    } else {
-      nestedClassOrNull(Symbols.Names.MetroGraph)
+    when (origin) {
+      Origins.MetroGraphDeclaration,
+      Origins.ContributedGraph -> this
+      else -> nestedClassOrNull(Symbols.Names.MetroGraph)
     }
+
+internal val IrClass.sourceGraphIfMetroGraph: IrClass
+  get() {
+    val isGeneratedGraph =
+      origin == Origins.MetroGraphDeclaration ||
+        origin == Origins.ContributedGraph ||
+        name == Symbols.Names.MetroGraph
+    return if (isGeneratedGraph) {
+      superTypes.firstOrNull()?.rawTypeOrNull() ?: reportCompilerBug("No super type found for $kotlinFqName")
+    } else {
+      this
+    }
+  }
 
 // Adapted from compose-compiler
 // https://github.com/JetBrains/kotlin/blob/d36a97bb4b935c719c44b76dc8de952579404f91/plugins/compose/compiler-hosted/src/main/java/androidx/compose/compiler/plugins/kotlin/lower/AbstractComposeLowering.kt#L1608

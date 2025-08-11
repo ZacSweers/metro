@@ -38,7 +38,8 @@ import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
-import org.jetbrains.kotlin.ir.builders.irIfThen
+import org.jetbrains.kotlin.ir.builders.irIfThenElse
+import org.jetbrains.kotlin.ir.builders.irImplicitCast
 import org.jetbrains.kotlin.ir.builders.irInt
 import org.jetbrains.kotlin.ir.builders.irNotIs
 import org.jetbrains.kotlin.ir.builders.irReturn
@@ -60,7 +61,7 @@ import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.DeepCopyIrTreeWithSymbols
 import org.jetbrains.kotlin.ir.util.SymbolRemapper
-import org.jetbrains.kotlin.ir.util.classId
+import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTo
@@ -72,9 +73,7 @@ import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isStatic
 import org.jetbrains.kotlin.ir.util.kotlinFqName
-import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
-import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.ir.util.remapTypes
@@ -94,7 +93,6 @@ private const val STATEMENTS_PER_METHOD = 25
 //  move IR code gen out to IrGraphExpression?Generator
 internal class IrGraphGenerator(
   metroContext: IrMetroContext,
-  contributionData: IrContributionData,
   private val dependencyGraphNodesByClass: (ClassId) -> DependencyGraphNode?,
   private val node: DependencyGraphNode,
   private val graphClass: IrClass,
@@ -105,6 +103,7 @@ internal class IrGraphGenerator(
   private val bindingContainerTransformer: BindingContainerTransformer,
   private val membersInjectorTransformer: MembersInjectorTransformer,
   private val assistedFactoryTransformer: AssistedFactoryTransformer,
+  private val contributedGraphGenerator: IrContributedGraphGenerator,
 ) : IrMetroContext by metroContext {
 
   private val fieldNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
@@ -121,9 +120,6 @@ internal class IrGraphGenerator(
   // Fields for providers. May include both scoped and unscoped providers as well as bound
   // instances
   private val providerFields = LinkedHashMap<IrTypeKey, IrField>()
-
-  private val contributedGraphGenerator =
-    IrContributedGraphGenerator(metroContext, contributionData, node.sourceGraph)
 
   /**
    * To avoid `MethodTooLargeException`, we split field initializations up over multiple constructor
@@ -169,7 +165,12 @@ internal class IrGraphGenerator(
           addField(
               fieldName =
                 fieldNameAllocator.newName(
-                  name.asString().suffixIfNot("Instance").suffixIfNot("Provider").decapitalizeUS()
+                  name
+                    .asString()
+                    .removePrefix("$$")
+                    .decapitalizeUS()
+                    .suffixIfNot("Instance")
+                    .suffixIfNot("Provider")
                 ),
               fieldType = symbols.metroProvider.typeWith(typeKey.type),
               fieldVisibility = DescriptorVisibilities.PRIVATE,
@@ -202,9 +203,7 @@ internal class IrGraphGenerator(
 
             val graphDepField =
               addSimpleInstanceField(
-                fieldNameAllocator.newName(
-                  graphDep.sourceGraph.name.asString().decapitalizeUS() + "Instance"
-                ),
+                fieldNameAllocator.newName(graphDep.sourceGraph.name.asString() + "Instance"),
                 graphDep.typeKey,
               ) {
                 irGet(irParam)
@@ -212,17 +211,20 @@ internal class IrGraphGenerator(
             instanceFields[graphDep.typeKey] = graphDepField
 
             if (graphDep.isExtendable) {
-              // Extended graphs
-              addBoundInstanceField(param.typeKey, param.name) { _, _ -> irGet(irParam) }
-
-              // Check that the input parameter is an instance of the metrograph class
-              // Only do this for $$MetroGraph instances. Not necessary for ContributedGraphs
-              if (graphDep.sourceGraph != graphClass) {
-                val depMetroGraph = graphDep.sourceGraph.metroGraphOrFail
-                constructorStatements.add {
-                  irIfThen(
-                    condition = irNotIs(irGet(irParam), depMetroGraph.defaultType),
-                    type = irBuiltIns.unitType,
+              val depMetroGraph = graphDep.sourceGraph.metroGraphOrFail
+              val implType = depMetroGraph.defaultType
+              val needsImplCast = param.type != implType
+              val paramName = depMetroGraph.sourceGraphIfMetroGraph.name
+              if (needsImplCast) {
+                // TODO generics?
+                val implKey = param.typeKey.copy(type = implType)
+                addBoundInstanceField(implKey, paramName) { _, _ ->
+                  // Check that the input parameter is an instance of the metrograph class
+                  // Only do this for $$MetroGraph instances. Not necessary for ContributedGraphs
+                  // TODO maybe move this check to the factory creator of the graph?
+                  irIfThenElse(
+                    type = implType,
+                    condition = irNotIs(irGet(irParam), implType),
                     thenPart =
                       irThrow(
                         irInvoke(
@@ -245,8 +247,11 @@ internal class IrGraphGenerator(
                             ),
                         )
                       ),
+                    elsePart = irImplicitCast(irGet(irParam), implType),
                   )
                 }
+              } else {
+                addBoundInstanceField(param.typeKey, paramName) { _, _ -> irGet(irParam) }
               }
             }
           }
@@ -280,10 +285,7 @@ internal class IrGraphGenerator(
         //  would be nice if we could determine if this field is unneeded
         providerFields[node.typeKey] =
           addField(
-              fieldName =
-                fieldNameAllocator.newName(
-                  node.sourceGraph.name.asString().decapitalizeUS().suffixIfNot("Provider")
-                ),
+              fieldName = fieldNameAllocator.newName("thisGraphInstanceProvider"),
               fieldType = symbols.metroProvider.typeWith(node.typeKey.type),
               fieldVisibility = DescriptorVisibilities.PRIVATE,
             )
@@ -390,18 +392,21 @@ internal class IrGraphGenerator(
       // TODO can we consolidate this with regular provider field collection?
       for ((key, binding) in bindingGraph.bindingsSnapshot()) {
         if (binding is IrBinding.GraphDependency && key in sealResult.reachableKeys) {
-          val getter = binding.getter
           if (binding.isProviderFieldAccessor) {
             // Init a provider field pointing at this
             providerFields[key] =
               addField(
                   fieldName =
                     fieldNameAllocator.newName(
-                      "${getter.name.asString().decapitalizeUS().removeSuffix(Symbols.StringNames.METRO_ACCESSOR_SUFFIX)}Provider"
+                      buildString {
+                        append(key.type.rawType().name.asString().decapitalizeUS())
+                        append("Provider")
+                      }
                     ),
-                  fieldType = symbols.metroProvider.typeWith(node.typeKey.type),
+                  fieldType = symbols.metroProvider.typeWith(key.type),
                   fieldVisibility = DescriptorVisibilities.PRIVATE,
                 )
+                .apply { key.qualifier?.let { annotations += it.ir.deepCopyWithSymbols() } }
                 .withInit(key) { thisReceiver, _ ->
                   // If this is in instance fields, just do a quick assignment
                   if (binding.typeKey in instanceFields) {
@@ -630,7 +635,7 @@ internal class IrGraphGenerator(
           }
 
           // IR-generated types do not have metadata
-          if (graphClass.origin !== Origins.ContributedGraph) {
+          if (graphClass.origin != Origins.ContributedGraph) {
             // Write the metadata to the metroGraph class, as that's what downstream readers are
             // looking at and is the most complete view
             graphClass.metroMetadata = metroMetadata
@@ -671,44 +676,41 @@ internal class IrGraphGenerator(
             it.value
           }
           .forEach { (key, field) ->
-            val getter =
-              addFunction(
-                  name = "${field.name.asString()}${Symbols.StringNames.METRO_ACCESSOR_SUFFIX}",
-                  returnType = field.type,
-                  visibility = DescriptorVisibilities.PUBLIC,
-                  origin = Origins.InstanceFieldAccessor,
-                )
-                .apply {
-                  key.qualifier?.let {
-                    annotations +=
-                      it.ir.transform(DeepCopyIrTreeWithSymbols(SymbolRemapper.EMPTY), null)
-                        as IrConstructorCall
+            val isInstanceAccessor = key in instanceFields && field !in providerFieldsSet
+            // Deterministic name for provider fields or included
+            val getter = key.toAccessorFunctionIn(graphClass, wrapInProvider = !isInstanceAccessor).also { graphClass.addChild(it) }
+
+            getter.apply {
+              key.qualifier?.let {
+                annotations +=
+                  it.ir.transform(DeepCopyIrTreeWithSymbols(SymbolRemapper.EMPTY), null)
+                    as IrConstructorCall
+              }
+              // Add Deprecated(HIDDEN) annotation to hide
+              annotations += hiddenDeprecated()
+              // Annotate with @MetroAccessor
+              annotations +=
+                buildAnnotation(symbol, symbols.metroAccessorAnnotationConstructor) { call ->
+                  if (isInstanceAccessor) {
+                    // Set isInstanceAccessor
+                    call.arguments[0] = irBoolean(true)
                   }
-                  // Add Deprecated(HIDDEN) annotation to hide
-                  annotations += hiddenDeprecated()
-                  // Annotate with @MetroAccessor
-                  annotations +=
-                    buildAnnotation(symbol, symbols.metroAccessorAnnotationConstructor) { call ->
-                      if (key in instanceFields && field !in providerFieldsSet) {
-                        // Set isInstanceAccessor
-                        call.arguments[0] = irBoolean(true)
-                      }
-                    }
-                  body =
-                    createIrBuilder(symbol).run {
-                      val expression =
-                        if (key in instanceFields) {
-                          irGetField(irGet(dispatchReceiverParameter!!), field)
-                        } else {
-                          val binding = bindingGraph.requireBinding(key, IrBindingStack.empty())
-                          generateBindingCode(
-                            binding,
-                            baseGenerationContext.withReceiver(dispatchReceiverParameter!!),
-                          )
-                        }
-                      irExprBodySafe(symbol, expression)
-                    }
                 }
+              body =
+                createIrBuilder(symbol).run {
+                  val expression =
+                    if (isInstanceAccessor) {
+                      irGetField(irGet(dispatchReceiverParameter!!), field)
+                    } else {
+                      val binding = bindingGraph.requireBinding(key, IrBindingStack.empty())
+                      generateBindingCode(
+                        binding,
+                        baseGenerationContext.withReceiver(dispatchReceiverParameter!!),
+                      )
+                    }
+                  irExprBodySafe(symbol, expression)
+                }
+            }
             metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(getter)
           }
       }
@@ -721,7 +723,7 @@ internal class IrGraphGenerator(
     initializerExpression: IrBuilderWithScope.() -> IrExpression,
   ): IrField =
     addField(
-        fieldName = name,
+        fieldName = name.removePrefix("$$").decapitalizeUS(),
         fieldType = typeKey.type,
         fieldVisibility = DescriptorVisibilities.PRIVATE,
       )
@@ -871,7 +873,12 @@ internal class IrGraphGenerator(
           }
           val irFunction = this
           val contributedGraph =
-            getOrBuildContributedGraph(typeKey, sourceGraph, function, parentTracer)
+            contributedGraphGenerator.getOrBuildContributedGraph(
+              typeKey,
+              sourceGraph,
+              function,
+              parentTracer,
+            )
           val ctor = contributedGraph.primaryConstructor!!
           body =
             createIrBuilder(symbol).run {
@@ -886,39 +893,6 @@ internal class IrGraphGenerator(
                 },
               )
             }
-        }
-      }
-  }
-
-  private fun getOrBuildContributedGraph(
-    typeKey: IrTypeKey,
-    parentGraph: IrClass,
-    contributedAccessor: MetroSimpleFunction,
-    parentTracer: Tracer,
-  ): IrClass {
-    val classId = typeKey.type.rawType().classIdOrFail
-    return parentGraph.nestedClasses.firstOrNull { it.classId == classId }
-      ?: run {
-        // Find the function declaration in the original @ContributesGraphExtension.Factory
-        val sourceFunction =
-          contributedAccessor.ir
-            .overriddenSymbolsSequence()
-            .filter {
-              it.owner.parentClassOrNull?.isAnnotatedWithAny(
-                metroContext.symbols.classIds.contributesGraphExtensionFactoryAnnotations
-              ) == true
-            }
-            .lastOrNull()
-            ?.owner ?: contributedAccessor.ir
-
-        val sourceFactory = sourceFunction.parentAsClass
-        val sourceGraph = sourceFactory.parentAsClass
-        parentTracer.traceNested("Generate contributed graph ${sourceGraph.name}") {
-          contributedGraphGenerator.generateContributedGraph(
-            sourceGraph = sourceGraph,
-            sourceFactory = sourceFactory,
-            factoryFunction = sourceFunction,
-          )
         }
       }
   }

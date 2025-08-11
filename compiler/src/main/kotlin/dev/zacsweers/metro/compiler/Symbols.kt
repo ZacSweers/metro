@@ -86,7 +86,6 @@ internal class Symbols(
     const val INVOKE = "invoke"
     const val IS_EXTENDABLE = "isExtendable"
     const val IS_PROPERTY_ACCESSOR = "isPropertyAccessor"
-    const val METRO_ACCESSOR_SUFFIX = "_metroAccessor"
     const val METRO_CONTRIBUTION = "MetroContribution"
     const val METRO_CONTRIBUTION_NAME_PREFIX = $$$"$$MetroContribution"
     const val METRO_FACTORY = $$$"$$MetroFactory"
@@ -203,7 +202,6 @@ internal class Symbols(
     val isExtendable = StringNames.IS_EXTENDABLE.asName()
     val isPropertyAccessor = StringNames.IS_PROPERTY_ACCESSOR.asName()
     val membersInjector = "MembersInjector".asName()
-    val metroAccessorSuffix = StringNames.METRO_ACCESSOR_SUFFIX.asName()
     val mirrorFunction = StringNames.MIRROR_FUNCTION.asName()
     val modules = "modules".asName()
     val newInstance = StringNames.NEW_INSTANCE.asName()

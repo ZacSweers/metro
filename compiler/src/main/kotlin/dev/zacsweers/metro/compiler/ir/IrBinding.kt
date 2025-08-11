@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.isWordPrefixRegex
 import dev.zacsweers.metro.compiler.render
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.unsafeLazy
 import java.util.TreeSet
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -454,7 +455,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
 
     fun addSourceBinding(source: IrTypeKey) {
       if (source in sourceBindings) {
-        error("Duplicate multibinding source: $source. This is a bug in the compiler.")
+        reportCompilerBug("Duplicate multibinding source: $source")
       }
       sourceBindings.add(source)
     }

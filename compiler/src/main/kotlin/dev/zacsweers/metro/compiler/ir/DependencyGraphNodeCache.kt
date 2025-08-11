@@ -21,6 +21,7 @@ import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
+import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
@@ -201,15 +202,16 @@ internal class DependencyGraphNodeCache(
         nonNullCreator.parameters.regularParameters.forEachIndexed { i, parameter ->
           if (parameter.isBindsInstance) return@forEachIndexed
 
-          val type = parameter.typeKey.type.rawType()
+          val klass = parameter.typeKey.type.rawType()
+          val sourceGraph = klass.sourceGraphIfMetroGraph
 
           checkGraphSelfCycle(graphDeclaration, graphTypeKey, bindingStack)
 
           // Add any included graph provider factories IFF it's a binding container
           if (nonNullCreator.bindingContainersParameterIndices.isSet(i)) {
             val bindingContainer =
-              bindingContainerTransformer.findContainer(type)
-                ?: error("Binding container not found for type ${type.classId}")
+              bindingContainerTransformer.findContainer(sourceGraph)
+                ?: error("Binding container not found for type ${sourceGraph.classId}")
 
             bindingContainers += bindingContainer
             return@forEachIndexed
@@ -220,9 +222,15 @@ internal class DependencyGraphNodeCache(
             bindingStack.withEntry(
               IrBindingStack.Entry.requestedAt(graphContextKey, nonNullCreator.function)
             ) {
-              nodeCache.getOrComputeDependencyGraphNode(type, bindingStack, parentTracer)
+              val nodeKey = if (klass.origin == Origins.ContributedGraph) {
+                klass
+              } else {
+                sourceGraph
+              }
+              nodeCache.getOrComputeDependencyGraphNode(nodeKey, bindingStack, parentTracer)
             }
 
+          // Still tie to the parameter key because that's what gets the instance binding
           if (parameter.isExtends) {
             extendedGraphNodes[parameter.typeKey] = node
           } else {

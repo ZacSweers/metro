@@ -61,7 +61,7 @@ internal class IrBindingGraph(
   // TODO hoist accessors up and visit in seal?
   private val accessors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
   private val injectors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
-  private val extraKeeps = mutableSetOf<IrTypeKey>()
+  private val extraKeeps = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
 
   // Thin immutable view over the internal bindings
   fun bindingsSnapshot(): Map<IrTypeKey, IrBinding> = realGraph.bindings
@@ -78,8 +78,8 @@ internal class IrBindingGraph(
     realGraph.tryPut(binding, bindingStack, key)
   }
 
-  fun keep(key: IrTypeKey) {
-    extraKeeps += key
+  fun keep(key: IrContextualTypeKey, entry: IrBindingStack.Entry) {
+    extraKeeps[key] = entry
   }
 
   fun findBinding(key: IrTypeKey): IrBinding? = realGraph[key]
@@ -195,23 +195,9 @@ internal class IrBindingGraph(
             putAll(injectors)
           }
 
-          // If it's extendable, we need to add keeps for providers, including extended graphs'
-          // providers
-          val keep = buildSet {
-            addAll(extraKeeps)
-            if (node.isExtendable) {
-              for ((key) in node.providerFactories) {
-                add(key)
-              }
-              for ((key) in node.allExtendedNodes.flatMap { it.value.providerFactories }) {
-                add(key)
-              }
-            }
-          }
-
           realGraph.seal(
             roots = roots,
-            keep = keep,
+            keep = extraKeeps,
             shrinkUnusedBindings = metroContext.options.shrinkUnusedBindings && !node.isExtendable,
             tracer = tracer,
             onPopulated = {
@@ -569,7 +555,7 @@ internal class IrBindingGraph(
             appendLine()
             appendLine("(Hint)")
             append(
-              "${node.sourceGraph.name} is contributed by '${node.sourceGraph.superTypes.first().rawTypeOrNull()?.kotlinFqName}' to '${declarationToReport.kotlinFqName}'."
+              "${node.sourceGraph.name} is contributed by '${node.sourceGraph.sourceGraphIfMetroGraph.kotlinFqName}' to '${declarationToReport.sourceGraphIfMetroGraph.kotlinFqName}'."
             )
           }
 
@@ -580,11 +566,12 @@ internal class IrBindingGraph(
               appendLine()
               appendLine()
               val shortTypeKey = binding.typeKey.render(short = true)
-              val optionsHint = if (binding is IrBinding.ConstructorInjected) {
-                " or enabling the `enableScopedInjectClassHints` option"
-              } else {
-                " or enabling the `eagerlyValidateProviders` option"
-              }
+              val optionsHint =
+                if (binding is IrBinding.ConstructorInjected) {
+                  " or enabling the `enableScopedInjectClassHints` option"
+                } else {
+                  " or enabling the `eagerlyValidateProviders` option"
+                }
               appendLine(
                 """
                   (Hint)

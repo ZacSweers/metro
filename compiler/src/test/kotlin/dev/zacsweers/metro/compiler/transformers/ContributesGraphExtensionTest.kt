@@ -1144,12 +1144,12 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         $$$"""
-          e: LoggedInScope.kt:12:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph.$$ContributedLoggedInGraph (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
+          e: LoggedInScope.kt:12:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph.$$MetroGraph.$$ContributedLoggedInGraph (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
               test.Dependency (scoped to '@SingleIn(AppScope::class)')
               test.Dependency is injected at
-                  [test.ExampleGraph.$$ContributedLoggedInGraph] test.ChildDependency(…, dep)
+                  [test.ExampleGraph.$$MetroGraph.$$ContributedLoggedInGraph] test.ChildDependency(…, dep)
               test.ChildDependency is requested at
-                  [test.ExampleGraph.$$ContributedLoggedInGraph] test.LoggedInGraph#childDependency
+                  [test.ExampleGraph.$$MetroGraph.$$ContributedLoggedInGraph] test.LoggedInGraph#childDependency
 
 
           (Hint)

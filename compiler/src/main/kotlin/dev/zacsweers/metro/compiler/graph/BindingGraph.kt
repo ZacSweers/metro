@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.graph
 import dev.zacsweers.metro.compiler.ir.appendBindingStack
 import dev.zacsweers.metro.compiler.ir.appendBindingStackEntries
 import dev.zacsweers.metro.compiler.ir.withEntry
+import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import java.util.SortedMap
@@ -93,7 +94,7 @@ internal open class MutableBindingGraph<
    */
   fun seal(
     roots: Map<ContextualTypeKey, BindingStackEntry> = emptyMap(),
-    keep: Set<TypeKey> = emptySet(),
+    keep: Map<ContextualTypeKey, BindingStackEntry> = emptyMap(),
     shrinkUnusedBindings: Boolean = true,
     tracer: Tracer = Tracer.NONE,
     onPopulated: () -> Unit = {},
@@ -110,7 +111,9 @@ internal open class MutableBindingGraph<
   ): TopoSortResult<TypeKey> {
     val stack = newBindingStack()
 
-    val missingBindings = populateGraph(roots, stack, tracer)
+    // Order matters, prefer roots over matching kees as they have more information in their entries
+    val rootsWithKeeps = keep + roots
+    val missingBindings = populateGraph(rootsWithKeeps, stack, tracer)
 
     onPopulated()
 
@@ -151,14 +154,14 @@ internal open class MutableBindingGraph<
     validateBindings(bindings, stack, roots, fullAdjacency)
 
     val topo =
-      tracer.traceNested("Sort and validate") {
+      tracer.traceNested("Sort and validate") { parentTracer ->
         val allKeeps =
           if (shrinkUnusedBindings) {
-            keep
+            keep.keys.mapToSet { it.typeKey }
           } else {
-            fullAdjacency.keys
+            fullAdjacency.keys + keep.keys.mapToSet { it.typeKey }
           }
-        sortAndValidate(roots, allKeeps, fullAdjacency, stack, it, onSortedCycle)
+        sortAndValidate(roots, allKeeps, fullAdjacency, stack, parentTracer, onSortedCycle)
       }
 
     tracer.traceNested("Compute binding indices") {

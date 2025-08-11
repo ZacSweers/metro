@@ -10,8 +10,11 @@ import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
+import dev.zacsweers.metro.compiler.tracing.Tracer
+import dev.zacsweers.metro.compiler.tracing.traceNested
 import kotlin.collections.plusAssign
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
+import org.jetbrains.kotlin.backend.konan.ir.getSuperClassNotAny
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
@@ -40,6 +43,7 @@ import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.getValueArgument
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.superClass
 import org.jetbrains.kotlin.name.ClassId
@@ -57,6 +61,40 @@ internal class IrContributedGraphGenerator(
    */
   private val transitiveBindingContainerCache = mutableMapOf<ClassId, Set<IrClass>>()
   private val nameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
+  private val cache = mutableMapOf<CacheKey, IrClass>()
+
+  private data class CacheKey(val typeKey: IrTypeKey, val parentGraph: ClassId)
+
+  fun getOrBuildContributedGraph(
+    typeKey: IrTypeKey,
+    parentGraph: IrClass,
+    contributedAccessor: MetroSimpleFunction,
+    parentTracer: Tracer,
+  ): IrClass {
+    return cache.getOrPut(CacheKey(typeKey, parentGraph.classIdOrFail)) {
+      // Find the function declaration in the original @ContributesGraphExtension.Factory
+      val sourceFunction =
+        contributedAccessor.ir
+          .overriddenSymbolsSequence()
+          .filter {
+            it.owner.parentClassOrNull?.isAnnotatedWithAny(
+              metroContext.symbols.classIds.contributesGraphExtensionFactoryAnnotations
+            ) == true
+          }
+          .lastOrNull()
+          ?.owner ?: contributedAccessor.ir
+
+      val sourceFactory = sourceFunction.parentAsClass
+      val sourceGraph = sourceFactory.parentAsClass
+      parentTracer.traceNested("Generate contributed graph ${sourceGraph.name}") {
+        generateContributedGraph(
+          sourceGraph = sourceGraph,
+          sourceFactory = sourceFactory,
+          factoryFunction = sourceFunction,
+        )
+      }
+    }
+  }
 
   @OptIn(DelicateIrParameterIndexSetter::class)
   fun generateContributedGraph(
@@ -67,14 +105,10 @@ internal class IrContributedGraphGenerator(
     val contributesGraphExtensionAnno =
       sourceGraph.annotationsIn(symbols.classIds.contributesGraphExtensionAnnotations).first()
 
-    // If the parent graph is not extendable, error out here
-    val parentIsContributed = parentGraph.origin === Origins.ContributedGraph
-    val realParent =
-      if (parentIsContributed) {
-        parentGraph.superTypes.first().rawType()
-      } else {
-        parentGraph
-      }
+    val parentIsContributed = parentGraph.origin == Origins.ContributedGraph
+    // Parent is always the first superclass/supertype
+    // TODO test a superclass
+    val realParent = parentGraph.sourceGraphIfMetroGraph
     val parentGraphAnno = realParent.annotationsIn(symbols.classIds.graphLikeAnnotations).single()
     val parentIsExtendable = parentGraphAnno.isExtendable()
     if (!parentIsExtendable) {
@@ -108,7 +142,11 @@ internal class IrContributedGraphGenerator(
         }
         // TODO in kotlin 2.2.20 remove message collector
         if (sourceGraph.fileOrNull == null) {
-          messageCollector.report(CompilerMessageSeverity.ERROR, message, sourceGraph.locationOrNull())
+          messageCollector.report(
+            CompilerMessageSeverity.ERROR,
+            message,
+            sourceGraph.locationOrNull(),
+          )
         } else {
           diagnosticReporter.at(sourceGraph).report(MetroIrErrors.METRO_ERROR, message)
         }
