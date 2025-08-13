@@ -34,7 +34,7 @@ import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.remapTypes
 import org.jetbrains.kotlin.name.ClassId
 
-internal class IrContributedGraphGenerator(
+internal class IrGraphExtensionGenerator(
   context: IrMetroContext,
   private val contributionData: IrContributionData,
   private val parentGraph: IrClass,
@@ -47,7 +47,7 @@ internal class IrContributedGraphGenerator(
    */
   private val transitiveBindingContainerCache = mutableMapOf<ClassId, Set<IrClass>>()
   private val nameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
-  private val cache = mutableMapOf<CacheKey, IrClass>()
+  private val generatedClassesCache = mutableMapOf<CacheKey, IrClass>()
 
   private data class CacheKey(val typeKey: IrTypeKey, val parentGraph: ClassId)
 
@@ -57,7 +57,7 @@ internal class IrContributedGraphGenerator(
     contributedAccessor: MetroSimpleFunction,
     parentTracer: Tracer,
   ): IrClass {
-    return cache.getOrPut(CacheKey(typeKey, parentGraph.classIdOrFail)) {
+    return generatedClassesCache.getOrPut(CacheKey(typeKey, parentGraph.classIdOrFail)) {
       val sourceFunction =
         contributedAccessor.ir
           .overriddenSymbolsSequence()
@@ -70,15 +70,17 @@ internal class IrContributedGraphGenerator(
         buildContributedGraph(sourceFunction, parentTracer)
       } else {
         val returnType = sourceFunction.returnType.rawType()
-        val returnIsGraphExtension = returnType.isAnnotatedWithAny(symbols.classIds.graphExtensionFactoryAnnotations) || returnType.isAnnotatedWithAny(symbols.classIds.contributesGraphExtensionFactoryAnnotations)
-        if (returnIsGraphExtension) {
+        val returnIsGraphExtensionFactory = returnType.isAnnotatedWithAny(symbols.classIds.allGraphExtensionFactoryAnnotations)
+        // TODO use this when we support direct extension getters
+        val returnIsGraphExtension = returnType.isAnnotatedWithAny(symbols.classIds.allGraphExtensionAnnotations)
+        if (returnIsGraphExtensionFactory) {
           val samFunction = returnType.singleAbstractFunction()
             .apply {
               remapTypes(sourceFunction.typeRemapperFor(sourceFunction.returnType))
             }
           buildContributedGraph(samFunction, parentTracer)
         } else {
-          error("Not a graph extension!")
+          error("Not a graph extension: ${returnType.kotlinFqName}")
         }
       }
 
@@ -240,7 +242,7 @@ internal class IrContributedGraphGenerator(
       .addConstructor {
         isPrimary = true
         origin = Origins.Default
-        // This will be finalized in DependencyGraphTransformer
+        // This will be finalized in IrGraphGenerator
         isFakeOverride = true
       }
       .apply {
