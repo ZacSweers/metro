@@ -16,7 +16,7 @@ import dev.zacsweers.metro.compiler.ir.DependencyGraphNodeCache
 import dev.zacsweers.metro.compiler.ir.IrBindingGraph
 import dev.zacsweers.metro.compiler.ir.IrBindingStack
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
-import dev.zacsweers.metro.compiler.ir.IrContributedGraphGenerator
+import dev.zacsweers.metro.compiler.ir.IrGraphExtensionGenerator
 import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrGraphGenerator
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -239,8 +239,8 @@ internal class DependencyGraphTransformer(
           .generate()
       }
 
-    val contributedGraphGenerator =
-      IrContributedGraphGenerator(metroContext, contributionData, node.sourceGraph.metroGraphOrFail)
+    val graphExtensionGenerator =
+      IrGraphExtensionGenerator(metroContext, contributionData, node.sourceGraph.metroGraphOrFail)
 
     // Before validating/sealing the parent graph, analyze contributed child graphs to
     // determine any parent-scoped static bindings that are required by children and
@@ -280,10 +280,22 @@ internal class DependencyGraphTransformer(
         }
       }
 
+      // Instance bindings
+      node.creator?.parameters?.let { parameters ->
+        for (parameter in parameters.regularParameters) {
+          if (parameter.isIncludes || parameter.isBindsInstance) {
+            localParentContext.add(parameter.typeKey)
+          }
+        }
+      }
+
       // Included graph dependencies
       for (included in node.allIncludedNodes) {
         localParentContext.addAll(included.publicAccessors)
       }
+
+      // Extended graphs
+      localParentContext.addAll(node.allExtendedNodes.keys)
 
       // Transform the contributed graphs
       // Push the parent graph for all contributed graph processing
@@ -294,7 +306,7 @@ internal class DependencyGraphTransformer(
 
         // Generate the contributed graph class
         val contributedGraph =
-          contributedGraphGenerator.getOrBuildContributedGraph(
+          graphExtensionGenerator.getOrBuildContributedGraph(
             contributedGraphKey,
             node.sourceGraph,
             accessor,
@@ -351,7 +363,7 @@ internal class DependencyGraphTransformer(
         }
 
       // Mark bindings from enclosing parents to ensure they're generated there
-      // Only applicable in contributed graphs
+      // Only applicable in graph extensions
       if (parentContext != null) {
         for (key in result.reachableKeys) {
           if (key in parentContext) {
@@ -407,7 +419,7 @@ internal class DependencyGraphTransformer(
             bindingContainerTransformer = bindingContainerTransformer,
             membersInjectorTransformer = membersInjectorTransformer,
             assistedFactoryTransformer = assistedFactoryTransformer,
-            contributedGraphGenerator = contributedGraphGenerator,
+            contributedGraphGenerator = graphExtensionGenerator,
           )
           .generate()
       }
