@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.BitField
 import dev.zacsweers.metro.compiler.Origins
-import dev.zacsweers.metro.compiler.PLUGIN_ID
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
@@ -17,8 +16,6 @@ import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.memoized
-import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
-import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.ir.builders.irCall
@@ -616,70 +613,6 @@ internal class DependencyGraphNodeCache(
     private fun buildExternalGraphOrBindingContainer(): DependencyGraphNode {
       // Read metadata if this is an extendable graph
       val includedGraphNodes = mutableMapOf<IrTypeKey, DependencyGraphNode>()
-      var graphProto: DependencyGraphProto? = null
-      // TODO do we still actually need any metadata here?
-      parentTracer.traceNested("Populate inherited graph metadata") { tracer ->
-        val serialized =
-          pluginContext.metadataDeclarationRegistrar.getCustomMetadataExtension(
-            graphDeclaration.requireNestedClass(Symbols.Names.MetroGraph),
-            PLUGIN_ID,
-          )
-        if (serialized == null) {
-          diagnosticReporter
-            .at(graphDeclaration)
-            .report(
-              MetroIrErrors.METRO_ERROR,
-              "Missing metadata for extendable graph ${graphDeclaration.kotlinFqName}. Was this compiled by the Metro compiler?",
-            )
-          exitProcessing()
-        }
-
-        graphProto =
-          tracer.traceNested("Deserialize DependencyGraphProto") {
-            val metadata = MetroMetadata.ADAPTER.decode(serialized)
-            metadata.dependency_graph
-          }
-        if (graphProto == null) {
-          diagnosticReporter
-            .at(graphDeclaration)
-            .report(
-              MetroIrErrors.METRO_ERROR,
-              "Missing graph data for extendable graph ${graphDeclaration.kotlinFqName}. Was this compiled by the Metro compiler?",
-            )
-          exitProcessing()
-        }
-
-        // Read scopes from annotations
-        // We copy scope annotations from parents onto this graph if it's extendable so we only
-        // need to copy once
-        scopes.addAll(graphDeclaration.scopeAnnotations())
-
-        includedGraphNodes.putAll(
-          // TODO dedupe logic with below
-          graphProto.included_classes.associate { graphClassId ->
-            val clazz =
-              pluginContext.referenceClass(ClassId.fromString(graphClassId))
-                ?: error("Could not find graph class $graphClassId.")
-            val typeKey = IrTypeKey(clazz.defaultType)
-            val node =
-              nodeCache.getOrComputeDependencyGraphNode(clazz.owner, bindingStack, parentTracer)
-            typeKey to node
-          }
-        )
-
-        extendedGraphNodes.putAll(
-          graphProto.parent_graph_classes.associate { graphClassId ->
-            val clazz =
-              pluginContext.referenceClass(ClassId.fromString(graphClassId))
-                ?: error("Could not find graph class $graphClassId.")
-            val typeKey = IrTypeKey(clazz.defaultType)
-            val node =
-              nodeCache.getOrComputeDependencyGraphNode(clazz.owner, bindingStack, parentTracer)
-            typeKey to node
-          }
-        )
-      }
-
       val accessorsToCheck =
         if (isGraph) {
           // It's just an external graph, just read the declared types from it
@@ -722,9 +655,7 @@ internal class DependencyGraphNodeCache(
           val declaration = type.classOrNull?.owner ?: continue
           // Skip the metrograph, it won't have custom nested factories
           if (declaration == metroGraph) continue
-          val proto = if (declaration == graphDeclaration) graphProto else null
-          bindingContainerTransformer.findContainer(declaration, graphProto = proto)?.let {
-            bindingContainer ->
+          bindingContainerTransformer.findContainer(declaration)?.let { bindingContainer ->
             providerFactories += bindingContainer.providerFactories.values.map { it.typeKey to it }
 
             bindingContainer.bindsMirror?.let { bindsMirror ->
@@ -750,7 +681,7 @@ internal class DependencyGraphNodeCache(
           bindsCallables = bindsCallables,
           multibindsCallables = multibindsCallables,
           isExternal = true,
-          proto = graphProto,
+          proto = null,
           extendedGraphNodes = extendedGraphNodes,
           // Following aren't necessary to see in external graphs
           graphExtensions = graphExtensions,
