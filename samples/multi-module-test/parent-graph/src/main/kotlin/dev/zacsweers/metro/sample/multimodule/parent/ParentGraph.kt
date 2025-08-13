@@ -16,7 +16,7 @@ import dev.zacsweers.metro.sample.multimodule.ParentScope
  * extend it.
  */
 @SingleIn(ParentScope::class)
-@DependencyGraph(ParentScope::class, isExtendable = true)
+@DependencyGraph(ParentScope::class)
 interface ParentGraph {
   val messageService: MessageService
 

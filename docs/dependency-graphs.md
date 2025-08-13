@@ -140,12 +140,10 @@ interface AppGraph
 
 Dependency graphs can be marked as _extendable_ to allow child graphs to extend them. These are similar in functionality to Dagger's `Subcomponents` but are detached in nature like in kotlin-inject.
 
-A graph must opt itself into extension in via `@DependencyGraph(..., isExtendable = true)`, which will make the Metro compiler generate extra metadata for downstream child graphs.
-
 Then, a child graph can add an `@Extends`-annotated parameter to its creator to extend that graph.
 
 ```kotlin
-@DependencyGraph(isExtendable = true)
+@DependencyGraph
 interface AppGraph {
   @Provides fun provideHttpClient(): HttpClient { ... }
 }
@@ -209,7 +207,7 @@ interface LoggedInGraph {
 In the `:app` module:
 
 ```
-@DependencyGraph(AppScope::class, isExtendable = true)
+@DependencyGraph(AppScope::class)
 interface AppGraph
 ```
 
@@ -258,7 +256,7 @@ This maps to:
 // Generated in IR
 @DependencyGraph(LoggedInScope::class)
 class $$ContributedLoggedInGraph(
-  @Extends parent: AppGraph,
+  parent: AppGraph,
   @Provides userId: String
 ): LoggedInGraph {
   // ...

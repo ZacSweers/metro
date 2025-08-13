@@ -605,7 +605,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
         private val appGraph =
           source(
             """
-            @DependencyGraph(Unit::class, isExtendable = true)
+            @DependencyGraph(Unit::class)
             interface AppGraph
             """
               .trimIndent()

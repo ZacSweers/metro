@@ -162,7 +162,7 @@ In short, Metro will treat nullable types as different type keys than their non-
 Furthermore, a `String` binding cannot satisfy a `String?` automatically. You _may_ however `@Binds` a `String` to a `String?` and Metro will treat it as a valid binding.
 
 ```kotlin
-@DependencyGraph(Unit::class, isExtendable = true)
+@DependencyGraph(Unit::class)
 interface ExampleGraph {
   val int: Int
   val nullableInt: Int?

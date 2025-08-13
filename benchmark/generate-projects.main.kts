@@ -1023,7 +1023,7 @@ $serviceImports
 ${generateAccessors(allModules)}
 
 @SingleIn(AppScope::class)
-@DependencyGraph(AppScope::class, isExtendable = true)
+@DependencyGraph(AppScope::class)
 interface AppComponent : ${(0 until (allModules.size / 50 + 1)).joinToString(", ") { "AccessorInterface$it" }} {
   // Multibinding accessors
   fun getAllPlugins(): Set<Plugin>

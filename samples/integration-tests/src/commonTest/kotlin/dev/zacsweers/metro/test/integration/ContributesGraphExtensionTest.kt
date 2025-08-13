@@ -35,7 +35,7 @@ class ContributesGraphExtensionTest {
       }
     }
 
-    @DependencyGraph(scope = SimpleApp::class, isExtendable = true)
+    @DependencyGraph(scope = SimpleApp::class)
     interface ExampleGraph {
       @Provides fun provideInt(): Int = 0
     }

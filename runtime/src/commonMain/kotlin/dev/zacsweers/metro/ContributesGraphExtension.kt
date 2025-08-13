@@ -47,7 +47,7 @@ import kotlin.reflect.KClass
  *
  * In the `:app` module:
  * ```
- * @DependencyGraph(AppScope::class, isExtendable = true)
+ * @DependencyGraph(AppScope::class)
  * interface AppGraph
  * ```
  *
@@ -94,7 +94,7 @@ import kotlin.reflect.KClass
  * // Generated in IR
  * @DependencyGraph(LoggedInScope::class)
  * class $$ContributedLoggedInGraph(
- *   @Extends parent: AppGraph,
+ *   parent: AppGraph,
  *   @Provides userId: String
  * ): LoggedInGraph {
  *   // ...

@@ -19,7 +19,7 @@ import dev.zacsweers.metro.sample.multimodule.parent.ParentGraph
  * the parent graph.
  */
 @SingleIn(ChildScope::class)
-@DependencyGraph(ChildScope::class, isExtendable = true)
+@DependencyGraph(ChildScope::class)
 interface ChildGraph {
   /** Access the message service from the parent graph. */
   val messageService: MessageService
