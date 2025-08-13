@@ -14,6 +14,9 @@ import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.types.IrSimpleType
+import org.jetbrains.kotlin.ir.types.typeOrFail
+import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.functions
@@ -331,6 +334,14 @@ internal class BindingGraphGenerator(
           IrBinding.BoundInstance(creatorParam, creatorParam.ir),
           bindingStack,
         )
+        val rawType = creatorParam.type.rawType()
+        // Add the original type too as an alias
+        val regularGraph = rawType.sourceGraphIfMetroGraph
+        if (regularGraph != rawType) {
+          val keyType = regularGraph.typeWith(creatorParam.type.expectAs<IrSimpleType>().arguments.map { it.typeOrFail })
+          val typeKey = IrTypeKey(keyType)
+          superTypeToAlias.putIfAbsent(typeKey, paramTypeKey)
+        }
       }
     }
 
@@ -408,7 +419,7 @@ internal class BindingGraphGenerator(
       }
     }
 
-    // Now that we've processed all supertypes
+    // Now that we've processed all supertypes/aliases
     for ((superTypeKey, aliasedType) in superTypeToAlias) {
       // We may have already added a `@Binds` declaration explicitly, this is ok!
       // TODO warning?
