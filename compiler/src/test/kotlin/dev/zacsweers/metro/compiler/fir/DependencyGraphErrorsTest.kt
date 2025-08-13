@@ -368,7 +368,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `all factory parameters must be annotated with Provides XOR Includes XOR Extends`() {
+  fun `all factory parameters must be annotated with Provides XOR Includes`() {
     val result =
       compile(
         source(
@@ -386,7 +386,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertDiagnostics(
-      "e: ExampleGraph.kt:10:41 DependencyGraph.Factory abstract function parameters must be annotated with exactly one @Includes, @Provides, or @Extends."
+      "e: ExampleGraph.kt:10:41 DependencyGraph.Factory abstract function parameters must be annotated with exactly one @Includes or @Provides."
     )
   }
 

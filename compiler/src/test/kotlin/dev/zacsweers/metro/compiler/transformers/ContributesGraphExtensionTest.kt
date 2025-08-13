@@ -677,6 +677,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           @ContributesGraphExtension(scope = Unit::class)
           interface StringGraph : LoggedInGraph.Factory {
             val string: String
+
             @ContributesGraphExtension.Factory(AppScope::class)
             interface Factory {
               fun create(@Provides string: String): StringGraph
@@ -810,91 +811,6 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
 
       val profileGraph = loggedInGraph.callFunction<Any>("createProfileGraph")
       assertThat(profileGraph.callProperty<String>("string")).isEqualTo("0")
-    }
-  }
-
-  @Test
-  fun `chained contributed graphs must be extendable`() {
-    compile(
-      source(
-        """
-        abstract class LoggedInScope
-        abstract class ProfileScope
-
-        @ContributesGraphExtension(ProfileScope::class)
-        interface ProfileGraph {
-          val string: String
-
-          @ContributesGraphExtension.Factory(LoggedInScope::class)
-          interface Factory {
-            fun createProfileGraph(): ProfileGraph
-          }
-        }
-
-        @ContributesGraphExtension(LoggedInScope::class)
-        interface LoggedInGraph {
-          val int: Int
-
-          @Provides fun provideString(int: Int): String = int.toString()
-
-          @ContributesGraphExtension.Factory(AppScope::class)
-          interface Factory {
-            fun createLoggedInGraph(): LoggedInGraph
-          }
-        }
-
-        @DependencyGraph(scope = AppScope::class)
-        interface ExampleGraph {
-          @Provides fun provideInt(): Int = 0
-        }
-      """
-          .trimIndent()
-      ),
-      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
-    ) {
-      assertDiagnostics(
-        """
-          e: LoggedInScope.kt:10:11 Contributed graph extension 'test.ProfileGraph' contributes to parent graph 'test.LoggedInGraph' (scope 'test.LoggedInScope'), but LoggedInGraph is not extendable.
-        """
-          .trimIndent()
-      )
-    }
-  }
-
-  @Test
-  fun `contributed graph target must be extendable`() {
-    compile(
-      source(
-        """
-        abstract class LoggedInScope
-
-        @ContributesGraphExtension(LoggedInScope::class)
-        interface LoggedInGraph {
-          val int: Int
-
-          @ContributesGraphExtension.Factory(AppScope::class)
-          interface Factory {
-            fun createLoggedInGraph(): LoggedInGraph
-          }
-        }
-
-        @DependencyGraph(scope = AppScope::class)
-        interface ExampleGraph {
-          @Provides fun provideInt(): Int = 0
-        }
-      """
-          .trimIndent()
-      ),
-      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
-    ) {
-      assertDiagnostics(
-        """
-          e: LoggedInScope.kt:9:11 Contributed graph extension 'test.LoggedInGraph' contributes to parent graph 'test.ExampleGraph' (scope 'dev.zacsweers.metro.AppScope'), but ExampleGraph is not extendable.
-
-          Either mark ExampleGraph as extendable (`@DependencyGraph`), or exclude it from ExampleGraph (`@DependencyGraph(excludes = [LoggedInGraph::class])`).
-        """
-          .trimIndent()
-      )
     }
   }
 
@@ -1110,7 +1026,8 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
 
   // https://github.com/ZacSweers/metro/issues/377
   @Test
-  fun `suggest adding to parent if scoped constructor-injected class matches parent scope but isn't provided`() {
+  fun `constructor injected class is automatically added in parent scope`() {
+    // Previous name but migrated with @GraphExtension migration: "suggest adding to parent if scoped constructor-injected class matches parent scope but isn't provided"
     compile(
       source(
         """
@@ -1137,34 +1054,22 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         """
           .trimIndent()
       ),
-      options = metroOptions.copy(enableScopedInjectClassHints = false),
-      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
-      assertDiagnostics(
-        $$$"""
-          e: LoggedInScope.kt:12:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph.$$MetroGraph.$$ContributedLoggedInGraph (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
-              test.Dependency (scoped to '@SingleIn(AppScope::class)')
-              test.Dependency is injected at
-                  [test.ExampleGraph.$$MetroGraph.$$ContributedLoggedInGraph] test.ChildDependency(…, dep)
-              test.ChildDependency is requested at
-                  [test.ExampleGraph.$$MetroGraph.$$ContributedLoggedInGraph] test.LoggedInGraph#childDependency
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val loggedInGraph = graph.callFunction<Any>("createLoggedInGraph")
+      val childDep1 = loggedInGraph.callProperty<Any>("childDependency")
+      val dep1 = childDep1.callProperty<Any>("dep")
+      val childDep2 = loggedInGraph.callProperty<Any>("childDependency")
+      val dep2 = childDep2.callProperty<Any>("dep")
 
-
-          (Hint)
-          $$ContributedLoggedInGraph is contributed by 'test.LoggedInGraph' to 'test.ExampleGraph'.
-
-          (Hint)
-          It appears that extended parent graph 'test.ExampleGraph' does declare the '@SingleIn(AppScope::class)' scope but doesn't use 'Dependency' directly.
-          To work around this, consider declaring an accessor for 'Dependency' in that graph (i.e. `val dependency: Dependency`) or enabling the `enableScopedInjectClassHints` option.
-          See https://github.com/ZacSweers/metro/issues/377 for more details.
-        """
-          .trimIndent()
-      )
+      assertThat(childDep2).isSameInstanceAs(childDep1)
+      assertThat(dep2).isSameInstanceAs(dep1)
     }
   }
 
   @Test
-  fun `suggest adding to parent if scoped constructor-injected class matches parent's parent scope but isn't provided`() {
+  fun `scoped bindings are automatically kept across intermediate graphs`() {
+    // Previous name but migrated with @GraphExtension migration: "suggest adding to parent if scoped constructor-injected class matches parent's parent scope but isn't provided"
     compile(
       source(
         """
@@ -1200,29 +1105,17 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         """
           .trimIndent()
       ),
-      options = metroOptions.copy(enableScopedInjectClassHints = false),
-      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
-      assertDiagnostics(
-        $$$"""
-          e: IntermediateScope.kt [Metro/IncompatiblyScopedBindings] test.ExampleGraph.$$ContributedIntermediateGraph.$$ContributedLoggedInGraph (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
-              test.Dependency (scoped to '@SingleIn(AppScope::class)')
-              test.Dependency is injected at
-                  [test.ExampleGraph.$$ContributedIntermediateGraph.$$ContributedLoggedInGraph] test.ChildDependency(…, dep)
-              test.ChildDependency is requested at
-                  [test.ExampleGraph.$$ContributedIntermediateGraph.$$ContributedLoggedInGraph] test.LoggedInGraph#childDependency
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val intermediateGraph = graph.callFunction<Any>("createIntermediateGraph")
+      val loggedInGraph = intermediateGraph.callFunction<Any>("createLoggedInGraph")
+      val childDep1 = loggedInGraph.callProperty<Any>("childDependency")
+      val dep1 = childDep1.callProperty<Any>("dep")
+      val childDep2 = loggedInGraph.callProperty<Any>("childDependency")
+      val dep2 = childDep2.callProperty<Any>("dep")
 
-
-          (Hint)
-          $$ContributedLoggedInGraph is contributed by 'test.LoggedInGraph' to 'test.ExampleGraph.$$ContributedIntermediateGraph'.
-
-          (Hint)
-          It appears that extended parent graph 'test.ExampleGraph' does declare the '@SingleIn(AppScope::class)' scope but doesn't use 'Dependency' directly.
-          To work around this, consider declaring an accessor for 'Dependency' in that graph (i.e. `val dependency: Dependency`) or enabling the `enableScopedInjectClassHints` option.
-          See https://github.com/ZacSweers/metro/issues/377 for more details.
-        """
-          .trimIndent()
-      )
+      assertThat(childDep2).isSameInstanceAs(childDep1)
+      assertThat(dep2).isSameInstanceAs(dep1)
     }
   }
 

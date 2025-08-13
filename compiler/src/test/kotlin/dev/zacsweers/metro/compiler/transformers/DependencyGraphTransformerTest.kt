@@ -2644,16 +2644,14 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
           class Impl : Base
 
-          @DependencyGraph(Unit::class)
-          interface ParentGraph {
-            val base: Base
+          @GraphExtension
+          interface ChildGraph {
+            val message: String
 
-            @Provides
-            @SingleIn(Unit::class)
-            fun provideBase(): Base = Impl()
-
-            @Provides
-            fun provideMessage(base: Base): String = base.toString()
+            @GraphExtension.Factory
+            interface Factory {
+              fun create(): ChildGraph
+            }
           }
         """
             .trimIndent()
@@ -2663,14 +2661,18 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph
-          interface ChildGraph {
-            val message: String
+          @DependencyGraph(Unit::class)
+          interface ParentGraph {
+            val base: Base
+            
+            fun childGraphFactory(): ChildGraph.Factory
 
-            @DependencyGraph.Factory
-            interface Factory {
-              fun create(@Extends parent: ParentGraph): ChildGraph
-            }
+            @Provides
+            @SingleIn(Unit::class)
+            fun provideBase(): Base = Impl()
+
+            @Provides
+            fun provideMessage(base: Base): String = base.toString()
           }
         """
           .trimIndent()
