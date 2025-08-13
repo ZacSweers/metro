@@ -24,7 +24,6 @@ import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.suffixIfNot
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
-import org.jetbrains.kotlin.backend.common.lower.irThrow
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.IrStatement
@@ -38,18 +37,13 @@ import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irBoolean
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
-import org.jetbrains.kotlin.ir.builders.irConcat
 import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
-import org.jetbrains.kotlin.ir.builders.irIfThenElse
-import org.jetbrains.kotlin.ir.builders.irImplicitCast
 import org.jetbrains.kotlin.ir.builders.irInt
-import org.jetbrains.kotlin.ir.builders.irNotIs
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.builders.irSetField
-import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.builders.parent
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrField
@@ -59,7 +53,6 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.expressions.addArgument
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
@@ -113,7 +106,7 @@ internal class IrGraphGenerator(
   private val bindingContainerTransformer: BindingContainerTransformer,
   private val membersInjectorTransformer: MembersInjectorTransformer,
   private val assistedFactoryTransformer: AssistedFactoryTransformer,
-  private val contributedGraphGenerator: IrContributedGraphGenerator,
+  private val contributedGraphGenerator: IrGraphExtensionGenerator,
 ) : IrMetroContext by metroContext {
 
   private val fieldNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
@@ -225,47 +218,8 @@ internal class IrGraphGenerator(
 
             if (graphDep.hasExtensions) {
               val depMetroGraph = graphDep.sourceGraph.metroGraphOrFail
-              val implType = depMetroGraph.defaultType
-              val needsImplCast = param.type != implType
               val paramName = depMetroGraph.sourceGraphIfMetroGraph.name
-              if (needsImplCast) {
-                // TODO generics?
-                val implKey = param.typeKey.copy(type = implType)
-                addBoundInstanceField(implKey, paramName) { _, _ ->
-                  // Check that the input parameter is an instance of the metrograph class
-                  // Only do this for $$MetroGraph instances. Not necessary for ContributedGraphs
-                  // TODO maybe move this check to the factory creator of the graph?
-                  irIfThenElse(
-                    type = implType,
-                    condition = irNotIs(irGet(irParam), implType),
-                    thenPart =
-                      irThrow(
-                        irInvoke(
-                          callee = irBuiltIns.illegalArgumentExceptionSymbol,
-                          args =
-                            listOf(
-                              irConcat().apply {
-                                addArgument(
-                                  irString(
-                                    "Constructor parameter ${irParam.name} _must_ be a Metro-compiler-generated instance of ${graphDep.sourceGraph.kotlinFqName.asString()} but was "
-                                  )
-                                )
-                                addArgument(
-                                  irInvoke(
-                                    dispatchReceiver = irGet(irParam),
-                                    callee = irBuiltIns.memberToString,
-                                  )
-                                )
-                              }
-                            ),
-                        )
-                      ),
-                    elsePart = irImplicitCast(irGet(irParam), implType),
-                  )
-                }
-              } else {
-                addBoundInstanceField(param.typeKey, paramName) { _, _ -> irGet(irParam) }
-              }
+              addBoundInstanceField(param.typeKey, paramName) { _, _ -> irGet(irParam) }
             }
           }
         }
