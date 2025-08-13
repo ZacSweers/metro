@@ -9,7 +9,7 @@ import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
-import dev.zacsweers.metro.compiler.ir.AvailableParentBindings
+import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.BindingGraphGenerator
 import dev.zacsweers.metro.compiler.ir.DependencyGraphNode
 import dev.zacsweers.metro.compiler.ir.DependencyGraphNodeCache
@@ -30,7 +30,6 @@ import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.location
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
-import dev.zacsweers.metro.compiler.ir.multibindingId
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.requireNestedClass
@@ -133,7 +132,7 @@ internal class DependencyGraphTransformer(
       declaration.annotationsIn(symbols.dependencyGraphAnnotations).singleOrNull()
         ?: return super.visitClass(declaration)
 
-    tryProcessDependencyGraph(declaration, dependencyGraphAnno, null)
+    tryProcessDependencyGraph(declaration, dependencyGraphAnno)
 
     // TODO dump option to detect unused
 
@@ -143,10 +142,9 @@ internal class DependencyGraphTransformer(
   private fun tryProcessDependencyGraph(
     dependencyGraphDeclaration: IrClass,
     dependencyGraphAnno: IrConstructorCall,
-    parentBindings: AvailableParentBindings?,
   ) {
     val metroGraph =
-      if (dependencyGraphDeclaration.origin == Origins.ContributedGraph) {
+      if (dependencyGraphDeclaration.origin == Origins.GeneratedGraphExtension) {
         // If it's a contributed graph, we process that directly while processing the parent. Do
         // nothing
         return
@@ -163,7 +161,7 @@ internal class DependencyGraphTransformer(
         dependencyGraphDeclaration,
         dependencyGraphAnno,
         metroGraph,
-        parentBindings,
+        parentContext = null,
       )
     } catch (_: ExitProcessingException) {
       // End processing, don't fail up because this would've been warned before
@@ -174,7 +172,7 @@ internal class DependencyGraphTransformer(
     dependencyGraphDeclaration: IrClass,
     dependencyGraphAnno: IrConstructorCall,
     metroGraph: IrClass,
-    parentBindings: AvailableParentBindings?,
+    parentContext: ParentContext?,
   ): IrBindingGraph.BindingGraphResult? {
     val graphClassId = dependencyGraphDeclaration.classIdOrFail
     processedMetroDependencyGraphsByClass[graphClassId]?.let {
@@ -195,7 +193,7 @@ internal class DependencyGraphTransformer(
           dependencyGraphAnno,
           metroGraph,
           tracer,
-          parentBindings,
+          parentContext,
         )
       }
 
@@ -209,7 +207,7 @@ internal class DependencyGraphTransformer(
     dependencyGraphAnno: IrConstructorCall,
     metroGraph: IrClass,
     parentTracer: Tracer,
-    parentBindings: AvailableParentBindings?,
+    parentContext: ParentContext?,
   ): IrBindingGraph.BindingGraphResult? {
     val node =
       dependencyGraphNodeCache.getOrComputeDependencyGraphNode(
@@ -236,7 +234,7 @@ internal class DependencyGraphTransformer(
             injectConstructorTransformer,
             membersInjectorTransformer,
             contributionData,
-            parentBindings,
+            parentContext,
           )
           .generate()
       }
@@ -247,10 +245,10 @@ internal class DependencyGraphTransformer(
     // Before validating/sealing the parent graph, analyze contributed child graphs to
     // determine any parent-scoped static bindings that are required by children and
     // add synthetic roots for them so they are materialized in the parent.
-    if (node.contributedGraphs.isNotEmpty()) {
+    if (node.graphExtensions.isNotEmpty()) {
       // Collect parent-available scoped binding keys to match against
       // @Binds not checked because they cannot be scoped!
-      val localParentBindings = parentBindings ?: AvailableParentBindings()
+      val localParentContext = parentContext ?: ParentContext()
 
       // @Provides
       for ((_, providerFactory) in node.providerFactories) {
@@ -261,7 +259,7 @@ internal class DependencyGraphTransformer(
           } else {
             providerFactory.typeKey
           }
-          localParentBindings.add(targetKey)
+          localParentContext.add(targetKey)
         }
       }
 
@@ -277,18 +275,21 @@ internal class DependencyGraphTransformer(
             } else {
               scopedClass
             }
-            localParentBindings.add(targetKey)
+            localParentContext.add(targetKey)
           }
         }
       }
 
       // Included graph dependencies
       for (included in node.allIncludedNodes) {
-        localParentBindings.addAll(included.publicAccessors)
+        localParentContext.addAll(included.publicAccessors)
       }
 
       // Transform the contributed graphs
-      for ((contributedGraphKey, accessor) in node.contributedGraphs) {
+      // Push the parent graph for all contributed graph processing
+      localParentContext.pushParentGraph(node)
+      
+      for ((contributedGraphKey, accessor) in node.graphExtensions) {
         val contributedExtension = contributedGraphKey.type.rawTypeOrNull() ?: continue
 
         // Generate the contributed graph class
@@ -301,12 +302,11 @@ internal class DependencyGraphTransformer(
           )
 
         // Process the child
-        val childResult =
           processDependencyGraph(
             contributedGraph,
             contributedGraph.annotationsIn(symbols.dependencyGraphAnnotations).single(),
             contributedGraph,
-            localParentBindings,
+            localParentContext,
           )
             ?: reportCompilerBug(
               "Expected generated dependency graph for ${contributedExtension.classIdOrFail}"
@@ -314,13 +314,14 @@ internal class DependencyGraphTransformer(
 
         // For any key both child uses and parent has as a scoped static binding,
         // mark it as a keep in the parent graph so it materializes during seal
-        for (requiredKey in childResult.reachableKeys) {
-          if (requiredKey in localParentBindings) {
-            val contextKey = IrContextualTypeKey.create(requiredKey)
-            bindingGraph.keep(contextKey, IrBindingStack.Entry.simpleTypeRef(contextKey))
-          }
+        for (key in localParentContext.usedKeys()) {
+          val contextKey = IrContextualTypeKey.create(key)
+          bindingGraph.keep(contextKey, IrBindingStack.Entry.simpleTypeRef(contextKey))
         }
       }
+      
+      // Pop the parent graph after all contributed graphs are processed
+      localParentContext.popParentGraph()
     }
 
     try {
@@ -332,9 +333,9 @@ internal class DependencyGraphTransformer(
                 // TODO in kotlin 2.2.20 we can just use the reporter
                 val toReport =
                   declaration?.takeIf {
-                    it.fileOrNull != null && it.origin != Origins.ContributedGraph
+                    it.fileOrNull != null && it.origin != Origins.GeneratedGraphExtension
                   } ?: dependencyGraphDeclaration
-                if (toReport.fileOrNull != null && toReport.origin != Origins.ContributedGraph) {
+                if (toReport.fileOrNull != null && toReport.origin != Origins.GeneratedGraphExtension) {
                   diagnosticReporter.at(toReport).report(MetroIrErrors.METRO_ERROR, message)
                 } else {
                   messageCollector.report(
@@ -351,10 +352,10 @@ internal class DependencyGraphTransformer(
 
       // Mark bindings from enclosing parents to ensure they're generated there
       // Only applicable in contributed graphs
-      if (parentBindings != null) {
+      if (parentContext != null) {
         for (key in result.reachableKeys) {
-          if (key in parentBindings) {
-            parentBindings.mark(key)
+          if (key in parentContext) {
+            parentContext.mark(key)
           }
         }
       }
@@ -366,9 +367,8 @@ internal class DependencyGraphTransformer(
       }
 
       // Check if any parents haven't been generated yet. If so, generate them now
-      if (dependencyGraphDeclaration.origin != Origins.ContributedGraph) {
+      if (dependencyGraphDeclaration.origin != Origins.GeneratedGraphExtension) {
         for (parent in node.allExtendedNodes.values) {
-          if (!parent.isExtendable) continue
           var proto = parent.proto
           val needsToGenerateParent =
             proto == null &&
@@ -423,7 +423,7 @@ internal class DependencyGraphTransformer(
           .map { it.first.ir }
           .plus(node.injectors.map { it.first.ir })
           .plus(node.bindsCallables.map { it.callableMetadata.function })
-          .plus(node.contributedGraphs.map { it.value.ir })
+          .plus(node.graphExtensions.map { it.value.ir })
           .filterNot { it.isExternalParent }
           .forEach { function ->
             with(function) {

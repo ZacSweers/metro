@@ -84,7 +84,6 @@ internal class Symbols(
     const val INTO_MAP = "IntoMap"
     const val INTO_SET = "IntoSet"
     const val INVOKE = "invoke"
-    const val IS_EXTENDABLE = "isExtendable"
     const val IS_PROPERTY_ACCESSOR = "isPropertyAccessor"
     const val METRO_CONTRIBUTION = "MetroContribution"
     const val METRO_CONTRIBUTION_NAME_PREFIX = $$$"$$MetroContribution"
@@ -149,11 +148,12 @@ internal class Symbols(
       ClassId(FqNames.composeRuntime, StringNames.NON_RESTARTABLE_COMPOSABLE.asName())
     val CallableMetadata = ClassId(FqNames.metroRuntimeInternalPackage, CALLABLE_METADATA.asName())
     val Stable = ClassId(FqNames.composeRuntime, StringNames.STABLE.asName())
+    val graphExtension = ClassId(FqNames.metroRuntimePackage, "GraphExtension".asName())
+    val graphExtensionFactory = graphExtension.createNestedClassId(Names.FactoryClass)
     val metroAssisted = ClassId(FqNames.metroRuntimePackage, StringNames.ASSISTED.asName())
     val metroBinds = ClassId(FqNames.metroRuntimePackage, Names.Binds)
     val metroContribution =
       ClassId(FqNames.metroRuntimeInternalPackage, StringNames.METRO_CONTRIBUTION.asName())
-    val metroExtends = ClassId(FqNames.metroRuntimePackage, StringNames.EXTENDS.asName())
     val metroFactory = ClassId(FqNames.metroRuntimeInternalPackage, Names.FactoryClass)
     val metroIncludes = ClassId(FqNames.metroRuntimePackage, StringNames.INCLUDES.asName())
     val metroInject = ClassId(FqNames.metroRuntimePackage, StringNames.INJECT.asName())
@@ -199,7 +199,6 @@ internal class Symbols(
     val injectMembers = StringNames.INJECT_MEMBERS.asName()
     val instance = "instance".asName()
     val invoke = StringNames.INVOKE.asName()
-    val isExtendable = StringNames.IS_EXTENDABLE.asName()
     val isPropertyAccessor = StringNames.IS_PROPERTY_ACCESSOR.asName()
     val membersInjector = "MembersInjector".asName()
     val mirrorFunction = StringNames.MIRROR_FUNCTION.asName()
@@ -308,10 +307,6 @@ internal class Symbols(
 
   val metroAccessorAnnotationConstructor: IrConstructorSymbol by lazy {
     pluginContext.referenceClass(ClassIds.MetroAccessor)!!.constructors.first()
-  }
-
-  val metroExtendsAnnotationConstructor: IrConstructorSymbol by lazy {
-    pluginContext.referenceClass(ClassIds.metroExtends)!!.constructors.first()
   }
 
   val metroProvider: IrClassSymbol by lazy {

@@ -140,22 +140,22 @@ class TracingTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @DependencyGraph(AppScope::class, isExtendable = true)
-            interface ExampleGraph {
+            @DependencyGraph(AppScope::class)
+            interface ExampleGraph : ChildGraph.Factory {
               @DependencyGraph.Factory
               fun interface Factory {
                 fun create(@Provides text: String): ExampleGraph
               }
             }
 
-            @DependencyGraph(Unit::class)
+            @GraphExtension(Unit::class)
             interface ChildGraph {
 
               fun exampleClass(): ExampleClass
 
-              @DependencyGraph.Factory
+              @GraphExtension.Factory
               fun interface Factory {
-                fun create(@Extends parent: ExampleGraph): ChildGraph
+                fun create(): ChildGraph
               }
             }
 
@@ -341,7 +341,7 @@ class TracingTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @DependencyGraph(AppScope::class, isExtendable = true)
+            @DependencyGraph(AppScope::class)
             interface ExampleGraph {
               @DependencyGraph.Factory
               fun interface Factory {

@@ -26,7 +26,6 @@ import org.jetbrains.kotlin.backend.common.ir.createExtensionReceiver
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.backend.jvm.ir.isWithFlexibleNullability
-import org.jetbrains.kotlin.backend.konan.ir.getSuperClassNotAny
 import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
@@ -35,6 +34,7 @@ import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.fir.lazy.Fir2IrLazyClass
 import org.jetbrains.kotlin.ir.IrBuiltIns
 import org.jetbrains.kotlin.ir.IrElement
+import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.IrGeneratorContext
@@ -45,6 +45,7 @@ import org.jetbrains.kotlin.ir.builders.declarations.buildFun
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
+import org.jetbrains.kotlin.ir.builders.irDelegatingConstructorCall
 import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
@@ -71,6 +72,7 @@ import org.jetbrains.kotlin.ir.declarations.IrTypeParametersContainer
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.expressions.IrBlockBody
+import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrConst
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
@@ -85,6 +87,7 @@ import org.jetbrains.kotlin.ir.expressions.impl.IrConstImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrConstructorCallImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrFunctionExpressionImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrGetEnumValueImpl
+import org.jetbrains.kotlin.ir.expressions.impl.IrInstanceInitializerCallImpl
 import org.jetbrains.kotlin.ir.expressions.impl.fromSymbolOwner
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
@@ -137,6 +140,7 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.ir.util.remapTypes
+import org.jetbrains.kotlin.ir.util.superClass
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.types.Variance
@@ -697,15 +701,19 @@ internal fun IrClass.singleAbstractFunction(): IrSimpleFunction {
     buildString {
       append("Required a single abstract function for ")
       append(kotlinFqName)
-      appendLine(" but found multiple:")
-      append(
-        joinTo(this, "\n") { function ->
-          "- " +
-            function.kotlinFqName.asString() +
-            "\n  - " +
-            function.computeJvmDescriptorIsh(includeReturnType = false)
-        }
-      )
+      if (isEmpty()) {
+        appendLine(" but found none.")
+      } else {
+        appendLine(" but found multiple:")
+        append(
+          joinTo(this, "\n") { function ->
+            "- " +
+              function.kotlinFqName.asString() +
+              "\n  - " +
+              function.computeJvmDescriptorIsh(includeReturnType = false)
+          }
+        )
+      }
     }
   }
 }
@@ -1039,7 +1047,7 @@ internal val IrClass.metroGraphOrNull: IrClass?
   get() =
     when (origin) {
       Origins.MetroGraphDeclaration,
-      Origins.ContributedGraph -> this
+      Origins.GeneratedGraphExtension -> this
       else -> nestedClassOrNull(Symbols.Names.MetroGraph)
     }
 
@@ -1047,7 +1055,7 @@ internal val IrClass.sourceGraphIfMetroGraph: IrClass
   get() {
     val isGeneratedGraph =
       origin == Origins.MetroGraphDeclaration ||
-        origin == Origins.ContributedGraph ||
+        origin == Origins.GeneratedGraphExtension ||
         name == Symbols.Names.MetroGraph
     return if (isGeneratedGraph) {
       superTypes.firstOrNull()?.rawTypeOrNull() ?: reportCompilerBug("No super type found for $kotlinFqName")
@@ -1372,17 +1380,6 @@ private fun IrType.substitute(substitutions: Map<IrTypeParameterSymbol, IrType>)
   return remapper.remapType(this)
 }
 
-internal fun IrConstructorCall.isExtendable(): Boolean {
-  val isExtendable = getConstBooleanArgumentOrNull(Symbols.Names.isExtendable)
-  return if (isExtendable == null) {
-    // Not present. Default false in metro annotations, true everywhere else
-    val isMetroGraph = annotationClass.classId?.packageFqName == Symbols.FqNames.metroRuntimePackage
-    !isMetroGraph
-  } else {
-    isExtendable
-  }
-}
-
 internal fun IrConstructorCall.rankValue(): Long {
   // Although the parameter is defined as an Int, the value we receive here may end up being
   // an Int or a Long so we need to handle both
@@ -1520,4 +1517,29 @@ internal fun IrConstructorCall.anvilKClassBoundTypeArgument(): IrType? {
 
 internal fun IrConstructorCall.anvilIgnoreQualifier(): Boolean {
   return getConstBooleanArgumentOrNull(Symbols.Names.ignoreQualifier) ?: false
+}
+
+context(context: IrPluginContext)
+internal fun IrConstructor.generateDefaultConstructorBody(
+  body: IrBlockBodyBuilder.() -> Unit = {}
+): IrBody? {
+  val returnType = returnType as? IrSimpleType ?: return null
+  val parentClass = parent as? IrClass ?: return null
+  val superClassConstructor =
+    parentClass.superClass?.primaryConstructor
+      ?: context.irBuiltIns.anyClass.owner.primaryConstructor
+      ?: return null
+
+  return context.createIrBuilder(symbol).irBlockBody {
+    // Call the super constructor
+    +irDelegatingConstructorCall(superClassConstructor)
+    // Initialize the instance
+    +IrInstanceInitializerCallImpl(
+      UNDEFINED_OFFSET,
+      UNDEFINED_OFFSET,
+      parentClass.symbol,
+      returnType,
+    )
+    body()
+  }
 }

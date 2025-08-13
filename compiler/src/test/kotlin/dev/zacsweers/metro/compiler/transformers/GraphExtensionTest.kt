@@ -28,7 +28,7 @@ class GraphExtensionTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @DependencyGraph(isExtendable = true)
+            @DependencyGraph
             interface ParentGraph {
               @Provides fun provideInt(): Int = 1
             }
@@ -57,7 +57,7 @@ class GraphExtensionTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @DependencyGraph(isExtendable = true)
+            @DependencyGraph
             interface ParentGraph {
               @Provides fun provideInt(): Int = 1
             }
@@ -92,7 +92,7 @@ class GraphExtensionTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @DependencyGraph(isExtendable = true)
+            @DependencyGraph
             abstract class ParentGraph {
               private var count: Int = 0
 
@@ -125,7 +125,7 @@ class GraphExtensionTest : MetroCompilerTest() {
       source(
         """
             @SingleIn(AppScope::class)
-            @DependencyGraph(isExtendable = true)
+            @DependencyGraph
             abstract class ParentGraph {
               private var count: Int = 0
 
@@ -161,7 +161,7 @@ class GraphExtensionTest : MetroCompilerTest() {
       source(
         """
             @SingleIn(AppScope::class)
-            @DependencyGraph(isExtendable = true)
+            @DependencyGraph
             abstract class ParentGraph {
               private var count: Int = 0
 
@@ -197,7 +197,7 @@ class GraphExtensionTest : MetroCompilerTest() {
       source(
         """
             @SingleIn(AppScope::class)
-            @DependencyGraph(isExtendable = true)
+            @DependencyGraph
             abstract class ParentGraph {
               private var count: Int = 0
 
@@ -231,12 +231,12 @@ class GraphExtensionTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @DependencyGraph(isExtendable = true)
+            @DependencyGraph
             interface GrandParentGraph {
               @Provides fun provideString(): String = "grandparent"
             }
 
-            @DependencyGraph(isExtendable = true)
+            @DependencyGraph
             interface ParentGraph {
               @DependencyGraph.Factory
               fun interface Factory {
@@ -275,12 +275,12 @@ class GraphExtensionTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @DependencyGraph(isExtendable = true)
+            @DependencyGraph
             interface GrandParentGraph {
               @Provides fun provideString(): String = "grandparent"
             }
 
-            @DependencyGraph(isExtendable = true)
+            @DependencyGraph
             interface ParentGraph {
               @DependencyGraph.Factory
               fun interface Factory {
@@ -331,7 +331,7 @@ class GraphExtensionTest : MetroCompilerTest() {
               }
             }
 
-            @DependencyGraph(isExtendable = true)
+            @DependencyGraph
             interface ParentGraph : HasCompanion {
               @Provides fun provideInt(): Int = 1
             }
@@ -361,12 +361,12 @@ class GraphExtensionTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @DependencyGraph(isExtendable = true)
+            @DependencyGraph
             interface Parent1Graph {
               @Provides fun provideString(): String = "parent1"
             }
 
-            @DependencyGraph(isExtendable = true)
+            @DependencyGraph
             interface Parent2Graph {
               @Provides fun provideInt(): Int = 2
             }
@@ -401,7 +401,7 @@ class GraphExtensionTest : MetroCompilerTest() {
             interface Base
             class Impl : Base
 
-            @DependencyGraph(isExtendable = true)
+            @DependencyGraph
             interface ParentGraph {
               @Provides fun impl(): Impl = Impl()
               @Binds fun bind(impl: Impl): Base
@@ -430,12 +430,12 @@ class GraphExtensionTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @DependencyGraph(isExtendable = true)
+            @DependencyGraph
             interface Parent1Graph {
               @IntoSet @Provides fun string1(): String = "parent1"
             }
 
-            @DependencyGraph(isExtendable = true)
+            @DependencyGraph
             interface Parent2Graph {
               @IntoSet @Provides fun string2(): String = "parent2"
             }
@@ -468,7 +468,7 @@ class GraphExtensionTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @DependencyGraph(isExtendable = true)
+            @DependencyGraph
             interface ParentGraph {
               @Provides fun provideString(): String = "parent"
             }
@@ -505,12 +505,12 @@ class GraphExtensionTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(isExtendable = true)
+          @DependencyGraph
           interface GrandParentGraph {
             @Provides fun provideCommonInt(): Int = 42
           }
 
-          @DependencyGraph(isExtendable = true)
+          @DependencyGraph
           interface Parent1Graph {
             @DependencyGraph.Factory
             fun interface Factory {
@@ -520,7 +520,7 @@ class GraphExtensionTest : MetroCompilerTest() {
             @Provides fun provideString(): String = "parent1"
           }
 
-          @DependencyGraph(isExtendable = true)
+          @DependencyGraph
           interface Parent2Graph {
             @DependencyGraph.Factory
             fun interface Factory {
@@ -584,7 +584,7 @@ class GraphExtensionTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(isExtendable = true)
+          @DependencyGraph
           interface ParentGraph {
             @IntoSet
             @Provides
@@ -622,7 +622,7 @@ class GraphExtensionTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(AppScope::class, isExtendable = true)
+          @DependencyGraph(AppScope::class)
           interface ParentGraph {
             @Provides
             fun provideString(): String = "parent"
@@ -657,7 +657,7 @@ class GraphExtensionTest : MetroCompilerTest() {
       source(
         """
           @SingleIn(AppScope::class)
-          @DependencyGraph(isExtendable = true)
+          @DependencyGraph
           interface ParentGraph {
             @Provides
             fun provideString(): String = "parent"
@@ -692,13 +692,13 @@ class GraphExtensionTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(AppScope::class, isExtendable = true)
+          @DependencyGraph(AppScope::class)
           interface ParentGraph {
             @Provides
             fun provideString(): String = "parent"
           }
 
-          @DependencyGraph(AppScope::class, isExtendable = true)
+          @DependencyGraph(AppScope::class)
           interface OtherParentGraph
 
           @DependencyGraph(Unit::class)
@@ -732,14 +732,14 @@ class GraphExtensionTest : MetroCompilerTest() {
       source(
         """
           @SingleIn(AppScope::class)
-          @DependencyGraph(isExtendable = true)
+          @DependencyGraph
           interface ParentGraph {
             @Provides
             fun provideString(): String = "parent"
           }
 
           @SingleIn(AppScope::class)
-          @DependencyGraph(isExtendable = true)
+          @DependencyGraph
           interface OtherParentGraph
 
           @SingleIn(Unit::class)
@@ -774,7 +774,7 @@ class GraphExtensionTest : MetroCompilerTest() {
       source(
         """
           @SingleIn(AppScope::class)
-          @DependencyGraph(isExtendable = true)
+          @DependencyGraph
           interface GrandParentGraph {
             @Provides
             fun provideString(): String = "grandParent"
@@ -783,7 +783,7 @@ class GraphExtensionTest : MetroCompilerTest() {
           abstract class UserScope private constructor()
 
           @SingleIn(UserScope::class)
-          @DependencyGraph(isExtendable = true)
+          @DependencyGraph
           interface ParentGraph {
             @DependencyGraph.Factory
             fun interface Factory {
@@ -821,21 +821,21 @@ class GraphExtensionTest : MetroCompilerTest() {
       source(
         """
           @SingleIn(Scope1::class)
-          @DependencyGraph(isExtendable = true)
+          @DependencyGraph
           interface GrandParentGraph {
             @Provides
             fun provideString(): String = "grandParent"
           }
 
           @SingleIn(Scope2::class)
-          @DependencyGraph(isExtendable = true)
+          @DependencyGraph
           interface OtherGrandParentGraph
 
           abstract class Scope1 private constructor()
           abstract class Scope2 private constructor()
 
           @SingleIn(AppScope::class)
-          @DependencyGraph(isExtendable = true)
+          @DependencyGraph
           interface ParentGraph {
             @DependencyGraph.Factory
             fun interface Factory {
@@ -875,21 +875,21 @@ class GraphExtensionTest : MetroCompilerTest() {
       source(
         """
           @SingleIn(AppScope::class)
-          @DependencyGraph(isExtendable = true)
+          @DependencyGraph
           interface GrandParentGraph {
             @Provides
             fun provideString(): String = "grandParent"
           }
 
           @SingleIn(AppScope::class)
-          @DependencyGraph(isExtendable = true)
+          @DependencyGraph
           interface OtherGrandParentGraph
 
           abstract class Scope1 private constructor()
           abstract class Scope2 private constructor()
 
           @SingleIn(Scope1::class)
-          @DependencyGraph(isExtendable = true)
+          @DependencyGraph
           interface ParentGraph {
             @DependencyGraph.Factory
             fun interface Factory {
@@ -898,7 +898,7 @@ class GraphExtensionTest : MetroCompilerTest() {
           }
 
           @SingleIn(Scope2::class)
-          @DependencyGraph(isExtendable = true)
+          @DependencyGraph
           interface ParentGraph2 {
             @DependencyGraph.Factory
             fun interface Factory {
@@ -937,7 +937,7 @@ class GraphExtensionTest : MetroCompilerTest() {
       source(
         """
             @SingleIn(AppScope::class)
-            @DependencyGraph(isExtendable = true)
+            @DependencyGraph
             interface ParentGraph {
               @Provides fun provideInt(): Int = 1
               @Provides @Named("int") fun provideQualifiedInt(): Int = 2
@@ -987,7 +987,7 @@ class GraphExtensionTest : MetroCompilerTest() {
             }
 
             @SingleIn(AppScope::class)
-            @DependencyGraph(isExtendable = true)
+            @DependencyGraph
             interface ParentGraph {
               @Provides fun provideInt(): Int = 1
             }

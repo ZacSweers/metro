@@ -35,7 +35,7 @@ sealed interface LoggedInScope
 
 @Inject @SingleIn(AppScope::class) class Dependency
 
-@DependencyGraph(scope = AppScope::class, isExtendable = true)
+@DependencyGraph(scope = AppScope::class)
 interface ExampleGraph {
   val dependency: Dependency
 }

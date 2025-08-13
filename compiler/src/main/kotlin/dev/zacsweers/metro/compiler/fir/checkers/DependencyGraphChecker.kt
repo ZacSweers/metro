@@ -110,7 +110,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
         reporter.reportOn(
           supertypeRef.source ?: declaration.source,
           FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
-          "Graph class '${declaration.classId.asSingleFqName()}' may not directly extend graph class '${supertypeClass.classId.asSingleFqName()}'. Use @Extends instead.",
+          "Graph class '${declaration.classId.asSingleFqName()}' may not directly extend graph class '${supertypeClass.classId.asSingleFqName()}'. Use @GraphExtension instead.",
         )
         return
       }

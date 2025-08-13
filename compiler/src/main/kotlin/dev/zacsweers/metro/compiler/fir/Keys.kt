@@ -117,8 +117,8 @@ internal object Keys {
     override fun toString() = "ExtendableGraphAccessor"
   }
 
-  data object ContributedGraph : GeneratedDeclarationKey() {
-    override fun toString() = "ContributedGraph"
+  data object GeneratedGraphExtension : GeneratedDeclarationKey() {
+    override fun toString() = "GeneratedGraphExtension"
   }
 
   data object ContributionHint : GeneratedDeclarationKey() {

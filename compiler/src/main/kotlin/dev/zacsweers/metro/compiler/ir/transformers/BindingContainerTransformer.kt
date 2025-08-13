@@ -265,7 +265,6 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
           isAssisted = false,
           assistedIdentifier = "",
           isGraphInstance = true,
-          isExtends = false,
           isIncludes = false,
           isBindsInstance = false,
           ir = null,

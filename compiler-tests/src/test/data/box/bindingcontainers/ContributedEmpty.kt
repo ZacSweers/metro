@@ -12,7 +12,7 @@ class LibDepImpl : LibDep
 
 // MODULE: main(lib)
 @SingleIn(AppScope::class)
-@DependencyGraph(AppScope::class, isExtendable = true)
+@DependencyGraph(AppScope::class)
 interface AppGraph {
   val dep: LibDep
 

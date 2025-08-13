@@ -240,6 +240,21 @@ abstract class MetroCompilerTest {
                   customContributesGraphExtensionFactoryAnnotations.joinToString(":"),
                 )
               }
+
+              MetroOption.CUSTOM_GRAPH_EXTENSION -> {
+                if (customGraphExtensionAnnotations.isEmpty()) continue
+                processor.option(
+                  entry.raw.cliOption,
+                  customGraphExtensionAnnotations.joinToString(":"),
+                )
+              }
+              MetroOption.CUSTOM_GRAPH_EXTENSION_FACTORY -> {
+                if (customGraphExtensionFactoryAnnotations.isEmpty()) continue
+                processor.option(
+                  entry.raw.cliOption,
+                  customGraphExtensionFactoryAnnotations.joinToString(":"),
+                )
+              }
               MetroOption.ENABLE_DAGGER_ANVIL_INTEROP -> {
                 processor.option(entry.raw.cliOption, enableDaggerAnvilInterop)
               }

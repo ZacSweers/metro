@@ -37,7 +37,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
             }
           }
 
-          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph {
             @Provides fun provideInt(): Int = 0
           }
@@ -68,7 +68,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
             }
           }
 
-          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph {
             @Provides fun provideInt(): Int = 0
           }
@@ -107,7 +107,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph {
             @Provides fun provideInt(): Int = 0
           }
@@ -170,7 +170,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph {
             @Provides fun provideInt(): Int = 0
           }
@@ -212,7 +212,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
             @Provides fun provideString(int: Int): String = int.toString()
           }
 
-          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph {
             @Provides fun provideInt(): Int = 0
           }
@@ -290,7 +290,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph
         """
           .trimIndent()
@@ -333,7 +333,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
             }
           }
 
-          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph
         """
           .trimIndent()
@@ -377,7 +377,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
             fun provideImpl1(): Set<ContributedInterface> = setOf(Impl1())
           }
 
-          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph {
             val contributions: Set<ContributedInterface>
           }
@@ -429,7 +429,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
               }
             }
 
-            @DependencyGraph(AppScope::class, isExtendable = true)
+            @DependencyGraph(AppScope::class)
             interface ExampleGraph
           """
           .trimIndent()
@@ -466,7 +466,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
             fun provideString(int: Int): String = int.toString()
           }
 
-          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph {
             @Provides fun provideInt(): Int = 0
           }
@@ -500,7 +500,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
             }
           }
 
-          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph {
             @Provides fun provideInt(): Int = 0
           }
@@ -534,7 +534,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
             interface Factory : GraphExtensionFactory<LoggedInGraph>
           }
 
-          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph {
             @Provides fun provideInt(): Int = 0
           }
@@ -571,7 +571,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
             fun provideString(int: Int, long: Long): String = (int + long).toString()
           }
 
-          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph {
             @Provides fun provideInt(): Int = 0
           }
@@ -609,7 +609,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
             fun provideString(int: Int, @Named("long") long: Long): String = (int + long).toString()
           }
 
-          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph {
             @Provides fun provideInt(): Int = 0
           }
@@ -643,7 +643,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
 
           class StringProvider(val value: String = "Hello")
 
-          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph
         """
           .trimIndent()
@@ -664,26 +664,26 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         """
           abstract class LoggedInScope
 
-          @ContributesGraphExtension(LoggedInScope::class)
+          @GraphExtension(LoggedInScope::class)
           interface LoggedInGraph {
             val string: String
 
-            @ContributesGraphExtension.Factory(AppScope::class)
+            @GraphExtension.Factory
             interface Factory {
-              fun createLoggedInGraph(@Extends stringGraph: StringGraph): LoggedInGraph
+              fun createLoggedInGraph(): LoggedInGraph
             }
           }
 
-          @DependencyGraph(scope = Unit::class, isExtendable = true)
-          interface StringGraph {
+          @ContributesGraphExtension(scope = Unit::class)
+          interface StringGraph : LoggedInGraph.Factory {
             val string: String
-            @DependencyGraph.Factory
+            @ContributesGraphExtension.Factory(AppScope::class)
             interface Factory {
               fun create(@Provides string: String): StringGraph
             }
           }
 
-          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph
         """
           .trimIndent()
@@ -715,7 +715,6 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
 
           @DependencyGraph(
             scope = AppScope::class,
-            isExtendable = true,
             excludes = [LoggedInGraph.Factory::class]
           )
           interface ExampleGraph
@@ -750,7 +749,6 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
 
           @DependencyGraph(
             scope = AppScope::class,
-            isExtendable = true,
             excludes = [LoggedInGraph::class]
           )
           interface ExampleGraph
@@ -786,7 +784,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           }
         }
 
-        @ContributesGraphExtension(LoggedInScope::class, isExtendable = true)
+        @ContributesGraphExtension(LoggedInScope::class)
         interface LoggedInGraph {
           val int: Int
 
@@ -798,7 +796,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           }
         }
 
-        @DependencyGraph(scope = AppScope::class, isExtendable = true)
+        @DependencyGraph(scope = AppScope::class)
         interface ExampleGraph {
           @Provides fun provideInt(): Int = 0
         }
@@ -845,7 +843,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           }
         }
 
-        @DependencyGraph(scope = AppScope::class, isExtendable = true)
+        @DependencyGraph(scope = AppScope::class)
         interface ExampleGraph {
           @Provides fun provideInt(): Int = 0
         }
@@ -893,7 +891,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         """
           e: LoggedInScope.kt:9:11 Contributed graph extension 'test.LoggedInGraph' contributes to parent graph 'test.ExampleGraph' (scope 'dev.zacsweers.metro.AppScope'), but ExampleGraph is not extendable.
 
-          Either mark ExampleGraph as extendable (`@DependencyGraph(isExtendable = true)`), or exclude it from ExampleGraph (`@DependencyGraph(excludes = [LoggedInGraph::class])`).
+          Either mark ExampleGraph as extendable (`@DependencyGraph`), or exclude it from ExampleGraph (`@DependencyGraph(excludes = [LoggedInGraph::class])`).
         """
           .trimIndent()
       )
@@ -917,7 +915,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           }
         }
 
-        @DependencyGraph(scope = AppScope::class, isExtendable = true)
+        @DependencyGraph(scope = AppScope::class)
         interface ExampleGraph {
           @Provides fun provideInt(): Int = 0
         }
@@ -952,7 +950,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           fun createLoggedInGraph(): LoggedInGraph
         }
 
-        @DependencyGraph(scope = AppScope::class, isExtendable = true)
+        @DependencyGraph(scope = AppScope::class)
         interface ExampleGraph {
           @Provides fun provideInt(): Int = 0
         }
@@ -990,7 +988,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           }
         }
 
-        @DependencyGraph(scope = AppScope::class, isExtendable = true)
+        @DependencyGraph(scope = AppScope::class)
         interface ExampleGraph {
           @Provides fun provideInt(): Int = 0
         }
@@ -1016,7 +1014,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         """
         abstract class LoggedInScope
 
-        @DependencyGraph(scope = AppScope::class, isExtendable = true)
+        @DependencyGraph(scope = AppScope::class)
         interface ExampleGraph {
           @Provides fun provideInt(): Int = 0
           @ContributesGraphExtension.Factory(LoggedInScope::class)
@@ -1054,7 +1052,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           }
         }
 
-        @DependencyGraph(scope = AppScope::class, isExtendable = true)
+        @DependencyGraph(scope = AppScope::class)
         interface ExampleGraph {
           @Provides fun provideInt(): Int = 0
         }
@@ -1088,7 +1086,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           }
 
           @SingleIn(TestScope::class)
-          @DependencyGraph(scope = TestScope::class, isExtendable = true)
+          @DependencyGraph(scope = TestScope::class)
           interface ParentGraph
 
           @ContributesGraphExtension(TestChildScope::class)
@@ -1121,7 +1119,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           @Inject @SingleIn(AppScope::class) class Dependency
           @Inject @SingleIn(LoggedInScope::class) class ChildDependency(val dep: Dependency)
 
-          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph {
             // Works if added explicitly like this
             // val dependency: Dependency
@@ -1176,13 +1174,13 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           @Inject @SingleIn(AppScope::class) class Dependency
           @Inject @SingleIn(LoggedInScope::class) class ChildDependency(val dep: Dependency)
 
-          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph {
             // Works if added explicitly like this
             // val dependency: Dependency
           }
 
-          @ContributesGraphExtension(IntermediateScope::class, isExtendable = true)
+          @ContributesGraphExtension(IntermediateScope::class)
           interface IntermediateGraph {
               @ContributesGraphExtension.Factory(AppScope::class)
               interface Factory {
@@ -1235,7 +1233,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         """
           abstract class Parent
 
-          @ContributesGraphExtension(Parent::class, isExtendable = true)
+          @ContributesGraphExtension(Parent::class)
           interface ParentGraph {
             @ContributesGraphExtension.Factory(AppScope::class)
             interface Factory {
@@ -1245,7 +1243,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
             }
           }
 
-          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph
         """
           .trimIndent()
@@ -1263,7 +1261,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           @Inject @SingleIn(AppScope::class) class Dependency
           @Inject @SingleIn(LoggedInScope::class) class ChildDependency(val dep: Dependency)
 
-          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph
 
           @ContributesGraphExtension(LoggedInScope::class)
@@ -1299,7 +1297,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           class Dependency
 
           @Singleton
-          @DependencyGraph(AppScope::class, isExtendable = true)
+          @DependencyGraph(AppScope::class)
           interface ExampleGraph
 
           @ContributesGraphExtension(LoggedInScope::class)
@@ -1365,7 +1363,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph
         """
           .trimIndent()
@@ -1425,7 +1423,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
       source(
         """
           @Singleton
-          @DependencyGraph(AppScope::class, isExtendable = true)
+          @DependencyGraph(AppScope::class)
           interface ExampleGraph
         """
           .trimIndent()
@@ -1454,7 +1452,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           @SingleIn(AppScope::class)
           class Dependency
 
-          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph
 
           @ContributesGraphExtension(LoggedInScope::class)
@@ -1503,10 +1501,10 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         object AppScope
         object LoggedInScope
 
-        @DependencyGraph(AppScope::class, isExtendable = true)
+        @DependencyGraph(AppScope::class)
         interface ExampleGraph
 
-        @ContributesGraphExtension(LoggedInScope::class, isExtendable = true)
+        @ContributesGraphExtension(LoggedInScope::class)
         interface LoggedInGraph {
           val ints: Set<Int>
           @Provides @IntoSet fun provideInt1(): Int = 1
@@ -1544,7 +1542,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         @Inject class TaskImpl1 : Task
         @Inject class TaskImpl2 : Task
 
-        @DependencyGraph(AppScope::class, isExtendable = true)
+        @DependencyGraph(AppScope::class)
         interface ExampleGraph
 
         @ContributesGraphExtension(LoggedInScope::class)
@@ -1583,7 +1581,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         @Inject class TaskImpl1 : Task
         @Inject class TaskImpl2 : Task
 
-        @DependencyGraph(AppScope::class, isExtendable = true)
+        @DependencyGraph(AppScope::class)
         interface ExampleGraph {
           val tasks: Set<Task>
           @IntoSet @Binds val TaskImpl1.bind: Task
@@ -1672,7 +1670,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
             }
           }
 
-          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph
         """
           .trimIndent()
@@ -1702,7 +1700,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
 
           interface Test
 
-          @ContributesGraphExtension(ChildScope::class, isExtendable = true)
+          @ContributesGraphExtension(ChildScope::class)
           interface ChildGraph : Test {
             @ContributesGraphExtension.Factory(AppScope::class)
             interface Factory {
@@ -1710,7 +1708,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
             }
           }
 
-          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph : Test
         """
           .trimIndent()
@@ -1727,7 +1725,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
 
           interface Test
 
-          @ContributesGraphExtension(ChildScope::class, isExtendable = true)
+          @ContributesGraphExtension(ChildScope::class)
           interface ChildGraph : Test {
 
             val test: Test
@@ -1739,7 +1737,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
             }
           }
 
-          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph : Test {
           }
         """
@@ -1757,7 +1755,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
 
           interface Test
 
-          @ContributesGraphExtension(Parent::class, isExtendable = true)
+          @ContributesGraphExtension(Parent::class)
           interface ChildGraph : Test {
 
             val test: Test
@@ -1768,7 +1766,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
             }
           }
 
-          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph : Test {
             @Binds val ExampleGraph.bind: Test
           }
@@ -1794,10 +1792,10 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           }
 
           @SingleIn(GrandParentScope::class)
-          @DependencyGraph(scope = GrandParentScope::class, isExtendable = true)
+          @DependencyGraph(scope = GrandParentScope::class)
           interface GrandParentGraph
 
-          @ContributesGraphExtension(ParentScope::class, isExtendable = true)
+          @ContributesGraphExtension(ParentScope::class)
           interface ParentGraph {
               @ContributesGraphExtension.Factory(GrandParentScope::class)
               interface Factory {
@@ -1831,7 +1829,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           @Inject @SingleIn(AppScope::class) class Dependency
           @Inject @SingleIn(LoggedInScope::class) class ChildDependency(val dep: Dependency)
 
-          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph {
             val dependency: Dependency
           }
@@ -1882,7 +1880,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
 
           @Inject @SingleIn(AppScope::class) class Dependency
 
-          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph {
             val dependency: Dependency
           }
@@ -1930,7 +1928,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(AppScope::class, isExtendable = true)
+          @DependencyGraph(AppScope::class)
           interface MainGraph
         """
           .trimIndent()

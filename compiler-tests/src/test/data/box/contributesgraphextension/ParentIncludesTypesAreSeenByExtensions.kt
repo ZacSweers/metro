@@ -1,4 +1,4 @@
-@DependencyGraph(scope = AppScope::class, isExtendable = true)
+@DependencyGraph(scope = AppScope::class)
 interface AppGraph {
   @DependencyGraph.Factory
   interface Factory {

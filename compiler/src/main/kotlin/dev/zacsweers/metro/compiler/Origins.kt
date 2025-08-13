@@ -45,8 +45,8 @@ internal object Origins {
     IrDeclarationOrigin.GeneratedByPlugin(Keys.TopLevelInjectFunctionClassFunction)
   val ExtendableGraphAccessor: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.ExtendableGraphAccessor)
-  val ContributedGraph: IrDeclarationOrigin =
-    IrDeclarationOrigin.GeneratedByPlugin(Keys.ContributedGraph)
+  val GeneratedGraphExtension: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(Keys.GeneratedGraphExtension)
   val BindingMirrorClassDeclaration: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.BindingMirrorClassDeclaration)
 }

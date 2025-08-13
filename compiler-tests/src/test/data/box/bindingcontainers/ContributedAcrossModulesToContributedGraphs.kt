@@ -16,7 +16,7 @@ interface LoggedInGraph {
 }
 
 // MODULE: main(lib)
-@DependencyGraph(AppScope::class, isExtendable = true)
+@DependencyGraph(AppScope::class)
 interface AppGraph
 
 fun box(): String {

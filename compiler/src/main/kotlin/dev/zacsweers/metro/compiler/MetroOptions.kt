@@ -324,6 +324,28 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
     )
   ),
+  CUSTOM_GRAPH_EXTENSION(
+    RawMetroOption(
+      name = "custom-graph-extension",
+      defaultValue = emptySet(),
+      valueDescription = "GraphExtension annotations",
+      description = "GraphExtension annotations",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
+    )
+  ),
+  CUSTOM_GRAPH_EXTENSION_FACTORY(
+    RawMetroOption(
+      name = "custom-graph-extension-factory",
+      defaultValue = emptySet(),
+      valueDescription = "GraphExtension.Factory annotations",
+      description = "GraphExtension.Factory annotations",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
+    )
+  ),
   CUSTOM_ELEMENTS_INTO_SET(
     RawMetroOption(
       name = "custom-elements-into-set",
@@ -556,6 +578,10 @@ public data class MetroOptions(
     MetroOption.CUSTOM_CONTRIBUTES_GRAPH_EXTENSION.raw.defaultValue.expectAs(),
   val customContributesGraphExtensionFactoryAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_CONTRIBUTES_GRAPH_EXTENSION_FACTORY.raw.defaultValue.expectAs(),
+  val customGraphExtensionAnnotations: Set<ClassId> =
+    MetroOption.CUSTOM_GRAPH_EXTENSION.raw.defaultValue.expectAs(),
+  val customGraphExtensionFactoryAnnotations: Set<ClassId> =
+    MetroOption.CUSTOM_GRAPH_EXTENSION_FACTORY.raw.defaultValue.expectAs(),
   val customElementsIntoSetAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_ELEMENTS_INTO_SET.raw.defaultValue.expectAs(),
   val customGraphAnnotations: Set<ClassId> = MetroOption.CUSTOM_GRAPH.raw.defaultValue.expectAs(),
@@ -600,6 +626,8 @@ public data class MetroOptions(
       val customContributesBindingAnnotations = mutableSetOf<ClassId>()
       val customContributesGraphExtensionAnnotations = mutableSetOf<ClassId>()
       val customContributesGraphExtensionFactoryAnnotations = mutableSetOf<ClassId>()
+      val customGraphExtensionAnnotations = mutableSetOf<ClassId>()
+      val customGraphExtensionFactoryAnnotations = mutableSetOf<ClassId>()
       val customElementsIntoSetAnnotations = mutableSetOf<ClassId>()
       val customGraphAnnotations = mutableSetOf<ClassId>()
       val customGraphFactoryAnnotations = mutableSetOf<ClassId>()
@@ -693,6 +721,10 @@ public data class MetroOptions(
             customContributesGraphExtensionAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_CONTRIBUTES_GRAPH_EXTENSION_FACTORY ->
             customContributesGraphExtensionFactoryAnnotations.addAll(configuration.getAsSet(entry))
+          MetroOption.CUSTOM_GRAPH_EXTENSION ->
+            customGraphExtensionAnnotations.addAll(configuration.getAsSet(entry))
+          MetroOption.CUSTOM_GRAPH_EXTENSION_FACTORY ->
+            customGraphExtensionFactoryAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_ELEMENTS_INTO_SET ->
             customElementsIntoSetAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_GRAPH -> customGraphAnnotations.addAll(configuration.getAsSet(entry))
@@ -745,6 +777,9 @@ public data class MetroOptions(
           customContributesToAnnotations = customContributesToAnnotations,
           customContributesBindingAnnotations = customContributesBindingAnnotations,
           customContributesGraphExtensionAnnotations = customContributesGraphExtensionAnnotations,
+          customContributesGraphExtensionFactoryAnnotations = customContributesGraphExtensionFactoryAnnotations,
+          customGraphExtensionAnnotations = customGraphExtensionAnnotations,
+          customGraphExtensionFactoryAnnotations = customGraphExtensionFactoryAnnotations,
           customElementsIntoSetAnnotations = customElementsIntoSetAnnotations,
           customGraphAnnotations = customGraphAnnotations,
           customGraphFactoryAnnotations = customGraphFactoryAnnotations,

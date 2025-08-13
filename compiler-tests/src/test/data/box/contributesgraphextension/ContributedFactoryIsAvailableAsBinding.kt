@@ -2,7 +2,7 @@
 // MODULE: lib
 abstract class ViewScope
 
-@ContributesGraphExtension(ViewScope::class, isExtendable = true)
+@ContributesGraphExtension(ViewScope::class)
 interface ViewObjectGraph {
   val int: Int
 
@@ -18,7 +18,7 @@ interface ViewObjectGraphSubgraph {
 }
 
 // MODULE: main(lib)
-@DependencyGraph(AppScope::class, isExtendable = true)
+@DependencyGraph(AppScope::class)
 interface AppGraph
 
 fun box(): String {

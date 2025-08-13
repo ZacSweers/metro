@@ -198,7 +198,7 @@ internal class IrBindingGraph(
           realGraph.seal(
             roots = roots,
             keep = extraKeeps,
-            shrinkUnusedBindings = metroContext.options.shrinkUnusedBindings && !node.isExtendable,
+            shrinkUnusedBindings = metroContext.options.shrinkUnusedBindings,
             tracer = tracer,
             onPopulated = {
               writeDiagnostic("keys-populated-${parentTracer.tag}.txt") {
@@ -520,7 +520,7 @@ internal class IrBindingGraph(
         val isUnscoped = node.scopes.isEmpty()
         // Error if there are mismatched scopes
         val declarationToReport =
-          if (node.sourceGraph.origin == Origins.ContributedGraph) {
+          if (node.sourceGraph.origin == Origins.GeneratedGraphExtension) {
             node.sourceGraph.parentAsClass
           } else {
             node.sourceGraph
@@ -550,7 +550,7 @@ internal class IrBindingGraph(
           appendLine()
           appendBindingStack(stack, short = false)
 
-          if (node.sourceGraph.origin == Origins.ContributedGraph) {
+          if (node.sourceGraph.origin == Origins.GeneratedGraphExtension) {
             appendLine()
             appendLine()
             appendLine("(Hint)")
@@ -585,7 +585,7 @@ internal class IrBindingGraph(
           }
         }
         // TODO remove messagecollector in 2.2.20
-        if (declarationToReport.origin == Origins.ContributedGraph) {
+        if (declarationToReport.origin == Origins.GeneratedGraphExtension) {
           metroContext.messageCollector.report(
             CompilerMessageSeverity.ERROR,
             message,

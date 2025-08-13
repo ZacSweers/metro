@@ -1,7 +1,9 @@
 // https://github.com/ZacSweers/metro/issues/835
-@DependencyGraph(bindingContainers = [IntBindings::class], isExtendable = true)
+@DependencyGraph(bindingContainers = [IntBindings::class])
 interface AppGraph {
   @Multibinds(allowEmpty = true) val strings: Set<String>
+
+  fun childGraphFactory(): ChildGraph.Factory
 }
 
 @BindingContainer
@@ -9,20 +11,20 @@ interface IntBindings {
   @Multibinds(allowEmpty = true) val ints: Set<Int>
 }
 
-@DependencyGraph
+@GraphExtension
 interface ChildGraph {
   val ints: Set<Int>
   val strings: Set<String>
 
-  @DependencyGraph.Factory
+  @GraphExtension.Factory
   interface Factory {
-    fun create(@Extends parent: AppGraph): ChildGraph
+    fun create(): ChildGraph
   }
 }
 
 fun box(): String {
   val parent = createGraph<AppGraph>()
-  val child = createGraphFactory<ChildGraph.Factory>().create(parent)
+  val child = parent.childGraphFactory().create()
   assertTrue(child.ints.isEmpty())
   assertTrue(child.strings.isEmpty())
   return "OK"

@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.METRO_VERSION
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
@@ -24,11 +25,15 @@ import dev.zacsweers.metro.compiler.suffixIfNot
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.backend.common.lower.irThrow
+import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
+import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
 import org.jetbrains.kotlin.ir.builders.declarations.addField
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
+import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
+import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irBoolean
 import org.jetbrains.kotlin.ir.builders.irCall
@@ -50,6 +55,7 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -57,14 +63,18 @@ import org.jetbrains.kotlin.ir.expressions.addArgument
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.DeepCopyIrTreeWithSymbols
 import org.jetbrains.kotlin.ir.util.SymbolRemapper
 import org.jetbrains.kotlin.ir.util.addChild
+import org.jetbrains.kotlin.ir.util.addFakeOverrides
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTo
+import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
+import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.functions
@@ -108,6 +118,7 @@ internal class IrGraphGenerator(
 
   private val fieldNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
   private val functionNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
+  private val nestedClassNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
 
   // TODO we can end up in awkward situations where we
   //  have the same type keys in both instance and provider fields
@@ -204,13 +215,15 @@ internal class IrGraphGenerator(
             val graphDepField =
               addSimpleInstanceField(
                 fieldNameAllocator.newName(graphDep.sourceGraph.name.asString() + "Instance"),
-                graphDep.typeKey,
+                param.typeKey,
               ) {
                 irGet(irParam)
               }
+            // Link both the graph typekey and the (possibly-impl type)
+            instanceFields[param.typeKey] = graphDepField
             instanceFields[graphDep.typeKey] = graphDepField
 
-            if (graphDep.isExtendable) {
+            if (graphDep.hasExtensions) {
               val depMetroGraph = graphDep.sourceGraph.metroGraphOrFail
               val implType = depMetroGraph.defaultType
               val needsImplCast = param.type != implType
@@ -300,7 +313,7 @@ internal class IrGraphGenerator(
       // Add instance fields for all the parent graphs
       for (parent in node.allExtendedNodes.values) {
         // TODO make this an error?
-        if (!parent.isExtendable) continue
+        if (!parent.hasExtensions) continue
         val parentMetroGraph = parent.sourceGraph.metroGraphOrFail
         val instanceAccessors =
           parentMetroGraph.functions
@@ -326,8 +339,8 @@ internal class IrGraphGenerator(
             }
 
         for ((accessor, contextualTypeKey) in instanceAccessors) {
-          // If this isn't extendable and this type key isn't used, ignore it
-          if (!node.isExtendable && contextualTypeKey.typeKey !in sealResult.reachableKeys) {
+          // If this isn't extended and this type key isn't used, ignore it
+          if (!node.hasExtensions && contextualTypeKey.typeKey !in sealResult.reachableKeys) {
             continue
           }
 
@@ -613,16 +626,15 @@ internal class IrGraphGenerator(
         node.implementOverrides(baseGenerationContext, tracer)
       }
 
-      if (node.isExtendable) {
+      if (graphClass.origin != Origins.GeneratedGraphExtension) {
+        // IR generated types don't get metadata
         parentTracer.traceNested("Generate Metro metadata") {
           // Finally, generate metadata
           val graphProto =
             node.toProto(
               bindingGraph = bindingGraph,
               includedGraphClasses =
-                node.allIncludedNodes
-                  .filter { it.isExtendable }
-                  .mapToSet { it.sourceGraph.classIdOrFail.asString() },
+                node.allIncludedNodes.mapToSet { it.sourceGraph.classIdOrFail.asString() },
               parentGraphClasses =
                 node.allExtendedNodes.values.mapToSet { it.sourceGraph.classIdOrFail.asString() },
             )
@@ -634,15 +646,14 @@ internal class IrGraphGenerator(
             metroMetadata.toString()
           }
 
-          // IR-generated types do not have metadata
-          if (graphClass.origin != Origins.ContributedGraph) {
-            // Write the metadata to the metroGraph class, as that's what downstream readers are
-            // looking at and is the most complete view
-            graphClass.metroMetadata = metroMetadata
-          }
+          // Write the metadata to the metroGraph class, as that's what downstream readers are
+          // looking at and is the most complete view
+          graphClass.metroMetadata = metroMetadata
           dependencyGraphNodesByClass(node.sourceGraph.classIdOrFail)?.let { it.proto = graphProto }
         }
+      }
 
+      if (node.hasExtensions) {
         // Expose getters for provider and instance fields and expose them to metadata
         val providerFieldsSet = providerFields.values.toSet()
         sequence {
@@ -678,7 +689,10 @@ internal class IrGraphGenerator(
           .forEach { (key, field) ->
             val isInstanceAccessor = key in instanceFields && field !in providerFieldsSet
             // Deterministic name for provider fields or included
-            val getter = key.toAccessorFunctionIn(graphClass, wrapInProvider = !isInstanceAccessor).also { graphClass.addChild(it) }
+            val getter =
+              key.toAccessorFunctionIn(graphClass, wrapInProvider = !isInstanceAccessor).also {
+                graphClass.addChild(it)
+              }
 
             getter.apply {
               key.qualifier?.let {
@@ -862,7 +876,8 @@ internal class IrGraphGenerator(
 
     // Implement bodies for contributed graphs
     // Sort by keys when generating so they have deterministic ordering
-    contributedGraphs.entries
+    // TODO make the value types something more strongly typed
+    graphExtensions.entries
       .sortedBy { it.key }
       .forEach { (typeKey, function) ->
         function.ir.apply {
@@ -872,28 +887,81 @@ internal class IrGraphGenerator(
             declarationToFinalize.finalizeFakeOverride(context.thisReceiver)
           }
           val irFunction = this
-          val contributedGraph =
-            contributedGraphGenerator.getOrBuildContributedGraph(
-              typeKey,
-              sourceGraph,
-              function,
-              parentTracer,
-            )
-          val ctor = contributedGraph.primaryConstructor!!
-          body =
-            createIrBuilder(symbol).run {
-              irExprBodySafe(
-                symbol,
-                irCallConstructor(ctor.symbol, emptyList()).apply {
-                  // First arg is always the graph instance
-                  arguments[0] = irGet(irFunction.dispatchReceiverParameter!!)
-                  for (i in 0 until regularParameters.size) {
-                    arguments[i + 1] = irGet(irFunction.regularParameters[i])
-                  }
-                },
-              )
+
+          // Check if the return type is a factory interface
+          val returnType = irFunction.returnType
+          val returnClass = returnType.rawTypeOrNull()
+
+          // Check if this is a GraphExtension.Factory or ContributesGraphExtension.Factory
+          val isFactory =
+            if (returnClass != null && returnClass.name == Symbols.Names.FactoryClass) {
+              val parentClass = returnClass.parent as? IrClass
+              parentClass != null &&
+                (parentClass.isAnnotatedWithAny(symbols.classIds.graphExtensionAnnotations) ||
+                  parentClass.isAnnotatedWithAny(
+                    symbols.classIds.contributesGraphExtensionAnnotations
+                  ))
+            } else {
+              false
             }
+
+          if (isFactory) {
+            // For factories, we need to get the actual graph extension type from the factory's SAM
+            // return type
+            val samMethod = returnClass!!.singleAbstractFunction()
+            val graphExtensionType = samMethod.returnType
+            val graphExtensionTypeKey = IrTypeKey(graphExtensionType)
+
+            // Generate factory implementation
+            body =
+              createIrBuilder(symbol).run {
+                irExprBodySafe(
+                  symbol,
+                  generateGraphExtensionFactory(
+                    returnClass,
+                    graphExtensionTypeKey,
+                    function,
+                    parentTracer,
+                  ).apply {
+                    arguments[0] = irGet(function.ir.dispatchReceiverParameter!!)
+                  },
+                )
+              }
+          } else {
+            // Direct graph extension accessor
+            val contributedGraph =
+              contributedGraphGenerator.getOrBuildContributedGraph(
+                typeKey,
+                sourceGraph,
+                function,
+                parentTracer,
+              )
+            implementGraphExtensionFactorySAM(irFunction, contributedGraph) {
+              irGet(irFunction.dispatchReceiverParameter!!)
+            }
+          }
         }
+      }
+  }
+
+  private fun implementGraphExtensionFactorySAM(
+    function: IrSimpleFunction,
+    target: IrClass,
+    parentGraphArg: IrBuilderWithScope.() -> IrExpression,
+  ) {
+    val ctor = target.primaryConstructor!!
+    function.body =
+      createIrBuilder(function.symbol).run {
+        irExprBodySafe(
+          function.symbol,
+          irCallConstructor(ctor.symbol, emptyList()).apply {
+            // First arg is always the graph instance
+            arguments[0] = parentGraphArg()
+            for (i in 0 until function.regularParameters.size) {
+              arguments[i + 1] = irGet(function.regularParameters[i])
+            }
+          },
+        )
       }
   }
 
@@ -1631,6 +1699,66 @@ internal class IrGraphGenerator(
       isAssisted = false,
       isGraphInstance = false,
     )
+  }
+
+  private fun IrBuilderWithScope.generateGraphExtensionFactory(
+    factoryInterface: IrClass,
+    graphExtensionTypeKey: IrTypeKey,
+    function: MetroSimpleFunction,
+    parentTracer: Tracer,
+  ): IrConstructorCall {
+    // Generate the contributed graph for the extension
+    val contributedGraph =
+      contributedGraphGenerator.getOrBuildContributedGraph(
+        graphExtensionTypeKey,
+        node.sourceGraph,
+        function,
+        parentTracer,
+      )
+
+    // Create the factory implementation as a nested class
+    // TODO make this a local/anonymous class instead?
+    val factoryImpl =
+      pluginContext.irFactory
+        .buildClass {
+          name = nestedClassNameAllocator
+              .newName("${factoryInterface.name}${Symbols.StringNames.METRO_IMPL}")
+              .asName()
+          kind = ClassKind.CLASS
+          visibility = DescriptorVisibilities.PRIVATE
+          origin = Origins.Default
+        }
+        .apply {
+          this.superTypes = listOf(factoryInterface.defaultType)
+          this.typeParameters = copyTypeParametersFrom(factoryInterface)
+          this.createThisReceiverParameter()
+          graphClass.addChild(this)
+          this.addFakeOverrides(metroContext.irTypeSystemContext)
+        }
+
+    val constructor =
+      factoryImpl
+        .addConstructor {
+          visibility = DescriptorVisibilities.PUBLIC
+          isPrimary = true
+          this.returnType = factoryImpl.defaultType
+        }
+        .apply {
+          addValueParameter("parentInstance", graphClass.defaultType)
+          body = generateDefaultConstructorBody()
+        }
+
+    val paramsToFields = assignConstructorParamsToFields(constructor, factoryImpl)
+
+    // Implement the SAM method
+    val samFunction = factoryImpl.singleAbstractFunction()
+    samFunction.finalizeFakeOverride(factoryImpl.thisReceiverOrFail)
+    implementGraphExtensionFactorySAM(samFunction, contributedGraph) {
+      irGetField(irGet(samFunction.dispatchReceiverParameter!!), paramsToFields.values.first())
+    }
+
+    // Return an instance of the factory implementation
+    return irCallConstructor(constructor.symbol, function.ir.typeParameters.map { it.defaultType })
   }
 }
 

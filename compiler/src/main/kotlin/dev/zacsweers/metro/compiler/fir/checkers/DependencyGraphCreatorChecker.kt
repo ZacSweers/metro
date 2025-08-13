@@ -156,7 +156,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
 
       var isIncludes = false
       var isProvides = false
-      var isExtends = false
+
       for (annotation in param.resolvedCompilerAnnotationsWithClassIds) {
         if (!annotation.isResolved) continue
         val annotationClassId = annotation.toAnnotationClassIdSafe(session) ?: continue
@@ -169,9 +169,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
             isProvides = true
           }
 
-          in classIds.extends -> {
-            isExtends = true
-          }
+
         }
       }
 
@@ -179,10 +177,10 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
         reporter.reportOn(
           param.source,
           FirMetroErrors.GRAPH_CREATORS_ERROR,
-          "${annotationClassId.relativeClassName.asString()} abstract function parameters must be annotated with exactly one @Includes, @Provides, or @Extends.",
+          "${annotationClassId.relativeClassName.asString()} abstract function parameters must be annotated with exactly one @Includes or @Provides.",
         )
       }
-      if ((isIncludes && isProvides) || (isIncludes && isExtends) || (isProvides && isExtends)) {
+      if (isIncludes && isProvides) {
         reportAnnotationCountError()
         continue
       }
@@ -212,114 +210,99 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
         isProvides -> {
           // TODO anything?
         }
-        isExtends -> {
-          val dependencyGraphAnno =
-            type.resolvedCompilerAnnotationsWithClassIds
-              .annotationsIn(session, classIds.dependencyGraphAnnotations)
-              .firstOrNull()
-          when {
-            dependencyGraphAnno == null -> {
-              reporter.reportOn(
-                param.source,
-                FirMetroErrors.GRAPH_CREATORS_ERROR,
-                "@Extends types must be annotated with @DependencyGraph.",
-              )
-            }
-
-            dependencyGraphAnno.getBooleanArgument(Symbols.Names.isExtendable, session) != true -> {
-              reporter.reportOn(
-                param.source,
-                FirMetroErrors.GRAPH_CREATORS_ERROR,
-                "@Extends graphs must be extendable (set DependencyGraph.isExtendable to true).",
-              )
-            }
-
-            targetGraphScopes.isNotEmpty() -> {
-              val parentScopes = dependencyGraphAnno.allScopeClassIds()
-              val overlaps = parentScopes.intersect(targetGraphScopes)
-              if (overlaps.isNotEmpty()) {
-                reporter.reportOn(
-                  param.source,
-                  FirMetroErrors.GRAPH_CREATORS_ERROR,
-                  buildString {
-                    appendLine(
-                      "Graph extensions (@Extends) may not have overlapping aggregation scopes with its parent graph but the following scopes overlap:"
-                    )
-                    for (overlap in overlaps) {
-                      append("- ")
-                      appendLine(overlap.asSingleFqName().asString())
-                    }
-                  },
-                )
-              }
-              for (parentScope in parentScopes) {
-                val parentClassId = type.classId
-                seenParentScopesToParent.put(parentScope, parentClassId)?.let { previous ->
-                  reporter.reportOn(
-                    param.source,
-                    FirMetroErrors.GRAPH_CREATORS_ERROR,
-                    buildString {
-                      appendLine(
-                        "Graph extensions (@Extends) may not have multiple parents with the same aggregation scopes:"
-                      )
-                      append("Scope: ")
-                      appendLine(parentScope.asSingleFqName())
-                      append("Parent 1: ")
-                      appendLine(previous.asSingleFqName())
-                      append("Parent 2: ")
-                      appendLine(parentClassId.asSingleFqName())
-                    },
-                  )
-                  return
-                }
-              }
-            }
-
-            targetGraphScopeAnnotations.isNotEmpty() -> {
-              val parentScopeAnnotations =
-                type.resolvedCompilerAnnotationsWithClassIds.scopeAnnotations(session).toSet()
-              val overlaps = parentScopeAnnotations.intersect(targetGraphScopeAnnotations)
-              if (overlaps.isNotEmpty()) {
-                reporter.reportOn(
-                  param.source,
-                  FirMetroErrors.GRAPH_CREATORS_ERROR,
-                  buildString {
-                    appendLine(
-                      "Graph extensions (@Extends) may not have overlapping scope annotations with its parent graph but the following annotations overlap:"
-                    )
-                    for (overlap in overlaps) {
-                      append("- ")
-                      appendLine(overlap.simpleString())
-                    }
-                  },
-                )
-                return
-              }
-
-              for (parentScope in parentScopeAnnotations) {
-                val parentClassId = type.classId
-                seenParentScopeAnnotationsToParent.put(parentScope, parentClassId)?.let { previous
-                  ->
-                  reporter.reportOn(
-                    param.source,
-                    FirMetroErrors.GRAPH_CREATORS_ERROR,
-                    buildString {
-                      appendLine(
-                        "Graph extensions (@Extends) may not have multiple parents with the same aggregation scopes:"
-                      )
-                      append("Scope: ")
-                      appendLine(parentScope.simpleString())
-                      append("Parent 1: ")
-                      appendLine(previous.asSingleFqName())
-                      append("Parent 2: ")
-                      appendLine(parentClassId.asSingleFqName())
-                    },
-                  )
-                }
-              }
-            }
-          }
-        }
+        // TODO move this check to DependencyGraphChecker
+//        isExtends -> {
+//          val dependencyGraphAnno =
+//            type.resolvedCompilerAnnotationsWithClassIds
+//              .annotationsIn(session, classIds.dependencyGraphAnnotations)
+//              .firstOrNull()
+//          when {
+//            targetGraphScopes.isNotEmpty() -> {
+//              val parentScopes = dependencyGraphAnno.allScopeClassIds()
+//              val overlaps = parentScopes.intersect(targetGraphScopes)
+//              if (overlaps.isNotEmpty()) {
+//                reporter.reportOn(
+//                  param.source,
+//                  FirMetroErrors.GRAPH_CREATORS_ERROR,
+//                  buildString {
+//                    appendLine(
+//                      "Graph extensions (@Extends) may not have overlapping aggregation scopes with its parent graph but the following scopes overlap:"
+//                    )
+//                    for (overlap in overlaps) {
+//                      append("- ")
+//                      appendLine(overlap.asSingleFqName().asString())
+//                    }
+//                  },
+//                )
+//              }
+//              for (parentScope in parentScopes) {
+//                val parentClassId = type.classId
+//                seenParentScopesToParent.put(parentScope, parentClassId)?.let { previous ->
+//                  reporter.reportOn(
+//                    param.source,
+//                    FirMetroErrors.GRAPH_CREATORS_ERROR,
+//                    buildString {
+//                      appendLine(
+//                        "Graph extensions (@Extends) may not have multiple parents with the same aggregation scopes:"
+//                      )
+//                      append("Scope: ")
+//                      appendLine(parentScope.asSingleFqName())
+//                      append("Parent 1: ")
+//                      appendLine(previous.asSingleFqName())
+//                      append("Parent 2: ")
+//                      appendLine(parentClassId.asSingleFqName())
+//                    },
+//                  )
+//                  return
+//                }
+//              }
+//            }
+//
+//            targetGraphScopeAnnotations.isNotEmpty() -> {
+//              val parentScopeAnnotations =
+//                type.resolvedCompilerAnnotationsWithClassIds.scopeAnnotations(session).toSet()
+//              val overlaps = parentScopeAnnotations.intersect(targetGraphScopeAnnotations)
+//              if (overlaps.isNotEmpty()) {
+//                reporter.reportOn(
+//                  param.source,
+//                  FirMetroErrors.GRAPH_CREATORS_ERROR,
+//                  buildString {
+//                    appendLine(
+//                      "Graph extensions (@Extends) may not have overlapping scope annotations with its parent graph but the following annotations overlap:"
+//                    )
+//                    for (overlap in overlaps) {
+//                      append("- ")
+//                      appendLine(overlap.simpleString())
+//                    }
+//                  },
+//                )
+//                return
+//              }
+//
+//              for (parentScope in parentScopeAnnotations) {
+//                val parentClassId = type.classId
+//                seenParentScopeAnnotationsToParent.put(parentScope, parentClassId)?.let { previous
+//                  ->
+//                  reporter.reportOn(
+//                    param.source,
+//                    FirMetroErrors.GRAPH_CREATORS_ERROR,
+//                    buildString {
+//                      appendLine(
+//                        "Graph extensions (@Extends) may not have multiple parents with the same aggregation scopes:"
+//                      )
+//                      append("Scope: ")
+//                      appendLine(parentScope.simpleString())
+//                      append("Parent 1: ")
+//                      appendLine(previous.asSingleFqName())
+//                      append("Parent 2: ")
+//                      appendLine(parentClassId.asSingleFqName())
+//                    },
+//                  )
+//                }
+//              }
+//            }
+//          }
+//        }
         else -> {
           reportAnnotationCountError()
         }

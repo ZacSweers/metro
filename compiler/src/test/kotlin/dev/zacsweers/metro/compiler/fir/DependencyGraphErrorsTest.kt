@@ -426,55 +426,6 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `Extends type must be a DependencyGraph-annotated type`() {
-    val result =
-      compile(
-        source(
-          """
-            @DependencyGraph
-            interface ExampleGraph {
-              @DependencyGraph.Factory
-              fun interface Factory {
-                fun create(@Extends value: String): ExampleGraph
-              }
-            }
-          """
-            .trimIndent()
-        ),
-        expectedExitCode = ExitCode.COMPILATION_ERROR,
-      )
-    result.assertDiagnostics(
-      "e: ExampleGraph.kt:10:25 @Extends types must be annotated with @DependencyGraph."
-    )
-  }
-
-  @Test
-  fun `Extends type must be a DependencyGraph isExtendable`() {
-    val result =
-      compile(
-        source(
-          """
-            @DependencyGraph
-            interface ExampleGraph {
-              @DependencyGraph.Factory
-              fun interface Factory {
-                fun create(@Extends value: FinalClassGraph): ExampleGraph
-              }
-            }
-
-            @DependencyGraph
-            interface FinalClassGraph
-          """
-            .trimIndent()
-        ),
-        expectedExitCode = ExitCode.COMPILATION_ERROR,
-      )
-    result.assertDiagnostics(
-      "e: ExampleGraph.kt:10:25 @Extends graphs must be extendable (set DependencyGraph.isExtendable to true)."
-    )
-  }
-
-  @Test
   fun `target graph type cannot be a factory parameter`() {
     val result =
       compile(

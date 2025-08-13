@@ -1631,7 +1631,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
           class MultibindingConsumer @Inject constructor(val contributions: Set<ContributedInterface>)
 
-          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph {
             val multibindingConsumer: MultibindingConsumer
           }
@@ -1670,7 +1670,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
           class MultibindingConsumer @Inject constructor(val contributions: Set<ContributedInterface>)
 
-          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph {
             val multibindingConsumer: MultibindingConsumer
           }
@@ -2644,7 +2644,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
           class Impl : Base
 
-          @DependencyGraph(Unit::class, isExtendable = true)
+          @DependencyGraph(Unit::class)
           interface ParentGraph {
             val base: Base
 
