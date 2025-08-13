@@ -283,7 +283,7 @@ internal class DependencyGraphTransformer(
       // Instance bindings
       node.creator?.parameters?.let { parameters ->
         for (parameter in parameters.regularParameters) {
-          if (parameter.isIncludes || parameter.isBindsInstance) {
+          if (parameter.isBindsInstance) {
             localParentContext.add(parameter.typeKey)
           }
         }
