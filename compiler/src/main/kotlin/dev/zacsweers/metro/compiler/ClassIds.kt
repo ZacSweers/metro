@@ -158,6 +158,7 @@ public class ClassIds(
       customContributesGraphExtensionFactoryAnnotations
   internal val allGraphExtensionAndFactoryAnnotations = graphExtensionAnnotations + graphExtensionFactoryAnnotations + contributesGraphExtensionAnnotations + contributesGraphExtensionFactoryAnnotations
   internal val allGraphExtensionAnnotations = graphExtensionAnnotations + contributesGraphExtensionAnnotations
+  internal val allGraphExtensionFactoryAnnotations = graphExtensionFactoryAnnotations + contributesGraphExtensionFactoryAnnotations
   internal val contributesToLikeAnnotations =
     contributesToAnnotations + contributesGraphExtensionFactoryAnnotations
 
