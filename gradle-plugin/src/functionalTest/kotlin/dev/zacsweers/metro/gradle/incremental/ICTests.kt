@@ -193,13 +193,13 @@ class ICTests : BaseIncrementalCompilationTest() {
         private val childGraph =
           source(
             """
-          @DependencyGraph
+          @GraphExtension
           interface ChildGraph {
             val target: Target
 
-            @DependencyGraph.Factory
+            @GraphExtension.Factory
             interface Factory {
-              fun create(@Extends appGraph: AppGraph): ChildGraph
+              fun create(): ChildGraph
             }
           }
           """
@@ -209,8 +209,8 @@ class ICTests : BaseIncrementalCompilationTest() {
         val appGraph =
           source(
             """
-          @DependencyGraph(isExtendable = true)
-          interface AppGraph {
+          @DependencyGraph
+          interface AppGraph : ChildGraph.Factory {
             @Provides
             fun provideString(): String = ""
           }
@@ -229,8 +229,8 @@ class ICTests : BaseIncrementalCompilationTest() {
     project.modify(
       fixture.appGraph,
       """
-      @DependencyGraph(isExtendable = true)
-      interface AppGraph {
+      @DependencyGraph
+      interface AppGraph : ChildGraph.Factory {
         // Removed provider
         // @Provides
         // fun provideString(): String = ""
@@ -243,12 +243,12 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.output)
       .contains(
         """
-          ChildGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+          AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
               kotlin.String is injected at
-                  [test.ChildGraph] test.Target(…, string)
+                  [test.AppGraph.$${'$'}MetroGraph.$${'$'}ContributedChildGraph] test.Target(…, string)
               test.Target is requested at
-                  [test.ChildGraph] test.ChildGraph#target
+                  [test.AppGraph.$${'$'}MetroGraph.$${'$'}ContributedChildGraph] test.ChildGraph#target
         """
           .trimIndent()
       )
@@ -817,7 +817,7 @@ class ICTests : BaseIncrementalCompilationTest() {
   @Test
   fun scopingChangeOnNonContributedClassIsDetected() {
     val fixture =
-      object : MetroProject(metroOptions = MetroOptionOverrides(enableScopedInjectClassHints = true)) {
+      object : MetroProject(metroOptions = MetroOptionOverrides()) {
         override fun sources() =
           listOf(unusedScope, exampleClass, exampleGraph, loggedInGraph, main)
 
@@ -842,7 +842,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         private val exampleGraph =
           source(
             """
-              @DependencyGraph(scope = AppScope::class, isExtendable = true)
+              @DependencyGraph(scope = AppScope::class)
               interface ExampleGraph
             """
               .trimIndent()
@@ -885,10 +885,14 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(firstBuildResult.output.cleanOutputLine())
       .contains(
         """
-          e: ExampleGraph.kt:7:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph.$${'$'}ContributedLoggedInGraph (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
+          e: ExampleGraph.kt:7:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph.$${'$'}MetroGraph.$${'$'}ContributedLoggedInGraph (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
               test.ExampleClass (scoped to '@SingleIn(UnusedScope::class)')
               test.ExampleClass is requested at
-                  [test.ExampleGraph.$${'$'}ContributedLoggedInGraph] test.LoggedInGraph#exampleClass
+                  [test.ExampleGraph.$${'$'}MetroGraph.$${'$'}ContributedLoggedInGraph] test.LoggedInGraph#exampleClass
+
+
+          (Hint)
+          $${'$'}ContributedLoggedInGraph is contributed by 'test.LoggedInGraph' to 'test.ExampleGraph'.
         """
           .trimIndent()
       )
@@ -943,10 +947,10 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(fourthBuildResult.output.cleanOutputLine())
       .contains(
         """
-          e: ExampleGraph.kt:7:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph.$${'$'}ContributedLoggedInGraph (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
+          e: ExampleGraph.kt:7:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph.$${'$'}MetroGraph.$${'$'}ContributedLoggedInGraph (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
               test.ExampleClass (scoped to '@SingleIn(UnusedScope::class)')
               test.ExampleClass is requested at
-                  [test.ExampleGraph.$${'$'}ContributedLoggedInGraph] test.LoggedInGraph#exampleClass
+                  [test.ExampleGraph.$${'$'}MetroGraph.$${'$'}ContributedLoggedInGraph] test.LoggedInGraph#exampleClass
 
 
           (Hint)
@@ -1119,7 +1123,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         private val exampleGraph =
           source(
             """
-              @DependencyGraph(scope = AppScope::class, isExtendable = true)
+              @DependencyGraph(scope = AppScope::class)
               interface ExampleGraph
             """
               .trimIndent()
@@ -1166,7 +1170,7 @@ class ICTests : BaseIncrementalCompilationTest() {
           e: LoggedInScope.kt:10:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Foo
 
               test.Foo is requested at
-                  [test.ExampleGraph.$${'$'}ContributedLoggedInGraph] test.LoggedInGraph#childDependency
+                  [test.ExampleGraph.$${'$'}MetroGraph.$${'$'}ContributedLoggedInGraph] test.LoggedInGraph#childDependenc
         """
           .trimIndent()
       )
@@ -1209,7 +1213,7 @@ class ICTests : BaseIncrementalCompilationTest() {
           e: ExampleGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Foo
 
               test.Foo is requested at
-                  [test.ExampleGraph.$${'$'}ContributedLoggedInGraph] test.LoggedInGraph#childDependency
+                  [test.ExampleGraph.$${'$'}MetroGraph.$${'$'}ContributedLoggedInGraph] test.LoggedInGraph#childDependency
         """
           .trimIndent()
       )
@@ -1275,7 +1279,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         private val appGraph =
           source(
             """
-              @DependencyGraph(AppScope::class, isExtendable = true)
+              @DependencyGraph(AppScope::class)
               interface AppGraph
             """
               .trimIndent()
@@ -1384,7 +1388,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         private val appGraph =
           source(
             """
-              @DependencyGraph(AppScope::class, isExtendable = true)
+              @DependencyGraph(AppScope::class)
               interface AppGraph {
                 @Provides fun provideInt(): Int = 0
               }
@@ -1485,7 +1489,8 @@ class ICTests : BaseIncrementalCompilationTest() {
           interface Bar : Foo {
             val str: String
           }
-            """.trimIndent()
+            """
+              .trimIndent()
           )
 
         val realImpl =
@@ -1514,8 +1519,7 @@ class ICTests : BaseIncrementalCompilationTest() {
               .trimIndent()
           )
 
-        val placeholder =
-          source("")
+        val placeholder = source("")
 
         val main =
           source(
