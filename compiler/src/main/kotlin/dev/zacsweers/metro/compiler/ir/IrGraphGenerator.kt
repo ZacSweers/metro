@@ -614,14 +614,6 @@ internal class IrGraphGenerator(
             for (entry in providerFields) {
               val binding = bindingGraph.requireBinding(entry.key, IrBindingStack.empty())
               if (
-                binding is IrBinding.GraphDependency &&
-                  binding.isProviderFieldAccessor &&
-                  binding.ownerKey !in node.includedGraphNodes
-              ) {
-                // This'll get looked up directly by child graphs. Included graphs though _should_
-                // be propagated because they are accessors-only APIs
-                continue
-              } else if (
                 binding.scope == null &&
                   binding !is IrBinding.BoundInstance &&
                   binding !is IrBinding.GraphDependency

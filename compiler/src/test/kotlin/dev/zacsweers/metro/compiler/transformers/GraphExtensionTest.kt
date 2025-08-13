@@ -442,7 +442,7 @@ class GraphExtensionTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ParentGraph.kt:19:35 Graph extensions (@Extends) may not have overlapping aggregation scopes with its parent graph but the following scopes overlap:
+          e: ParentGraph.kt:8:35 Graph extension 'test.ChildGraph' has overlapping aggregation scopes with parent graph 'test.ParentGraph':
           - dev.zacsweers.metro.AppScope
         """
           .trimIndent()
@@ -478,7 +478,7 @@ class GraphExtensionTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ParentGraph.kt:21:35 Graph extensions (@Extends) may not have overlapping scope annotations with its parent graph but the following annotations overlap:
+          e: ParentGraph.kt:9:35 Graph extension 'test.ChildGraph' has overlapping scope annotations with parent graph 'test.ParentGraph':
           - @SingleIn(dev.zacsweers.metro.AppScope::class)
         """
           .trimIndent()
@@ -492,7 +492,7 @@ class GraphExtensionTest : MetroCompilerTest() {
       source(
         """
           @SingleIn(AppScope::class)
-          @DependencyGraph
+          @Component
           interface GrandParentGraph : ParentGraph.Factory {
             @Provides
             fun provideString(): String = "grandParent"
@@ -501,20 +501,20 @@ class GraphExtensionTest : MetroCompilerTest() {
           abstract class UserScope private constructor()
 
           @SingleIn(UserScope::class)
-          @GraphExtension
+          @Subcomponent
           interface ParentGraph : ChildGraph.Factory {
-            @GraphExtension.Factory
+            @Subcomponent.Factory
             fun interface Factory {
               fun create(): ParentGraph
             }
           }
 
           @SingleIn(AppScope::class)
-          @GraphExtension
+          @Subcomponent
           interface ChildGraph {
             val string: String
 
-            @GraphExtension.Factory
+            @Subcomponent.Factory
             fun interface Factory {
               fun create(): ChildGraph
             }
@@ -525,8 +525,8 @@ class GraphExtensionTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: GrandParentGraph.kt:27:21 Graph extensions (@Extends) may not have overlapping scopes with its ancestor graphs but the following scopes overlap:
-          - @dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class) (from ancestor 'test.GrandParentGraph')
+          e: GrandParentGraph.kt:9:35 Graph extension 'test.ChildGraph' has overlapping scope annotations with ancestor graph 'test.GrandParentGraph':
+          - @SingleIn(dev.zacsweers.metro.AppScope::class)
         """
           .trimIndent()
       )

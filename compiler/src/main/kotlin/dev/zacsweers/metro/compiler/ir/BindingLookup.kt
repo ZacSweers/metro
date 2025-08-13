@@ -106,7 +106,7 @@ internal class BindingLookup(
       providedBindingsCache[key]?.let { providedBinding ->
         // Check if this is available from parent and is scoped
         if (providedBinding.scope != null && parentContext?.contains(key) == true) {
-          parentContext.mark(key)
+          parentContext.mark(key, providedBinding.scope!!)
           return setOf(createParentGraphDependency(key))
         }
         return setOf(providedBinding)
@@ -133,7 +133,7 @@ internal class BindingLookup(
                 // Discovered here but unused in the parents, mark it anyway so they include it
                 parentContext.containsScope(scope)
             if (scopeInParent) {
-              parentContext.mark(key)
+              parentContext.mark(key, scope)
               return setOf(createParentGraphDependency(key))
             }
           }

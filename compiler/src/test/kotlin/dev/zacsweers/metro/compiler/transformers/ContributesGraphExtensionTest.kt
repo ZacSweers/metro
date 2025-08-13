@@ -15,6 +15,7 @@ import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.createGraphViaFactory
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
 import dev.zacsweers.metro.compiler.generatedMetroGraphClass
+import dev.zacsweers.metro.compiler.invokeInstanceMethod
 import dev.zacsweers.metro.compiler.newInstanceStrict
 import kotlin.test.assertNotNull
 import org.junit.Test
@@ -517,6 +518,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
   // Regression test for https://github.com/ZacSweers/metro/pull/351
   @Test
   fun `contributed graph factory can extend a generic interface with create graph function`() {
+    TODO()
     compile(
       source(
         """
@@ -692,9 +694,8 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     ) {
       assertThat(exitCode).isEqualTo(KotlinCompilation.ExitCode.OK)
       val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
-      val stringGraphClass = classLoader.loadClass("test.StringGraph")
-      val stringGraph = stringGraphClass.generatedMetroGraphClass().createGraphViaFactory("Hello")
-      val loggedInGraph = exampleGraph.callFunction<Any>("createLoggedInGraph", stringGraph)
+      val stringGraph = exampleGraph.invokeInstanceMethod<Any>("create", "Hello")
+      val loggedInGraph = stringGraph.callFunction<Any>("createLoggedInGraph")
       assertThat(loggedInGraph.callProperty<String>("string")).isEqualTo("Hello")
     }
   }
@@ -1228,7 +1229,6 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         """
             .trimIndent()
         ),
-        options = metroOptions.copy(enableScopedInjectClassHints = true),
       )
 
     val graphExtensionCompilation =
@@ -1249,7 +1249,6 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         """
             .trimIndent()
         ),
-        options = metroOptions.copy(enableScopedInjectClassHints = true),
         previousCompilationResult = injectDepCompilation,
       )
 
