@@ -9,18 +9,18 @@ import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
-import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.BindingGraphGenerator
 import dev.zacsweers.metro.compiler.ir.DependencyGraphNode
 import dev.zacsweers.metro.compiler.ir.DependencyGraphNodeCache
 import dev.zacsweers.metro.compiler.ir.IrBindingGraph
 import dev.zacsweers.metro.compiler.ir.IrBindingStack
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
-import dev.zacsweers.metro.compiler.ir.IrGraphExtensionGenerator
 import dev.zacsweers.metro.compiler.ir.IrContributionData
+import dev.zacsweers.metro.compiler.ir.IrGraphExtensionGenerator
 import dev.zacsweers.metro.compiler.ir.IrGraphGenerator
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.MetroIrErrors
+import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
@@ -254,11 +254,12 @@ internal class DependencyGraphTransformer(
       for ((_, providerFactory) in node.providerFactories) {
         if (providerFactory.annotations.isScoped) {
           // TODO this lookup is getting duplicated a few places, would be good to isolated
-          val targetKey = if (providerFactory.annotations.isIntoMultibinding) {
-            providerFactory.typeKey.transformMultiboundQualifier(providerFactory.annotations)
-          } else {
-            providerFactory.typeKey
-          }
+          val targetKey =
+            if (providerFactory.annotations.isIntoMultibinding) {
+              providerFactory.typeKey.transformMultiboundQualifier(providerFactory.annotations)
+            } else {
+              providerFactory.typeKey
+            }
           localParentContext.add(targetKey)
         }
       }
@@ -270,11 +271,12 @@ internal class DependencyGraphTransformer(
           for (scopedClass in classesInScope) {
             // TODO look these up once somewhere and cache
             val annotations = scopedClass.type.rawType().metroAnnotations(symbols.classIds)
-            val targetKey = if (annotations.isIntoMultibinding) {
-              scopedClass.transformMultiboundQualifier(annotations)
-            } else {
-              scopedClass
-            }
+            val targetKey =
+              if (annotations.isIntoMultibinding) {
+                scopedClass.transformMultiboundQualifier(annotations)
+              } else {
+                scopedClass
+              }
             localParentContext.add(targetKey)
           }
         }
@@ -300,7 +302,7 @@ internal class DependencyGraphTransformer(
       // Transform the contributed graphs
       // Push the parent graph for all contributed graph processing
       localParentContext.pushParentGraph(node)
-      
+
       for ((contributedGraphKey, accessor) in node.graphExtensions) {
         val contributedExtension = contributedGraphKey.type.rawTypeOrNull() ?: continue
 
@@ -314,15 +316,15 @@ internal class DependencyGraphTransformer(
           )
 
         // Process the child
-          processDependencyGraph(
-            contributedGraph,
-            contributedGraph.annotationsIn(symbols.dependencyGraphAnnotations).single(),
-            contributedGraph,
-            localParentContext,
+        processDependencyGraph(
+          contributedGraph,
+          contributedGraph.annotationsIn(symbols.dependencyGraphAnnotations).single(),
+          contributedGraph,
+          localParentContext,
+        )
+          ?: reportCompilerBug(
+            "Expected generated dependency graph for ${contributedExtension.classIdOrFail}"
           )
-            ?: reportCompilerBug(
-              "Expected generated dependency graph for ${contributedExtension.classIdOrFail}"
-            )
 
         // For any key both child uses and parent has as a scoped static binding,
         // mark it as a keep in the parent graph so it materializes during seal
@@ -331,7 +333,7 @@ internal class DependencyGraphTransformer(
           bindingGraph.keep(contextKey, IrBindingStack.Entry.simpleTypeRef(contextKey))
         }
       }
-      
+
       // Pop the parent graph after all contributed graphs are processed
       localParentContext.popParentGraph()
     }
@@ -347,7 +349,9 @@ internal class DependencyGraphTransformer(
                   declaration?.takeIf {
                     it.fileOrNull != null && it.origin != Origins.GeneratedGraphExtension
                   } ?: dependencyGraphDeclaration
-                if (toReport.fileOrNull != null && toReport.origin != Origins.GeneratedGraphExtension) {
+                if (
+                  toReport.fileOrNull != null && toReport.origin != Origins.GeneratedGraphExtension
+                ) {
                   diagnosticReporter.at(toReport).report(MetroIrErrors.METRO_ERROR, message)
                 } else {
                   messageCollector.report(

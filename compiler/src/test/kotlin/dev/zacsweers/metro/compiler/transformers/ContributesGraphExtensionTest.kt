@@ -518,7 +518,6 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
   // Regression test for https://github.com/ZacSweers/metro/pull/351
   @Test
   fun `contributed graph factory can extend a generic interface with create graph function`() {
-    TODO()
     compile(
       source(
         """

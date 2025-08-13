@@ -58,25 +58,28 @@ internal class IrGraphExtensionGenerator(
     parentTracer: Tracer,
   ): IrClass {
     return generatedClassesCache.getOrPut(CacheKey(typeKey, parentGraph.classIdOrFail)) {
-      val sourceFunction =
+      val sourceSamFunction =
         contributedAccessor.ir
           .overriddenSymbolsSequence()
-          .lastOrNull()
-          ?.owner ?: contributedAccessor.ir
+          .firstOrNull {
+            it.owner.parentAsClass.isAnnotatedWithAny(symbols.classIds.allGraphExtensionFactoryAnnotations)
+          }
+          ?.owner
+          ?: contributedAccessor.ir
 
-      val parent = sourceFunction.parentClassOrNull ?: error("No parent class found")
-      val isFactorySAM = parent.isAnnotatedWithAny(symbols.classIds.contributesGraphExtensionFactoryAnnotations) || parent.isAnnotatedWithAny(symbols.classIds.graphExtensionFactoryAnnotations)
+      val parent = sourceSamFunction.parentClassOrNull ?: error("No parent class found")
+      val isFactorySAM = parent.isAnnotatedWithAny(symbols.classIds.allGraphExtensionFactoryAnnotations)
       if (isFactorySAM) {
-        buildContributedGraph(sourceFunction, parentTracer)
+        buildContributedGraph(sourceSamFunction, parentTracer)
       } else {
-        val returnType = sourceFunction.returnType.rawType()
+        val returnType = contributedAccessor.ir.returnType.rawType()
         val returnIsGraphExtensionFactory = returnType.isAnnotatedWithAny(symbols.classIds.allGraphExtensionFactoryAnnotations)
         // TODO use this when we support direct extension getters
         val returnIsGraphExtension = returnType.isAnnotatedWithAny(symbols.classIds.allGraphExtensionAnnotations)
         if (returnIsGraphExtensionFactory) {
           val samFunction = returnType.singleAbstractFunction()
             .apply {
-              remapTypes(sourceFunction.typeRemapperFor(sourceFunction.returnType))
+              remapTypes(sourceSamFunction.typeRemapperFor(contributedAccessor.ir.returnType))
             }
           buildContributedGraph(samFunction, parentTracer)
         } else {

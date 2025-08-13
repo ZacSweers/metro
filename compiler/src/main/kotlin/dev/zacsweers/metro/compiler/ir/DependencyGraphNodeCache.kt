@@ -18,6 +18,7 @@ import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.memoized
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
@@ -542,6 +543,7 @@ internal class DependencyGraphNodeCache(
           includedGraphNodes = includedGraphNodes,
           graphExtensions = graphExtensions,
           scopes = scopes,
+          aggregationScopes = aggregationScopes,
           bindsCallables = bindsCallables,
           bindsFunctions = bindsFunctions.map { it.first },
           multibindsCallables = multibindsCallables,
@@ -591,19 +593,26 @@ internal class DependencyGraphNodeCache(
         }
       }
       if (overlapErrors.isNotEmpty()) {
-        diagnosticReporter
-          .at(graphDeclaration)
-          .report(
-            MetroIrErrors.METRO_ERROR,
-            buildString {
-              appendLine(
-                "Graph extensions (@Extends) may not have overlapping scopes with its ancestor graphs but the following scopes overlap:"
-              )
-              for (overlap in overlapErrors) {
-                appendLine(overlap)
-              }
-            },
+        val message = buildString {
+          appendLine(
+            "Graph extension '${dependencyGraphNode.sourceGraph.sourceGraphIfMetroGraph.kotlinFqName}' has overlapping scope annotations with ancestor graphs':",
           )
+          for (overlap in overlapErrors) {
+            appendLine(overlap)
+          }
+        }
+
+        // TODO in 2.2.20 use just diagnostic reporter
+        if (graphDeclaration.origin === Origins.GeneratedGraphExtension) {
+          messageCollector.report(CompilerMessageSeverity.ERROR, message, graphDeclaration.locationOrNull())
+        } else {
+          diagnosticReporter
+            .at(graphDeclaration)
+            .report(
+              MetroIrErrors.METRO_ERROR,
+              message,
+            )
+        }
         exitProcessing()
       }
 
@@ -676,6 +685,7 @@ internal class DependencyGraphNodeCache(
           supertypes = supertypes.toList(),
           includedGraphNodes = includedGraphNodes,
           scopes = scopes,
+          aggregationScopes = aggregationScopes,
           providerFactories = providerFactories,
           accessors = accessors,
           bindsCallables = bindsCallables,

@@ -17,6 +17,7 @@ import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.name.ClassId
 
 // Represents an object graph's structure and relationships
 internal data class DependencyGraphNode(
@@ -25,6 +26,7 @@ internal data class DependencyGraphNode(
   val includedGraphNodes: Map<IrTypeKey, DependencyGraphNode>,
   val graphExtensions: Map<IrTypeKey, MetroSimpleFunction>,
   val scopes: Set<IrAnnotation>,
+  val aggregationScopes: Set<ClassId>,
   val providerFactories: List<Pair<IrTypeKey, ProviderFactory>>,
   // Types accessible via this graph (includes inherited)
   // Dagger calls these "provision methods", but that's a bit vague IMO

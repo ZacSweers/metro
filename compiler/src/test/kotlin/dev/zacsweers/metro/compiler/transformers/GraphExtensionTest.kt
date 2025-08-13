@@ -492,7 +492,7 @@ class GraphExtensionTest : MetroCompilerTest() {
       source(
         """
           @SingleIn(AppScope::class)
-          @Component
+          @DependencyGraph
           interface GrandParentGraph : ParentGraph.Factory {
             @Provides
             fun provideString(): String = "grandParent"
@@ -501,20 +501,20 @@ class GraphExtensionTest : MetroCompilerTest() {
           abstract class UserScope private constructor()
 
           @SingleIn(UserScope::class)
-          @Subcomponent
+          @GraphExtension
           interface ParentGraph : ChildGraph.Factory {
-            @Subcomponent.Factory
+            @GraphExtension.Factory
             fun interface Factory {
               fun create(): ParentGraph
             }
           }
 
           @SingleIn(AppScope::class)
-          @Subcomponent
+          @GraphExtension
           interface ChildGraph {
             val string: String
 
-            @Subcomponent.Factory
+            @GraphExtension.Factory
             fun interface Factory {
               fun create(): ChildGraph
             }
@@ -525,8 +525,8 @@ class GraphExtensionTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: GrandParentGraph.kt:9:35 Graph extension 'test.ChildGraph' has overlapping scope annotations with ancestor graph 'test.GrandParentGraph':
-          - @SingleIn(dev.zacsweers.metro.AppScope::class)
+          e: GrandParentGraph.kt Graph extension 'test.ChildGraph' has overlapping scope annotations with ancestor graphs':
+- @dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class) (from ancestor 'test.GrandParentGraph')
         """
           .trimIndent()
       )
