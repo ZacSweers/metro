@@ -4,12 +4,110 @@ Changelog
 **Unreleased**
 --------------
 
+### Graph extensions are no longer detached.
+
+**TL;DR: Metro graph extensions are now wired similar to Dagger subcomponents and use a new `@GraphExtension` annotation. `@Extends`, `isExtendable`, and `enableScopedInjectClassHints()` are now deleted.**
+
+Up to this point, Metro's graph extensions have been _detached_. This meant that extensions could simply depend on a parent graph via `@Extends` and parent graphs had to mark themselves as extendable via `isExtendable = true`. This approach mirrored kotlin-inject's approach and was convenient in its flexibility. However, it's proven too problematic in practice for a few reasons:
+
+1. Parent graphs have to generate a bunch of extra code for extensions. Namely, scoped providers and any instances of containers/parents they are holding on to need accessors. It also generates extra metadata (metro serializes its own metadata to its types) for separate graphs to read.
+2. Because of the above, parent graphs had to opt-in to extension via `isExtendable = true`.
+3. Up to this point, parent graphs always held scoped providers for all `@Provides` bindings in it or containers, _even if they do not use them_.
+4. Similar to #3, we've had to add support for automatic discovery of scoped constructor-injected classes (via `enableScopedInjectClassHints()`) to ensure they are also held at the appropriate scope.
+5. This has ended up causing a lot of headaches because eager validation complicates these in scenarios where you have multiple graphs that may not actually use that class anywhere (and thus not provide some of its dependencies)
+6. Because every graph must expose every available binding to unknown extensions, every graph in a chain is often bloated with bindings it doesn't use.
+
+Metro _could_ optimize the `@ContributesGraphExtension` cases where Metro's compiler has a view of the entire graph chain, but that would frankly leave Metro with a lot of edge cases to deal with and users with needing to know about two different ways to extend graphs. We opted against that, and instead are now going to process graph extensions in a similar way to Dagger's **subcomponents**.
+
+This will allow Metro to
+
+1. Fully optimize the whole graph chain.
+2. Automatically scope bindings in parents (no need to expose accessors for scoped bindings unused in parents).
+3. Only generate _exactly_ the bindings that are used in each graph with lazy validation of bindings.
+
+#### `@GraphExtension`
+
+`@GraphExtension` is a new annotation to denote a graph that is an extension. This is analogous to Dagger's `@Subcomponent` and dagger interop treats it as such.
+
+To connect an extension to a parent graph, you can do one of multiple ways:
+
+- Declare an accessor on the parent graph directly.
+
+```kotlin
+@GraphExtension
+interface LoggedInGraph
+
+@DependencyGraph
+interface AppGraph {
+  val loggedInGraph: LoggedInGraph
+}
+```
+
+- (If the extension has a creator) declare the creator on the parent graph directly.
+
+```kotlin
+@GraphExtension
+interface LoggedInGraph {
+  @GraphExtension.Factory
+  interface Factory {
+    fun createLoggedInGraph(): LoggedInGraph
+  }
+}
+
+@DependencyGraph
+interface AppGraph {
+  val loggedInGraphFactory: LoggedInGraph.Factory
+}
+```
+
+- (If the extension has a creator) make the parent graph implement the creator.
+
+```kotlin
+@GraphExtension
+interface LoggedInGraph {
+  @GraphExtension.Factory
+  interface Factory {
+    fun createLoggedInGraph(): LoggedInGraph
+  }
+}
+
+@DependencyGraph
+interface AppGraph : LoggedInGraph.Factory
+```
+
+- Contribute the factory to the parent graph via ContributesGraphExtension.
+
+```kotlin
+@GraphExtension
+interface LoggedInGraph {
+  @ContributesGraphExtension.Factory(AppScope::class)
+  interface Factory {
+    fun createLoggedInGraph(): LoggedInGraph
+  }
+}
+
+@DependencyGraph(AppScope::class)
+interface AppGraph
+```
+
+#### Migration
+
+The following APIs have been removed or deprecated:
+
+- `@Extends`. Migrate to `@GraphExtension`, remove this parameter, and expose the factory in the parent graph API as documented above.
+- `isExtendable` is removed from `@DependencyGraph` and `@ContributesGraphExtension`.
+- `enableScopedInjectClassHints()` is now deprecated and does nothing. It will be removed in the future.
+- Graph extensions my no longer have multiple direct parents.
+
+To create graph extensions, you now _must_ do so via a parent graph (using one of the above connecting mechanisms).
+
+### Other changes
+
 - **Behavior change**: `@Provides` and `@Binds` bindings are now only validated if they are used by the _owning_ graph. Previously, they were always validated.
     - If you want to keep the previous behavior, you can enable the `enableStrictValidation()` option.
-    - Scoped bindings of this type will no longer be automatically retained by the graph, which can result in some need to expose accessors for these types for child graphs in some cases. The compiler will report an error for these scope mismatches as needed. Unscoped bindings continue to be accessible to child graphs.
 - **Behavior change**: `chunkFieldInits()` is now enabled by default.
-- **Behavior change**: When adding bindings from extended parent graphs, ignore any that are provided directly in the child graph. Previously Metro only ignored the binding if the binding was itself a graph type.
-- **New**: Add diagnostic reports for (valid) cycles.
+- **Behavior change**: When adding bindings from extended parent graphs, ignore any that are provided directly in the child graph. Previously, Metro only ignored the binding if the binding was itself a graph type.
+- **New**: Add diagnostic reports for (valid) cycles. This means if you have a cycle in your graph and enable a `reportsDestination`, Metro will generate files with a list of all the keys in that cycle.
 - **Enhancement**: In tracing logs, include the graph name in the "Transform dependency graph" sections.
 - **Enhancement**: Allow contributing annotations on assisted-injected classes.
 - **Enhancement**: Improve dagger interop with `dagger.Lazy` types by allowing `Provider` subtypes to be wrapped too.
