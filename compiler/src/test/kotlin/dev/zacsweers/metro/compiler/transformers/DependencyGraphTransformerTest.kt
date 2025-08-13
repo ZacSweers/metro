@@ -2664,7 +2664,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           @DependencyGraph(Unit::class)
           interface ParentGraph {
             val base: Base
-            
+
             fun childGraphFactory(): ChildGraph.Factory
 
             @Provides

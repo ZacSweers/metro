@@ -1,3 +1,5 @@
+// Copyright (C) 2025 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -9,7 +11,7 @@ internal class ParentContext {
     val providedKeys: MutableSet<IrTypeKey> = mutableSetOf(),
     val usedKeys: MutableSet<IrTypeKey> = mutableSetOf()
   )
-  
+
   private val parentGraphStack = ArrayDeque<ParentLevel>()
   private val parentScopes = mutableSetOf<IrAnnotation>()
   // Keys pending to be added to the next pushed parent
@@ -34,11 +36,11 @@ internal class ParentContext {
         break
       }
     }
-    
+
     if (foundAtIndex >= 0) {
       // Mark the key as used in the provider
       parentGraphStack[foundAtIndex].usedKeys.add(key)
-      
+
       // Also mark it in all intermediate graphs between the provider and the current level
       // This ensures scoped bindings are kept across intermediate graphs
       for (i in foundAtIndex + 1..parentGraphStack.lastIndex) {
@@ -57,7 +59,7 @@ internal class ParentContext {
           // Add this key to the level's providedKeys so it can be inherited by children
           level.providedKeys.add(key)
           level.usedKeys.add(key)
-          
+
           // Also propagate to intermediate levels
           for (j in i + 1..parentGraphStack.lastIndex) {
             parentGraphStack[j].providedKeys.add(key)
@@ -74,13 +76,13 @@ internal class ParentContext {
     // Transfer pending keys to this new level
     level.providedKeys.addAll(pendingKeys)
     pendingKeys.clear()
-    
+
     // Also inherit all keys from parent levels
     // This ensures child graphs can see all keys available from their ancestors
     for (parentLevel in parentGraphStack) {
       level.providedKeys.addAll(parentLevel.providedKeys)
     }
-    
+
     parentGraphStack.addLast(level)
     parentScopes.addAll(node.scopes)
   }
