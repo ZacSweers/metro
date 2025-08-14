@@ -1286,9 +1286,10 @@ internal class IrGraphGenerator(
               val remapper = ctor.typeRemapperFor(binding.typeKey.type)
               val parameters = ctor.parameters(remapper = remapper)
 
-              // If this function has parameters, they're factory instance params and need to be passed on
+              // If this function has parameters, they're factory instance params and need to be
+              // passed on
               val functionParams = binding.accessor.regularParameters
-              
+
               // First param is always the parent graph
               arguments[0] = irGet(generationContext.thisReceiver)
               for (i in 0 until functionParams.size) {
@@ -1329,8 +1330,15 @@ internal class IrGraphGenerator(
             .at(binding.getter)
             .report(MetroIrErrors.METRO_ERROR, "Provider<Lazy<T>> accessors are not supported.")
           exitProcessing()
-        } else if (getterContextKey.isWrappedInProvider) {
+        } else if (
+          getterContextKey.isWrappedInProvider &&
+            binding.getter.origin != Origins.ExtendableGraphAccessor
+        ) {
           // It's already a provider
+          // We don't do this optimization for graph extensions (yet) because the parent graph may
+          // not have initialized the accessor
+          // TODO revisit when we're inner classes referencing fields, since the accessor would
+          // presumably be gone then
           invokeGetter
         } else {
           val lambda =
@@ -1342,7 +1350,9 @@ internal class IrGraphGenerator(
               suspend = false,
             ) {
               val returnExpression =
-                if (getterContextKey.isWrappedInLazy) {
+                if (getterContextKey.isWrappedInProvider) {
+                  irInvoke(invokeGetter, callee = symbols.providerInvoke)
+                } else if (getterContextKey.isWrappedInLazy) {
                   irInvoke(invokeGetter, callee = symbols.lazyGetValue)
                 } else {
                   invokeGetter
