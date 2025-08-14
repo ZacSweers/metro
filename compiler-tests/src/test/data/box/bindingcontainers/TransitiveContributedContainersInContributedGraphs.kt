@@ -24,7 +24,7 @@ interface ContributedGraph {
   }
 }
 
-@DependencyGraph(Unit::class, isExtendable = true) interface UnitGraph
+@DependencyGraph(Unit::class) interface UnitGraph
 
 fun box(): String {
   val graph = createGraph<UnitGraph>().createContributedGraph()

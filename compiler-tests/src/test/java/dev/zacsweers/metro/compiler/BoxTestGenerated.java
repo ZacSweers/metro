@@ -115,6 +115,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       runTest("compiler-tests/src/test/data/box/aggregation/MultipleBindingReplacementsFromSameClassDifferentScopes.kt");
     }
 
+    @Test
+    @TestMetadata("ScopedContributedBindingCanBeAccessedFromChildWithClassHintsEnabled.kt")
+    public void testScopedContributedBindingCanBeAccessedFromChildWithClassHintsEnabled() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ScopedContributedBindingCanBeAccessedFromChildWithClassHintsEnabled.kt");
+    }
+
     @Nested
     @TestMetadata("compiler-tests/src/test/data/box/aggregation/interop")
     @TestDataPath("$PROJECT_ROOT")
@@ -269,6 +275,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("QualifiedMemberInjectionPropagatesAcrossModules.kt")
     public void testQualifiedMemberInjectionPropagatesAcrossModules() {
       runTest("compiler-tests/src/test/data/box/contributesgraphextension/QualifiedMemberInjectionPropagatesAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("ScopedBindingUsedByExtensionIsExposed.kt")
+    public void testScopedBindingUsedByExtensionIsExposed() {
+      runTest("compiler-tests/src/test/data/box/contributesgraphextension/ScopedBindingUsedByExtensionIsExposed.kt");
     }
 
     @Test
@@ -514,6 +526,28 @@ public class BoxTestGenerated extends AbstractBoxTest {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ParentMultibindingsAreAlsoIncluded.kt");
       }
     }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/box/dependencygraph/leniency")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Leniency {
+      @Test
+      public void testAllFilesPresentInLeniency() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/leniency"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      }
+
+      @Test
+      @TestMetadata("UnusedProvidersAreNotValidated.kt")
+      public void testUnusedProvidersAreNotValidated() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/leniency/UnusedProvidersAreNotValidated.kt");
+      }
+
+      @Test
+      @TestMetadata("UnusedProvidersInContainersAreNotValidated.kt")
+      public void testUnusedProvidersInContainersAreNotValidated() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/leniency/UnusedProvidersInContainersAreNotValidated.kt");
+      }
+    }
   }
 
   @Nested
@@ -541,6 +575,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("InjectedFunctionParametersWithLambdaDefaultsWork.kt")
     public void testInjectedFunctionParametersWithLambdaDefaultsWork() {
       runTest("compiler-tests/src/test/data/box/inject/InjectedFunctionParametersWithLambdaDefaultsWork.kt");
+    }
+
+    @Test
+    @TestMetadata("InjectedPrivateConstructorParametersWithGenericsWork.kt")
+    public void testInjectedPrivateConstructorParametersWithGenericsWork() {
+      runTest("compiler-tests/src/test/data/box/inject/InjectedPrivateConstructorParametersWithGenericsWork.kt");
     }
 
     @Nested

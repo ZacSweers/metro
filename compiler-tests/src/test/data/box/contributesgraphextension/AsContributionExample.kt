@@ -4,7 +4,7 @@ abstract class ParentScope
 abstract class ChildScope
 
 @SingleIn(ChildScope::class)
-@ContributesGraphExtension(ChildScope::class, isExtendable = true)
+@ContributesGraphExtension(ChildScope::class)
 interface ChildGraph {
 
   /** Factory for creating the child graph. */
@@ -17,7 +17,7 @@ interface ChildGraph {
 
 // MODULE: main(lib)
 @SingleIn(ParentScope::class)
-@DependencyGraph(ParentScope::class, isExtendable = true)
+@DependencyGraph(ParentScope::class)
 interface ParentGraph {
 }
 

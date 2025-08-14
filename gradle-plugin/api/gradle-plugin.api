@@ -27,6 +27,7 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension {
 	public final fun getDebug ()Lorg/gradle/api/provider/Property;
 	public final fun getEnableKotlinVersionCompatibilityChecks ()Lorg/gradle/api/provider/Property;
 	public final fun getEnableScopedInjectClassHints ()Lorg/gradle/api/provider/Property;
+	public final fun getEnableStrictValidation ()Lorg/gradle/api/provider/Property;
 	public final fun getEnableTopLevelFunctionInjection ()Lorg/gradle/api/provider/Property;
 	public final fun getEnabled ()Lorg/gradle/api/provider/Property;
 	public final fun getGenerateAssistedFactories ()Lorg/gradle/api/provider/Property;
@@ -57,6 +58,8 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension$InteropHan
 	public final fun getEnableDaggerAnvilInterop ()Lorg/gradle/api/provider/Property;
 	public abstract fun getEnableDaggerRuntimeInterop ()Lorg/gradle/api/provider/Property;
 	public final fun getGraph ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getGraphExtension ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getGraphExtensionFactory ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getGraphFactory ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getInject ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getIntoMap ()Lorg/gradle/api/provider/SetProperty;

@@ -11,7 +11,7 @@ interface ChildGraph {
   }
 }
 
-@DependencyGraph(AppScope::class, isExtendable = true)
+@DependencyGraph(AppScope::class)
 interface AppGraph
 
 @Inject

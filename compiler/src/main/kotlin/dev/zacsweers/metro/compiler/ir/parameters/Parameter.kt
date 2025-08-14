@@ -47,7 +47,6 @@ private constructor(
   val isGraphInstance: Boolean,
   val isBindsInstance: Boolean,
   val isIncludes: Boolean,
-  val isExtends: Boolean,
   val isMember: Boolean,
   ir: IrValueParameter?,
 ) : Comparable<Parameter> {
@@ -90,7 +89,6 @@ private constructor(
     isGraphInstance: Boolean = this.isGraphInstance,
     isBindsInstance: Boolean = this.isBindsInstance,
     isIncludes: Boolean = this.isIncludes,
-    isExtends: Boolean = this.isExtends,
     isMember: Boolean = this.isMember,
     ir: IrValueParameter? = this._ir,
   ) =
@@ -105,7 +103,6 @@ private constructor(
       isGraphInstance = isGraphInstance,
       isBindsInstance = isBindsInstance,
       isIncludes = isIncludes,
-      isExtends = isExtends,
       isMember = isMember,
       ir = ir,
     )
@@ -147,7 +144,6 @@ private constructor(
       isGraphInstance: Boolean,
       isBindsInstance: Boolean,
       isIncludes: Boolean,
-      isExtends: Boolean,
       assistedIdentifier: String,
       assistedParameterKey: AssistedParameterKey =
         AssistedParameterKey(contextualTypeKey.typeKey, assistedIdentifier),
@@ -161,7 +157,6 @@ private constructor(
         isGraphInstance = isGraphInstance,
         isBindsInstance = isBindsInstance,
         isIncludes = isIncludes,
-        isExtends = isExtends,
         assistedIdentifier = assistedIdentifier,
         assistedParameterKey = assistedParameterKey,
         ir = ir,
@@ -189,7 +184,6 @@ private constructor(
         isBindsInstance = false,
         isGraphInstance = false,
         isIncludes = false,
-        isExtends = false,
         isMember = true,
       )
     }
@@ -220,7 +214,6 @@ internal fun IrValueParameter.toConstructorParameter(
 
   var isProvides = false
   var isIncludes = false
-  var isExtends = false
   for (annotation in annotations) {
     val classId = annotation.symbol.owner.parentAsClass.classId
     when (classId) {
@@ -230,9 +223,7 @@ internal fun IrValueParameter.toConstructorParameter(
       in context.symbols.classIds.includes -> {
         isIncludes = true
       }
-      in context.symbols.classIds.extends -> {
-        isExtends = true
-      }
+
       else -> continue
     }
   }
@@ -247,7 +238,6 @@ internal fun IrValueParameter.toConstructorParameter(
     assistedIdentifier = assistedIdentifier,
     isGraphInstance = false,
     isBindsInstance = isProvides,
-    isExtends = isExtends,
     isIncludes = isIncludes,
     ir = this,
   )

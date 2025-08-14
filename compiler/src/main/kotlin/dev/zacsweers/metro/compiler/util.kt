@@ -10,6 +10,8 @@ import org.jetbrains.kotlin.name.Name
 
 internal const val LOG_PREFIX = "[METRO]"
 
+internal const val REPORT_METRO_MESSAGE = "This is a bug in the Metro compiler, please report it to https://github.com/zacsweers/metro."
+
 internal fun <T> unsafeLazy(initializer: () -> T) = lazy(LazyThreadSafetyMode.NONE, initializer)
 
 internal inline fun <reified T : Any> Any.expectAs(): T {
@@ -175,3 +177,7 @@ internal fun String.suffixIfNot(suffix: String) =
   if (this.endsWith(suffix)) this else "$this$suffix"
 
 internal fun ClassId.scopeHintFunctionName(): Name = joinSimpleNames().shortClassName
+
+internal fun reportCompilerBug(message: String): Nothing {
+  error("${message.suffixIfNot(".")} $REPORT_METRO_MESSAGE ")
+}

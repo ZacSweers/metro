@@ -67,13 +67,16 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
   public val generateJvmContributionHintsInFir: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(false)
 
-  /**
-   * Enable/disable hint property generation for scoped inject classes. Disabled by default.
-   *
-   * @see <a href="https://zacsweers.github.io/metro/dependency-graphs/#graph-extensions">Graph
-   *   Extensions docs for more details</a>
-   */
+  @Deprecated("This is deprecated and no longer does anything. It will be removed in the future.")
   public val enableScopedInjectClassHints: Property<Boolean> =
+    objects.property(Boolean::class.javaObjectType).convention(false)
+
+  /**
+   * Enable/disable strict validation of bindings. If enabled, _all_ declared `@Provides` and
+   * `@Binds` bindings will be validated even if they are not used by the graph. Disabled by
+   * default.
+   */
+  public val enableStrictValidation: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(false)
 
   /** Enable/disable shrinking of unused bindings. Enabled by default. */
@@ -167,6 +170,8 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     public val elementsIntoSet: SetProperty<String> = objects.setProperty(String::class.java)
     public val graph: SetProperty<String> = objects.setProperty(String::class.java)
     public val graphFactory: SetProperty<String> = objects.setProperty(String::class.java)
+    public val graphExtension: SetProperty<String> = objects.setProperty(String::class.java)
+    public val graphExtensionFactory: SetProperty<String> = objects.setProperty(String::class.java)
     public val inject: SetProperty<String> = objects.setProperty(String::class.java)
     public val intoMap: SetProperty<String> = objects.setProperty(String::class.java)
     public val intoSet: SetProperty<String> = objects.setProperty(String::class.java)
@@ -208,6 +213,8 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
       elementsIntoSet.add("dagger/multibindings/ElementsIntoSet")
       graph.add("dagger/Component")
       graphFactory.add("dagger/Component.Factory")
+      graphExtension.add("dagger/Subcomponent")
+      graphExtensionFactory.add("dagger/Subcomponent.Factory")
       intoMap.add("dagger/multibindings/IntoMap")
       intoSet.add("dagger/multibindings/IntoSet")
       lazy.addAll("dagger/Lazy")
@@ -255,6 +262,8 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
       if (includeDaggerAnvil) {
         graph.add("com/squareup/anvil/annotations/MergeComponent")
         graphFactory.add("com/squareup/anvil/annotations/MergeComponent.Factory")
+        graphExtension.add("com/squareup/anvil/annotations/MergeSubcomponent")
+        graphExtensionFactory.add("com/squareup/anvil/annotations/MergeSubcomponent.Factory")
         contributesTo.add("com/squareup/anvil/annotations/ContributesTo")
         contributesBinding.add("com/squareup/anvil/annotations/ContributesBinding")
         contributesIntoSet.add("com/squareup/anvil/annotations/ContributesMultibinding")

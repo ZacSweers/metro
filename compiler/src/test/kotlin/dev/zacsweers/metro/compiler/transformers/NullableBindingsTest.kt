@@ -46,7 +46,7 @@ class NullableBindingsTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(Unit::class, isExtendable = true)
+          @DependencyGraph(Unit::class)
           interface ExampleGraph {
             val int: Int
             val nullable: Int?
@@ -79,7 +79,7 @@ class NullableBindingsTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(Unit::class, isExtendable = true)
+          @DependencyGraph(Unit::class)
           interface ExampleGraph {
             val int: Int
             val nullable: Int?
@@ -112,7 +112,7 @@ class NullableBindingsTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(Unit::class, isExtendable = true)
+          @DependencyGraph(Unit::class)
           interface ExampleGraph {
             val foo: Foo
 
@@ -144,7 +144,7 @@ class NullableBindingsTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(Unit::class, isExtendable = true)
+          @DependencyGraph(Unit::class)
           interface ExampleGraph {
             val foo: GenericFoo<String?>
 
@@ -169,7 +169,7 @@ class NullableBindingsTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(Unit::class, isExtendable = true)
+          @DependencyGraph(Unit::class)
           interface ExampleGraph {
             val foo: Foo
 
@@ -198,7 +198,7 @@ class NullableBindingsTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(Unit::class, isExtendable = true)
+          @DependencyGraph(Unit::class)
           interface ExampleGraph {
             val nullableInts: Set<Int?>
             val ints: Set<Int>
@@ -236,7 +236,7 @@ class NullableBindingsTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(Unit::class, isExtendable = true)
+          @DependencyGraph(Unit::class)
           interface ExampleGraph {
             @Multibinds
             val nullableInts: Set<Int?>
@@ -270,7 +270,7 @@ class NullableBindingsTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(Unit::class, isExtendable = true)
+          @DependencyGraph(Unit::class)
           interface ExampleGraph {
             val nullableInts: Map<Int, Int?>
             val ints: Map<Int, Int>
@@ -312,7 +312,7 @@ class NullableBindingsTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(Unit::class, isExtendable = true)
+          @DependencyGraph(Unit::class)
           interface ExampleGraph {
             val nullableInts: Map<Int, Provider<Int?>>
             val ints: Map<Int, Provider<Int>>
@@ -354,7 +354,7 @@ class NullableBindingsTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(Unit::class, isExtendable = true)
+          @DependencyGraph(Unit::class)
           interface ExampleGraph {
             @Multibinds
             val nullableInts: Set<Int?>
@@ -388,7 +388,7 @@ class NullableBindingsTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(Unit::class, isExtendable = true)
+          @DependencyGraph(Unit::class)
           interface ExampleGraph {
             val int: Int
             val nullableInt: Int?
@@ -414,7 +414,7 @@ class NullableBindingsTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(Unit::class, isExtendable = true)
+          @DependencyGraph(Unit::class)
           interface ExampleGraph {
             val int: Int
             val nullableInt: Int?

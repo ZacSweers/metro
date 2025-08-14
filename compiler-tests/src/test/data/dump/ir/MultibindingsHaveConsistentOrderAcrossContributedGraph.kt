@@ -6,7 +6,7 @@ interface Task
 class TaskImpl4 : Task
 class TaskImpl3 : Task
 
-@DependencyGraph(AppScope::class, isExtendable = true)
+@DependencyGraph(AppScope::class)
 interface ExampleGraph {
   val tasks: Set<Task>
   @IntoSet @Binds val TaskImpl2.bind: Task

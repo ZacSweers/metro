@@ -14,7 +14,7 @@ class ClassWithBackRefs<T : Any?, V : Any?, E : V> {
       }
 
       fun <T : Any?, V : Any?, E : V> newInstance(): ClassWithBackRefs<T, V, E> {
-        return ClassWithBackRefs()
+        return ClassWithBackRefs<T, V, E>()
       }
 
     }
@@ -59,7 +59,7 @@ class ClassWithBounds<T : Any> {
       }
 
       fun <T : Any> newInstance(): ClassWithBounds<T> {
-        return ClassWithBounds()
+        return ClassWithBounds<T>()
       }
 
     }
@@ -104,7 +104,7 @@ class ClassWithMultiple<T : Any?, V : Any?, E : Any?> {
       }
 
       fun <T : Any?, V : Any?, E : Any?> newInstance(): ClassWithMultiple<T, V, E> {
-        return ClassWithMultiple()
+        return ClassWithMultiple<T, V, E>()
       }
 
     }
@@ -149,7 +149,7 @@ class ClassWithNullable<T : Any?, E : T?> {
       }
 
       fun <T : Any?, E : T?> newInstance(): ClassWithNullable<T, E> {
-        return ClassWithNullable()
+        return ClassWithNullable<T, E>()
       }
 
     }
@@ -194,7 +194,7 @@ class ClassWithWheres<T : Any?, V : Any?, E : V> {
       }
 
       fun <T : Any?, V : Any?, E : V> newInstance(): ClassWithWheres<T, V, E> {
-        return ClassWithWheres()
+        return ClassWithWheres<T, V, E>()
       }
 
     }
@@ -239,7 +239,7 @@ class ComplexMonster<T : Any, V : T, E : V, LongName : Any?, NullableLongName : 
       }
 
       fun <T : Any, V : T, E : V, LongName : Any?, NullableLongName : LongName?> newInstance(): ComplexMonster<T, V, E, LongName, NullableLongName> {
-        return ComplexMonster()
+        return ComplexMonster<T, V, E, LongName, NullableLongName>()
       }
 
     }
@@ -284,7 +284,7 @@ class SimpleClass<T : Any?> {
       }
 
       fun <T : Any?> newInstance(): SimpleClass<T> {
-        return SimpleClass()
+        return SimpleClass<T>()
       }
 
     }

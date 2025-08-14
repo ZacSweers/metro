@@ -123,7 +123,7 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
             extension.generateJvmContributionHintsInFir,
           )
         )
-        add(lazyOption("enable-scoped-inject-class-hints", extension.enableScopedInjectClassHints))
+        add(lazyOption("enable-strict-validation", extension.enableStrictValidation))
         add(lazyOption("transform-providers-to-private", extension.transformProvidersToPrivate))
         add(lazyOption("shrink-unused-bindings", extension.shrinkUnusedBindings))
         add(lazyOption("chunk-field-inits", extension.chunkFieldInits))

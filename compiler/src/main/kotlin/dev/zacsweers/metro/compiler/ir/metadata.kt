@@ -24,8 +24,6 @@ internal var IrClass.metroMetadata: MetroMetadata?
 
 internal fun DependencyGraphNode.toProto(
   bindingGraph: IrBindingGraph,
-  includedGraphClasses: Set<String>,
-  parentGraphClasses: Set<String>,
 ): DependencyGraphProto {
   var multibindingAccessors = 0
   val accessorNames =
@@ -44,8 +42,6 @@ internal fun DependencyGraphNode.toProto(
     isGraph = true,
     providerFactories = providerFactories,
     accessorNames = accessorNames,
-    includedGraphClasses = includedGraphClasses,
-    parentGraphClasses = parentGraphClasses,
     multibindingAccessorIndices = multibindingAccessors,
   )
 }
@@ -64,8 +60,6 @@ private fun createGraphProto(
   isGraph: Boolean,
   providerFactories: Collection<Pair<IrTypeKey, ProviderFactory>> = emptyList(),
   accessorNames: Collection<String> = emptyList(),
-  includedGraphClasses: Collection<String> = emptyList(),
-  parentGraphClasses: Collection<String> = emptyList(),
   multibindingAccessorIndices: Int = 0,
   includedBindingContainers: Collection<String> = emptyList(),
 ): DependencyGraphProto {
@@ -74,8 +68,6 @@ private fun createGraphProto(
     provider_factory_classes =
       providerFactories.map { (_, factory) -> factory.clazz.classIdOrFail.protoString }.sorted(),
     accessor_callable_names = accessorNames.sorted(),
-    included_classes = includedGraphClasses.sorted(),
-    parent_graph_classes = parentGraphClasses.sorted(),
     multibinding_accessor_indices = multibindingAccessorIndices,
     included_binding_containers = includedBindingContainers.sorted(),
   )

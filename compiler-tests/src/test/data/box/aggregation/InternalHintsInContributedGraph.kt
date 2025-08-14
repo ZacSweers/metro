@@ -19,7 +19,7 @@ internal interface UnitGraph {
 }
 
 // MODULE: main()(lib)
-@DependencyGraph(AppScope::class, isExtendable = true)
+@DependencyGraph(AppScope::class)
 internal interface AppGraph
 
 fun box(): String {

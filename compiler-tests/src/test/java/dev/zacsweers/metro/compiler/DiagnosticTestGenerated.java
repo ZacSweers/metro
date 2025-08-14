@@ -166,6 +166,22 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     public void testGraphsCannotDirectlyExtendOtherGraphs() {
       runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/GraphsCannotDirectlyExtendOtherGraphs.kt");
     }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/diagnostic/dependencygraph/leniency")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Leniency {
+      @Test
+      public void testAllFilesPresentInLeniency() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/dependencygraph/leniency"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      }
+
+      @Test
+      @TestMetadata("SomeUnusedAndSomeUsed.kt")
+      public void testSomeUnusedAndSomeUsed() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/leniency/SomeUnusedAndSomeUsed.kt");
+      }
+    }
   }
 
   @Nested

@@ -41,12 +41,11 @@ abstract class MetroProject(
           """
             .trimIndent()
         )
-        val metroOptions =
-          metroOptions.enableScopedInjectClassHints
-            ?.let { "enableScopedInjectClassHints.set($it)" }
-            .orEmpty()
-        if (metroOptions.isNotBlank()) {
-          appendLine("  $metroOptions")
+        val metroOptions = buildList {
+          metroOptions.enableStrictValidation?.let { add("enableStrictValidation.set($it)") }
+        }
+        if (metroOptions.isNotEmpty()) {
+          metroOptions.joinTo(this, separator = "\n", prefix = "  ")
         }
         appendLine("}")
       }

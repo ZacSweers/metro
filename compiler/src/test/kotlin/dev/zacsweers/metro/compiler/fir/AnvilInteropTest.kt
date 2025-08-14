@@ -516,7 +516,7 @@ class AnvilInteropTest : MetroCompilerTest() {
           class Child
 
           @SingleIn(Parent::class)
-          @DependencyGraph(scope = Parent::class, isExtendable = true)
+          @DependencyGraph(scope = Parent::class)
           interface ParentComponent {
               @DependencyGraph.Factory
               interface Factory {

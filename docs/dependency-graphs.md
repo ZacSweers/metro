@@ -138,35 +138,118 @@ interface AppGraph
 
 ## Graph Extensions
 
-Dependency graphs can be marked as _extendable_ to allow child graphs to extend them. These are similar in functionality to Dagger's `Subcomponents` but are detached in nature like in kotlin-inject.
+Dependency graphs can be extended via _graph extensions_. As the name implies, graph extensions _extend_ a parent graph they are declared for and contain a superset of bindings that includes both the parent graph(s) as well as their own. These are similar in functionality to Dagger's _Subcomponents_.
 
-A graph must opt itself into extension in via `@DependencyGraph(..., isExtendable = true)`, which will make the Metro compiler generate extra metadata for downstream child graphs.
+Graph extensions must be either an interface or an abstract class and are annotated with `@GraphExtension`. They are created via `@GraphExtension.Factory` types.
 
-Then, a child graph can add an `@Extends`-annotated parameter to its creator to extend that graph.
+Metro's compiler plugin will build, validate, and implement this graph at compile-time _when the parent graph is generated_. This means that graph extensions are not available until the parent graph is generated.
+
+Graph extensions can be chained and implicitly inherit their parents' scopes.
+
+### Creating Graph Extensions
+
+You cannot create a graph extension independent of its parent graph, you may only access it via accessor on the parent graph. You can declare this in multiple ways:
+
+* Declare an accessor on the parent graph directly.
 
 ```kotlin
-@DependencyGraph(isExtendable = true)
-interface AppGraph {
-  @Provides fun provideHttpClient(): HttpClient { ... }
-}
+@GraphExtension
+interface LoggedInGraph
 
 @DependencyGraph
-interface UserGraph {
-  @DependencyGraph.Factory
-  fun interface Factory {
-    fun create(@Extends appGraph: AppGraph): UserGraph
-  }
+interface AppGraph {
+  val loggedInGraph: LoggedInGraph
 }
 ```
 
-Child graphs then contain a _superset_ of bindings they can inject, including both their bindings and their parents'. Graph extensions can be chained as well.
+* (If the extension has a creator) declare the creator on the parent graph directly.
 
-Child graphs also implicitly inherit their parents' _scopes_.
+```kotlin
+@GraphExtension
+interface LoggedInGraph {
+  @GraphExtension.Factory
+  interface Factory {
+    fun createLoggedInGraph(): LoggedInGraph
+  }
+}
 
-!!! tip "Hoisting unused scoped class injections in parent graphs"
-    In some cases, there are scoped bindings that are unused in the parent graph but _are_ used in child graphs. Due to the detached nature of graph extensions, these bindings by default end up scoped to the child. To enforce that these bindings are scoped and held by the parent, Metro generates hints for these classes and discovers them during graph processing by default. You can disable this via the `enableScopedInjectClassHints` property in the Gradle DSL.
-    
-    See https://github.com/ZacSweers/metro/issues/377 for more details.
+@DependencyGraph
+interface AppGraph {
+  val loggedInGraphFactory: LoggedInGraph.Factory
+}
+```
+
+* (If the extension has a creator) make the parent graph implement the creator.
+
+```kotlin
+@GraphExtension
+interface LoggedInGraph {
+  @GraphExtension.Factory
+  interface Factory {
+    fun createLoggedInGraph(): LoggedInGraph
+  }
+}
+
+@DependencyGraph
+interface AppGraph : LoggedInGraph.Factory
+```
+
+* Contribute the factory to the parent graph via [ContributesGraphExtension](#contributed-graph-extensions). More on this below.
+
+```kotlin
+@GraphExtension
+interface LoggedInGraph {
+  @ContributesGraphExtension.Factory(AppScope::class)
+  interface Factory {
+    fun createLoggedInGraph(): LoggedInGraph
+  }
+}
+
+@DependencyGraph(AppScope::class)
+interface AppGraph
+```
+
+### Scoping
+
+_See [Scopes](scopes.md) for more details on scopes!_
+
+Like [DependencyGraph](#scoping), graph extensions may declare a `scope` (and optionally `additionalScopes` if there are more). Each of these declared scopes act as an implicit `@SingleIn` representation of that scope. For example:
+
+```kotlin
+@GraphExtension(AppScope::class)
+interface AppGraph
+```
+
+Is functionally equivalent to writing the below.
+
+```kotlin
+@SingleIn(AppScope::class)
+@GraphExtension(AppScope::class)
+interface AppGraph
+```
+
+### Providers
+
+Like [DependencyGraph](#dependency-graphs), graph extensions may declare providers via `@Provides` and `@Binds` to provide dependencies into the graph.
+
+_Creators_ can provide instance dependencies and other graphs as dependencies.
+
+```kotlin
+@GraphExtension
+interface AppGraph {
+  val httpClient: HttpClient
+
+  @Provides fun provideHttpClient(): HttpClient = HttpClient()
+}
+```
+
+### Creators
+
+See [DependencyGraph](#inputs)'s section on creators.
+
+### Aggregation
+
+See [DependencyGraph](#scoping)'s section on aggregation.
 
 ### Contributed Graph Extensions
 
@@ -209,18 +292,18 @@ interface LoggedInGraph {
 In the `:app` module:
 
 ```
-@DependencyGraph(AppScope::class, isExtendable = true)
+@DependencyGraph(AppScope::class)
 interface AppGraph
 ```
 
-The generated code will modify `AppGraph` to implement `LoggedInGraph.Factory` and implement `createLoggedInGraph()` using a generated final `$$ContributedLoggedInGraph` class that includes all contributed bindings, including `UserRepository` from `:user-data`.
+The generated code will modify `AppGraph` to implement `LoggedInGraph.Factory` and implement `createLoggedInGraph()` using a generated final `LoggedInGraphImpl` class that includes all contributed bindings, including `UserRepository` from `:user-data`.
 
 ```kotlin
 interface AppGraph 
   // modifications generated during compile-time
   : LoggedInGraph.Factory {
   override fun createLoggedInGraph(): LoggedInGraph {
-    return $$ContributedLoggedInGraph(this)
+    return LoggedInGraphImpl(this)
   }
 
   // Generated in IR
@@ -257,8 +340,8 @@ This maps to:
 ```kotlin
 // Generated in IR
 @DependencyGraph(LoggedInScope::class)
-class $$ContributedLoggedInGraph(
-  @Extends parent: AppGraph,
+class LoggedInGraphImpl(
+  parent: AppGraph,
   @Provides userId: String
 ): LoggedInGraph {
   // ...

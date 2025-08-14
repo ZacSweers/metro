@@ -368,7 +368,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `all factory parameters must be annotated with Provides XOR Includes XOR Extends`() {
+  fun `all factory parameters must be annotated with Provides XOR Includes`() {
     val result =
       compile(
         source(
@@ -386,7 +386,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertDiagnostics(
-      "e: ExampleGraph.kt:10:41 DependencyGraph.Factory abstract function parameters must be annotated with exactly one @Includes, @Provides, or @Extends."
+      "e: ExampleGraph.kt:10:41 DependencyGraph.Factory abstract function parameters must be annotated with exactly one @Includes or @Provides."
     )
   }
 
@@ -422,55 +422,6 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         e: ExampleGraph.kt:15:17 @Includes cannot be applied to enums, annotations, or platform types.
       """
         .trimIndent()
-    )
-  }
-
-  @Test
-  fun `Extends type must be a DependencyGraph-annotated type`() {
-    val result =
-      compile(
-        source(
-          """
-            @DependencyGraph
-            interface ExampleGraph {
-              @DependencyGraph.Factory
-              fun interface Factory {
-                fun create(@Extends value: String): ExampleGraph
-              }
-            }
-          """
-            .trimIndent()
-        ),
-        expectedExitCode = ExitCode.COMPILATION_ERROR,
-      )
-    result.assertDiagnostics(
-      "e: ExampleGraph.kt:10:25 @Extends types must be annotated with @DependencyGraph."
-    )
-  }
-
-  @Test
-  fun `Extends type must be a DependencyGraph isExtendable`() {
-    val result =
-      compile(
-        source(
-          """
-            @DependencyGraph
-            interface ExampleGraph {
-              @DependencyGraph.Factory
-              fun interface Factory {
-                fun create(@Extends value: FinalClassGraph): ExampleGraph
-              }
-            }
-
-            @DependencyGraph
-            interface FinalClassGraph
-          """
-            .trimIndent()
-        ),
-        expectedExitCode = ExitCode.COMPILATION_ERROR,
-      )
-    result.assertDiagnostics(
-      "e: ExampleGraph.kt:10:25 @Extends graphs must be extendable (set DependencyGraph.isExtendable to true)."
     )
   }
 

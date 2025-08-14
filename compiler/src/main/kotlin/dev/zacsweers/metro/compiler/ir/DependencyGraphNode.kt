@@ -17,15 +17,16 @@ import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.name.ClassId
 
 // Represents an object graph's structure and relationships
 internal data class DependencyGraphNode(
   val sourceGraph: IrClass,
   val supertypes: List<IrType>,
-  val isExtendable: Boolean,
   val includedGraphNodes: Map<IrTypeKey, DependencyGraphNode>,
-  val contributedGraphs: Map<IrTypeKey, MetroSimpleFunction>,
+  val graphExtensions: Map<IrTypeKey, MetroSimpleFunction>,
   val scopes: Set<IrAnnotation>,
+  val aggregationScopes: Set<ClassId>,
   val providerFactories: List<Pair<IrTypeKey, ProviderFactory>>,
   // Types accessible via this graph (includes inherited)
   // Dagger calls these "provision methods", but that's a bit vague IMO
@@ -46,9 +47,15 @@ internal data class DependencyGraphNode(
   //  maybe we track these protos separately somewhere?
   var proto: DependencyGraphProto? = null,
 ) {
+  val hasExtensions = graphExtensions.isNotEmpty()
+
+  val metroGraph by unsafeLazy { sourceGraph.metroGraphOrNull }
+
+  val metroGraphOrFail by unsafeLazy { metroGraph ?: error("No generated MetroGraph found: ${sourceGraph.kotlinFqName}") }
+
   /** [IrTypeKey] of the contributed graph extension, if any. */
   val contributedGraphTypeKey: IrTypeKey? by unsafeLazy {
-    if (sourceGraph.origin == Origins.ContributedGraph) {
+    if (sourceGraph.origin == Origins.GeneratedGraphExtension) {
       IrTypeKey(sourceGraph.superTypes.first())
     } else {
       null
@@ -63,7 +70,7 @@ internal data class DependencyGraphNode(
 
   val reportableSourceGraphDeclaration by unsafeLazy {
     generateSequence(sourceGraph) { it.parentAsClass }
-      .firstOrNull { it.origin != Origins.ContributedGraph && it.fileOrNull != null }
+      .firstOrNull { it.origin != Origins.GeneratedGraphExtension && it.fileOrNull != null }
       ?: error(
         "Could not find a reportable source graph declaration for ${sourceGraph.kotlinFqName}"
       )

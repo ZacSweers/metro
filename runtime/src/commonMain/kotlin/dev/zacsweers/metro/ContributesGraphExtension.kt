@@ -47,19 +47,19 @@ import kotlin.reflect.KClass
  *
  * In the `:app` module:
  * ```
- * @DependencyGraph(AppScope::class, isExtendable = true)
+ * @DependencyGraph(AppScope::class)
  * interface AppGraph
  * ```
  *
  * The generated code will modify `AppGraph` to implement `LoggedInGraph.Factory` and implement
- * `createLoggedInGraph()` using a generated final `$$ContributedLoggedInGraph` class that includes
+ * `createLoggedInGraph()` using a generated final `LoggedInGraphImpl` class that includes
  * all contributed bindings, including `UserRepository` from `:user-data`.
  *
  * ```
  * // modifications generated during compile-time
  * interface AppGraph : LoggedInGraph.Factory {
  *   override fun createLoggedInGraph(): LoggedInGraph {
- *     return $$ContributedLoggedInGraph(this)
+ *     return LoggedInGraphImpl(this)
  *   }
  *
  *   // Generated in IR
@@ -93,8 +93,8 @@ import kotlin.reflect.KClass
  * ```
  * // Generated in IR
  * @DependencyGraph(LoggedInScope::class)
- * class $$ContributedLoggedInGraph(
- *   @Extends parent: AppGraph,
+ * class LoggedInGraphImpl(
+ *   parent: AppGraph,
  *   @Provides userId: String
  * ): LoggedInGraph {
  *   // ...
@@ -110,13 +110,11 @@ import kotlin.reflect.KClass
  * ```
  * > Note: Abstract factory classes cannot be used as graph contributions.
  *
- * Contributed graphs may also be chained, but note that [isExtendable] must be true to do so!
+ * Contributed graphs may also be chained.
  *
  * @property scope The scope in which to include this contributed graph interface.
  * @property excludes Optional list of excluded contributing classes (requires a [scope] to be
  *   defined).
- * @property isExtendable If enabled, marks this graph as available for extension and generates
- *   extra metadata about this graph's available bindings for child graphs to read.
  * @property bindingContainers Optional list of included binding containers. See the doc on
  *   [BindingContainer] for more details.
  */
@@ -125,7 +123,6 @@ public annotation class ContributesGraphExtension(
   val scope: KClass<*> = Nothing::class,
   val additionalScopes: Array<KClass<*>> = [],
   val excludes: Array<KClass<*>> = [],
-  val isExtendable: Boolean = false,
   val bindingContainers: Array<KClass<*>> = [],
 ) {
   /**
