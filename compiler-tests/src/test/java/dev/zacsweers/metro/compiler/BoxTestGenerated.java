@@ -242,6 +242,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ContributesIntoMapFromMultipleSources.kt")
+    public void testContributesIntoMapFromMultipleSources() {
+      runTest("compiler-tests/src/test/data/box/contributesgraphextension/ContributesIntoMapFromMultipleSources.kt");
+    }
+
+    @Test
     @TestMetadata("ContributingMultipleGraphsToSameParent.kt")
     public void testContributingMultipleGraphsToSameParent() {
       runTest("compiler-tests/src/test/data/box/contributesgraphextension/ContributingMultipleGraphsToSameParent.kt");
@@ -569,6 +575,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("InjectedFunctionParametersWithLambdaDefaultsWork.kt")
     public void testInjectedFunctionParametersWithLambdaDefaultsWork() {
       runTest("compiler-tests/src/test/data/box/inject/InjectedFunctionParametersWithLambdaDefaultsWork.kt");
+    }
+
+    @Test
+    @TestMetadata("InjectedPrivateConstructorParametersWithGenericsWork.kt")
+    public void testInjectedPrivateConstructorParametersWithGenericsWork() {
+      runTest("compiler-tests/src/test/data/box/inject/InjectedPrivateConstructorParametersWithGenericsWork.kt");
     }
 
     @Nested

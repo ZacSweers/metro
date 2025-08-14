@@ -470,15 +470,19 @@ internal class InjectConstructorTransformer(
         parentClass = classToGenerateCreatorsIn,
         sourceParameters = constructorParameters.regularParameters.map { it.ir },
       ) { function ->
-        irCallConstructor(targetConstructor, emptyList()).apply {
-          // The function may have a dispatch receiver so we need to offset
-          val functionParameters = function.nonDispatchParameters
-          val indexOffset = if (function.dispatchReceiverParameter == null) 0 else 1
-          for (index in constructorParameters.allParameters.indices) {
-            val parameter = functionParameters[index]
-            arguments[parameter.indexInParameters - indexOffset] = irGet(parameter)
+        irCallConstructor(
+            callee = targetConstructor,
+            typeArguments = function.typeParameters.map { it.defaultType },
+          )
+          .apply {
+            // The function may have a dispatch receiver so we need to offset
+            val functionParameters = function.nonDispatchParameters
+            val indexOffset = if (function.dispatchReceiverParameter == null) 0 else 1
+            for (index in constructorParameters.allParameters.indices) {
+              val parameter = functionParameters[index]
+              arguments[parameter.indexInParameters - indexOffset] = irGet(parameter)
+            }
           }
-        }
       }
     return newInstanceFunction
   }
