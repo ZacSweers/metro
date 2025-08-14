@@ -130,7 +130,7 @@ To create graph extensions, you now _must_ do so via a parent graph (using one o
 - **Fix**: Don't chunk parent graph validation statements as these must be in the original constructor body.
 - **Fix**: Fix wrong receiver context for chunked field initializers.
 - [internal change] Simplify metadata and just use accessor annotations.
-- [internal change] Contributed graphs are now generated as nested classes within the generated metro graph that they are contributed to.
+- [internal change] Graph extension impls are now generated as nested classes within the generated metro graph that they are contributed to.
 
 0.5.5
 -----
