@@ -409,7 +409,7 @@ internal class BindingGraphGenerator(
     // Traverse all parent graph supertypes to create binding aliases as needed
     for ((typeKey, extendedNode) in node.allExtendedNodes) {
       // If it's a contributed graph, add an alias for the parent types since that's what
-      // bindings will look for. i.e. $$ContributedLoggedInGraph -> LoggedInGraph + supertypes
+      // bindings will look for. i.e. LoggedInGraphImpl -> LoggedInGraph + supertypes
       for (superType in extendedNode.supertypes) {
         val parentTypeKey = IrTypeKey(superType)
 

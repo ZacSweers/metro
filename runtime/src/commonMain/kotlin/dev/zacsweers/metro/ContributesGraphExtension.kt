@@ -52,14 +52,14 @@ import kotlin.reflect.KClass
  * ```
  *
  * The generated code will modify `AppGraph` to implement `LoggedInGraph.Factory` and implement
- * `createLoggedInGraph()` using a generated final `$$ContributedLoggedInGraph` class that includes
+ * `createLoggedInGraph()` using a generated final `LoggedInGraphImpl` class that includes
  * all contributed bindings, including `UserRepository` from `:user-data`.
  *
  * ```
  * // modifications generated during compile-time
  * interface AppGraph : LoggedInGraph.Factory {
  *   override fun createLoggedInGraph(): LoggedInGraph {
- *     return $$ContributedLoggedInGraph(this)
+ *     return LoggedInGraphImpl(this)
  *   }
  *
  *   // Generated in IR
@@ -93,7 +93,7 @@ import kotlin.reflect.KClass
  * ```
  * // Generated in IR
  * @DependencyGraph(LoggedInScope::class)
- * class $$ContributedLoggedInGraph(
+ * class LoggedInGraphImpl(
  *   parent: AppGraph,
  *   @Provides userId: String
  * ): LoggedInGraph {

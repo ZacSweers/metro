@@ -725,7 +725,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     ) {
       assertThat(exitCode).isEqualTo(KotlinCompilation.ExitCode.OK)
       assertNotNull(ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs())
-      // Assert no $$ContributedLoggedInGraph or createLoggedInGraph method or parent interface
+      // Assert no LoggedInGraphImpl or createLoggedInGraph method or parent interface
       assertThat(ExampleGraph.allSupertypes().map { it.name })
         .doesNotContain("test.LoggedInGraph\$Factory")
       assertThat(ExampleGraph.classes.map { it.simpleName })
@@ -759,7 +759,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     ) {
       assertThat(exitCode).isEqualTo(KotlinCompilation.ExitCode.OK)
       assertNotNull(ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs())
-      // Assert no $$ContributedLoggedInGraph or createLoggedInGraph method or parent interface
+      // Assert no LoggedInGraphImpl or createLoggedInGraph method or parent interface
       assertThat(ExampleGraph.allSupertypes().map { it.name })
         .doesNotContain("test.LoggedInGraph\$Factory")
       assertThat(ExampleGraph.classes.map { it.simpleName })

@@ -296,14 +296,14 @@ In the `:app` module:
 interface AppGraph
 ```
 
-The generated code will modify `AppGraph` to implement `LoggedInGraph.Factory` and implement `createLoggedInGraph()` using a generated final `$$ContributedLoggedInGraph` class that includes all contributed bindings, including `UserRepository` from `:user-data`.
+The generated code will modify `AppGraph` to implement `LoggedInGraph.Factory` and implement `createLoggedInGraph()` using a generated final `LoggedInGraphImpl` class that includes all contributed bindings, including `UserRepository` from `:user-data`.
 
 ```kotlin
 interface AppGraph 
   // modifications generated during compile-time
   : LoggedInGraph.Factory {
   override fun createLoggedInGraph(): LoggedInGraph {
-    return $$ContributedLoggedInGraph(this)
+    return LoggedInGraphImpl(this)
   }
 
   // Generated in IR
@@ -340,7 +340,7 @@ This maps to:
 ```kotlin
 // Generated in IR
 @DependencyGraph(LoggedInScope::class)
-class $$ContributedLoggedInGraph(
+class LoggedInGraphImpl(
   parent: AppGraph,
   @Provides userId: String
 ): LoggedInGraph {
