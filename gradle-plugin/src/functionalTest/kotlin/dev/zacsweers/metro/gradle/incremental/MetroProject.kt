@@ -42,10 +42,7 @@ abstract class MetroProject(
             .trimIndent()
         )
         val metroOptions = buildList {
-          metroOptions.enableScopedInjectClassHints
-            ?.let { add("enableScopedInjectClassHints.set($it)") }
-          metroOptions.enableStrictValidation
-            ?.let { add("enableStrictValidation.set($it)") }
+          metroOptions.enableStrictValidation?.let { add("enableStrictValidation.set($it)") }
         }
         if (metroOptions.isNotEmpty()) {
           metroOptions.joinTo(this, separator = "\n", prefix = "  ")

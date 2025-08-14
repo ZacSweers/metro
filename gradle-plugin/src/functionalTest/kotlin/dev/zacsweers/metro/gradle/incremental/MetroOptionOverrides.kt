@@ -2,7 +2,4 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.gradle.incremental
 
-data class MetroOptionOverrides(
-  val enableScopedInjectClassHints: Boolean? = null,
-  val enableStrictValidation: Boolean? = null,
-)
+data class MetroOptionOverrides(val enableStrictValidation: Boolean? = null)
