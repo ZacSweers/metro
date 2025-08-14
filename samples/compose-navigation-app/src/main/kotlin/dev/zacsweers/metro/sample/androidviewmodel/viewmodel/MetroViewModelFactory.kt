@@ -32,6 +32,5 @@ class MetroViewModelFactory(val appGraph: AppGraph) : ViewModelProvider.Factory 
     return modelClass.cast(provider())
   }
 
-  fun viewModelGraph(extras: CreationExtras): ViewModelGraph =
-    appGraph.createViewModelGraph(extras)
+  fun viewModelGraph(extras: CreationExtras): ViewModelGraph = appGraph.createViewModelGraph(extras)
 }

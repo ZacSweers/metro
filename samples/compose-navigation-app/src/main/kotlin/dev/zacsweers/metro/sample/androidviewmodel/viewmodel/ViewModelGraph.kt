@@ -31,8 +31,6 @@ interface ViewModelGraph {
 
   @GraphExtension.Factory
   fun interface Factory {
-    fun createViewModelGraph(
-      @Provides creationExtras: CreationExtras,
-    ): ViewModelGraph
+    fun createViewModelGraph(@Provides creationExtras: CreationExtras): ViewModelGraph
   }
 }
