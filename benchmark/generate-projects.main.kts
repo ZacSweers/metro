@@ -471,8 +471,9 @@ anvil {
 import com.squareup.anvil.annotations.ContributesBinding
 import com.squareup.anvil.annotations.ContributesMultibinding
 import com.squareup.anvil.annotations.ContributesSubcomponent
-import dev.zacsweers.metro.ContributesGraphExtension
 import dev.zacsweers.metro.AppScope
+import dev.zacsweers.metro.ContributesTo
+import dev.zacsweers.metro.GraphExtension
 import dev.zacsweers.metro.SingleIn
 import javax.inject.Inject
 $dependencyImports
