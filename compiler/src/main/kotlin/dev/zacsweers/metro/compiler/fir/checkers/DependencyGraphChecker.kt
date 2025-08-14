@@ -19,9 +19,7 @@ import dev.zacsweers.metro.compiler.fir.resolvedAdditionalScopesClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
 import dev.zacsweers.metro.compiler.fir.validateApiDeclaration
-import kotlin.collections.orEmpty
-import kotlin.sequences.orEmpty
-import kotlin.sequences.toSet
+import dev.zacsweers.metro.compiler.mapToSet
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
@@ -36,6 +34,7 @@ import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
+import org.jetbrains.kotlin.fir.dispatchReceiverClassLookupTagOrNull
 import org.jetbrains.kotlin.fir.dispatchReceiverClassTypeOrNull
 import org.jetbrains.kotlin.fir.resolve.firClassLike
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
@@ -67,9 +66,10 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
       declaration.annotationsIn(session, classIds.graphLikeAnnotations).firstOrNull() ?: return
 
     val graphAnnotationClassId = dependencyGraphAnno.toAnnotationClassIdSafe(session) ?: return
-    val isContributed = graphAnnotationClassId in classIds.contributesGraphExtensionAnnotations
+    val contributedExtension =
+      graphAnnotationClassId in classIds.contributesGraphExtensionAnnotations
 
-    if (isContributed) {
+    if (contributedExtension) {
       // Must have a nested class annotated with `@ContributesGraphExtension.Factory`
       val hasNestedFactory =
         declaration.symbol.nestedClasses().any { nestedClass ->
@@ -161,6 +161,9 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
       )
     }
 
+    val implementedGraphExtensionCreators =
+      graphExtensionFactorySupertypes.values.mapToSet { it.classId }
+
     // Note this doesn't check inherited supertypes. Maybe we should, but where do we report errors?
     for (callable in declaration.symbol.directCallableSymbols()) {
       if (!callable.isAbstract) continue
@@ -215,6 +218,36 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
             parentAggregationScopes = aggregationScopes,
           )
           continue
+        }
+      }
+
+      val isGraphExtension =
+        returnTypeClassSymbol?.isAnnotatedWithAny(session, classIds.allGraphExtensionAnnotations) ==
+          true
+      if (isGraphExtension) {
+        // Check if that extension has a creator. If so, we either must implement that creator or
+        // it's an error
+        // because they need to use it
+        val creator =
+          returnTypeClassSymbol.nestedClasses().firstOrNull { nestedClass ->
+            nestedClass.isAnnotatedWithAny(session, classIds.allGraphExtensionFactoryAnnotations)
+          }
+        if (creator != null) {
+          // Final check - make sure this callable belongs to that extension
+          val belongsToExtension =
+            callable.isOverride &&
+            creator.classId !in implementedGraphExtensionCreators &&
+              callable.directOverriddenSymbolsSafe(context).any {
+                it.dispatchReceiverClassLookupTagOrNull()?.classId == creator.classId
+              }
+          if (!belongsToExtension) {
+            reporter.reportOn(
+              callable.source,
+              FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
+              "Graph extension '${returnTypeClassSymbol.classId.asSingleFqName()}' has a creator type '${creator.classId.asSingleFqName()}' that must be used to create its instances. Either make '${declaration.classId.asSingleFqName()}' implement '${creator.classId.asSingleFqName()}' or expose an accessor for '${creator.classId.asSingleFqName()}' instead of '${returnTypeClassSymbol.classId.asSingleFqName()}' directly.",
+            )
+            continue
+          }
         }
       }
 

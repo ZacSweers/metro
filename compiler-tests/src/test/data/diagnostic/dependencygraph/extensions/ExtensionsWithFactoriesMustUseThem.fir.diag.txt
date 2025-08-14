@@ -1,0 +1,1 @@
+/ExtensionsWithFactoriesMustUseThem.kt:(389,402): error: Graph extension 'LoggedInGraph' has a creator type 'LoggedInGraph.Factory' that must be used to create its instances. Either make 'AppGraph' implement 'LoggedInGraph.Factory' or expose an accessor for 'LoggedInGraph.Factory' instead of 'LoggedInGraph' directly.
