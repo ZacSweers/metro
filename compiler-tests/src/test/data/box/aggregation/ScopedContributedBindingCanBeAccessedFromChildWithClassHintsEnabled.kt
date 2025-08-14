@@ -1,4 +1,3 @@
-// ENABLE_STRICT_VALIDATION
 sealed interface LoggedInScope
 
 interface Bob
