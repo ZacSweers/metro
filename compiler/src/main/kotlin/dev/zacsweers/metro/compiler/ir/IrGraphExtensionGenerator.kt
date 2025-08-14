@@ -71,12 +71,11 @@ internal class IrGraphExtensionGenerator(
       val isFactorySAM =
         parent.isAnnotatedWithAny(symbols.classIds.allGraphExtensionFactoryAnnotations)
       if (isFactorySAM) {
-        buildImpl(sourceSamFunction, parentTracer)
+        generateImplFromFactory(sourceSamFunction, parentTracer)
       } else {
         val returnType = contributedAccessor.ir.returnType.rawType()
         val returnIsGraphExtensionFactory =
           returnType.isAnnotatedWithAny(symbols.classIds.allGraphExtensionFactoryAnnotations)
-        // TODO use this when we support direct extension getters
         val returnIsGraphExtension =
           returnType.isAnnotatedWithAny(symbols.classIds.allGraphExtensionAnnotations)
         if (returnIsGraphExtensionFactory) {
@@ -84,7 +83,10 @@ internal class IrGraphExtensionGenerator(
             returnType.singleAbstractFunction().apply {
               remapTypes(sourceSamFunction.typeRemapperFor(contributedAccessor.ir.returnType))
             }
-          buildImpl(samFunction, parentTracer)
+          generateImplFromFactory(samFunction, parentTracer)
+        } else if (returnIsGraphExtension) {
+          // Simple case with no creator
+          generateImpl(returnType, creatorFunction = null)
         } else {
           error("Not a graph extension: ${returnType.kotlinFqName}")
         }
@@ -92,15 +94,18 @@ internal class IrGraphExtensionGenerator(
     }
   }
 
-  private fun buildImpl(factoryFunction: IrSimpleFunction, parentTracer: Tracer): IrClass {
+  private fun generateImplFromFactory(
+    factoryFunction: IrSimpleFunction,
+    parentTracer: Tracer,
+  ): IrClass {
     val sourceFactory = factoryFunction.parentAsClass
     val sourceGraph = sourceFactory.parentAsClass
     return parentTracer.traceNested("Generate graph extension ${sourceGraph.name}") {
-      generateImpl(sourceGraph = sourceGraph, factoryFunction = factoryFunction)
+      generateImpl(sourceGraph = sourceGraph, creatorFunction = factoryFunction)
     }
   }
 
-  private fun generateImpl(sourceGraph: IrClass, factoryFunction: IrSimpleFunction): IrClass {
+  private fun generateImpl(sourceGraph: IrClass, creatorFunction: IrSimpleFunction?): IrClass {
     // Check for both @ContributesGraphExtension and @GraphExtension
     val contributesGraphExtensionAnno =
       sourceGraph.annotationsIn(symbols.classIds.contributesGraphExtensionAnnotations).firstOrNull()
@@ -250,8 +255,10 @@ internal class IrGraphExtensionGenerator(
           parentGraph.defaultType,
         )
         // Copy over any creator params
-        factoryFunction.regularParameters.forEach { param ->
-          addValueParameter(param.name, param.type).apply { this.copyAnnotationsFrom(param) }
+        creatorFunction?.let {
+          for (param in it.regularParameters) {
+            addValueParameter(param.name, param.type).apply { this.copyAnnotationsFrom(param) }
+          }
         }
 
         body = this.generateDefaultConstructorBody()
