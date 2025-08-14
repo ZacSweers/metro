@@ -113,7 +113,10 @@ interface ExampleGraph : $$MetroContributionToAppScope {
     class LoggedInGraphImpl : LoggedInGraph {
       private /* final field */ val exampleGraphInstance: $$MetroGraph = $$MetroGraph
       private /* final field */ val exampleGraphInstanceProvider: Provider<$$MetroGraph> = Companion.invoke<$$MetroGraph>(value = $$MetroGraph)
-      private /* final field */ val dependencyProvider: Provider<Dependency> = <this>.#exampleGraphInstance.accessor_kKldZjk_provider()
+      private /* final field */ val dependencyProvider: Provider<Dependency> = provider<Dependency>(provider = local fun <anonymous>(): Dependency {
+        return <this>.#exampleGraphInstance.accessor_kKldZjk_provider().invoke()
+      }
+)
       private /* final field */ val childDependencyProvider: Provider<ChildDependency> = Companion.provider<Provider<ChildDependency>, ChildDependency>(delegate = Companion.create(dep = <this>.#dependencyProvider))
       constructor($$MetroGraph: $$MetroGraph) /* primary */ {
         super/*Any*/()
