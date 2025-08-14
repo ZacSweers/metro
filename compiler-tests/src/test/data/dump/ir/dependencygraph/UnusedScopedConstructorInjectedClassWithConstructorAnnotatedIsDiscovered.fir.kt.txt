@@ -110,7 +110,7 @@ interface ExampleGraph : $$MetroContributionToAppScope {
   class $$MetroGraph : ExampleGraph {
     private /* final field */ val dependencyProvider: Provider<Dependency> = Companion.provider<Provider<Dependency>, Dependency>(delegate = $$MetroFactory.create())
     @DependencyGraph(scope = LoggedInScope::class)
-    class $$ContributedLoggedInGraph : LoggedInGraph {
+    class LoggedInGraphImpl : LoggedInGraph {
       private /* final field */ val exampleGraphInstance: $$MetroGraph = $$MetroGraph
       private /* final field */ val exampleGraphInstanceProvider: Provider<$$MetroGraph> = Companion.invoke<$$MetroGraph>(value = $$MetroGraph)
       private /* final field */ val dependencyProvider: Provider<Dependency> = <this>.#exampleGraphInstance.accessor_kKldZjk_provider()
@@ -141,7 +141,7 @@ interface ExampleGraph : $$MetroContributionToAppScope {
     }
 
     override fun createLoggedInGraph(): LoggedInGraph {
-      return $$ContributedLoggedInGraph($$MetroGraph = <this>)
+      return LoggedInGraphImpl($$MetroGraph = <this>)
     }
 
   }

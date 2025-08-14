@@ -182,28 +182,28 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,Implement creator functions
           ExampleGraph,Build binding graph
           ExampleGraph,Generate graph extension ChildGraph
-          $${'$'}ContributedChildGraph,Build DependencyGraphNode
-          $${'$'}ContributedChildGraph,Implement creator functions
-          $${'$'}ContributedChildGraph,Build binding graph
-          $${'$'}ContributedChildGraph,Populate bindings
-          $${'$'}ContributedChildGraph,Build adjacency list
-          $${'$'}ContributedChildGraph,Compute SCCs
-          $${'$'}ContributedChildGraph,Check for cycles
-          $${'$'}ContributedChildGraph,Build component DAG
-          $${'$'}ContributedChildGraph,Topo sort component DAG
-          $${'$'}ContributedChildGraph,Expand components
-          $${'$'}ContributedChildGraph,Topo sort
-          $${'$'}ContributedChildGraph,Sort and validate
-          $${'$'}ContributedChildGraph,Compute binding indices
-          $${'$'}ContributedChildGraph,seal graph
-          $${'$'}ContributedChildGraph,check empty multibindings
-          $${'$'}ContributedChildGraph,check for absent bindings
-          $${'$'}ContributedChildGraph,Validate graph
-          $${'$'}ContributedChildGraph,Validate binding graph
-          $${'$'}ContributedChildGraph,Collect bindings
-          $${'$'}ContributedChildGraph,Implement overrides
-          $${'$'}ContributedChildGraph,Transform metro graph
-          $${'$'}ContributedChildGraph,[$${'$'}ContributedChildGraph] Transform dependency graph
+          ChildGraphImpl,Build DependencyGraphNode
+          ChildGraphImpl,Implement creator functions
+          ChildGraphImpl,Build binding graph
+          ChildGraphImpl,Populate bindings
+          ChildGraphImpl,Build adjacency list
+          ChildGraphImpl,Compute SCCs
+          ChildGraphImpl,Check for cycles
+          ChildGraphImpl,Build component DAG
+          ChildGraphImpl,Topo sort component DAG
+          ChildGraphImpl,Expand components
+          ChildGraphImpl,Topo sort
+          ChildGraphImpl,Sort and validate
+          ChildGraphImpl,Compute binding indices
+          ChildGraphImpl,seal graph
+          ChildGraphImpl,check empty multibindings
+          ChildGraphImpl,check for absent bindings
+          ChildGraphImpl,Validate graph
+          ChildGraphImpl,Validate binding graph
+          ChildGraphImpl,Collect bindings
+          ChildGraphImpl,Implement overrides
+          ChildGraphImpl,Transform metro graph
+          ChildGraphImpl,[ChildGraphImpl] Transform dependency graph
           ExampleGraph,Populate bindings
           ExampleGraph,Build adjacency list
           ExampleGraph,Compute SCCs
@@ -250,7 +250,7 @@ class TracingTest : MetroCompilerTest() {
                   ◀ Build binding graph (xx ms)
                   ▶ Generate graph extension ChildGraph
                   ◀ Generate graph extension ChildGraph (xx ms)
-                ▶ [$${'$'}ContributedChildGraph] Transform dependency graph
+                ▶ [ChildGraphImpl] Transform dependency graph
                   ▶ Build DependencyGraphNode
                   ◀ Build DependencyGraphNode (xx ms)
                   ▶ Implement creator functions
@@ -293,7 +293,7 @@ class TracingTest : MetroCompilerTest() {
                     ▶ Implement overrides
                     ◀ Implement overrides (xx ms)
                   ◀ Transform metro graph (xx ms)
-                ◀ [$${'$'}ContributedChildGraph] Transform dependency graph (xx ms)
+                ◀ [ChildGraphImpl] Transform dependency graph (xx ms)
                   ▶ Validate binding graph
                     ▶ Validate graph
                       ▶ seal graph
@@ -386,28 +386,28 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,Implement creator functions
           ExampleGraph,Build binding graph
           ExampleGraph,Generate graph extension ChildGraph
-          $$ContributedChildGraph,Build DependencyGraphNode
-          $$ContributedChildGraph,Implement creator functions
-          $$ContributedChildGraph,Build binding graph
-          $$ContributedChildGraph,Populate bindings
-          $$ContributedChildGraph,Build adjacency list
-          $$ContributedChildGraph,Compute SCCs
-          $$ContributedChildGraph,Check for cycles
-          $$ContributedChildGraph,Build component DAG
-          $$ContributedChildGraph,Topo sort component DAG
-          $$ContributedChildGraph,Expand components
-          $$ContributedChildGraph,Topo sort
-          $$ContributedChildGraph,Sort and validate
-          $$ContributedChildGraph,Compute binding indices
-          $$ContributedChildGraph,seal graph
-          $$ContributedChildGraph,check empty multibindings
-          $$ContributedChildGraph,check for absent bindings
-          $$ContributedChildGraph,Validate graph
-          $$ContributedChildGraph,Validate binding graph
-          $$ContributedChildGraph,Collect bindings
-          $$ContributedChildGraph,Implement overrides
-          $$ContributedChildGraph,Transform metro graph
-          $$ContributedChildGraph,[$$ContributedChildGraph] Transform dependency graph
+          ChildGraphImpl,Build DependencyGraphNode
+          ChildGraphImpl,Implement creator functions
+          ChildGraphImpl,Build binding graph
+          ChildGraphImpl,Populate bindings
+          ChildGraphImpl,Build adjacency list
+          ChildGraphImpl,Compute SCCs
+          ChildGraphImpl,Check for cycles
+          ChildGraphImpl,Build component DAG
+          ChildGraphImpl,Topo sort component DAG
+          ChildGraphImpl,Expand components
+          ChildGraphImpl,Topo sort
+          ChildGraphImpl,Sort and validate
+          ChildGraphImpl,Compute binding indices
+          ChildGraphImpl,seal graph
+          ChildGraphImpl,check empty multibindings
+          ChildGraphImpl,check for absent bindings
+          ChildGraphImpl,Validate graph
+          ChildGraphImpl,Validate binding graph
+          ChildGraphImpl,Collect bindings
+          ChildGraphImpl,Implement overrides
+          ChildGraphImpl,Transform metro graph
+          ChildGraphImpl,[ChildGraphImpl] Transform dependency graph
           ExampleGraph,Populate bindings
           ExampleGraph,Build adjacency list
           ExampleGraph,Compute SCCs
@@ -454,7 +454,7 @@ class TracingTest : MetroCompilerTest() {
                   ◀ Build binding graph (xx ms)
                   ▶ Generate graph extension ChildGraph
                   ◀ Generate graph extension ChildGraph (xx ms)
-                ▶ [$$ContributedChildGraph] Transform dependency graph
+                ▶ [ChildGraphImpl] Transform dependency graph
                   ▶ Build DependencyGraphNode
                   ◀ Build DependencyGraphNode (xx ms)
                   ▶ Implement creator functions
@@ -497,7 +497,7 @@ class TracingTest : MetroCompilerTest() {
                     ▶ Implement overrides
                     ◀ Implement overrides (xx ms)
                   ◀ Transform metro graph (xx ms)
-                ◀ [$$ContributedChildGraph] Transform dependency graph (xx ms)
+                ◀ [ChildGraphImpl] Transform dependency graph (xx ms)
                   ▶ Validate binding graph
                     ▶ Validate graph
                       ▶ seal graph

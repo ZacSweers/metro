@@ -494,8 +494,7 @@ internal class BindingGraphGenerator(
         val getterToUse =
           if (
             parentName == Symbols.Names.MetroGraph ||
-              parentClass.origin == Origins.GeneratedGraphExtension ||
-              parentName.asString().startsWith(Symbols.StringNames.CONTRIBUTED_GRAPH_PREFIX)
+              parentClass.origin == Origins.GeneratedGraphExtension
           ) {
             // Use the original graph decl so we don't tie this invocation to `$$MetroGraph`
             // specifically

@@ -355,13 +355,13 @@ interface CycleGraph {
       }
 
       override fun create(): ChildCycleGraph {
-        return $$ContributedChildCycleGraph($$MetroGraph = <this>.#parentInstance)
+        return ChildCycleGraphImpl($$MetroGraph = <this>.#parentInstance)
       }
 
     }
 
     @DependencyGraph
-    class $$ContributedChildCycleGraph : ChildCycleGraph {
+    class ChildCycleGraphImpl : ChildCycleGraph {
       private /* final field */ val cycleGraphInstance: $$MetroGraph = $$MetroGraph
       private /* final field */ val cycleGraphInstanceProvider: Provider<$$MetroGraph> = Companion.invoke<$$MetroGraph>(value = $$MetroGraph)
       private /* final field */ val membersInjectorMembersInjectorProvider: Provider<MembersInjector<C>> = DelegateFactory<MembersInjector<C>>()

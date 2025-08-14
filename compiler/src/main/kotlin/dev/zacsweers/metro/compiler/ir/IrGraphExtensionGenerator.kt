@@ -195,7 +195,7 @@ internal class IrGraphExtensionGenerator(
           name =
             nameAllocator
               .newName(
-                "${Symbols.StringNames.CONTRIBUTED_GRAPH_PREFIX}${sourceGraph.name.asString().capitalizeUS()}"
+                "${sourceGraph.name.asString().capitalizeUS()}${Symbols.StringNames.IMPL}"
               )
               .asName()
           origin = Origins.GeneratedGraphExtension
