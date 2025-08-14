@@ -246,9 +246,9 @@ class ICTests : BaseIncrementalCompilationTest() {
           AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
               kotlin.String is injected at
-                  [test.AppGraph.$${'$'}MetroGraph.$${'$'}ContributedChildGraph] test.Target(…, string)
+                  [test.AppGraph.$${'$'}MetroGraph.ChildGraphImpl] test.Target(…, string)
               test.Target is requested at
-                  [test.AppGraph.$${'$'}MetroGraph.$${'$'}ContributedChildGraph] test.ChildGraph#target
+                  [test.AppGraph.$${'$'}MetroGraph.ChildGraphImpl] test.ChildGraph#target
         """
           .trimIndent()
       )
@@ -885,14 +885,14 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(firstBuildResult.output.cleanOutputLine())
       .contains(
         """
-          e: ExampleGraph.kt:7:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph.$${'$'}MetroGraph.$${'$'}ContributedLoggedInGraph (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
+          e: ExampleGraph.kt:7:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
               test.ExampleClass (scoped to '@SingleIn(UnusedScope::class)')
               test.ExampleClass is requested at
-                  [test.ExampleGraph.$${'$'}MetroGraph.$${'$'}ContributedLoggedInGraph] test.LoggedInGraph#exampleClass
+                  [test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl] test.LoggedInGraph#exampleClass
 
 
           (Hint)
-          $${'$'}ContributedLoggedInGraph is contributed by 'test.LoggedInGraph' to 'test.ExampleGraph'.
+          LoggedInGraphImpl is contributed by 'test.LoggedInGraph' to 'test.ExampleGraph'.
         """
           .trimIndent()
       )
@@ -947,14 +947,14 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(fourthBuildResult.output.cleanOutputLine())
       .contains(
         """
-          e: ExampleGraph.kt:7:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph.$${'$'}MetroGraph.$${'$'}ContributedLoggedInGraph (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
+          e: ExampleGraph.kt:7:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
               test.ExampleClass (scoped to '@SingleIn(UnusedScope::class)')
               test.ExampleClass is requested at
-                  [test.ExampleGraph.$${'$'}MetroGraph.$${'$'}ContributedLoggedInGraph] test.LoggedInGraph#exampleClass
+                  [test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl] test.LoggedInGraph#exampleClass
 
 
           (Hint)
-          $${'$'}ContributedLoggedInGraph is contributed by 'test.LoggedInGraph' to 'test.ExampleGraph'.
+          LoggedInGraphImpl is contributed by 'test.LoggedInGraph' to 'test.ExampleGraph'.
         """
           .trimIndent()
       )
@@ -1170,7 +1170,7 @@ class ICTests : BaseIncrementalCompilationTest() {
           e: LoggedInScope.kt:10:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Foo
 
               test.Foo is requested at
-                  [test.ExampleGraph.$${'$'}MetroGraph.$${'$'}ContributedLoggedInGraph] test.LoggedInGraph#childDependenc
+                  [test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl] test.LoggedInGraph#childDependenc
         """
           .trimIndent()
       )
@@ -1213,7 +1213,7 @@ class ICTests : BaseIncrementalCompilationTest() {
           e: ExampleGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Foo
 
               test.Foo is requested at
-                  [test.ExampleGraph.$${'$'}MetroGraph.$${'$'}ContributedLoggedInGraph] test.LoggedInGraph#childDependency
+                  [test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl] test.LoggedInGraph#childDependency
         """
           .trimIndent()
       )
