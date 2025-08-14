@@ -146,6 +146,18 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
               )
             }
           },
+        customGraphExtensionAnnotations =
+          buildSet {
+            if (MetroDirectives.ENABLE_DAGGER_INTEROP in module.directives) {
+              add(ClassId.fromString("dagger/Subcomponent"))
+            }
+          },
+        customGraphExtensionFactoryAnnotations =
+          buildSet {
+            if (MetroDirectives.ENABLE_DAGGER_INTEROP in module.directives) {
+              add(ClassId.fromString("dagger/Subcomponent.Factory"))
+            }
+          },
         customInjectAnnotations =
           buildSet {
             if (addDaggerAnnotations) {

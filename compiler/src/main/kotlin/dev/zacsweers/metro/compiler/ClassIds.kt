@@ -49,10 +49,8 @@ public class ClassIds(
           options.customContributesGraphExtensionAnnotations,
         customContributesGraphExtensionFactoryAnnotations =
           options.customContributesGraphExtensionFactoryAnnotations,
-        customGraphExtensionAnnotations =
-          options.customGraphExtensionAnnotations,
-        customGraphExtensionFactoryAnnotations =
-          options.customGraphExtensionFactoryAnnotations,
+        customGraphExtensionAnnotations = options.customGraphExtensionAnnotations,
+        customGraphExtensionFactoryAnnotations = options.customGraphExtensionFactoryAnnotations,
         customElementsIntoSetAnnotations = options.customElementsIntoSetAnnotations,
         customGraphAnnotations = options.customGraphAnnotations,
         customGraphFactoryAnnotations = options.customGraphFactoryAnnotations,
@@ -154,11 +152,16 @@ public class ClassIds(
   internal val graphExtensionAnnotations =
     setOf(Symbols.ClassIds.graphExtension) + customGraphExtensionAnnotations
   internal val graphExtensionFactoryAnnotations =
-    setOf(Symbols.ClassIds.graphExtensionFactory) +
-      customContributesGraphExtensionFactoryAnnotations
-  internal val allGraphExtensionAndFactoryAnnotations = graphExtensionAnnotations + graphExtensionFactoryAnnotations + contributesGraphExtensionAnnotations + contributesGraphExtensionFactoryAnnotations
-  internal val allGraphExtensionAnnotations = graphExtensionAnnotations + contributesGraphExtensionAnnotations
-  internal val allGraphExtensionFactoryAnnotations = graphExtensionFactoryAnnotations + contributesGraphExtensionFactoryAnnotations
+    setOf(Symbols.ClassIds.graphExtensionFactory) + customGraphExtensionFactoryAnnotations
+  internal val allGraphExtensionAndFactoryAnnotations =
+    graphExtensionAnnotations +
+      graphExtensionFactoryAnnotations +
+      contributesGraphExtensionAnnotations +
+      contributesGraphExtensionFactoryAnnotations
+  internal val allGraphExtensionAnnotations =
+    graphExtensionAnnotations + contributesGraphExtensionAnnotations
+  internal val allGraphExtensionFactoryAnnotations =
+    graphExtensionFactoryAnnotations + contributesGraphExtensionFactoryAnnotations
   internal val contributesToLikeAnnotations =
     contributesToAnnotations + contributesGraphExtensionFactoryAnnotations
 
