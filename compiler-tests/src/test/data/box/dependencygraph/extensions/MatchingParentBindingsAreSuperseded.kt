@@ -1,8 +1,10 @@
-@DependencyGraph(bindingContainers = [Bindings::class], isExtendable = true)
+@DependencyGraph(bindingContainers = [Bindings::class])
 interface AppGraph {
   @Provides fun provideInt(): Int = 3
 
   @Binds val Int.bindNumber: Number
+
+  fun childGraphFactory(): ChildGraph.Factory
 }
 
 @BindingContainer
@@ -14,7 +16,7 @@ interface Bindings {
   }
 }
 
-@DependencyGraph(bindingContainers = [ChildBindings::class])
+@GraphExtension(bindingContainers = [ChildBindings::class])
 interface ChildGraph {
   val int: Int
   val number: Number
@@ -25,9 +27,9 @@ interface ChildGraph {
 
   @Binds val Int.bindNumber: Number
 
-  @DependencyGraph.Factory
+  @GraphExtension.Factory
   interface Factory {
-    fun create(@Extends parent: AppGraph): ChildGraph
+    fun create(): ChildGraph
   }
 }
 
@@ -42,7 +44,7 @@ interface ChildBindings {
 
 fun box(): String {
   val parent = createGraph<AppGraph>()
-  val child = createGraphFactory<ChildGraph.Factory>().create(parent)
+  val child = parent.childGraphFactory().create()
   assertEquals(4, child.int)
   assertEquals(4, child.number)
   assertEquals("Hello child", child.string)

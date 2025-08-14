@@ -1,5 +1,5 @@
 // Regression test for https://github.com/ZacSweers/metro/issues/525
-@DependencyGraph(AppScope::class, isExtendable = true)
+@DependencyGraph(AppScope::class)
 interface AppGraph {
 
   @DependencyGraph.Factory

@@ -2,7 +2,7 @@
 // https://github.com/ZacSweers/metro/issues/377
 class HttpClient @Inject constructor()
 
-@DependencyGraph(AppScope::class, isExtendable = true)
+@DependencyGraph(AppScope::class)
 interface AppGraph {
   @Provides
   @SingleIn(AppScope::class)

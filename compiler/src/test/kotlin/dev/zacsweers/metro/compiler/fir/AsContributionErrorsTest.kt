@@ -201,7 +201,7 @@ class AsContributionErrorsTest : MetroCompilerTest() {
               }
             }
 
-            @DependencyGraph(AppScope::class, isExtendable = true)
+            @DependencyGraph(AppScope::class)
             interface ExampleGraph
 
             fun main(exampleGraph: ExampleGraph): UnitGraph.Factory {

@@ -324,6 +324,28 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
     )
   ),
+  CUSTOM_GRAPH_EXTENSION(
+    RawMetroOption(
+      name = "custom-graph-extension",
+      defaultValue = emptySet(),
+      valueDescription = "GraphExtension annotations",
+      description = "GraphExtension annotations",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
+    )
+  ),
+  CUSTOM_GRAPH_EXTENSION_FACTORY(
+    RawMetroOption(
+      name = "custom-graph-extension-factory",
+      defaultValue = emptySet(),
+      valueDescription = "GraphExtension.Factory annotations",
+      description = "GraphExtension.Factory annotations",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
+    )
+  ),
   CUSTOM_ELEMENTS_INTO_SET(
     RawMetroOption(
       name = "custom-elements-into-set",
@@ -467,17 +489,6 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
-  ENABLE_SCOPED_INJECT_CLASS_HINTS(
-    RawMetroOption.boolean(
-      name = "enable-scoped-inject-class-hints",
-      defaultValue = false,
-      valueDescription = "<true | false>",
-      description =
-        "Enable/disable generating hints for scoped @Inject classes. By default, a scoped injectable class that isn't used in its associated graph node will result in an error if a graph extension later tries to inject it. Enabling this setting prevents such errors by generating a binding for all scoped types within the graph node. See https://github.com/ZacSweers/metro/issues/377 for more context.",
-      required = false,
-      allowMultipleOccurrences = false,
-    )
-  ),
   ENABLE_STRICT_VALIDATION(
     RawMetroOption.boolean(
       name = "enable-strict-validation",
@@ -556,6 +567,10 @@ public data class MetroOptions(
     MetroOption.CUSTOM_CONTRIBUTES_GRAPH_EXTENSION.raw.defaultValue.expectAs(),
   val customContributesGraphExtensionFactoryAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_CONTRIBUTES_GRAPH_EXTENSION_FACTORY.raw.defaultValue.expectAs(),
+  val customGraphExtensionAnnotations: Set<ClassId> =
+    MetroOption.CUSTOM_GRAPH_EXTENSION.raw.defaultValue.expectAs(),
+  val customGraphExtensionFactoryAnnotations: Set<ClassId> =
+    MetroOption.CUSTOM_GRAPH_EXTENSION_FACTORY.raw.defaultValue.expectAs(),
   val customElementsIntoSetAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_ELEMENTS_INTO_SET.raw.defaultValue.expectAs(),
   val customGraphAnnotations: Set<ClassId> = MetroOption.CUSTOM_GRAPH.raw.defaultValue.expectAs(),
@@ -579,8 +594,6 @@ public data class MetroOptions(
     MetroOption.CUSTOM_BINDING_CONTAINER.raw.defaultValue.expectAs(),
   val enableDaggerAnvilInterop: Boolean =
     MetroOption.ENABLE_DAGGER_ANVIL_INTEROP.raw.defaultValue.expectAs(),
-  val enableScopedInjectClassHints: Boolean =
-    MetroOption.ENABLE_SCOPED_INJECT_CLASS_HINTS.raw.defaultValue.expectAs(),
   val enableStrictValidation: Boolean =
     MetroOption.ENABLE_STRICT_VALIDATION.raw.defaultValue.expectAs(),
 ) {
@@ -600,6 +613,8 @@ public data class MetroOptions(
       val customContributesBindingAnnotations = mutableSetOf<ClassId>()
       val customContributesGraphExtensionAnnotations = mutableSetOf<ClassId>()
       val customContributesGraphExtensionFactoryAnnotations = mutableSetOf<ClassId>()
+      val customGraphExtensionAnnotations = mutableSetOf<ClassId>()
+      val customGraphExtensionFactoryAnnotations = mutableSetOf<ClassId>()
       val customElementsIntoSetAnnotations = mutableSetOf<ClassId>()
       val customGraphAnnotations = mutableSetOf<ClassId>()
       val customGraphFactoryAnnotations = mutableSetOf<ClassId>()
@@ -693,6 +708,10 @@ public data class MetroOptions(
             customContributesGraphExtensionAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_CONTRIBUTES_GRAPH_EXTENSION_FACTORY ->
             customContributesGraphExtensionFactoryAnnotations.addAll(configuration.getAsSet(entry))
+          MetroOption.CUSTOM_GRAPH_EXTENSION ->
+            customGraphExtensionAnnotations.addAll(configuration.getAsSet(entry))
+          MetroOption.CUSTOM_GRAPH_EXTENSION_FACTORY ->
+            customGraphExtensionFactoryAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_ELEMENTS_INTO_SET ->
             customElementsIntoSetAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_GRAPH -> customGraphAnnotations.addAll(configuration.getAsSet(entry))
@@ -720,9 +739,6 @@ public data class MetroOptions(
           MetroOption.ENABLE_DAGGER_ANVIL_INTEROP -> {
             options = options.copy(enableDaggerAnvilInterop = configuration.getAsBoolean(entry))
           }
-          MetroOption.ENABLE_SCOPED_INJECT_CLASS_HINTS -> {
-            options = options.copy(enableScopedInjectClassHints = configuration.getAsBoolean(entry))
-          }
           MetroOption.ENABLE_STRICT_VALIDATION -> {
             options = options.copy(enableStrictValidation = configuration.getAsBoolean(entry))
           }
@@ -745,6 +761,9 @@ public data class MetroOptions(
           customContributesToAnnotations = customContributesToAnnotations,
           customContributesBindingAnnotations = customContributesBindingAnnotations,
           customContributesGraphExtensionAnnotations = customContributesGraphExtensionAnnotations,
+          customContributesGraphExtensionFactoryAnnotations = customContributesGraphExtensionFactoryAnnotations,
+          customGraphExtensionAnnotations = customGraphExtensionAnnotations,
+          customGraphExtensionFactoryAnnotations = customGraphExtensionFactoryAnnotations,
           customElementsIntoSetAnnotations = customElementsIntoSetAnnotations,
           customGraphAnnotations = customGraphAnnotations,
           customGraphFactoryAnnotations = customGraphFactoryAnnotations,

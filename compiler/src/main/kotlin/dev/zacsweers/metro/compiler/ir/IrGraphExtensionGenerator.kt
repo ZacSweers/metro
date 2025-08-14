@@ -8,26 +8,17 @@ import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
-import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
+import dev.zacsweers.metro.compiler.tracing.Tracer
+import dev.zacsweers.metro.compiler.tracing.traceNested
 import kotlin.collections.plusAssign
-import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
-import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.descriptors.ClassKind
-import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
-import org.jetbrains.kotlin.ir.builders.irBlockBody
-import org.jetbrains.kotlin.ir.builders.irBoolean
-import org.jetbrains.kotlin.ir.builders.irDelegatingConstructorCall
 import org.jetbrains.kotlin.ir.declarations.DelicateIrParameterIndexSetter
 import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.expressions.IrBody
-import org.jetbrains.kotlin.ir.expressions.impl.IrInstanceInitializerCallImpl
-import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addFakeOverrides
@@ -36,15 +27,14 @@ import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.copyAnnotationsFrom
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.defaultType
-import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.getValueArgument
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
-import org.jetbrains.kotlin.ir.util.primaryConstructor
-import org.jetbrains.kotlin.ir.util.superClass
+import org.jetbrains.kotlin.ir.util.parentClassOrNull
+import org.jetbrains.kotlin.ir.util.remapTypes
 import org.jetbrains.kotlin.name.ClassId
 
-internal class IrContributedGraphGenerator(
+internal class IrGraphExtensionGenerator(
   context: IrMetroContext,
   private val contributionData: IrContributionData,
   private val parentGraph: IrClass,
@@ -57,6 +47,63 @@ internal class IrContributedGraphGenerator(
    */
   private val transitiveBindingContainerCache = mutableMapOf<ClassId, Set<IrClass>>()
   private val nameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
+  private val generatedClassesCache = mutableMapOf<CacheKey, IrClass>()
+
+  private data class CacheKey(val typeKey: IrTypeKey, val parentGraph: ClassId)
+
+  fun getOrBuildContributedGraph(
+    typeKey: IrTypeKey,
+    parentGraph: IrClass,
+    contributedAccessor: MetroSimpleFunction,
+    parentTracer: Tracer,
+  ): IrClass {
+    return generatedClassesCache.getOrPut(CacheKey(typeKey, parentGraph.classIdOrFail)) {
+      val sourceSamFunction =
+        contributedAccessor.ir
+          .overriddenSymbolsSequence()
+          .firstOrNull {
+            it.owner.parentAsClass.isAnnotatedWithAny(symbols.classIds.allGraphExtensionFactoryAnnotations)
+          }
+          ?.owner
+          ?: contributedAccessor.ir
+
+      val parent = sourceSamFunction.parentClassOrNull ?: error("No parent class found")
+      val isFactorySAM = parent.isAnnotatedWithAny(symbols.classIds.allGraphExtensionFactoryAnnotations)
+      if (isFactorySAM) {
+        buildContributedGraph(sourceSamFunction, parentTracer)
+      } else {
+        val returnType = contributedAccessor.ir.returnType.rawType()
+        val returnIsGraphExtensionFactory = returnType.isAnnotatedWithAny(symbols.classIds.allGraphExtensionFactoryAnnotations)
+        // TODO use this when we support direct extension getters
+        val returnIsGraphExtension = returnType.isAnnotatedWithAny(symbols.classIds.allGraphExtensionAnnotations)
+        if (returnIsGraphExtensionFactory) {
+          val samFunction = returnType.singleAbstractFunction()
+            .apply {
+              remapTypes(sourceSamFunction.typeRemapperFor(contributedAccessor.ir.returnType))
+            }
+          buildContributedGraph(samFunction, parentTracer)
+        } else {
+          error("Not a graph extension: ${returnType.kotlinFqName}")
+        }
+      }
+
+    }
+  }
+
+  private fun buildContributedGraph(
+    factoryFunction: IrSimpleFunction,
+    parentTracer: Tracer,
+  ): IrClass {
+    val sourceFactory = factoryFunction.parentAsClass
+    val sourceGraph = sourceFactory.parentAsClass
+    return parentTracer.traceNested("Generate graph extension ${sourceGraph.name}") {
+      generateContributedGraph(
+        sourceGraph = sourceGraph,
+        sourceFactory = sourceFactory,
+        factoryFunction = factoryFunction,
+      )
+    }
+  }
 
   @OptIn(DelicateIrParameterIndexSetter::class)
   fun generateContributedGraph(
@@ -64,59 +111,19 @@ internal class IrContributedGraphGenerator(
     sourceFactory: IrClass,
     factoryFunction: IrSimpleFunction,
   ): IrClass {
+    // Check for both @ContributesGraphExtension and @GraphExtension
     val contributesGraphExtensionAnno =
-      sourceGraph.annotationsIn(symbols.classIds.contributesGraphExtensionAnnotations).first()
+      sourceGraph.annotationsIn(symbols.classIds.contributesGraphExtensionAnnotations).firstOrNull()
+    val graphExtensionAnno =
+      sourceGraph.annotationsIn(symbols.classIds.graphExtensionAnnotations).firstOrNull()
+    val extensionAnno =
+      contributesGraphExtensionAnno
+        ?: graphExtensionAnno
+        ?: error(
+          "Expected @ContributesGraphExtension or @GraphExtension on ${sourceGraph.kotlinFqName}"
+        )
 
-    // If the parent graph is not extendable, error out here
-    val parentIsContributed = parentGraph.origin === Origins.ContributedGraph
-    val realParent =
-      if (parentIsContributed) {
-        parentGraph.superTypes.first().rawType()
-      } else {
-        parentGraph
-      }
-    val parentGraphAnno = realParent.annotationsIn(symbols.classIds.graphLikeAnnotations).single()
-    val parentIsExtendable = parentGraphAnno.isExtendable()
-    if (!parentIsExtendable) {
-      with(metroContext) {
-        val message = buildString {
-          append("Contributed graph extension '")
-          append(sourceGraph.kotlinFqName)
-          append("' contributes to parent graph ")
-          append('\'')
-          append(realParent.kotlinFqName)
-          append("' (scope '")
-          append(parentGraphAnno.scopeOrNull()!!.asSingleFqName())
-          append("'), but ")
-          append(realParent.name)
-          append(" is not extendable.")
-          if (!parentIsContributed) {
-            appendLine()
-            appendLine()
-            append("Either mark ")
-            append(realParent.name)
-            append(" as extendable (`@")
-            append(parentGraphAnno.annotationClass.name)
-            append("(isExtendable = true)`), or exclude it from ")
-            append(realParent.name)
-            append(" (`@")
-            append(parentGraphAnno.annotationClass.name)
-            append("(excludes = [")
-            append(sourceGraph.name)
-            append("::class])`).")
-          }
-        }
-        // TODO in kotlin 2.2.20 remove message collector
-        if (sourceGraph.fileOrNull == null) {
-          messageCollector.report(CompilerMessageSeverity.ERROR, message, sourceGraph.locationOrNull())
-        } else {
-          diagnosticReporter.at(sourceGraph).report(MetroIrErrors.METRO_ERROR, message)
-        }
-        exitProcessing()
-      }
-    }
-
-    val sourceScope = contributesGraphExtensionAnno.scopeClassOrNull()
+    val sourceScope = extensionAnno.scopeClassOrNull()
     val scope = sourceScope?.classId
     val contributedSupertypes = mutableSetOf<IrType>()
     val contributedBindingContainers = mutableMapOf<ClassId, IrClass>()
@@ -124,9 +131,7 @@ internal class IrContributedGraphGenerator(
     // Merge contributed types
     if (scope != null) {
       val additionalScopes =
-        contributesGraphExtensionAnno.additionalScopes().map {
-          it.classType.rawType().classIdOrFail
-        }
+        extensionAnno.additionalScopes().map { it.classType.rawType().classIdOrFail }
 
       val allScopes = (additionalScopes + scope).toSet()
 
@@ -149,7 +154,7 @@ internal class IrContributedGraphGenerator(
       // TODO do we exclude directly contributed ones or also include transitives?
 
       // Process excludes
-      val excluded = contributesGraphExtensionAnno.excludedClasses()
+      val excluded = extensionAnno.excludedClasses()
       for (excludedClass in excluded) {
         val excludedClassId = excludedClass.classType.rawType().classIdOrFail
 
@@ -190,10 +195,10 @@ internal class IrContributedGraphGenerator(
           name =
             nameAllocator
               .newName(
-                "${Symbols.StringNames.CONTRIBUTED_GRAPH_PREFIX}${sourceGraph.name.asString().capitalizeUS()}"
+                "${sourceGraph.name.asString().capitalizeUS()}${Symbols.StringNames.IMPL}"
               )
               .asName()
-          origin = Origins.ContributedGraph
+          origin = Origins.GeneratedGraphExtension
           kind = ClassKind.CLASS
         }
         .apply {
@@ -206,34 +211,24 @@ internal class IrContributedGraphGenerator(
               sourceScope?.let { annotation.arguments[0] = kClassReference(it.symbol) }
 
               // additionalScopes
-              contributesGraphExtensionAnno.additionalScopes().copyToIrVararg()?.let {
+              extensionAnno.additionalScopes().copyToIrVararg()?.let {
                 annotation.arguments[1] = it
               }
 
               // excludes
-              contributesGraphExtensionAnno.excludedClasses().copyToIrVararg()?.let {
-                annotation.arguments[2] = it
-              }
-
-              // isExtendable
-              annotation.arguments[3] =
-                irBoolean(
-                  contributesGraphExtensionAnno.getConstBooleanArgumentOrNull(
-                    Symbols.Names.isExtendable
-                  ) ?: false
-                )
+              extensionAnno.excludedClasses().copyToIrVararg()?.let { annotation.arguments[2] = it }
 
               // bindingContainers
               val allContainers = buildSet {
                 val declaredContainers =
-                  contributesGraphExtensionAnno
+                  extensionAnno
                     .bindingContainerClasses(includeModulesArg = options.enableDaggerRuntimeInterop)
                     .map { it.classType.rawType() }
                 addAll(declaredContainers)
                 addAll(contributedBindingContainers.values)
               }
               allContainers.let(::resolveAllBindingContainersCached).toIrVararg()?.let {
-                annotation.arguments[4] = it
+                annotation.arguments[3] = it
               }
             }
 
@@ -250,13 +245,13 @@ internal class IrContributedGraphGenerator(
       .addConstructor {
         isPrimary = true
         origin = Origins.Default
-        // This will be finalized in DependencyGraphTransformer
+        // This will be finalized in IrGraphGenerator
         isFakeOverride = true
       }
       .apply {
         // Add the parent type
         val actualParentType =
-          if (parentGraph.origin === Origins.ContributedGraph) {
+          if (parentGraph.origin === Origins.GeneratedGraphExtension) {
             parentGraph.superTypes.first().type.rawType()
           } else {
             parentGraph
@@ -265,16 +260,12 @@ internal class IrContributedGraphGenerator(
             actualParentType.name.asString().decapitalizeUS(),
             parentGraph.defaultType,
           )
-          .apply {
-            // Add `@Extends` annotation
-            this.annotations += buildAnnotation(symbol, symbols.metroExtendsAnnotationConstructor)
-          }
         // Copy over any creator params
         factoryFunction.regularParameters.forEach { param ->
           addValueParameter(param.name, param.type).apply { this.copyAnnotationsFrom(param) }
         }
 
-        body = generateDefaultConstructorBody(this)
+        body = this.generateDefaultConstructorBody()
       }
 
     parentGraph.addChild(contributedGraph)
@@ -282,27 +273,6 @@ internal class IrContributedGraphGenerator(
     contributedGraph.addFakeOverrides(irTypeSystemContext)
 
     return contributedGraph
-  }
-
-  private fun generateDefaultConstructorBody(declaration: IrConstructor): IrBody? {
-    val returnType = declaration.returnType as? IrSimpleType ?: return null
-    val parentClass = declaration.parent as? IrClass ?: return null
-    val superClassConstructor =
-      parentClass.superClass?.primaryConstructor
-        ?: metroContext.irBuiltIns.anyClass.owner.primaryConstructor
-        ?: return null
-
-    return metroContext.createIrBuilder(declaration.symbol).irBlockBody {
-      // Call the super constructor
-      +irDelegatingConstructorCall(superClassConstructor)
-      // Initialize the instance
-      +IrInstanceInitializerCallImpl(
-        UNDEFINED_OFFSET,
-        UNDEFINED_OFFSET,
-        parentClass.symbol,
-        returnType,
-      )
-    }
   }
 
   /**

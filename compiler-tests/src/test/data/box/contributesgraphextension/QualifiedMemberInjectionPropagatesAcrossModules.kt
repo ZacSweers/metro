@@ -16,7 +16,7 @@ class LoggedInScreen {
 }
 
 // MODULE: main(lib)
-@DependencyGraph(AppScope::class, isExtendable = true)
+@DependencyGraph(AppScope::class)
 interface AppGraph {
   @DependencyGraph.Factory
   interface Factory {

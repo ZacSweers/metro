@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.metroAnnotations
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -48,8 +49,8 @@ internal fun IrAnnotationContainer.irCallableMetadata(
 ): IrCallableMetadata {
   val callableMetadataAnno =
     getAnnotation(Symbols.FqNames.CallableMetadataClass)
-      ?: error(
-        "No @CallableMetadata found on ${expectAsOrNull<IrDeclarationParent>()?.kotlinFqName}. This is a bug in the Metro compiler."
+      ?: reportCompilerBug(
+        "No @CallableMetadata found on ${expectAsOrNull<IrDeclarationParent>()?.kotlinFqName}"
       )
   return callableMetadataAnno.toIrCallableMetadata(mirrorFunction, sourceAnnotations)
 }

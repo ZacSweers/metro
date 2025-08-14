@@ -1,12 +1,11 @@
 // ENABLE_STRICT_VALIDATION
-// ENABLE_SCOPED_INJECT_CLASS_HINTS
 sealed interface LoggedInScope
 
 interface Bob
 
 @Inject @SingleIn(AppScope::class) @ContributesBinding(AppScope::class) class Dependency : Bob
 
-@DependencyGraph(scope = AppScope::class, isExtendable = true) interface ExampleGraph
+@DependencyGraph(scope = AppScope::class) interface ExampleGraph
 
 @ContributesGraphExtension(LoggedInScope::class)
 interface LoggedInGraph {

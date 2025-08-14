@@ -20,7 +20,7 @@ interface ExampleGraphExtension {
   }
 }
 
-@DependencyGraph(Unit::class, isExtendable = true)
+@DependencyGraph(Unit::class)
 interface UnitGraph
 
 fun box(): String {

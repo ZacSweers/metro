@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.typeOrFail
+import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
@@ -24,11 +25,17 @@ internal class BindingLookup(
   private val sourceGraph: IrClass,
   private val findClassFactory: (IrClass) -> ClassFactory?,
   private val findMemberInjectors: (IrClass) -> List<MemberInjectClass>,
+  private val parentContext: ParentContext?,
 ) {
 
-  // Cache for O(1) lookups of provider factories and binds callables
+  // Caches
   private val providedBindingsCache = mutableMapOf<IrTypeKey, IrBinding.Provided>()
   private val aliasBindingsCache = mutableMapOf<IrTypeKey, IrBinding.Alias>()
+  private val classBindingsCache = mutableMapOf<IrContextualTypeKey, Set<IrBinding>>()
+
+  private data class ParentGraphDepKey(val owner: IrClass, val typeKey: IrTypeKey)
+
+  private val parentGraphDepCache = mutableMapOf<ParentGraphDepKey, IrBinding.GraphDependency>()
 
   /** Returns all static bindings for similarity checking. */
   fun getAvailableStaticBindings(): Map<IrTypeKey, IrBinding.StaticBinding> {
@@ -62,8 +69,8 @@ internal class BindingLookup(
   private fun IrClass.computeMembersInjectorBindings(
     currentBindings: Set<IrTypeKey>,
     remapper: TypeRemapper,
-  ): Set<IrBinding> {
-    val bindings = mutableSetOf<IrBinding>()
+  ): Set<IrBinding.MembersInjected> {
+    val bindings = mutableSetOf<IrBinding.MembersInjected>()
     for (generatedInjector in findMemberInjectors(this)) {
       val mappedTypeKey = generatedInjector.typeKey.remapTypes(remapper)
       if (mappedTypeKey !in currentBindings) {
@@ -91,33 +98,80 @@ internal class BindingLookup(
     contextKey: IrContextualTypeKey,
     currentBindings: Set<IrTypeKey>,
     stack: IrBindingStack,
-  ): Set<IrBinding> {
-    val key = contextKey.typeKey
+  ): Set<IrBinding> =
+    context(metroContext) {
+      val key = contextKey.typeKey
 
-    // First check @Provides
-    providedBindingsCache[key]?.let {
-      return setOf(it)
+      // First check @Provides
+      providedBindingsCache[key]?.let { providedBinding ->
+        // Check if this is available from parent and is scoped
+        if (providedBinding.scope != null && parentContext?.contains(key) == true) {
+          parentContext.mark(key, providedBinding.scope!!)
+          return setOf(createParentGraphDependency(key))
+        }
+        return setOf(providedBinding)
+      }
+
+      // Then check @Binds
+      // TODO if @Binds from a parent matches a parent accessor, which one wins?
+      aliasBindingsCache[key]?.let {
+        return setOf(it)
+      }
+
+      // Finally, fall back to class-based lookup and cache the result
+      val classBindings = lookupClassBinding(contextKey, currentBindings, stack)
+
+      // Check if this class binding is available from parent and is scoped
+      if (parentContext != null) {
+        val constructorInjectedBinding =
+          classBindings.filterIsInstance<IrBinding.ConstructorInjected>().firstOrNull()
+        if (constructorInjectedBinding != null) {
+          val scope = constructorInjectedBinding.scope
+          if (scope != null) {
+            val scopeInParent =
+              key in parentContext ||
+                // Discovered here but unused in the parents, mark it anyway so they include it
+                parentContext.containsScope(scope)
+            if (scopeInParent) {
+              parentContext.mark(key, scope)
+              return setOf(createParentGraphDependency(key))
+            }
+          }
+        }
+      }
+
+      return classBindings
     }
 
-    // Then check @Binds
-    aliasBindingsCache[key]?.let {
-      return setOf(it)
-    }
+  context(context: IrMetroContext)
+  private fun createParentGraphDependency(key: IrTypeKey): IrBinding.GraphDependency {
+    val parentGraph = parentContext!!.currentParentGraph
+    val cacheKey = ParentGraphDepKey(parentGraph, key)
+    return parentGraphDepCache.getOrPut(cacheKey) {
+      val parentTypeKey = IrTypeKey(parentGraph.typeWith())
+      val accessorFunction = key.toAccessorFunctionIn(parentGraph, wrapInProvider = true)
 
-    // Finally, fall back to class-based lookup
-    return lookupClassBinding(contextKey, currentBindings, stack)
+      IrBinding.GraphDependency(
+        ownerKey = parentTypeKey,
+        graph = sourceGraph,
+        getter = accessorFunction,
+        isProviderFieldAccessor = true,
+        typeKey = key,
+      )
+    }
   }
 
+  context(context: IrMetroContext)
   private fun lookupClassBinding(
     contextKey: IrContextualTypeKey,
     currentBindings: Set<IrTypeKey>,
     stack: IrBindingStack,
-  ): Set<IrBinding> =
-    with(metroContext) {
+  ): Set<IrBinding> {
+    return classBindingsCache.getOrPut(contextKey) {
       val key = contextKey.typeKey
       val irClass = key.type.rawType()
 
-      if (irClass.classId == symbols.metroMembersInjector.owner.classId) {
+      if (irClass.classId == context.symbols.metroMembersInjector.owner.classId) {
         // It's a members injector, just look up its bindings and return them
         val targetType = key.type.expectAs<IrSimpleType>().arguments.first().typeOrFail
         val targetClass = targetType.rawType()
@@ -125,19 +179,18 @@ internal class BindingLookup(
         return targetClass.computeMembersInjectorBindings(currentBindings, remapper)
       }
 
-      val classAnnotations = irClass.metroAnnotations(symbols.classIds)
+      val classAnnotations = irClass.metroAnnotations(context.symbols.classIds)
 
-      val bindings = mutableSetOf<IrBinding>()
       if (irClass.isObject) {
         irClass.getSimpleFunction(Symbols.StringNames.MIRROR_FUNCTION)?.owner?.let {
           // We don't actually call this function but it stores information about qualifier/scope
           // annotations, so reference it here so IC triggers
           trackFunctionCall(sourceGraph, it)
         }
-        bindings += IrBinding.ObjectClass(irClass, classAnnotations, key)
-        return bindings
+        return setOf(IrBinding.ObjectClass(irClass, classAnnotations, key))
       }
 
+      val bindings = mutableSetOf<IrBinding>()
       val remapper by unsafeLazy { irClass.deepRemapperFor(key.type) }
       val membersInjectBindings = unsafeLazy {
         irClass.computeMembersInjectorBindings(currentBindings, remapper).also { bindings += it }
@@ -162,7 +215,7 @@ internal class BindingLookup(
             )
             appendBindingStack(stack)
           }
-          diagnosticReporter.at(irClass).report(MetroIrErrors.METRO_ERROR, message)
+          context.diagnosticReporter.at(irClass).report(MetroIrErrors.METRO_ERROR, message)
           exitProcessing()
         }
 
@@ -203,6 +256,7 @@ internal class BindingLookup(
         // in case
         membersInjectBindings.value
       }
-      return bindings
+      bindings
     }
+  }
 }

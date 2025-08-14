@@ -30,5 +30,5 @@ interface SubscopeGraph {
   fun bindImplementation(<!METRO_ERROR!>instance: Implementation<!>): Base
 }
 
-@DependencyGraph(AppScope::class, isExtendable = true)
+@DependencyGraph(AppScope::class)
 interface TestGraph

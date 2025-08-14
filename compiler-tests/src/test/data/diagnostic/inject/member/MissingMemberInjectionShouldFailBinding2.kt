@@ -34,5 +34,5 @@ interface SubscopeGraph {
   }
 }
 
-@DependencyGraph(AppScope::class, isExtendable = true)
+@DependencyGraph(AppScope::class)
 interface TestGraph

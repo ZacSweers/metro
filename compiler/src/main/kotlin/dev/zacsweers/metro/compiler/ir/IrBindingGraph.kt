@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
-import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
@@ -61,7 +60,7 @@ internal class IrBindingGraph(
   // TODO hoist accessors up and visit in seal?
   private val accessors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
   private val injectors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
-  private val extraKeeps = mutableSetOf<IrTypeKey>()
+  private val extraKeeps = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
 
   // Thin immutable view over the internal bindings
   fun bindingsSnapshot(): Map<IrTypeKey, IrBinding> = realGraph.bindings
@@ -78,8 +77,8 @@ internal class IrBindingGraph(
     realGraph.tryPut(binding, bindingStack, key)
   }
 
-  fun keep(key: IrTypeKey) {
-    extraKeeps += key
+  fun keep(key: IrContextualTypeKey, entry: IrBindingStack.Entry) {
+    extraKeeps[key] = entry
   }
 
   fun findBinding(key: IrTypeKey): IrBinding? = realGraph[key]
@@ -195,24 +194,10 @@ internal class IrBindingGraph(
             putAll(injectors)
           }
 
-          // If it's extendable, we need to add keeps for providers, including extended graphs'
-          // providers
-          val keep = buildSet {
-            addAll(extraKeeps)
-            if (node.isExtendable) {
-              for ((key) in node.providerFactories) {
-                add(key)
-              }
-              for ((key) in node.allExtendedNodes.flatMap { it.value.providerFactories }) {
-                add(key)
-              }
-            }
-          }
-
           realGraph.seal(
             roots = roots,
-            keep = keep,
-            shrinkUnusedBindings = metroContext.options.shrinkUnusedBindings && !node.isExtendable,
+            keep = extraKeeps,
+            shrinkUnusedBindings = metroContext.options.shrinkUnusedBindings,
             tracer = tracer,
             onPopulated = {
               writeDiagnostic("keys-populated-${parentTracer.tag}.txt") {
@@ -534,7 +519,7 @@ internal class IrBindingGraph(
         val isUnscoped = node.scopes.isEmpty()
         // Error if there are mismatched scopes
         val declarationToReport =
-          if (node.sourceGraph.origin == Origins.ContributedGraph) {
+          if (node.sourceGraph.origin == Origins.GeneratedGraphExtension) {
             node.sourceGraph.parentAsClass
           } else {
             node.sourceGraph
@@ -564,41 +549,17 @@ internal class IrBindingGraph(
           appendLine()
           appendBindingStack(stack, short = false)
 
-          if (node.sourceGraph.origin == Origins.ContributedGraph) {
+          if (node.sourceGraph.origin == Origins.GeneratedGraphExtension) {
             appendLine()
             appendLine()
             appendLine("(Hint)")
             append(
-              "${node.sourceGraph.name} is contributed by '${node.sourceGraph.superTypes.first().rawTypeOrNull()?.kotlinFqName}' to '${declarationToReport.kotlinFqName}'."
+              "${node.sourceGraph.name} is contributed by '${node.sourceGraph.sourceGraphIfMetroGraph.kotlinFqName}' to '${declarationToReport.sourceGraphIfMetroGraph.kotlinFqName}'."
             )
-          }
-
-          if (!isUnscoped) {
-            val matchingParent =
-              node.allExtendedNodes.values.firstOrNull { bindingScope in it.scopes }
-            if (matchingParent != null) {
-              appendLine()
-              appendLine()
-              val shortTypeKey = binding.typeKey.render(short = true)
-              val optionsHint = if (binding is IrBinding.ConstructorInjected) {
-                " or enabling the `enableScopedInjectClassHints` option"
-              } else {
-                " or enabling the `eagerlyValidateProviders` option"
-              }
-              appendLine(
-                """
-                  (Hint)
-                  It appears that extended parent graph '${matchingParent.sourceGraph.kotlinFqName}' does declare the '$bindingScope' scope but doesn't use '$shortTypeKey' directly.
-                  To work around this, consider declaring an accessor for '$shortTypeKey' in that graph (i.e. `val ${shortTypeKey.decapitalizeUS()}: $shortTypeKey`)$optionsHint.
-                  See https://github.com/ZacSweers/metro/issues/377 for more details.
-                """
-                  .trimIndent()
-              )
-            }
           }
         }
         // TODO remove messagecollector in 2.2.20
-        if (declarationToReport.origin == Origins.ContributedGraph) {
+        if (declarationToReport.origin == Origins.GeneratedGraphExtension) {
           metroContext.messageCollector.report(
             CompilerMessageSeverity.ERROR,
             message,

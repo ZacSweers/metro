@@ -18,6 +18,8 @@ public class ClassIds(
   internal val customContributesIntoSetAnnotations: Set<ClassId> = emptySet(),
   customContributesGraphExtensionAnnotations: Set<ClassId> = emptySet(),
   customContributesGraphExtensionFactoryAnnotations: Set<ClassId> = emptySet(),
+  customGraphExtensionAnnotations: Set<ClassId> = emptySet(),
+  customGraphExtensionFactoryAnnotations: Set<ClassId> = emptySet(),
   customElementsIntoSetAnnotations: Set<ClassId> = emptySet(),
   customGraphAnnotations: Set<ClassId> = emptySet(),
   customGraphFactoryAnnotations: Set<ClassId> = emptySet(),
@@ -47,6 +49,10 @@ public class ClassIds(
           options.customContributesGraphExtensionAnnotations,
         customContributesGraphExtensionFactoryAnnotations =
           options.customContributesGraphExtensionFactoryAnnotations,
+        customGraphExtensionAnnotations =
+          options.customGraphExtensionAnnotations,
+        customGraphExtensionFactoryAnnotations =
+          options.customGraphExtensionFactoryAnnotations,
         customElementsIntoSetAnnotations = options.customElementsIntoSetAnnotations,
         customGraphAnnotations = options.customGraphAnnotations,
         customGraphFactoryAnnotations = options.customGraphFactoryAnnotations,
@@ -145,6 +151,14 @@ public class ClassIds(
   internal val contributesGraphExtensionFactoryAnnotations =
     setOf(contributesGraphExtensionFactoryAnnotation) +
       customContributesGraphExtensionFactoryAnnotations
+  internal val graphExtensionAnnotations =
+    setOf(Symbols.ClassIds.graphExtension) + customGraphExtensionAnnotations
+  internal val graphExtensionFactoryAnnotations =
+    setOf(Symbols.ClassIds.graphExtensionFactory) +
+      customContributesGraphExtensionFactoryAnnotations
+  internal val allGraphExtensionAndFactoryAnnotations = graphExtensionAnnotations + graphExtensionFactoryAnnotations + contributesGraphExtensionAnnotations + contributesGraphExtensionFactoryAnnotations
+  internal val allGraphExtensionAnnotations = graphExtensionAnnotations + contributesGraphExtensionAnnotations
+  internal val allGraphExtensionFactoryAnnotations = graphExtensionFactoryAnnotations + contributesGraphExtensionFactoryAnnotations
   internal val contributesToLikeAnnotations =
     contributesToAnnotations + contributesGraphExtensionFactoryAnnotations
 
@@ -179,5 +193,4 @@ public class ClassIds(
   internal val lazyTypes = setOf(Symbols.ClassIds.Lazy) + customLazyClasses
 
   internal val includes = setOf(Symbols.ClassIds.metroIncludes)
-  internal val extends = setOf(Symbols.ClassIds.metroExtends)
 }

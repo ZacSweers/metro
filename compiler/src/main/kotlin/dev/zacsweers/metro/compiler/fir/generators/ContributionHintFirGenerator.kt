@@ -109,12 +109,6 @@ internal class ContributionHintFirGenerator(session: FirSession, options: MetroO
         }
       }
 
-      if (
-        session.metroFirBuiltIns.options.enableScopedInjectClassHints &&
-          contributingClasses.isEmpty()
-      ) {
-        // TODO Class factory scope hints
-      }
       callableIds
     }
 

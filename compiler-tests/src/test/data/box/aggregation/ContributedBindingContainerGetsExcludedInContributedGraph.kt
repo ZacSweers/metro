@@ -25,7 +25,7 @@ interface ExampleGraph {
   }
 }
 
-@DependencyGraph(scope = Unit::class, isExtendable = true)
+@DependencyGraph(scope = Unit::class)
 interface AppGraph
 
 fun box(): String {

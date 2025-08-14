@@ -1631,7 +1631,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
           class MultibindingConsumer @Inject constructor(val contributions: Set<ContributedInterface>)
 
-          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph {
             val multibindingConsumer: MultibindingConsumer
           }
@@ -1670,7 +1670,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
           class MultibindingConsumer @Inject constructor(val contributions: Set<ContributedInterface>)
 
-          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph {
             val multibindingConsumer: MultibindingConsumer
           }
@@ -2644,16 +2644,14 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
           class Impl : Base
 
-          @DependencyGraph(Unit::class, isExtendable = true)
-          interface ParentGraph {
-            val base: Base
+          @GraphExtension
+          interface ChildGraph {
+            val message: String
 
-            @Provides
-            @SingleIn(Unit::class)
-            fun provideBase(): Base = Impl()
-
-            @Provides
-            fun provideMessage(base: Base): String = base.toString()
+            @GraphExtension.Factory
+            interface Factory {
+              fun create(): ChildGraph
+            }
           }
         """
             .trimIndent()
@@ -2663,14 +2661,18 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph
-          interface ChildGraph {
-            val message: String
+          @DependencyGraph(Unit::class)
+          interface ParentGraph {
+            val base: Base
 
-            @DependencyGraph.Factory
-            interface Factory {
-              fun create(@Extends parent: ParentGraph): ChildGraph
-            }
+            fun childGraphFactory(): ChildGraph.Factory
+
+            @Provides
+            @SingleIn(Unit::class)
+            fun provideBase(): Base = Impl()
+
+            @Provides
+            fun provideMessage(base: Base): String = base.toString()
           }
         """
           .trimIndent()

@@ -63,22 +63,6 @@ internal class IrContributionVisitor(context: IrMetroContext) :
       }
       return
     }
-
-    if (options.enableScopedInjectClassHints) {
-      val isConstructorInjected =
-        declaration.isAnnotatedWithAny(symbols.classIds.injectAnnotations) ||
-          declaration.primaryConstructor?.isAnnotatedWithAny(symbols.classIds.injectAnnotations) ==
-            true
-      if (isConstructorInjected) data.addScopedInject(declaration)
-    }
-
-    if (
-      options.enableScopedInjectClassHints &&
-        declaration.isAnnotatedWithAny(symbols.classIds.injectAnnotations) &&
-        !declaration.isAnnotatedWithAny(symbols.classIds.allContributesAnnotations)
-    ) {
-      data.addScopedInject(declaration)
-    }
   }
 
   private fun IrContributionData.addScopedInject(declaration: IrClass) {
