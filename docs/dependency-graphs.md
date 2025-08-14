@@ -197,7 +197,7 @@ interface AppGraph : LoggedInGraph.Factory
 * Contribute the factory to the parent graph via [ContributesGraphExtension](#contributed-graph-extensions). More on this below.
 
 ```kotlin
-@GraphExtension
+@ContributesGraphExtension(LoggedInScope::class)
 interface LoggedInGraph {
   @ContributesGraphExtension.Factory(AppScope::class)
   interface Factory {
