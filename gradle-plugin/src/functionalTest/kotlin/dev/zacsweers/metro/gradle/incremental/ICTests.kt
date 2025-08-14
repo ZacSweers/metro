@@ -853,11 +853,12 @@ class ICTests : BaseIncrementalCompilationTest() {
             """
                 sealed interface LoggedInScope
 
-                @ContributesGraphExtension(LoggedInScope::class)
+                @GraphExtension(LoggedInScope::class)
                 interface LoggedInGraph {
                   val exampleClass: ExampleClass
 
-                    @ContributesGraphExtension.Factory(AppScope::class)
+                    @ContributesTo(AppScope::class)
+                    @GraphExtension.Factory
                     interface Factory {
                         fun createLoggedInGraph(): LoggedInGraph
                     }
@@ -1134,11 +1135,12 @@ class ICTests : BaseIncrementalCompilationTest() {
             """
                 sealed interface LoggedInScope
 
-                @ContributesGraphExtension(LoggedInScope::class)
+                @GraphExtension(LoggedInScope::class)
                 interface LoggedInGraph {
                   val childDependency: Foo
 
-                    @ContributesGraphExtension.Factory(AppScope::class)
+                    @ContributesTo(AppScope::class)
+                    @GraphExtension.Factory
                     interface Factory {
                         fun createLoggedInGraph(): LoggedInGraph
                     }

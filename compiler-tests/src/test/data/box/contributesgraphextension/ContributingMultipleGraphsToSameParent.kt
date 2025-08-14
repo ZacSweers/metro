@@ -1,11 +1,11 @@
 // FILE: file1.kt
 package test
 
-@ContributesGraphExtension(LoggedInScope::class)
+@GraphExtension(LoggedInScope::class)
 interface LoggedInGraph {
   val dependency: Dependency
 
-  @ContributesGraphExtension.Factory(AppScope::class)
+  @GraphExtension.Factory @ContributesTo(AppScope::class)
   interface Factory {
     fun createLoggedInGraph(): LoggedInGraph
   }
@@ -17,11 +17,11 @@ package test2
 import test.LoggedInScope
 import test.Dependency
 
-@ContributesGraphExtension(LoggedInScope::class)
+@GraphExtension(LoggedInScope::class)
 interface LoggedInGraph {
   val dependency: Dependency
 
-  @ContributesGraphExtension.Factory(AppScope::class)
+  @GraphExtension.Factory @ContributesTo(AppScope::class)
   interface Factory {
     fun createLoggedInGraph2(): LoggedInGraph
   }

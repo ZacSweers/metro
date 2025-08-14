@@ -6,9 +6,9 @@ interface AppGraph {
   }
 }
 
-@ContributesGraphExtension(scope = Unit::class)
+@GraphExtension(scope = Unit::class)
 interface ChildGraph {
-  @ContributesGraphExtension.Factory(scope = AppScope::class)
+  @GraphExtension.Factory @ContributesTo(scope = AppScope::class)
   interface Factory {
     fun create(): ChildGraph
   }

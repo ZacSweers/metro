@@ -116,7 +116,7 @@ internal class ContributionBindsFunctionsIrTransformer(private val context: IrMe
 
     // Add fake overrides. This should only add missing ones
     declaration.addFakeOverrides(irTypeSystemContext)
-    if (!declaration.isAnnotatedWithAny(symbols.classIds.contributesGraphExtensionAnnotations)) {
+    if (!declaration.isAnnotatedWithAny(symbols.classIds.graphExtensionAnnotations)) {
       // Only DependencyGraph classes have a $$MetroGraph. ContributesGraphExtension will get
       // implemented later in IR
       declaration.requireNestedClass(Symbols.Names.MetroGraph).addFakeOverrides(irTypeSystemContext)
@@ -237,7 +237,7 @@ internal class ContributionBindsFunctionsIrTransformer(private val context: IrMe
   }
 
   private fun findContributions(contributingSymbol: IrClass): Set<Contribution>? {
-    val contributesToAnnotations = symbols.classIds.contributesToLikeAnnotations
+    val contributesToAnnotations = symbols.classIds.contributesToAnnotations
     val contributesBindingAnnotations = symbols.classIds.contributesBindingAnnotations
     val contributesIntoSetAnnotations = symbols.classIds.contributesIntoSetAnnotations
     val contributesIntoMapAnnotations = symbols.classIds.contributesIntoMapAnnotations

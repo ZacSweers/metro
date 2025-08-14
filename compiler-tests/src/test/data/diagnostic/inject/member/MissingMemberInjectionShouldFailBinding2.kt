@@ -21,14 +21,14 @@ interface SubscopeMultibindingModule {
   fun bindClassWithoutMembersInjector(<!METRO_ERROR!>instance: MembersInjector<ClassWithoutMembersInjector><!>): MembersInjector<*>
 }
 
-@ContributesGraphExtension(AppSubscope::class)
+@GraphExtension(AppSubscope::class)
 interface SubscopeGraph {
 
   @Multibinds
   @ForScope(AppSubscope::class)
   val membersInjectors: Map<KClass<*>, MembersInjector<*>>
 
-  @ContributesGraphExtension.Factory(AppScope::class)
+  @GraphExtension.Factory @ContributesTo(AppScope::class)
   interface Factory {
     fun create(): SubscopeGraph
   }

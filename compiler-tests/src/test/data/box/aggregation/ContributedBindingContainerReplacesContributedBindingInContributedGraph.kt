@@ -15,11 +15,11 @@ interface ContributedContainer {
   ): MyType
 }
 
-@ContributesGraphExtension(scope = AppScope::class)
+@GraphExtension(scope = AppScope::class)
 interface ExampleGraph {
   val myType: MyType
 
-  @ContributesGraphExtension.Factory(Unit::class)
+  @GraphExtension.Factory @ContributesTo(Unit::class)
   interface Factory {
     fun createExampleGraph(): ExampleGraph
   }

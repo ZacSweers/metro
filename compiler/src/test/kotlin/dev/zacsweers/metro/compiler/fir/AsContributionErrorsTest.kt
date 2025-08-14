@@ -193,9 +193,9 @@ class AsContributionErrorsTest : MetroCompilerTest() {
         fileNameWithoutExtension = "main",
         source =
           """
-            @ContributesGraphExtension(Unit::class)
+            @GraphExtension(Unit::class)
             interface UnitGraph {
-              @ContributesGraphExtension.Factory(AppScope::class)
+              @GraphExtension.Factory @ContributesTo(AppScope::class)
               interface Factory {
                 fun createUnitGraph(): UnitGraph
               }

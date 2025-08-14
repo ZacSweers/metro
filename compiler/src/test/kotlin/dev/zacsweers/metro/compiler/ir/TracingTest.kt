@@ -355,12 +355,12 @@ class TracingTest : MetroCompilerTest() {
               }
             }
 
-            @ContributesGraphExtension(Unit::class)
+            @GraphExtension(Unit::class)
             interface ChildGraph {
 
               fun exampleClass(): ExampleClass
 
-              @ContributesGraphExtension.Factory(AppScope::class)
+              @GraphExtension.Factory @ContributesTo(AppScope::class)
               fun interface Factory {
                 fun createChildGraph(): ChildGraph
               }

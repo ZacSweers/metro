@@ -855,10 +855,7 @@ internal class IrGraphGenerator(
           if (returnClass != null && returnClass.name == Symbols.Names.FactoryClass) {
             val parentClass = returnClass.parent as? IrClass
             parentClass != null &&
-              (parentClass.isAnnotatedWithAny(symbols.classIds.graphExtensionAnnotations) ||
-                parentClass.isAnnotatedWithAny(
-                  symbols.classIds.contributesGraphExtensionAnnotations
-                ))
+              parentClass.isAnnotatedWithAny(symbols.classIds.graphExtensionAnnotations)
           } else {
             false
           }

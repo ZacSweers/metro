@@ -28,11 +28,11 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         """
           abstract class LoggedInScope
 
-          @ContributesGraphExtension(LoggedInScope::class)
+          @GraphExtension(LoggedInScope::class)
           interface LoggedInGraph {
             val int: Int
 
-            @ContributesGraphExtension.Factory(AppScope::class)
+            @GraphExtension.Factory @ContributesTo(AppScope::class)
             interface Factory {
               fun createLoggedInGraph(): LoggedInGraph
             }
@@ -59,11 +59,11 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         """
           abstract class LoggedInScope
 
-          @ContributesGraphExtension(LoggedInScope::class)
+          @GraphExtension(LoggedInScope::class)
           abstract class LoggedInGraph {
             abstract val int: Int
 
-            @ContributesGraphExtension.Factory(AppScope::class)
+            @GraphExtension.Factory @ContributesTo(AppScope::class)
             interface Factory {
               fun createLoggedInGraph(): LoggedInGraph
             }
@@ -91,11 +91,11 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           """
           abstract class LoggedInScope
 
-          @ContributesGraphExtension(LoggedInScope::class)
+          @GraphExtension(LoggedInScope::class)
           interface LoggedInGraph {
             val int: Int
 
-            @ContributesGraphExtension.Factory(AppScope::class)
+            @GraphExtension.Factory @ContributesTo(AppScope::class)
             interface Factory {
               fun createLoggedInGraph(): LoggedInGraph
             }
@@ -139,11 +139,11 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
       compile(
         source(
           """
-          @ContributesGraphExtension(LoggedInScope::class)
+          @GraphExtension(LoggedInScope::class)
           interface LoggedInGraph {
             val string: String
 
-            @ContributesGraphExtension.Factory(AppScope::class)
+            @GraphExtension.Factory @ContributesTo(AppScope::class)
             interface Factory {
               fun createLoggedInGraph(): LoggedInGraph
             }
@@ -198,11 +198,11 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         """
           abstract class LoggedInScope
 
-          @ContributesGraphExtension(LoggedInScope::class)
+          @GraphExtension(LoggedInScope::class)
           interface LoggedInGraph {
             val string: String
 
-            @ContributesGraphExtension.Factory(AppScope::class)
+            @GraphExtension.Factory @ContributesTo(AppScope::class)
             interface Factory {
               fun createLoggedInGraph(): LoggedInGraph
             }
@@ -254,11 +254,11 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
       compile(
         source(
           """
-          @ContributesGraphExtension(LoggedInScope::class)
+          @GraphExtension(LoggedInScope::class)
           interface LoggedInGraph {
             val contributedInterface: ContributedInterface
 
-            @ContributesGraphExtension.Factory(AppScope::class)
+            @GraphExtension.Factory @ContributesTo(AppScope::class)
             interface Factory {
               fun createLoggedInGraph(): LoggedInGraph
             }
@@ -324,11 +324,11 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           class Impl : ContributedInterface
 
 
-          @ContributesGraphExtension(LoggedInScope::class)
+          @GraphExtension(LoggedInScope::class)
           interface LoggedInGraph {
             val contributedInterface: ContributedInterface
 
-            @ContributesGraphExtension.Factory(AppScope::class)
+            @GraphExtension.Factory @ContributesTo(AppScope::class)
             interface Factory {
               fun createLoggedInGraph(): LoggedInGraph
             }
@@ -357,11 +357,11 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           class Impl1 : ContributedInterface
           interface ConsumerInterface
 
-          @ContributesGraphExtension(LoggedInScope::class)
+          @GraphExtension(LoggedInScope::class)
           interface LoggedInGraph {
             val consumer: ConsumerInterface
 
-            @ContributesGraphExtension.Factory(AppScope::class)
+            @GraphExtension.Factory @ContributesTo(AppScope::class)
             interface Factory {
               fun createLoggedInGraph(): LoggedInGraph
             }
@@ -420,11 +420,11 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
               fun provideMulti(): Set<@JvmSuppressWildcards MultiboundType>
             }
 
-            @ContributesGraphExtension(LoggedInScope::class)
+            @GraphExtension(LoggedInScope::class)
             interface LoggedInGraph {
               val multi: Set<MultiboundType>
 
-              @ContributesGraphExtension.Factory(AppScope::class)
+              @GraphExtension.Factory @ContributesTo(AppScope::class)
               interface Factory {
                 fun createLoggedInGraph(): LoggedInGraph
               }
@@ -450,11 +450,11 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           abstract class LoggedInScope
 
           @SingleIn(Unit::class)
-          @ContributesGraphExtension(LoggedInScope::class)
+          @GraphExtension(LoggedInScope::class)
           interface LoggedInGraph {
             val string: String
 
-            @ContributesGraphExtension.Factory(AppScope::class)
+            @GraphExtension.Factory @ContributesTo(AppScope::class)
             interface Factory {
               fun createLoggedInGraph(): LoggedInGraph
             }
@@ -488,14 +488,14 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         """
           abstract class LoggedInScope
 
-          interface GraphExtension<T> {
+          interface BaseExtension<T> {
             val value: T
           }
 
-          @ContributesGraphExtension(LoggedInScope::class)
-          interface LoggedInGraph : GraphExtension<Int> {
+          @GraphExtension(LoggedInScope::class)
+          interface LoggedInGraph : BaseExtension<Int> {
 
-            @ContributesGraphExtension.Factory(AppScope::class)
+            @GraphExtension.Factory @ContributesTo(AppScope::class)
             interface Factory {
               fun createLoggedInGraph(): LoggedInGraph
             }
@@ -527,11 +527,11 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
             fun createGraph(): T
           }
 
-          @ContributesGraphExtension(LoggedInScope::class)
+          @GraphExtension(LoggedInScope::class)
           interface LoggedInGraph {
             val int: Int
 
-            @ContributesGraphExtension.Factory(AppScope::class)
+            @GraphExtension.Factory @ContributesTo(AppScope::class)
             interface Factory : GraphExtensionFactory<LoggedInGraph>
           }
 
@@ -556,11 +556,11 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         """
           abstract class LoggedInScope
 
-          @ContributesGraphExtension(LoggedInScope::class)
+          @GraphExtension(LoggedInScope::class)
           interface LoggedInGraph {
             val string: String
 
-            @ContributesGraphExtension.Factory(AppScope::class)
+            @GraphExtension.Factory @ContributesTo(AppScope::class)
             interface Factory {
               fun createLoggedInGraph(@Provides long: Long): LoggedInGraph
             }
@@ -594,11 +594,11 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         """
           abstract class LoggedInScope
 
-          @ContributesGraphExtension(LoggedInScope::class)
+          @GraphExtension(LoggedInScope::class)
           interface LoggedInGraph {
             val string: String
 
-            @ContributesGraphExtension.Factory(AppScope::class)
+            @GraphExtension.Factory @ContributesTo(AppScope::class)
             interface Factory {
               fun createLoggedInGraph(@Provides @Named("long") long: Long): LoggedInGraph
             }
@@ -632,11 +632,11 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         """
           abstract class LoggedInScope
 
-          @ContributesGraphExtension(LoggedInScope::class)
+          @GraphExtension(LoggedInScope::class)
           interface LoggedInGraph {
             val string: String
 
-            @ContributesGraphExtension.Factory(AppScope::class)
+            @GraphExtension.Factory @ContributesTo(AppScope::class)
             interface Factory {
               fun createLoggedInGraph(@Includes stringProvider: StringProvider): LoggedInGraph
             }
@@ -675,11 +675,11 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
             }
           }
 
-          @ContributesGraphExtension(scope = Unit::class)
+          @GraphExtension(scope = Unit::class)
           interface StringGraph : LoggedInGraph.Factory {
             val string: String
 
-            @ContributesGraphExtension.Factory(AppScope::class)
+            @GraphExtension.Factory @ContributesTo(AppScope::class)
             interface Factory {
               fun create(@Provides string: String): StringGraph
             }
@@ -706,9 +706,9 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         """
           abstract class LoggedInScope
 
-          @ContributesGraphExtension(LoggedInScope::class)
+          @GraphExtension(LoggedInScope::class)
           interface LoggedInGraph {
-            @ContributesGraphExtension.Factory(AppScope::class)
+            @GraphExtension.Factory @ContributesTo(AppScope::class)
             interface Factory {
               fun createLoggedInGraph(): LoggedInGraph
             }
@@ -740,9 +740,9 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         """
           abstract class LoggedInScope
 
-          @ContributesGraphExtension(LoggedInScope::class)
+          @GraphExtension(LoggedInScope::class)
           interface LoggedInGraph {
-            @ContributesGraphExtension.Factory(AppScope::class)
+            @GraphExtension.Factory @ContributesTo(AppScope::class)
             interface Factory {
               fun createLoggedInGraph(): LoggedInGraph
             }
@@ -775,23 +775,23 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         abstract class LoggedInScope
         abstract class ProfileScope
 
-        @ContributesGraphExtension(ProfileScope::class)
+        @GraphExtension(ProfileScope::class)
         interface ProfileGraph {
           val string: String
 
-          @ContributesGraphExtension.Factory(LoggedInScope::class)
+          @GraphExtension.Factory @ContributesTo(LoggedInScope::class)
           interface Factory {
             fun createProfileGraph(): ProfileGraph
           }
         }
 
-        @ContributesGraphExtension(LoggedInScope::class)
+        @GraphExtension(LoggedInScope::class)
         interface LoggedInGraph {
           val int: Int
 
           @Provides fun provideString(int: Int): String = int.toString()
 
-          @ContributesGraphExtension.Factory(AppScope::class)
+          @GraphExtension.Factory @ContributesTo(AppScope::class)
           interface Factory {
             fun createLoggedInGraph(): LoggedInGraph
           }
@@ -821,11 +821,11 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         """
         abstract class LoggedInScope
 
-        @ContributesGraphExtension(LoggedInScope::class)
+        @GraphExtension(LoggedInScope::class)
         interface LoggedInGraph {
           val int: Int
 
-          @ContributesGraphExtension.Factory(AppScope::class)
+          @GraphExtension.Factory @ContributesTo(AppScope::class)
           abstract class Factory {
             abstract fun createLoggedInGraph(): LoggedInGraph
           }
@@ -842,7 +842,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: LoggedInScope.kt:13:18 ContributesGraphExtension.Factory declarations can only be interfaces.
+          e: LoggedInScope.kt:13:18 Contributed @GraphExtension.Factory declarations can only be interfaces.
         """
           .trimIndent()
       )
@@ -856,12 +856,12 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         """
         abstract class LoggedInScope
 
-        @ContributesGraphExtension(LoggedInScope::class)
+        @GraphExtension(LoggedInScope::class)
         interface LoggedInGraph {
           val int: Int
 
         }
-        @ContributesGraphExtension.Factory(AppScope::class)
+        @GraphExtension.Factory @ContributesTo(AppScope::class)
         interface Factory {
           fun createLoggedInGraph(): LoggedInGraph
         }
@@ -877,8 +877,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: LoggedInScope.kt:8:1 ContributesGraphExtension.Factory declarations must be nested within the contributed graph they create but was top-level.
-          e: LoggedInScope.kt:9:11 @ContributesGraphExtension declarations must have a nested class annotated with @ContributesGraphExtension.Factory.
+          e: LoggedInScope.kt:8:1 @GraphExtension.Factory declarations must be nested within the contributed graph they create but was top-level.
         """
           .trimIndent()
       )
@@ -892,13 +891,13 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         """
         abstract class LoggedInScope
 
-        @ContributesGraphExtension(LoggedInScope::class)
+        @GraphExtension(LoggedInScope::class)
         interface LoggedInGraph {
           val int: Int
         }
 
         interface SomewhereElse {
-          @ContributesGraphExtension.Factory(AppScope::class)
+          @GraphExtension.Factory @ContributesTo(AppScope::class)
           interface Factory {
             fun createLoggedInGraph(): LoggedInGraph
           }
@@ -915,8 +914,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: LoggedInScope.kt:8:1 ContributesGraphExtension.Factory declarations must be nested within the contributed graph they create but was test.SomewhereElse.
-          e: LoggedInScope.kt:9:11 @ContributesGraphExtension declarations must have a nested class annotated with @ContributesGraphExtension.Factory.
+          e: LoggedInScope.kt:8:1 @GraphExtension.Factory declarations must be nested within the contributed graph they create but was test.SomewhereElse.
         """
           .trimIndent()
       )
@@ -933,7 +931,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         @DependencyGraph(scope = AppScope::class)
         interface ExampleGraph {
           @Provides fun provideInt(): Int = 0
-          @ContributesGraphExtension.Factory(LoggedInScope::class)
+          @GraphExtension.Factory @ContributesTo(LoggedInScope::class)
           interface Factory {
             fun createExampleGraph(): ExampleGraph
           }
@@ -945,7 +943,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: LoggedInScope.kt:8:1 ContributesGraphExtension.Factory abstract function 'createExampleGraph' must return a contributed graph extension but found test.ExampleGraph.
+          e: LoggedInScope.kt:8:1 @GraphExtension.Factory abstract function 'createExampleGraph' must return a graph extension but found test.ExampleGraph.
         """
           .trimIndent()
       )
@@ -959,10 +957,10 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         """
         abstract class LoggedInScope
 
-        @ContributesGraphExtension(LoggedInScope::class)
+        @GraphExtension(LoggedInScope::class)
         interface LoggedInGraph {
           val int: Int
-          @ContributesGraphExtension.Factory(LoggedInScope::class)
+          @GraphExtension.Factory @ContributesTo(LoggedInScope::class)
           interface Factory {
             fun createLoggedInGraph(): LoggedInGraph
           }
@@ -979,7 +977,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: LoggedInScope.kt:11:3 ContributesGraphExtension.Factory declarations must contribute to a different scope than their contributed graph. However, this factory and its contributed graph both contribute to 'test.LoggedInScope'.
+          e: LoggedInScope.kt:11:3 GraphExtension.Factory declarations must contribute to a different scope than their contributed graph. However, this factory and its contributed graph both contribute to 'test.LoggedInScope'.
         """
           .trimIndent()
       )
@@ -1005,11 +1003,11 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           @DependencyGraph(scope = TestScope::class)
           interface ParentGraph
 
-          @ContributesGraphExtension(TestChildScope::class)
+          @GraphExtension(TestChildScope::class)
           interface ChildGraph {
               val string: String
 
-              @ContributesGraphExtension.Factory(TestScope::class)
+              @GraphExtension.Factory @ContributesTo(TestScope::class)
               interface Factory {
                   fun createChildGraph(): ChildGraph
               }
@@ -1042,11 +1040,11 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
             // val dependency: Dependency
           }
 
-          @ContributesGraphExtension(LoggedInScope::class)
+          @GraphExtension(LoggedInScope::class)
           interface LoggedInGraph {
               val childDependency: ChildDependency
 
-              @ContributesGraphExtension.Factory(AppScope::class)
+              @GraphExtension.Factory @ContributesTo(AppScope::class)
               interface Factory {
                   fun createLoggedInGraph(): LoggedInGraph
               }
@@ -1085,19 +1083,19 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
             // val dependency: Dependency
           }
 
-          @ContributesGraphExtension(IntermediateScope::class)
+          @GraphExtension(IntermediateScope::class)
           interface IntermediateGraph {
-              @ContributesGraphExtension.Factory(AppScope::class)
+              @GraphExtension.Factory @ContributesTo(AppScope::class)
               interface Factory {
                   fun createIntermediateGraph(): IntermediateGraph
               }
           }
 
-          @ContributesGraphExtension(LoggedInScope::class)
+          @GraphExtension(LoggedInScope::class)
           interface LoggedInGraph {
               val childDependency: ChildDependency
 
-              @ContributesGraphExtension.Factory(IntermediateScope::class)
+              @GraphExtension.Factory @ContributesTo(IntermediateScope::class)
               interface Factory {
                   fun createLoggedInGraph(): LoggedInGraph
               }
@@ -1126,9 +1124,9 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         """
           abstract class Parent
 
-          @ContributesGraphExtension(Parent::class)
+          @GraphExtension(Parent::class)
           interface ParentGraph {
-            @ContributesGraphExtension.Factory(AppScope::class)
+            @GraphExtension.Factory @ContributesTo(AppScope::class)
             interface Factory {
               fun create(
                   @Provides @ForScope(Parent::class) string: String
@@ -1157,11 +1155,11 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph
 
-          @ContributesGraphExtension(LoggedInScope::class)
+          @GraphExtension(LoggedInScope::class)
           interface LoggedInGraph {
             val childDependency: ChildDependency
 
-              @ContributesGraphExtension.Factory(AppScope::class)
+              @GraphExtension.Factory @ContributesTo(AppScope::class)
               interface Factory {
                   fun createLoggedInGraph(): LoggedInGraph
               }
@@ -1192,11 +1190,11 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           @DependencyGraph(AppScope::class)
           interface ExampleGraph
 
-          @ContributesGraphExtension(LoggedInScope::class)
+          @GraphExtension(LoggedInScope::class)
           interface LoggedInGraph {
             val childDependency: Dependency
 
-              @ContributesGraphExtension.Factory(AppScope::class)
+              @GraphExtension.Factory @ContributesTo(AppScope::class)
               interface Factory {
                   fun createLoggedInGraph(): LoggedInGraph
               }
@@ -1234,11 +1232,11 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           """
           sealed interface LoggedInScope
 
-          @ContributesGraphExtension(LoggedInScope::class)
+          @GraphExtension(LoggedInScope::class)
           interface LoggedInGraph {
             val childDependency: Bob
 
-              @ContributesGraphExtension.Factory(AppScope::class)
+              @GraphExtension.Factory @ContributesTo(AppScope::class)
               interface Factory {
                   fun createLoggedInGraph(): LoggedInGraph
               }
@@ -1290,11 +1288,11 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           """
           sealed interface LoggedInScope
 
-          @ContributesGraphExtension(LoggedInScope::class)
+          @GraphExtension(LoggedInScope::class)
           interface LoggedInGraph {
             val childDependency: Dependency
 
-              @ContributesGraphExtension.Factory(AppScope::class)
+              @GraphExtension.Factory @ContributesTo(AppScope::class)
               interface Factory {
                   fun createLoggedInGraph(): LoggedInGraph
               }
@@ -1340,21 +1338,21 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph
 
-          @ContributesGraphExtension(LoggedInScope::class)
+          @GraphExtension(LoggedInScope::class)
           interface LoggedInGraph {
             val childDependency: Dependency
 
-              @ContributesGraphExtension.Factory(AppScope::class)
+              @GraphExtension.Factory @ContributesTo(AppScope::class)
               interface Factory {
                   fun createLoggedInGraph(): LoggedInGraph
               }
           }
 
-          @ContributesGraphExtension(OtherScope::class)
+          @GraphExtension(OtherScope::class)
           interface OtherGraph {
             val childDependency: Dependency
 
-              @ContributesGraphExtension.Factory(AppScope::class)
+              @GraphExtension.Factory @ContributesTo(AppScope::class)
               interface Factory {
                   fun createOtherGraph(): OtherGraph
               }
@@ -1388,7 +1386,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         @DependencyGraph(AppScope::class)
         interface ExampleGraph
 
-        @ContributesGraphExtension(LoggedInScope::class)
+        @GraphExtension(LoggedInScope::class)
         interface LoggedInGraph {
           val ints: Set<Int>
           @Provides @IntoSet fun provideInt1(): Int = 1
@@ -1397,7 +1395,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           @ElementsIntoSet
           fun provideInts(): Set<Int> = setOf(3, 4)
 
-          @ContributesGraphExtension.Factory(AppScope::class)
+          @GraphExtension.Factory @ContributesTo(AppScope::class)
           interface Factory1 {
             fun createLoggedInGraph(): LoggedInGraph
           }
@@ -1429,13 +1427,13 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         @DependencyGraph(AppScope::class)
         interface ExampleGraph
 
-        @ContributesGraphExtension(LoggedInScope::class)
+        @GraphExtension(LoggedInScope::class)
         interface LoggedInGraph {
           val tasks: Set<Task>
           @IntoSet @Binds val TaskImpl1.bind: Task
           @IntoSet @Binds val TaskImpl2.bind: Task
 
-          @ContributesGraphExtension.Factory(AppScope::class)
+          @GraphExtension.Factory @ContributesTo(AppScope::class)
           interface Factory1 {
             fun createLoggedInGraph(): LoggedInGraph
           }
@@ -1472,11 +1470,11 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           @IntoSet @Binds val TaskImpl2.bind: Task
         }
 
-        @ContributesGraphExtension(LoggedInScope::class)
+        @GraphExtension(LoggedInScope::class)
         interface LoggedInGraph {
           val tasksFromParent: Set<Task>
 
-          @ContributesGraphExtension.Factory(AppScope::class)
+          @GraphExtension.Factory @ContributesTo(AppScope::class)
           interface Factory1 {
             fun createLoggedInGraph(): LoggedInGraph
           }
@@ -1543,12 +1541,12 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @ContributesGraphExtension(LoggedInScope::class)
+          @GraphExtension(LoggedInScope::class)
           interface LoggedInGraph {
             val contributedInterface: ContributedInterface
             val impl1: Impl1
 
-            @ContributesGraphExtension.Factory(AppScope::class)
+            @GraphExtension.Factory @ContributesTo(AppScope::class)
             interface Factory {
               fun createLoggedInGraph(): LoggedInGraph
             }
@@ -1584,9 +1582,9 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
 
           interface Test
 
-          @ContributesGraphExtension(ChildScope::class)
+          @GraphExtension(ChildScope::class)
           interface ChildGraph : Test {
-            @ContributesGraphExtension.Factory(AppScope::class)
+            @GraphExtension.Factory @ContributesTo(AppScope::class)
             interface Factory {
               fun create(): ChildGraph
             }
@@ -1609,13 +1607,13 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
 
           interface Test
 
-          @ContributesGraphExtension(ChildScope::class)
+          @GraphExtension(ChildScope::class)
           interface ChildGraph : Test {
 
             val test: Test
             @Binds val ChildGraph.bind: Test
 
-            @ContributesGraphExtension.Factory(AppScope::class)
+            @GraphExtension.Factory @ContributesTo(AppScope::class)
             interface Factory {
               fun create(): ChildGraph
             }
@@ -1639,12 +1637,12 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
 
           interface Test
 
-          @ContributesGraphExtension(Parent::class)
+          @GraphExtension(Parent::class)
           interface ChildGraph : Test {
 
             val test: Test
 
-            @ContributesGraphExtension.Factory(AppScope::class)
+            @GraphExtension.Factory @ContributesTo(AppScope::class)
             interface Factory {
               fun create(): ChildGraph
             }
@@ -1679,19 +1677,19 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           @DependencyGraph(scope = GrandParentScope::class)
           interface GrandParentGraph
 
-          @ContributesGraphExtension(ParentScope::class)
+          @GraphExtension(ParentScope::class)
           interface ParentGraph {
-              @ContributesGraphExtension.Factory(GrandParentScope::class)
+              @GraphExtension.Factory @ContributesTo(GrandParentScope::class)
               interface Factory {
                   fun createParentGraph(): ParentGraph
               }
           }
 
-          @ContributesGraphExtension(ChildScope::class)
+          @GraphExtension(ChildScope::class)
           interface ChildGraph {
               val string: String
 
-              @ContributesGraphExtension.Factory(ParentScope::class)
+              @GraphExtension.Factory @ContributesTo(ParentScope::class)
               interface Factory {
                   fun createChildGraph(): ChildGraph
               }
@@ -1718,11 +1716,11 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
             val dependency: Dependency
           }
 
-          @ContributesGraphExtension(LoggedInScope::class)
+          @GraphExtension(LoggedInScope::class)
           interface LoggedInGraph {
               fun inject(screen: LoggedInScreen)
 
-              @ContributesGraphExtension.Factory(AppScope::class)
+              @GraphExtension.Factory @ContributesTo(AppScope::class)
               interface Factory {
                   fun createLoggedInGraph(): LoggedInGraph
               }
@@ -1769,11 +1767,11 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
             val dependency: Dependency
           }
 
-          @ContributesGraphExtension(LoggedInScope::class)
+          @GraphExtension(LoggedInScope::class)
           interface LoggedInGraph {
               val dependency: Dependency
 
-              @ContributesGraphExtension.Factory(AppScope::class)
+              @GraphExtension.Factory @ContributesTo(AppScope::class)
               interface Factory {
                   fun createLoggedInGraph(): LoggedInGraph
               }
@@ -1794,12 +1792,12 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           """
           abstract class LoginScope
 
-          @ContributesGraphExtension(LoginScope::class)
+          @GraphExtension(LoginScope::class)
           interface LoginGraph {
             @Multibinds
             fun multibinds(): Map<Class<*>, Any>
 
-            @ContributesGraphExtension.Factory(AppScope::class)
+            @GraphExtension.Factory @ContributesTo(AppScope::class)
             interface Factory {
               fun create(): LoginGraph
             }

@@ -317,7 +317,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertDiagnostics(
-      "e: ExampleGraph.kt:9:17 DependencyGraph.Factory abstract function 'create' must return a dependency graph but found kotlin.Unit."
+      "e: ExampleGraph.kt:9:17 @DependencyGraph.Factory abstract function 'create' must return a dependency graph but found kotlin.Unit."
     )
   }
 
@@ -340,7 +340,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertDiagnostics(
-      "e: ExampleGraph.kt:10:19 DependencyGraph.Factory abstract function 'create' must return a dependency graph but found kotlin.Nothing."
+      "e: ExampleGraph.kt:10:19 @DependencyGraph.Factory abstract function 'create' must return a dependency graph but found kotlin.Nothing."
     )
   }
 
@@ -445,24 +445,6 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       )
     result.assertDiagnostics(
       "e: ExampleGraph.kt:10:33 DependencyGraph.Factory declarations cannot have their target graph type as parameters."
-    )
-  }
-
-  @Test
-  fun `contributed graphs must have a nested factory`() {
-    val result =
-      compile(
-        source(
-          """
-            @ContributesGraphExtension(Unit::class)
-            interface ExampleGraph
-          """
-            .trimIndent()
-        ),
-        expectedExitCode = ExitCode.COMPILATION_ERROR,
-      )
-    result.assertDiagnostics(
-      "e: ExampleGraph.kt:7:11 @ContributesGraphExtension declarations must have a nested class annotated with @ContributesGraphExtension.Factory."
     )
   }
 
@@ -599,9 +581,9 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
             @DependencyGraph(AppScope::class)
             interface ExampleGraph
 
-            @ContributesGraphExtension(Unit::class)
+            @GraphExtension(Unit::class)
             internal interface ContributedInterface {
-              @ContributesGraphExtension.Factory(AppScope::class)
+              @GraphExtension.Factory @ContributesTo(AppScope::class)
               interface Factory {
                 fun create(): ContributedInterface
               }

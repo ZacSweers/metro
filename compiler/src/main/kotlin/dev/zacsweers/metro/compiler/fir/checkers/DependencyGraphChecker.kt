@@ -66,27 +66,6 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
       declaration.annotationsIn(session, classIds.graphLikeAnnotations).firstOrNull() ?: return
 
     val graphAnnotationClassId = dependencyGraphAnno.toAnnotationClassIdSafe(session) ?: return
-    val contributedExtension =
-      graphAnnotationClassId in classIds.contributesGraphExtensionAnnotations
-
-    if (contributedExtension) {
-      // Must have a nested class annotated with `@ContributesGraphExtension.Factory`
-      val hasNestedFactory =
-        declaration.symbol.nestedClasses().any { nestedClass ->
-          nestedClass.isAnnotatedWithAny(
-            session,
-            classIds.contributesGraphExtensionFactoryAnnotations,
-          )
-        }
-      if (!hasNestedFactory) {
-        reporter.reportOn(
-          declaration.source,
-          FirMetroErrors.GRAPH_CREATORS_ERROR,
-          "@${graphAnnotationClassId.relativeClassName.asString()} declarations must have a nested class annotated with @ContributesGraphExtension.Factory.",
-        )
-        return
-      }
-    }
 
     // Ensure scope is defined if any additionalScopes are defined
     val scope =
@@ -140,7 +119,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
           supertypeClass.resolvedAnnotationsWithArguments.scopeAnnotations(session)
 
         if (
-          supertypeClass.isAnnotatedWithAny(session, classIds.allGraphExtensionFactoryAnnotations)
+          supertypeClass.isAnnotatedWithAny(session, classIds.graphExtensionFactoryAnnotations)
         ) {
           graphExtensionFactorySupertypes[supertypeRef] = supertypeClass
         }
@@ -183,7 +162,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
       val isGraphExtensionCreator =
         returnTypeClassSymbol?.isAnnotatedWithAny(
           session,
-          classIds.allGraphExtensionFactoryAnnotations,
+          classIds.graphExtensionFactoryAnnotations,
         ) == true
 
       if (isGraphExtensionCreator) {
@@ -204,7 +183,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
         val graphExtensionClass =
           callable.directOverriddenSymbolsSafe(context).firstNotNullOfOrNull { overriddenSymbol ->
             overriddenSymbol.dispatchReceiverClassTypeOrNull()?.toClassSymbol(session)?.takeIf {
-              it.isAnnotatedWithAny(session, classIds.allGraphExtensionFactoryAnnotations)
+              it.isAnnotatedWithAny(session, classIds.graphExtensionFactoryAnnotations)
             }
           }
         if (graphExtensionClass != null) {
@@ -222,7 +201,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
       }
 
       val isGraphExtension =
-        returnTypeClassSymbol?.isAnnotatedWithAny(session, classIds.allGraphExtensionAnnotations) ==
+        returnTypeClassSymbol?.isAnnotatedWithAny(session, classIds.graphExtensionAnnotations) ==
           true
       if (isGraphExtension) {
         // Check if that extension has a creator. If so, we either must implement that creator or
@@ -230,7 +209,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
         // because they need to use it
         val creator =
           returnTypeClassSymbol.nestedClasses().firstOrNull { nestedClass ->
-            nestedClass.isAnnotatedWithAny(session, classIds.allGraphExtensionFactoryAnnotations)
+            nestedClass.isAnnotatedWithAny(session, classIds.graphExtensionFactoryAnnotations)
           }
         if (creator != null) {
           // Final check - make sure this callable belongs to that extension
@@ -363,7 +342,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
   ) {
     val dependencyGraphAnno =
       graphExtension.resolvedCompilerAnnotationsWithClassIds
-        .annotationsIn(session, classIds.allGraphExtensionAnnotations)
+        .annotationsIn(session, classIds.graphExtensionAnnotations)
         .firstOrNull()
 
     val targetGraphScopes = dependencyGraphAnno?.allScopeClassIds().orEmpty()

@@ -202,7 +202,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
       register(
         dependencyGraphPredicate,
         contributesAnnotationPredicate,
-        contributesGraphExtensionFactoryPredicate,
+        graphExtensionFactoryPredicate,
         qualifiersPredicate,
         bindingContainerPredicate,
       )
@@ -281,7 +281,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
         ?.takeIf { it }
         ?.let { contributionMappingsByClassId.remove(excludedClassId) }
 
-      // If the target is `@ContributesGraphExtension`, also implicitly exclude its nested factory
+      // If the target is `@GraphExtension`, also implicitly exclude its nested factory if available
       // TODO this is finicky and the target class's annotations aren't resolved.
       //  Ideally we also && targetClass.isAnnotatedWithAny(session,
       //  session.classIds.contributesGraphExtensionAnnotations)
@@ -295,7 +295,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
               if (
                 it.isAnnotatedWithAny(
                   session,
-                  session.classIds.contributesGraphExtensionFactoryAnnotations,
+                  session.classIds.graphExtensionFactoryAnnotations,
                 )
               ) {
                 // Exclude its factory class too

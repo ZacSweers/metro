@@ -9,14 +9,14 @@ interface AppGraph {
   fun provideHttpClient(): HttpClient = HttpClient()
 }
 
-@ContributesGraphExtension(Unit::class)
+@GraphExtension(Unit::class)
 interface NetworkExtension {
   val service: NetworkService
 
   @Provides
   fun provideNetworkService(httpClient: HttpClient): NetworkService = NetworkService(httpClient)
 
-  @ContributesGraphExtension.Factory(AppScope::class)
+  @GraphExtension.Factory @ContributesTo(AppScope::class)
   interface Factory {
     fun createNetworkExtension(): NetworkExtension
   }

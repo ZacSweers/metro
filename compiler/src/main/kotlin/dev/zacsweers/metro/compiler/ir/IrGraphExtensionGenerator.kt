@@ -61,22 +61,22 @@ internal class IrGraphExtensionGenerator(
           .overriddenSymbolsSequence()
           .firstOrNull {
             it.owner.parentAsClass.isAnnotatedWithAny(
-              symbols.classIds.allGraphExtensionFactoryAnnotations
+              symbols.classIds.graphExtensionFactoryAnnotations
             )
           }
           ?.owner ?: contributedAccessor.ir
 
       val parent = sourceSamFunction.parentClassOrNull ?: error("No parent class found")
       val isFactorySAM =
-        parent.isAnnotatedWithAny(symbols.classIds.allGraphExtensionFactoryAnnotations)
+        parent.isAnnotatedWithAny(symbols.classIds.graphExtensionFactoryAnnotations)
       if (isFactorySAM) {
         generateImplFromFactory(sourceSamFunction, parentTracer)
       } else {
         val returnType = contributedAccessor.ir.returnType.rawType()
         val returnIsGraphExtensionFactory =
-          returnType.isAnnotatedWithAny(symbols.classIds.allGraphExtensionFactoryAnnotations)
+          returnType.isAnnotatedWithAny(symbols.classIds.graphExtensionFactoryAnnotations)
         val returnIsGraphExtension =
-          returnType.isAnnotatedWithAny(symbols.classIds.allGraphExtensionAnnotations)
+          returnType.isAnnotatedWithAny(symbols.classIds.graphExtensionAnnotations)
         if (returnIsGraphExtensionFactory) {
           val samFunction =
             returnType.singleAbstractFunction().apply {
@@ -105,16 +105,12 @@ internal class IrGraphExtensionGenerator(
   }
 
   private fun generateImpl(sourceGraph: IrClass, creatorFunction: IrSimpleFunction?): IrClass {
-    // Check for both @ContributesGraphExtension and @GraphExtension
-    val contributesGraphExtensionAnno =
-      sourceGraph.annotationsIn(symbols.classIds.contributesGraphExtensionAnnotations).firstOrNull()
     val graphExtensionAnno =
       sourceGraph.annotationsIn(symbols.classIds.graphExtensionAnnotations).firstOrNull()
     val extensionAnno =
-      contributesGraphExtensionAnno
-        ?: graphExtensionAnno
+      graphExtensionAnno
         ?: error(
-          "Expected @ContributesGraphExtension or @GraphExtension on ${sourceGraph.kotlinFqName}"
+          "Expected @GraphExtension on ${sourceGraph.kotlinFqName}"
         )
 
     val sourceScope = extensionAnno.scopeClassOrNull()
@@ -180,9 +176,7 @@ internal class IrGraphExtensionGenerator(
       contributedSupertypes += allContributions.values.flatten()
     }
 
-    // Source is a `@ContributesGraphExtension` or `@GraphExtension`-annotated class, we want to
-    // generate a header impl
-    // class
+    // Source is a `@GraphExtension`-annotated class, we want to generate a header impl class
     val graphImpl =
       pluginContext.irFactory
         .buildClass {

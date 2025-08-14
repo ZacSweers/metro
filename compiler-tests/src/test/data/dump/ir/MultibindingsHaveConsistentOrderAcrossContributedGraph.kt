@@ -15,11 +15,11 @@ interface ExampleGraph {
   @IntoSet @Provides fun provide3(): Task = TaskImpl3()
 }
 
-@ContributesGraphExtension(Unit::class)
+@GraphExtension(Unit::class)
 interface LoggedInGraph {
   val tasksFromParent: Set<Task>
 
-  @ContributesGraphExtension.Factory(AppScope::class)
+  @GraphExtension.Factory @ContributesTo(AppScope::class)
   interface Factory1 {
     fun createLoggedInGraph(): LoggedInGraph
   }

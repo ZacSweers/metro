@@ -46,7 +46,7 @@ internal class IrContributionVisitor(context: IrMetroContext) :
     // @BindingContainer handling
     if (declaration.isAnnotatedWithAny(symbols.classIds.bindingContainerAnnotations)) {
       for (contributesToAnno in
-        declaration.annotationsIn(symbols.classIds.contributesToLikeAnnotations)) {
+        declaration.annotationsIn(symbols.classIds.contributesToAnnotations)) {
         val scope =
           contributesToAnno.scopeOrNull()
             ?: with(metroContext) {

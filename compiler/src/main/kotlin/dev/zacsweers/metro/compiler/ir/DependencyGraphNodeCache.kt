@@ -297,11 +297,8 @@ internal class DependencyGraphNodeCache(
               val overriddenParentClass = overridden.owner.parentClassOrNull ?: continue
               val isGraphExtensionFactory =
                 overriddenParentClass.isAnnotatedWithAny(
-                  symbols.classIds.contributesGraphExtensionFactoryAnnotations
-                ) ||
-                  overriddenParentClass.isAnnotatedWithAny(
-                    symbols.classIds.graphExtensionFactoryAnnotations
-                  )
+                  symbols.classIds.graphExtensionFactoryAnnotations
+                )
 
               if (isGraphExtensionFactory) {
                 isGraphExtension = true
@@ -337,7 +334,7 @@ internal class DependencyGraphNodeCache(
               val contextKey =
                 if (
                   functionParent != null &&
-                    functionParent.isAnnotatedWithAny(symbols.classIds.allGraphExtensionAnnotations)
+                    functionParent.isAnnotatedWithAny(symbols.classIds.graphExtensionAnnotations)
                 ) {
                   IrContextualTypeKey(
                     IrTypeKey(functionParent.defaultType, functionParent.qualifierAnnotation())
@@ -385,11 +382,8 @@ internal class DependencyGraphNodeCache(
               val overriddenParentClass = overridden.owner.parentClassOrNull ?: continue
               val isGraphExtensionFactory =
                 overriddenParentClass.isAnnotatedWithAny(
-                  symbols.classIds.contributesGraphExtensionFactoryAnnotations
-                ) ||
-                  overriddenParentClass.isAnnotatedWithAny(
-                    symbols.classIds.graphExtensionFactoryAnnotations
-                  )
+                  symbols.classIds.graphExtensionFactoryAnnotations
+                )
               if (isGraphExtensionFactory) {
                 isGraphExtension = true
                 break
@@ -400,10 +394,7 @@ internal class DependencyGraphNodeCache(
               val returnClass = returnType.classOrNull?.owner
               if (returnClass != null) {
                 val returnsExtension =
-                  returnClass.isAnnotatedWithAny(symbols.classIds.graphExtensionAnnotations) ||
-                    returnClass.isAnnotatedWithAny(
-                      symbols.classIds.contributesGraphExtensionAnnotations
-                    )
+                  returnClass.isAnnotatedWithAny(symbols.classIds.graphExtensionAnnotations)
                 if (returnsExtension) {
                   isGraphExtension = true
                   break
@@ -422,7 +413,7 @@ internal class DependencyGraphNodeCache(
               val contextKey =
                 if (
                   functionParent != null &&
-                    functionParent.isAnnotatedWithAny(symbols.classIds.allGraphExtensionAnnotations)
+                    functionParent.isAnnotatedWithAny(symbols.classIds.graphExtensionAnnotations)
                 ) {
                   IrContextualTypeKey(
                     IrTypeKey(functionParent.defaultType, functionParent.qualifierAnnotation())

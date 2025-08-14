@@ -278,12 +278,6 @@ interface TestAppGraph {
 }
 ```
 
-## `@ContributesGraphExtension`
-
-`@ContributesGraphExtension` is a specialized type of graph that is _contributed_ to some parent scope. Its generation is deferred until the parent graph interface is merged.
-
-See [Dependency Graphs](dependency-graphs.md#contributed-graph-extensions) for motivation and documentation.
-
 ## Implementation notes
 
 This leans on Kotlin’s ability to put generic type parameters on annotations. That in turn allows for both generic bound types and to contribute map bindings to multiple map keys.

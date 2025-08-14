@@ -1,8 +1,8 @@
 abstract class LoggedInScope
 
-@ContributesGraphExtension(LoggedInScope::class)
+@GraphExtension(LoggedInScope::class)
 interface LoggedInGraph {
-  @ContributesGraphExtension.Factory(AppScope::class)
+  @GraphExtension.Factory @ContributesTo(AppScope::class)
   interface Factory {
     fun createLoggedInGraph(): LoggedInGraph
   }

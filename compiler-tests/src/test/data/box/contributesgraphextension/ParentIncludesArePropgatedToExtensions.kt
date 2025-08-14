@@ -17,12 +17,12 @@ interface TestModule {
   @Provides fun providesInt(str: String): Int = str.length
 }
 
-@ContributesGraphExtension(scope = Unit::class)
+@GraphExtension(scope = Unit::class)
 interface LoggedInGraph {
 
   val intLength: Int
 
-  @ContributesGraphExtension.Factory(AppScope::class)
+  @GraphExtension.Factory @ContributesTo(AppScope::class)
   interface Factory {
     fun createLoggedInGraph(): LoggedInGraph
   }

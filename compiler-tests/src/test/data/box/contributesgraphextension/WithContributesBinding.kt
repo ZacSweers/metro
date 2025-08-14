@@ -2,12 +2,12 @@
 // MODULE: lib
 abstract class ChildScope
 
-@ContributesGraphExtension(ChildScope::class)
+@GraphExtension(ChildScope::class)
 interface ChildGraph {
 
   val foo: Foo
 
-  @ContributesGraphExtension.Factory(AppScope::class)
+  @GraphExtension.Factory @ContributesTo(AppScope::class)
   interface Factory {
     fun createChild(): ChildGraph
   }

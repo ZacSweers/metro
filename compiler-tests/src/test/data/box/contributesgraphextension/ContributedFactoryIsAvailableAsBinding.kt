@@ -2,11 +2,11 @@
 // MODULE: lib
 abstract class ViewScope
 
-@ContributesGraphExtension(ViewScope::class)
+@GraphExtension(ViewScope::class)
 interface ViewObjectGraph {
   val int: Int
 
-  @ContributesGraphExtension.Factory(AppScope::class)
+  @GraphExtension.Factory @ContributesTo(AppScope::class)
   interface Factory {
     fun create(@Provides int: Int): ViewObjectGraph
   }

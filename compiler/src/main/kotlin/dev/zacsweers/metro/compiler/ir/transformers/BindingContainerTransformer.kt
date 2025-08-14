@@ -168,8 +168,8 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     val graphAnnotation =
       declaration.annotationsIn(symbols.classIds.graphLikeAnnotations).firstOrNull()
     val isContributedGraph =
-      graphAnnotation?.annotationClass?.classId in
-        symbols.classIds.contributesGraphExtensionAnnotations
+      (graphAnnotation?.annotationClass?.classId in
+        symbols.classIds.graphExtensionAnnotations) && declaration.isAnnotatedWithAny(symbols.classIds.contributesToAnnotations)
     val isGraph = graphAnnotation != null
     val container =
       BindingContainer(
@@ -646,7 +646,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
 
     if (graphProto == null) {
       val requireMetadata =
-        declaration.isAnnotatedWithAny(symbols.classIds.graphLikeAnnotations) ||
+        declaration.isAnnotatedWithAny(symbols.classIds.dependencyGraphAnnotations) ||
           declaration.isAnnotatedWithAny(symbols.classIds.bindingContainerAnnotations)
       if (requireMetadata) {
         val message =

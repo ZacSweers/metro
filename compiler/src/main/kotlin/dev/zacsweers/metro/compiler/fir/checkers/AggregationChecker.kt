@@ -349,9 +349,14 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
   ) {
     if (kind != ContributionKind.CONTRIBUTES_TO) return
     val declaration = (contribution as Contribution.ContributesTo).declaration
-    if (declaration.isAnnotatedWithAny(session, session.classIds.bindingContainerAnnotations))
+    if (declaration.isAnnotatedWithAny(session, session.classIds.bindingContainerAnnotations)) {
       return
+    }
     if (declaration.classKind != ClassKind.INTERFACE) {
+      // Special-case: if this is a contributed graph extension factory, don't report here because it has its own (more specific) error.
+      if (declaration.isAnnotatedWithAny(session, session.classIds.graphExtensionFactoryAnnotations)) {
+        return
+      }
       reporter.reportOn(
         annotation.source,
         FirMetroErrors.AGGREGATION_ERROR,

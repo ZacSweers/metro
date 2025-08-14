@@ -4,7 +4,7 @@
 
     * `@Binds` and `@Provides` declarations can be added directly within graphs and their supertypes.
         * `@BindingContainer` is the Metro equivalent of a Dagger `@Module` but it should rarely be used.
-        * `@BindingContainer` cannot declare graph extensions in the way `@Module` can declare subcomponents. Use `@ContributesGraphExtension`.
+        * `@BindingContainer` cannot declare graph extensions in the way `@Module` can declare subcomponents. Use contributed graph extensions.
     * There is no Producers support.
     * There is no Hilt support, though some features are similar in the same way that Anvil’s features are similar.
     * There is no `@Reusable`.

@@ -8,11 +8,11 @@ interface ContributedInterface
 @Inject
 internal class Impl : ContributedInterface
 
-@ContributesGraphExtension(Unit::class)
+@GraphExtension(Unit::class)
 internal interface UnitGraph {
   val contributed: ContributedInterface
 
-  @ContributesGraphExtension.Factory(AppScope::class)
+  @GraphExtension.Factory @ContributesTo(AppScope::class)
   interface Factory {
     fun createUnitGraph(): UnitGraph
   }

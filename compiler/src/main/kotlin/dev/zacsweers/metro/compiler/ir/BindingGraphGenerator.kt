@@ -469,7 +469,7 @@ internal class BindingGraphGenerator(
       val returnType = function.ir.returnType.rawType()
 
       // Check if this returns a factory interface
-      val returnsFactory = returnType.isAnnotatedWithAny(symbols.classIds.allGraphExtensionFactoryAnnotations)
+      val returnsFactory = returnType.isAnnotatedWithAny(symbols.classIds.graphExtensionFactoryAnnotations)
 
       if (!returnsFactory) {
         // Get the scope annotations from the extension graph

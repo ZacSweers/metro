@@ -6,7 +6,7 @@ Changelog
 
 ### Graph extensions are no longer detached.
 
-**TL;DR: Metro graph extensions are now wired similar to Dagger subcomponents and use a new `@GraphExtension` annotation. `@Extends` and `isExtendable` are now deleted and `enableScopedInjectClassHints()` is deprecated.**
+**TL;DR: Metro graph extensions are now wired similar to Dagger subcomponents and use a new `@GraphExtension` annotation. `@Extends` and `isExtendable` are now deleted, `@ContributesGraphExtension` and `enableScopedInjectClassHints()` are deprecated.**
 
 Up to this point, Metro's graph extensions have been _detached_. This meant that extensions could simply depend on a parent graph via `@Extends` and parent graphs had to mark themselves as extendable via `isExtendable = true`. This approach mirrored kotlin-inject's approach and was convenient in its flexibility. However, it's proven too problematic in practice for a few reasons:
 
@@ -75,12 +75,13 @@ interface LoggedInGraph {
 interface AppGraph : LoggedInGraph.Factory
 ```
 
-- Contribute the factory to the parent graph via `@ContributesGraphExtension`.
+- Contribute the factory to the parent graph via `@ContributesTo`.
 
 ```kotlin
-@ContributesGraphExtension(LoggedInScope::class)
+@GraphExtension(LoggedInScope::class)
 interface LoggedInGraph {
-  @ContributesGraphExtension.Factory(AppScope::class)
+  @ContributesTo(AppScope::class)
+  @GraphExtension.Factory
   interface Factory {
     fun createLoggedInGraph(): LoggedInGraph
   }
@@ -96,6 +97,8 @@ The following APIs have been removed or deprecated:
 
 - `@Extends`. Migrate to `@GraphExtension`, remove this parameter, and expose the factory in the parent graph API as documented above.
 - `isExtendable` is removed from `@DependencyGraph` and `@ContributesGraphExtension`.
+- `@ContributesGraphExtension` is now deprecated and treated like `@GraphExtension`.
+- `@ContributesGraphExtension.Factory` is deprecated with **error** severity and requires migration to the new `@ContributesTo` pattern.
 - `enableScopedInjectClassHints()` is now deprecated and does nothing. It will be removed in the future.
 - Graph extensions may no longer have multiple direct parents.
 

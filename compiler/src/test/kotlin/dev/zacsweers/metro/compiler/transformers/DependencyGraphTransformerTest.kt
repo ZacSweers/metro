@@ -947,11 +947,11 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-            e: ExampleGraph.kt:36:14 DependencyGraph.Factory declarations should be non-sealed abstract classes or interfaces.
-            e: ExampleGraph.kt:44:14 DependencyGraph.Factory declarations should be non-sealed abstract classes or interfaces.
-            e: ExampleGraph.kt:54:9 DependencyGraph.Factory declarations should be non-sealed abstract classes or interfaces.
-            e: ExampleGraph.kt:64:20 DependencyGraph.Factory declarations should be non-sealed abstract classes or interfaces.
-            e: ExampleGraph.kt:72:16 DependencyGraph.Factory declarations should be non-sealed abstract classes or interfaces.
+            e: ExampleGraph.kt:36:14 @DependencyGraph.Factory declarations should be non-sealed abstract classes or interfaces.
+            e: ExampleGraph.kt:44:14 @DependencyGraph.Factory declarations should be non-sealed abstract classes or interfaces.
+            e: ExampleGraph.kt:54:9 @DependencyGraph.Factory declarations should be non-sealed abstract classes or interfaces.
+            e: ExampleGraph.kt:64:20 @DependencyGraph.Factory declarations should be non-sealed abstract classes or interfaces.
+            e: ExampleGraph.kt:72:16 @DependencyGraph.Factory declarations should be non-sealed abstract classes or interfaces.
           """
           .trimIndent()
       )
@@ -981,7 +981,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: GraphWithAbstractClass.kt:11:20 DependencyGraph.Factory declarations cannot be local classes."
+        "e: GraphWithAbstractClass.kt:11:20 @DependencyGraph.Factory declarations cannot be local classes."
       )
     }
   }
@@ -1044,8 +1044,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
     result.assertDiagnostics(
       """
-        e: graphs.kt:36:3 DependencyGraph.Factory declarations must be public or internal.
-        e: graphs.kt:44:3 DependencyGraph.Factory declarations must be public or internal.
+        e: graphs.kt:36:3 @DependencyGraph.Factory declarations must be public or internal.
+        e: graphs.kt:44:3 @DependencyGraph.Factory declarations must be public or internal.
       """
         .trimIndent()
     )

@@ -691,7 +691,8 @@ interface ${className}Subcomponent {
   ${if (availableDependencies.isNotEmpty()) "// Access parent scope bindings\n$parentAccessors\n  \n" else ""}// Access subcomponent scope bindings
 $subcomponentAccessors
   
-  @ContributesGraphExtension.Factory(AppScope::class)
+  @ContributesTo(AppScope::class)
+  @GraphExtension.Factory
   interface Factory {
     fun create${className}Subcomponent(): ${className}Subcomponent
   }

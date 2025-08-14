@@ -151,9 +151,10 @@ interface ExampleGraph : $$MetroContributionToAppScope {
 
 }
 
-@ContributesGraphExtension(scope = LoggedInScope::class)
+@GraphExtension(scope = LoggedInScope::class)
 interface LoggedInGraph {
-  @Factory(scope = AppScope::class)
+  @Factory
+  @ContributesTo(scope = AppScope::class)
   interface Factory {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
     @MetroContribution(scope = AppScope::class)

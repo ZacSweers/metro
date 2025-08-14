@@ -8,11 +8,11 @@ sealed interface LoggedInScope
 @DependencyGraph(scope = AppScope::class)
 interface ExampleGraph
 
-@ContributesGraphExtension(LoggedInScope::class)
+@GraphExtension(LoggedInScope::class)
 interface LoggedInGraph {
   val childDependency: ChildDependency
 
-  @ContributesGraphExtension.Factory(AppScope::class)
+  @GraphExtension.Factory @ContributesTo(AppScope::class)
   interface Factory {
     fun createLoggedInGraph(): LoggedInGraph
   }

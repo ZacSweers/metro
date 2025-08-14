@@ -1,6 +1,6 @@
 // MODULE: lib
 @SingleIn(Unit::class)
-@ContributesGraphExtension(Unit::class)
+@GraphExtension(Unit::class)
 interface UnitGraph {
   fun inject(target: StringHolder)
 
@@ -10,7 +10,7 @@ interface UnitGraph {
     return "hello"
   }
 
-  @ContributesGraphExtension.Factory(AppScope::class)
+  @GraphExtension.Factory @ContributesTo(AppScope::class)
   interface Factory {
     fun createUnitGraph(): UnitGraph
   }
