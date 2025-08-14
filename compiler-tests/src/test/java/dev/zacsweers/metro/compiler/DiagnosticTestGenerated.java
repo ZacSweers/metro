@@ -177,6 +177,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("ExtensionAccessorsCannotHaveParameters.kt")
+      public void testExtensionAccessorsCannotHaveParameters() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/extensions/ExtensionAccessorsCannotHaveParameters.kt");
+      }
+
+      @Test
       @TestMetadata("ExtensionsWithFactoriesMustUseThem.kt")
       public void testExtensionsWithFactoriesMustUseThem() {
         runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/extensions/ExtensionsWithFactoriesMustUseThem.kt");

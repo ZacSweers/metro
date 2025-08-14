@@ -236,7 +236,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
           // Final check - make sure this callable belongs to that extension
           val belongsToExtension =
             callable.isOverride &&
-            creator.classId !in implementedGraphExtensionCreators &&
+              creator.classId !in implementedGraphExtensionCreators &&
               callable.directOverriddenSymbolsSafe(context).any {
                 it.dispatchReceiverClassLookupTagOrNull()?.classId == creator.classId
               }
@@ -248,6 +248,33 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
             )
             continue
           }
+        } else if (callable.contextParameterSymbols.isNotEmpty()) {
+          for (parameter in callable.contextParameterSymbols) {
+            reporter.reportOn(
+              parameter.source,
+              FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
+              "Graph extension accessors may not have context parameters.",
+            )
+          }
+          continue
+        } else if (callable.receiverParameterSymbol != null) {
+          reporter.reportOn(
+            callable.receiverParameterSymbol!!.source,
+            FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
+            "Graph extension accessors may not have extension receivers. Use `@GraphExtension.Factory` instead.",
+          )
+          continue
+        } else if (
+          callable is FirNamedFunctionSymbol && callable.valueParameterSymbols.isNotEmpty()
+        ) {
+          for (parameter in callable.valueParameterSymbols) {
+            reporter.reportOn(
+              parameter.source,
+              FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
+              "Graph extension accessors may not have parameters. Use `@GraphExtension.Factory` instead.",
+            )
+          }
+          continue
         }
       }
 

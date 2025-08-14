@@ -93,7 +93,7 @@ internal class DependencyGraphNodeCache(
     private val scopes = mutableSetOf<IrAnnotation>()
     private val providerFactories = mutableListOf<Pair<IrTypeKey, ProviderFactory>>()
     private val extendedGraphNodes = mutableMapOf<IrTypeKey, DependencyGraphNode>()
-    private val graphExtensions = mutableMapOf<IrTypeKey, MetroSimpleFunction>()
+    private val graphExtensions = mutableListOf<Pair<IrTypeKey, MetroSimpleFunction>>()
     private val injectors = mutableListOf<Pair<MetroSimpleFunction, IrContextualTypeKey>>()
     private val includedGraphNodes = mutableMapOf<IrTypeKey, DependencyGraphNode>()
     private val graphTypeKey = IrTypeKey(graphDeclaration.typeWith())
@@ -345,7 +345,7 @@ internal class DependencyGraphNodeCache(
                 } else {
                   IrContextualTypeKey.from(declaration)
                 }
-              graphExtensions[contextKey.typeKey] = metroFunction
+              graphExtensions += (contextKey.typeKey to metroFunction)
               hasGraphExtensions = true
             } else if (isInjector) {
               // It's an injector
@@ -430,7 +430,7 @@ internal class DependencyGraphNodeCache(
                 } else {
                   contextKey
                 }
-              graphExtensions[contextKey.typeKey] = metroFunction
+              graphExtensions += (contextKey.typeKey to metroFunction)
               hasGraphExtensions = true
             } else {
               val collection =
@@ -694,10 +694,9 @@ internal class DependencyGraphNodeCache(
           proto = null,
           extendedGraphNodes = extendedGraphNodes,
           // Following aren't necessary to see in external graphs
-          graphExtensions = graphExtensions,
-          injectors = injectors,
+          graphExtensions = emptyList(),
+          injectors = emptyList(),
           creator = null,
-          // External viewers don't look at this
           bindingContainers = emptySet(),
           bindsFunctions = emptyList(),
         )

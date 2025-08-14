@@ -47,6 +47,13 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
   override val contextualTypeKey: IrContextualTypeKey
   val reportableDeclaration: IrDeclarationWithName?
 
+  /**
+   * Returns true if this binding should be scoped (cached) in the graph.
+   * For most bindings, this is true if [scope] != null.
+   * For [GraphExtension] bindings, this is true if [GraphExtension.extensionScopes] is not empty.
+   */
+  fun isScoped(): Boolean = scope != null
+
   override fun renderLocationDiagnostic(): String {
     // First check if we have the contributing file and line number
     return reportableDeclaration?.locationOrNull()?.render()
@@ -542,5 +549,34 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val scope: IrAnnotation? = null
 
     override val nameHint: String = "${typeKey.type.rawType().name}MembersInjector"
+  }
+
+  /**
+   * Represents a graph extension binding. Graph extensions are treated as bindings to enable
+   * standard code generation for scoped instances when the extension graph itself is scoped.
+   */
+  @Poko
+  class GraphExtension(
+    override val typeKey: IrTypeKey,
+    val accessor: IrSimpleFunction,
+    val extensionScopes: Set<IrAnnotation>,
+  ) : IrBinding {
+    override val reportableDeclaration: IrDeclarationWithName = accessor
+    override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
+    override val dependencies: List<IrContextualTypeKey> = emptyList()
+    override val parameters: Parameters = Parameters.empty()
+    override val parametersByKey: Map<IrTypeKey, Parameter> = emptyMap()
+
+    // The scope field always returns null for GraphExtension
+    // Use shouldBeScoped to check if this binding needs to be scoped
+    override val scope: IrAnnotation? = null
+
+    override val nameHint: String = typeKey.type.rawType().name.asString()
+
+    /** 
+     * Returns true if this graph extension should be scoped (cached) in the parent graph.
+     * A graph extension is scoped if it has any extension scopes defined.
+     */
+    override fun isScoped(): Boolean = extensionScopes.isNotEmpty()
   }
 }

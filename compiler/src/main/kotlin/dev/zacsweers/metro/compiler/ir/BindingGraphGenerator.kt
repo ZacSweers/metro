@@ -20,7 +20,9 @@ import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.functions
+import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 
 /**
@@ -458,6 +460,25 @@ internal class BindingGraphGenerator(
           contextualTypeKey,
           IrBindingStack.Entry.requestedAt(contextualTypeKey, getter.ir),
         )
+      }
+    }
+
+    // Add GraphExtension bindings for graph extensions that are direct accessors (no factory)
+    for ((typeKey, function) in node.graphExtensions) {
+      val returnType = function.ir.returnType.rawType()
+      
+      // Check if this returns a factory interface
+      val returnsFactory = returnType.isAnnotatedWithAny(symbols.classIds.allGraphExtensionFactoryAnnotations)
+      
+      if (!returnsFactory) {
+        // Get the scope annotations from the extension graph
+        val extensionScopes = returnType.scopeAnnotations()
+        val binding = IrBinding.GraphExtension(
+          typeKey = typeKey,
+          accessor = function.ir,
+          extensionScopes = extensionScopes,
+        )
+        graph.addBinding(typeKey, binding, bindingStack)
       }
     }
 

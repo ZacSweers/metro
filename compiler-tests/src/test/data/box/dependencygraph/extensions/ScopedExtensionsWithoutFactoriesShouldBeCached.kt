@@ -1,4 +1,7 @@
+abstract class LoggedInScope
+
 @GraphExtension
+@SingleIn(LoggedInScope::class)
 interface LoggedInGraph {
   val int: Int
 }

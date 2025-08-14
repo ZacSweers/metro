@@ -14,7 +14,6 @@ import dev.zacsweers.metro.compiler.unsafeLazy
 import dev.zacsweers.metro.compiler.withoutLineBreaks
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
-import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrProperty
@@ -449,6 +448,9 @@ internal fun bindingStackEntryForDependency(
     is IrBinding.BoundInstance -> TODO()
     is IrBinding.GraphDependency -> {
       Entry.injectedAt(contextKey, callingBinding.getter, displayTypeKey = targetKey)
+    }
+    is IrBinding.GraphExtension -> {
+      Entry.requestedAt(contextKey, callingBinding.accessor)
     }
     is IrBinding.Absent -> error("Should never happen")
   }

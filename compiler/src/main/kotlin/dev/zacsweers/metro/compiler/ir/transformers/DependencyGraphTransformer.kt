@@ -419,7 +419,7 @@ internal class DependencyGraphTransformer(
           .map { it.first.ir }
           .plus(node.injectors.map { it.first.ir })
           .plus(node.bindsCallables.map { it.callableMetadata.function })
-          .plus(node.graphExtensions.map { it.value.ir })
+          .plus(node.graphExtensions.map { it.second.ir })
           .filterNot { it.isExternalParent }
           .forEach { function ->
             with(function) {

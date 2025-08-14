@@ -24,7 +24,7 @@ internal data class DependencyGraphNode(
   val sourceGraph: IrClass,
   val supertypes: List<IrType>,
   val includedGraphNodes: Map<IrTypeKey, DependencyGraphNode>,
-  val graphExtensions: Map<IrTypeKey, MetroSimpleFunction>,
+  val graphExtensions: List<Pair<IrTypeKey, MetroSimpleFunction>>,
   val scopes: Set<IrAnnotation>,
   val aggregationScopes: Set<ClassId>,
   val providerFactories: List<Pair<IrTypeKey, ProviderFactory>>,
