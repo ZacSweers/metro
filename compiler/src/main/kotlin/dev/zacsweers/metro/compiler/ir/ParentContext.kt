@@ -5,96 +5,101 @@ package dev.zacsweers.metro.compiler.ir
 import org.jetbrains.kotlin.ir.declarations.IrClass
 
 internal class ParentContext {
-  // Track which keys are available at each level of the parent hierarchy
-  private data class ParentLevel(
+
+  private data class Level(
     val node: DependencyGraphNode,
-    val providedKeys: MutableSet<IrTypeKey> = mutableSetOf(),
-    val usedKeys: MutableSet<IrTypeKey> = mutableSetOf()
+    val deltaProvided: MutableSet<IrTypeKey> = mutableSetOf(),
+    val usedKeys: MutableSet<IrTypeKey> = mutableSetOf(),
   )
 
-  private val parentGraphStack = ArrayDeque<ParentLevel>()
+  // Stack of parent graphs (root at 0, top is last)
+  private val levels = ArrayDeque<Level>()
+
+  // Fast membership of “currently available anywhere in stack”, not including pending
+  private val available = mutableSetOf<IrTypeKey>()
+
+  // For each key, the stack of level indices where it was introduced (nearest provider = last)
+  private val keyIntroStack = mutableMapOf<IrTypeKey, ArrayDeque<Int>>()
+
+  // All active scopes (union of level.node.scopes)
   private val parentScopes = mutableSetOf<IrAnnotation>()
-  // Keys pending to be added to the next pushed parent
-  private val pendingKeys = mutableSetOf<IrTypeKey>()
+
+  // Keys collected before the next push
+  private val pending = mutableSetOf<IrTypeKey>()
 
   fun add(key: IrTypeKey) {
-    // Keys are collected before pushParentGraph, so store them temporarily
-    pendingKeys.add(key)
+    pending.add(key)
   }
 
   fun addAll(keys: Collection<IrTypeKey>) {
-    pendingKeys.addAll(keys)
+    if (keys.isNotEmpty()) pending.addAll(keys)
   }
 
   fun mark(key: IrTypeKey, scope: IrAnnotation? = null) {
-    // Find which parent provides this key, searching from most recent to oldest
-    var foundAtIndex = -1
-    for (i in parentGraphStack.lastIndex downTo 0) {
-      val level = parentGraphStack[i]
-      if (key in level.providedKeys) {
-        foundAtIndex = i
-        break
+    // Prefer the nearest provider (deepest level that introduced this key)
+    keyIntroStack[key]?.lastOrNull()?.let { providerIdx ->
+      // Mark used from provider -> top (inclusive)
+      for (i in providerIdx..levels.lastIndex) {
+        levels[i].usedKeys.add(key)
       }
+      return
     }
 
-    if (foundAtIndex >= 0) {
-      // Mark the key as used in the provider
-      parentGraphStack[foundAtIndex].usedKeys.add(key)
-
-      // Also mark it in all intermediate graphs between the provider and the current level
-      // This ensures scoped bindings are kept across intermediate graphs
-      for (i in foundAtIndex + 1..parentGraphStack.lastIndex) {
-        // Only mark in intermediate graphs that also have this key available
-        // (they would have inherited it from their parent)
-        if (key in parentGraphStack[i].providedKeys) {
-          parentGraphStack[i].usedKeys.add(key)
-        }
-      }
-    } else if (scope != null) {
-      // If not found in any parent's providedKeys, it might be a constructor-injected class
-      // with a matching scope discovered by the child. Add it to the level with matching scopes.
-      for (i in parentGraphStack.lastIndex downTo 0) {
-        val level = parentGraphStack[i]
+    // Not found but is scoped. Treat as constructor-injected with matching scope.
+    if (scope != null) {
+      for (i in levels.lastIndex downTo 0) {
+        val level = levels[i]
         if (scope in level.node.scopes) {
-          // Add this key to the level's providedKeys so it can be inherited by children
-          level.providedKeys.add(key)
-          level.usedKeys.add(key)
-
-          // Also propagate to intermediate levels
-          for (j in i + 1..parentGraphStack.lastIndex) {
-            parentGraphStack[j].providedKeys.add(key)
-            parentGraphStack[j].usedKeys.add(key)
+          introduceAtLevel(i, key)
+          // Mark used from that level -> top
+          for (j in i..levels.lastIndex) {
+            levels[j].usedKeys.add(key)
           }
-          break
+          return
         }
       }
     }
+    // Else: no-op (unknown key without scope)
   }
 
   fun pushParentGraph(node: DependencyGraphNode) {
-    val level = ParentLevel(node)
-    // Transfer pending keys to this new level
-    level.providedKeys.addAll(pendingKeys)
-    pendingKeys.clear()
-
-    // Also inherit all keys from parent levels
-    // This ensures child graphs can see all keys available from their ancestors
-    for (parentLevel in parentGraphStack) {
-      level.providedKeys.addAll(parentLevel.providedKeys)
-    }
-
-    parentGraphStack.addLast(level)
+    val idx = levels.size
+    val level = Level(node)
+    levels.addLast(level)
     parentScopes.addAll(node.scopes)
+
+    if (pending.isNotEmpty()) {
+      // Introduce each pending key *at this level only*
+      for (k in pending) {
+        introduceAtLevel(idx, k)
+      }
+      pending.clear()
+    }
   }
 
   fun popParentGraph() {
-    val removed = parentGraphStack.removeLast()
+    check(levels.isNotEmpty()) { "No parent graph to pop" }
+    val idx = levels.lastIndex
+    val removed = levels.removeLast()
+
+    // Remove scope union
     parentScopes.removeAll(removed.node.scopes)
+
+    // Roll back introductions made at this level
+    for (k in removed.deltaProvided) {
+      val stack = keyIntroStack[k]!!
+      check(stack.removeLast() == idx)
+      if (stack.isEmpty()) {
+        keyIntroStack.remove(k)
+        available.remove(k)
+      }
+      // If non-empty, key remains available due to an earlier level
+    }
   }
 
   val currentParentGraph: IrClass
     get() =
-      parentGraphStack.lastOrNull()?.node?.metroGraphOrFail
+      levels.lastOrNull()?.node?.metroGraphOrFail
         ?: error(
           "No parent graph on stack - this should only be accessed when processing extensions"
         )
@@ -102,21 +107,29 @@ internal class ParentContext {
   fun containsScope(scope: IrAnnotation): Boolean = scope in parentScopes
 
   operator fun contains(key: IrTypeKey): Boolean {
-    // Check both pending keys and keys in the stack
-    return key in pendingKeys || parentGraphStack.any { key in it.providedKeys }
+    return key in pending || key in available
   }
 
   fun availableKeys(): Set<IrTypeKey> {
-    // Return all available keys from all parent levels plus pending
-    val allKeys = mutableSetOf<IrTypeKey>()
-    allKeys.addAll(pendingKeys)
-    parentGraphStack.forEach { allKeys.addAll(it.providedKeys) }
-    return allKeys
+    // Pending + all currently available
+    if (pending.isEmpty()) return available.toSet()
+    return buildSet(available.size + pending.size) {
+      addAll(available)
+      addAll(pending)
+    }
   }
 
   fun usedKeys(): Set<IrTypeKey> {
-    // Return only the used keys for the current (most recent) parent level
-    // This ensures that each parent only keeps the keys its direct children need
-    return parentGraphStack.lastOrNull()?.usedKeys ?: emptySet()
+    return levels.lastOrNull()?.usedKeys ?: emptySet()
+  }
+
+  private fun introduceAtLevel(levelIdx: Int, key: IrTypeKey) {
+    val level = levels[levelIdx]
+    // If already introduced earlier, avoid duplicating per-level delta
+    if (key !in level.deltaProvided) {
+      level.deltaProvided.add(key)
+      available.add(key)
+      keyIntroStack.getOrPut(key) { ArrayDeque() }.addLast(levelIdx)
+    }
   }
 }
