@@ -82,9 +82,6 @@ public abstract interface annotation class dev/zacsweers/metro/DependencyGraph$F
 public abstract interface annotation class dev/zacsweers/metro/ElementsIntoSet : java/lang/annotation/Annotation {
 }
 
-public abstract interface annotation class dev/zacsweers/metro/Extends : java/lang/annotation/Annotation {
-}
-
 public abstract interface annotation class dev/zacsweers/metro/ForScope : java/lang/annotation/Annotation {
 	public abstract fun scope ()Ljava/lang/Class;
 }
