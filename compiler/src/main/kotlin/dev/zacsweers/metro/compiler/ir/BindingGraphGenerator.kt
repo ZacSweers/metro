@@ -660,23 +660,6 @@ internal class BindingGraphGenerator(
       }
     }
 
-    // Add bindings for scoped @Inject classes which don't have contributions
-    // TODO can we remove this and move into ParentContext logic? TL;DR lookup of classes
-    // with mismatched scopes
-    node.scopes.flatMap(contributionData::getScopedInjectClasses).forEach { scopedClassTypeKey ->
-      if (scopedClassTypeKey !in graph) {
-        val contextKey = IrContextualTypeKey.create(scopedClassTypeKey)
-        val bindings =
-          bindingLookup.lookup(contextKey, graph.bindingsSnapshot().keys, IrBindingStack.empty())
-        for (binding in bindings) {
-          graph.addBinding(scopedClassTypeKey, binding, IrBindingStack.empty())
-          // Mark this to be explicitly kept even after pruning unused
-          // TODO this entry isn't really helpful
-          graph.keep(contextKey, IrBindingStack.Entry.simpleTypeRef(contextKey))
-        }
-      }
-    }
-
     return graph
   }
 }

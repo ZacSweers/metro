@@ -30,14 +30,6 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
   private val bindingContainerContributions = mutableMapOf<Scope, MutableSet<IrClass>>()
   private val externalBindingContainerContributions = mutableMapOf<Scope, Set<IrClass>>()
 
-  // Scoped inject classes are currently tracked separately from contributions because we need to
-  // maintain the full scope info (e.g. @Singleton, @SingleIn(AppScope)) for accurate comparisons.
-  // Conversely, contributions only ever have a scope arg available (e.g. @ContributesTo(AppScope),
-  // @ContributesTo(Singleton)), so we can't effectively map between and compare the two for the
-  // types of hints that we want to generate.
-  private val scopeToInjectClasses = mutableMapOf<IrAnnotation, MutableSet<IrTypeKey>>()
-  private val externalScopeToInjectClasses = mutableMapOf<IrAnnotation, Set<IrTypeKey>>()
-
   fun addContribution(scope: Scope, contribution: IrType) {
     contributions.getOrPut(scope) { mutableSetOf() }.add(contribution)
   }
@@ -148,31 +140,6 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
           }
         }
       }
-  }
-
-  fun addScopedInject(scope: IrAnnotation, contribution: IrTypeKey) {
-    scopeToInjectClasses.getOrPut(scope, ::mutableSetOf).add(contribution)
-  }
-
-  fun getScopedInjectClasses(scope: IrAnnotation): Set<IrTypeKey> = buildSet {
-    scopeToInjectClasses[scope]?.let(::addAll)
-    addAll(findExternalScopedInjects(scope))
-  }
-
-  private fun findExternalScopedInjects(scope: IrAnnotation): Set<IrTypeKey> {
-    return externalScopeToInjectClasses.getOrPut(scope) {
-      val unfilteredScopedInjectClasses =
-        metroContext
-          .referenceFunctions(Symbols.CallableIds.scopedInjectClassHint(scope))
-          .filter { hintFunction ->
-            hintFunction.owner.annotations.any { IrAnnotation(it) == scope }
-          }
-          .mapToSet { hintFunction ->
-            IrTypeKey(hintFunction.owner.regularParameters.single().type)
-          }
-
-      return unfilteredScopedInjectClasses
-    }
   }
 
   // Copied from CheckerUtils.kt

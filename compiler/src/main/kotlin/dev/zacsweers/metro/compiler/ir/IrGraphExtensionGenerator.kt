@@ -51,7 +51,7 @@ internal class IrGraphExtensionGenerator(
 
   private data class CacheKey(val typeKey: IrTypeKey, val parentGraph: ClassId)
 
-  fun getOrBuildContributedGraph(
+  fun getOrBuildGraphExtensionImpl(
     typeKey: IrTypeKey,
     parentGraph: IrClass,
     contributedAccessor: MetroSimpleFunction,
@@ -62,38 +62,38 @@ internal class IrGraphExtensionGenerator(
         contributedAccessor.ir
           .overriddenSymbolsSequence()
           .firstOrNull {
-            it.owner.parentAsClass.isAnnotatedWithAny(symbols.classIds.allGraphExtensionFactoryAnnotations)
+            it.owner.parentAsClass.isAnnotatedWithAny(
+              symbols.classIds.allGraphExtensionFactoryAnnotations
+            )
           }
-          ?.owner
-          ?: contributedAccessor.ir
+          ?.owner ?: contributedAccessor.ir
 
       val parent = sourceSamFunction.parentClassOrNull ?: error("No parent class found")
-      val isFactorySAM = parent.isAnnotatedWithAny(symbols.classIds.allGraphExtensionFactoryAnnotations)
+      val isFactorySAM =
+        parent.isAnnotatedWithAny(symbols.classIds.allGraphExtensionFactoryAnnotations)
       if (isFactorySAM) {
-        buildContributedGraph(sourceSamFunction, parentTracer)
+        buildImpl(sourceSamFunction, parentTracer)
       } else {
         val returnType = contributedAccessor.ir.returnType.rawType()
-        val returnIsGraphExtensionFactory = returnType.isAnnotatedWithAny(symbols.classIds.allGraphExtensionFactoryAnnotations)
+        val returnIsGraphExtensionFactory =
+          returnType.isAnnotatedWithAny(symbols.classIds.allGraphExtensionFactoryAnnotations)
         // TODO use this when we support direct extension getters
-        val returnIsGraphExtension = returnType.isAnnotatedWithAny(symbols.classIds.allGraphExtensionAnnotations)
+        val returnIsGraphExtension =
+          returnType.isAnnotatedWithAny(symbols.classIds.allGraphExtensionAnnotations)
         if (returnIsGraphExtensionFactory) {
-          val samFunction = returnType.singleAbstractFunction()
-            .apply {
+          val samFunction =
+            returnType.singleAbstractFunction().apply {
               remapTypes(sourceSamFunction.typeRemapperFor(contributedAccessor.ir.returnType))
             }
-          buildContributedGraph(samFunction, parentTracer)
+          buildImpl(samFunction, parentTracer)
         } else {
           error("Not a graph extension: ${returnType.kotlinFqName}")
         }
       }
-
     }
   }
 
-  private fun buildContributedGraph(
-    factoryFunction: IrSimpleFunction,
-    parentTracer: Tracer,
-  ): IrClass {
+  private fun buildImpl(factoryFunction: IrSimpleFunction, parentTracer: Tracer): IrClass {
     val sourceFactory = factoryFunction.parentAsClass
     val sourceGraph = sourceFactory.parentAsClass
     return parentTracer.traceNested("Generate graph extension ${sourceGraph.name}") {
@@ -194,9 +194,7 @@ internal class IrGraphExtensionGenerator(
           // Ensure a unique name
           name =
             nameAllocator
-              .newName(
-                "${sourceGraph.name.asString().capitalizeUS()}${Symbols.StringNames.IMPL}"
-              )
+              .newName("${sourceGraph.name.asString().capitalizeUS()}${Symbols.StringNames.IMPL}")
               .asName()
           origin = Origins.GeneratedGraphExtension
           kind = ClassKind.CLASS
@@ -257,9 +255,9 @@ internal class IrGraphExtensionGenerator(
             parentGraph
           }
         addValueParameter(
-            actualParentType.name.asString().decapitalizeUS(),
-            parentGraph.defaultType,
-          )
+          actualParentType.name.asString().decapitalizeUS(),
+          parentGraph.defaultType,
+        )
         // Copy over any creator params
         factoryFunction.regularParameters.forEach { param ->
           addValueParameter(param.name, param.type).apply { this.copyAnnotationsFrom(param) }

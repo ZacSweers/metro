@@ -866,7 +866,7 @@ internal class IrGraphGenerator(
           } else {
             // Direct graph extension accessor
             val contributedGraph =
-              contributedGraphGenerator.getOrBuildContributedGraph(
+              contributedGraphGenerator.getOrBuildGraphExtensionImpl(
                 typeKey,
                 sourceGraph,
                 function,
@@ -1645,7 +1645,7 @@ internal class IrGraphGenerator(
   ): IrConstructorCall {
     // Generate the contributed graph for the extension
     val contributedGraph =
-      contributedGraphGenerator.getOrBuildContributedGraph(
+      contributedGraphGenerator.getOrBuildGraphExtensionImpl(
         graphExtensionTypeKey,
         node.sourceGraph,
         function,
