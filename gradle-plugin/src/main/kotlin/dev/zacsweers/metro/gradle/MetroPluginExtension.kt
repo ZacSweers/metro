@@ -67,7 +67,7 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
   public val generateJvmContributionHintsInFir: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(false)
 
-  @Deprecated("This is no longer does anything and will be removed in the future.")
+  @Deprecated("This is deprecated and no longer does anything. It will be removed in the future.")
   public val enableScopedInjectClassHints: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(false)
 

@@ -84,7 +84,7 @@ internal class DependencyGraphTransformer(
     AssistedFactoryTransformer(context, injectConstructorTransformer)
   private val bindingContainerTransformer = BindingContainerTransformer(context)
   private val contributionHintIrTransformer by unsafeLazy {
-    ContributionHintIrTransformer(context, hintGenerator, injectConstructorTransformer)
+    ContributionHintIrTransformer(context, hintGenerator)
   }
 
   // Keyed by the source declaration
@@ -261,24 +261,6 @@ internal class DependencyGraphTransformer(
               providerFactory.typeKey
             }
           localParentContext.add(targetKey)
-        }
-      }
-
-      // @Inject classes
-      if (options.enableScopedInjectClassHints) {
-        for (scope in node.scopes) {
-          val classesInScope = contributionData.getScopedInjectClasses(scope)
-          for (scopedClass in classesInScope) {
-            // TODO look these up once somewhere and cache
-            val annotations = scopedClass.type.rawType().metroAnnotations(symbols.classIds)
-            val targetKey =
-              if (annotations.isIntoMultibinding) {
-                scopedClass.transformMultiboundQualifier(annotations)
-              } else {
-                scopedClass
-              }
-            localParentContext.add(targetKey)
-          }
         }
       }
 

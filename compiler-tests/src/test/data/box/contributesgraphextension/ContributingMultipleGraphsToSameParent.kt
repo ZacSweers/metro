@@ -1,4 +1,3 @@
-// ENABLE_SCOPED_INJECT_CLASS_HINTS
 // FILE: file1.kt
 package test
 

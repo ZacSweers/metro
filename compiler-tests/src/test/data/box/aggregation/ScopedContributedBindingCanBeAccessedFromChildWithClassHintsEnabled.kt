@@ -1,5 +1,4 @@
 // ENABLE_STRICT_VALIDATION
-// ENABLE_SCOPED_INJECT_CLASS_HINTS
 sealed interface LoggedInScope
 
 interface Bob

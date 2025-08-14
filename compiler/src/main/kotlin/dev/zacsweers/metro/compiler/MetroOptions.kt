@@ -489,17 +489,6 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
-  ENABLE_SCOPED_INJECT_CLASS_HINTS(
-    RawMetroOption.boolean(
-      name = "enable-scoped-inject-class-hints",
-      defaultValue = false,
-      valueDescription = "<true | false>",
-      description =
-        "Enable/disable generating hints for scoped @Inject classes. By default, a scoped injectable class that isn't used in its associated graph node will result in an error if a graph extension later tries to inject it. Enabling this setting prevents such errors by generating a binding for all scoped types within the graph node. See https://github.com/ZacSweers/metro/issues/377 for more context.",
-      required = false,
-      allowMultipleOccurrences = false,
-    )
-  ),
   ENABLE_STRICT_VALIDATION(
     RawMetroOption.boolean(
       name = "enable-strict-validation",
@@ -605,8 +594,6 @@ public data class MetroOptions(
     MetroOption.CUSTOM_BINDING_CONTAINER.raw.defaultValue.expectAs(),
   val enableDaggerAnvilInterop: Boolean =
     MetroOption.ENABLE_DAGGER_ANVIL_INTEROP.raw.defaultValue.expectAs(),
-  val enableScopedInjectClassHints: Boolean =
-    MetroOption.ENABLE_SCOPED_INJECT_CLASS_HINTS.raw.defaultValue.expectAs(),
   val enableStrictValidation: Boolean =
     MetroOption.ENABLE_STRICT_VALIDATION.raw.defaultValue.expectAs(),
 ) {
@@ -751,9 +738,6 @@ public data class MetroOptions(
 
           MetroOption.ENABLE_DAGGER_ANVIL_INTEROP -> {
             options = options.copy(enableDaggerAnvilInterop = configuration.getAsBoolean(entry))
-          }
-          MetroOption.ENABLE_SCOPED_INJECT_CLASS_HINTS -> {
-            options = options.copy(enableScopedInjectClassHints = configuration.getAsBoolean(entry))
           }
           MetroOption.ENABLE_STRICT_VALIDATION -> {
             options = options.copy(enableStrictValidation = configuration.getAsBoolean(entry))

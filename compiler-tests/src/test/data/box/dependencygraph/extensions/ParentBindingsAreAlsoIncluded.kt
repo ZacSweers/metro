@@ -1,4 +1,3 @@
-// ENABLE_SCOPED_INJECT_CLASS_HINTS
 // MODULE: lib
 
 abstract class ParentScope

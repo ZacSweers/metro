@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
-import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
@@ -557,31 +556,6 @@ internal class IrBindingGraph(
             append(
               "${node.sourceGraph.name} is contributed by '${node.sourceGraph.sourceGraphIfMetroGraph.kotlinFqName}' to '${declarationToReport.sourceGraphIfMetroGraph.kotlinFqName}'."
             )
-          }
-
-          if (!isUnscoped) {
-            val matchingParent =
-              node.allExtendedNodes.values.firstOrNull { bindingScope in it.scopes }
-            if (matchingParent != null) {
-              appendLine()
-              appendLine()
-              val shortTypeKey = binding.typeKey.render(short = true)
-              val optionsHint =
-                if (binding is IrBinding.ConstructorInjected) {
-                  " or enabling the `enableScopedInjectClassHints` option"
-                } else {
-                  " or enabling the `eagerlyValidateProviders` option"
-                }
-              appendLine(
-                """
-                  (Hint)
-                  It appears that extended parent graph '${matchingParent.sourceGraph.kotlinFqName}' does declare the '$bindingScope' scope but doesn't use '$shortTypeKey' directly.
-                  To work around this, consider declaring an accessor for '$shortTypeKey' in that graph (i.e. `val ${shortTypeKey.decapitalizeUS()}: $shortTypeKey`)$optionsHint.
-                  See https://github.com/ZacSweers/metro/issues/377 for more details.
-                """
-                  .trimIndent()
-              )
-            }
           }
         }
         // TODO remove messagecollector in 2.2.20
