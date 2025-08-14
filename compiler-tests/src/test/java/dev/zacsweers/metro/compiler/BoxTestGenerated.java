@@ -503,6 +503,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("ExtensionsCanBeDeclaredWithoutFactories.kt")
+      public void testExtensionsCanBeDeclaredWithoutFactories() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ExtensionsCanBeDeclaredWithoutFactories.kt");
+      }
+
+      @Test
       @TestMetadata("ManagedBindingContainerInstancesPlumbDown.kt")
       public void testManagedBindingContainerInstancesPlumbDown() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ManagedBindingContainerInstancesPlumbDown.kt");
