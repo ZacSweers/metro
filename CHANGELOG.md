@@ -97,7 +97,7 @@ The following APIs have been removed or deprecated:
 - `@Extends`. Migrate to `@GraphExtension`, remove this parameter, and expose the factory in the parent graph API as documented above.
 - `isExtendable` is removed from `@DependencyGraph` and `@ContributesGraphExtension`.
 - `enableScopedInjectClassHints()` is now deprecated and does nothing. It will be removed in the future.
-- Graph extensions my no longer have multiple direct parents.
+- Graph extensions may no longer have multiple direct parents.
 
 To create graph extensions, you now _must_ do so via a parent graph (using one of the above connecting mechanisms).
 
