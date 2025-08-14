@@ -19,7 +19,6 @@ import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import dev.zacsweers.metro.compiler.letIf
-import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.suffixIfNot
 import dev.zacsweers.metro.compiler.tracing.Tracer
@@ -581,17 +580,9 @@ internal class IrGraphGenerator(
       }
 
       if (graphClass.origin != Origins.GeneratedGraphExtension) {
-        // IR generated types don't get metadata
         parentTracer.traceNested("Generate Metro metadata") {
           // Finally, generate metadata
-          val graphProto =
-            node.toProto(
-              bindingGraph = bindingGraph,
-              includedGraphClasses =
-                node.allIncludedNodes.mapToSet { it.sourceGraph.classIdOrFail.asString() },
-              parentGraphClasses =
-                node.allExtendedNodes.values.mapToSet { it.sourceGraph.classIdOrFail.asString() },
-            )
+          val graphProto = node.toProto(bindingGraph = bindingGraph)
           val metroMetadata = MetroMetadata(METRO_VERSION, dependency_graph = graphProto)
 
           writeDiagnostic({
@@ -864,13 +855,12 @@ internal class IrGraphGenerator(
                 irExprBodySafe(
                   symbol,
                   generateGraphExtensionFactory(
-                    returnClass,
-                    graphExtensionTypeKey,
-                    function,
-                    parentTracer,
-                  ).apply {
-                    arguments[0] = irGet(function.ir.dispatchReceiverParameter!!)
-                  },
+                      returnClass,
+                      graphExtensionTypeKey,
+                      function,
+                      parentTracer,
+                    )
+                    .apply { arguments[0] = irGet(function.ir.dispatchReceiverParameter!!) },
                 )
               }
           } else {
@@ -1667,7 +1657,8 @@ internal class IrGraphGenerator(
     val factoryImpl =
       pluginContext.irFactory
         .buildClass {
-          name = nestedClassNameAllocator
+          name =
+            nestedClassNameAllocator
               .newName("${factoryInterface.name}${Symbols.StringNames.METRO_IMPL}")
               .asName()
           kind = ClassKind.CLASS
