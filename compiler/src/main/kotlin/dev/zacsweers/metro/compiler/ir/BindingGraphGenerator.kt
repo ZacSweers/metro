@@ -465,6 +465,7 @@ internal class BindingGraphGenerator(
 
     // Add GraphExtension bindings for graph extensions that are direct accessors (no factory)
     for ((typeKey, function) in node.graphExtensions) {
+      if (typeKey in graph) continue // Skip if already in graph
       val returnType = function.ir.returnType.rawType()
 
       // Check if this returns a factory interface

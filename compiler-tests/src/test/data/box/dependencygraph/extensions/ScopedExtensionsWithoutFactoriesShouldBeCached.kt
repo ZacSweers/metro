@@ -11,6 +11,7 @@ interface AppGraph {
   @Provides fun provideInt(): Int = 3
 
   fun loggedInGraph(): LoggedInGraph
+  val loggedInGraphProp: LoggedInGraph
 }
 
 fun box(): String {
@@ -18,5 +19,6 @@ fun box(): String {
   val loggedInGraph = graph.loggedInGraph()
   assertEquals(3, loggedInGraph.int)
   assertSame(loggedInGraph, graph.loggedInGraph())
+  assertSame(graph.loggedInGraphProp, graph.loggedInGraph())
   return "OK"
 }

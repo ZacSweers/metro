@@ -8,11 +8,13 @@ interface AppGraph {
   @Provides fun provideInt(): Int = 3
 
   fun loggedInGraph(): LoggedInGraph
+
+  val loggedInGraphProp: LoggedInGraph
 }
 
 fun box(): String {
   val graph = createGraph<AppGraph>()
-  val loggedInGraph = graph.loggedInGraph()
-  assertEquals(3, loggedInGraph.int)
+  assertEquals(3, graph.loggedInGraph().int)
+  assertEquals(3, graph.loggedInGraphProp.int)
   return "OK"
 }
