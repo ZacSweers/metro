@@ -16,7 +16,15 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
   @Test
   fun addingNewBindingToExistingBindingContainer() {
     val fixture =
-      object : MetroProject() {
+      object :
+        MetroProject(
+          metroOptions =
+            MetroOptionOverrides(
+              // Enable strict validation for this case to ensure we pick up and store the unused B
+              // binding
+              enableStrictValidation = true
+            )
+        ) {
         override fun sources() = listOf(appGraph, bindingContainer, implementations, target)
 
         private val appGraph =

@@ -101,7 +101,6 @@ internal class BindingGraphGenerator(
         }
         .associateBy { it.second }
 
-    // Track IC lookups for binds callables but don't add bindings yet - they'll be added lazily
     val inheritedBindsCallables = node.allExtendedNodes.values.flatMapToSet { it.bindsCallables }
 
     val providerFactoriesToAdd = buildList {
@@ -110,8 +109,7 @@ internal class BindingGraphGenerator(
     }
 
     for ((typeKey, providerFactory) in providerFactoriesToAdd) {
-      // Track IC lookups for provider factories but don't add bindings yet - they'll be added
-      // lazily
+      // Track IC lookups but don't add bindings yet - they'll be added lazily
       trackClassLookup(node.sourceGraph, providerFactory.clazz)
       trackFunctionCall(node.sourceGraph, providerFactory.mirrorFunction)
       trackFunctionCall(node.sourceGraph, providerFactory.function)
@@ -211,7 +209,7 @@ internal class BindingGraphGenerator(
     }
 
     for (bindsCallable in bindsFunctionsToAdd) {
-      // Track a lookup of the target for IC
+      // Track IC lookups but don't add bindings yet - they'll be added lazily
       trackFunctionCall(node.sourceGraph, bindsCallable.function)
       trackFunctionCall(node.sourceGraph, bindsCallable.callableMetadata.mirrorFunction)
       trackClassLookup(node.sourceGraph, bindsCallable.function.parentAsClass)
@@ -338,7 +336,10 @@ internal class BindingGraphGenerator(
         // Add the original type too as an alias
         val regularGraph = rawType.sourceGraphIfMetroGraph
         if (regularGraph != rawType) {
-          val keyType = regularGraph.typeWith(creatorParam.type.expectAs<IrSimpleType>().arguments.map { it.typeOrFail })
+          val keyType =
+            regularGraph.typeWith(
+              creatorParam.type.expectAs<IrSimpleType>().arguments.map { it.typeOrFail }
+            )
           val typeKey = IrTypeKey(keyType)
           superTypeToAlias.putIfAbsent(typeKey, paramTypeKey)
         }
@@ -390,18 +391,18 @@ internal class BindingGraphGenerator(
     }
 
     for (multibindsCallable in allMultibindsCallables) {
+      // Track IC lookups but don't add bindings yet - they'll be added lazily
+      trackFunctionCall(node.sourceGraph, multibindsCallable.function)
+      trackClassLookup(
+        node.sourceGraph,
+        multibindsCallable.function.propertyIfAccessor.parentAsClass,
+      )
+
       val contextKey = IrContextualTypeKey(multibindsCallable.typeKey)
       addOrUpdateMultibinding(
         contextKey,
         multibindsCallable.callableMetadata.mirrorFunction,
         multibindsCallable.callableMetadata.annotations.multibinds!!,
-      )
-
-      // Record an IC lookup of the original function/class for good measure
-      trackFunctionCall(node.sourceGraph, multibindsCallable.function)
-      trackClassLookup(
-        node.sourceGraph,
-        multibindsCallable.function.propertyIfAccessor.parentAsClass,
       )
     }
 
