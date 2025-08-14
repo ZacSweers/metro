@@ -573,7 +573,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
 
     override val nameHint: String = typeKey.type.rawType().name.asString()
 
-    /** 
+    /**
      * Returns true if this graph extension should be scoped (cached) in the parent graph.
      * A graph extension is scoped if it has any extension scopes defined.
      */

@@ -466,10 +466,10 @@ internal class BindingGraphGenerator(
     // Add GraphExtension bindings for graph extensions that are direct accessors (no factory)
     for ((typeKey, function) in node.graphExtensions) {
       val returnType = function.ir.returnType.rawType()
-      
+
       // Check if this returns a factory interface
       val returnsFactory = returnType.isAnnotatedWithAny(symbols.classIds.allGraphExtensionFactoryAnnotations)
-      
+
       if (!returnsFactory) {
         // Get the scope annotations from the extension graph
         val extensionScopes = returnType.scopeAnnotations()
