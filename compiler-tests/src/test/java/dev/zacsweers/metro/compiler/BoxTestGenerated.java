@@ -531,6 +531,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       public void testParentMultibindingsAreAlsoIncluded() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ParentMultibindingsAreAlsoIncluded.kt");
       }
+
+      @Test
+      @TestMetadata("ScopedExtensionsWithoutFactoriesShouldBeCached.kt")
+      public void testScopedExtensionsWithoutFactoriesShouldBeCached() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ScopedExtensionsWithoutFactoriesShouldBeCached.kt");
+      }
     }
 
     @Nested
