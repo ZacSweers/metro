@@ -16,7 +16,6 @@ import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
-import org.jetbrains.kotlin.ir.declarations.DelicateIrParameterIndexSetter
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.IrType
@@ -97,20 +96,11 @@ internal class IrGraphExtensionGenerator(
     val sourceFactory = factoryFunction.parentAsClass
     val sourceGraph = sourceFactory.parentAsClass
     return parentTracer.traceNested("Generate graph extension ${sourceGraph.name}") {
-      generateContributedGraph(
-        sourceGraph = sourceGraph,
-        sourceFactory = sourceFactory,
-        factoryFunction = factoryFunction,
-      )
+      generateImpl(sourceGraph = sourceGraph, factoryFunction = factoryFunction)
     }
   }
 
-  @OptIn(DelicateIrParameterIndexSetter::class)
-  fun generateContributedGraph(
-    sourceGraph: IrClass,
-    sourceFactory: IrClass,
-    factoryFunction: IrSimpleFunction,
-  ): IrClass {
+  private fun generateImpl(sourceGraph: IrClass, factoryFunction: IrSimpleFunction): IrClass {
     // Check for both @ContributesGraphExtension and @GraphExtension
     val contributesGraphExtensionAnno =
       sourceGraph.annotationsIn(symbols.classIds.contributesGraphExtensionAnnotations).firstOrNull()
@@ -186,9 +176,10 @@ internal class IrGraphExtensionGenerator(
       contributedSupertypes += allContributions.values.flatten()
     }
 
-    // Source is a `@ContributesGraphExtension`-annotated class, we want to generate a header impl
+    // Source is a `@ContributesGraphExtension` or `@GraphExtension`-annotated class, we want to
+    // generate a header impl
     // class
-    val contributedGraph =
+    val graphImpl =
       pluginContext.irFactory
         .buildClass {
           // Ensure a unique name
@@ -239,7 +230,7 @@ internal class IrGraphExtensionGenerator(
               .sortedBy { it.rawType().classIdOrFail.toString() }
         }
 
-    contributedGraph
+    graphImpl
       .addConstructor {
         isPrimary = true
         origin = Origins.Default
@@ -266,11 +257,11 @@ internal class IrGraphExtensionGenerator(
         body = this.generateDefaultConstructorBody()
       }
 
-    parentGraph.addChild(contributedGraph)
+    parentGraph.addChild(graphImpl)
 
-    contributedGraph.addFakeOverrides(irTypeSystemContext)
+    graphImpl.addFakeOverrides(irTypeSystemContext)
 
-    return contributedGraph
+    return graphImpl
   }
 
   /**
