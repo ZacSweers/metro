@@ -146,11 +146,6 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
             if (MetroDirectives.ENABLE_DAGGER_INTEROP in module.directives) {
               add(ClassId.fromString("dagger/Subcomponent.Factory"))
             }
-            if (MetroDirectives.WITH_ANVIL in module.directives) {
-              add(
-                ClassId.fromString("com/squareup/anvil/annotations/ContributesSubcomponent.Factory")
-              )
-            }
           },
         customInjectAnnotations =
           buildSet {
