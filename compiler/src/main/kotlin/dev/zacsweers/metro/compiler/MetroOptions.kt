@@ -335,9 +335,9 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
     )
   ),
-  CUSTOM_GRAPH(
+  CUSTOM_DEPENDENCY_GRAPH(
     RawMetroOption(
-      name = "custom-graph",
+      name = "custom-dependency-graph",
       defaultValue = emptySet(),
       valueDescription = "Graph annotations",
       description = "Graph annotations",
@@ -346,9 +346,9 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
     )
   ),
-  CUSTOM_GRAPH_FACTORY(
+  CUSTOM_DEPENDENCY_GRAPH_FACTORY(
     RawMetroOption(
-      name = "custom-graph-factory",
+      name = "custom-dependency-graph-factory",
       defaultValue = emptySet(),
       valueDescription = "GraphFactory annotations",
       description = "GraphFactory annotations",
@@ -547,9 +547,10 @@ public data class MetroOptions(
     MetroOption.CUSTOM_GRAPH_EXTENSION_FACTORY.raw.defaultValue.expectAs(),
   val customElementsIntoSetAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_ELEMENTS_INTO_SET.raw.defaultValue.expectAs(),
-  val customGraphAnnotations: Set<ClassId> = MetroOption.CUSTOM_GRAPH.raw.defaultValue.expectAs(),
+  val customGraphAnnotations: Set<ClassId> =
+    MetroOption.CUSTOM_DEPENDENCY_GRAPH.raw.defaultValue.expectAs(),
   val customGraphFactoryAnnotations: Set<ClassId> =
-    MetroOption.CUSTOM_GRAPH_FACTORY.raw.defaultValue.expectAs(),
+    MetroOption.CUSTOM_DEPENDENCY_GRAPH_FACTORY.raw.defaultValue.expectAs(),
   val customInjectAnnotations: Set<ClassId> = MetroOption.CUSTOM_INJECT.raw.defaultValue.expectAs(),
   val customIntoMapAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_INTO_MAP.raw.defaultValue.expectAs(),
@@ -682,8 +683,9 @@ public data class MetroOptions(
             customGraphExtensionFactoryAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_ELEMENTS_INTO_SET ->
             customElementsIntoSetAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.CUSTOM_GRAPH -> customGraphAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.CUSTOM_GRAPH_FACTORY ->
+          MetroOption.CUSTOM_DEPENDENCY_GRAPH ->
+            customGraphAnnotations.addAll(configuration.getAsSet(entry))
+          MetroOption.CUSTOM_DEPENDENCY_GRAPH_FACTORY ->
             customGraphFactoryAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_INJECT -> customInjectAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_INTO_MAP ->

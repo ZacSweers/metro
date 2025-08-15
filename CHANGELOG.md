@@ -106,6 +106,10 @@ To create graph extensions, you now _must_ do so via a parent graph (using one o
 
 ### Other changes
 
+- **Breaking change**: Rename `custom-graph` compiler option to `custom-dependency-graph`.
+- **Breaking change**: Rename `custom-dependency-graph-factory` compiler option to `custom-dependency-graph-factory`.
+- **Breaking change**: Rename `MetroPluginExtension.graph` gradle extension property to `MetroPluginExtension.dependencyGraph`.
+- **Breaking change**: Rename `MetroPluginExtension.graphFactory` gradle extension property to `MetroPluginExtension.dependencyGraphFactory`.
 - **Behavior change**: `@Provides` and `@Binds` bindings are now only validated if they are used by the _owning_ graph. Previously, they were always validated.
     - If you want to keep the previous behavior, you can enable the `enableStrictValidation()` option.
 - **Behavior change**: `chunkFieldInits()` is now enabled by default.

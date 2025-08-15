@@ -170,8 +170,8 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     public val contributesGraphExtensionFactory: SetProperty<String> =
       objects.setProperty(String::class.java)
     public val elementsIntoSet: SetProperty<String> = objects.setProperty(String::class.java)
-    public val graph: SetProperty<String> = objects.setProperty(String::class.java)
-    public val graphFactory: SetProperty<String> = objects.setProperty(String::class.java)
+    public val dependencyGraph: SetProperty<String> = objects.setProperty(String::class.java)
+    public val dependencyGraphFactory: SetProperty<String> = objects.setProperty(String::class.java)
     public val graphExtension: SetProperty<String> = objects.setProperty(String::class.java)
     public val graphExtensionFactory: SetProperty<String> = objects.setProperty(String::class.java)
     public val inject: SetProperty<String> = objects.setProperty(String::class.java)
@@ -213,8 +213,8 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
       assistedInject.add("dagger/assisted/AssistedInject")
       binds.add("dagger/Binds")
       elementsIntoSet.add("dagger/multibindings/ElementsIntoSet")
-      graph.add("dagger/Component")
-      graphFactory.add("dagger/Component.Factory")
+      dependencyGraph.add("dagger/Component")
+      dependencyGraphFactory.add("dagger/Component.Factory")
       graphExtension.add("dagger/Subcomponent")
       graphExtensionFactory.add("dagger/Subcomponent.Factory")
       intoMap.add("dagger/multibindings/IntoMap")
@@ -246,7 +246,7 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
       qualifier.add("me/tatarka/inject/annotations/Qualifier")
       scope.add("me/tatarka/inject/annotations/Scope")
       assisted.add("me/tatarka/inject/annotations/Assisted")
-      graph.add("me/tatarka/inject/annotations/Component")
+      dependencyGraph.add("me/tatarka/inject/annotations/Component")
       intoMap.add("me/tatarka/inject/annotations/IntoMap")
       intoSet.add("me/tatarka/inject/annotations/IntoSet")
       provides.add("me/tatarka/inject/annotations/Provides")
@@ -262,8 +262,8 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
       }
       enableDaggerAnvilInterop.set(includeDaggerAnvil)
       if (includeDaggerAnvil) {
-        graph.add("com/squareup/anvil/annotations/MergeComponent")
-        graphFactory.add("com/squareup/anvil/annotations/MergeComponent.Factory")
+        dependencyGraph.add("com/squareup/anvil/annotations/MergeComponent")
+        dependencyGraphFactory.add("com/squareup/anvil/annotations/MergeComponent.Factory")
         graphExtension.add("com/squareup/anvil/annotations/MergeSubcomponent")
         graphExtensionFactory.add("com/squareup/anvil/annotations/MergeSubcomponent.Factory")
         contributesTo.add("com/squareup/anvil/annotations/ContributesTo")
@@ -273,12 +273,10 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
         // Anvil for Dagger doesn't have ContributesSubcomponent.Factory
       }
       if (includeKotlinInjectAnvil) {
-        graph.add("software/amazon/lastmile/kotlin/inject/anvil/MergeComponent")
+        dependencyGraph.add("software/amazon/lastmile/kotlin/inject/anvil/MergeComponent")
         contributesTo.add("software/amazon/lastmile/kotlin/inject/anvil/ContributesTo")
         contributesBinding.add("software/amazon/lastmile/kotlin/inject/anvil/ContributesBinding")
-        graphExtension.add(
-          "software/amazon/lastmile/kotlin/inject/anvil/ContributesSubcomponent"
-        )
+        graphExtension.add("software/amazon/lastmile/kotlin/inject/anvil/ContributesSubcomponent")
         graphExtensionFactory.add(
           "software/amazon/lastmile/kotlin/inject/anvil/ContributesSubcomponent.Factory"
         )
