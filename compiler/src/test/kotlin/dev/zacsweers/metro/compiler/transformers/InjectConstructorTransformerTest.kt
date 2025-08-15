@@ -4,10 +4,12 @@ package dev.zacsweers.metro.compiler.transformers
 
 import com.google.common.truth.Truth.assertThat
 import com.tschuchort.compiletesting.KotlinCompilation
+import com.tschuchort.compiletesting.KotlinCompilation.ExitCode
 import dev.zacsweers.metro.compiler.ExampleClass
 import dev.zacsweers.metro.compiler.ExampleGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
 import dev.zacsweers.metro.compiler.assertCallableFactory
+import dev.zacsweers.metro.compiler.assertContainsAll
 import dev.zacsweers.metro.compiler.assertDiagnostics
 import dev.zacsweers.metro.compiler.assertNoArgCallableFactory
 import dev.zacsweers.metro.compiler.callProperty
@@ -358,5 +360,44 @@ class InjectConstructorTransformerTest : MetroCompilerTest() {
           .trimIndent()
       )
     }
+  }
+
+  // https://github.com/ZacSweers/metro/issues/935
+  // Covers a use-case where we would previously get a Kotlin internal error that read:
+  // e: kotlin.NotImplementedError: An operation is not implemented: Unknown file
+  @Test
+  fun `when no factory is found for a Java class, the exception should still specify it in the error message`() {
+    val previousResult =
+      compile(
+        sourceJava(
+          """
+            public class ExampleClass {
+              @Inject public ExampleClass() {
+            
+              }
+            }
+          """
+            .trimIndent()
+        )
+      )
+    val result =
+      compile(
+        source(
+          """
+            @DependencyGraph
+            interface ExampleGraph {
+              val exampleClass: ExampleClass
+            }
+          """
+            .trimIndent()
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+        options = metroOptions.copy(enableDaggerRuntimeInterop = true),
+        previousCompilationResult = previousResult,
+      )
+
+    result.assertContainsAll(
+      "Could not find generated factory for 'test.ExampleClass' in upstream module where it's defined. Run the Metro compiler over that module too, or Dagger if you're using its interop for Java files."
+    )
   }
 }

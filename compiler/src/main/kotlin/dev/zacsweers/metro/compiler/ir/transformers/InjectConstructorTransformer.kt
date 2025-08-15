@@ -18,6 +18,7 @@ import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.irTemporary
 import dev.zacsweers.metro.compiler.ir.isExternalParent
+import dev.zacsweers.metro.compiler.ir.locationOrNull
 import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
@@ -30,6 +31,7 @@ import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import java.util.Optional
 import kotlin.jvm.optionals.getOrNull
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
@@ -48,6 +50,7 @@ import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.file
+import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.getAnnotation
 import org.jetbrains.kotlin.ir.util.getAnnotationStringValue
@@ -140,12 +143,20 @@ internal class InjectConstructorTransformer(
           generatedFactories[injectedClassId] = Optional.empty()
           return null
         }
-        diagnosticReporter
-          .at(declaration)
-          .report(
-            MetroIrErrors.METRO_ERROR,
-            "Could not find generated factory for '${declaration.kotlinFqName}' in upstream module where it's defined. Run the Metro compiler over that module too.",
+
+        val noFactoryMessage =
+          "Could not find generated factory for '${declaration.kotlinFqName}' in upstream module where it's defined. Run the Metro compiler over that module too, or Dagger if you're using its interop for Java files."
+        if (declaration.fileOrNull == null) {
+          // TODO move to diagnostic reporter in 2.2.20
+          // https://youtrack.jetbrains.com/issue/KT-78280
+          metroContext.messageCollector.report(
+            CompilerMessageSeverity.ERROR,
+            noFactoryMessage,
+            declaration.locationOrNull(),
           )
+        } else {
+          diagnosticReporter.at(declaration).report(MetroIrErrors.METRO_ERROR, noFactoryMessage)
+        }
         return null
       } else if (doNotErrorOnMissing) {
         // Store a null here because it's absent
