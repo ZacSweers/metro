@@ -373,7 +373,7 @@ class InjectConstructorTransformerTest : MetroCompilerTest() {
           """
             public class ExampleClass {
               @Inject public ExampleClass() {
-            
+
               }
             }
           """
