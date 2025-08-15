@@ -265,7 +265,7 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
         dependencyGraph.add("com/squareup/anvil/annotations/MergeComponent")
         dependencyGraphFactory.add("com/squareup/anvil/annotations/MergeComponent.Factory")
         graphExtension.add("com/squareup/anvil/annotations/MergeSubcomponent")
-        graphExtensionFactory.add("com/squareup/anvil/annotations/MergeSubcomponent.Factory")
+        // Anvil for Dagger doesn't have MergeSubcomponent.Factory
         contributesTo.add("com/squareup/anvil/annotations/ContributesTo")
         contributesBinding.add("com/squareup/anvil/annotations/ContributesBinding")
         contributesIntoSet.add("com/squareup/anvil/annotations/ContributesMultibinding")
