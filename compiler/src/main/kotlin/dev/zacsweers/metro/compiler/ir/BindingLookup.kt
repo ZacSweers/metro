@@ -123,10 +123,9 @@ internal class BindingLookup(
 
       // Check if this class binding is available from parent and is scoped
       if (parentContext != null) {
-        val constructorInjectedBinding =
-          classBindings.filterIsInstance<IrBinding.ConstructorInjected>().firstOrNull()
-        if (constructorInjectedBinding != null) {
-          val scope = constructorInjectedBinding.scope
+        val remappedBindings = mutableSetOf<IrBinding>()
+        for (binding in classBindings) {
+          val scope = binding.scope
           if (scope != null) {
             val scopeInParent =
               key in parentContext ||
@@ -134,10 +133,13 @@ internal class BindingLookup(
                 parentContext.containsScope(scope)
             if (scopeInParent) {
               parentContext.mark(key, scope)
-              return setOf(createParentGraphDependency(key))
+              remappedBindings += createParentGraphDependency(key)
+              continue
             }
           }
+          remappedBindings += binding
         }
+        return remappedBindings
       }
 
       return classBindings
