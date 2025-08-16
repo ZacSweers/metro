@@ -76,7 +76,7 @@ class DetailsViewModel(@Assisted private val data: String) : ViewModel() {
 @Composable
 fun DetailsScreen(
   data: String,
-  viewModel: DetailsViewModel = 
+  viewModel: DetailsViewModel =
     assistedMetroViewModel<DetailsViewModel, DetailsViewModel.Factory> { create(data) },
 ) {
   // ...
