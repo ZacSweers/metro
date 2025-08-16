@@ -8,6 +8,7 @@ import com.tschuchort.compiletesting.JvmCompilationResult
 import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.PluginOption
 import com.tschuchort.compiletesting.SourceFile
+import com.tschuchort.compiletesting.SourceFile.Companion.java
 import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
 import com.tschuchort.compiletesting.addPreviousResultToClasspath
 import java.nio.file.Path
@@ -281,6 +282,39 @@ abstract class MetroCompilerTest {
         // Imports
         for (import in (defaultImports + extraImports)) {
           appendLine("import $import")
+        }
+
+        appendLine()
+        appendLine()
+        appendLine(source)
+      },
+    )
+  }
+
+  /**
+   * Returns a [SourceFile] representation of this [source]. This includes common imports from
+   * Metro.
+   */
+  protected fun sourceJava(
+    @Language("java") source: String,
+    fileNameWithoutExtension: String? = null,
+    packageName: String = "test",
+    vararg extraImports: String,
+  ): SourceFile {
+    val fileName =
+      fileNameWithoutExtension
+        ?: CLASS_NAME_REGEX.find(source)?.groups?.get("name")?.value
+        ?: FUNCTION_NAME_REGEX.find(source)?.groups?.get("name")?.value?.capitalizeUS()
+        ?: "source"
+    return java(
+      "${fileName}.java",
+      buildString {
+        // Package statement
+        appendLine("package $packageName;")
+
+        // Imports
+        for (import in (defaultImports + extraImports)) {
+          appendLine("import $import;")
         }
 
         appendLine()
