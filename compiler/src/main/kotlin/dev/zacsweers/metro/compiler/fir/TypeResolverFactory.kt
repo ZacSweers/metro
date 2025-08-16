@@ -30,6 +30,7 @@ import org.jetbrains.kotlin.fir.types.coneType
  * already resolved.
  */
 internal sealed interface MetroFirTypeResolver {
+  val configuration: TypeResolutionConfiguration
   fun resolveType(typeRef: FirTypeRef): ConeKotlinType
 
   class Factory(private val session: FirSession, private val allSessions: Sequence<FirSession>) {
@@ -58,11 +59,14 @@ internal sealed interface MetroFirTypeResolver {
       check(typeRef is FirUserTypeRef)
       return typeRef.coneType
     }
+
+    override val configuration: TypeResolutionConfiguration
+      get() = error("Should never be called")
   }
 
   private class LocalMetroFirTypeResolver(
     private val session: FirSession,
-    private val configuration: TypeResolutionConfiguration,
+    override val configuration: TypeResolutionConfiguration,
   ) : MetroFirTypeResolver {
     override fun resolveType(typeRef: FirTypeRef): ConeKotlinType {
       return session.typeResolver

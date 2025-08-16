@@ -705,6 +705,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("MemberInjectsAcrossModules.kt")
+      public void testMemberInjectsAcrossModules() {
+        runTest("compiler-tests/src/test/data/box/inject/member/MemberInjectsAcrossModules.kt");
+      }
+
+      @Test
       @TestMetadata("MemberInjectsInMultibinding.kt")
       public void testMemberInjectsInMultibinding() {
         runTest("compiler-tests/src/test/data/box/inject/member/MemberInjectsInMultibinding.kt");
@@ -714,6 +720,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("MultiInheritanceMemberInject.kt")
       public void testMultiInheritanceMemberInject() {
         runTest("compiler-tests/src/test/data/box/inject/member/MultiInheritanceMemberInject.kt");
+      }
+
+      @Test
+      @TestMetadata("ScopedInjectIntoBaseMember.kt")
+      public void testScopedInjectIntoBaseMember() {
+        runTest("compiler-tests/src/test/data/box/inject/member/ScopedInjectIntoBaseMember.kt");
       }
     }
   }

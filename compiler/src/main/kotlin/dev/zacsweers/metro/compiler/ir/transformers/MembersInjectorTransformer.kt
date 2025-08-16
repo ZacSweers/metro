@@ -457,10 +457,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
         for (clazz in types) {
           val classId = clazz.classIdOrFail
           val injectedMembers = membersExtractor(clazz, classId, nameAllocator)
-
-          if (injectedMembers.isNotEmpty()) {
-            add(classId to injectedMembers)
-          }
+          add(classId to injectedMembers)
         }
       }
       // Reverse it such that the supertypes are first
