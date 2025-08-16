@@ -4,6 +4,9 @@ Changelog
 **Unreleased**
 --------------
 
+* **Fix**: Don't override graph extension factories' default functions.
+* **Fix**: Fix Kotlin internal error overriding Metro error when there's a missing factory for a Java `@Inject` class.
+
 0.6.0
 -----
 

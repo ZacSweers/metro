@@ -302,7 +302,8 @@ internal class DependencyGraphNodeCache(
 
               if (isGraphExtensionFactory) {
                 isGraphExtension = true
-                break
+                // Only continue because we may ignore this if it has a default body in a parent
+                continue
               }
 
               // Check if return type is a @GraphExtension itself (i.e. no factory)
@@ -315,7 +316,8 @@ internal class DependencyGraphNodeCache(
                   )
                 if (returnsExtensionOrExtensionFactory) {
                   isGraphExtension = true
-                  break
+                  // Only continue because we may ignore this if it has a default body in a parent
+                  continue
                 }
               }
             }
@@ -586,7 +588,7 @@ internal class DependencyGraphNodeCache(
       if (overlapErrors.isNotEmpty()) {
         val message = buildString {
           appendLine(
-            "Graph extension '${dependencyGraphNode.sourceGraph.sourceGraphIfMetroGraph.kotlinFqName}' has overlapping scope annotations with ancestor graphs':",
+            "Graph extension '${dependencyGraphNode.sourceGraph.sourceGraphIfMetroGraph.kotlinFqName}' has overlapping scope annotations with ancestor graphs':"
           )
           for (overlap in overlapErrors) {
             appendLine(overlap)
@@ -595,14 +597,13 @@ internal class DependencyGraphNodeCache(
 
         // TODO in 2.2.20 use just diagnostic reporter
         if (graphDeclaration.origin === Origins.GeneratedGraphExtension) {
-          messageCollector.report(CompilerMessageSeverity.ERROR, message, graphDeclaration.locationOrNull())
+          messageCollector.report(
+            CompilerMessageSeverity.ERROR,
+            message,
+            graphDeclaration.locationOrNull(),
+          )
         } else {
-          diagnosticReporter
-            .at(graphDeclaration)
-            .report(
-              MetroIrErrors.METRO_ERROR,
-              message,
-            )
+          diagnosticReporter.at(graphDeclaration).report(MetroIrErrors.METRO_ERROR, message)
         }
         exitProcessing()
       }

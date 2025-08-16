@@ -527,6 +527,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("OverloadedFactoryFunctions.kt")
+      public void testOverloadedFactoryFunctions() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/OverloadedFactoryFunctions.kt");
+      }
+
+      @Test
       @TestMetadata("ParentBindingsAreAlsoIncluded.kt")
       public void testParentBindingsAreAlsoIncluded() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ParentBindingsAreAlsoIncluded.kt");
