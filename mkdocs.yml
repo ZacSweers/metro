@@ -46,9 +46,16 @@ plugins:
   # https://squidfunk.github.io/mkdocs-material/plugins/social/
   - social
   - search
+  # Versioned Metro docs site for each release
+  # https://github.com/jimporter/mike
+  - mike
 
 #extra_css:
 #  - 'css/app.css'
+
+extra:
+  version:
+    provider: mike
 
 markdown_extensions:
   - smarty
@@ -97,7 +104,7 @@ nav:
   - 'Adoption Strategies': adoption.md
   - 'FAQ': faq.md
   - 'Samples': samples.md
-  - 'API': api/0.x/index.html
+  - 'API': api/index.html
   - 'Discussions ⏏': https://github.com/ZacSweers/metro/discussions
   - 'Change Log': changelog.md
   - 'Contributing': contributing.md
