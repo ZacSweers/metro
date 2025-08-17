@@ -61,6 +61,7 @@ internal class IrBindingGraph(
   private val accessors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
   private val injectors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
   private val extraKeeps = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
+  private val reservedFields = mutableMapOf<IrTypeKey, ParentContext.FieldAccess>()
 
   // Thin immutable view over the internal bindings
   fun bindingsSnapshot(): Map<IrTypeKey, IrBinding> = realGraph.bindings
@@ -80,6 +81,12 @@ internal class IrBindingGraph(
   fun keep(key: IrContextualTypeKey, entry: IrBindingStack.Entry) {
     extraKeeps[key] = entry
   }
+
+  fun reserveField(key: IrTypeKey, access: ParentContext.FieldAccess) {
+    reservedFields[key] = access
+  }
+
+  fun reservedField(key: IrTypeKey): ParentContext.FieldAccess? = reservedFields[key]
 
   fun findBinding(key: IrTypeKey): IrBinding? = realGraph[key]
 

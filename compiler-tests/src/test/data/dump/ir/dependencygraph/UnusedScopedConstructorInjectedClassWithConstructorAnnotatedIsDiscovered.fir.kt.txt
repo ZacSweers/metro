@@ -108,17 +108,13 @@ interface ExampleGraph : $$MetroContributionToAppScope {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class $$MetroGraph : ExampleGraph {
+    private /* final field */ val thisGraphInstance: ExampleGraph = <this>
+    private /* final field */ val exampleGraphProvider: Provider<ExampleGraph> = Companion.invoke<ExampleGraph>(value = <this>.#thisGraphInstance)
     private /* final field */ val dependencyProvider: Provider<Dependency> = Companion.provider<Provider<Dependency>, Dependency>(delegate = $$MetroFactory.create())
     @DependencyGraph(scope = LoggedInScope::class)
-    class LoggedInGraphImpl : LoggedInGraph {
-      private /* final field */ val exampleGraphInstance: $$MetroGraph = $$MetroGraph
-      private /* final field */ val exampleGraphInstanceProvider: Provider<$$MetroGraph> = Companion.invoke<$$MetroGraph>(value = $$MetroGraph)
-      private /* final field */ val dependencyProvider: Provider<Dependency> = provider<Dependency>(provider = local fun <anonymous>(): Dependency {
-        return <this>.#exampleGraphInstance.accessor_kKldZjk_provider().invoke()
-      }
-)
+    inner class LoggedInGraphImpl : LoggedInGraph {
       private /* final field */ val childDependencyProvider: Provider<ChildDependency> = Companion.provider<Provider<ChildDependency>, ChildDependency>(delegate = Companion.create(dep = <this>.#dependencyProvider))
-      constructor($$MetroGraph: $$MetroGraph) /* primary */ {
+      constructor() /* primary */ {
         super/*Any*/()
         /* <init>() */
 
@@ -137,14 +133,8 @@ interface ExampleGraph : $$MetroContributionToAppScope {
 
     }
 
-    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-    @MetroAccessor
-    fun accessor_kKldZjk_provider(): Provider<Dependency> {
-      return <this>.#dependencyProvider
-    }
-
     override fun createLoggedInGraph(): LoggedInGraph {
-      return LoggedInGraphImpl($$MetroGraph = <this>)
+      return <this>.LoggedInGraphImpl()
     }
 
   }

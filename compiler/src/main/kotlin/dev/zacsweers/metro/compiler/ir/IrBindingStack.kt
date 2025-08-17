@@ -203,6 +203,24 @@ internal interface IrBindingStack :
           declaration = function,
         )
       }
+      
+      /*
+      test.LoggedInGraph extends test.AppGraph
+            [test.AppGraph] createLoggedInGraph(...): LoggedInGraph
+       */
+      fun generatedExtensionAt(
+        graphExtensionKey: IrContextualTypeKey,
+        parent: String,
+      ): Entry {
+        val targetFqName = graphExtensionKey.typeKey.type.rawType().kotlinFqName
+        return Entry(
+          contextKey = graphExtensionKey,
+          usage = null,
+          graphContext = "$targetFqName extends $parent",
+          declaration = null,
+          isSynthetic = false,
+        )
+      }
     }
   }
 

@@ -16,6 +16,7 @@ import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.memoized
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
@@ -32,7 +33,6 @@ import org.jetbrains.kotlin.ir.expressions.IrVararg
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.classOrFail
 import org.jetbrains.kotlin.ir.types.classOrNull
-import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.isUnit
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classId
@@ -41,6 +41,7 @@ import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.getValueArgument
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
+import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.ClassId
@@ -65,6 +66,19 @@ internal class DependencyGraphNodeCache(
     metroGraph: IrClass? = null,
     dependencyGraphAnno: IrConstructorCall? = null,
   ): DependencyGraphNode {
+    if (graphDeclaration.origin != Origins.GeneratedGraphExtension) {
+      val sourceGraph = graphDeclaration.sourceGraphIfMetroGraph
+      if (sourceGraph != graphDeclaration) {
+        return getOrComputeDependencyGraphNode(
+          sourceGraph,
+          bindingStack,
+          parentTracer,
+          metroGraph,
+          dependencyGraphAnno
+        )
+      }
+    }
+
     val graphClassId = graphDeclaration.classIdOrFail
 
     return dependencyGraphNodesByClass.getOrPut(graphClassId) {
@@ -233,8 +247,7 @@ internal class DependencyGraphNodeCache(
           if (parameter.isIncludes) {
             includedGraphNodes[parameter.typeKey] = node
           } else {
-            // TODO implicitly extended graph, but we should eliminate this parameter
-            extendedGraphNodes[parameter.typeKey] = node
+            reportCompilerBug("Unexpected parameter type for graph: $parameter")
           }
         }
       }
@@ -467,6 +480,25 @@ internal class DependencyGraphNodeCache(
       }
 
       val creator = buildCreator()
+
+      // Add extended node if it's a generated graph extension
+      if (graphDeclaration.origin == Origins.GeneratedGraphExtension) {
+        val parentGraph = graphDeclaration.parentAsClass
+        val graphTypeKey = graphDeclaration.generatedGraphExtensionData!!.typeKey
+        checkGraphSelfCycle(graphDeclaration, graphTypeKey, bindingStack)
+
+        // Add its parent node
+        val node =
+          bindingStack.withEntry(
+            IrBindingStack.Entry.generatedExtensionAt(
+              IrContextualTypeKey(graphTypeKey),
+              parentGraph.kotlinFqName.asString(),
+            )
+          ) {
+            nodeCache.getOrComputeDependencyGraphNode(parentGraph, bindingStack, parentTracer)
+          }
+        extendedGraphNodes[node.typeKey] = node
+      }
 
       val managedBindingContainers = mutableSetOf<IrClass>()
       bindingContainers +=

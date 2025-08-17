@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.compiler.ExitProcessingException
 import dev.zacsweers.metro.compiler.MetroLogger
+import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.exitProcessing
@@ -91,9 +92,6 @@ internal class DependencyGraphTransformer(
 
   private val dependencyGraphNodeCache =
     DependencyGraphNodeCache(this, contributionData, bindingContainerTransformer)
-
-  // Cache of precomputed seal results for contributed graphs so we can reuse them later
-  private val precomputedSealResults = mutableMapOf<ClassId, IrBindingGraph.BindingGraphResult>()
 
   override fun visitCall(expression: IrCall): IrExpression {
     return CreateGraphTransformer.visitCall(expression, metroContext)
@@ -231,7 +229,6 @@ internal class DependencyGraphTransformer(
             node,
             injectConstructorTransformer,
             membersInjectorTransformer,
-            contributionData,
             parentContext,
           )
           .generate()
@@ -240,13 +237,18 @@ internal class DependencyGraphTransformer(
     val graphExtensionGenerator =
       IrGraphExtensionGenerator(metroContext, contributionData, node.sourceGraph.metroGraphOrFail)
 
+    val fieldNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
+
     // Before validating/sealing the parent graph, analyze contributed child graphs to
     // determine any parent-scoped static bindings that are required by children and
     // add synthetic roots for them so they are materialized in the parent.
     if (node.graphExtensions.isNotEmpty()) {
       // Collect parent-available scoped binding keys to match against
       // @Binds not checked because they cannot be scoped!
-      val localParentContext = parentContext ?: ParentContext()
+      val localParentContext = parentContext ?: ParentContext(metroContext)
+
+      // This instance
+      localParentContext.add(node.typeKey)
 
       // @Provides
       for ((_, providerFactory) in node.providerFactories) {
@@ -276,12 +278,9 @@ internal class DependencyGraphTransformer(
         localParentContext.addAll(included.publicAccessors)
       }
 
-      // Extended graphs
-      localParentContext.addAll(node.allExtendedNodes.keys)
-
       // Transform the contributed graphs
       // Push the parent graph for all contributed graph processing
-      localParentContext.pushParentGraph(node)
+      localParentContext.pushParentGraph(node, fieldNameAllocator)
 
       for ((contributedGraphKey, accessor) in node.graphExtensions) {
         val contributedExtension = contributedGraphKey.type.rawTypeOrNull() ?: continue
@@ -311,6 +310,7 @@ internal class DependencyGraphTransformer(
         for (key in localParentContext.usedKeys()) {
           val contextKey = IrContextualTypeKey.create(key)
           bindingGraph.keep(contextKey, IrBindingStack.Entry.simpleTypeRef(contextKey))
+          bindingGraph.reserveField(key, localParentContext.getFieldAccess(key)!!)
         }
       }
 
@@ -399,6 +399,7 @@ internal class DependencyGraphTransformer(
             graphClass = metroGraph,
             bindingGraph = bindingGraph,
             sealResult = result,
+            fieldNameAllocator = fieldNameAllocator,
             parentTracer = tracer,
             bindingContainerTransformer = bindingContainerTransformer,
             membersInjectorTransformer = membersInjectorTransformer,

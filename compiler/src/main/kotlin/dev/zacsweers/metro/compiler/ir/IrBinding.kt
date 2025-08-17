@@ -48,9 +48,9 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
   val reportableDeclaration: IrDeclarationWithName?
 
   /**
-   * Returns true if this binding should be scoped (cached) in the graph.
-   * For most bindings, this is true if [scope] != null.
-   * For [GraphExtension] bindings, this is true if [GraphExtension.extensionScopes] is not empty.
+   * Returns true if this binding should be scoped (cached) in the graph. For most bindings, this is
+   * true if [scope] != null. For [GraphExtension] bindings, this is true if
+   * [GraphExtension.extensionScopes] is not empty.
    */
   fun isScoped(): Boolean = scope != null
 
@@ -368,6 +368,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val typeKey: IrTypeKey,
     override val nameHint: String,
     override val reportableDeclaration: IrDeclarationWithName?,
+    val classReceiverParameter: IrValueParameter? = null,
   ) : IrBinding {
     constructor(
       parameter: Parameter,
@@ -399,24 +400,31 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
   class GraphDependency(
     val ownerKey: IrTypeKey,
     @Poko.Skip val graph: IrClass,
-    @Poko.Skip val getter: IrSimpleFunction,
-    val isProviderFieldAccessor: Boolean,
+    @Poko.Skip val getter: IrSimpleFunction? = null,
     override val typeKey: IrTypeKey,
-    val callableId: CallableId = getter.callableId,
+    @Poko.Skip val fieldAccess: ParentContext.FieldAccess? = null,
+    val callableId: CallableId =
+      fieldAccess?.field?.callableId
+        ?: getter?.callableId
+        ?: reportCompilerBug("One of getter or fieldAccess must be present"),
   ) : IrBinding {
     override val dependencies: List<IrContextualTypeKey> = listOf(IrContextualTypeKey(ownerKey))
     override val scope: IrAnnotation? = null
     override val nameHint: String = buildString {
       append(graph.name)
-      val property = getter.correspondingPropertySymbol
-      if (property != null) {
-        val propName = property.owner.name.asString()
-        if (!isWordPrefixRegex.matches(propName)) {
-          append("Get")
-        }
-        append(propName.capitalizeUS())
+      if (fieldAccess != null) {
+        append(fieldAccess.field.name)
       } else {
-        append(getter.name.capitalizeUS())
+        val property = getter!!.correspondingPropertySymbol
+        if (property != null) {
+          val propName = property.owner.name.asString()
+          if (!isWordPrefixRegex.matches(propName)) {
+            append("Get")
+          }
+          append(propName.capitalizeUS())
+        } else {
+          append(getter.name.capitalizeUS())
+        }
       }
     }
     override val parametersByKey: Map<IrTypeKey, Parameter> = emptyMap()
@@ -424,10 +432,22 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
 
     override val reportableDeclaration: IrDeclarationWithName?
-      get() = getter.propertyIfAccessor.expectAs<IrDeclarationWithName>()
+      get() = fieldAccess?.field ?: getter?.propertyIfAccessor?.expectAs<IrDeclarationWithName>()
 
     override fun toString(): String {
-      return "${graph.kotlinFqName}#${(getter.propertyIfAccessor as IrDeclarationWithName).name}: ${getter.returnType.dumpKotlinLike()}"
+      return buildString {
+        append(graph.kotlinFqName)
+        append("#")
+        if (fieldAccess != null) {
+          append(fieldAccess.field.name)
+          append(": ")
+          append(fieldAccess.field.type.dumpKotlinLike())
+        } else {
+          append((getter!!.propertyIfAccessor as IrDeclarationWithName).name)
+          append(": ")
+          append(getter.returnType.dumpKotlinLike())
+        }
+      }
     }
   }
 
@@ -574,8 +594,8 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val nameHint: String = typeKey.type.rawType().name.asString()
 
     /**
-     * Returns true if this graph extension should be scoped (cached) in the parent graph.
-     * A graph extension is scoped if it has any extension scopes defined.
+     * Returns true if this graph extension should be scoped (cached) in the parent graph. A graph
+     * extension is scoped if it has any extension scopes defined.
      */
     override fun isScoped(): Boolean = extensionScopes.isNotEmpty()
   }

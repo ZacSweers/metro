@@ -16,6 +16,8 @@ interface AppGraph : Factory {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class $$MetroGraph : AppGraph {
+    private /* final field */ val thisGraphInstance: AppGraph = <this>
+    private /* final field */ val appGraphProvider: Provider<AppGraph> = Companion.invoke<AppGraph>(value = <this>.#thisGraphInstance)
     @DependencyGraph
     inner class LoggedInGraphImpl : LoggedInGraph {
       private /* final field */ val idInstanceProvider: Provider<String> = Companion.invoke<String>(value = id)
@@ -108,3 +110,4 @@ interface LoggedInGraph {
     abstract get
 
 }
+

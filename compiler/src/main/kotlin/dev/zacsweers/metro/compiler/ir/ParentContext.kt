@@ -2,14 +2,36 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.NameAllocator
+import dev.zacsweers.metro.compiler.asName
+import dev.zacsweers.metro.compiler.decapitalizeUS
+import dev.zacsweers.metro.compiler.newName
+import dev.zacsweers.metro.compiler.suffixIfNot
+import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
+import org.jetbrains.kotlin.ir.builders.declarations.addField
+import org.jetbrains.kotlin.ir.builders.declarations.buildField
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrField
+import org.jetbrains.kotlin.ir.declarations.IrValueParameter
+import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 
-internal class ParentContext {
+internal class ParentContext(
+  private val metroContext: IrMetroContext
+) {
+
+  // Data for field access tracking
+  internal data class FieldAccess(
+    val field: IrField,
+    val receiverParameter: IrValueParameter,
+  )
 
   private data class Level(
     val node: DependencyGraphNode,
+    val fieldNameAllocator: NameAllocator,
     val deltaProvided: MutableSet<IrTypeKey> = mutableSetOf(),
     val usedKeys: MutableSet<IrTypeKey> = mutableSetOf(),
+    val fields: MutableMap<IrTypeKey, IrField> = mutableMapOf(),
   )
 
   // Stack of parent graphs (root at 0, top is last)
@@ -35,14 +57,20 @@ internal class ParentContext {
     if (keys.isNotEmpty()) pending.addAll(keys)
   }
 
-  fun mark(key: IrTypeKey, scope: IrAnnotation? = null) {
+  // TODO stick a cache in front of this
+  fun mark(key: IrTypeKey, scope: IrAnnotation? = null): FieldAccess? {
     // Prefer the nearest provider (deepest level that introduced this key)
     keyIntroStack[key]?.lastOrNull()?.let { providerIdx ->
-      // Mark used from provider -> top (inclusive)
-      for (i in providerIdx..levels.lastIndex) {
-        levels[i].usedKeys.add(key)
+      val providerLevel = levels[providerIdx]
+      
+      // Get or create field in the provider level
+      val field = providerLevel.fields.getOrPut(key) {
+        createFieldInLevel(providerLevel, key)
       }
-      return
+      
+      // Only mark in the provider level - inner classes can access parent fields directly
+      providerLevel.usedKeys.add(key)
+      return FieldAccess(field, providerLevel.node.metroGraphOrFail.thisReceiverOrFail)
     }
 
     // Not found but is scoped. Treat as constructor-injected with matching scope.
@@ -51,20 +79,25 @@ internal class ParentContext {
         val level = levels[i]
         if (scope in level.node.scopes) {
           introduceAtLevel(i, key)
-          // Mark used from that level -> top
-          for (j in i..levels.lastIndex) {
-            levels[j].usedKeys.add(key)
+          
+          // Get or create field
+          val field = level.fields.getOrPut(key) {
+            createFieldInLevel(level, key)
           }
-          return
+          
+          // Only mark in the level that owns the scope
+          level.usedKeys.add(key)
+          return FieldAccess(field, level.node.metroGraphOrFail.thisReceiverOrFail)
         }
       }
     }
     // Else: no-op (unknown key without scope)
+    return null
   }
 
-  fun pushParentGraph(node: DependencyGraphNode) {
+  fun pushParentGraph(node: DependencyGraphNode, fieldNameAllocator: NameAllocator) {
     val idx = levels.size
-    val level = Level(node)
+    val level = Level(node, fieldNameAllocator)
     levels.addLast(level)
     parentScopes.addAll(node.scopes)
 
@@ -131,5 +164,32 @@ internal class ParentContext {
       available.add(key)
       keyIntroStack.getOrPut(key) { ArrayDeque() }.addLast(levelIdx)
     }
+  }
+
+  private fun createFieldInLevel(level: Level, key: IrTypeKey): IrField {
+    val graphClass = level.node.metroGraphOrFail
+    // Build but don't add, order will matter and be handled by the graph generator
+    return graphClass.factory.buildField {
+      name = level.fieldNameAllocator.newName(
+        key.type.rawType().name.asString().decapitalizeUS().suffixIfNot("Provider").asName()
+      )
+      type = metroContext.symbols.metroProvider.typeWith(key.type)
+      // TODO revisit? Can we skip synth accessors? Only if graph has extensions
+      visibility = DescriptorVisibilities.PRIVATE
+    }.apply {
+      parent = graphClass
+      key.qualifier?.let { annotations += it.ir.deepCopyWithSymbols() }
+    }
+  }
+  
+  // Get the field access for a key if it exists
+  fun getFieldAccess(key: IrTypeKey): FieldAccess? {
+    keyIntroStack[key]?.lastOrNull()?.let { providerIdx ->
+      val level = levels[providerIdx]
+      level.fields[key]?.let { field ->
+        return FieldAccess(field, level.node.metroGraphOrFail.thisReceiverOrFail)
+      }
+    }
+    return null
   }
 }

@@ -340,7 +340,7 @@ interface CycleGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class $$MetroGraph : CycleGraph {
     private /* final field */ val thisGraphInstance: CycleGraph = <this>
-    private /* final field */ val thisGraphInstanceProvider: Provider<CycleGraph> = Companion.invoke<CycleGraph>(value = <this>.#thisGraphInstance)
+    private /* final field */ val cycleGraphProvider: Provider<CycleGraph> = Companion.invoke<CycleGraph>(value = <this>.#thisGraphInstance)
     private /* final field */ val membersInjectorMembersInjectorProvider: Provider<MembersInjector<C>> = DelegateFactory<MembersInjector<C>>()
     private /* final field */ val cProvider: Provider<C> = DelegateFactory<C>()
     private /* final field */ val provideObjectWithCycleProvider: Provider<Any> = DelegateFactory<Any>()
@@ -355,27 +355,25 @@ interface CycleGraph {
       }
 
       override fun create(): ChildCycleGraph {
-        return ChildCycleGraphImpl($$MetroGraph = <this>.#parentInstance)
+        return <this>.#parentInstance.ChildCycleGraphImpl()
       }
 
     }
 
     @DependencyGraph
-    class ChildCycleGraphImpl : ChildCycleGraph {
-      private /* final field */ val cycleGraphInstance: $$MetroGraph = $$MetroGraph
-      private /* final field */ val cycleGraphInstanceProvider: Provider<$$MetroGraph> = Companion.invoke<$$MetroGraph>(value = $$MetroGraph)
+    inner class ChildCycleGraphImpl : ChildCycleGraph {
       private /* final field */ val membersInjectorMembersInjectorProvider: Provider<MembersInjector<C>> = DelegateFactory<MembersInjector<C>>()
       private /* final field */ val cProvider: Provider<C> = DelegateFactory<C>()
       private /* final field */ val provideObjectWithCycleProvider: Provider<Any> = DelegateFactory<Any>()
       private /* final field */ val bProvider: Provider<B> = Companion.create(c = <this>.#cProvider)
       private /* final field */ val aProvider: Provider<A> = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider)))
-      constructor($$MetroGraph: $$MetroGraph) /* primary */ {
+      constructor() /* primary */ {
         super/*Any*/()
         /* <init>() */
 
         Companion.setDelegate<MembersInjector<C>>(delegateFactory = <this>.#membersInjectorMembersInjectorProvider, delegate = Companion.invoke<C>(value = Companion.create(aLazy = <this>.#aProvider, aLazyProvider = <this>.#aProvider)))
         Companion.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = Companion.create(aProvider = <this>.#aProvider, aLazy = <this>.#aProvider, aLazyProvider = <this>.#aProvider))
-        Companion.setDelegate<Any>(delegateFactory = <this>.#provideObjectWithCycleProvider, delegate = Companion.create(instance = <this>.#cycleGraphInstance, obj = <this>.#provideObjectWithCycleProvider))
+        Companion.setDelegate<Any>(delegateFactory = <this>.#provideObjectWithCycleProvider, delegate = Companion.create(instance = <this>, obj = <this>.#provideObjectWithCycleProvider))
       }
 
       override val a: A
@@ -397,18 +395,6 @@ interface CycleGraph {
       Companion.setDelegate<MembersInjector<C>>(delegateFactory = <this>.#membersInjectorMembersInjectorProvider, delegate = Companion.invoke<C>(value = Companion.create(aLazy = <this>.#aProvider, aLazyProvider = <this>.#aProvider)))
       Companion.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = Companion.create(aProvider = <this>.#aProvider, aLazy = <this>.#aProvider, aLazyProvider = <this>.#aProvider))
       Companion.setDelegate<Any>(delegateFactory = <this>.#provideObjectWithCycleProvider, delegate = Companion.create(instance = <this>.#thisGraphInstance, obj = <this>.#provideObjectWithCycleProvider))
-    }
-
-    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-    @MetroAccessor(isInstanceAccessor = true)
-    fun accessor_E7x4cV4(): CycleGraph {
-      return <this>.#thisGraphInstance
-    }
-
-    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-    @MetroAccessor
-    fun accessor_E7x4cV4_provider(): Provider<CycleGraph> {
-      return <this>.#thisGraphInstanceProvider
     }
 
     override fun a(): A {

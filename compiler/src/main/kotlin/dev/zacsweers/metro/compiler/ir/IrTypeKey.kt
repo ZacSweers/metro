@@ -92,24 +92,3 @@ internal fun IrTypeKey.metroAccessorName(suffix: String = ""): String {
     append(suffix)
   }
 }
-
-// TODO for contributed graphs we could instead allow this in non-extendable graphs and just reach
-//  into properties
-context(context: IrMetroContext)
-internal fun IrTypeKey.toAccessorFunctionIn(klass: IrClass, wrapInProvider: Boolean): IrSimpleFunction {
-  val accessorName = metroAccessorName(
-    suffix = if (wrapInProvider) "_provider" else ""
-  )
-  return context.irFactory
-    .buildFun {
-      this.name = accessorName.asName()
-      this.returnType = this@toAccessorFunctionIn.type.letIf(wrapInProvider) { it.wrapInProvider(context.symbols.metroProvider) }
-      this.visibility = DescriptorVisibilities.PUBLIC
-      this.origin = Origins.ExtendableGraphAccessor
-    }
-    .apply {
-      parent = klass
-      parameters += createDispatchReceiverParameterWithClassParent()
-      // Leave body impl to the caller
-    }
-}
