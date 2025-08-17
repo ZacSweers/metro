@@ -53,7 +53,6 @@ internal class MetroAnnotations<T>(
   val isIntoMap: Boolean,
   val isAssistedFactory: Boolean,
   val isComposable: Boolean,
-  val isMetroAccessor: Boolean,
   val multibinds: T?,
   val assisted: T?,
   val scope: T?,
@@ -90,7 +89,6 @@ internal class MetroAnnotations<T>(
     isIntoMap: Boolean = this.isIntoMap,
     isAssistedFactory: Boolean = this.isAssistedFactory,
     isComposable: Boolean = this.isComposable,
-    isMetroAccessor: Boolean = this.isMetroAccessor,
     multibinds: T? = this.multibinds,
     assisted: T? = this.assisted,
     scope: T? = this.scope,
@@ -109,7 +107,6 @@ internal class MetroAnnotations<T>(
       isIntoMap,
       isAssistedFactory,
       isComposable,
-      isMetroAccessor,
       multibinds,
       assisted,
       scope,
@@ -152,7 +149,6 @@ internal class MetroAnnotations<T>(
         isIntoMap = false,
         isAssistedFactory = false,
         isComposable = false,
-        isMetroAccessor = false,
         multibinds = null,
         assisted = false,
         scope = null,
@@ -183,7 +179,6 @@ private fun IrAnnotationContainer.metroAnnotations(
   var isIntoMap = false
   var isAssistedFactory = false
   var isComposable = false
-  var isMetroAccessor = false
   var multibinds: IrAnnotation? = null
   var assisted: IrAnnotation? = null
   var scope: IrAnnotation? = null
@@ -241,10 +236,6 @@ private fun IrAnnotationContainer.metroAnnotations(
             isComposable = true
             continue
           }
-          Symbols.ClassIds.MetroAccessor -> {
-            isMetroAccessor = true
-            continue
-          }
         }
       }
 
@@ -299,7 +290,6 @@ private fun IrAnnotationContainer.metroAnnotations(
       isIntoMap = isIntoMap,
       isAssistedFactory = isAssistedFactory,
       isComposable = isComposable,
-      isMetroAccessor = isMetroAccessor,
       multibinds = multibinds,
       assisted = assisted,
       scope = scope,
@@ -521,8 +511,6 @@ private fun FirBasedSymbol<*>.metroAnnotations(
       scope = scope,
       qualifier = qualifier,
       mapKeys = mapKeys,
-      // These are never used in FIR
-      isMetroAccessor = false,
       symbol = null,
     )
 

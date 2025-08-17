@@ -112,7 +112,6 @@ internal class Symbols(
     val metroHintsPackage = FqName(StringNames.METRO_HINTS_PACKAGE)
     val metroRuntimeInternalPackage = FqName(METRO_RUNTIME_INTERNAL_PACKAGE)
     val metroRuntimePackage = FqName(METRO_RUNTIME_PACKAGE)
-    val MetroAccessor = metroRuntimeInternalPackage.child(Names.MetroAccessor)
     val GraphFactoryInvokeFunctionMarkerClass =
       metroRuntimeInternalPackage.child("GraphFactoryInvokeFunctionMarker".asName())
     val CallableMetadataClass = metroRuntimeInternalPackage.child(CALLABLE_METADATA.asName())
@@ -143,7 +142,6 @@ internal class Symbols(
     val MembersInjector = ClassId(FqNames.metroRuntimePackage, Names.membersInjector)
     val MultibindingElement =
       ClassId(FqNames.metroRuntimeInternalPackage, "MultibindingElement".asName())
-    val MetroAccessor = ClassId(FqNames.metroRuntimeInternalPackage, Names.MetroAccessor)
     val NonRestartableComposable =
       ClassId(FqNames.composeRuntime, StringNames.NON_RESTARTABLE_COMPOSABLE.asName())
     val CallableMetadata = ClassId(FqNames.metroRuntimeInternalPackage, CALLABLE_METADATA.asName())
@@ -171,7 +169,6 @@ internal class Symbols(
     val BindsMirrorClass = $$$"$$BindsMirror".asName()
     val Container = "Container".asName()
     val FactoryClass = "Factory".asName()
-    val MetroAccessor = "MetroAccessor".asName()
     val MetroContributionNamePrefix = StringNames.METRO_CONTRIBUTION_NAME_PREFIX.asName()
     val MetroFactory = StringNames.METRO_FACTORY.asName()
     val MetroGraph = $$$"$$MetroGraph".asName()
@@ -303,10 +300,6 @@ internal class Symbols(
 
   val callableMetadataAnnotationConstructor: IrConstructorSymbol by lazy {
     pluginContext.referenceClass(ClassIds.CallableMetadata)!!.constructors.first()
-  }
-
-  val metroAccessorAnnotationConstructor: IrConstructorSymbol by lazy {
-    pluginContext.referenceClass(ClassIds.MetroAccessor)!!.constructors.first()
   }
 
   val metroProvider: IrClassSymbol by lazy {

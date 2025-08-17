@@ -487,14 +487,8 @@ internal class BindingGraphGenerator(
     // Only add it if it's a directly included node. Indirect will be propagated by metro
     // accessors
     for ((depNodeKey, depNode) in node.includedGraphNodes) {
-      // Only add accessors for included types. If they're an accessor to a scoped provider, they
-      // will be handled by the provider field accessor later
+      // Only add accessors for included types
       for ((getter, contextualTypeKey) in depNode.accessors) {
-        if (getter.annotations.isMetroAccessor) {
-          // We'll handle this farther down
-          continue
-        }
-
         // Add a ref to the included graph if not already present
         if (depNodeKey !in graph) {
           graph.addBinding(

@@ -3,24 +3,14 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.drewhamilton.poko.Poko
-import dev.zacsweers.metro.compiler.Origins
-import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.BaseTypeKey
-import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
-import dev.zacsweers.metro.compiler.letIf
-import dev.zacsweers.metro.compiler.md5base64
 import dev.zacsweers.metro.compiler.unsafeLazy
-import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
-import org.jetbrains.kotlin.ir.builders.declarations.buildFun
 import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
-import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.util.TypeRemapper
-import org.jetbrains.kotlin.ir.util.createDispatchReceiverParameterWithClassParent
 import org.jetbrains.kotlin.ir.util.defaultType
 
 // TODO cache these in DependencyGraphTransformer or shared transformer data
@@ -83,12 +73,4 @@ internal fun IrTypeKey.requireMapKeyType(): IrType {
 
 internal fun IrTypeKey.requireMapValueType(): IrType {
   return type.expectAs<IrSimpleType>().arguments[1].typeOrFail
-}
-
-internal fun IrTypeKey.metroAccessorName(suffix: String = ""): String {
-  return buildString {
-    append("accessor_")
-    append(md5base64(listOf(this@metroAccessorName.toString())))
-    append(suffix)
-  }
 }
