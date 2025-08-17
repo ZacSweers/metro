@@ -203,7 +203,7 @@ internal interface IrBindingStack :
           declaration = function,
         )
       }
-      
+
       /*
       test.LoggedInGraph extends test.AppGraph
             [test.AppGraph] createLoggedInGraph(...): LoggedInGraph

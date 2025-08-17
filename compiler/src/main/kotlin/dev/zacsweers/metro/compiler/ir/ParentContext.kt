@@ -62,12 +62,12 @@ internal class ParentContext(
     // Prefer the nearest provider (deepest level that introduced this key)
     keyIntroStack[key]?.lastOrNull()?.let { providerIdx ->
       val providerLevel = levels[providerIdx]
-      
+
       // Get or create field in the provider level
       val field = providerLevel.fields.getOrPut(key) {
         createFieldInLevel(providerLevel, key)
       }
-      
+
       // Only mark in the provider level - inner classes can access parent fields directly
       providerLevel.usedKeys.add(key)
       return FieldAccess(field, providerLevel.node.metroGraphOrFail.thisReceiverOrFail)
@@ -79,12 +79,12 @@ internal class ParentContext(
         val level = levels[i]
         if (scope in level.node.scopes) {
           introduceAtLevel(i, key)
-          
+
           // Get or create field
           val field = level.fields.getOrPut(key) {
             createFieldInLevel(level, key)
           }
-          
+
           // Only mark in the level that owns the scope
           level.usedKeys.add(key)
           return FieldAccess(field, level.node.metroGraphOrFail.thisReceiverOrFail)
@@ -181,7 +181,7 @@ internal class ParentContext(
       key.qualifier?.let { annotations += it.ir.deepCopyWithSymbols() }
     }
   }
-  
+
   // Get the field access for a key if it exists
   fun getFieldAccess(key: IrTypeKey): FieldAccess? {
     keyIntroStack[key]?.lastOrNull()?.let { providerIdx ->
