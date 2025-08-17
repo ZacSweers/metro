@@ -879,7 +879,7 @@ application {
 }
 
 metro {
-  reportsDestination.set(layout.buildDirectory.dir("metro"))
+  // reportsDestination.set(layout.buildDirectory.dir("metro"))
   interop {
     includeJavax()
     includeAnvil()
