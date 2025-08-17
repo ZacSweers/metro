@@ -315,7 +315,16 @@ internal class DependencyGraphTransformer(
       }
 
       // Pop the parent graph after all contributed graphs are processed
-      localParentContext.popParentGraph()
+      val usedParentKeys = localParentContext.popParentGraph()
+
+      // Write diagnostic for parent keys used in child graphs
+      if (usedParentKeys.isNotEmpty()) {
+        writeDiagnostic({
+          "parent-keys-used-${node.sourceGraph.kotlinFqName.asString().replace(".", "-")}.txt"
+        }) {
+          usedParentKeys.sorted().joinToString(separator = "\n")
+        }
+      }
     }
 
     try {

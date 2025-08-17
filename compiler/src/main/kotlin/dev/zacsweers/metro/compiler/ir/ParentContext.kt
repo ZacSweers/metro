@@ -110,7 +110,7 @@ internal class ParentContext(
     }
   }
 
-  fun popParentGraph() {
+  fun popParentGraph(): Set<IrTypeKey> {
     check(levels.isNotEmpty()) { "No parent graph to pop" }
     val idx = levels.lastIndex
     val removed = levels.removeLast()
@@ -128,6 +128,9 @@ internal class ParentContext(
       }
       // If non-empty, key remains available due to an earlier level
     }
+    
+    // Return the keys that were used from this parent level
+    return removed.usedKeys.toSet()
   }
 
   val currentParentGraph: IrClass
