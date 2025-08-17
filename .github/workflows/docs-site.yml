@@ -104,24 +104,22 @@ jobs:
           # Fetch the gh-pages branch to ensure we have the latest state
           git fetch origin gh-pages:gh-pages || echo "gh-pages branch doesn't exist yet (first deployment)"
 
+      - name: Show current mike versions
+        run: |
+          echo "Current mike versions available:"
+          mike list || echo "No docs site versions found (likely first deployment)"
+
       - name: Deploy SNAPSHOT Docs with mike
         if: ${{ success() && contains(steps.version.outputs.METRO_VERSION, 'SNAPSHOT') }}
         run: mike deploy --update-aliases --push ${{ steps.version.outputs.METRO_VERSION }} snapshot
+
+      # Delete previous snapshot docs when a respective release is getting published
+      - name: Delete snapshot docs for new release
+        if: ${{ success() && !contains(steps.version.outputs.METRO_VERSION, 'SNAPSHOT') }}
+        run: |
+          mike delete --push ${{ steps.version.outputs.METRO_VERSION }}-SNAPSHOT || true
 
       - name: Deploy Release Docs with mike
         if: ${{ success() && !contains(steps.version.outputs.METRO_VERSION, 'SNAPSHOT') }}
         run: |
           mike deploy --update-aliases --push ${{ steps.version.outputs.METRO_VERSION }} latest
-          mike set-default --push latest
-
-      # This is important step for first time repo setup with no prior non-snapshot release
-      - name: Set snapshot as default if no release versions exist
-        if: ${{ success() && contains(steps.version.outputs.METRO_VERSION, 'SNAPSHOT') }}
-        run: |
-          # Check if there are any non-snapshot versions
-          if ! mike list | grep -v SNAPSHOT | grep -q "[0-9]\+\.[0-9]\+\.[0-9]\+"; then
-            echo "No release versions found, setting snapshot as default"
-            mike set-default --push snapshot
-          else
-            echo "Release versions exist, keeping current `latest` as default"
-          fi
