@@ -74,6 +74,7 @@ import org.jetbrains.kotlin.fir.render
 import org.jetbrains.kotlin.fir.renderer.ConeIdRendererForDiagnostics
 import org.jetbrains.kotlin.fir.renderer.ConeIdShortRenderer
 import org.jetbrains.kotlin.fir.renderer.ConeTypeRendererForReadability
+import org.jetbrains.kotlin.fir.resolve.TypeResolutionConfiguration
 import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.resolve.getSuperTypes
 import org.jetbrains.kotlin.fir.resolve.lookupSuperTypes
@@ -81,6 +82,7 @@ import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
+import org.jetbrains.kotlin.fir.resolve.transformers.FirSpecificTypeResolverTransformer
 import org.jetbrains.kotlin.fir.scopes.impl.toConeType
 import org.jetbrains.kotlin.fir.scopes.processAllCallables
 import org.jetbrains.kotlin.fir.scopes.processAllClassifiers
@@ -102,6 +104,7 @@ import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.ConeKotlinTypeProjection
 import org.jetbrains.kotlin.fir.types.ConeTypeProjection
+import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.FirTypeProjectionWithVariance
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.FirUserTypeRef
@@ -254,6 +257,8 @@ internal fun FirClassSymbol<*>.callableDeclarations(
   includeSelf: Boolean,
   includeAncestors: Boolean,
   yieldAncestorsFirst: Boolean = true,
+  lookupInterfaces: Boolean = true,
+  typeResolutionConfiguration: TypeResolutionConfiguration? = null,
 ): Sequence<FirCallableSymbol<*>> {
   return sequence {
     val declaredMembers =
@@ -269,9 +274,15 @@ internal fun FirClassSymbol<*>.callableDeclarations(
       yieldAll(declaredMembers)
     }
     if (includeAncestors) {
-      val superTypes = getSuperTypes(session)
+      val superTypes =
+        collectSupertypes(
+          useSiteSession = session,
+          classSymbol = this@callableDeclarations,
+          lookupInterfaces = lookupInterfaces,
+          typeResolutionConfiguration = typeResolutionConfiguration,
+        )
       val superTypesToCheck = if (yieldAncestorsFirst) superTypes.asReversed() else superTypes
-      for (superType in superTypesToCheck.mapNotNull { it.toClassSymbol(session) }) {
+      for (superType in superTypesToCheck) {
         yieldAll(
           // If we're recursing up, we no longer want to include ancestors because we're handling
           // that here
@@ -280,6 +291,7 @@ internal fun FirClassSymbol<*>.callableDeclarations(
             includeSelf = true,
             includeAncestors = false,
             yieldAncestorsFirst = yieldAncestorsFirst,
+            typeResolutionConfiguration = typeResolutionConfiguration,
           )
         )
       }
@@ -290,7 +302,76 @@ internal fun FirClassSymbol<*>.callableDeclarations(
   }
 }
 
-context(context: CheckerContext, diagnosticReporter: DiagnosticReporter)
+/**
+ * When working with parent supertypes that live in other modules, [getSuperTypes] isn't going to
+ * work because their supertype refs aren't guaranteed to be resolved. But, the class symbols
+ * themselves _do_ exist if we can resolve their class IDs and look them up ourselves.
+ */
+internal fun collectSupertypes(
+  useSiteSession: FirSession,
+  classSymbol: FirClassSymbol<*>,
+  recursive: Boolean = true,
+  lookupInterfaces: Boolean = true,
+  includeAnyType: Boolean = false,
+  typeResolutionConfiguration: TypeResolutionConfiguration? = null,
+): List<FirClassSymbol<*>> {
+  if (typeResolutionConfiguration == null) {
+    return classSymbol
+      .getSuperTypes(
+        useSiteSession = useSiteSession,
+        recursive = recursive,
+        lookupInterfaces = lookupInterfaces,
+      )
+      .mapNotNull { it.toClassSymbol(useSiteSession) }
+  } else {
+    val queue = ArrayDeque<FirClassSymbol<*>>()
+    queue += classSymbol
+    val visited = mutableSetOf<ClassId>()
+    val superTypes = mutableListOf<FirClassSymbol<*>>()
+    while (queue.isNotEmpty()) {
+      val next = queue.removeFirst()
+      @Suppress("UselessCallOnCollection") // To avoid the CCE
+      next.resolvedSuperTypeRefs
+        .filterIsInstance<FirTypeRef>()
+        .mapNotNull {
+          if (it is FirResolvedTypeRef) {
+            it.coneType
+          } else {
+            // typeResolver.resolveType() explodes if the type has type arguments, so we ask the
+            // compiler to do it for us and transform those args first
+            // TODO this still doesn't work for type params as type args like Foo<T>
+            val transformer =
+              FirSpecificTypeResolverTransformer(
+                useSiteSession,
+                // They will be unwrapped later during this phase.
+                expandTypeAliases = false,
+              )
+            transformer.transformTypeRef(it, typeResolutionConfiguration).coneType
+          }
+        }
+        .forEach { type ->
+          val classId = type.classId ?: return@forEach
+          if (!visited.add(classId)) return@forEach
+
+          if (!includeAnyType && classId == StandardClassIds.Any) {
+            return@forEach
+          }
+
+          val superTypeSymbol = type.toClassSymbol(useSiteSession) ?: return@forEach
+          if (superTypeSymbol.classKind == ClassKind.INTERFACE && !lookupInterfaces) {
+            return@forEach
+          } else if (recursive) {
+            queue += superTypeSymbol
+          }
+
+          superTypes += superTypeSymbol
+        }
+    }
+    return superTypes
+  }
+}
+
+context(context: CheckerContext)
 internal inline fun FirClass.singleAbstractFunction(
   session: FirSession,
   reporter: DiagnosticReporter,
@@ -920,9 +1001,7 @@ internal fun FirAnnotation.resolvedReplacedClassIds(
   return replaced.toSet()
 }
 
-internal fun FirGetClassCall.resolveClassId(
-  typeResolver: MetroFirTypeResolver
-): ClassId? {
+internal fun FirGetClassCall.resolveClassId(typeResolver: MetroFirTypeResolver): ClassId? {
   // If it's available and resolved, just use it directly!
   coneTypeIfResolved()?.classId?.let {
     return it

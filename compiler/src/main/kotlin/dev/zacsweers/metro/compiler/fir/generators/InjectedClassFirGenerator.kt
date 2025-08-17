@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.fir.Keys
+import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
 import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
 import dev.zacsweers.metro.compiler.fir.callableDeclarations
@@ -18,6 +19,7 @@ import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isAnnotatedInject
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
+import dev.zacsweers.metro.compiler.fir.memoizedAllSessionsSequence
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
@@ -76,6 +78,9 @@ import org.jetbrains.kotlin.types.ConstantValueKind
 /** Generates factory and membersinjector declarations for `@Inject`-annotated classes. */
 internal class InjectedClassFirGenerator(session: FirSession) :
   FirDeclarationGenerationExtension(session) {
+
+  private val allSessions = session.memoizedAllSessionsSequence
+  private val typeResolverFactory = MetroFirTypeResolver.Factory(session, allSessions)
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(session.predicates.injectAndAssistedAnnotationPredicate)
@@ -158,9 +163,11 @@ internal class InjectedClassFirGenerator(session: FirSession) :
     val classSymbol: FirClassSymbol<*>,
     var isConstructorInjected: Boolean,
     val constructorParameters: List<MetroFirValueParameter>,
+    typeResolverFactory: MetroFirTypeResolver.Factory,
   ) {
     private val parameterNameAllocator = NameAllocator()
     private val memberNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
+    private val localTypeResolver by unsafeLazy { typeResolverFactory.create(classSymbol) }
     private var declaredInjectedMembersPopulated = false
     private var ancestorInjectedMembersPopulated = false
 
@@ -176,15 +183,26 @@ internal class InjectedClassFirGenerator(session: FirSession) :
     val isAssisted
       get() = assistedParameters.isNotEmpty()
 
+    val declaredInjectedMembersParamsByMemberKey = LinkedHashSet<Name>()
     val injectedMembersParamsByMemberKey = LinkedHashMap<Name, List<MetroFirValueParameter>>()
-    val injectedMembersParameters: List<MetroFirValueParameter>
-      get() = injectedMembersParamsByMemberKey.values.flatten()
+
+    fun getInjectedMembersParameters(includeAncestors: Boolean): List<MetroFirValueParameter> {
+      val values =
+        if (includeAncestors) {
+          injectedMembersParamsByMemberKey.values
+        } else {
+          injectedMembersParamsByMemberKey
+            .filterKeys { it in declaredInjectedMembersParamsByMemberKey }
+            .values
+        }
+      return values.flatten()
+    }
 
     // TODO dedupe keys?
     val allParameters: List<MetroFirValueParameter>
       get() = buildList {
         addAll(constructorParameters)
-        addAll(injectedMembersParameters)
+        addAll(getInjectedMembersParameters(includeAncestors = true))
       }
 
     override fun toString(): String {
@@ -210,6 +228,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
       if (declaredInjectedMembersPopulated) return injectedMembersParamsByMemberKey
       val declared = memberInjections(session, includeSelf = true, includeAncestors = false)
       injectedMembersParamsByMemberKey.putAll(declared)
+      declaredInjectedMembersParamsByMemberKey.addAll(declared.keys)
       declaredInjectedMembersPopulated = true
       return declared
     }
@@ -237,6 +256,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
           session,
           includeSelf = includeSelf,
           includeAncestors = includeAncestors,
+          typeResolutionConfiguration = localTypeResolver?.configuration,
         )
         .filter { callable ->
           if (callable is FirPropertySymbol) {
@@ -337,7 +357,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
             function.valueParameterSymbols
               .filterNot { it.isAnnotatedWithAny(session, session.classIds.assistedAnnotations) }
               .map { MetroFirValueParameter(session, it, wrapInProvider = true) }
-          InjectedClass(classSymbol, true, params)
+          InjectedClass(classSymbol, true, params, typeResolverFactory)
         } else {
           // If the class is annotated with @Inject, look for its primary constructor
           val injectConstructor = classSymbol.findInjectConstructors(session).singleOrNull()
@@ -345,11 +365,11 @@ internal class InjectedClassFirGenerator(session: FirSession) :
             injectConstructor?.valueParameterSymbols.orEmpty().map {
               MetroFirValueParameter(session, it)
             }
-          InjectedClass(classSymbol, injectConstructor != null, params)
+          InjectedClass(classSymbol, injectConstructor != null, params, typeResolverFactory)
         }
 
-      // Ancestors not available at this phase, but we don't need them here anyway
-      val declaredInjectedMembers = injectedClass.populateDeclaredMemberInjections(session)
+      injectedClass.populateAncestorMemberInjections(session)
+      injectedClass.populateDeclaredMemberInjections(session)
 
       val classesToGenerate = mutableSetOf<Name>()
       if (injectedClass.isConstructorInjected) {
@@ -357,7 +377,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
         injectFactoryClassIdsToInjectedClass[classId] = injectedClass
         classesToGenerate += classId.shortClassName
       }
-      if (declaredInjectedMembers.isNotEmpty()) {
+      if (injectedClass.getInjectedMembersParameters(includeAncestors = true).isNotEmpty()) {
         val classId = classSymbol.classId.createNestedClassId(Symbols.Names.MetroMembersInjector)
         membersInjectorClassIdsToInjectedClass[classId] = injectedClass
         classesToGenerate += classId.shortClassName
@@ -492,7 +512,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
       val targetClass = classSymbol.getContainingClassSymbol()?.classId ?: return emptySet()
       val injectedClass = membersInjectorClassIdsToInjectedClass[targetClass] ?: return emptySet()
       // Only declared members matter here
-      for (member in injectedClass.injectedMembersParameters) {
+      for (member in injectedClass.getInjectedMembersParameters(includeAncestors = false)) {
         names += member.memberInjectorFunctionName
       }
     }
@@ -554,7 +574,12 @@ internal class InjectedClassFirGenerator(session: FirSession) :
         val injectedClass =
           membersInjectorClassIdsToInjectedClass[context.owner.classId] ?: return emptyList()
         injectedClass.populateAncestorMemberInjections(session)
-        buildFactoryConstructor(context, null, null, injectedClass.injectedMembersParameters)
+        buildFactoryConstructor(
+          context,
+          null,
+          null,
+          injectedClass.getInjectedMembersParameters(includeAncestors = true),
+        )
       } else {
         return emptyList()
       }
@@ -705,7 +730,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
               },
               null,
               null,
-              injectedClass.injectedMembersParameters,
+              injectedClass.getInjectedMembersParameters(includeAncestors = true),
             )
           }
           else -> {
