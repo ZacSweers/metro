@@ -147,6 +147,15 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
         continue
       }
 
+      if (param.isVararg) {
+        reporter.reportOn(
+          param.source,
+          FirMetroErrors.GRAPH_CREATORS_VARARG_ERROR,
+          "${annotationClassId.relativeClassName.asString()} abstract function parameters may not be vararg.",
+        )
+        continue
+      }
+
       var isIncludes = false
       var isProvides = false
 

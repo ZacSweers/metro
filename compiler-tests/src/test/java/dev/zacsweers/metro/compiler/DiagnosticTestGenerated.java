@@ -122,6 +122,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     public void testCreateGraph_OkCase() {
       runTest("compiler-tests/src/test/data/diagnostic/createGraph/CreateGraph_OkCase.kt");
     }
+
+    @Test
+    @TestMetadata("GraphFactoriesMayNotHaveVarargs.kt")
+    public void testGraphFactoriesMayNotHaveVarargs() {
+      runTest("compiler-tests/src/test/data/diagnostic/createGraph/GraphFactoriesMayNotHaveVarargs.kt");
+    }
   }
 
   @Nested
