@@ -10,6 +10,7 @@ Changelog
 * **Enhancement**: Allow graph extensions to depend on other graph extensions within the context of their parent graph.
 * **Fix**: Don't override graph extension factories' default functions.
 * **Fix**: Fix Kotlin internal error overriding Metro error when there's a missing factory for a Java `@Inject` class.
+* Update Wire to `5.3.11`.
 
 0.6.0
 -----
