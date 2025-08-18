@@ -551,6 +551,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("ScopedExtensionsWithoutFactoriesShouldBeCachedWithOrdering.kt")
+      public void testScopedExtensionsWithoutFactoriesShouldBeCachedWithOrdering() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ScopedExtensionsWithoutFactoriesShouldBeCachedWithOrdering.kt");
+      }
+
+      @Test
       @TestMetadata("SimpleExtension.kt")
       public void testSimpleExtension() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/SimpleExtension.kt");
