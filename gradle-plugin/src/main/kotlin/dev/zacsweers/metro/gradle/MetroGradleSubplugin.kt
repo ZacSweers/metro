@@ -131,7 +131,13 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
             extension.generateJvmContributionHintsInFir,
           )
         )
-        add(lazyOption("enable-full-binding-graph-validation", extension.enableFullBindingGraphValidation))
+        @Suppress("DEPRECATION")
+        add(
+          lazyOption(
+            "enable-full-binding-graph-validation",
+            extension.enableFullBindingGraphValidation.orElse(extension.enableStrictValidation),
+          )
+        )
         add(lazyOption("transform-providers-to-private", extension.transformProvidersToPrivate))
         add(lazyOption("shrink-unused-bindings", extension.shrinkUnusedBindings))
         add(lazyOption("chunk-field-inits", extension.chunkFieldInits))

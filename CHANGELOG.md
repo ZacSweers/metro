@@ -4,12 +4,12 @@ Changelog
 **Unreleased**
 --------------
 
-* **Breaking change**: Rename the `enableStrictValidation` Gradle property to `enableFullBindingGraphValidation`, which aligns with [Dagger's (better) name for the same functionality](https://dagger.dev/dev-guide/compiler-options#full-binding-graph-validation).
 * **New**: Add a diagnostic to report parent keys used by graph extensions `parent-keys-used-*.txt`.
 * **Enhancement**: Graph extensions are now generated as `inner` classes, reducing much of the necessary generated code in parent graphs and allowing them to access parent binding fields directly.
 * **Enhancement**: Allow graph extensions to depend on other graph extensions within the context of their parent graph.
 * **Fix**: Don't override graph extension factories' default functions.
 * **Fix**: Fix Kotlin internal error overriding Metro error when there's a missing factory for a Java `@Inject` class.
+* Deprecate the `enableStrictValidation` Gradle property in favor of `enableFullBindingGraphValidation`, which aligns with [Dagger's (better) name for the same functionality](https://dagger.dev/dev-guide/compiler-options#full-binding-graph-validation).
 * Update Wire to `5.3.11`.
 
 0.6.0

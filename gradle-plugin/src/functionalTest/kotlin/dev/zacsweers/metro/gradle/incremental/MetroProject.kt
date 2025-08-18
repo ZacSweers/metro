@@ -42,7 +42,7 @@ abstract class MetroProject(
             .trimIndent()
         )
         val metroOptions = buildList {
-          metroOptions.enableStrictValidation?.let { add("enableStrictValidation.set($it)") }
+          metroOptions.enableFullBindingGraphValidation?.let { add("enableFullBindingGraphValidation.set($it)") }
         }
         if (metroOptions.isNotEmpty()) {
           metroOptions.joinTo(this, separator = "\n", prefix = "  ")

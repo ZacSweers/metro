@@ -20,9 +20,9 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
         MetroProject(
           metroOptions =
             MetroOptionOverrides(
-              // Enable strict validation for this case to ensure we pick up and store the unused B
+              // Enable full validation for this case to ensure we pick up and store the unused B
               // binding
-              enableStrictValidation = true
+              enableFullBindingGraphValidation = true
             )
         ) {
         override fun sources() = listOf(appGraph, bindingContainer, implementations, target)

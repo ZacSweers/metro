@@ -81,6 +81,10 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
   public val enableFullBindingGraphValidation: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(false)
 
+  @Deprecated("Use enableFullBindingGraphValidation", ReplaceWith("enableFullBindingGraphValidation"))
+  public val enableStrictValidation: Property<Boolean> =
+    objects.property(Boolean::class.javaObjectType).convention(false)
+
   /** Enable/disable shrinking of unused bindings. Enabled by default. */
   public val shrinkUnusedBindings: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(true)
