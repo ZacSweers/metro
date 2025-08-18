@@ -1482,7 +1482,7 @@ class ICTests : BaseIncrementalCompilationTest() {
             interface StringProvider {
               @Provides
               fun provideString(): String = "Hello"
-              
+
               // Internal implementation detail
               private fun internalHelper(): String = "internal"
             }
@@ -1530,7 +1530,7 @@ class ICTests : BaseIncrementalCompilationTest() {
       interface StringProvider {
         @Provides
         fun provideString(): String = "Hello"
-        
+
         // Internal implementation detail
         private fun internalHelper(): String = "internal"
       }
@@ -1556,7 +1556,7 @@ class ICTests : BaseIncrementalCompilationTest() {
       interface StringProvider {
         @Provides
         fun provideString(): String = "Hello"
-        
+
         // Modified internal implementation detail - non-ABI change
         private fun internalHelper(): String = "modified internal"
       }
