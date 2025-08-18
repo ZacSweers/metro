@@ -467,13 +467,13 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
-  ENABLE_STRICT_VALIDATION(
+  ENABLE_FULL_BINDING_GRAPH_VALIDATION(
     RawMetroOption.boolean(
-      name = "enable-strict-validation",
+      name = "enable-full-binding-graph-validation",
       defaultValue = false,
       valueDescription = "<true | false>",
       description =
-        "Enable/disable strict validation of all binds and provides declarations, even if they are unused.",
+        "Enable/disable full validation of all binds and provides declarations, even if they are unused.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -569,8 +569,8 @@ public data class MetroOptions(
     MetroOption.CUSTOM_BINDING_CONTAINER.raw.defaultValue.expectAs(),
   val enableDaggerAnvilInterop: Boolean =
     MetroOption.ENABLE_DAGGER_ANVIL_INTEROP.raw.defaultValue.expectAs(),
-  val enableStrictValidation: Boolean =
-    MetroOption.ENABLE_STRICT_VALIDATION.raw.defaultValue.expectAs(),
+  val enableFullBindingGraphValidation: Boolean =
+    MetroOption.ENABLE_FULL_BINDING_GRAPH_VALIDATION.raw.defaultValue.expectAs(),
 ) {
   internal companion object {
     fun load(configuration: CompilerConfiguration): MetroOptions {
@@ -709,8 +709,8 @@ public data class MetroOptions(
           MetroOption.ENABLE_DAGGER_ANVIL_INTEROP -> {
             options = options.copy(enableDaggerAnvilInterop = configuration.getAsBoolean(entry))
           }
-          MetroOption.ENABLE_STRICT_VALIDATION -> {
-            options = options.copy(enableStrictValidation = configuration.getAsBoolean(entry))
+          MetroOption.ENABLE_FULL_BINDING_GRAPH_VALIDATION -> {
+            options = options.copy(enableFullBindingGraphValidation = configuration.getAsBoolean(entry))
           }
         }
       }

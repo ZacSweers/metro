@@ -194,7 +194,7 @@ internal class BindingGraphGenerator(
           .addSourceBinding(contextKey.typeKey)
       }
 
-      if (options.enableStrictValidation) {
+      if (options.enableFullBindingGraphValidation) {
         graph.addBinding(binding.typeKey, binding, bindingStack)
       } else {
         // The actual binding will be added lazily via BindingLookup when needed
@@ -299,7 +299,7 @@ internal class BindingGraphGenerator(
           .addSourceBinding(targetTypeKey)
       }
 
-      if (options.enableStrictValidation) {
+      if (options.enableFullBindingGraphValidation) {
         val bindings =
           bindingLookup.lookup(
             contextKey,

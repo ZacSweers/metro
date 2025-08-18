@@ -244,8 +244,8 @@ abstract class MetroCompilerTest {
               MetroOption.ENABLE_DAGGER_ANVIL_INTEROP -> {
                 processor.option(entry.raw.cliOption, enableDaggerAnvilInterop)
               }
-              MetroOption.ENABLE_STRICT_VALIDATION -> {
-                processor.option(entry.raw.cliOption, enableStrictValidation)
+              MetroOption.ENABLE_FULL_BINDING_GRAPH_VALIDATION -> {
+                processor.option(entry.raw.cliOption, enableFullBindingGraphValidation)
               }
             }
           yield(option)

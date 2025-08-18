@@ -9,7 +9,7 @@
     * There is no Hilt support, though some features are similar in the same way that Anvil’s features are similar.
     * There is no `@Reusable`.
     * There is no `@BindsOptionalOf`. Instead, Metro supports default [optional dependencies](bindings.md#optional-dependencies).
-    * Metro can inject private properties and functions.
+    * Metro can inject private properties, functions, and constructors.
     * There is no `@BindsInstance`. Use `@Provides` on `@DependencyGraph.Factory` function parameters instead
     * Component dependencies must be annotated with `@Includes`.
     * Metro does not process Java code.
