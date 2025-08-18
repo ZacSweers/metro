@@ -578,12 +578,13 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
   @Poko
   class GraphExtension(
     override val typeKey: IrTypeKey,
+    val parent: IrClass,
     val accessor: IrSimpleFunction,
     val extensionScopes: Set<IrAnnotation>,
+    override val dependencies: List<IrContextualTypeKey> = emptyList(),
   ) : IrBinding {
     override val reportableDeclaration: IrDeclarationWithName = accessor
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
-    override val dependencies: List<IrContextualTypeKey> = emptyList()
     override val parameters: Parameters = Parameters.empty()
     override val parametersByKey: Map<IrTypeKey, Parameter> = emptyMap()
 

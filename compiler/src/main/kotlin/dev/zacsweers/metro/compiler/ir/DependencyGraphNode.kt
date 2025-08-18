@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.BitField
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
+import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.unsafeLazy
@@ -13,7 +14,9 @@ import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
@@ -24,7 +27,7 @@ internal data class DependencyGraphNode(
   val sourceGraph: IrClass,
   val supertypes: List<IrType>,
   val includedGraphNodes: Map<IrTypeKey, DependencyGraphNode>,
-  val graphExtensions: List<Pair<IrTypeKey, MetroSimpleFunction>>,
+  val graphExtensions: Map<IrTypeKey, List<MetroSimpleFunction>>,
   val scopes: Set<IrAnnotation>,
   val aggregationScopes: Set<ClassId>,
   val providerFactories: List<Pair<IrTypeKey, ProviderFactory>>,
@@ -47,6 +50,11 @@ internal data class DependencyGraphNode(
   //  maybe we track these protos separately somewhere?
   var proto: DependencyGraphProto? = null,
 ) {
+  // For quick lookups
+  val supertypeClassIds: Set<ClassId> by unsafeLazy {
+    supertypes.mapNotNullToSet { it.classOrNull?.owner?.classId }
+  }
+
   val hasExtensions = graphExtensions.isNotEmpty()
 
   val metroGraph by unsafeLazy { sourceGraph.metroGraphOrNull }

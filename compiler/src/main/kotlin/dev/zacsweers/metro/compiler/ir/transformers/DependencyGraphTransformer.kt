@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.BindingGraphGenerator
 import dev.zacsweers.metro.compiler.ir.DependencyGraphNode
 import dev.zacsweers.metro.compiler.ir.DependencyGraphNodeCache
+import dev.zacsweers.metro.compiler.ir.IrBinding
 import dev.zacsweers.metro.compiler.ir.IrBindingGraph
 import dev.zacsweers.metro.compiler.ir.IrBindingStack
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
@@ -20,20 +21,25 @@ import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrGraphExtensionGenerator
 import dev.zacsweers.metro.compiler.ir.IrGraphGenerator
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.MetroIrErrors
 import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
+import dev.zacsweers.metro.compiler.ir.generatedGraphExtensionData
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
+import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.location
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
-import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
+import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
+import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.requireNestedClass
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
+import dev.zacsweers.metro.compiler.ir.scopeAnnotations
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.transformMultiboundQualifier
@@ -64,6 +70,7 @@ import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.isLocal
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
+import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
@@ -278,12 +285,49 @@ internal class DependencyGraphTransformer(
         localParentContext.addAll(included.publicAccessors)
       }
 
+      // Two passes on graph extensions
+      // First pass to create any keys for non-factory-returning types
+      val directExtensions = mutableSetOf<IrTypeKey>()
+      for ((typeKey, accessors) in node.graphExtensions) {
+        if (typeKey in bindingGraph) continue // Skip if already in graph
+
+        for (function in accessors) {
+          val irFunction = function.ir
+          val returnType = irFunction.returnType.rawType()
+
+          // Check if this returns a factory interface
+          val returnsFactory =
+            returnType.isAnnotatedWithAny(symbols.classIds.graphExtensionFactoryAnnotations)
+
+          if (!returnsFactory) {
+            // Check if this function belongs to a Factory interface that this graph just implements
+            if (irFunction.isFakeOverride) {
+              irFunction.overriddenSymbolsSequence()
+                .firstOrNull { it.owner.parentAsClass.isAnnotatedWithAny(symbols.classIds.graphExtensionFactoryAnnotations) }
+                ?.owner
+                ?.parentAsClass
+                ?.classId
+                ?.let { factoryClassId ->
+                  if (factoryClassId in node.supertypeClassIds) {
+                    // This is the factory SAM for a factory this graph implements, so it cannot be a direct extension
+                    continue
+                  }
+                }
+            }
+            localParentContext.add(typeKey)
+            directExtensions.add(typeKey)
+          }
+        }
+      }
+
       // Transform the contributed graphs
       // Push the parent graph for all contributed graph processing
       localParentContext.pushParentGraph(node, fieldNameAllocator)
 
-      for ((contributedGraphKey, accessor) in node.graphExtensions) {
-        val contributedExtension = contributedGraphKey.type.rawTypeOrNull() ?: continue
+      // Second pass on graph extensions to actually process them and create GraphExtension bindings
+      for ((contributedGraphKey, accessors) in node.graphExtensions) {
+        val contributedExtension = contributedGraphKey.type.rawType()
+        val accessor = accessors.first() // Only need one for below linking
 
         // Generate the contributed graph class
         val contributedGraph =
@@ -305,9 +349,41 @@ internal class DependencyGraphTransformer(
             "Expected generated dependency graph for ${contributedExtension.classIdOrFail}"
           )
 
+        // Capture the used keys for this graph extension
+        val usedKeys = localParentContext.usedKeys()
+
+        if (contributedGraphKey in directExtensions) {
+          val dependencies = usedKeys.map { IrContextualTypeKey.create(it) }
+          val updatedBinding =
+            IrBinding.GraphExtension(
+              typeKey = contributedGraphKey,
+              parent = node.sourceGraph,
+              accessor = accessor.ir,
+              extensionScopes = contributedExtension.scopeAnnotations(),
+              dependencies = dependencies,
+            )
+          // Replace the binding with the updated version
+          bindingGraph.addBinding(contributedGraphKey, updatedBinding, IrBindingStack.empty())
+          // Necessary since we don't treat graph extensions as part of roots
+          bindingGraph.keep(
+            updatedBinding.contextualTypeKey,
+            IrBindingStack.Entry.generatedExtensionAt(
+              updatedBinding.contextualTypeKey,
+              node.sourceGraph.kotlinFqName.asString(),
+              accessor.ir,
+            ),
+          )
+        }
+
+        writeDiagnostic({
+          "parent-keys-used-${node.sourceGraph.name}-by-${contributedGraph.name}.txt"
+        }) {
+          usedKeys.sorted().joinToString(separator = "\n")
+        }
+
         // For any key both child uses and parent has as a scoped static binding,
         // mark it as a keep in the parent graph so it materializes during seal
-        for (key in localParentContext.usedKeys()) {
+        for (key in usedKeys) {
           val contextKey = IrContextualTypeKey.create(key)
           bindingGraph.keep(contextKey, IrBindingStack.Entry.simpleTypeRef(contextKey))
           bindingGraph.reserveField(key, localParentContext.getFieldAccess(key)!!)
@@ -319,9 +395,7 @@ internal class DependencyGraphTransformer(
 
       // Write diagnostic for parent keys used in child graphs
       if (usedParentKeys.isNotEmpty()) {
-        writeDiagnostic({
-          "parent-keys-used-${node.sourceGraph.kotlinFqName.asString().replace(".", "-")}.txt"
-        }) {
+        writeDiagnostic({ "parent-keys-used-all-${node.sourceGraph.name}.txt" }) {
           usedParentKeys.sorted().joinToString(separator = "\n")
         }
       }
@@ -359,7 +433,8 @@ internal class DependencyGraphTransformer(
       // Only applicable in graph extensions
       if (parentContext != null) {
         for (key in result.reachableKeys) {
-          if (key in parentContext) {
+          val isSelfKey = key == node.typeKey || key == node.metroGraph?.generatedGraphExtensionData?.typeKey
+          if (!isSelfKey && key in parentContext) {
             parentContext.mark(key)
           }
         }
@@ -429,7 +504,7 @@ internal class DependencyGraphTransformer(
           .map { it.first.ir }
           .plus(node.injectors.map { it.first.ir })
           .plus(node.bindsCallables.map { it.callableMetadata.function })
-          .plus(node.graphExtensions.map { it.second.ir })
+          .plus(node.graphExtensions.flatMap { it.value }.map { it.ir })
           .filterNot { it.isExternalParent }
           .forEach { function ->
             with(function) {

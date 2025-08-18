@@ -11,7 +11,6 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.transformers.InjectConstructorTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
-import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.IrSimpleType
@@ -19,7 +18,6 @@ import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
@@ -461,25 +459,8 @@ internal class BindingGraphGenerator(
       }
     }
 
-    // Add GraphExtension bindings for graph extensions that are direct accessors (no factory)
-    for ((typeKey, function) in node.graphExtensions) {
-      if (typeKey in graph) continue // Skip if already in graph
-      val returnType = function.ir.returnType.rawType()
-
-      // Check if this returns a factory interface
-      val returnsFactory = returnType.isAnnotatedWithAny(symbols.classIds.graphExtensionFactoryAnnotations)
-
-      if (!returnsFactory) {
-        // Get the scope annotations from the extension graph
-        val extensionScopes = returnType.scopeAnnotations()
-        val binding = IrBinding.GraphExtension(
-          typeKey = typeKey,
-          accessor = function.ir,
-          extensionScopes = extensionScopes,
-        )
-        graph.addBinding(typeKey, binding, bindingStack)
-      }
-    }
+    // GraphExtension bindings are added later in DependencyGraphTransformer after usedKeys are
+    // determined
 
     // Add bindings from graph dependencies
     // TODO dedupe this allDependencies iteration with graph gen
@@ -554,7 +535,12 @@ internal class BindingGraphGenerator(
       val paramTypeKey = directParent.typeKey
       graph.addBinding(
         paramTypeKey,
-        IrBinding.BoundInstance(paramTypeKey, "parent", directParent.sourceGraph, classReceiverParameter = directParentClass!!.thisReceiver),
+        IrBinding.BoundInstance(
+          paramTypeKey,
+          "parent",
+          directParent.sourceGraph,
+          classReceiverParameter = directParentClass!!.thisReceiver,
+        ),
         bindingStack,
       )
       // Add the original type too as an alias
@@ -569,6 +555,10 @@ internal class BindingGraphGenerator(
       }
 
       for (key in parentContext.availableKeys()) {
+        // Graph extensions that are scoped instances _in_ their parents may show up here, so we
+        // check and continue if we see them
+        if (key == node.typeKey) continue
+        if (key == node.metroGraph?.generatedGraphExtensionData?.typeKey) continue
         val existingBinding = graph.findBinding(key)
         if (existingBinding != null) {
           // If we already have a binding provisioned in this scenario, ignore the parent's
@@ -576,21 +566,25 @@ internal class BindingGraphGenerator(
           continue
         }
 
-        // Guaranteed since it's a known available key
-        val fieldAccess = parentContext.mark(key)!!
+        // Register a lazy parent key that will only call mark() when actually used
+        bindingLookup.addLazyParentKey(key) {
+          val fieldAccess = parentContext.mark(key)
+            ?: reportCompilerBug("Missing parent key $key")
 
-        graph.addBinding(
-          key,
+          // Record a lookup for IC when the binding is actually created
+          trackMemberDeclarationCall(
+            node.sourceGraph,
+            directParentClass.kotlinFqName,
+            fieldAccess.field.name.asString(),
+          )
+
           IrBinding.GraphDependency(
             ownerKey = directParent.typeKey,
             graph = node.sourceGraph,
             fieldAccess = fieldAccess,
             typeKey = key,
-          ),
-          bindingStack,
-        )
-        // Record a lookup for IC
-        trackMemberDeclarationCall(node.sourceGraph, directParentClass.kotlinFqName, fieldAccess.field.name.asString())
+          )
+        }
       }
     }
 

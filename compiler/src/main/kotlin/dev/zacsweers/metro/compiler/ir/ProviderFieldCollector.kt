@@ -15,7 +15,7 @@ internal class ProviderFieldCollector(private val graph: IrBindingGraph) {
     val needsField: Boolean
       get() {
         // Scoped, graph, and members injector bindings always need provider fields
-        if (binding.scope != null) return true
+        if (binding.isScoped()) return true
         if (binding is IrBinding.GraphDependency) return true
         if (binding is IrBinding.MembersInjected && !binding.isFromInjectorFunction) return true
         // Multibindings are always created adhoc

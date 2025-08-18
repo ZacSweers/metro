@@ -107,7 +107,7 @@ internal class DependencyGraphNodeCache(
     private val scopes = mutableSetOf<IrAnnotation>()
     private val providerFactories = mutableListOf<Pair<IrTypeKey, ProviderFactory>>()
     private val extendedGraphNodes = mutableMapOf<IrTypeKey, DependencyGraphNode>()
-    private val graphExtensions = mutableListOf<Pair<IrTypeKey, MetroSimpleFunction>>()
+    private val graphExtensions = mutableMapOf<IrTypeKey, MutableList<MetroSimpleFunction>>()
     private val injectors = mutableListOf<Pair<MetroSimpleFunction, IrContextualTypeKey>>()
     private val includedGraphNodes = mutableMapOf<IrTypeKey, DependencyGraphNode>()
     private val graphTypeKey = IrTypeKey(graphDeclaration.typeWith())
@@ -232,7 +232,7 @@ internal class DependencyGraphNodeCache(
           // It's a graph-like
           val node =
             bindingStack.withEntry(
-              IrBindingStack.Entry.requestedAt(graphContextKey, nonNullCreator.function)
+              IrBindingStack.Entry.injectedAt(graphContextKey, nonNullCreator.function)
             ) {
               val nodeKey =
                 if (klass.origin == Origins.GeneratedGraphExtension) {
@@ -357,7 +357,7 @@ internal class DependencyGraphNodeCache(
                 } else {
                   IrContextualTypeKey.from(declaration)
                 }
-              graphExtensions += (contextKey.typeKey to metroFunction)
+              graphExtensions.getOrPut(contextKey.typeKey, ::mutableListOf) += metroFunction
               hasGraphExtensions = true
             } else if (isInjector) {
               // It's an injector
@@ -436,7 +436,7 @@ internal class DependencyGraphNodeCache(
                 } else {
                   contextKey
                 }
-              graphExtensions += (contextKey.typeKey to metroFunction)
+              graphExtensions.getOrPut(contextKey.typeKey, ::mutableListOf) += metroFunction
               hasGraphExtensions = true
             } else {
               val collection =
@@ -718,7 +718,7 @@ internal class DependencyGraphNodeCache(
           proto = null,
           extendedGraphNodes = extendedGraphNodes,
           // Following aren't necessary to see in external graphs
-          graphExtensions = emptyList(),
+          graphExtensions = emptyMap(),
           injectors = emptyList(),
           creator = null,
           bindingContainers = emptySet(),

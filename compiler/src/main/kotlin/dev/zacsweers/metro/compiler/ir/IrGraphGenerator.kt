@@ -211,7 +211,6 @@ internal class IrGraphGenerator(
             // this constructor parameter for provider field initialization
             val graphDep =
               node.includedGraphNodes[param.typeKey]
-                ?: node.extendedGraphNodes[param.typeKey]
                 ?: error("Undefined graph node ${param.typeKey}")
 
             // Don't add it if it's not used
@@ -292,34 +291,6 @@ internal class IrGraphGenerator(
         }
 
       val baseGenerationContext = GraphGenerationContext(thisReceiverParameter)
-
-      // TODO can we consolidate this with regular provider field collection?
-      for ((key, binding) in bindingGraph.bindingsSnapshot()) {
-        if (binding is IrBinding.GraphExtension && binding.isScoped()) {
-          // Init a provider field pointing at this
-          providerFields[key] =
-            addField(
-                fieldName =
-                  fieldNameAllocator.newName(
-                    buildString {
-                      append(key.type.rawType().name.asString().decapitalizeUS())
-                      append("Provider")
-                    }
-                  ),
-                fieldType = symbols.metroProvider.typeWith(key.type),
-                fieldVisibility = DescriptorVisibilities.PRIVATE,
-              )
-              .apply { key.qualifier?.let { annotations += it.ir.deepCopyWithSymbols() } }
-              .withInit(key) { thisReceiver, _ ->
-                generateBindingCode(
-                    binding = binding,
-                    generationContext = baseGenerationContext.withReceiver(thisReceiver),
-                    fieldInitKey = key,
-                  )
-                  .doubleCheck(this@withInit, symbols, key)
-              }
-        }
-      }
 
       // For all deferred types, assign them first as factories
       // TODO For any types that depend on deferred types, they need providers too?
@@ -403,7 +374,7 @@ internal class IrGraphGenerator(
                 baseGenerationContext.withReceiver(thisReceiver),
                 fieldInitKey = typeKey,
               )
-              .letIf(binding.scope != null && isProviderType) {
+              .letIf(binding.isScoped() && isProviderType) {
                 // If it's scoped, wrap it in double-check
                 // DoubleCheck.provider(<provider>)
                 it.doubleCheck(this@withInit, symbols, binding.typeKey)
@@ -681,64 +652,75 @@ internal class IrGraphGenerator(
     // Implement bodies for contributed graphs
     // Sort by keys when generating so they have deterministic ordering
     // TODO make the value types something more strongly typed
-    for ((typeKey, function) in graphExtensions) {
-      function.ir.apply {
-        val declarationToFinalize =
-          function.ir.propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
-        if (declarationToFinalize.isFakeOverride) {
-          declarationToFinalize.finalizeFakeOverride(context.thisReceiver)
-        }
-        val irFunction = this
-
-        // Check if the return type is a factory interface
-        val returnType = irFunction.returnType
-        val returnClass = returnType.rawTypeOrNull()
-
-        // Check if this is a GraphExtension.Factory or ContributesGraphExtension.Factory
-        val isFactory =
-          if (returnClass != null && returnClass.name == Symbols.Names.FactoryClass) {
-            val parentClass = returnClass.parent as? IrClass
-            parentClass != null &&
-              parentClass.isAnnotatedWithAny(symbols.classIds.graphExtensionAnnotations)
-          } else {
-            false
+    for ((typeKey, functions) in graphExtensions) {
+      for (function in functions) {
+        function.ir.apply {
+          val declarationToFinalize =
+            function.ir.propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
+          if (declarationToFinalize.isFakeOverride) {
+            declarationToFinalize.finalizeFakeOverride(context.thisReceiver)
           }
+          val irFunction = this
 
-        if (isFactory) {
-          // For factories, we need to get the actual graph extension type from the factory's SAM
-          // return type
-          val samMethod = returnClass!!.singleAbstractFunction()
-          val graphExtensionType = samMethod.returnType
-          val graphExtensionTypeKey = IrTypeKey(graphExtensionType)
+          // Check if the return type is a factory interface
+          val returnType = irFunction.returnType
+          val returnClass = returnType.rawTypeOrNull()
 
-          // Generate factory implementation
-          body =
-            createIrBuilder(symbol).run {
-              irExprBodySafe(
-                symbol,
-                generateGraphExtensionFactory(
-                    returnClass,
-                    graphExtensionTypeKey,
-                    function,
-                    parentTracer,
-                  )
-                  .apply { arguments[0] = irGet(function.ir.dispatchReceiverParameter!!) },
-              )
+          // Check if this is a GraphExtension.Factory or ContributesGraphExtension.Factory
+          val isFactory =
+            if (returnClass != null && returnClass.name == Symbols.Names.FactoryClass) {
+              val parentClass = returnClass.parent as? IrClass
+              parentClass != null &&
+                parentClass.isAnnotatedWithAny(symbols.classIds.graphExtensionAnnotations)
+            } else {
+              false
             }
-        } else {
-          // Direct graph extension accessor. Use regular binding code gen
-          val contextKey = IrContextualTypeKey.from(function.ir)
-          body =
-            createIrBuilder(symbol).run {
-              irExprBodySafe(
-                symbol,
-                generateBindingCode(
-                  binding = bindingGraph.requireBinding(typeKey, IrBindingStack.empty()),
-                  generationContext = context.withReceiver(irFunction.dispatchReceiverParameter!!),
-                  invokeIfProvider = !contextKey.isWrappedInProvider,
-                ),
-              )
-            }
+
+          if (isFactory) {
+            // For factories, we need to get the actual graph extension type from the factory's SAM
+            // return type
+            val samMethod = returnClass!!.singleAbstractFunction()
+            val graphExtensionType = samMethod.returnType
+            val graphExtensionTypeKey = IrTypeKey(graphExtensionType)
+
+            // Generate factory implementation
+            body =
+              createIrBuilder(symbol).run {
+                irExprBodySafe(
+                  symbol,
+                  generateGraphExtensionFactory(
+                      returnClass,
+                      graphExtensionTypeKey,
+                      function,
+                      parentTracer,
+                    )
+                    .apply { arguments[0] = irGet(function.ir.dispatchReceiverParameter!!) },
+                )
+              }
+          } else {
+            // Graph extension creator. Use regular binding code gen
+            // Could be a factory SAM function or a direct accessor. SAMs won't have a binding, but we can synthesize one here as needed
+            val binding = bindingGraph.findBinding(typeKey) ?: IrBinding.GraphExtension(
+              typeKey = typeKey,
+              parent = metroGraphOrFail,
+              accessor = function.ir,
+              // Implementing a factory SAM, no scoping or dependencies here,
+              extensionScopes = emptySet(),
+              dependencies = emptyList(),
+            )
+            val contextKey = IrContextualTypeKey.from(function.ir)
+            body =
+              createIrBuilder(symbol).run {
+                irExprBodySafe(
+                  symbol,
+                  generateBindingCode(
+                    binding = binding,
+                    generationContext = context.withReceiver(irFunction.dispatchReceiverParameter!!),
+                    invokeIfProvider = !contextKey.isWrappedInProvider,
+                  ),
+                )
+              }
+          }
         }
       }
     }

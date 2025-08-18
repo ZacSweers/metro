@@ -7,6 +7,7 @@ import com.jakewharton.picnic.renderText
 import com.jakewharton.picnic.table
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.BaseBindingStack
 import dev.zacsweers.metro.compiler.graph.BaseTypeKey
 import dev.zacsweers.metro.compiler.ir.IrBindingStack.Entry
@@ -211,13 +212,19 @@ internal interface IrBindingStack :
       fun generatedExtensionAt(
         graphExtensionKey: IrContextualTypeKey,
         parent: String,
+        declaration: IrFunction? = null,
       ): Entry {
         val targetFqName = graphExtensionKey.typeKey.type.rawType().kotlinFqName
+        val context = when (val declarationToUse = declaration?.propertyIfAccessor) {
+          is IrProperty -> "$targetFqName.${declarationToUse.name}"
+          is IrFunction -> "$targetFqName.${declarationToUse.name}(…)"
+          else -> null
+        }
         return Entry(
           contextKey = graphExtensionKey,
-          usage = null,
-          graphContext = "$targetFqName extends $parent",
-          declaration = null,
+          usage = "extends $parent",
+          graphContext = context,
+          declaration = declaration,
           isSynthetic = false,
         )
       }
@@ -468,7 +475,7 @@ internal fun bindingStackEntryForDependency(
       Entry.injectedAt(contextKey, callingBinding.getter, displayTypeKey = targetKey)
     }
     is IrBinding.GraphExtension -> {
-      Entry.requestedAt(contextKey, callingBinding.accessor)
+      Entry.generatedExtensionAt(contextKey, parent = callingBinding.parent.kotlinFqName.asString(), callingBinding.accessor)
     }
     is IrBinding.Absent -> error("Should never happen")
   }
