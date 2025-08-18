@@ -526,8 +526,6 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     assertThat(project.appGraphReports.scopedProviderFieldKeys).contains("kotlin.String")
   }
 
-  // TODO
-  @Ignore("@ContributesTo with @BindingContainer not yet supported")
   @Test
   fun bindingContainerWithContributesTo() {
     val fixture =
