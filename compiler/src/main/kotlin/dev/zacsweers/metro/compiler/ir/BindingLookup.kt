@@ -36,7 +36,7 @@ internal class BindingLookup(
   private data class ParentGraphDepKey(val owner: IrClass, val typeKey: IrTypeKey)
 
   private val parentGraphDepCache = mutableMapOf<ParentGraphDepKey, IrBinding.GraphDependency>()
-  
+
   // Lazy parent key bindings - only created when actually accessed
   private val lazyParentKeys = mutableMapOf<IrTypeKey, Lazy<IrBinding.GraphDependency>>()
 
