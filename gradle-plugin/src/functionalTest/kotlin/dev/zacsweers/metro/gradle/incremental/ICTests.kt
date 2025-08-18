@@ -1442,6 +1442,164 @@ class ICTests : BaseIncrementalCompilationTest() {
   }
 
   @Test
+  fun multiModuleNonAbiChangeDoesNotTriggerRootRecompilation() {
+    val fixture =
+      object : MetroProject() {
+        override fun sources() = listOf(appGraph, target)
+
+        override val gradleProject: GradleProject
+          get() =
+            newGradleProjectBuilder(DslKind.KOTLIN)
+              .withRootProject {
+                withBuildScript {
+                  sources = sources()
+                  applyMetroDefault()
+                  dependencies(Dependency.implementation(":lib"))
+                }
+              }
+              .withSubproject("lib") {
+                sources.add(provider)
+                sources.add(unrelatedClass)
+                withBuildScript { applyMetroDefault() }
+              }
+              .write()
+
+        private val appGraph =
+          source(
+            """
+            @DependencyGraph(Unit::class)
+            interface AppGraph {
+              val target: Target
+            }
+            """
+              .trimIndent()
+          )
+
+        val provider =
+          source(
+            """
+            @ContributesTo(Unit::class)
+            interface StringProvider {
+              @Provides
+              fun provideString(): String = "Hello"
+              
+              // Internal implementation detail
+              private fun internalHelper(): String = "internal"
+            }
+            """
+              .trimIndent()
+          )
+
+        val unrelatedClass =
+          source(
+            """
+            // Unrelated class not part of the dependency graph
+            class UnrelatedUtility {
+              fun doSomething(): String = "original"
+            }
+            """
+              .trimIndent()
+          )
+
+        private val target =
+          source(
+            """
+            @Inject
+            class Target(val string: String)
+            """
+              .trimIndent()
+          )
+      }
+
+    val project = fixture.gradleProject
+    val libProject = project.subprojects.first { it.name == "lib" }
+
+    // First build
+    buildAndAssertThat(project.rootDir, ":compileKotlin") {
+      task(":compileKotlin").succeeded()
+      task(":lib:compileKotlin").succeeded()
+    }
+
+    // Make a private change in the lib module in the same file still triggers IC because IC is
+    // unfortunately per-file
+    libProject.modify(
+      project.rootDir,
+      fixture.provider,
+      """
+      @ContributesTo(Unit::class)
+      interface StringProvider {
+        @Provides
+        fun provideString(): String = "Hello"
+        
+        // Internal implementation detail
+        private fun internalHelper(): String = "internal"
+      }
+
+      private fun privateUtilInFile(): Int = 3
+      """
+        .trimIndent(),
+    )
+
+    buildAndAssertThat(project.rootDir, ":compileKotlin") {
+      // Lib module should be recompiled due to the change
+      task(":lib:compileKotlin").succeeded()
+      // Root module isn't UP-TO-DATE because IC operates on the file
+      task(":compileKotlin").succeeded()
+    }
+
+    // Make a non-ABI change to a function body.
+    libProject.modify(
+      project.rootDir,
+      fixture.provider,
+      """
+      @ContributesTo(Unit::class)
+      interface StringProvider {
+        @Provides
+        fun provideString(): String = "Hello"
+        
+        // Modified internal implementation detail - non-ABI change
+        private fun internalHelper(): String = "modified internal"
+      }
+
+      private fun privateUtilInFile(): Int = 3
+      """
+        .trimIndent(),
+    )
+
+    buildAndAssertThat(project.rootDir, ":compileKotlin") {
+      // Lib module should be recompiled due to the change
+      task(":lib:compileKotlin").succeeded()
+      // Root module isn't UP-TO-DATE because IC operates on the file
+      task(":compileKotlin").upToDate()
+    }
+
+    // Modify an unrelated file in the lib module, should not trigger IC
+    libProject.modify(
+      project.rootDir,
+      fixture.unrelatedClass,
+      """
+      // Unrelated class not part of the dependency graph
+      class UnrelatedUtility {
+        fun doSomething(): String = "modified"
+      }
+      """
+        .trimIndent(),
+    )
+
+    buildAndAssertThat(project.rootDir, ":compileKotlin") {
+      // Lib module should be recompiled due to the change
+      task(":lib:compileKotlin").succeeded()
+      // Root module should be UP-TO-DATE since the changed file is not part of the dependency graph
+      task(":compileKotlin").upToDate()
+    }
+
+    // Verify the application still works correctly
+    val classLoader = project.classLoader()
+    val appGraphClass = classLoader.loadClass("test.AppGraph")
+    assertThat(appGraphClass).isNotNull()
+  }
+
+  @Test
   fun multipleBindingReplacementsAreRespectedWhenAddingNewContribution() {
     val fixture =
       object : MetroProject(debug = true) {
