@@ -643,7 +643,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             @GraphExtension
             interface FeatureGraph {
               val target: Target
-              
+
               @ContributesTo(Unit::class)
               @GraphExtension.Factory
               interface Factory {
