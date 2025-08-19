@@ -4,6 +4,7 @@ Changelog
 **Unreleased**
 --------------
 * New snapshot added for 0.7.1-SNAPSHOT
+* What what just happened?
 
 0.7.0
 -----
