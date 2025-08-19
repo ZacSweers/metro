@@ -3,7 +3,7 @@ Changelog
 
 **Unreleased**
 --------------
-* Upcoming release notes - testing mike
+* New snapshot added for 0.7.1-SNAPSHOT
 
 0.7.0
 -----
