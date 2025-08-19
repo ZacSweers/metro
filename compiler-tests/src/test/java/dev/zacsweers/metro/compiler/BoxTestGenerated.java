@@ -527,6 +527,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("MultiLevelEmptyExtensions.kt")
+      public void testMultiLevelEmptyExtensions() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/MultiLevelEmptyExtensions.kt");
+      }
+
+      @Test
       @TestMetadata("OverloadedFactoryFunctions.kt")
       public void testOverloadedFactoryFunctions() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/OverloadedFactoryFunctions.kt");

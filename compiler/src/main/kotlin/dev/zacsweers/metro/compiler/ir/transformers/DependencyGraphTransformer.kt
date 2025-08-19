@@ -286,7 +286,7 @@ internal class DependencyGraphTransformer(
       }
 
       // Two passes on graph extensions
-      // First pass to create any keys for non-factory-returning types
+      // Shallow pass to create any keys for non-factory-returning types
       val directExtensions = mutableSetOf<IrTypeKey>()
       for ((typeKey, accessors) in node.graphExtensions) {
         if (typeKey in bindingGraph) continue // Skip if already in graph
@@ -302,14 +302,20 @@ internal class DependencyGraphTransformer(
           if (!returnsFactory) {
             // Check if this function belongs to a Factory interface that this graph just implements
             if (irFunction.isFakeOverride) {
-              irFunction.overriddenSymbolsSequence()
-                .firstOrNull { it.owner.parentAsClass.isAnnotatedWithAny(symbols.classIds.graphExtensionFactoryAnnotations) }
+              irFunction
+                .overriddenSymbolsSequence()
+                .firstOrNull {
+                  it.owner.parentAsClass.isAnnotatedWithAny(
+                    symbols.classIds.graphExtensionFactoryAnnotations
+                  )
+                }
                 ?.owner
                 ?.parentAsClass
                 ?.classId
                 ?.let { factoryClassId ->
                   if (factoryClassId in node.supertypeClassIds) {
-                    // This is the factory SAM for a factory this graph implements, so it cannot be a direct extension
+                    // This is the factory SAM for a factory this graph implements, so it cannot be
+                    // a direct extension
                     continue
                   }
                 }
@@ -433,7 +439,8 @@ internal class DependencyGraphTransformer(
       // Only applicable in graph extensions
       if (parentContext != null) {
         for (key in result.reachableKeys) {
-          val isSelfKey = key == node.typeKey || key == node.metroGraph?.generatedGraphExtensionData?.typeKey
+          val isSelfKey =
+            key == node.typeKey || key == node.metroGraph?.generatedGraphExtensionData?.typeKey
           if (!isSelfKey && key in parentContext) {
             parentContext.mark(key)
           }
