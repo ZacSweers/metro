@@ -3,6 +3,10 @@ Changelog
 
 **Unreleased**
 --------------
+* Upcoming release notes - testing mike
+
+0.7.0
+-----
 
 * **New**: Add a diagnostic to report parent keys used by graph extensions `parent-keys-used-*.txt`.
 * **Enhancement**: Graph extensions are now generated as `inner` classes, reducing much of the necessary generated code in parent graphs and allowing them to access parent binding fields directly.
