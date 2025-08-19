@@ -144,6 +144,90 @@ kotlin_inject_anvil_raw_compilation {
 }
 
 # ====================================
+# PLAIN KOTLIN FILE SCENARIOS (NO DI)
+# ====================================
+
+metro_plain_abi_change {
+    title = "Metro - Plain Kotlin ABI"
+    warm-ups = 3
+    iterations = 5
+    
+    tasks = [":app:component:compileKotlin"]
+    
+    apply-abi-change-to = "core/foundation/src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation/PlainKotlinFile.kt"
+}
+
+metro_plain_non_abi_change {
+    title = "Metro - Plain Kotlin Non-ABI"
+    warm-ups = 3
+    iterations = 5
+    
+    tasks = [":app:component:compileKotlin"]
+    
+    apply-non-abi-change-to = "core/foundation/src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation/PlainKotlinFile.kt"
+}
+
+anvil_ksp_plain_abi_change {
+    title = "Anvil KSP - Plain Kotlin ABI"
+    warm-ups = 3
+    iterations = 5
+    
+    tasks = [":app:component:compileKotlin"]
+    
+    apply-abi-change-to = "core/foundation/src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation/PlainKotlinFile.kt"
+}
+
+anvil_ksp_plain_non_abi_change {
+    title = "Anvil KSP - Plain Kotlin Non-ABI"
+    warm-ups = 3
+    iterations = 5
+    
+    tasks = [":app:component:compileKotlin"]
+    
+    apply-non-abi-change-to = "core/foundation/src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation/PlainKotlinFile.kt"
+}
+
+anvil_kapt_plain_abi_change {
+    title = "Anvil KAPT - Plain Kotlin ABI"
+    warm-ups = 3
+    iterations = 5
+    
+    tasks = [":app:component:compileKotlin"]
+    
+    apply-abi-change-to = "core/foundation/src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation/PlainKotlinFile.kt"
+}
+
+anvil_kapt_plain_non_abi_change {
+    title = "Anvil KAPT - Plain Kotlin Non-ABI"
+    warm-ups = 3
+    iterations = 5
+    
+    tasks = [":app:component:compileKotlin"]
+    
+    apply-non-abi-change-to = "core/foundation/src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation/PlainKotlinFile.kt"
+}
+
+kotlin_inject_anvil_plain_abi_change {
+    title = "Kotlin-inject + Anvil - Plain Kotlin ABI"
+    warm-ups = 3
+    iterations = 5
+    
+    tasks = [":app:component:compileKotlin"]
+    
+    apply-abi-change-to = "core/foundation/src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation/PlainKotlinFile.kt"
+}
+
+kotlin_inject_anvil_plain_non_abi_change {
+    title = "Kotlin-inject + Anvil - Plain Kotlin Non-ABI"
+    warm-ups = 3
+    iterations = 5
+    
+    tasks = [":app:component:compileKotlin"]
+    
+    apply-non-abi-change-to = "core/foundation/src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation/PlainKotlinFile.kt"
+}
+
+# ====================================
 # CLEAN BUILD SCENARIOS
 # ====================================
 

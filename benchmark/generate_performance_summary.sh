@@ -180,21 +180,25 @@ generate_performance_table() {
     local abi_data=$(collect_performance_data "abi_change" "$timestamp" "$results_dir")
     local non_abi_data=$(collect_performance_data "non_abi_change" "$timestamp" "$results_dir")
     local raw_data=$(collect_performance_data "raw_compilation" "$timestamp" "$results_dir")
+    local plain_abi_data=$(collect_performance_data "plain_abi_change" "$timestamp" "$results_dir")
+    local plain_non_abi_data=$(collect_performance_data "plain_non_abi_change" "$timestamp" "$results_dir")
     
     # Parse the data
     IFS='|' read -r abi_metro abi_anvil_ksp abi_anvil_ksp_pct abi_anvil_kapt abi_anvil_kapt_pct abi_kotlin_inject abi_kotlin_inject_pct <<< "$abi_data"
     IFS='|' read -r non_abi_metro non_abi_anvil_ksp non_abi_anvil_ksp_pct non_abi_anvil_kapt non_abi_anvil_kapt_pct non_abi_kotlin_inject non_abi_kotlin_inject_pct <<< "$non_abi_data"
     IFS='|' read -r raw_metro raw_anvil_ksp raw_anvil_ksp_pct raw_anvil_kapt raw_anvil_kapt_pct raw_kotlin_inject raw_kotlin_inject_pct <<< "$raw_data"
+    IFS='|' read -r plain_abi_metro plain_abi_anvil_ksp plain_abi_anvil_ksp_pct plain_abi_anvil_kapt plain_abi_anvil_kapt_pct plain_abi_kotlin_inject plain_abi_kotlin_inject_pct <<< "$plain_abi_data"
+    IFS='|' read -r plain_non_abi_metro plain_non_abi_anvil_ksp plain_non_abi_anvil_ksp_pct plain_non_abi_anvil_kapt plain_non_abi_anvil_kapt_pct plain_non_abi_kotlin_inject plain_non_abi_kotlin_inject_pct <<< "$plain_non_abi_data"
     
     # Generate the table in docs format
     echo ""
     echo "_(Median times in seconds)_"
     echo ""
-    echo "|                      | Metro | Anvil KSP     | Anvil Kapt    | Kotlin-Inject |"
-    echo "|----------------------|-------|---------------|---------------|---------------|"
+    echo "|                          | Metro | Anvil KSP     | Anvil Kapt    | Kotlin-Inject |"
+    echo "|--------------------------|-------|---------------|---------------|---------------|"
     
     # ABI row
-    echo -n "| **ABI**              | "
+    echo -n "| **ABI**                  | "
     if [ -n "$abi_metro" ]; then
         echo -n "${abi_metro}s"
     else
@@ -204,7 +208,7 @@ generate_performance_table() {
     echo ""
     
     # Non-ABI row
-    echo -n "| **Non-ABI**          | "
+    echo -n "| **Non-ABI**              | "
     if [ -n "$non_abi_metro" ]; then
         echo -n "${non_abi_metro}s"
     else
@@ -213,8 +217,28 @@ generate_performance_table() {
     echo -n "  | $(format_cell "$non_abi_anvil_ksp" "$non_abi_anvil_ksp_pct") | $(format_cell "$non_abi_anvil_kapt" "$non_abi_anvil_kapt_pct") | $(format_cell "$non_abi_kotlin_inject" "$non_abi_kotlin_inject_pct") |"
     echo ""
     
+    # Plain Kotlin ABI row
+    echo -n "| **Plain Kotlin ABI**     | "
+    if [ -n "$plain_abi_metro" ]; then
+        echo -n "${plain_abi_metro}s"
+    else
+        echo -n "N/A"
+    fi
+    echo -n "  | $(format_cell "$plain_abi_anvil_ksp" "$plain_abi_anvil_ksp_pct") | $(format_cell "$plain_abi_anvil_kapt" "$plain_abi_anvil_kapt_pct") | $(format_cell "$plain_abi_kotlin_inject" "$plain_abi_kotlin_inject_pct") |"
+    echo ""
+    
+    # Plain Kotlin Non-ABI row
+    echo -n "| **Plain Kotlin Non-ABI** | "
+    if [ -n "$plain_non_abi_metro" ]; then
+        echo -n "${plain_non_abi_metro}s"
+    else
+        echo -n "N/A"
+    fi
+    echo -n "  | $(format_cell "$plain_non_abi_anvil_ksp" "$plain_non_abi_anvil_ksp_pct") | $(format_cell "$plain_non_abi_anvil_kapt" "$plain_non_abi_anvil_kapt_pct") | $(format_cell "$plain_non_abi_kotlin_inject" "$plain_non_abi_kotlin_inject_pct") |"
+    echo ""
+    
     # Graph processing row
-    echo -n "| **Graph processing** | "
+    echo -n "| **Graph processing**     | "
     if [ -n "$raw_metro" ]; then
         echo -n "${raw_metro}s"
     else

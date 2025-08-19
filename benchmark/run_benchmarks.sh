@@ -42,6 +42,56 @@ print_header() {
     echo -e "${BLUE}========================================${NC}\n"
 }
 
+# Function to install gradle-profiler from source
+install_gradle_profiler() {
+    print_header "Installing gradle-profiler from source"
+    
+    # Check if local gradle-profiler symlink already exists
+    if [ -x "./gradle-profiler" ]; then
+        print_success "Local gradle-profiler already exists, skipping installation"
+        print_status "Using existing: ./gradle-profiler"
+        return 0
+    fi
+    
+    local profiler_dir="gradle-profiler-source"
+    local profiler_repo="https://github.com/gradle/gradle-profiler"
+    
+    # Clone or update the repository
+    if [ -d "$profiler_dir" ]; then
+        print_status "Updating existing gradle-profiler repository"
+        cd "$profiler_dir"
+        git pull origin master
+        cd ..
+    else
+        print_status "Cloning gradle-profiler repository"
+        git clone "$profiler_repo" "$profiler_dir"
+    fi
+    
+    # Build gradle-profiler
+    print_status "Building gradle-profiler (this may take a few minutes)"
+    cd "$profiler_dir"
+    if ./gradlew installDist; then
+        local profiler_bin
+        profiler_bin="$(pwd)/build/install/gradle-profiler/bin/gradle-profiler"
+        cd ..
+        
+        # Create a symlink or alias in the benchmark directory
+        if [ -f "$profiler_bin" ]; then
+            ln -sf "$profiler_bin" ./gradle-profiler
+            print_success "gradle-profiler installed successfully"
+            print_status "Created symlink: ./gradle-profiler -> $profiler_bin"
+            return 0
+        else
+            print_error "gradle-profiler binary not found at expected location"
+            return 1
+        fi
+    else
+        cd ..
+        print_error "Failed to build gradle-profiler"
+        return 1
+    fi
+}
+
 # Function to check if required tools are available
 check_prerequisites() {
     print_header "Checking Prerequisites"
@@ -52,7 +102,8 @@ check_prerequisites() {
         missing_tools+=("kotlin")
     fi
     
-    if ! command -v gradle-profiler &> /dev/null; then
+    # Check for gradle-profiler (either in PATH or local symlink)
+    if ! command -v gradle-profiler &> /dev/null && [ ! -x "./gradle-profiler" ]; then
         missing_tools+=("gradle-profiler")
     fi
     
@@ -63,6 +114,7 @@ check_prerequisites() {
     if [ ${#missing_tools[@]} -gt 0 ]; then
         print_error "Missing required tools: ${missing_tools[*]}"
         print_error "Please install missing tools and try again"
+        print_error "You can use --install-gradle-profiler to install gradle-profiler from source"
         exit 1
     fi
     
@@ -121,6 +173,8 @@ run_scenarios() {
     local scenarios=(
         "${scenario_prefix}_abi_change"
         "${scenario_prefix}_non_abi_change" 
+        "${scenario_prefix}_plain_abi_change"
+        "${scenario_prefix}_plain_non_abi_change"
         "${scenario_prefix}_raw_compilation"
     )
     
@@ -143,7 +197,13 @@ run_scenarios() {
         
         print_status "Running scenario: $scenario"
         
-        gradle-profiler \
+        # Use local gradle-profiler if available, otherwise use system one
+        local profiler_cmd="gradle-profiler"
+        if [ -x "./gradle-profiler" ]; then
+            profiler_cmd="./gradle-profiler"
+        fi
+        
+        $profiler_cmd \
             --benchmark \
             --scenario-file benchmark.scenarios \
             --output-dir "$scenario_output_dir" \
@@ -168,7 +228,7 @@ merge_benchmark_results() {
     print_header "Merging Benchmark Results"
     
     # Define test types
-    local test_types=("abi_change" "non_abi_change" "raw_compilation")
+    local test_types=("abi_change" "non_abi_change" "plain_abi_change" "plain_non_abi_change" "raw_compilation")
     
     # Add clean build test type if requested
     if [ "$include_clean_builds" = true ]; then
@@ -356,6 +416,7 @@ show_usage() {
     echo "  COUNT                        Number of modules to generate (default: $DEFAULT_MODULE_COUNT)"
     echo "  --build-only                 Only run ./gradlew :app:component:run --quiet, skip gradle-profiler"
     echo "  --include-clean-builds       Include clean build scenarios in benchmarks"
+    echo "  --install-gradle-profiler    Install gradle-profiler from source before running benchmarks"
     echo ""
     echo "Examples:"
     echo "  $0                           # Run all benchmarks with default settings"
@@ -367,6 +428,8 @@ show_usage() {
     echo "  $0 all --build-only          # Generate and build all projects, skip benchmarks"
     echo "  $0 all --include-clean-builds # Run all benchmarks including clean build scenarios"
     echo "  $0 metro 250 --include-clean-builds # Run Metro benchmarks with 250 modules including clean builds"
+    echo "  $0 --install-gradle-profiler # Install gradle-profiler from source then run all benchmarks"
+    echo "  $0 metro --install-gradle-profiler # Install gradle-profiler then run Metro benchmarks"
     echo ""
     echo "Results will be saved to the '$RESULTS_DIR' directory with timestamps."
 }
@@ -381,18 +444,21 @@ validate_count() {
     fi
 }
 
-# Function to parse arguments and handle --build-only and --include-clean-builds flags
+# Function to parse arguments and handle flags
 parse_args() {
     local args=("$@")
     local parsed_args=()
     local build_only=false
     local include_clean_builds=false
+    local install_profiler=false
     
     for arg in "${args[@]}"; do
         if [ "$arg" = "--build-only" ]; then
             build_only=true
         elif [ "$arg" = "--include-clean-builds" ]; then
             include_clean_builds=true
+        elif [ "$arg" = "--install-gradle-profiler" ]; then
+            install_profiler=true
         else
             parsed_args+=("$arg")
         fi
@@ -400,6 +466,7 @@ parse_args() {
     
     echo "$build_only"
     echo "$include_clean_builds"
+    echo "$install_profiler"
     printf '%s\n' "${parsed_args[@]}"
 }
 
@@ -415,10 +482,20 @@ main() {
     build_only=$(echo "$parsed_output" | head -n1)
     local include_clean_builds
     include_clean_builds=$(echo "$parsed_output" | head -n2 | tail -n1)
+    local install_profiler
+    install_profiler=$(echo "$parsed_output" | head -n3 | tail -n1)
     local args=()
     while IFS= read -r line; do
         args+=("$line")
-    done < <(echo "$parsed_output" | tail -n+3)
+    done < <(echo "$parsed_output" | tail -n+4)
+    
+    # Install gradle-profiler if requested
+    if [ "$install_profiler" = true ]; then
+        if ! install_gradle_profiler; then
+            print_error "Failed to install gradle-profiler"
+            exit 1
+        fi
+    fi
     
     # Check prerequisites (skip gradle-profiler check if build-only mode)
     if [ "$build_only" = true ]; then
