@@ -84,7 +84,6 @@ internal class Symbols(
     const val INTO_SET = "IntoSet"
     const val IMPL = "Impl"
     const val INVOKE = "invoke"
-    const val IS_PROPERTY_ACCESSOR = "isPropertyAccessor"
     const val METRO_CONTRIBUTION = "MetroContribution"
     const val METRO_CONTRIBUTION_NAME_PREFIX = $$$"$$MetroContribution"
     const val METRO_FACTORY = $$$"$$MetroFactory"
@@ -196,7 +195,6 @@ internal class Symbols(
     val injectMembers = StringNames.INJECT_MEMBERS.asName()
     val instance = "instance".asName()
     val invoke = StringNames.INVOKE.asName()
-    val isPropertyAccessor = StringNames.IS_PROPERTY_ACCESSOR.asName()
     val membersInjector = "MembersInjector".asName()
     val mirrorFunction = StringNames.MIRROR_FUNCTION.asName()
     val modules = "modules".asName()

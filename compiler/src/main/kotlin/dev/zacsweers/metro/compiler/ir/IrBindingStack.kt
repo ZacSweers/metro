@@ -150,7 +150,13 @@ internal interface IrBindingStack :
                   "#${(functionToUse.propertyIfAccessor as IrProperty).name.asString()}"
                 else -> "#${functionToUse.name.asString()}"
               }
-            val end = if (param == null) "()" else "(…, ${param.name.asString()})"
+            val end = if (param == null) {
+              "()"
+            } else if (functionToUse.isPropertyAccessor) {
+              ": $displayTypeKey"
+            } else {
+              "(…, ${param.name.asString()})"
+            }
             "$targetFqName$middle$end"
           }
         return Entry(

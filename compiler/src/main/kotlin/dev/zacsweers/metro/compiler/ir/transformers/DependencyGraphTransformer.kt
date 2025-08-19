@@ -286,7 +286,7 @@ internal class DependencyGraphTransformer(
       }
 
       // Two passes on graph extensions
-      // Shallow pass to create any keys for non-factory-returning types
+      // Shallow first pass to create any keys for non-factory-returning types
       val directExtensions = mutableSetOf<IrTypeKey>()
       for ((typeKey, accessors) in node.graphExtensions) {
         if (typeKey in bindingGraph) continue // Skip if already in graph
@@ -320,9 +320,9 @@ internal class DependencyGraphTransformer(
                   }
                 }
             }
-            localParentContext.add(typeKey)
-            directExtensions.add(typeKey)
           }
+          localParentContext.add(typeKey)
+          directExtensions.add(typeKey)
         }
       }
 
