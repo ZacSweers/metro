@@ -485,7 +485,7 @@ internal class DependencyGraphNodeCache(
               if (isGraphExtensionFactory) {
                 // For factories, add them to accessors so they participate in the binding graph
                 accessors += (metroFunction to contextKey)
-                
+
                 // Also track it as a graph extension for metadata purposes
                 val samMethod = rawType.singleAbstractFunction()
                 val graphExtensionType = samMethod.returnType
