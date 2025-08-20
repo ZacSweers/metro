@@ -286,37 +286,49 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
             setType = true,
             prefix = null,
           )
+
+        val symbolToMap =
+          when (val symbol = sourceCallable.symbol) {
+            is FirPropertyAccessorSymbol -> symbol.propertySymbol
+            is FirPropertySymbol -> symbol
+            is FirNamedFunctionSymbol -> symbol
+            is FirBackingFieldSymbol -> symbol.propertySymbol
+            is FirFieldSymbol -> symbol
+            else -> reportCompilerBug("Unexpected callable symbol type: $symbol")
+          }
+
+        // Only set propertyName if it's a property
+        val propertyName =
+          if (symbolToMap !is FirNamedFunctionSymbol) {
+            symbolToMap.name.asString()
+          } else {
+            ""
+          }
         mapping[Name.identifier("propertyName")] =
           buildLiteralExpression(
             source = null,
             kind = ConstantValueKind.String,
-            value =
-              when (val symbol = sourceCallable.symbol) {
-                is FirPropertyAccessorSymbol -> symbol.propertySymbol.name
-                is FirPropertySymbol -> symbol.name
-                is FirNamedFunctionSymbol -> symbol.name
-                is FirBackingFieldSymbol -> symbol.propertySymbol.name
-                is FirFieldSymbol -> symbol.name
-                else -> reportCompilerBug("Unexpected callable symbol type: $symbol")
-              }.asString(),
+            value = propertyName,
             annotations = null,
             setType = true,
             prefix = null,
           )
+
         mapping[Name.identifier("startOffset")] =
           buildLiteralExpression(
             source = null,
             kind = ConstantValueKind.Int,
-            value = sourceCallable.symbol.source?.startOffset ?: UNDEFINED_OFFSET,
+            value = symbolToMap.source?.startOffset ?: UNDEFINED_OFFSET,
             annotations = null,
             setType = true,
             prefix = null,
           )
+
         mapping[Name.identifier("endOffset")] =
           buildLiteralExpression(
             source = null,
             kind = ConstantValueKind.Int,
-            value = sourceCallable.symbol.source?.endOffset ?: UNDEFINED_OFFSET,
+            value = symbolToMap.source?.endOffset ?: UNDEFINED_OFFSET,
             annotations = null,
             setType = true,
             prefix = null,
