@@ -483,6 +483,9 @@ internal fun bindingStackEntryForDependency(
     is IrBinding.GraphExtension -> {
       Entry.generatedExtensionAt(contextKey, parent = callingBinding.parent.kotlinFqName.asString(), callingBinding.accessor)
     }
+    is IrBinding.GraphExtensionFactory -> {
+      Entry.generatedExtensionAt(contextKey, parent = callingBinding.parent.kotlinFqName.asString(), callingBinding.accessor)
+    }
     is IrBinding.Absent -> error("Should never happen")
   }
 }

@@ -102,12 +102,12 @@ interface ExampleGraph : $$MetroContributionToAppScope {
 
     @Binds
     @IntoSet
-    @CallableMetadata(callableName = "<get-bind>", isPropertyAccessor = true, startOffset = 297, endOffset = 337)
+    @CallableMetadata(callableName = "<get-bind>", propertyName = "bind", startOffset = 297, endOffset = 337)
     abstract fun TaskImpl1.bind_intoset(): Task
 
     @Binds
     @IntoSet
-    @CallableMetadata(callableName = "<get-bind>", isPropertyAccessor = true, startOffset = 254, endOffset = 294)
+    @CallableMetadata(callableName = "<get-bind>", propertyName = "bind", startOffset = 254, endOffset = 294)
     abstract fun TaskImpl2.bind_intoset(): Task
 
   }
@@ -193,7 +193,7 @@ interface ExampleGraph : $$MetroContributionToAppScope {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provide3", isPropertyAccessor = false, startOffset = 396, endOffset = 449)
+  @CallableMetadata(callableName = "provide3", propertyName = "", startOffset = 396, endOffset = 449)
   class Provide3$$MetroFactory : Factory<Task> {
     private /* final field */ val instance: ExampleGraph = instance
     companion object Companion {
@@ -231,7 +231,7 @@ interface ExampleGraph : $$MetroContributionToAppScope {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provide4", isPropertyAccessor = false, startOffset = 340, endOffset = 393)
+  @CallableMetadata(callableName = "provide4", propertyName = "", startOffset = 340, endOffset = 393)
   class Provide4$$MetroFactory : Factory<Task> {
     private /* final field */ val instance: ExampleGraph = instance
     companion object Companion {

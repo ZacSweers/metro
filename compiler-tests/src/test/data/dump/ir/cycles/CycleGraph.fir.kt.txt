@@ -346,20 +346,6 @@ interface CycleGraph {
     private /* final field */ val provideObjectWithCycleProvider: Provider<Any> = DelegateFactory<Any>()
     private /* final field */ val bProvider: Provider<B> = Companion.create(c = <this>.#cProvider)
     private /* final field */ val aProvider: Provider<A> = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider)))
-    private class Factory$$Impl : Factory {
-      private /* final field */ val parentInstance: $$MetroGraph = parentInstance
-      constructor(parentInstance: $$MetroGraph) /* primary */ {
-        super/*Any*/()
-        /* <init>() */
-
-      }
-
-      override fun create(): ChildCycleGraph {
-        return <this>.#parentInstance.ChildCycleGraphImpl()
-      }
-
-    }
-
     @DependencyGraph
     inner class ChildCycleGraphImpl : ChildCycleGraph {
       private /* final field */ val membersInjectorMembersInjectorProvider: Provider<MembersInjector<C>> = DelegateFactory<MembersInjector<C>>()
@@ -367,6 +353,20 @@ interface CycleGraph {
       private /* final field */ val provideObjectWithCycleProvider: Provider<Any> = DelegateFactory<Any>()
       private /* final field */ val bProvider: Provider<B> = Companion.create(c = <this>.#cProvider)
       private /* final field */ val aProvider: Provider<A> = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider)))
+      private class FactoryImpl : Factory {
+        private /* final field */ val parentInstance: $$MetroGraph = parentInstance
+        constructor(parentInstance: $$MetroGraph) /* primary */ {
+          super/*Any*/()
+          /* <init>() */
+
+        }
+
+        override fun create(): ChildCycleGraph {
+          return <this>.#parentInstance.ChildCycleGraphImpl()
+        }
+
+      }
+
       constructor() /* primary */ {
         super/*Any*/()
         /* <init>() */
@@ -406,7 +406,7 @@ interface CycleGraph {
     }
 
     override fun childCycleGraph(): Factory {
-      return Factory$$Impl(parentInstance = <this>)
+      return Companion.invoke<Factory>(value = FactoryImpl(parentInstance = <this>.#cycleGraphProvider.invoke())).invoke()
     }
 
     override val objWithCycle: Any
@@ -417,7 +417,7 @@ interface CycleGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideObjectWithCycle", isPropertyAccessor = false, startOffset = 497, endOffset = 594)
+  @CallableMetadata(callableName = "provideObjectWithCycle", propertyName = "", startOffset = 497, endOffset = 594)
   class ProvideObjectWithCycle$$MetroFactory : Factory<Any> {
     private /* final field */ val instance: CycleGraph = instance
     private /* final field */ val obj: Provider<Any> = obj

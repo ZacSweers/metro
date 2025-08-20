@@ -291,38 +291,17 @@ internal class DependencyGraphTransformer(
       for ((typeKey, accessors) in node.graphExtensions) {
         if (typeKey in bindingGraph) continue // Skip if already in graph
 
-        for (function in accessors) {
-          val irFunction = function.ir
-          val returnType = irFunction.returnType.rawType()
-
-          // Check if this returns a factory interface
-          val returnsFactory =
-            returnType.isAnnotatedWithAny(symbols.classIds.graphExtensionFactoryAnnotations)
-
-          if (!returnsFactory) {
-            // Check if this function belongs to a Factory interface that this graph just implements
-            if (irFunction.isFakeOverride) {
-              irFunction
-                .overriddenSymbolsSequence()
-                .firstOrNull {
-                  it.owner.parentAsClass.isAnnotatedWithAny(
-                    symbols.classIds.graphExtensionFactoryAnnotations
-                  )
-                }
-                ?.owner
-                ?.parentAsClass
-                ?.classId
-                ?.let { factoryClassId ->
-                  if (factoryClassId in node.supertypeClassIds) {
-                    // This is the factory SAM for a factory this graph implements, so it cannot be
-                    // a direct extension
-                    continue
-                  }
-                }
-            }
+        for (extensionAccessor in accessors) {
+          if (extensionAccessor.isFactory) {
+            // It's a factory returner instead
+            localParentContext.add(extensionAccessor.key.typeKey)
+            continue
           }
-          localParentContext.add(typeKey)
-          directExtensions.add(typeKey)
+
+          if (!extensionAccessor.isFactorySAM) {
+            localParentContext.add(typeKey)
+            directExtensions.add(typeKey)
+          }
         }
       }
 
@@ -332,13 +311,18 @@ internal class DependencyGraphTransformer(
 
       // Second pass on graph extensions to actually process them and create GraphExtension bindings
       for ((contributedGraphKey, accessors) in node.graphExtensions) {
+        val extensionAccessor = accessors.first() // Only need one for below linking
+
         val contributedExtension = contributedGraphKey.type.rawType()
-        val accessor = accessors.first() // Only need one for below linking
+        val accessor = extensionAccessor.accessor
+
+        // Determine the actual graph extension type key
+        val actualGraphExtensionTypeKey = contributedGraphKey
 
         // Generate the contributed graph class
         val contributedGraph =
           graphExtensionGenerator.getOrBuildGraphExtensionImpl(
-            contributedGraphKey,
+            actualGraphExtensionTypeKey,
             node.sourceGraph,
             accessor,
             parentTracer,
@@ -360,7 +344,7 @@ internal class DependencyGraphTransformer(
 
         if (contributedGraphKey in directExtensions) {
           val dependencies = usedKeys.map { IrContextualTypeKey.create(it) }
-          val updatedBinding =
+          val binding =
             IrBinding.GraphExtension(
               typeKey = contributedGraphKey,
               parent = node.sourceGraph,
@@ -369,12 +353,12 @@ internal class DependencyGraphTransformer(
               dependencies = dependencies,
             )
           // Replace the binding with the updated version
-          bindingGraph.addBinding(contributedGraphKey, updatedBinding, IrBindingStack.empty())
+          bindingGraph.addBinding(contributedGraphKey, binding, IrBindingStack.empty())
           // Necessary since we don't treat graph extensions as part of roots
           bindingGraph.keep(
-            updatedBinding.contextualTypeKey,
+            binding.contextualTypeKey,
             IrBindingStack.Entry.generatedExtensionAt(
-              updatedBinding.contextualTypeKey,
+              binding.contextualTypeKey,
               node.sourceGraph.kotlinFqName.asString(),
               accessor.ir,
             ),
@@ -511,7 +495,7 @@ internal class DependencyGraphTransformer(
           .map { it.first.ir }
           .plus(node.injectors.map { it.first.ir })
           .plus(node.bindsCallables.map { it.callableMetadata.function })
-          .plus(node.graphExtensions.flatMap { it.value }.map { it.ir })
+          .plus(node.graphExtensions.flatMap { it.value }.map { it.accessor.ir })
           .filterNot { it.isExternalParent }
           .forEach { function ->
             with(function) {

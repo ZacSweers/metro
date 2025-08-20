@@ -11,6 +11,7 @@ import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.util.TypeRemapper
+import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.defaultType
 
 // TODO cache these in DependencyGraphTransformer or shared transformer data
@@ -20,6 +21,8 @@ private constructor(override val type: IrType, override val qualifier: IrAnnotat
   BaseTypeKey<IrType, IrAnnotation, IrTypeKey> {
 
   private val cachedRender by unsafeLazy { render(short = false, includeQualifier = true) }
+
+  val classId by unsafeLazy { type.rawTypeOrNull()?.classId }
 
   val hasTypeArgs: Boolean
     get() = type is IrSimpleType && type.arguments.isNotEmpty()

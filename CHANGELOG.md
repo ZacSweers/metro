@@ -8,6 +8,8 @@ Changelog
 * **Enhancement**: Graph extensions are now generated as `inner` classes, reducing much of the necessary generated code in parent graphs and allowing them to access parent binding fields directly.
 * **Enhancement**: Allow graph extensions to depend on other graph extensions within the context of their parent graph.
 * **Enhancement**: Add a diagnostic for graph factories with vararg parameters.
+* **Enhancement**: Allow graph extension factories to participate in the binding graph, which then allows injecting or binding them like any other dependency.
+* **Enhancement**: Improve error message location accuracy for missing bindings when reporting from a `@Binds` declaration.
 * **Fix**: Don't override graph extension factories' default functions.
 * **Fix**: Fix Kotlin internal error overriding Metro error when there's a missing factory for a Java `@Inject` class.
 * Deprecate the `enableStrictValidation` Gradle property in favor of `enableFullBindingGraphValidation`, which aligns with [Dagger's (better) name for the same functionality](https://dagger.dev/dev-guide/compiler-options#full-binding-graph-validation).

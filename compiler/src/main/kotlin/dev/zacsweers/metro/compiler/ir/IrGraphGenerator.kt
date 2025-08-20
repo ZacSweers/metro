@@ -23,16 +23,12 @@ import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.suffixIfNot
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
-import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.DescriptorVisibility
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
-import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
 import org.jetbrains.kotlin.ir.builders.declarations.addField
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
-import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
-import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
@@ -50,7 +46,6 @@ import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
-import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.types.IrSimpleType
@@ -59,16 +54,12 @@ import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.addChild
-import org.jetbrains.kotlin.ir.util.addFakeOverrides
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTo
-import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
-import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.functions
-import org.jetbrains.kotlin.ir.util.getAnnotation
 import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isStatic
@@ -653,7 +644,8 @@ internal class IrGraphGenerator(
     // Sort by keys when generating so they have deterministic ordering
     // TODO make the value types something more strongly typed
     for ((typeKey, functions) in graphExtensions) {
-      for (function in functions) {
+      for (extensionAccessor in functions) {
+        val function = extensionAccessor.accessor
         function.ir.apply {
           val declarationToFinalize =
             function.ir.propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
@@ -662,52 +654,22 @@ internal class IrGraphGenerator(
           }
           val irFunction = this
 
-          // Check if the return type is a factory interface
-          val returnType = irFunction.returnType
-          val returnClass = returnType.rawTypeOrNull()
-
-          // Check if this is a GraphExtension.Factory or ContributesGraphExtension.Factory
-          val isFactory =
-            if (returnClass != null && returnClass.name == Symbols.Names.FactoryClass) {
-              val parentClass = returnClass.parent as? IrClass
-              parentClass != null &&
-                parentClass.isAnnotatedWithAny(symbols.classIds.graphExtensionAnnotations)
-            } else {
-              false
-            }
-
-          if (isFactory) {
-            // For factories, we need to get the actual graph extension type from the factory's SAM
-            // return type
-            val samMethod = returnClass!!.singleAbstractFunction()
-            val graphExtensionType = samMethod.returnType
-            val graphExtensionTypeKey = IrTypeKey(graphExtensionType)
-
-            // Generate factory implementation
-            body =
-              createIrBuilder(symbol).run {
-                irExprBodySafe(
-                  symbol,
-                  generateGraphExtensionFactory(
-                      returnClass,
-                      graphExtensionTypeKey,
-                      function,
-                      parentTracer,
-                    )
-                    .apply { arguments[0] = irGet(function.ir.dispatchReceiverParameter!!) },
-                )
-              }
+          if (extensionAccessor.isFactory) {
+            // Handled in regular accessors
           } else {
             // Graph extension creator. Use regular binding code gen
-            // Could be a factory SAM function or a direct accessor. SAMs won't have a binding, but we can synthesize one here as needed
-            val binding = bindingGraph.findBinding(typeKey) ?: IrBinding.GraphExtension(
-              typeKey = typeKey,
-              parent = metroGraphOrFail,
-              accessor = function.ir,
-              // Implementing a factory SAM, no scoping or dependencies here,
-              extensionScopes = emptySet(),
-              dependencies = emptyList(),
-            )
+            // Could be a factory SAM function or a direct accessor. SAMs won't have a binding, but
+            // we can synthesize one here as needed
+            val binding =
+              bindingGraph.findBinding(typeKey)
+                ?: IrBinding.GraphExtension(
+                  typeKey = typeKey,
+                  parent = metroGraphOrFail,
+                  accessor = function.ir,
+                  // Implementing a factory SAM, no scoping or dependencies here,
+                  extensionScopes = emptySet(),
+                  dependencies = emptyList(),
+                )
             val contextKey = IrContextualTypeKey.from(function.ir)
             body =
               createIrBuilder(symbol).run {
@@ -715,7 +677,8 @@ internal class IrGraphGenerator(
                   symbol,
                   generateBindingCode(
                     binding = binding,
-                    generationContext = context.withReceiver(irFunction.dispatchReceiverParameter!!),
+                    generationContext =
+                      context.withReceiver(irFunction.dispatchReceiverParameter!!),
                     invokeIfProvider = !contextKey.isWrappedInProvider,
                   ),
                 )
@@ -724,27 +687,6 @@ internal class IrGraphGenerator(
         }
       }
     }
-  }
-
-  private fun implementGraphExtensionFactorySAM(
-    function: IrSimpleFunction,
-    target: IrClass,
-    parentGraphArg: IrBuilderWithScope.() -> IrExpression,
-  ) {
-    val ctor = target.primaryConstructor!!
-    function.body =
-      createIrBuilder(function.symbol).run {
-        irExprBodySafe(
-          function.symbol,
-          irCallConstructor(ctor.symbol, emptyList()).apply {
-            // First arg is always the graph instance
-            arguments[0] = parentGraphArg()
-            for (i in 0 until function.regularParameters.size) {
-              arguments[i + 1] = irGet(function.regularParameters[i])
-            }
-          },
-        )
-      }
   }
 
   private fun IrBuilderWithScope.generateBindingArguments(
@@ -945,7 +887,11 @@ internal class IrGraphGenerator(
         // For binds functions, just use the backing type
         val aliasedBinding = binding.aliasedBinding(bindingGraph, IrBindingStack.empty())
         check(aliasedBinding != binding) { "Aliased binding aliases itself" }
-        return generateBindingCode(aliasedBinding, generationContext)
+        return generateBindingCode(
+          aliasedBinding,
+          generationContext,
+          invokeIfProvider = invokeIfProvider,
+        )
       }
 
       is IrBinding.Provided -> {
@@ -1009,7 +955,8 @@ internal class IrGraphGenerator(
 
         val targetBinding =
           bindingGraph.requireBinding(binding.target.typeKey, IrBindingStack.empty())
-        val delegateFactoryProvider = generateBindingCode(targetBinding, generationContext)
+        val delegateFactoryProvider =
+          generateBindingCode(targetBinding, generationContext, invokeIfProvider = invokeIfProvider)
         val invokeCreateExpression =
           irInvoke(
             dispatchReceiver = dispatchReceiver,
@@ -1125,6 +1072,52 @@ internal class IrGraphGenerator(
           instanceExpression
         } else {
           instanceFactory(binding.typeKey.type, instanceExpression)
+        }
+      }
+
+      is IrBinding.GraphExtensionFactory -> {
+        // Get the pre-generated extension implementation that should contain the factory
+        val extensionImpl =
+          contributedGraphGenerator.getOrBuildGraphExtensionImpl(
+            binding.extensionTypeKey,
+            node.sourceGraph,
+            metroFunctionOf(binding.reportableDeclaration as IrSimpleFunction),
+            parentTracer,
+          )
+
+        // Get the factory implementation that was generated alongside the extension
+        val factoryImpl =
+          extensionImpl.generatedGraphExtensionData?.factoryImpl
+            ?: error(
+              "Expected factory implementation to be generated for graph extension factory binding"
+            )
+
+        val constructor = factoryImpl.primaryConstructor!!
+        val parameters = constructor.parameters()
+        val factoryInstance =
+          irCallConstructor(
+              constructor.symbol,
+              binding.accessor.typeParameters.map { it.defaultType },
+            )
+            .apply {
+              // Pass the parent graph instance
+              arguments[0] =
+                generateBindingCode(
+                  bindingGraph.requireBinding(
+                    parameters.regularParameters.single().typeKey,
+                    IrBindingStack.empty(),
+                  ),
+                  generationContext,
+                  invokeIfProvider = true,
+                )
+            }
+
+        if (invokeIfProvider) {
+          // Factories are not providers, return directly
+          factoryInstance
+        } else {
+          // Wrap in an instance factory
+          instanceFactory(binding.typeKey.type, factoryInstance)
         }
       }
 
@@ -1535,67 +1528,6 @@ internal class IrGraphGenerator(
       isAssisted = false,
       isGraphInstance = false,
     )
-  }
-
-  private fun IrBuilderWithScope.generateGraphExtensionFactory(
-    factoryInterface: IrClass,
-    graphExtensionTypeKey: IrTypeKey,
-    function: MetroSimpleFunction,
-    parentTracer: Tracer,
-  ): IrConstructorCall {
-    // Generate the contributed graph for the extension
-    val contributedGraph =
-      contributedGraphGenerator.getOrBuildGraphExtensionImpl(
-        graphExtensionTypeKey,
-        node.sourceGraph,
-        function,
-        parentTracer,
-      )
-
-    // Create the factory implementation as a nested class
-    // TODO make this a local/anonymous class instead?
-    val factoryImpl =
-      pluginContext.irFactory
-        .buildClass {
-          name =
-            nestedClassNameAllocator
-              .newName("${factoryInterface.name}${Symbols.StringNames.METRO_IMPL}")
-              .asName()
-          kind = ClassKind.CLASS
-          visibility = DescriptorVisibilities.PRIVATE
-          origin = Origins.Default
-        }
-        .apply {
-          this.superTypes = listOf(factoryInterface.defaultType)
-          this.typeParameters = copyTypeParametersFrom(factoryInterface)
-          this.createThisReceiverParameter()
-          graphClass.addChild(this)
-          this.addFakeOverrides(metroContext.irTypeSystemContext)
-        }
-
-    val constructor =
-      factoryImpl
-        .addConstructor {
-          visibility = DescriptorVisibilities.PUBLIC
-          isPrimary = true
-          this.returnType = factoryImpl.defaultType
-        }
-        .apply {
-          addValueParameter("parentInstance", graphClass.defaultType)
-          body = generateDefaultConstructorBody()
-        }
-
-    val paramsToFields = assignConstructorParamsToFields(constructor, factoryImpl)
-
-    // Implement the SAM method
-    val samFunction = factoryImpl.singleAbstractFunction()
-    samFunction.finalizeFakeOverride(factoryImpl.thisReceiverOrFail)
-    implementGraphExtensionFactorySAM(samFunction, contributedGraph) {
-      irGetField(irGet(samFunction.dispatchReceiverParameter!!), paramsToFields.values.first())
-    }
-
-    // Return an instance of the factory implementation
-    return irCallConstructor(constructor.symbol, function.ir.typeParameters.map { it.defaultType })
   }
 }
 

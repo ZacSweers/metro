@@ -460,8 +460,23 @@ internal class BindingGraphGenerator(
       }
     }
 
-    // GraphExtension bindings are added later in DependencyGraphTransformer after usedKeys are
-    // determined
+    for ((key, accessors) in node.graphExtensions) {
+      for (accessor in accessors) {
+        if (accessor.isFactory && accessor.key.typeKey.classId !in node.supertypeClassIds) {
+          graph.addBinding(
+            accessor.key.typeKey,
+            IrBinding.GraphExtensionFactory(
+              typeKey = accessor.key.typeKey,
+              extensionTypeKey = key,
+              parent = node.metroGraph!!,
+              parentKey = node.typeKey,
+              accessor = accessor.accessor.ir,
+            ),
+            bindingStack
+          )
+        }
+      }
+    }
 
     // Add bindings from graph dependencies
     // TODO dedupe this allDependencies iteration with graph gen

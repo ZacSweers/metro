@@ -27,7 +27,7 @@ internal data class DependencyGraphNode(
   val sourceGraph: IrClass,
   val supertypes: List<IrType>,
   val includedGraphNodes: Map<IrTypeKey, DependencyGraphNode>,
-  val graphExtensions: Map<IrTypeKey, List<MetroSimpleFunction>>,
+  val graphExtensions: Map<IrTypeKey, List<GraphExtensionAccessor>>,
   val scopes: Set<IrAnnotation>,
   val aggregationScopes: Set<ClassId>,
   val providerFactories: List<Pair<IrTypeKey, ProviderFactory>>,
@@ -154,3 +154,10 @@ private fun DependencyGraphNode.recurseParents(
     value.recurseParents(builder)
   }
 }
+
+internal data class GraphExtensionAccessor(
+  val accessor: MetroSimpleFunction,
+  val key: IrContextualTypeKey,
+  val isFactory: Boolean,
+  val isFactorySAM: Boolean,
+)

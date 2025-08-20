@@ -8,7 +8,7 @@ import kotlin.annotation.AnnotationTarget.CLASS
 @Target(CLASS, AnnotationTarget.FUNCTION)
 public annotation class CallableMetadata(
   val callableName: String,
-  val propertyName: Boolean,
+  val propertyName: String,
   // Store original offsets for error reporting. When constructing the "real" declaration from the
   // mirror function, we'll read these back.
   val startOffset: Int,

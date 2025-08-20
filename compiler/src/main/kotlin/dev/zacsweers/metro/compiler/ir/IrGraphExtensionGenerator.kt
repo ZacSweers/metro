@@ -7,24 +7,30 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
-import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.descriptors.ClassKind
+import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
+import org.jetbrains.kotlin.ir.builders.irCallConstructor
+import org.jetbrains.kotlin.ir.builders.irGet
+import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.irAttribute
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addFakeOverrides
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.copyAnnotationsFrom
 import org.jetbrains.kotlin.ir.util.copyTo
+import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.getValueArgument
@@ -98,7 +104,7 @@ internal class IrGraphExtensionGenerator(
   private fun generateImplFromFactory(
     factoryFunction: IrSimpleFunction,
     parentTracer: Tracer,
-    typeKey: IrTypeKey
+    typeKey: IrTypeKey,
   ): IrClass {
     val sourceFactory = factoryFunction.parentAsClass
     val sourceGraph = sourceFactory.parentAsClass
@@ -107,14 +113,80 @@ internal class IrGraphExtensionGenerator(
     }
   }
 
-  private fun generateImpl(sourceGraph: IrClass, creatorFunction: IrSimpleFunction?, typeKey: IrTypeKey): IrClass {
+  private fun generateFactoryImplForCreator(
+    graphImpl: IrClass,
+    ctor: IrConstructor,
+    creatorFunction: IrSimpleFunction,
+    parentGraph: IrClass,
+  ): IrClass {
+    val factoryInterface = creatorFunction.parentAsClass
+
+    // Create the factory implementation as a nested class
+    val factoryImpl =
+      pluginContext.irFactory
+        .buildClass {
+          name = "${factoryInterface.name}Impl".asName()
+          kind = ClassKind.CLASS
+          visibility = DescriptorVisibilities.PRIVATE
+          origin = Origins.Default
+        }
+        .apply {
+          this.superTypes = listOf(factoryInterface.defaultType)
+          this.typeParameters = copyTypeParametersFrom(factoryInterface)
+          this.createThisReceiverParameter()
+          graphImpl.addChild(this)
+          this.addFakeOverrides(irTypeSystemContext)
+        }
+
+    val constructor =
+      factoryImpl
+        .addConstructor {
+          visibility = DescriptorVisibilities.PUBLIC
+          isPrimary = true
+          this.returnType = factoryImpl.defaultType
+        }
+        .apply {
+          addValueParameter("parentInstance", parentGraph.defaultType)
+          body = generateDefaultConstructorBody()
+        }
+
+    val paramsToFields = assignConstructorParamsToFields(constructor, factoryImpl)
+
+    // Implement the SAM method
+    val samFunction = factoryImpl.singleAbstractFunction()
+    samFunction.finalizeFakeOverride(factoryImpl.thisReceiverOrFail)
+
+    // Implement the factory SAM to create the extension
+    samFunction.body =
+      createIrBuilder(samFunction.symbol).run {
+        irExprBodySafe(
+          samFunction.symbol,
+          irCallConstructor(ctor.symbol, emptyList()).apply {
+            // Firstc arg is always the graph instance
+            arguments[0] =
+              irGetField(
+                irGet(samFunction.dispatchReceiverParameter!!),
+                paramsToFields.values.first(),
+              )
+            for (i in 0 until samFunction.regularParameters.size) {
+              arguments[i + 1] = irGet(samFunction.regularParameters[i])
+            }
+          },
+        )
+      }
+
+    return factoryImpl
+  }
+
+  private fun generateImpl(
+    sourceGraph: IrClass,
+    creatorFunction: IrSimpleFunction?,
+    typeKey: IrTypeKey,
+  ): IrClass {
     val graphExtensionAnno =
       sourceGraph.annotationsIn(symbols.classIds.graphExtensionAnnotations).firstOrNull()
     val extensionAnno =
-      graphExtensionAnno
-        ?: error(
-          "Expected @GraphExtension on ${sourceGraph.kotlinFqName}"
-        )
+      graphExtensionAnno ?: error("Expected @GraphExtension on ${sourceGraph.kotlinFqName}")
 
     val sourceScope = extensionAnno.scopeClassOrNull()
     val scope = sourceScope?.classId
@@ -195,10 +267,6 @@ internal class IrGraphExtensionGenerator(
         .apply {
           createThisReceiverParameter()
 
-          generatedGraphExtensionData = GeneratedGraphExtensionData(
-            typeKey = typeKey
-          )
-
           // Add a @DependencyGraph(...) annotation
           annotations +=
             buildAnnotation(symbol, symbols.metroDependencyGraphAnnotationConstructor) { annotation
@@ -235,29 +303,50 @@ internal class IrGraphExtensionGenerator(
             contributedSupertypes
               // Deterministic sort
               .sortedBy { it.rawType().classIdOrFail.toString() }
+
+          val ctor =
+            addConstructor {
+                isPrimary = true
+                origin = Origins.Default
+                // This will be finalized in IrGraphGenerator
+                isFakeOverride = true
+              }
+              .apply {
+                // TODO generics?
+                setDispatchReceiver(
+                  parentGraph.thisReceiverOrFail.copyTo(this, type = parentGraph.defaultType)
+                )
+                // Copy over any creator params
+                creatorFunction?.let {
+                  for (param in it.regularParameters) {
+                    addValueParameter(param.name, param.type).apply {
+                      this.copyAnnotationsFrom(param)
+                    }
+                  }
+                }
+
+                body = this.generateDefaultConstructorBody()
+              }
+
+          // Must be added to the parent before we generate a factory impl
+          parentGraph.addChild(this)
+
+          // If there's an extension, generate it into this impl
+          val factoryImpl =
+            creatorFunction?.let { factory ->
+              // Don't need to do this if the parent implements the factory
+              if (parentGraph.implements(factory.parentAsClass.classIdOrFail)) return@let null
+              generateFactoryImplForCreator(
+                graphImpl = this,
+                ctor = ctor,
+                creatorFunction = factory,
+                parentGraph = this@IrGraphExtensionGenerator.parentGraph,
+              )
+            }
+
+          generatedGraphExtensionData =
+            GeneratedGraphExtensionData(typeKey = typeKey, factoryImpl = factoryImpl)
         }
-
-    graphImpl
-      .addConstructor {
-        isPrimary = true
-        origin = Origins.Default
-        // This will be finalized in IrGraphGenerator
-        isFakeOverride = true
-      }
-      .apply {
-        // TODO generics?
-        setDispatchReceiver(parentGraph.thisReceiverOrFail.copyTo(this, type = parentGraph.defaultType))
-        // Copy over any creator params
-        creatorFunction?.let {
-          for (param in it.regularParameters) {
-            addValueParameter(param.name, param.type).apply { this.copyAnnotationsFrom(param) }
-          }
-        }
-
-        body = this.generateDefaultConstructorBody()
-      }
-
-    parentGraph.addChild(graphImpl)
 
     graphImpl.addFakeOverrides(irTypeSystemContext)
 
@@ -417,7 +506,8 @@ internal class IrGraphExtensionGenerator(
 
 internal class GeneratedGraphExtensionData(
   val typeKey: IrTypeKey,
+  val factoryImpl: IrClass? = null,
 )
 
-internal var IrClass.generatedGraphExtensionData: GeneratedGraphExtensionData?
-  by irAttribute(copyByDefault = false)
+internal var IrClass.generatedGraphExtensionData: GeneratedGraphExtensionData? by
+  irAttribute(copyByDefault = false)

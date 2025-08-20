@@ -578,7 +578,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
   @Poko
   class GraphExtension(
     override val typeKey: IrTypeKey,
-    val parent: IrClass,
+    @Poko.Skip val parent: IrClass,
     val accessor: IrSimpleFunction,
     val extensionScopes: Set<IrAnnotation>,
     override val dependencies: List<IrContextualTypeKey> = emptyList(),
@@ -599,5 +599,30 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
      * extension is scoped if it has any extension scopes defined.
      */
     override fun isScoped(): Boolean = extensionScopes.isNotEmpty()
+  }
+
+  /**
+   * Represents a graph extension factory binding. These are factories that create graph extensions
+   * and need to participate in the binding graph for proper dependency resolution.
+   */
+  @Poko
+  class GraphExtensionFactory(
+    override val typeKey: IrTypeKey,
+    val extensionTypeKey: IrTypeKey,
+    val parent: IrClass,
+    parentKey: IrTypeKey,
+    val accessor: IrSimpleFunction,
+  ) : IrBinding {
+    override val dependencies: List<IrContextualTypeKey> = listOf(IrContextualTypeKey(parentKey))
+    override val reportableDeclaration: IrDeclarationWithName = accessor
+    override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
+    override val parameters: Parameters = Parameters.empty()
+    override val parametersByKey: Map<IrTypeKey, Parameter> = emptyMap()
+    override val scope: IrAnnotation? = null
+    override val nameHint: String = "${typeKey.type.rawType().name.asString()}Factory"
+
+    override fun toString() = buildString {
+      append("GraphExtensionFactory(${typeKey.render(short = true)})")
+    }
   }
 }
