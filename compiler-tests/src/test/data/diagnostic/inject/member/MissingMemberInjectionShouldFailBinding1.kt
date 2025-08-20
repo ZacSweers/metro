@@ -11,24 +11,26 @@ class Implementation() : Base
 
 abstract class AppSubscope
 
-@ContributesGraphExtension(AppSubscope::class)
+@GraphExtension(AppSubscope::class)
 interface SubscopeGraph {
+
+  val base: Base
 
   @Multibinds
   @ForScope(AppSubscope::class)
   val membersInjectors: Map<KClass<*>, MembersInjector<*>>
 
-  @ContributesGraphExtension.Factory(AppScope::class)
+  @GraphExtension.Factory @ContributesTo(AppScope::class)
   interface Factory {
     fun create(): SubscopeGraph
   }
 
-  // This should fail because of missing @Inject on Implementation, but it doesn't
+  // This should fail because of missing @Inject on Implementation
   @Binds
   fun bindImplementation(<!METRO_ERROR!>instance: Implementation<!>): Base
 }
 
-@DependencyGraph(AppScope::class, isExtendable = true)
+@DependencyGraph(AppScope::class)
 interface TestGraph
 
 /* GENERATED_FIR_TAGS: classDeclaration, classReference, functionDeclaration, interfaceDeclaration, nestedClass,

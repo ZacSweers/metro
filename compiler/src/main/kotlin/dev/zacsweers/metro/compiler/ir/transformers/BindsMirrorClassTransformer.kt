@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.expectAs
+import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.BindsCallable
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
@@ -158,15 +159,15 @@ private fun generateMirrorFunction(
       with(it) {
         // callableName
         arguments[0] = irString(targetFunction.callableId.callableName.asString())
-        // isPropertyAccessor
-        arguments[1] = irBoolean(targetFunction.ir.isPropertyAccessor)
+        // propertyName
+        arguments[1] = irString(targetFunction.ir.propertyIfAccessor.expectAsOrNull<IrProperty>()?.name?.asString() ?: "")
 
         // TODO these locations are bogus in generated binding functions. Report origin class
         //  instead somewhere?
         // startOffset
-        arguments[2] = irInt(targetFunction.ir.startOffset)
+        arguments[2] = irInt(targetFunction.ir.propertyIfAccessor.startOffset)
         // endOffset
-        arguments[3] = irInt(targetFunction.ir.endOffset)
+        arguments[3] = irInt(targetFunction.ir.propertyIfAccessor.endOffset)
       }
     }
 

@@ -28,8 +28,14 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
 
   override fun getCompilerPluginId(): String = PLUGIN_ID
 
-  override fun getPluginArtifact(): SubpluginArtifact =
-    SubpluginArtifact(groupId = "dev.zacsweers.metro", artifactId = "compiler", version = VERSION)
+  override fun getPluginArtifact(): SubpluginArtifact {
+    val version = System.getProperty("metro.compilerVersionOverride", VERSION)
+    return SubpluginArtifact(
+      groupId = "dev.zacsweers.metro",
+      artifactId = "compiler",
+      version = version,
+    )
+  }
 
   override fun isApplicable(kotlinCompilation: KotlinCompilation<*>): Boolean {
     val project = kotlinCompilation.target.project
@@ -45,8 +51,12 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
       val kotlinVersion = VersionNumber.parse(project.getKotlinPluginVersion())
       if (metroVersion < kotlinVersion) {
         project.logger.warn(
-          "Metro '$VERSION' is too old for Kotlin '$kotlinVersion'. " +
-            "Please upgrade Metro or downgrade Kotlin to '$BASE_KOTLIN_VERSION'."
+          """
+            Metro '$VERSION' is compiled against Kotlin $BASE_KOTLIN_VERSION and this build uses '$kotlinVersion'.
+            If you have any issues, please upgrade Metro (if applicable) or downgrade Kotlin to '$BASE_KOTLIN_VERSION'. See https://zacsweers.github.io/metro/compatibility. .
+            You can also disable this warning via `metro.version.check=false` or setting the `metro.enableKotlinVersionCompatibilityChecks` DSL property.
+          """
+            .trimIndent()
         )
       } else if (metroVersion > kotlinVersion) {
         project.logger.warn(
@@ -121,7 +131,13 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
             extension.generateJvmContributionHintsInFir,
           )
         )
-        add(lazyOption("enable-scoped-inject-class-hints", extension.enableScopedInjectClassHints))
+        @Suppress("DEPRECATION")
+        add(
+          lazyOption(
+            "enable-full-binding-graph-validation",
+            extension.enableFullBindingGraphValidation.orElse(extension.enableStrictValidation),
+          )
+        )
         add(lazyOption("transform-providers-to-private", extension.transformProvidersToPrivate))
         add(lazyOption("shrink-unused-bindings", extension.shrinkUnusedBindings))
         add(lazyOption("chunk-field-inits", extension.chunkFieldInits))
@@ -197,21 +213,16 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-contributes-into-set", value = it.joinToString(":")) }
             ?.let(::add)
-          contributesGraphExtension
+          graphExtension
             .getOrElse(emptySet())
             .takeUnless { it.isEmpty() }
-            ?.let {
-              SubpluginOption("custom-contributes-graph-extension", value = it.joinToString(":"))
-            }
+            ?.let { SubpluginOption("custom-graph-extension", value = it.joinToString(":")) }
             ?.let(::add)
-          contributesGraphExtensionFactory
+          graphExtensionFactory
             .getOrElse(emptySet())
             .takeUnless { it.isEmpty() }
             ?.let {
-              SubpluginOption(
-                "custom-contributes-graph-extension-factory",
-                value = it.joinToString(":"),
-              )
+              SubpluginOption("custom-graph-extension-factory", value = it.joinToString(":"))
             }
             ?.let(::add)
           elementsIntoSet
@@ -219,15 +230,17 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-elements-into-set", value = it.joinToString(":")) }
             ?.let(::add)
-          graph
+          dependencyGraph
             .getOrElse(emptySet())
             .takeUnless { it.isEmpty() }
-            ?.let { SubpluginOption("custom-graph", value = it.joinToString(":")) }
+            ?.let { SubpluginOption("custom-dependency-graph", value = it.joinToString(":")) }
             ?.let(::add)
-          graphFactory
+          dependencyGraphFactory
             .getOrElse(emptySet())
             .takeUnless { it.isEmpty() }
-            ?.let { SubpluginOption("custom-graph-factory", value = it.joinToString(":")) }
+            ?.let {
+              SubpluginOption("custom-dependency-graph-factory", value = it.joinToString(":"))
+            }
             ?.let(::add)
           inject
             .getOrElse(emptySet())

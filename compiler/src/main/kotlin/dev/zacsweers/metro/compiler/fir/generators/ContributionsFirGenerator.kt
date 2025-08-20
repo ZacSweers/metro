@@ -144,7 +144,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
   }
 
   private fun findContributions(contributingSymbol: FirClassSymbol<*>): Set<Contribution>? {
-    val contributesToAnnotations = session.classIds.contributesToLikeAnnotations
+    val contributesToAnnotations = session.classIds.contributesToAnnotations
     val contributesBindingAnnotations = session.classIds.contributesBindingAnnotations
     val contributesIntoSetAnnotations = session.classIds.contributesIntoSetAnnotations
     val contributesIntoMapAnnotations = session.classIds.contributesIntoMapAnnotations
@@ -230,7 +230,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
           .parentsWithSelf(session)
           .drop(1)
           .firstOrNull { it is FirClassSymbol }
-          ?.isAnnotatedWithAny(session, session.classIds.contributesToLikeAnnotations) ?: false
+          ?.isAnnotatedWithAny(session, session.classIds.contributesToAnnotations) ?: false
       return if (!isContributesTo) {
         setOf(Symbols.Names.BindsMirrorClass)
       } else {

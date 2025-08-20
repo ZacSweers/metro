@@ -27,7 +27,7 @@ interface LoggedInComponent {
   val long: Long
 
   // TODO use Anvil annotation https://github.com/ZacSweers/metro/issues/704
-  @ContributesGraphExtension.Factory(AppScope::class)
+  @GraphExtension.Factory @ContributesTo(AppScope::class)
   interface Factory {
     fun createLoggedInComponent(): LoggedInComponent
   }

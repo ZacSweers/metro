@@ -516,7 +516,7 @@ class AnvilInteropTest : MetroCompilerTest() {
           class Child
 
           @SingleIn(Parent::class)
-          @DependencyGraph(scope = Parent::class, isExtendable = true)
+          @DependencyGraph(scope = Parent::class)
           interface ParentComponent {
               @DependencyGraph.Factory
               interface Factory {
@@ -526,7 +526,7 @@ class AnvilInteropTest : MetroCompilerTest() {
 
           @com.squareup.anvil.annotations.ContributesSubcomponent(Child::class, parentScope = Parent::class)
           interface ChildComponent {
-              @ContributesGraphExtension.Factory(Parent::class)
+              @GraphExtension.Factory @ContributesTo(Parent::class)
               interface Factory {
                   fun create(): ChildComponent
               }
@@ -552,7 +552,7 @@ class AnvilInteropTest : MetroCompilerTest() {
     return copy(
       customContributesBindingAnnotations =
         setOf(ClassId.fromString("com/squareup/anvil/annotations/ContributesBinding")),
-      customContributesGraphExtensionAnnotations =
+      customGraphExtensionAnnotations =
         setOf(ClassId.fromString("com/squareup/anvil/annotations/ContributesSubcomponent")),
       enableDaggerAnvilInterop = true,
     )

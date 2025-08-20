@@ -162,7 +162,7 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
   CHUNK_FIELD_INITS(
     RawMetroOption.boolean(
       name = "chunk-field-inits",
-      defaultValue = false,
+      defaultValue = true,
       valueDescription = "<true | false>",
       description = "Enable/disable chunking of field initializers in binding graphs.",
       required = false,
@@ -302,23 +302,23 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
     )
   ),
-  CUSTOM_CONTRIBUTES_GRAPH_EXTENSION(
+  CUSTOM_GRAPH_EXTENSION(
     RawMetroOption(
-      name = "custom-contributes-graph-extension",
+      name = "custom-graph-extension",
       defaultValue = emptySet(),
-      valueDescription = "ContributesGraphExtension annotations",
-      description = "ContributesGraphExtension annotations",
+      valueDescription = "GraphExtension annotations",
+      description = "GraphExtension annotations",
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
     )
   ),
-  CUSTOM_CONTRIBUTES_GRAPH_EXTENSION_FACTORY(
+  CUSTOM_GRAPH_EXTENSION_FACTORY(
     RawMetroOption(
-      name = "custom-contributes-graph-extension-factory",
+      name = "custom-graph-extension-factory",
       defaultValue = emptySet(),
-      valueDescription = "ContributesGraphExtension.Factory annotations",
-      description = "ContributesGraphExtension.Factory annotations",
+      valueDescription = "GraphExtension.Factory annotations",
+      description = "GraphExtension.Factory annotations",
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
@@ -335,9 +335,9 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
     )
   ),
-  CUSTOM_GRAPH(
+  CUSTOM_DEPENDENCY_GRAPH(
     RawMetroOption(
-      name = "custom-graph",
+      name = "custom-dependency-graph",
       defaultValue = emptySet(),
       valueDescription = "Graph annotations",
       description = "Graph annotations",
@@ -346,9 +346,9 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
     )
   ),
-  CUSTOM_GRAPH_FACTORY(
+  CUSTOM_DEPENDENCY_GRAPH_FACTORY(
     RawMetroOption(
-      name = "custom-graph-factory",
+      name = "custom-dependency-graph-factory",
       defaultValue = emptySet(),
       valueDescription = "GraphFactory annotations",
       description = "GraphFactory annotations",
@@ -467,13 +467,13 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
-  ENABLE_SCOPED_INJECT_CLASS_HINTS(
+  ENABLE_FULL_BINDING_GRAPH_VALIDATION(
     RawMetroOption.boolean(
-      name = "enable-scoped-inject-class-hints",
+      name = "enable-full-binding-graph-validation",
       defaultValue = false,
       valueDescription = "<true | false>",
       description =
-        "Enable/disable generating hints for scoped @Inject classes. By default, a scoped injectable class that isn't used in its associated graph node will result in an error if a graph extension later tries to inject it. Enabling this setting prevents such errors by generating a binding for all scoped types within the graph node. See https://github.com/ZacSweers/metro/issues/377 for more context.",
+        "Enable/disable full validation of all binds and provides declarations, even if they are unused.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -541,15 +541,16 @@ public data class MetroOptions(
     MetroOption.CUSTOM_CONTRIBUTES_BINDING.raw.defaultValue.expectAs(),
   val customContributesIntoSetAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_CONTRIBUTES_INTO_SET.raw.defaultValue.expectAs(),
-  val customContributesGraphExtensionAnnotations: Set<ClassId> =
-    MetroOption.CUSTOM_CONTRIBUTES_GRAPH_EXTENSION.raw.defaultValue.expectAs(),
-  val customContributesGraphExtensionFactoryAnnotations: Set<ClassId> =
-    MetroOption.CUSTOM_CONTRIBUTES_GRAPH_EXTENSION_FACTORY.raw.defaultValue.expectAs(),
+  val customGraphExtensionAnnotations: Set<ClassId> =
+    MetroOption.CUSTOM_GRAPH_EXTENSION.raw.defaultValue.expectAs(),
+  val customGraphExtensionFactoryAnnotations: Set<ClassId> =
+    MetroOption.CUSTOM_GRAPH_EXTENSION_FACTORY.raw.defaultValue.expectAs(),
   val customElementsIntoSetAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_ELEMENTS_INTO_SET.raw.defaultValue.expectAs(),
-  val customGraphAnnotations: Set<ClassId> = MetroOption.CUSTOM_GRAPH.raw.defaultValue.expectAs(),
+  val customGraphAnnotations: Set<ClassId> =
+    MetroOption.CUSTOM_DEPENDENCY_GRAPH.raw.defaultValue.expectAs(),
   val customGraphFactoryAnnotations: Set<ClassId> =
-    MetroOption.CUSTOM_GRAPH_FACTORY.raw.defaultValue.expectAs(),
+    MetroOption.CUSTOM_DEPENDENCY_GRAPH_FACTORY.raw.defaultValue.expectAs(),
   val customInjectAnnotations: Set<ClassId> = MetroOption.CUSTOM_INJECT.raw.defaultValue.expectAs(),
   val customIntoMapAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_INTO_MAP.raw.defaultValue.expectAs(),
@@ -568,8 +569,8 @@ public data class MetroOptions(
     MetroOption.CUSTOM_BINDING_CONTAINER.raw.defaultValue.expectAs(),
   val enableDaggerAnvilInterop: Boolean =
     MetroOption.ENABLE_DAGGER_ANVIL_INTEROP.raw.defaultValue.expectAs(),
-  val enableScopedInjectClassHints: Boolean =
-    MetroOption.ENABLE_SCOPED_INJECT_CLASS_HINTS.raw.defaultValue.expectAs(),
+  val enableFullBindingGraphValidation: Boolean =
+    MetroOption.ENABLE_FULL_BINDING_GRAPH_VALIDATION.raw.defaultValue.expectAs(),
 ) {
   internal companion object {
     fun load(configuration: CompilerConfiguration): MetroOptions {
@@ -585,8 +586,8 @@ public data class MetroOptions(
       val customBindsAnnotations = mutableSetOf<ClassId>()
       val customContributesToAnnotations = mutableSetOf<ClassId>()
       val customContributesBindingAnnotations = mutableSetOf<ClassId>()
-      val customContributesGraphExtensionAnnotations = mutableSetOf<ClassId>()
-      val customContributesGraphExtensionFactoryAnnotations = mutableSetOf<ClassId>()
+      val customGraphExtensionAnnotations = mutableSetOf<ClassId>()
+      val customGraphExtensionFactoryAnnotations = mutableSetOf<ClassId>()
       val customElementsIntoSetAnnotations = mutableSetOf<ClassId>()
       val customGraphAnnotations = mutableSetOf<ClassId>()
       val customGraphFactoryAnnotations = mutableSetOf<ClassId>()
@@ -676,14 +677,15 @@ public data class MetroOptions(
             customContributesToAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_CONTRIBUTES_BINDING ->
             customContributesBindingAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.CUSTOM_CONTRIBUTES_GRAPH_EXTENSION ->
-            customContributesGraphExtensionAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.CUSTOM_CONTRIBUTES_GRAPH_EXTENSION_FACTORY ->
-            customContributesGraphExtensionFactoryAnnotations.addAll(configuration.getAsSet(entry))
+          MetroOption.CUSTOM_GRAPH_EXTENSION ->
+            customGraphExtensionAnnotations.addAll(configuration.getAsSet(entry))
+          MetroOption.CUSTOM_GRAPH_EXTENSION_FACTORY ->
+            customGraphExtensionFactoryAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_ELEMENTS_INTO_SET ->
             customElementsIntoSetAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.CUSTOM_GRAPH -> customGraphAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.CUSTOM_GRAPH_FACTORY ->
+          MetroOption.CUSTOM_DEPENDENCY_GRAPH ->
+            customGraphAnnotations.addAll(configuration.getAsSet(entry))
+          MetroOption.CUSTOM_DEPENDENCY_GRAPH_FACTORY ->
             customGraphFactoryAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_INJECT -> customInjectAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_INTO_MAP ->
@@ -707,8 +709,8 @@ public data class MetroOptions(
           MetroOption.ENABLE_DAGGER_ANVIL_INTEROP -> {
             options = options.copy(enableDaggerAnvilInterop = configuration.getAsBoolean(entry))
           }
-          MetroOption.ENABLE_SCOPED_INJECT_CLASS_HINTS -> {
-            options = options.copy(enableScopedInjectClassHints = configuration.getAsBoolean(entry))
+          MetroOption.ENABLE_FULL_BINDING_GRAPH_VALIDATION -> {
+            options = options.copy(enableFullBindingGraphValidation = configuration.getAsBoolean(entry))
           }
         }
       }
@@ -728,7 +730,8 @@ public data class MetroOptions(
           customBindsAnnotations = customBindsAnnotations,
           customContributesToAnnotations = customContributesToAnnotations,
           customContributesBindingAnnotations = customContributesBindingAnnotations,
-          customContributesGraphExtensionAnnotations = customContributesGraphExtensionAnnotations,
+          customGraphExtensionAnnotations = customGraphExtensionAnnotations,
+          customGraphExtensionFactoryAnnotations = customGraphExtensionFactoryAnnotations,
           customElementsIntoSetAnnotations = customElementsIntoSetAnnotations,
           customGraphAnnotations = customGraphAnnotations,
           customGraphFactoryAnnotations = customGraphFactoryAnnotations,

@@ -43,7 +43,8 @@ apiValidation {
 
 dokka {
   dokkaPublications.html {
-    outputDirectory.set(rootDir.resolve("docs/api/0.x"))
+    // NOTE: This path must be in sync with `mkdocs.yml`'s API nav config path
+    outputDirectory.set(rootDir.resolve("docs/api"))
     includes.from(project.layout.projectDirectory.file("README.md"))
   }
 }

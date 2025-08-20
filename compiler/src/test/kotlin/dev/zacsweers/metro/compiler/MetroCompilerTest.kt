@@ -8,6 +8,7 @@ import com.tschuchort.compiletesting.JvmCompilationResult
 import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.PluginOption
 import com.tschuchort.compiletesting.SourceFile
+import com.tschuchort.compiletesting.SourceFile.Companion.java
 import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
 import com.tschuchort.compiletesting.addPreviousResultToClasspath
 import java.nio.file.Path
@@ -172,11 +173,11 @@ abstract class MetroCompilerTest {
                   customElementsIntoSetAnnotations.joinToString(":"),
                 )
               }
-              MetroOption.CUSTOM_GRAPH -> {
+              MetroOption.CUSTOM_DEPENDENCY_GRAPH -> {
                 if (customGraphAnnotations.isEmpty()) continue
                 processor.option(entry.raw.cliOption, customGraphAnnotations.joinToString(":"))
               }
-              MetroOption.CUSTOM_GRAPH_FACTORY -> {
+              MetroOption.CUSTOM_DEPENDENCY_GRAPH_FACTORY -> {
                 if (customGraphFactoryAnnotations.isEmpty()) continue
                 processor.option(
                   entry.raw.cliOption,
@@ -226,25 +227,25 @@ abstract class MetroCompilerTest {
                   customContributesIntoSetAnnotations.joinToString(":"),
                 )
               }
-              MetroOption.CUSTOM_CONTRIBUTES_GRAPH_EXTENSION -> {
-                if (customContributesGraphExtensionAnnotations.isEmpty()) continue
+              MetroOption.CUSTOM_GRAPH_EXTENSION -> {
+                if (customGraphExtensionAnnotations.isEmpty()) continue
                 processor.option(
                   entry.raw.cliOption,
-                  customContributesGraphExtensionAnnotations.joinToString(":"),
+                  customGraphExtensionAnnotations.joinToString(":"),
                 )
               }
-              MetroOption.CUSTOM_CONTRIBUTES_GRAPH_EXTENSION_FACTORY -> {
-                if (customContributesGraphExtensionFactoryAnnotations.isEmpty()) continue
+              MetroOption.CUSTOM_GRAPH_EXTENSION_FACTORY -> {
+                if (customGraphExtensionFactoryAnnotations.isEmpty()) continue
                 processor.option(
                   entry.raw.cliOption,
-                  customContributesGraphExtensionFactoryAnnotations.joinToString(":"),
+                  customGraphExtensionFactoryAnnotations.joinToString(":"),
                 )
               }
               MetroOption.ENABLE_DAGGER_ANVIL_INTEROP -> {
                 processor.option(entry.raw.cliOption, enableDaggerAnvilInterop)
               }
-              MetroOption.ENABLE_SCOPED_INJECT_CLASS_HINTS -> {
-                processor.option(entry.raw.cliOption, enableScopedInjectClassHints)
+              MetroOption.ENABLE_FULL_BINDING_GRAPH_VALIDATION -> {
+                processor.option(entry.raw.cliOption, enableFullBindingGraphValidation)
               }
             }
           yield(option)
@@ -281,6 +282,39 @@ abstract class MetroCompilerTest {
         // Imports
         for (import in (defaultImports + extraImports)) {
           appendLine("import $import")
+        }
+
+        appendLine()
+        appendLine()
+        appendLine(source)
+      },
+    )
+  }
+
+  /**
+   * Returns a [SourceFile] representation of this [source]. This includes common imports from
+   * Metro.
+   */
+  protected fun sourceJava(
+    @Language("java") source: String,
+    fileNameWithoutExtension: String? = null,
+    packageName: String = "test",
+    vararg extraImports: String,
+  ): SourceFile {
+    val fileName =
+      fileNameWithoutExtension
+        ?: CLASS_NAME_REGEX.find(source)?.groups?.get("name")?.value
+        ?: FUNCTION_NAME_REGEX.find(source)?.groups?.get("name")?.value?.capitalizeUS()
+        ?: "source"
+    return java(
+      "${fileName}.java",
+      buildString {
+        // Package statement
+        appendLine("package $packageName;")
+
+        // Imports
+        for (import in (defaultImports + extraImports)) {
+          appendLine("import $import;")
         }
 
         appendLine()

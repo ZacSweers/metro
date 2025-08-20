@@ -122,6 +122,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     public void testCreateGraph_OkCase() {
       runTest("compiler-tests/src/test/data/diagnostic/createGraph/CreateGraph_OkCase.kt");
     }
+
+    @Test
+    @TestMetadata("GraphFactoriesMayNotHaveVarargs.kt")
+    public void testGraphFactoriesMayNotHaveVarargs() {
+      runTest("compiler-tests/src/test/data/diagnostic/createGraph/GraphFactoriesMayNotHaveVarargs.kt");
+    }
   }
 
   @Nested
@@ -165,6 +171,44 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("GraphsCannotDirectlyExtendOtherGraphs.kt")
     public void testGraphsCannotDirectlyExtendOtherGraphs() {
       runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/GraphsCannotDirectlyExtendOtherGraphs.kt");
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/diagnostic/dependencygraph/extensions")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Extensions {
+      @Test
+      public void testAllFilesPresentInExtensions() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/dependencygraph/extensions"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      }
+
+      @Test
+      @TestMetadata("ExtensionAccessorsCannotHaveParameters.kt")
+      public void testExtensionAccessorsCannotHaveParameters() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/extensions/ExtensionAccessorsCannotHaveParameters.kt");
+      }
+
+      @Test
+      @TestMetadata("ExtensionsWithFactoriesMustUseThem.kt")
+      public void testExtensionsWithFactoriesMustUseThem() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/extensions/ExtensionsWithFactoriesMustUseThem.kt");
+      }
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/diagnostic/dependencygraph/leniency")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Leniency {
+      @Test
+      public void testAllFilesPresentInLeniency() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/dependencygraph/leniency"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      }
+
+      @Test
+      @TestMetadata("SomeUnusedAndSomeUsed.kt")
+      public void testSomeUnusedAndSomeUsed() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/leniency/SomeUnusedAndSomeUsed.kt");
+      }
     }
   }
 

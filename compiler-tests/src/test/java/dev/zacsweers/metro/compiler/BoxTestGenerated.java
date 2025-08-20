@@ -74,12 +74,6 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
-    @TestMetadata("ContributesMultibindingInteropAnnotationsAddBindingToSetOrMapWithMapKey.kt")
-    public void testContributesMultibindingInteropAnnotationsAddBindingToSetOrMapWithMapKey() {
-      runTest("compiler-tests/src/test/data/box/aggregation/ContributesMultibindingInteropAnnotationsAddBindingToSetOrMapWithMapKey.kt");
-    }
-
-    @Test
     @TestMetadata("ContributingMultibileNullableBindings.kt")
     public void testContributingMultibileNullableBindings() {
       runTest("compiler-tests/src/test/data/box/aggregation/ContributingMultibileNullableBindings.kt");
@@ -122,9 +116,43 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
-    @TestMetadata("RepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier.kt")
-    public void testRepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier() {
-      runTest("compiler-tests/src/test/data/box/aggregation/RepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier.kt");
+    @TestMetadata("ScopedContributedBindingCanBeAccessedFromChildWithClassHintsEnabled.kt")
+    public void testScopedContributedBindingCanBeAccessedFromChildWithClassHintsEnabled() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ScopedContributedBindingCanBeAccessedFromChildWithClassHintsEnabled.kt");
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/box/aggregation/interop")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Interop {
+      @Test
+      public void testAllFilesPresentInInterop() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/aggregation/interop"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      }
+
+      @Test
+      @TestMetadata("ContributedGraphsSupportIgnoreQualifier.kt")
+      public void testContributedGraphsSupportIgnoreQualifier() {
+        runTest("compiler-tests/src/test/data/box/aggregation/interop/ContributedGraphsSupportIgnoreQualifier.kt");
+      }
+
+      @Test
+      @TestMetadata("ContributedGraphsSupportRankings.kt")
+      public void testContributedGraphsSupportRankings() {
+        runTest("compiler-tests/src/test/data/box/aggregation/interop/ContributedGraphsSupportRankings.kt");
+      }
+
+      @Test
+      @TestMetadata("ContributesMultibindingInteropAnnotationsAddBindingToSetOrMapWithMapKey.kt")
+      public void testContributesMultibindingInteropAnnotationsAddBindingToSetOrMapWithMapKey() {
+        runTest("compiler-tests/src/test/data/box/aggregation/interop/ContributesMultibindingInteropAnnotationsAddBindingToSetOrMapWithMapKey.kt");
+      }
+
+      @Test
+      @TestMetadata("RepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier.kt")
+      public void testRepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier() {
+        runTest("compiler-tests/src/test/data/box/aggregation/interop/RepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier.kt");
+      }
     }
   }
 
@@ -184,6 +212,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     public void testSimpleContainersWithHintsWork() {
       runTest("compiler-tests/src/test/data/box/bindingcontainers/SimpleContainersWithHintsWork.kt");
     }
+
+    @Test
+    @TestMetadata("TransitiveContributedContainersInContributedGraphs.kt")
+    public void testTransitiveContributedContainersInContributedGraphs() {
+      runTest("compiler-tests/src/test/data/box/bindingcontainers/TransitiveContributedContainersInContributedGraphs.kt");
+    }
   }
 
   @Nested
@@ -205,6 +239,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("ContributedFactoryIsAvailableAsBinding.kt")
     public void testContributedFactoryIsAvailableAsBinding() {
       runTest("compiler-tests/src/test/data/box/contributesgraphextension/ContributedFactoryIsAvailableAsBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesIntoMapFromMultipleSources.kt")
+    public void testContributesIntoMapFromMultipleSources() {
+      runTest("compiler-tests/src/test/data/box/contributesgraphextension/ContributesIntoMapFromMultipleSources.kt");
     }
 
     @Test
@@ -235,6 +275,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("QualifiedMemberInjectionPropagatesAcrossModules.kt")
     public void testQualifiedMemberInjectionPropagatesAcrossModules() {
       runTest("compiler-tests/src/test/data/box/contributesgraphextension/QualifiedMemberInjectionPropagatesAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("ScopedBindingUsedByExtensionIsExposed.kt")
+    public void testScopedBindingUsedByExtensionIsExposed() {
+      runTest("compiler-tests/src/test/data/box/contributesgraphextension/ScopedBindingUsedByExtensionIsExposed.kt");
     }
 
     @Test
@@ -463,9 +509,97 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("ExtensionsCanBeDeclaredWithoutFactories.kt")
+      public void testExtensionsCanBeDeclaredWithoutFactories() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ExtensionsCanBeDeclaredWithoutFactories.kt");
+      }
+
+      @Test
+      @TestMetadata("FactoriesCanBeOnTheGraph.kt")
+      public void testFactoriesCanBeOnTheGraph() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/FactoriesCanBeOnTheGraph.kt");
+      }
+
+      @Test
+      @TestMetadata("FactoryIsAccessibleThroughInterop.kt")
+      public void testFactoryIsAccessibleThroughInterop() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/FactoryIsAccessibleThroughInterop.kt");
+      }
+
+      @Test
+      @TestMetadata("ManagedBindingContainerInstancesPlumbDown.kt")
+      public void testManagedBindingContainerInstancesPlumbDown() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ManagedBindingContainerInstancesPlumbDown.kt");
+      }
+
+      @Test
+      @TestMetadata("MatchingParentBindingsAreSuperseded.kt")
+      public void testMatchingParentBindingsAreSuperseded() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/MatchingParentBindingsAreSuperseded.kt");
+      }
+
+      @Test
+      @TestMetadata("MultiLevelEmptyExtensions.kt")
+      public void testMultiLevelEmptyExtensions() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/MultiLevelEmptyExtensions.kt");
+      }
+
+      @Test
+      @TestMetadata("OverloadedFactoryFunctions.kt")
+      public void testOverloadedFactoryFunctions() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/OverloadedFactoryFunctions.kt");
+      }
+
+      @Test
       @TestMetadata("ParentBindingsAreAlsoIncluded.kt")
       public void testParentBindingsAreAlsoIncluded() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ParentBindingsAreAlsoIncluded.kt");
+      }
+
+      @Test
+      @TestMetadata("ParentMultibindingsAreAlsoIncluded.kt")
+      public void testParentMultibindingsAreAlsoIncluded() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ParentMultibindingsAreAlsoIncluded.kt");
+      }
+
+      @Test
+      @TestMetadata("ScopedExtensionsWithoutFactoriesShouldBeCached.kt")
+      public void testScopedExtensionsWithoutFactoriesShouldBeCached() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ScopedExtensionsWithoutFactoriesShouldBeCached.kt");
+      }
+
+      @Test
+      @TestMetadata("ScopedExtensionsWithoutFactoriesShouldBeCachedWithOrdering.kt")
+      public void testScopedExtensionsWithoutFactoriesShouldBeCachedWithOrdering() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ScopedExtensionsWithoutFactoriesShouldBeCachedWithOrdering.kt");
+      }
+
+      @Test
+      @TestMetadata("SimpleExtension.kt")
+      public void testSimpleExtension() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/SimpleExtension.kt");
+      }
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/box/dependencygraph/leniency")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Leniency {
+      @Test
+      public void testAllFilesPresentInLeniency() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/leniency"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      }
+
+      @Test
+      @TestMetadata("UnusedProvidersAreNotValidated.kt")
+      public void testUnusedProvidersAreNotValidated() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/leniency/UnusedProvidersAreNotValidated.kt");
+      }
+
+      @Test
+      @TestMetadata("UnusedProvidersInContainersAreNotValidated.kt")
+      public void testUnusedProvidersInContainersAreNotValidated() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/leniency/UnusedProvidersInContainersAreNotValidated.kt");
       }
     }
   }
@@ -495,6 +629,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("InjectedFunctionParametersWithLambdaDefaultsWork.kt")
     public void testInjectedFunctionParametersWithLambdaDefaultsWork() {
       runTest("compiler-tests/src/test/data/box/inject/InjectedFunctionParametersWithLambdaDefaultsWork.kt");
+    }
+
+    @Test
+    @TestMetadata("InjectedPrivateConstructorParametersWithGenericsWork.kt")
+    public void testInjectedPrivateConstructorParametersWithGenericsWork() {
+      runTest("compiler-tests/src/test/data/box/inject/InjectedPrivateConstructorParametersWithGenericsWork.kt");
     }
 
     @Nested

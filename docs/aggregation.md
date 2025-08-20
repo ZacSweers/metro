@@ -166,6 +166,46 @@ class CacheImpl(...) : Cache
 
 This annotation is also repeatable and can be used to contribute to multiple scopes, multiple bound types, and multiple map keys.
 
+You can use `@IntoMap`/`@IntoSet` to provide into the same container:
+
+```kotlin
+// Method 1: applying @ContributesIntoMap to bind directly from the implementation class
+@ContributesIntoMap(AppScope::class)
+@StringKey("remote")
+@Inject
+class RemoteCache(...) : Cache
+
+// Method 2: Declare the class, then provide @IntoMap binding separately via a BindingContainer
+class LocalCache(...) : Cache
+
+@BindingContainer
+@ContributesTo(AppScope::class)
+object CacheBindingContainer {
+  @Provides
+  @IntoMap
+  @StringKey("local")
+  fun cache(): Cache = LocalCache(...)
+}
+
+// Accessing the resultant map, containing both implementations:
+@Inject
+class CompositeCache(private val caches: Map<String, Cache>) {
+  val local: Cache = caches["local"]
+  val remote: Cache = caches["remote"]
+}
+
+// Alternatively, specify Provider in the map type to lazily-initialize the implementations
+@Inject
+class CompositeCacheAlternate(private val caches: Map<String, Provider<Cache>>) {
+  val local: Cache = caches["local"]()
+  val remote: Provider<Cache> = caches["remote"]
+  
+  fun someTimeLater() {
+    remote().doSomethingWithCache()
+  }
+}
+```
+
 ## Contributing Binding Containers
 
 Binding containers (see [Binding Containers](dependency-graphs.md#binding-containers)) can also be contributed to scopes via `@ContributesTo`:
@@ -203,6 +243,24 @@ object FakeNetworkBindings {
 }
 ```
 
+### Replacing Contributed Bindings
+
+Binding containers can replace other contributed bindings, too:
+
+```kotlin
+// In production
+@ContributesBinding(AppScope::class)
+@Inject
+class HttpClientImpl : HttpClient
+
+// In tests
+@ContributesTo(AppScope::class, replaces = [HttpClientImpl::class])
+@BindingContainer
+object FakeNetworkBindings {
+  @Provides fun provideFakeHttpClient(): HttpClient = FakeHttpClient()
+}
+```
+
 ### Excluding Contributed Binding Containers
 
 Graphs can exclude specific contributed binding containers:
@@ -219,15 +277,6 @@ interface TestAppGraph {
   // NetworkBindings will not be included
 }
 ```
-
-!!! info
-    Currently, contributed binding containers cannot replace non-contributed-container types (i.e. `@ContributesBinding` classes) yet.
-
-## `@ContributesGraphExtension`
-
-`@ContributesGraphExtension` is a specialized type of graph that is _contributed_ to some parent scope. Its generation is deferred until the parent graph interface is merged.
-
-See [Dependency Graphs](dependency-graphs.md#contributed-graph-extensions) for motivation and documentation.
 
 ## Implementation notes
 

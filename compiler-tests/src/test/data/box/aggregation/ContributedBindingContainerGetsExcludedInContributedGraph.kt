@@ -15,17 +15,17 @@ interface ContributedContainer {
   ): MyType
 }
 
-@ContributesGraphExtension(scope = AppScope::class, excludes = [ContributedContainer::class])
+@GraphExtension(scope = AppScope::class, excludes = [ContributedContainer::class])
 interface ExampleGraph {
   val myType: MyType
 
-  @ContributesGraphExtension.Factory(Unit::class)
+  @GraphExtension.Factory @ContributesTo(Unit::class)
   interface Factory {
     fun createExampleGraph(): ExampleGraph
   }
 }
 
-@DependencyGraph(scope = Unit::class, isExtendable = true)
+@DependencyGraph(scope = Unit::class)
 interface AppGraph
 
 fun box(): String {

@@ -5,8 +5,8 @@ FILE: ContributingGraphExtensions.kt
         }
 
     }
-    @R|dev/zacsweers/metro/ContributesGraphExtension|(scope = <getClass>(Q|LoggedInScope|)) public abstract interface LoggedInGraph : R|kotlin/Any| {
-        @R|dev/zacsweers/metro/ContributesGraphExtension.Factory|(scope = <getClass>(Q|dev/zacsweers/metro/AppScope|)) public abstract interface Factory : R|kotlin/Any| {
+    @R|dev/zacsweers/metro/GraphExtension|(scope = <getClass>(Q|LoggedInScope|)) public abstract interface LoggedInGraph : R|kotlin/Any| {
+        @R|dev/zacsweers/metro/GraphExtension.Factory|() @R|dev/zacsweers/metro/ContributesTo|(scope = <getClass>(Q|dev/zacsweers/metro/AppScope|)) public abstract interface Factory : R|kotlin/Any| {
             public abstract fun createLoggedInGraph(): R|LoggedInGraph|
 
             @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/MetroContribution|(scope = <getClass>(Q|dev/zacsweers/metro/AppScope|)) public abstract interface $$MetroContributionToAppScope : R|LoggedInGraph.Factory| {
@@ -15,7 +15,7 @@ FILE: ContributingGraphExtensions.kt
         }
 
     }
-    @R|dev/zacsweers/metro/DependencyGraph|(scope = <getClass>(Q|dev/zacsweers/metro/AppScope|), isExtendable = Boolean(true)) public abstract interface ExampleGraph : R|kotlin/Any|, R|LoggedInGraph.Factory.$$MetroContributionToAppScope| {
+    @R|dev/zacsweers/metro/DependencyGraph|(scope = <getClass>(Q|dev/zacsweers/metro/AppScope|)) public abstract interface ExampleGraph : R|kotlin/Any|, R|LoggedInGraph.Factory.$$MetroContributionToAppScope| {
         @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) public final class $$MetroGraph : R|ExampleGraph| {
             private constructor(): R|ExampleGraph.$$MetroGraph| {
                 super<R|kotlin/Any|>()

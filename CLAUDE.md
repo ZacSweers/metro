@@ -101,3 +101,6 @@ To create a new test, add a source file under the appropriate directory and then
 - FIR is for analysis/validation, IR is for code generation - don't mix concerns
 - Always run API validation (`apiCheck`) when changing public APIs
 - Use existing test infrastructure patterns rather than creating new test types
+- Don't run gradle commands with unnecessary flags like `--info`, `--no-daemon`, etc.
+- Don't cd into a module directory and run gradle commands - use `./gradlew` instead from the directory that wrapper is in.
+- Do not run tests automatically, prompt first.

@@ -10,9 +10,9 @@ on:
   # Allows manual deployements (if needed)
   workflow_dispatch:
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+# Sets permissions of the GITHUB_TOKEN to allow pushing to `gh-pages` branch
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -29,7 +29,7 @@ jobs:
     if: github.repository == 'zacsweers/metro'
     steps:
       - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
 
       - name: Configure JDK
         uses: actions/setup-java@v4
@@ -67,25 +67,59 @@ jobs:
       - name: Copy documentation files
         run: ./scripts/copy_docs_files.sh
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
+      - name: Extract Metro version from gradle.properties
+        id: version
+        run: |
+          METRO_VERSION=$(grep "VERSION_NAME=" gradle.properties | cut -d'=' -f2)
+          echo "METRO_VERSION=$METRO_VERSION" >> $GITHUB_OUTPUT
+          echo "Extracted version: $METRO_VERSION"
 
-      - name: Build MkDocs site
-        run: mkdocs build
+      - name: Validate version format
+        run: |
+          VERSION="${{ steps.version.outputs.METRO_VERSION }}"
+          
+          # Check if version is empty
+          if [[ -z "$VERSION" ]]; then
+            echo "ERROR: VERSION_NAME is empty in gradle.properties"
+            exit 1
+          fi
+          
+          # Check if version matches x.y.z or x.y.z-SNAPSHOT pattern
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-SNAPSHOT)?$ ]]; then
+            echo "ERROR: VERSION_NAME '$VERSION' does not match expected format:"
+            echo "   Expected: x.y.z or x.y.z-SNAPSHOT (e.g., 1.2.3 or 1.2.3-SNAPSHOT)"
+            echo "   Actual: $VERSION"
+            exit 1
+          fi
+          
+          echo "Version format is valid: $VERSION"
 
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: './site'
+      - name: Configure Git for Mike
+        run: |
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
 
-  # Deployment job
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: docs-site
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Fetch gh-pages branch
+        run: |
+          # Fetch the gh-pages branch to ensure we have the latest state
+          git fetch origin gh-pages:gh-pages || echo "gh-pages branch doesn't exist yet (first deployment)"
+
+      - name: Show current mike versions
+        run: |
+          echo "Current mike versions available:"
+          mike list || echo "No docs site versions found (likely first deployment)"
+
+      - name: Deploy SNAPSHOT Docs with mike
+        if: ${{ success() && contains(steps.version.outputs.METRO_VERSION, 'SNAPSHOT') }}
+        run: mike deploy --update-aliases --push ${{ steps.version.outputs.METRO_VERSION }} snapshot
+
+      # Delete previous snapshot docs when a respective release is getting published
+      - name: Delete snapshot docs for new release
+        if: ${{ success() && !contains(steps.version.outputs.METRO_VERSION, 'SNAPSHOT') }}
+        run: |
+          mike delete --push ${{ steps.version.outputs.METRO_VERSION }}-SNAPSHOT || true
+
+      - name: Deploy Release Docs with mike
+        if: ${{ success() && !contains(steps.version.outputs.METRO_VERSION, 'SNAPSHOT') }}
+        run: |
+          mike deploy --update-aliases --push ${{ steps.version.outputs.METRO_VERSION }} latest

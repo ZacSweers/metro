@@ -18,6 +18,7 @@ import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.irTemporary
 import dev.zacsweers.metro.compiler.ir.isExternalParent
+import dev.zacsweers.metro.compiler.ir.locationOrNull
 import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
@@ -30,6 +31,7 @@ import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import java.util.Optional
 import kotlin.jvm.optionals.getOrNull
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
@@ -48,6 +50,7 @@ import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.file
+import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.getAnnotation
 import org.jetbrains.kotlin.ir.util.getAnnotationStringValue
@@ -146,6 +149,9 @@ internal class InjectConstructorTransformer(
             MetroDiagnostics.METRO_ERROR,
             "Could not find generated factory for '${declaration.kotlinFqName}' in upstream module where it's defined. Run the Metro compiler over that module too.",
           )
+        } else {
+          diagnosticReporter.at(declaration).report(MetroIrErrors.METRO_ERROR, noFactoryMessage)
+        }
         return null
       } else if (doNotErrorOnMissing) {
         // Store a null here because it's absent
@@ -470,15 +476,19 @@ internal class InjectConstructorTransformer(
         parentClass = classToGenerateCreatorsIn,
         sourceParameters = constructorParameters.regularParameters.map { it.ir },
       ) { function ->
-        irCallConstructor(targetConstructor, emptyList()).apply {
-          // The function may have a dispatch receiver so we need to offset
-          val functionParameters = function.nonDispatchParameters
-          val indexOffset = if (function.dispatchReceiverParameter == null) 0 else 1
-          for (index in constructorParameters.allParameters.indices) {
-            val parameter = functionParameters[index]
-            arguments[parameter.indexInParameters - indexOffset] = irGet(parameter)
+        irCallConstructor(
+            callee = targetConstructor,
+            typeArguments = function.typeParameters.map { it.defaultType },
+          )
+          .apply {
+            // The function may have a dispatch receiver so we need to offset
+            val functionParameters = function.nonDispatchParameters
+            val indexOffset = if (function.dispatchReceiverParameter == null) 0 else 1
+            for (index in constructorParameters.allParameters.indices) {
+              val parameter = functionParameters[index]
+              arguments[parameter.indexInParameters - indexOffset] = irGet(parameter)
+            }
           }
-        }
       }
     return newInstanceFunction
   }

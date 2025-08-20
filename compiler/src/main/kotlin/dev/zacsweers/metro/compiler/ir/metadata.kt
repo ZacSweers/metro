@@ -24,10 +24,6 @@ internal var IrClass.metroMetadata: MetroMetadata?
 
 internal fun DependencyGraphNode.toProto(
   bindingGraph: IrBindingGraph,
-  includedGraphClasses: Set<String>,
-  parentGraphClasses: Set<String>,
-  providerFields: List<String>,
-  instanceFields: List<String>,
 ): DependencyGraphProto {
   var multibindingAccessors = 0
   val accessorNames =
@@ -44,12 +40,8 @@ internal fun DependencyGraphNode.toProto(
 
   return createGraphProto(
     isGraph = true,
-    providerFieldNames = providerFields,
-    instanceFieldsNames = instanceFields,
     providerFactories = providerFactories,
     accessorNames = accessorNames,
-    includedGraphClasses = includedGraphClasses,
-    parentGraphClasses = parentGraphClasses,
     multibindingAccessorIndices = multibindingAccessors,
   )
 }
@@ -66,24 +58,16 @@ internal fun BindingContainer.toProto(): DependencyGraphProto {
 //  these
 private fun createGraphProto(
   isGraph: Boolean,
-  providerFieldNames: Collection<String> = emptyList(),
-  instanceFieldsNames: Collection<String> = emptyList(),
   providerFactories: Collection<Pair<IrTypeKey, ProviderFactory>> = emptyList(),
   accessorNames: Collection<String> = emptyList(),
-  includedGraphClasses: Collection<String> = emptyList(),
-  parentGraphClasses: Collection<String> = emptyList(),
   multibindingAccessorIndices: Int = 0,
   includedBindingContainers: Collection<String> = emptyList(),
 ): DependencyGraphProto {
   return DependencyGraphProto(
     is_graph = isGraph,
-    provider_field_names = providerFieldNames.sorted(),
-    instance_field_names = instanceFieldsNames.sorted(),
     provider_factory_classes =
       providerFactories.map { (_, factory) -> factory.clazz.classIdOrFail.protoString }.sorted(),
     accessor_callable_names = accessorNames.sorted(),
-    included_classes = includedGraphClasses.sorted(),
-    parent_graph_classes = parentGraphClasses.sorted(),
     multibinding_accessor_indices = multibindingAccessorIndices,
     included_binding_containers = includedBindingContainers.sorted(),
   )

@@ -5,12 +5,11 @@ package dev.zacsweers.metro.compiler.ir.transformers
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
-import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.bindingTypeOrNull
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.findAnnotations
 import dev.zacsweers.metro.compiler.ir.getAllSuperTypes
-import dev.zacsweers.metro.compiler.ir.getConstBooleanArgumentOrNull
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.mapKeyAnnotation
@@ -21,7 +20,6 @@ import dev.zacsweers.metro.compiler.ir.requireNestedClass
 import dev.zacsweers.metro.compiler.ir.requireScope
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.joinSimpleNames
-import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrStatement
@@ -30,9 +28,7 @@ import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
-import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.util.addFakeOverrides
 import org.jetbrains.kotlin.ir.util.classId
@@ -40,7 +36,6 @@ import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
-import org.jetbrains.kotlin.ir.util.getValueArgument
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.name.ClassId
@@ -121,7 +116,7 @@ internal class ContributionBindsFunctionsIrTransformer(private val context: IrMe
 
     // Add fake overrides. This should only add missing ones
     declaration.addFakeOverrides(irTypeSystemContext)
-    if (!declaration.isAnnotatedWithAny(symbols.classIds.contributesGraphExtensionAnnotations)) {
+    if (!declaration.isAnnotatedWithAny(symbols.classIds.graphExtensionAnnotations)) {
       // Only DependencyGraph classes have a $$MetroGraph. ContributesGraphExtension will get
       // implemented later in IR
       declaration.requireNestedClass(Symbols.Names.MetroGraph).addFakeOverrides(irTypeSystemContext)
@@ -186,7 +181,9 @@ internal class ContributionBindsFunctionsIrTransformer(private val context: IrMe
                 //  bound type?
               }
               qualifier?.let { annotations += it.ir.deepCopyWithSymbols() }
-              mapKey?.let { annotations += it.ir.deepCopyWithSymbols() }
+              if (this@BindingContribution is ContributesIntoMapBinding) {
+                mapKey?.let { annotations += it.ir.deepCopyWithSymbols() }
+              }
               pluginContext.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(this)
             }
         }
@@ -240,7 +237,7 @@ internal class ContributionBindsFunctionsIrTransformer(private val context: IrMe
   }
 
   private fun findContributions(contributingSymbol: IrClass): Set<Contribution>? {
-    val contributesToAnnotations = symbols.classIds.contributesToLikeAnnotations
+    val contributesToAnnotations = symbols.classIds.contributesToAnnotations
     val contributesBindingAnnotations = symbols.classIds.contributesBindingAnnotations
     val contributesIntoSetAnnotations = symbols.classIds.contributesIntoSetAnnotations
     val contributesIntoMapAnnotations = symbols.classIds.contributesIntoMapAnnotations
@@ -302,27 +299,4 @@ internal class ContributionBindsFunctionsIrTransformer(private val context: IrMe
   private fun IrFunction.buildIntoMapAnnotation(): IrConstructorCall {
     return buildAnnotation(symbol, symbols.intoMapConstructor)
   }
-}
-
-// Also check ignoreQualifier for interop after entering interop block to prevent unnecessary
-// checks for non-interop
-context(context: IrPluginContext)
-private fun IrConstructorCall.bindingTypeOrNull(): Pair<IrType?, Boolean> {
-  // Return a binding defined using Metro's API
-  getValueArgument(Symbols.Names.binding)?.expectAsOrNull<IrConstructorCall>()?.let { bindingType ->
-    // bindingType is actually an annotation
-    return bindingType.typeArguments.getOrNull(0)?.takeUnless {
-      it == context.irBuiltIns.nothingType
-    } to false
-  }
-  // Return a boundType defined using anvil KClass
-  return anvilKClassBoundTypeArgument() to anvilIgnoreQualifier()
-}
-
-private fun IrConstructorCall.anvilKClassBoundTypeArgument(): IrType? {
-  return getValueArgument(Symbols.Names.boundType)?.expectAsOrNull<IrClassReference>()?.classType
-}
-
-private fun IrConstructorCall.anvilIgnoreQualifier(): Boolean {
-  return getConstBooleanArgumentOrNull(Symbols.Names.ignoreQualifier) ?: false
 }

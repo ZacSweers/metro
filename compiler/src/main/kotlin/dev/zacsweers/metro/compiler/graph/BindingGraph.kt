@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.graph
 import dev.zacsweers.metro.compiler.ir.appendBindingStack
 import dev.zacsweers.metro.compiler.ir.appendBindingStackEntries
 import dev.zacsweers.metro.compiler.ir.withEntry
+import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import java.util.SortedMap
@@ -93,10 +94,11 @@ internal open class MutableBindingGraph<
    */
   fun seal(
     roots: Map<ContextualTypeKey, BindingStackEntry> = emptyMap(),
-    keep: Set<TypeKey> = emptySet(),
+    keep: Map<ContextualTypeKey, BindingStackEntry> = emptyMap(),
     shrinkUnusedBindings: Boolean = true,
     tracer: Tracer = Tracer.NONE,
     onPopulated: () -> Unit = {},
+    onSortedCycle: (List<TypeKey>) -> Unit = {},
     validateBindings:
       (
         bindings: Map<TypeKey, Binding>,
@@ -109,7 +111,9 @@ internal open class MutableBindingGraph<
   ): TopoSortResult<TypeKey> {
     val stack = newBindingStack()
 
-    val missingBindings = populateGraph(roots, stack, tracer)
+    // Order matters, prefer roots over matching kees as they have more information in their entries
+    val rootsWithKeeps = keep + roots
+    val missingBindings = populateGraph(rootsWithKeeps, stack, tracer)
 
     onPopulated()
 
@@ -150,14 +154,14 @@ internal open class MutableBindingGraph<
     validateBindings(bindings, stack, roots, fullAdjacency)
 
     val topo =
-      tracer.traceNested("Sort and validate") {
+      tracer.traceNested("Sort and validate") { parentTracer ->
         val allKeeps =
           if (shrinkUnusedBindings) {
-            keep
+            keep.keys.mapToSet { it.typeKey }
           } else {
-            fullAdjacency.keys
+            fullAdjacency.keys + keep.keys.mapToSet { it.typeKey }
           }
-        sortAndValidate(roots, allKeeps, fullAdjacency, stack, it)
+        sortAndValidate(roots, allKeeps, fullAdjacency, stack, parentTracer, onSortedCycle)
       }
 
     tracer.traceNested("Compute binding indices") {
@@ -236,6 +240,7 @@ internal open class MutableBindingGraph<
     fullAdjacency: SortedMap<TypeKey, SortedSet<TypeKey>>,
     stack: BindingStack,
     parentTracer: Tracer,
+    onSortedCycle: (List<TypeKey>) -> Unit,
   ): TopoSortResult<TypeKey> {
     val sortedRootKeys =
       TreeSet<TypeKey>().apply {
@@ -252,6 +257,7 @@ internal open class MutableBindingGraph<
           isDeferrable = { from, to ->
             bindings.getValue(from).dependencies.first { it.typeKey == to }.isDeferrable
           },
+          onSortedCycle = onSortedCycle,
           onCycle = { cycle ->
             val fullCycle =
               buildList {
@@ -346,24 +352,52 @@ internal open class MutableBindingGraph<
       return
     }
     if (key in bindings) {
-      val message = buildString {
-        appendLine(
-          "[Metro/DuplicateBinding] Duplicate binding for ${key.render(short = false, includeQualifier = true)}"
-        )
-        val existing = bindings.getValue(key)
-        val duplicate = binding
-        appendLine("├─ Binding 1: ${existing.renderLocationDiagnostic()}")
-        appendLine("├─ Binding 2: ${duplicate.renderLocationDiagnostic()}")
-        if (existing === duplicate) {
-          appendLine("├─ Bindings are the same: $existing")
-        } else if (existing == duplicate) {
-          appendLine("├─ Bindings are equal: $existing")
-        }
-        appendBindingStack(bindingStack)
-      }
-      onError(message, bindingStack)
+      val existing = bindings.getValue(key)
+      val duplicate = binding
+      reportDuplicateBinding(key, existing, duplicate, bindingStack)
+    } else {
+      bindings[binding.typeKey] = binding
     }
-    bindings[binding.typeKey] = binding
+  }
+
+  fun reportDuplicateBinding(
+    key: TypeKey,
+    existing: Binding,
+    duplicate: Binding,
+    bindingStack: BindingStack,
+  ) {
+    reportDuplicateBinding(
+      key,
+      existing.renderLocationDiagnostic(),
+      duplicate.renderLocationDiagnostic(),
+      bindingStack,
+    ) {
+      if (existing === duplicate) {
+        appendLine("├─ Bindings are the same: $existing")
+      } else if (existing == duplicate) {
+        appendLine("├─ Bindings are equal: $existing")
+      }
+    }
+  }
+
+  fun reportDuplicateBinding(
+    key: TypeKey,
+    location1: String,
+    location2: String,
+    bindingStack: BindingStack,
+    extraContent: StringBuilder.() -> Unit = {},
+  ) {
+    val message = buildString {
+      appendLine(
+        "[Metro/DuplicateBinding] Duplicate binding for ${key.render(short = false, includeQualifier = true)}"
+      )
+      // TODO include a binding "type" key? i.e. @Binds
+      appendLine("├─ Binding 1: $location1")
+      appendLine("├─ Binding 2: $location2")
+      extraContent()
+      appendBindingStack(bindingStack)
+    }
+    onError(message, bindingStack)
   }
 
   override operator fun get(key: TypeKey): Binding? = bindings[key]

@@ -18,6 +18,7 @@ import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.metro.compiler.isWordPrefixRegex
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.metroAnnotations
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.builtins.functions.FunctionTypeKind
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -48,10 +49,12 @@ import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.resolve.withParameterNameAnnotation
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
+import org.jetbrains.kotlin.fir.symbols.impl.FirBackingFieldSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirFieldSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertyAccessorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
@@ -283,34 +286,49 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
             setType = true,
             prefix = null,
           )
-        mapping[Name.identifier("isPropertyAccessor")] =
+
+        val symbolToMap =
+          when (val symbol = sourceCallable.symbol) {
+            is FirPropertyAccessorSymbol -> symbol.propertySymbol
+            is FirPropertySymbol -> symbol
+            is FirNamedFunctionSymbol -> symbol
+            is FirBackingFieldSymbol -> symbol.propertySymbol
+            is FirFieldSymbol -> symbol
+            else -> reportCompilerBug("Unexpected callable symbol type: $symbol")
+          }
+
+        // Only set propertyName if it's a property
+        val propertyName =
+          if (symbolToMap !is FirNamedFunctionSymbol) {
+            symbolToMap.name.asString()
+          } else {
+            ""
+          }
+        mapping[Name.identifier("propertyName")] =
           buildLiteralExpression(
             source = null,
-            kind = ConstantValueKind.Boolean,
-            value =
-              when (sourceCallable.symbol) {
-                is FirPropertyAccessorSymbol,
-                is FirPropertySymbol -> true
-                else -> false
-              },
+            kind = ConstantValueKind.String,
+            value = propertyName,
             annotations = null,
             setType = true,
             prefix = null,
           )
+
         mapping[Name.identifier("startOffset")] =
           buildLiteralExpression(
             source = null,
             kind = ConstantValueKind.Int,
-            value = sourceCallable.symbol.source?.startOffset ?: UNDEFINED_OFFSET,
+            value = symbolToMap.source?.startOffset ?: UNDEFINED_OFFSET,
             annotations = null,
             setType = true,
             prefix = null,
           )
+
         mapping[Name.identifier("endOffset")] =
           buildLiteralExpression(
             source = null,
             kind = ConstantValueKind.Int,
-            value = sourceCallable.symbol.source?.endOffset ?: UNDEFINED_OFFSET,
+            value = symbolToMap.source?.endOffset ?: UNDEFINED_OFFSET,
             annotations = null,
             setType = true,
             prefix = null,

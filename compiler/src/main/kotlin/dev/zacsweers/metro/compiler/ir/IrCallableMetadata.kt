@@ -8,6 +8,8 @@ import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.metroAnnotations
+import dev.zacsweers.metro.compiler.reportCompilerBug
+import org.jetbrains.kotlin.ir.builders.declarations.buildProperty
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -48,8 +50,8 @@ internal fun IrAnnotationContainer.irCallableMetadata(
 ): IrCallableMetadata {
   val callableMetadataAnno =
     getAnnotation(Symbols.FqNames.CallableMetadataClass)
-      ?: error(
-        "No @CallableMetadata found on ${this.expectAsOrNull<IrDeclarationParent>()?.kotlinFqName}. This is a bug in the Metro compiler."
+      ?: reportCompilerBug(
+        "No @CallableMetadata found on ${this.expectAsOrNull<IrDeclarationParent>()?.kotlinFqName}"
       )
   return callableMetadataAnno.toIrCallableMetadata(mirrorFunction, sourceAnnotations)
 }
@@ -63,29 +65,47 @@ internal fun IrConstructorCall.toIrCallableMetadata(
   val clazz = mirrorFunction.parentAsClass
   val parentClass = clazz.parentAsClass
   val callableName = getAnnotationStringValue("callableName")
+  val propertyName = getAnnotationStringValue("propertyName")
+  // Read back the original offsets in the original source
+  val annoStartOffset = constArgumentOfTypeAt<Int>(2)!!
+  val annoEndOffset = constArgumentOfTypeAt<Int>(3)!!
   val callableId = CallableId(clazz.classIdOrFail.parentClassId!!, callableName.asName())
-  val isPropertyAccessor =
-    getConstBooleanArgumentOrNull(Symbols.StringNames.IS_PROPERTY_ACCESSOR.asName()) ?: false
+
   // Fake a reference to the "real" function by making a copy of this mirror that reflects the
   // real one
   val function =
     mirrorFunction.deepCopyWithSymbols().apply {
       name = callableId.callableName
+      setDispatchReceiver(parentClass.thisReceiverOrFail.copyTo(this))
       // Point at the original class
       parent = parentClass
-      setDispatchReceiver(parentClass.thisReceiverOrFail.copyTo(this))
-      // Read back the original offsets in the original source
-      startOffset = constArgumentOfTypeAt<Int>(2)!!
-      endOffset = constArgumentOfTypeAt<Int>(3)!!
     }
+
+  if (propertyName.isNotBlank()) {
+    // Synthesize the property too
+    mirrorFunction.factory
+      .buildProperty {
+        this.name = propertyName.asName()
+        startOffset = annoStartOffset
+        endOffset = annoEndOffset
+      }
+      .apply {
+        parent = parentClass
+        this.getter = function
+        function.correspondingPropertySymbol = symbol
+      }
+  } else {
+    function.startOffset = annoStartOffset
+    function.endOffset = annoEndOffset
+  }
 
   val annotations = sourceAnnotations ?: function.metroAnnotations(context.symbols.classIds)
   return IrCallableMetadata(
-    callableId,
-    mirrorFunction.callableId,
-    annotations,
-    isPropertyAccessor,
-    function,
-    mirrorFunction,
+    callableId = callableId,
+    mirrorCallableId = mirrorFunction.callableId,
+    annotations = annotations,
+    isPropertyAccessor = propertyName.isNotBlank(),
+    function = function,
+    mirrorFunction = mirrorFunction,
   )
 }

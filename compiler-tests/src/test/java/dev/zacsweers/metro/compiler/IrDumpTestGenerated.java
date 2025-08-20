@@ -106,6 +106,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("ExtensionsAreInnerClasses.kt")
+    public void testExtensionsAreInnerClasses() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/ExtensionsAreInnerClasses.kt");
+    }
+
+    @Test
     @TestMetadata("GraphAccessors.kt")
     public void testGraphAccessors() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/GraphAccessors.kt");
@@ -118,21 +124,9 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
-    @TestMetadata("UnusedInstanceBindingsInExtendedGraphGetProviderFields.kt")
-    public void testUnusedInstanceBindingsInExtendedGraphGetProviderFields() {
-      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/UnusedInstanceBindingsInExtendedGraphGetProviderFields.kt");
-    }
-
-    @Test
     @TestMetadata("UnusedInstanceBindingsInUnextendedGraphGetNoProviderFields.kt")
     public void testUnusedInstanceBindingsInUnextendedGraphGetNoProviderFields() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/UnusedInstanceBindingsInUnextendedGraphGetNoProviderFields.kt");
-    }
-
-    @Test
-    @TestMetadata("UnusedScopedBindingsInExtendedGraphGetProviderFields.kt")
-    public void testUnusedScopedBindingsInExtendedGraphGetProviderFields() {
-      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/UnusedScopedBindingsInExtendedGraphGetProviderFields.kt");
     }
 
     @Test

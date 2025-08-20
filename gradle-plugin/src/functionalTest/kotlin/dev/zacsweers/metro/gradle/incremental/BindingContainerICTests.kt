@@ -6,9 +6,11 @@ package dev.zacsweers.metro.gradle.incremental
 
 import com.autonomousapps.kit.GradleBuilder.build
 import com.autonomousapps.kit.GradleBuilder.buildAndFail
+import com.autonomousapps.kit.GradleProject
+import com.autonomousapps.kit.GradleProject.DslKind
+import com.autonomousapps.kit.gradle.Dependency
 import com.google.common.truth.Truth.assertThat
 import org.gradle.testkit.runner.TaskOutcome
-import org.junit.Ignore
 import org.junit.Test
 
 class BindingContainerICTests : BaseIncrementalCompilationTest() {
@@ -16,7 +18,15 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
   @Test
   fun addingNewBindingToExistingBindingContainer() {
     val fixture =
-      object : MetroProject() {
+      object :
+        MetroProject(
+          metroOptions =
+            MetroOptionOverrides(
+              // Enable full validation for this case to ensure we pick up and store the unused B
+              // binding
+              enableFullBindingGraphValidation = true
+            )
+        ) {
         override fun sources() = listOf(appGraph, bindingContainer, implementations, target)
 
         private val appGraph =
@@ -518,8 +528,6 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     assertThat(project.appGraphReports.scopedProviderFieldKeys).contains("kotlin.String")
   }
 
-  // TODO
-  @Ignore("@ContributesTo with @BindingContainer not yet supported")
   @Test
   fun bindingContainerWithContributesTo() {
     val fixture =
@@ -594,18 +602,36 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.output).contains("Cannot find an @Inject constructor")
   }
 
-  // TODO
-  @Ignore("These tests don't support multi-module yet")
   @Test
   fun multiModuleBindingContainerChanges() {
     val fixture =
       object : MetroProject() {
-        override fun sources() = listOf(appGraph, featureGraph, bindingContainer, target)
+        override fun sources() = listOf(appGraph, featureGraph, target)
+
+        override val gradleProject: GradleProject
+          get() =
+            newGradleProjectBuilder(DslKind.KOTLIN)
+              .withRootProject {
+                withBuildScript {
+                  sources = sources()
+                  applyMetroDefault()
+                  dependencies(
+                    Dependency.implementation(":lib"),
+                  )
+                }
+              }
+              .withSubproject("lib") {
+                sources.add(bindingContainer)
+                withBuildScript {
+                  applyMetroDefault()
+                }
+              }
+              .write()
 
         private val appGraph =
           source(
             """
-            @DependencyGraph(Unit::class, isExtendable = true)
+            @DependencyGraph(Unit::class)
             interface AppGraph
             """
               .trimIndent()
@@ -614,14 +640,14 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
         private val featureGraph =
           source(
             """
-            @DependencyGraph
+            @GraphExtension
             interface FeatureGraph {
               val target: Target
 
-              @DependencyGraph.Factory
+              @ContributesTo(Unit::class)
+              @GraphExtension.Factory
               interface Factory {
                 fun create(
-                  @Extends appGraph: AppGraph,
                   @Includes bindings: MyBindingContainer
                 ): FeatureGraph
               }
@@ -640,10 +666,10 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             }
 
             interface InterfaceA
+            interface InterfaceB
 
             @Inject
-            @ContributesBinding(Unit::class)
-            class ImplA : InterfaceA
+            class ImplA : InterfaceA, InterfaceB
             """
               .trimIndent()
           )
@@ -659,27 +685,29 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
       }
 
     val project = fixture.gradleProject
+    val libProject = project.subprojects.first { it.name == "lib" }
 
     // First build should succeed
     val firstBuildResult = build(project.rootDir, "compileKotlin")
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Change the binding in the container
-    project.modify(
+    libProject.modify(
+      project.rootDir,
       fixture.bindingContainer,
       """
       @BindingContainer
       interface MyBindingContainer {
         // Changed: now binds to a different interface
         @Binds
-        fun ImplA.bindA(): ImplA
+        fun ImplA.bindA(): InterfaceB
       }
 
       interface InterfaceA
+      interface InterfaceB
 
       @Inject
-      @ContributesBinding(Unit::class)
-      class ImplA : InterfaceA
+      class ImplA : InterfaceA, InterfaceB
       """
         .trimIndent(),
     )
@@ -689,12 +717,12 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.output)
       .contains(
         """
-        FeatureGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
+        AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
 
             test.InterfaceA is injected at
-                [test.FeatureGraph] test.Target(…, a)
+                [test.AppGraph.$${'$'}MetroGraph.FeatureGraphImpl] test.Target(…, a)
             test.Target is requested at
-                [test.FeatureGraph] test.FeatureGraph#target
+                [test.AppGraph.$${'$'}MetroGraph.FeatureGraphImpl] test.FeatureGraph#target
         """
           .trimIndent()
       )

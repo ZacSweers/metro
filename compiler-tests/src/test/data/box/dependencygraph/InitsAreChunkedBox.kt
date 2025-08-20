@@ -1,4 +1,3 @@
-// CHUNK_FIELD_INITS: true
 // Sample dependency graph demonstrating 30 scoped provider functions.
 // https://github.com/ZacSweers/metro/issues/645
 @SingleIn(AppScope::class) @Inject class Service1

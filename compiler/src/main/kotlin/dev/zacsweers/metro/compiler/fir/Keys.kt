@@ -113,16 +113,12 @@ internal object Keys {
     override fun toString() = "TopLevelInjectFunctionClassFunction"
   }
 
-  data object ProviderFieldAccessor : GeneratedDeclarationKey() {
-    override fun toString() = "ProviderFieldAccessor"
+  data object ExtendableGraphAccessor : GeneratedDeclarationKey() {
+    override fun toString() = "ExtendableGraphAccessor"
   }
 
-  data object InstanceFieldAccessor : GeneratedDeclarationKey() {
-    override fun toString() = "InstanceFieldAccessor"
-  }
-
-  data object ContributedGraph : GeneratedDeclarationKey() {
-    override fun toString() = "ContributedGraph"
+  data object GeneratedGraphExtension : GeneratedDeclarationKey() {
+    override fun toString() = "GeneratedGraphExtension"
   }
 
   data object ContributionHint : GeneratedDeclarationKey() {

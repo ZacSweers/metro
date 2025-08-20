@@ -3,15 +3,16 @@
 package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.fir.FirMetroErrors
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.allScopeClassIds
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
-import dev.zacsweers.metro.compiler.fir.scopeAnnotations
 import dev.zacsweers.metro.compiler.fir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.fir.validateApiDeclaration
+import dev.zacsweers.metro.compiler.flatMapToSet
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
@@ -22,7 +23,6 @@ import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.analysis.checkers.toClassLikeSymbol
 import org.jetbrains.kotlin.fir.declarations.FirClass
-import org.jetbrains.kotlin.fir.declarations.getBooleanArgument
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
@@ -46,22 +46,26 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
         ?: return
 
     val annotationClassId = graphFactoryAnnotation.toAnnotationClassId(session) ?: return
-    val isContributed = annotationClassId in classIds.contributesGraphExtensionFactoryAnnotations
+    val contributesToAnno =
+      declaration.annotationsIn(session, classIds.contributesToAnnotations).toList()
+    val isContributedExtensionFactory =
+      annotationClassId in classIds.graphExtensionFactoryAnnotations &&
+        contributesToAnno.isNotEmpty()
 
-    if (isContributed) {
+    if (isContributedExtensionFactory) {
       // Must be interfaces
       if (declaration.classKind != ClassKind.INTERFACE) {
         reporter.reportOn(
           declaration.source,
           MetroDiagnostics.GRAPH_CREATORS_ERROR,
-          "${annotationClassId.relativeClassName.asString()} declarations can only be interfaces.",
+          "Contributed @${annotationClassId.relativeClassName.asString()} declarations can only be interfaces.",
         )
         return
       }
     }
 
     declaration.validateApiDeclaration(
-      "${annotationClassId.relativeClassName.asString()} declarations",
+      "@${annotationClassId.relativeClassName.asString()} declarations",
       checkConstructor = true,
     ) {
       return
@@ -87,21 +91,20 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
         reporter.reportOn(
           createFunction.resolvedReturnTypeRef.source ?: declaration.source,
           MetroDiagnostics.GRAPH_CREATORS_ERROR,
-          "${annotationClassId.relativeClassName.asString()} abstract function '${createFunction.name}' must return a dependency graph but found ${it.classId.asSingleFqName()}.",
+          "@${annotationClassId.relativeClassName.asString()} abstract function '${createFunction.name}' must return a dependency graph but found ${it.classId.asSingleFqName()}.",
         )
         return
       }
 
-      if (isContributed) {
-        // Target graph must be contributed too
+      if (isContributedExtensionFactory) {
+        // Target graph must be an extension
         if (
-          targetGraphAnnotation.toAnnotationClassId(session) !in
-            classIds.contributesGraphExtensionAnnotations
+          targetGraphAnnotation.toAnnotationClassId(session) !in classIds.graphExtensionAnnotations
         ) {
           reporter.reportOn(
             targetGraphAnnotation.source ?: declaration.source,
             MetroDiagnostics.GRAPH_CREATORS_ERROR,
-            "${annotationClassId.relativeClassName.asString()} abstract function '${createFunction.name}' must return a contributed graph extension but found ${it.classId.asSingleFqName()}.",
+            "@${annotationClassId.relativeClassName.asString()} abstract function '${createFunction.name}' must return a graph extension but found ${it.classId.asSingleFqName()}.",
           )
           return
         }
@@ -110,7 +113,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
           reporter.reportOn(
             targetGraphAnnotation.source ?: declaration.source,
             MetroDiagnostics.GRAPH_CREATORS_ERROR,
-            "${annotationClassId.relativeClassName.asString()} declarations must be nested within the contributed graph they create but was ${declaration.getContainingClassSymbol()?.classId?.asSingleFqName() ?: "top-level"}.",
+            "@${annotationClassId.relativeClassName.asString()} declarations must be nested within the contributed graph they create but was ${declaration.getContainingClassSymbol()?.classId?.asSingleFqName() ?: "top-level"}.",
           )
           return
         }
@@ -118,17 +121,12 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
     }
 
     val targetGraphScopes = targetGraphAnnotation?.allScopeClassIds().orEmpty()
-    val targetGraphScopeAnnotations =
-      targetGraph
-        ?.resolvedCompilerAnnotationsWithClassIds
-        ?.scopeAnnotations(session)
-        .orEmpty()
-        .toSet()
 
-    if (isContributed) {
-      val contributedScopes = graphFactoryAnnotation.allScopeClassIds()
+    if (isContributedExtensionFactory) {
+      val contributedScopes = contributesToAnno.flatMapToSet { it.allScopeClassIds() }
       val overlapping = contributedScopes.intersect(targetGraphScopes)
-      // Must not contribute to the same scope
+      // ContributesGraphExtension.Factory must not contribute to the same scope as its containing
+      // graph, otherwise it'd be contributing to itself!
       if (overlapping.isNotEmpty()) {
         reporter.reportOn(
           graphFactoryAnnotation.source ?: declaration.source,
@@ -141,8 +139,6 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
 
     val paramTypes = mutableSetOf<FirTypeKey>()
 
-    val seenParentScopesToParent = mutableMapOf<ClassId, ClassId>()
-    val seenParentScopeAnnotationsToParent = mutableMapOf<MetroFirAnnotation, ClassId>()
     for (param in createFunction.valueParameterSymbols) {
       val typeKey = FirTypeKey.from(session, param)
       if (!paramTypes.add(typeKey)) {
@@ -154,9 +150,18 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
         continue
       }
 
+      if (param.isVararg) {
+        reporter.reportOn(
+          param.source,
+          FirMetroErrors.GRAPH_CREATORS_VARARG_ERROR,
+          "${annotationClassId.relativeClassName.asString()} abstract function parameters may not be vararg.",
+        )
+        continue
+      }
+
       var isIncludes = false
       var isProvides = false
-      var isExtends = false
+
       for (annotation in param.resolvedCompilerAnnotationsWithClassIds) {
         if (!annotation.isResolved) continue
         val annotationClassId = annotation.toAnnotationClassIdSafe(session) ?: continue
@@ -168,10 +173,6 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
           in classIds.providesAnnotations -> {
             isProvides = true
           }
-
-          in classIds.extends -> {
-            isExtends = true
-          }
         }
       }
 
@@ -179,10 +180,10 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
         reporter.reportOn(
           param.source,
           MetroDiagnostics.GRAPH_CREATORS_ERROR,
-          "${annotationClassId.relativeClassName.asString()} abstract function parameters must be annotated with exactly one @Includes, @Provides, or @Extends.",
+          "${annotationClassId.relativeClassName.asString()} abstract function parameters must be annotated with exactly one @Includes or @Provides.",
         )
       }
-      if ((isIncludes && isProvides) || (isIncludes && isExtends) || (isProvides && isExtends)) {
+      if (isIncludes && isProvides) {
         reportAnnotationCountError()
         continue
       }
@@ -211,114 +212,6 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
         }
         isProvides -> {
           // TODO anything?
-        }
-        isExtends -> {
-          val dependencyGraphAnno =
-            type.resolvedCompilerAnnotationsWithClassIds
-              .annotationsIn(session, classIds.dependencyGraphAnnotations)
-              .firstOrNull()
-          when {
-            dependencyGraphAnno == null -> {
-              reporter.reportOn(
-                param.source,
-                MetroDiagnostics.GRAPH_CREATORS_ERROR,
-                "@Extends types must be annotated with @DependencyGraph.",
-              )
-            }
-
-            dependencyGraphAnno.getBooleanArgument(Symbols.Names.isExtendable, session) != true -> {
-              reporter.reportOn(
-                param.source,
-                MetroDiagnostics.GRAPH_CREATORS_ERROR,
-                "@Extends graphs must be extendable (set DependencyGraph.isExtendable to true).",
-              )
-            }
-
-            targetGraphScopes.isNotEmpty() -> {
-              val parentScopes = dependencyGraphAnno.allScopeClassIds()
-              val overlaps = parentScopes.intersect(targetGraphScopes)
-              if (overlaps.isNotEmpty()) {
-                reporter.reportOn(
-                  param.source,
-                  MetroDiagnostics.GRAPH_CREATORS_ERROR,
-                  buildString {
-                    appendLine(
-                      "Graph extensions (@Extends) may not have overlapping aggregation scopes with its parent graph but the following scopes overlap:"
-                    )
-                    for (overlap in overlaps) {
-                      append("- ")
-                      appendLine(overlap.asSingleFqName().asString())
-                    }
-                  },
-                )
-              }
-              for (parentScope in parentScopes) {
-                val parentClassId = type.classId
-                seenParentScopesToParent.put(parentScope, parentClassId)?.let { previous ->
-                  reporter.reportOn(
-                    param.source,
-                    MetroDiagnostics.GRAPH_CREATORS_ERROR,
-                    buildString {
-                      appendLine(
-                        "Graph extensions (@Extends) may not have multiple parents with the same aggregation scopes:"
-                      )
-                      append("Scope: ")
-                      appendLine(parentScope.asSingleFqName())
-                      append("Parent 1: ")
-                      appendLine(previous.asSingleFqName())
-                      append("Parent 2: ")
-                      appendLine(parentClassId.asSingleFqName())
-                    },
-                  )
-                  return
-                }
-              }
-            }
-
-            targetGraphScopeAnnotations.isNotEmpty() -> {
-              val parentScopeAnnotations =
-                type.resolvedCompilerAnnotationsWithClassIds.scopeAnnotations(session).toSet()
-              val overlaps = parentScopeAnnotations.intersect(targetGraphScopeAnnotations)
-              if (overlaps.isNotEmpty()) {
-                reporter.reportOn(
-                  param.source,
-                  MetroDiagnostics.GRAPH_CREATORS_ERROR,
-                  buildString {
-                    appendLine(
-                      "Graph extensions (@Extends) may not have overlapping scope annotations with its parent graph but the following annotations overlap:"
-                    )
-                    for (overlap in overlaps) {
-                      append("- ")
-                      appendLine(overlap.simpleString())
-                    }
-                  },
-                )
-                return
-              }
-
-              for (parentScope in parentScopeAnnotations) {
-                val parentClassId = type.classId
-                seenParentScopeAnnotationsToParent.put(parentScope, parentClassId)?.let { previous
-                  ->
-                  reporter.reportOn(
-                    param.source,
-                    MetroDiagnostics.GRAPH_CREATORS_ERROR,
-                    buildString {
-                      appendLine(
-                        "Graph extensions (@Extends) may not have multiple parents with the same aggregation scopes:"
-                      )
-                      append("Scope: ")
-                      appendLine(parentScope.simpleString())
-                      append("Parent 1: ")
-                      appendLine(previous.asSingleFqName())
-                      append("Parent 2: ")
-                      appendLine(parentClassId.asSingleFqName())
-                    },
-                  )
-                }
-              }
-            }
-          }
         }
         else -> {
           reportAnnotationCountError()

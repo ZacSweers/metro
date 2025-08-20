@@ -16,7 +16,7 @@ dependencyResolutionManagement {
   }
 }
 
-plugins { id("com.android.settings") version "8.10.1" }
+plugins { id("com.android.settings") version "8.11.0" }
 
 android {
   compileSdk = 36
@@ -36,12 +36,6 @@ include(
   ":interop:dependencies-dagger",
   ":interop:dependencies-kotlinInject",
   ":weather-app",
-  ":multi-module-test:common",
-  ":multi-module-test:parent-graph",
-  ":multi-module-test:child-graph",
-  ":multi-module-test:contributor",
-  ":multi-module-test:aggregator",
-  ":multi-module-test:app",
 )
 
 includeBuild("..")

@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.BitField
 import dev.zacsweers.metro.compiler.Origins
-import dev.zacsweers.metro.compiler.PLUGIN_ID
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
@@ -18,10 +17,10 @@ import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.memoized
-import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
-import dev.zacsweers.metro.compiler.proto.MetroMetadata
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
@@ -35,14 +34,15 @@ import org.jetbrains.kotlin.ir.expressions.IrVararg
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.classOrFail
 import org.jetbrains.kotlin.ir.types.classOrNull
-import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.isUnit
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
+import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.getValueArgument
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
+import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.ClassId
@@ -67,6 +67,19 @@ internal class DependencyGraphNodeCache(
     metroGraph: IrClass? = null,
     dependencyGraphAnno: IrConstructorCall? = null,
   ): DependencyGraphNode {
+    if (graphDeclaration.origin != Origins.GeneratedGraphExtension) {
+      val sourceGraph = graphDeclaration.sourceGraphIfMetroGraph
+      if (sourceGraph != graphDeclaration) {
+        return getOrComputeDependencyGraphNode(
+          sourceGraph,
+          bindingStack,
+          parentTracer,
+          metroGraph,
+          dependencyGraphAnno
+        )
+      }
+    }
+
     val graphClassId = graphDeclaration.classIdOrFail
 
     return dependencyGraphNodesByClass.getOrPut(graphClassId) {
@@ -95,7 +108,7 @@ internal class DependencyGraphNodeCache(
     private val scopes = mutableSetOf<IrAnnotation>()
     private val providerFactories = mutableListOf<Pair<IrTypeKey, ProviderFactory>>()
     private val extendedGraphNodes = mutableMapOf<IrTypeKey, DependencyGraphNode>()
-    private val contributedGraphs = mutableMapOf<IrTypeKey, MetroSimpleFunction>()
+    private val graphExtensions = mutableMapOf<IrTypeKey, MutableList<GraphExtensionAccessor>>()
     private val injectors = mutableListOf<Pair<MetroSimpleFunction, IrContextualTypeKey>>()
     private val includedGraphNodes = mutableMapOf<IrTypeKey, DependencyGraphNode>()
     private val graphTypeKey = IrTypeKey(graphDeclaration.typeWith())
@@ -111,7 +124,7 @@ internal class DependencyGraphNodeCache(
       (metroGraph ?: graphDeclaration).getAllSuperTypes(excludeSelf = false).memoized()
     private val contributionData = nodeCache.contributionData
 
-    private val isExtendable = dependencyGraphAnno?.isExtendable() ?: false
+    private var hasGraphExtensions = false
 
     private fun computeDeclaredScopes(): Set<IrAnnotation> {
       return buildSet {
@@ -167,11 +180,12 @@ internal class DependencyGraphNodeCache(
       }
 
       val creator =
-        if (graphDeclaration.origin === Origins.ContributedGraph) {
+        if (graphDeclaration.origin === Origins.GeneratedGraphExtension) {
           val ctor = graphDeclaration.primaryConstructor!!
           val ctorParams = ctor.parameters()
           populateBindingContainerFields(ctorParams)
           DependencyGraphNode.Creator.Constructor(
+            graphDeclaration,
             graphDeclaration.primaryConstructor!!,
             ctorParams,
             bindingContainerFields,
@@ -201,15 +215,16 @@ internal class DependencyGraphNodeCache(
         nonNullCreator.parameters.regularParameters.forEachIndexed { i, parameter ->
           if (parameter.isBindsInstance) return@forEachIndexed
 
-          val type = parameter.typeKey.type.rawType()
+          val klass = parameter.typeKey.type.rawType()
+          val sourceGraph = klass.sourceGraphIfMetroGraph
 
           checkGraphSelfCycle(graphDeclaration, graphTypeKey, bindingStack)
 
           // Add any included graph provider factories IFF it's a binding container
           if (nonNullCreator.bindingContainersParameterIndices.isSet(i)) {
             val bindingContainer =
-              bindingContainerTransformer.findContainer(type)
-                ?: error("Binding container not found for type ${type.classId}")
+              bindingContainerTransformer.findContainer(sourceGraph)
+                ?: error("Binding container not found for type ${sourceGraph.classId}")
 
             bindingContainers += bindingContainer
             return@forEachIndexed
@@ -218,16 +233,22 @@ internal class DependencyGraphNodeCache(
           // It's a graph-like
           val node =
             bindingStack.withEntry(
-              IrBindingStack.Entry.requestedAt(graphContextKey, nonNullCreator.function)
+              IrBindingStack.Entry.injectedAt(graphContextKey, nonNullCreator.function)
             ) {
-              nodeCache.getOrComputeDependencyGraphNode(type, bindingStack, parentTracer)
+              val nodeKey =
+                if (klass.origin == Origins.GeneratedGraphExtension) {
+                  klass
+                } else {
+                  sourceGraph
+                }
+              nodeCache.getOrComputeDependencyGraphNode(nodeKey, bindingStack, parentTracer)
             }
 
-          if (parameter.isExtends) {
-            extendedGraphNodes[parameter.typeKey] = node
-          } else {
-            // parameter.isIncludes
+          // Still tie to the parameter key because that's what gets the instance binding
+          if (parameter.isIncludes) {
             includedGraphNodes[parameter.typeKey] = node
+          } else {
+            reportCompilerBug("Unexpected parameter type for graph: $parameter")
           }
         }
       }
@@ -265,6 +286,38 @@ internal class DependencyGraphNodeCache(
 
       val nonNullMetroGraph = metroGraph ?: graphDeclaration.metroGraphOrFail
 
+      val declaredScopes = computeDeclaredScopes()
+      scopes += declaredScopes
+      val graphExtensionSupertypes = mutableSetOf<ClassId>()
+
+      for ((i, type) in supertypes.withIndex()) {
+        val clazz = type.classOrFail.owner
+
+        // Index 0 is this class, which we've already computed above
+        if (i != 0) {
+          scopes += clazz.scopeAnnotations()
+          if (clazz.isAnnotatedWithAny(symbols.classIds.graphExtensionFactoryAnnotations)) {
+            graphExtensionSupertypes += clazz.classIdOrFail
+          }
+        }
+
+        bindingContainerTransformer.findContainer(clazz)?.let(bindingContainers::add)
+      }
+
+      // Copy inherited scopes onto this graph for faster lookups downstream
+      // Note this is only for scopes inherited from supertypes, not from extended parent graphs
+      val inheritedScopes = (scopes - declaredScopes).map { it.ir }
+      if (graphDeclaration.origin === Origins.GeneratedGraphExtension) {
+        // If it's a contributed graph, just add it directly as these are not visible to metadata
+        // anyway
+        graphDeclaration.annotations += inheritedScopes
+      } else {
+        pluginContext.metadataDeclarationRegistrar.addMetadataVisibleAnnotationsToElement(
+          graphDeclaration,
+          inheritedScopes,
+        )
+      }
+
       for (declaration in nonNullMetroGraph.declarations) {
         // Functions and properties only
         if (declaration !is IrOverridableDeclaration<*>) continue
@@ -276,8 +329,8 @@ internal class DependencyGraphNodeCache(
         if (annotations.isProvides) continue
         when (declaration) {
           is IrSimpleFunction -> {
-            // Could be an injector, accessor, or contributed graph
-            var isContributedGraph = false
+            // Could be an injector, accessor, or graph extension
+            var isGraphExtension = false
 
             // If the overridden symbol has a default getter/value then skip
             var hasDefaultImplementation = false
@@ -285,26 +338,91 @@ internal class DependencyGraphNodeCache(
               if (overridden.owner.body != null) {
                 hasDefaultImplementation = true
                 break
-              } else if (
-                overridden.owner.parentClassOrNull?.isAnnotatedWithAny(
-                  symbols.classIds.contributesGraphExtensionFactoryAnnotations
-                ) == true
-              ) {
-                isContributedGraph = true
-                break
+              }
+
+              val overriddenParentClass = overridden.owner.parentClassOrNull ?: continue
+              val isGraphExtensionFactory =
+                overriddenParentClass.isAnnotatedWithAny(
+                  symbols.classIds.graphExtensionFactoryAnnotations
+                )
+
+              if (isGraphExtensionFactory) {
+                isGraphExtension = true
+                // Only continue because we may ignore this if it has a default body in a parent
+                continue
+              }
+
+              // Check if return type is a @GraphExtension itself (i.e. no factory)
+              val returnType = overridden.owner.returnType
+              val returnClass = returnType.classOrNull?.owner
+              if (returnClass != null) {
+                val returnsExtensionOrExtensionFactory =
+                  returnClass.isAnnotatedWithAny(
+                    symbols.classIds.allGraphExtensionAndFactoryAnnotations
+                  )
+                if (returnsExtensionOrExtensionFactory) {
+                  isGraphExtension = true
+                  // Only continue because we may ignore this if it has a default body in a parent
+                  continue
+                }
               }
             }
             if (hasDefaultImplementation) continue
 
             val isInjector =
-              !isContributedGraph &&
+              !isGraphExtension &&
                 declaration.regularParameters.size == 1 &&
                 !annotations.isBinds &&
                 declaration.returnType.isUnit()
-            if (isContributedGraph) {
+            if (isGraphExtension) {
               val metroFunction = metroFunctionOf(declaration, annotations)
-              val contextKey = IrContextualTypeKey.from(declaration)
-              contributedGraphs[contextKey.typeKey] = metroFunction
+              // if the class is a factory type, need to use its parent class
+              val rawType = metroFunction.ir.returnType.rawType()
+              val functionParent = rawType.parentClassOrNull
+
+              val isGraphExtensionFactory = rawType.isAnnotatedWithAny(
+                symbols.classIds.graphExtensionFactoryAnnotations
+              )
+
+              if (isGraphExtensionFactory) {
+                // For factories, add them to accessors so they participate in the binding graph
+                val factoryContextKey = IrContextualTypeKey.from(declaration)
+                accessors += (metroFunction to factoryContextKey)
+
+                // Also track it as a graph extension for metadata purposes
+                val samMethod = rawType.singleAbstractFunction()
+                val graphExtensionType = samMethod.returnType
+                val graphExtensionTypeKey = IrTypeKey(graphExtensionType)
+                graphExtensions.getOrPut(graphExtensionTypeKey, ::mutableListOf) += GraphExtensionAccessor(
+                  accessor = metroFunction,
+                  key = factoryContextKey,
+                  isFactory = true,
+                  isFactorySAM = false,
+                )
+              } else {
+                // Regular graph extension
+                val isSamFunction = metroFunction.ir.overriddenSymbolsSequence()
+                  .any { it.owner.parentClassOrNull?.classId in graphExtensionSupertypes }
+
+                val contextKey =
+                  if (
+                    functionParent != null &&
+                      functionParent.isAnnotatedWithAny(symbols.classIds.graphExtensionAnnotations)
+                  ) {
+                    IrContextualTypeKey(
+                      IrTypeKey(functionParent.defaultType, functionParent.qualifierAnnotation())
+                    )
+                  } else {
+                    IrContextualTypeKey.from(declaration)
+                  }
+                graphExtensions.getOrPut(contextKey.typeKey, ::mutableListOf) += GraphExtensionAccessor(
+                  metroFunction,
+                  key = contextKey,
+                  isFactory = false,
+                  isFactorySAM = isSamFunction,
+                )
+              }
+              hasGraphExtensions = true
             } else if (isInjector) {
               // It's an injector
               val metroFunction = metroFunctionOf(declaration, annotations)
@@ -329,31 +447,80 @@ internal class DependencyGraphNodeCache(
           }
 
           is IrProperty -> {
-            // Can only be an accessor, binds, or contributed graph
-            var isContributedGraph = false
+            // Can only be an accessor, binds, or graph extension
+            val getter = declaration.getter!!
+
+            val rawType = getter.returnType.rawType()
+            val isGraphExtensionFactory = rawType.isAnnotatedWithAny(
+              symbols.classIds.graphExtensionFactoryAnnotations
+            )
+            var isGraphExtension = isGraphExtensionFactory
 
             // If the overridden symbol has a default getter/value then skip
             var hasDefaultImplementation = false
-            for (overridden in declaration.overriddenSymbolsSequence()) {
-              if (overridden.owner.getter?.body != null) {
-                hasDefaultImplementation = true
-                break
-              } else if (
-                overridden.owner.parentClassOrNull?.isAnnotatedWithAny(
-                  symbols.classIds.contributesGraphExtensionFactoryAnnotations
-                ) == true
-              ) {
-                isContributedGraph = true
-                break
+            if (!isGraphExtensionFactory) {
+              for (overridden in declaration.overriddenSymbolsSequence()) {
+                if (overridden.owner.getter?.body != null) {
+                  hasDefaultImplementation = true
+                  break
+                }
+
+                // Check if return type is a @GraphExtension or its factory
+                val returnType = overridden.owner.getter?.returnType ?: continue
+                val returnClass = returnType.classOrNull?.owner
+                if (returnClass != null) {
+                  val returnsExtension =
+                    returnClass.isAnnotatedWithAny(symbols.classIds.graphExtensionAnnotations)
+                  if (returnsExtension) {
+                    isGraphExtension = true
+                    break
+                  }
+                }
               }
             }
             if (hasDefaultImplementation) continue
 
-            val getter = declaration.getter!!
             val metroFunction = metroFunctionOf(getter, annotations)
             val contextKey = IrContextualTypeKey.from(getter)
-            if (isContributedGraph) {
-              contributedGraphs[contextKey.typeKey] = metroFunction
+            if (isGraphExtension) {
+              if (isGraphExtensionFactory) {
+                // For factories, add them to accessors so they participate in the binding graph
+                accessors += (metroFunction to contextKey)
+
+                // Also track it as a graph extension for metadata purposes
+                val samMethod = rawType.singleAbstractFunction()
+                val graphExtensionType = samMethod.returnType
+                val graphExtensionTypeKey = IrTypeKey(graphExtensionType)
+                graphExtensions.getOrPut(graphExtensionTypeKey, ::mutableListOf) += GraphExtensionAccessor(
+                  metroFunction,
+                  key = contextKey,
+                  isFactory = true,
+                  isFactorySAM = false,
+                )
+              } else {
+                // Regular graph extension
+                val isSamFunction = metroFunction.ir.overriddenSymbolsSequence()
+                  .any { it.owner.parentClassOrNull?.classId in graphExtensionSupertypes }
+                val functionParent = rawType.parentClassOrNull
+                val finalContextKey =
+                  if (
+                    functionParent != null &&
+                      functionParent.isAnnotatedWithAny(symbols.classIds.graphExtensionAnnotations)
+                  ) {
+                    IrContextualTypeKey(
+                      IrTypeKey(functionParent.defaultType, functionParent.qualifierAnnotation())
+                    )
+                  } else {
+                    contextKey
+                  }
+                graphExtensions.getOrPut(finalContextKey.typeKey, ::mutableListOf) += GraphExtensionAccessor(
+                  metroFunction,
+                  key = finalContextKey,
+                  isFactory = false,
+                  isFactorySAM = isSamFunction,
+                )
+              }
+              hasGraphExtensions = true
             } else {
               val collection =
                 if (metroFunction.annotations.isBinds) {
@@ -367,37 +534,26 @@ internal class DependencyGraphNodeCache(
         }
       }
 
-      val declaredScopes = computeDeclaredScopes()
-      scopes += declaredScopes
-
-      for ((i, type) in supertypes.withIndex()) {
-        val clazz = type.classOrFail.owner
-
-        // Index 0 is this class, which we've already computed above
-        if (i != 0) {
-          scopes += clazz.scopeAnnotations()
-        }
-
-        bindingContainerTransformer.findContainer(clazz)?.let(bindingContainers::add)
-      }
-
-      if (isExtendable) {
-        // Copy inherited scopes onto this graph for faster lookups downstream
-        // Note this is only for scopes inherited from supertypes, not from extended parent graphs
-        val inheritedScopes = (scopes - declaredScopes).map { it.ir }
-        if (graphDeclaration.origin === Origins.ContributedGraph) {
-          // If it's a contributed graph, just add it directly as these are not visible to metadata
-          // anyway
-          graphDeclaration.annotations += inheritedScopes
-        } else {
-          pluginContext.metadataDeclarationRegistrar.addMetadataVisibleAnnotationsToElement(
-            graphDeclaration,
-            inheritedScopes,
-          )
-        }
-      }
-
       val creator = buildCreator()
+
+      // Add extended node if it's a generated graph extension
+      if (graphDeclaration.origin == Origins.GeneratedGraphExtension) {
+        val parentGraph = graphDeclaration.parentAsClass
+        val graphTypeKey = graphDeclaration.generatedGraphExtensionData!!.typeKey
+        checkGraphSelfCycle(graphDeclaration, graphTypeKey, bindingStack)
+
+        // Add its parent node
+        val node =
+          bindingStack.withEntry(
+            IrBindingStack.Entry.generatedExtensionAt(
+              IrContextualTypeKey(graphTypeKey),
+              parentGraph.kotlinFqName.asString(),
+            )
+          ) {
+            nodeCache.getOrComputeDependencyGraphNode(parentGraph, bindingStack, parentTracer)
+          }
+        extendedGraphNodes[node.typeKey] = node
+      }
 
       val managedBindingContainers = mutableSetOf<IrClass>()
       bindingContainers +=
@@ -464,10 +620,10 @@ internal class DependencyGraphNodeCache(
         DependencyGraphNode(
           sourceGraph = graphDeclaration,
           supertypes = supertypes.toList(),
-          isExtendable = isExtendable,
           includedGraphNodes = includedGraphNodes,
-          contributedGraphs = contributedGraphs,
+          graphExtensions = graphExtensions,
           scopes = scopes,
+          aggregationScopes = aggregationScopes,
           bindsCallables = bindsCallables,
           bindsFunctions = bindsFunctions.map { it.first },
           multibindsCallables = multibindsCallables,
@@ -523,7 +679,7 @@ internal class DependencyGraphNodeCache(
             MetroDiagnostics.METRO_ERROR,
             buildString {
               appendLine(
-                "Graph extensions (@Extends) may not have overlapping scopes with its ancestor graphs but the following scopes overlap:"
+                "Graph extension '${dependencyGraphNode.sourceGraph.sourceGraphIfMetroGraph.kotlinFqName}' has overlapping scope annotations with ancestor graphs':"
               )
               for (overlap in overlapErrors) {
                 appendLine(overlap)
@@ -539,71 +695,6 @@ internal class DependencyGraphNodeCache(
     private fun buildExternalGraphOrBindingContainer(): DependencyGraphNode {
       // Read metadata if this is an extendable graph
       val includedGraphNodes = mutableMapOf<IrTypeKey, DependencyGraphNode>()
-      var graphProto: DependencyGraphProto? = null
-      if (isExtendable) {
-        parentTracer.traceNested("Populate inherited graph metadata") { tracer ->
-          val serialized =
-            pluginContext.metadataDeclarationRegistrar.getCustomMetadataExtension(
-              graphDeclaration.requireNestedClass(Symbols.Names.MetroGraph),
-              PLUGIN_ID,
-            )
-          if (serialized == null) {
-            diagnosticReporter
-              .at(graphDeclaration)
-              .report(
-                MetroDiagnostics.METRO_ERROR,
-                "Missing metadata for extendable graph ${graphDeclaration.kotlinFqName}. Was this compiled by the Metro compiler?",
-              )
-            exitProcessing()
-          }
-
-          graphProto =
-            tracer.traceNested("Deserialize DependencyGraphProto") {
-              val metadata = MetroMetadata.ADAPTER.decode(serialized)
-              metadata.dependency_graph
-            }
-          if (graphProto == null) {
-            diagnosticReporter
-              .at(graphDeclaration)
-              .report(
-                MetroDiagnostics.METRO_ERROR,
-                "Missing graph data for extendable graph ${graphDeclaration.kotlinFqName}. Was this compiled by the Metro compiler?",
-              )
-            exitProcessing()
-          }
-
-          // Read scopes from annotations
-          // We copy scope annotations from parents onto this graph if it's extendable so we only
-          // need to copy once
-          scopes.addAll(graphDeclaration.scopeAnnotations())
-
-          includedGraphNodes.putAll(
-            // TODO dedupe logic with below
-            graphProto.included_classes.associate { graphClassId ->
-              val clazz =
-                pluginContext.referenceClass(ClassId.fromString(graphClassId))
-                  ?: error("Could not find graph class $graphClassId.")
-              val typeKey = IrTypeKey(clazz.defaultType)
-              val node =
-                nodeCache.getOrComputeDependencyGraphNode(clazz.owner, bindingStack, parentTracer)
-              typeKey to node
-            }
-          )
-
-          extendedGraphNodes.putAll(
-            graphProto.parent_graph_classes.associate { graphClassId ->
-              val clazz =
-                pluginContext.referenceClass(ClassId.fromString(graphClassId))
-                  ?: error("Could not find graph class $graphClassId.")
-              val typeKey = IrTypeKey(clazz.defaultType)
-              val node =
-                nodeCache.getOrComputeDependencyGraphNode(clazz.owner, bindingStack, parentTracer)
-              typeKey to node
-            }
-          )
-        }
-      }
-
       val accessorsToCheck =
         if (isGraph) {
           // It's just an external graph, just read the declared types from it
@@ -640,15 +731,13 @@ internal class DependencyGraphNodeCache(
 
       // TODO only if annotated @BindingContainer?
       // TODO need to look up accessors and binds functions
-      if (isGraph && isExtendable) {
+      if (isGraph) {
         // TODO is this duplicating info we already have in the proto?
         for (type in supertypes) {
           val declaration = type.classOrNull?.owner ?: continue
           // Skip the metrograph, it won't have custom nested factories
           if (declaration == metroGraph) continue
-          val proto = if (declaration == graphDeclaration) graphProto else null
-          bindingContainerTransformer.findContainer(declaration, graphProto = proto)?.let {
-            bindingContainer ->
+          bindingContainerTransformer.findContainer(declaration)?.let { bindingContainer ->
             providerFactories += bindingContainer.providerFactories.values.map { it.typeKey to it }
 
             bindingContainer.bindsMirror?.let { bindsMirror ->
@@ -667,21 +756,20 @@ internal class DependencyGraphNodeCache(
         DependencyGraphNode(
           sourceGraph = graphDeclaration,
           supertypes = supertypes.toList(),
-          isExtendable = isExtendable,
           includedGraphNodes = includedGraphNodes,
           scopes = scopes,
+          aggregationScopes = aggregationScopes,
           providerFactories = providerFactories,
           accessors = accessors,
           bindsCallables = bindsCallables,
           multibindsCallables = multibindsCallables,
           isExternal = true,
-          proto = graphProto,
+          proto = null,
           extendedGraphNodes = extendedGraphNodes,
           // Following aren't necessary to see in external graphs
-          contributedGraphs = contributedGraphs,
-          injectors = injectors,
+          graphExtensions = emptyMap(),
+          injectors = emptyList(),
           creator = null,
-          // External viewers don't look at this
           bindingContainers = emptySet(),
           bindsFunctions = emptyList(),
         )

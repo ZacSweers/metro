@@ -193,13 +193,13 @@ class ICTests : BaseIncrementalCompilationTest() {
         private val childGraph =
           source(
             """
-          @DependencyGraph
+          @GraphExtension
           interface ChildGraph {
             val target: Target
 
-            @DependencyGraph.Factory
+            @GraphExtension.Factory
             interface Factory {
-              fun create(@Extends appGraph: AppGraph): ChildGraph
+              fun create(): ChildGraph
             }
           }
           """
@@ -209,8 +209,8 @@ class ICTests : BaseIncrementalCompilationTest() {
         val appGraph =
           source(
             """
-          @DependencyGraph(isExtendable = true)
-          interface AppGraph {
+          @DependencyGraph
+          interface AppGraph : ChildGraph.Factory {
             @Provides
             fun provideString(): String = ""
           }
@@ -229,8 +229,8 @@ class ICTests : BaseIncrementalCompilationTest() {
     project.modify(
       fixture.appGraph,
       """
-      @DependencyGraph(isExtendable = true)
-      interface AppGraph {
+      @DependencyGraph
+      interface AppGraph : ChildGraph.Factory {
         // Removed provider
         // @Provides
         // fun provideString(): String = ""
@@ -243,12 +243,12 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.output)
       .contains(
         """
-          ChildGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+          AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
               kotlin.String is injected at
-                  [test.ChildGraph] test.Target(…, string)
+                  [test.AppGraph.$${'$'}MetroGraph.ChildGraphImpl] test.Target(…, string)
               test.Target is requested at
-                  [test.ChildGraph] test.ChildGraph#target
+                  [test.AppGraph.$${'$'}MetroGraph.ChildGraphImpl] test.ChildGraph#target
         """
           .trimIndent()
       )
@@ -817,7 +817,7 @@ class ICTests : BaseIncrementalCompilationTest() {
   @Test
   fun scopingChangeOnNonContributedClassIsDetected() {
     val fixture =
-      object : MetroProject(metroOptions = MetroOptionOverrides(enableScopedInjectClassHints = true)) {
+      object : MetroProject(metroOptions = MetroOptionOverrides()) {
         override fun sources() =
           listOf(unusedScope, exampleClass, exampleGraph, loggedInGraph, main)
 
@@ -842,7 +842,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         private val exampleGraph =
           source(
             """
-              @DependencyGraph(scope = AppScope::class, isExtendable = true)
+              @DependencyGraph(scope = AppScope::class)
               interface ExampleGraph
             """
               .trimIndent()
@@ -853,11 +853,12 @@ class ICTests : BaseIncrementalCompilationTest() {
             """
                 sealed interface LoggedInScope
 
-                @ContributesGraphExtension(LoggedInScope::class)
+                @GraphExtension(LoggedInScope::class)
                 interface LoggedInGraph {
                   val exampleClass: ExampleClass
 
-                    @ContributesGraphExtension.Factory(AppScope::class)
+                    @ContributesTo(AppScope::class)
+                    @GraphExtension.Factory
                     interface Factory {
                         fun createLoggedInGraph(): LoggedInGraph
                     }
@@ -885,10 +886,14 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(firstBuildResult.output.cleanOutputLine())
       .contains(
         """
-          e: ExampleGraph.kt:7:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph.$${'$'}ContributedLoggedInGraph (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
+          e: ExampleGraph.kt:7:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
               test.ExampleClass (scoped to '@SingleIn(UnusedScope::class)')
               test.ExampleClass is requested at
-                  [test.ExampleGraph.$${'$'}ContributedLoggedInGraph] test.LoggedInGraph#exampleClass
+                  [test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl] test.LoggedInGraph#exampleClass
+
+
+          (Hint)
+          LoggedInGraphImpl is contributed by 'test.LoggedInGraph' to 'test.ExampleGraph'.
         """
           .trimIndent()
       )
@@ -943,14 +948,14 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(fourthBuildResult.output.cleanOutputLine())
       .contains(
         """
-          e: ExampleGraph.kt:7:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph.$${'$'}ContributedLoggedInGraph (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
+          e: ExampleGraph.kt:7:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
               test.ExampleClass (scoped to '@SingleIn(UnusedScope::class)')
               test.ExampleClass is requested at
-                  [test.ExampleGraph.$${'$'}ContributedLoggedInGraph] test.LoggedInGraph#exampleClass
+                  [test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl] test.LoggedInGraph#exampleClass
 
 
           (Hint)
-          $${'$'}ContributedLoggedInGraph is contributed by 'test.LoggedInGraph' to 'test.ExampleGraph'.
+          LoggedInGraphImpl is contributed by 'test.LoggedInGraph' to 'test.ExampleGraph'.
         """
           .trimIndent()
       )
@@ -1119,7 +1124,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         private val exampleGraph =
           source(
             """
-              @DependencyGraph(scope = AppScope::class, isExtendable = true)
+              @DependencyGraph(scope = AppScope::class)
               interface ExampleGraph
             """
               .trimIndent()
@@ -1130,11 +1135,12 @@ class ICTests : BaseIncrementalCompilationTest() {
             """
                 sealed interface LoggedInScope
 
-                @ContributesGraphExtension(LoggedInScope::class)
+                @GraphExtension(LoggedInScope::class)
                 interface LoggedInGraph {
                   val childDependency: Foo
 
-                    @ContributesGraphExtension.Factory(AppScope::class)
+                    @ContributesTo(AppScope::class)
+                    @GraphExtension.Factory
                     interface Factory {
                         fun createLoggedInGraph(): LoggedInGraph
                     }
@@ -1166,7 +1172,7 @@ class ICTests : BaseIncrementalCompilationTest() {
           e: LoggedInScope.kt:10:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Foo
 
               test.Foo is requested at
-                  [test.ExampleGraph.$${'$'}ContributedLoggedInGraph] test.LoggedInGraph#childDependency
+                  [test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl] test.LoggedInGraph#childDependenc
         """
           .trimIndent()
       )
@@ -1209,7 +1215,7 @@ class ICTests : BaseIncrementalCompilationTest() {
           e: ExampleGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Foo
 
               test.Foo is requested at
-                  [test.ExampleGraph.$${'$'}ContributedLoggedInGraph] test.LoggedInGraph#childDependency
+                  [test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl] test.LoggedInGraph#childDependency
         """
           .trimIndent()
       )
@@ -1275,7 +1281,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         private val appGraph =
           source(
             """
-              @DependencyGraph(AppScope::class, isExtendable = true)
+              @DependencyGraph(AppScope::class)
               interface AppGraph
             """
               .trimIndent()
@@ -1384,7 +1390,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         private val appGraph =
           source(
             """
-              @DependencyGraph(AppScope::class, isExtendable = true)
+              @DependencyGraph(AppScope::class)
               interface AppGraph {
                 @Provides fun provideInt(): Int = 0
               }
@@ -1433,6 +1439,164 @@ class ICTests : BaseIncrementalCompilationTest() {
     )
 
     buildAndAssertOutput()
+  }
+
+  @Test
+  fun multiModuleNonAbiChangeDoesNotTriggerRootRecompilation() {
+    val fixture =
+      object : MetroProject() {
+        override fun sources() = listOf(appGraph, target)
+
+        override val gradleProject: GradleProject
+          get() =
+            newGradleProjectBuilder(DslKind.KOTLIN)
+              .withRootProject {
+                withBuildScript {
+                  sources = sources()
+                  applyMetroDefault()
+                  dependencies(Dependency.implementation(":lib"))
+                }
+              }
+              .withSubproject("lib") {
+                sources.add(provider)
+                sources.add(unrelatedClass)
+                withBuildScript { applyMetroDefault() }
+              }
+              .write()
+
+        private val appGraph =
+          source(
+            """
+            @DependencyGraph(Unit::class)
+            interface AppGraph {
+              val target: Target
+            }
+            """
+              .trimIndent()
+          )
+
+        val provider =
+          source(
+            """
+            @ContributesTo(Unit::class)
+            interface StringProvider {
+              @Provides
+              fun provideString(): String = "Hello"
+
+              // Internal implementation detail
+              private fun internalHelper(): String = "internal"
+            }
+            """
+              .trimIndent()
+          )
+
+        val unrelatedClass =
+          source(
+            """
+            // Unrelated class not part of the dependency graph
+            class UnrelatedUtility {
+              fun doSomething(): String = "original"
+            }
+            """
+              .trimIndent()
+          )
+
+        private val target =
+          source(
+            """
+            @Inject
+            class Target(val string: String)
+            """
+              .trimIndent()
+          )
+      }
+
+    val project = fixture.gradleProject
+    val libProject = project.subprojects.first { it.name == "lib" }
+
+    // First build
+    buildAndAssertThat(project.rootDir, ":compileKotlin") {
+      task(":compileKotlin").succeeded()
+      task(":lib:compileKotlin").succeeded()
+    }
+
+    // Make a private change in the lib module in the same file still triggers IC because IC is
+    // unfortunately per-file
+    libProject.modify(
+      project.rootDir,
+      fixture.provider,
+      """
+      @ContributesTo(Unit::class)
+      interface StringProvider {
+        @Provides
+        fun provideString(): String = "Hello"
+
+        // Internal implementation detail
+        private fun internalHelper(): String = "internal"
+      }
+
+      private fun privateUtilInFile(): Int = 3
+      """
+        .trimIndent(),
+    )
+
+    buildAndAssertThat(project.rootDir, ":compileKotlin") {
+      // Lib module should be recompiled due to the change
+      task(":lib:compileKotlin").succeeded()
+      // Root module isn't UP-TO-DATE because IC operates on the file
+      task(":compileKotlin").succeeded()
+    }
+
+    // Make a non-ABI change to a function body.
+    libProject.modify(
+      project.rootDir,
+      fixture.provider,
+      """
+      @ContributesTo(Unit::class)
+      interface StringProvider {
+        @Provides
+        fun provideString(): String = "Hello"
+
+        // Modified internal implementation detail - non-ABI change
+        private fun internalHelper(): String = "modified internal"
+      }
+
+      private fun privateUtilInFile(): Int = 3
+      """
+        .trimIndent(),
+    )
+
+    buildAndAssertThat(project.rootDir, ":compileKotlin") {
+      // Lib module should be recompiled due to the change
+      task(":lib:compileKotlin").succeeded()
+      // Root module isn't UP-TO-DATE because IC operates on the file
+      task(":compileKotlin").upToDate()
+    }
+
+    // Modify an unrelated file in the lib module, should not trigger IC
+    libProject.modify(
+      project.rootDir,
+      fixture.unrelatedClass,
+      """
+      // Unrelated class not part of the dependency graph
+      class UnrelatedUtility {
+        fun doSomething(): String = "modified"
+      }
+      """
+        .trimIndent(),
+    )
+
+    buildAndAssertThat(project.rootDir, ":compileKotlin") {
+      // Lib module should be recompiled due to the change
+      task(":lib:compileKotlin").succeeded()
+      // Root module should be UP-TO-DATE since the changed file is not part of the dependency graph
+      task(":compileKotlin").upToDate()
+    }
+
+    // Verify the application still works correctly
+    val classLoader = project.classLoader()
+    val appGraphClass = classLoader.loadClass("test.AppGraph")
+    assertThat(appGraphClass).isNotNull()
   }
 
   @Test
@@ -1485,7 +1649,8 @@ class ICTests : BaseIncrementalCompilationTest() {
           interface Bar : Foo {
             val str: String
           }
-            """.trimIndent()
+            """
+              .trimIndent()
           )
 
         val realImpl =
@@ -1514,8 +1679,7 @@ class ICTests : BaseIncrementalCompilationTest() {
               .trimIndent()
           )
 
-        val placeholder =
-          source("")
+        val placeholder = source("")
 
         val main =
           source(

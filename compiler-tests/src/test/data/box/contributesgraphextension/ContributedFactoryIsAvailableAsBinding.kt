@@ -2,11 +2,11 @@
 // MODULE: lib
 abstract class ViewScope
 
-@ContributesGraphExtension(ViewScope::class, isExtendable = true)
+@GraphExtension(ViewScope::class)
 interface ViewObjectGraph {
   val int: Int
 
-  @ContributesGraphExtension.Factory(AppScope::class)
+  @GraphExtension.Factory @ContributesTo(AppScope::class)
   interface Factory {
     fun create(@Provides int: Int): ViewObjectGraph
   }
@@ -18,7 +18,7 @@ interface ViewObjectGraphSubgraph {
 }
 
 // MODULE: main(lib)
-@DependencyGraph(AppScope::class, isExtendable = true)
+@DependencyGraph(AppScope::class)
 interface AppGraph
 
 fun box(): String {

@@ -12,10 +12,10 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.isWordPrefixRegex
 import dev.zacsweers.metro.compiler.render
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.unsafeLazy
 import java.util.TreeSet
 import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -45,7 +45,14 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
   val parameters: Parameters
   val nameHint: String
   override val contextualTypeKey: IrContextualTypeKey
-  val reportableDeclaration: IrDeclaration?
+  val reportableDeclaration: IrDeclarationWithName?
+
+  /**
+   * Returns true if this binding should be scoped (cached) in the graph. For most bindings, this is
+   * true if [scope] != null. For [GraphExtension] bindings, this is true if
+   * [GraphExtension.extensionScopes] is not empty.
+   */
+  fun isScoped(): Boolean = scope != null
 
   override fun renderLocationDiagnostic(): String {
     // First check if we have the contributing file and line number
@@ -102,7 +109,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val nameHint: String = type.name.asString()
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey.create(typeKey)
 
-    override val reportableDeclaration: IrDeclaration
+    override val reportableDeclaration: IrDeclarationWithName?
       get() = type
 
     fun parameterFor(typeKey: IrTypeKey) =
@@ -140,7 +147,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val nameHint: String = type.name.asString()
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey.create(typeKey)
 
-    override val reportableDeclaration: IrDeclaration
+    override val reportableDeclaration: IrDeclarationWithName?
       get() = type
 
     override fun toString() = buildString {
@@ -154,13 +161,16 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     }
   }
 
+  /** A binding that is statically defined in a graph or binding container. */
+  sealed interface StaticBinding : IrBinding, BindingWithAnnotations
+
   @Poko
   class Provided(
     @Poko.Skip val providerFactory: ProviderFactory,
     override val annotations: MetroAnnotations<IrAnnotation>,
     override val contextualTypeKey: IrContextualTypeKey,
     override val parameters: Parameters,
-  ) : IrBinding, BindingWithAnnotations {
+  ) : StaticBinding {
     override val dependencies: List<IrContextualTypeKey> by unsafeLazy {
       parameters.allParameters.map { it.contextualTypeKey }
     }
@@ -189,7 +199,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
 
     override val nameHint: String = providerFactory.callableId.callableName.asString()
 
-    override val reportableDeclaration: IrDeclaration
+    override val reportableDeclaration: IrDeclarationWithName?
       get() = providerFactory.function
 
     fun parameterFor(typeKey: IrTypeKey): IrValueParameter {
@@ -228,10 +238,12 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
   class Alias(
     override val typeKey: IrTypeKey,
     val aliasedType: IrTypeKey,
-    @Poko.Skip val ir: IrSimpleFunction?,
+    val bindsCallable: BindsCallable?,
     override val parameters: Parameters,
-    override val annotations: MetroAnnotations<IrAnnotation>,
-  ) : IrBinding, BindingWithAnnotations {
+  ) : StaticBinding {
+    val ir = bindsCallable?.function
+    override val annotations: MetroAnnotations<IrAnnotation> =
+      bindsCallable?.callableMetadata?.annotations ?: MetroAnnotations.none()
 
     init {
       if (ir != null && !annotations.isBinds) {
@@ -252,7 +264,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val nameHint: String = ir?.name?.asString() ?: typeKey.type.rawType().name.asString()
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
     // TODO dedupe with the below render()
-    override val reportableDeclaration: IrDeclaration?
+    override val reportableDeclaration: IrDeclarationWithName?
       get() {
         if (ir == null) return null
         return (ir.overriddenSymbolsSequence().lastOrNull()?.owner ?: ir).let {
@@ -290,7 +302,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
           }
         }
       }
-      return super<IrBinding>.renderLocationDiagnostic()
+      return super<StaticBinding>.renderLocationDiagnostic()
     }
 
     override fun toString() = buildString {
@@ -334,7 +346,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val nameHint: String = type.name.asString()
     override val scope: IrAnnotation? = null
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
-    override val reportableDeclaration: IrDeclaration
+    override val reportableDeclaration: IrDeclarationWithName?
       get() = type
 
     override val isImplicitlyDeferrable: Boolean = true
@@ -355,11 +367,12 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
   data class BoundInstance(
     override val typeKey: IrTypeKey,
     override val nameHint: String,
-    override val reportableDeclaration: IrDeclaration,
+    override val reportableDeclaration: IrDeclarationWithName?,
+    val classReceiverParameter: IrValueParameter? = null,
   ) : IrBinding {
     constructor(
       parameter: Parameter,
-      reportableLocation: IrDeclaration,
+      reportableLocation: IrDeclarationWithName,
     ) : this(parameter.typeKey, "${parameter.name.asString()}Instance", reportableLocation)
 
     override val dependencies: List<IrContextualTypeKey> = emptyList()
@@ -379,7 +392,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val parameters: Parameters = Parameters.empty()
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
 
-    override val reportableDeclaration: IrDeclaration? = null
+    override val reportableDeclaration: IrDeclarationWithName? = null
     override val isTransient: Boolean = true
   }
 
@@ -387,35 +400,54 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
   class GraphDependency(
     val ownerKey: IrTypeKey,
     @Poko.Skip val graph: IrClass,
-    @Poko.Skip val getter: IrSimpleFunction,
-    val isProviderFieldAccessor: Boolean,
+    @Poko.Skip val getter: IrSimpleFunction? = null,
     override val typeKey: IrTypeKey,
-    val callableId: CallableId = getter.callableId,
+    @Poko.Skip val fieldAccess: ParentContext.FieldAccess? = null,
+    val callableId: CallableId =
+      fieldAccess?.field?.callableId
+        ?: getter?.callableId
+        ?: reportCompilerBug("One of getter or fieldAccess must be present"),
   ) : IrBinding {
     override val dependencies: List<IrContextualTypeKey> = listOf(IrContextualTypeKey(ownerKey))
     override val scope: IrAnnotation? = null
     override val nameHint: String = buildString {
       append(graph.name)
-      val property = getter.correspondingPropertySymbol
-      if (property != null) {
-        val propName = property.owner.name.asString()
-        if (!isWordPrefixRegex.matches(propName)) {
-          append("Get")
-        }
-        append(propName.capitalizeUS())
+      if (fieldAccess != null) {
+        append(fieldAccess.field.name)
       } else {
-        append(getter.name.capitalizeUS())
+        val property = getter!!.correspondingPropertySymbol
+        if (property != null) {
+          val propName = property.owner.name.asString()
+          if (!isWordPrefixRegex.matches(propName)) {
+            append("Get")
+          }
+          append(propName.capitalizeUS())
+        } else {
+          append(getter.name.capitalizeUS())
+        }
       }
     }
     override val parametersByKey: Map<IrTypeKey, Parameter> = emptyMap()
     override val parameters: Parameters = Parameters.empty()
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
 
-    override val reportableDeclaration: IrDeclaration
-      get() = getter.propertyIfAccessor
+    override val reportableDeclaration: IrDeclarationWithName?
+      get() = fieldAccess?.field ?: getter?.propertyIfAccessor?.expectAs<IrDeclarationWithName>()
 
     override fun toString(): String {
-      return "${graph.kotlinFqName}#${(getter.propertyIfAccessor as IrDeclarationWithName).name}: ${getter.returnType.dumpKotlinLike()}"
+      return buildString {
+        append(graph.kotlinFqName)
+        append("#")
+        if (fieldAccess != null) {
+          append(fieldAccess.field.name)
+          append(": ")
+          append(fieldAccess.field.type.dumpKotlinLike())
+        } else {
+          append((getter!!.propertyIfAccessor as IrDeclarationWithName).name)
+          append(": ")
+          append(getter.returnType.dumpKotlinLike())
+        }
+      }
     }
   }
 
@@ -446,11 +478,11 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
 
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
 
-    override val reportableDeclaration: IrDeclaration? = declaration
+    override val reportableDeclaration: IrDeclarationWithName? = declaration
 
     fun addSourceBinding(source: IrTypeKey) {
       if (source in sourceBindings) {
-        error("Duplicate multibinding source: $source. This is a bug in the compiler.")
+        reportCompilerBug("Duplicate multibinding source: $source")
       }
       sourceBindings.add(source)
     }
@@ -517,7 +549,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     // Always MembersInjected<TargetClass>
     override val contextualTypeKey: IrContextualTypeKey,
     override val parameters: Parameters,
-    override val reportableDeclaration: IrDeclaration?,
+    override val reportableDeclaration: IrDeclarationWithName?,
     // Only present for inject() functions
     val function: IrFunction?,
     val isFromInjectorFunction: Boolean,
@@ -537,5 +569,60 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val scope: IrAnnotation? = null
 
     override val nameHint: String = "${typeKey.type.rawType().name}MembersInjector"
+  }
+
+  /**
+   * Represents a graph extension binding. Graph extensions are treated as bindings to enable
+   * standard code generation for scoped instances when the extension graph itself is scoped.
+   */
+  @Poko
+  class GraphExtension(
+    override val typeKey: IrTypeKey,
+    @Poko.Skip val parent: IrClass,
+    val accessor: IrSimpleFunction,
+    val extensionScopes: Set<IrAnnotation>,
+    override val dependencies: List<IrContextualTypeKey> = emptyList(),
+  ) : IrBinding {
+    override val reportableDeclaration: IrDeclarationWithName = accessor
+    override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
+    override val parameters: Parameters = Parameters.empty()
+    override val parametersByKey: Map<IrTypeKey, Parameter> = emptyMap()
+
+    // The scope field always returns null for GraphExtension
+    // Use shouldBeScoped to check if this binding needs to be scoped
+    override val scope: IrAnnotation? = null
+
+    override val nameHint: String = typeKey.type.rawType().name.asString()
+
+    /**
+     * Returns true if this graph extension should be scoped (cached) in the parent graph. A graph
+     * extension is scoped if it has any extension scopes defined.
+     */
+    override fun isScoped(): Boolean = extensionScopes.isNotEmpty()
+  }
+
+  /**
+   * Represents a graph extension factory binding. These are factories that create graph extensions
+   * and need to participate in the binding graph for proper dependency resolution.
+   */
+  @Poko
+  class GraphExtensionFactory(
+    override val typeKey: IrTypeKey,
+    val extensionTypeKey: IrTypeKey,
+    val parent: IrClass,
+    parentKey: IrTypeKey,
+    val accessor: IrSimpleFunction,
+  ) : IrBinding {
+    override val dependencies: List<IrContextualTypeKey> = listOf(IrContextualTypeKey(parentKey))
+    override val reportableDeclaration: IrDeclarationWithName = accessor
+    override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
+    override val parameters: Parameters = Parameters.empty()
+    override val parametersByKey: Map<IrTypeKey, Parameter> = emptyMap()
+    override val scope: IrAnnotation? = null
+    override val nameHint: String = "${typeKey.type.rawType().name.asString()}Factory"
+
+    override fun toString() = buildString {
+      append("GraphExtensionFactory(${typeKey.render(short = true)})")
+    }
   }
 }

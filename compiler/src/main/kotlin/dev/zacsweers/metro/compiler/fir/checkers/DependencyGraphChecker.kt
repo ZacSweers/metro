@@ -2,38 +2,54 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
+import dev.zacsweers.metro.compiler.ClassIds
+import dev.zacsweers.metro.compiler.fir.FirMetroErrors
+import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.additionalScopesArgument
 import dev.zacsweers.metro.compiler.fir.allAnnotations
+import dev.zacsweers.metro.compiler.fir.allScopeClassIds
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.directCallableSymbols
 import dev.zacsweers.metro.compiler.fir.findInjectConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.nestedClasses
+import dev.zacsweers.metro.compiler.fir.requireContainingClassSymbol
 import dev.zacsweers.metro.compiler.fir.resolvedAdditionalScopesClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
 import dev.zacsweers.metro.compiler.fir.validateApiDeclaration
+import dev.zacsweers.metro.compiler.mapToSet
+import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
+import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
+import org.jetbrains.kotlin.fir.analysis.checkers.directOverriddenSymbolsSafe
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.constructors
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
+import org.jetbrains.kotlin.fir.declarations.utils.isOverride
+import org.jetbrains.kotlin.fir.dispatchReceiverClassLookupTagOrNull
+import org.jetbrains.kotlin.fir.dispatchReceiverClassTypeOrNull
 import org.jetbrains.kotlin.fir.resolve.firClassLike
+import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.resolve.toSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
+import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.isNothing
 import org.jetbrains.kotlin.fir.types.isUnit
+import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.StandardClassIds
 
 // TODO
@@ -51,26 +67,6 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
       declaration.annotationsIn(session, classIds.graphLikeAnnotations).firstOrNull() ?: return
 
     val graphAnnotationClassId = dependencyGraphAnno.toAnnotationClassIdSafe(session) ?: return
-    val isContributed = graphAnnotationClassId in classIds.contributesGraphExtensionAnnotations
-
-    if (isContributed) {
-      // Must have a nested class annotated with `@ContributesGraphExtension.Factory`
-      val hasNestedFactory =
-        declaration.symbol.nestedClasses().any { nestedClass ->
-          nestedClass.isAnnotatedWithAny(
-            session,
-            classIds.contributesGraphExtensionFactoryAnnotations,
-          )
-        }
-      if (!hasNestedFactory) {
-        reporter.reportOn(
-          declaration.source,
-          MetroDiagnostics.GRAPH_CREATORS_ERROR,
-          "@${graphAnnotationClassId.relativeClassName.asString()} declarations must have a nested class annotated with @ContributesGraphExtension.Factory.",
-        )
-        return
-      }
-    }
 
     // Ensure scope is defined if any additionalScopes are defined
     val scope =
@@ -103,6 +99,12 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
       }
     }
 
+    val aggregationScopes = dependencyGraphAnno.allScopeClassIds()
+    val scopeAnnotations = mutableSetOf<MetroFirAnnotation>()
+    scopeAnnotations += declaration.annotations.scopeAnnotations(session)
+
+    val graphExtensionFactorySupertypes = mutableMapOf<FirTypeRef, FirClassLikeSymbol<*>>()
+
     for (supertypeRef in declaration.superTypeRefs) {
       val supertype = supertypeRef.coneType as? ConeClassLikeType ?: continue
       val supertypeClass = supertype.lookupTag.toSymbol(session) ?: continue
@@ -110,11 +112,37 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
         reporter.reportOn(
           supertypeRef.source ?: declaration.source,
           MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-          "Graph class '${declaration.classId.asSingleFqName()}' may not directly extend graph class '${supertypeClass.classId.asSingleFqName()}'. Use @Extends instead.",
+          "Graph class '${declaration.classId.asSingleFqName()}' may not directly extend graph class '${supertypeClass.classId.asSingleFqName()}'. Use @GraphExtension instead.",
         )
         return
+      } else {
+        scopeAnnotations +=
+          supertypeClass.resolvedAnnotationsWithArguments.scopeAnnotations(session)
+
+        if (
+          supertypeClass.isAnnotatedWithAny(session, classIds.graphExtensionFactoryAnnotations)
+        ) {
+          graphExtensionFactorySupertypes[supertypeRef] = supertypeClass
+        }
       }
     }
+
+    // Check supertype extensions
+    for ((supertypeRef, graphExtensionFactoryClass) in graphExtensionFactorySupertypes) {
+      val graphExtensionClass = graphExtensionFactoryClass.requireContainingClassSymbol()
+      validateGraphExtension(
+        session = session,
+        classIds = classIds,
+        parentGraph = declaration,
+        graphExtension = graphExtensionClass,
+        source = supertypeRef.source,
+        parentScopeAnnotations = scopeAnnotations,
+        parentAggregationScopes = aggregationScopes,
+      )
+    }
+
+    val implementedGraphExtensionCreators =
+      graphExtensionFactorySupertypes.values.mapToSet { it.classId }
 
     // Note this doesn't check inherited supertypes. Maybe we should, but where do we report errors?
     for (callable in declaration.symbol.directCallableSymbols()) {
@@ -126,6 +154,109 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
           classIds.providesAnnotations + classIds.bindsAnnotations,
         )
       if (isBindsOrProvides) continue
+
+      // Check graph extensions
+      val returnType = callable.resolvedReturnTypeRef.coneType
+
+      // Check if it's a graph extension creator
+      val returnTypeClassSymbol = returnType.toClassSymbol(session)
+      val isGraphExtensionCreator =
+        returnTypeClassSymbol?.isAnnotatedWithAny(
+          session,
+          classIds.graphExtensionFactoryAnnotations,
+        ) == true
+
+      if (isGraphExtensionCreator) {
+        val graphExtensionClass = returnTypeClassSymbol.requireContainingClassSymbol()
+        validateGraphExtension(
+          session = session,
+          classIds = classIds,
+          parentGraph = declaration,
+          graphExtension = graphExtensionClass,
+          source = callable.source,
+          parentScopeAnnotations = scopeAnnotations,
+          parentAggregationScopes = aggregationScopes,
+        )
+        continue
+      }
+
+      if (callable.isOverride) {
+        val graphExtensionClass =
+          callable.directOverriddenSymbolsSafe(context).firstNotNullOfOrNull { overriddenSymbol ->
+            overriddenSymbol.dispatchReceiverClassTypeOrNull()?.toClassSymbol(session)?.takeIf {
+              it.isAnnotatedWithAny(session, classIds.graphExtensionFactoryAnnotations)
+            }
+          }
+        if (graphExtensionClass != null) {
+          validateGraphExtension(
+            session = session,
+            classIds = classIds,
+            parentGraph = declaration,
+            graphExtension = graphExtensionClass,
+            source = callable.source,
+            parentScopeAnnotations = scopeAnnotations,
+            parentAggregationScopes = aggregationScopes,
+          )
+          continue
+        }
+      }
+
+      val isGraphExtension =
+        returnTypeClassSymbol?.isAnnotatedWithAny(session, classIds.graphExtensionAnnotations) ==
+          true
+      if (isGraphExtension) {
+        // Check if that extension has a creator. If so, we either must implement that creator or
+        // it's an error
+        // because they need to use it
+        val creator =
+          returnTypeClassSymbol.nestedClasses().firstOrNull { nestedClass ->
+            nestedClass.isAnnotatedWithAny(session, classIds.graphExtensionFactoryAnnotations)
+          }
+        if (creator != null) {
+          // Final check - make sure this callable belongs to that extension
+          val belongsToExtension =
+            callable.isOverride &&
+              creator.classId !in implementedGraphExtensionCreators &&
+              callable.directOverriddenSymbolsSafe(context).any {
+                it.dispatchReceiverClassLookupTagOrNull()?.classId == creator.classId
+              }
+          if (!belongsToExtension) {
+            reporter.reportOn(
+              callable.source,
+              FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
+              "Graph extension '${returnTypeClassSymbol.classId.asSingleFqName()}' has a creator type '${creator.classId.asSingleFqName()}' that must be used to create its instances. Either make '${declaration.classId.asSingleFqName()}' implement '${creator.classId.asSingleFqName()}' or expose an accessor for '${creator.classId.asSingleFqName()}' instead of '${returnTypeClassSymbol.classId.asSingleFqName()}' directly.",
+            )
+            continue
+          }
+        } else if (callable.contextParameterSymbols.isNotEmpty()) {
+          for (parameter in callable.contextParameterSymbols) {
+            reporter.reportOn(
+              parameter.source,
+              FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
+              "Graph extension accessors may not have context parameters.",
+            )
+          }
+          continue
+        } else if (callable.receiverParameterSymbol != null) {
+          reporter.reportOn(
+            callable.receiverParameterSymbol!!.source,
+            FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
+            "Graph extension accessors may not have extension receivers. Use `@GraphExtension.Factory` instead.",
+          )
+          continue
+        } else if (
+          callable is FirNamedFunctionSymbol && callable.valueParameterSymbols.isNotEmpty()
+        ) {
+          for (parameter in callable.valueParameterSymbols) {
+            reporter.reportOn(
+              parameter.source,
+              FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
+              "Graph extension accessors may not have parameters. Use `@GraphExtension.Factory` instead.",
+            )
+          }
+          continue
+        }
+      }
 
       // Functions with no params are accessors
       if (
@@ -195,6 +326,67 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
               "Inject functions must have exactly one parameter.",
             )
           }
+        }
+      }
+    }
+  }
+
+  context(context: CheckerContext, reporter: DiagnosticReporter)
+  private fun validateGraphExtension(
+    session: FirSession,
+    classIds: ClassIds,
+    parentGraph: FirClass,
+    source: KtSourceElement?,
+    graphExtension: FirClassLikeSymbol<*>,
+    parentAggregationScopes: Set<ClassId>,
+    parentScopeAnnotations: Set<MetroFirAnnotation>,
+  ) {
+    val dependencyGraphAnno =
+      graphExtension.resolvedCompilerAnnotationsWithClassIds
+        .annotationsIn(session, classIds.graphExtensionAnnotations)
+        .firstOrNull()
+
+    val targetGraphScopes = dependencyGraphAnno?.allScopeClassIds().orEmpty()
+    val targetGraphScopeAnnotations =
+      graphExtension.resolvedCompilerAnnotationsWithClassIds.scopeAnnotations(session).toSet()
+
+    when {
+      targetGraphScopes.isNotEmpty() -> {
+        val overlaps = parentAggregationScopes.intersect(targetGraphScopes)
+        if (overlaps.isNotEmpty()) {
+          reporter.reportOn(
+            source ?: parentGraph.source,
+            FirMetroErrors.GRAPH_CREATORS_ERROR,
+            buildString {
+              appendLine(
+                "Graph extension '${graphExtension.classId.asSingleFqName()}' has overlapping aggregation scopes with parent graph '${parentGraph.classId.asSingleFqName()}':"
+              )
+              for (overlap in overlaps) {
+                append("- ")
+                appendLine(overlap.asSingleFqName().asString())
+              }
+            },
+          )
+        }
+      }
+
+      targetGraphScopeAnnotations.isNotEmpty() -> {
+        val overlaps = parentScopeAnnotations.intersect(targetGraphScopeAnnotations)
+        if (overlaps.isNotEmpty()) {
+          reporter.reportOn(
+            source ?: parentGraph.source,
+            FirMetroErrors.GRAPH_CREATORS_ERROR,
+            buildString {
+              appendLine(
+                "Graph extension '${graphExtension.classId.asSingleFqName()}' has overlapping scope annotations with parent graph '${parentGraph.classId.asSingleFqName()}':"
+              )
+              for (overlap in overlaps) {
+                append("- ")
+                appendLine(overlap.simpleString())
+              }
+            },
+          )
+          return
         }
       }
     }

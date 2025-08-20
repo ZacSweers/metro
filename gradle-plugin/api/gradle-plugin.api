@@ -25,8 +25,10 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension {
 	public fun <init> (Lorg/gradle/api/file/ProjectLayout;Lorg/gradle/api/model/ObjectFactory;Lorg/gradle/api/provider/ProviderFactory;)V
 	public final fun getChunkFieldInits ()Lorg/gradle/api/provider/Property;
 	public final fun getDebug ()Lorg/gradle/api/provider/Property;
+	public final fun getEnableFullBindingGraphValidation ()Lorg/gradle/api/provider/Property;
 	public final fun getEnableKotlinVersionCompatibilityChecks ()Lorg/gradle/api/provider/Property;
 	public final fun getEnableScopedInjectClassHints ()Lorg/gradle/api/provider/Property;
+	public final fun getEnableStrictValidation ()Lorg/gradle/api/provider/Property;
 	public final fun getEnableTopLevelFunctionInjection ()Lorg/gradle/api/provider/Property;
 	public final fun getEnabled ()Lorg/gradle/api/provider/Property;
 	public final fun getGenerateAssistedFactories ()Lorg/gradle/api/provider/Property;
@@ -53,11 +55,13 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension$InteropHan
 	public final fun getContributesGraphExtensionFactory ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getContributesIntoSet ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getContributesTo ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getDependencyGraph ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getDependencyGraphFactory ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getElementsIntoSet ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getEnableDaggerAnvilInterop ()Lorg/gradle/api/provider/Property;
 	public abstract fun getEnableDaggerRuntimeInterop ()Lorg/gradle/api/provider/Property;
-	public final fun getGraph ()Lorg/gradle/api/provider/SetProperty;
-	public final fun getGraphFactory ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getGraphExtension ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getGraphExtensionFactory ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getInject ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getIntoMap ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getIntoSet ()Lorg/gradle/api/provider/SetProperty;

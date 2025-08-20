@@ -947,11 +947,11 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-            e: ExampleGraph.kt:36:14 DependencyGraph.Factory declarations should be non-sealed abstract classes or interfaces.
-            e: ExampleGraph.kt:44:14 DependencyGraph.Factory declarations should be non-sealed abstract classes or interfaces.
-            e: ExampleGraph.kt:54:9 DependencyGraph.Factory declarations should be non-sealed abstract classes or interfaces.
-            e: ExampleGraph.kt:64:20 DependencyGraph.Factory declarations should be non-sealed abstract classes or interfaces.
-            e: ExampleGraph.kt:72:16 DependencyGraph.Factory declarations should be non-sealed abstract classes or interfaces.
+            e: ExampleGraph.kt:36:14 @DependencyGraph.Factory declarations should be non-sealed abstract classes or interfaces.
+            e: ExampleGraph.kt:44:14 @DependencyGraph.Factory declarations should be non-sealed abstract classes or interfaces.
+            e: ExampleGraph.kt:54:9 @DependencyGraph.Factory declarations should be non-sealed abstract classes or interfaces.
+            e: ExampleGraph.kt:64:20 @DependencyGraph.Factory declarations should be non-sealed abstract classes or interfaces.
+            e: ExampleGraph.kt:72:16 @DependencyGraph.Factory declarations should be non-sealed abstract classes or interfaces.
           """
           .trimIndent()
       )
@@ -981,7 +981,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: GraphWithAbstractClass.kt:11:20 DependencyGraph.Factory declarations cannot be local classes."
+        "e: GraphWithAbstractClass.kt:11:20 @DependencyGraph.Factory declarations cannot be local classes."
       )
     }
   }
@@ -1044,8 +1044,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
     result.assertDiagnostics(
       """
-        e: graphs.kt:36:3 DependencyGraph.Factory declarations must be public or internal.
-        e: graphs.kt:44:3 DependencyGraph.Factory declarations must be public or internal.
+        e: graphs.kt:36:3 @DependencyGraph.Factory declarations must be public or internal.
+        e: graphs.kt:44:3 @DependencyGraph.Factory declarations must be public or internal.
       """
         .trimIndent()
     )
@@ -1631,7 +1631,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
           class MultibindingConsumer @Inject constructor(val contributions: Set<ContributedInterface>)
 
-          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph {
             val multibindingConsumer: MultibindingConsumer
           }
@@ -1670,7 +1670,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
           class MultibindingConsumer @Inject constructor(val contributions: Set<ContributedInterface>)
 
-          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph {
             val multibindingConsumer: MultibindingConsumer
           }
@@ -2644,16 +2644,14 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
           class Impl : Base
 
-          @DependencyGraph(Unit::class, isExtendable = true)
-          interface ParentGraph {
-            val base: Base
+          @GraphExtension
+          interface ChildGraph {
+            val message: String
 
-            @Provides
-            @SingleIn(Unit::class)
-            fun provideBase(): Base = Impl()
-
-            @Provides
-            fun provideMessage(base: Base): String = base.toString()
+            @GraphExtension.Factory
+            interface Factory {
+              fun create(): ChildGraph
+            }
           }
         """
             .trimIndent()
@@ -2663,14 +2661,18 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph
-          interface ChildGraph {
-            val message: String
+          @DependencyGraph(Unit::class)
+          interface ParentGraph {
+            val base: Base
 
-            @DependencyGraph.Factory
-            interface Factory {
-              fun create(@Extends parent: ParentGraph): ChildGraph
-            }
+            fun childGraphFactory(): ChildGraph.Factory
+
+            @Provides
+            @SingleIn(Unit::class)
+            fun provideBase(): Base = Impl()
+
+            @Provides
+            fun provideMessage(base: Base): String = base.toString()
           }
         """
           .trimIndent()

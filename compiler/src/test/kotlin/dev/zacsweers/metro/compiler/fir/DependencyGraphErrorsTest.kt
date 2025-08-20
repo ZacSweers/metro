@@ -317,7 +317,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertDiagnostics(
-      "e: ExampleGraph.kt:9:17 DependencyGraph.Factory abstract function 'create' must return a dependency graph but found kotlin.Unit."
+      "e: ExampleGraph.kt:9:17 @DependencyGraph.Factory abstract function 'create' must return a dependency graph but found kotlin.Unit."
     )
   }
 
@@ -340,7 +340,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertDiagnostics(
-      "e: ExampleGraph.kt:10:19 DependencyGraph.Factory abstract function 'create' must return a dependency graph but found kotlin.Nothing."
+      "e: ExampleGraph.kt:10:19 @DependencyGraph.Factory abstract function 'create' must return a dependency graph but found kotlin.Nothing."
     )
   }
 
@@ -368,7 +368,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `all factory parameters must be annotated with Provides XOR Includes XOR Extends`() {
+  fun `all factory parameters must be annotated with Provides XOR Includes`() {
     val result =
       compile(
         source(
@@ -386,7 +386,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertDiagnostics(
-      "e: ExampleGraph.kt:10:41 DependencyGraph.Factory abstract function parameters must be annotated with exactly one @Includes, @Provides, or @Extends."
+      "e: ExampleGraph.kt:10:41 DependencyGraph.Factory abstract function parameters must be annotated with exactly one @Includes or @Provides."
     )
   }
 
@@ -426,55 +426,6 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `Extends type must be a DependencyGraph-annotated type`() {
-    val result =
-      compile(
-        source(
-          """
-            @DependencyGraph
-            interface ExampleGraph {
-              @DependencyGraph.Factory
-              fun interface Factory {
-                fun create(@Extends value: String): ExampleGraph
-              }
-            }
-          """
-            .trimIndent()
-        ),
-        expectedExitCode = ExitCode.COMPILATION_ERROR,
-      )
-    result.assertDiagnostics(
-      "e: ExampleGraph.kt:10:25 @Extends types must be annotated with @DependencyGraph."
-    )
-  }
-
-  @Test
-  fun `Extends type must be a DependencyGraph isExtendable`() {
-    val result =
-      compile(
-        source(
-          """
-            @DependencyGraph
-            interface ExampleGraph {
-              @DependencyGraph.Factory
-              fun interface Factory {
-                fun create(@Extends value: FinalClassGraph): ExampleGraph
-              }
-            }
-
-            @DependencyGraph
-            interface FinalClassGraph
-          """
-            .trimIndent()
-        ),
-        expectedExitCode = ExitCode.COMPILATION_ERROR,
-      )
-    result.assertDiagnostics(
-      "e: ExampleGraph.kt:10:25 @Extends graphs must be extendable (set DependencyGraph.isExtendable to true)."
-    )
-  }
-
-  @Test
   fun `target graph type cannot be a factory parameter`() {
     val result =
       compile(
@@ -494,24 +445,6 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       )
     result.assertDiagnostics(
       "e: ExampleGraph.kt:10:33 DependencyGraph.Factory declarations cannot have their target graph type as parameters."
-    )
-  }
-
-  @Test
-  fun `contributed graphs must have a nested factory`() {
-    val result =
-      compile(
-        source(
-          """
-            @ContributesGraphExtension(Unit::class)
-            interface ExampleGraph
-          """
-            .trimIndent()
-        ),
-        expectedExitCode = ExitCode.COMPILATION_ERROR,
-      )
-    result.assertDiagnostics(
-      "e: ExampleGraph.kt:7:11 @ContributesGraphExtension declarations must have a nested class annotated with @ContributesGraphExtension.Factory."
     )
   }
 
@@ -648,9 +581,9 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
             @DependencyGraph(AppScope::class)
             interface ExampleGraph
 
-            @ContributesGraphExtension(Unit::class)
+            @GraphExtension(Unit::class)
             internal interface ContributedInterface {
-              @ContributesGraphExtension.Factory(AppScope::class)
+              @GraphExtension.Factory @ContributesTo(AppScope::class)
               interface Factory {
                 fun create(): ContributedInterface
               }

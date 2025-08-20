@@ -1,6 +1,6 @@
 // MODULE: lib
 @SingleIn(Unit::class)
-@ContributesGraphExtension(Unit::class)
+@GraphExtension(Unit::class)
 interface UnitGraph {
   fun inject(target: StringHolder)
 
@@ -10,7 +10,7 @@ interface UnitGraph {
     return "hello"
   }
 
-  @ContributesGraphExtension.Factory(AppScope::class)
+  @GraphExtension.Factory @ContributesTo(AppScope::class)
   interface Factory {
     fun createUnitGraph(): UnitGraph
   }
@@ -21,7 +21,7 @@ class StringHolder {
 }
 
 // MODULE: main(lib)
-@DependencyGraph(AppScope::class, isExtendable = true)
+@DependencyGraph(AppScope::class)
 interface AppGraph
 
 fun box(): String {

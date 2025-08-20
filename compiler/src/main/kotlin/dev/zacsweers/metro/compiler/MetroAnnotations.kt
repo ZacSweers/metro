@@ -511,7 +511,6 @@ private fun FirBasedSymbol<*>.metroAnnotations(
       scope = scope,
       qualifier = qualifier,
       mapKeys = mapKeys,
-      // This is never used in FIR so always null
       symbol = null,
     )
 
