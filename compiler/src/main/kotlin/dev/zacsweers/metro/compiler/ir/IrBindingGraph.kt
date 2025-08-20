@@ -586,18 +586,9 @@ internal class IrBindingGraph(
           )
         }
       }
-      val toReport = declaration ?: node.sourceGraph
-      if (toReport.fileOrNull == null) {
-        metroContext.messageCollector.report(
-          CompilerMessageSeverity.ERROR,
-          message,
-          toReport.locationOrNull(),
-        )
-      } else {
-        metroContext.diagnosticReporter
-          .at(declaration ?: node.sourceGraph)
-          .report(MetroDiagnostics.METRO_ERROR, message)
-      }
+      metroContext.diagnosticReporter
+        .at(declaration ?: node.sourceGraph)
+        .report(MetroDiagnostics.METRO_ERROR, message)
     }
 
     reverseAdjacency[binding.typeKey]?.let { dependents ->
