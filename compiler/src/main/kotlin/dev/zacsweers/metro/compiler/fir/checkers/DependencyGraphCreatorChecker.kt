@@ -2,11 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
-import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.fir.FirMetroErrors
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
-import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.allScopeClassIds
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
@@ -153,7 +150,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
       if (param.isVararg) {
         reporter.reportOn(
           param.source,
-          FirMetroErrors.GRAPH_CREATORS_VARARG_ERROR,
+          MetroDiagnostics.GRAPH_CREATORS_VARARG_ERROR,
           "${annotationClassId.relativeClassName.asString()} abstract function parameters may not be vararg.",
         )
         continue

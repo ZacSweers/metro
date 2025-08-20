@@ -53,6 +53,7 @@ import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.DECLA
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.MODALITY_MODIFIER
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.NAME_IDENTIFIER
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.OVERRIDE_MODIFIER
+import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.PARAMETER_VARARG_MODIFIER
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.TYPE_PARAMETERS_LIST
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.VISIBILITY_MODIFIER
 import org.jetbrains.kotlin.diagnostics.rendering.BaseDiagnosticRendererFactory
@@ -68,6 +69,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
 
   // DependencyGraph factory errors
   val GRAPH_CREATORS_ERROR by error1<String>(NAME_IDENTIFIER)
+  val GRAPH_CREATORS_VARARG_ERROR by error1<String>(PARAMETER_VARARG_MODIFIER)
 
   // DependencyGraph errors
   val DEPENDENCY_GRAPH_ERROR by error1<String>(NAME_IDENTIFIER)

@@ -526,7 +526,7 @@ class GraphExtensionTest : MetroCompilerTest() {
       assertDiagnostics(
         """
           e: GrandParentGraph.kt Graph extension 'test.ChildGraph' has overlapping scope annotations with ancestor graphs':
-- @dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class) (from ancestor 'test.GrandParentGraph')
+          - @dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class) (from ancestor 'test.GrandParentGraph')
         """
           .trimIndent()
       )
