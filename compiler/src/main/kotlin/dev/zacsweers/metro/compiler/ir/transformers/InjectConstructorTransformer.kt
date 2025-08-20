@@ -149,9 +149,6 @@ internal class InjectConstructorTransformer(
             MetroDiagnostics.METRO_ERROR,
             "Could not find generated factory for '${declaration.kotlinFqName}' in upstream module where it's defined. Run the Metro compiler over that module too.",
           )
-        } else {
-          diagnosticReporter.at(declaration).report(MetroIrErrors.METRO_ERROR, noFactoryMessage)
-        }
         return null
       } else if (doNotErrorOnMissing) {
         // Store a null here because it's absent
