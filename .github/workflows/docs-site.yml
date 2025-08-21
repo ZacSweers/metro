@@ -6,6 +6,8 @@ name: Metro Docs Site
 on:
   push:
     branches: ["main"]
+    tags:
+      - '*.*.*' # Matches semantic versioning tags
 
   # Allows manual deployements (if needed)
   workflow_dispatch:
@@ -16,8 +18,7 @@ permissions:
   pages: write
   id-token: write
 
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+# Only allow one docs deployment at a time, and queue subsequent ones
 concurrency:
   group: "pages"
   cancel-in-progress: false
