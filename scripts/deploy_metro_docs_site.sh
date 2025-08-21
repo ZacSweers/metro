@@ -24,6 +24,13 @@ if [ "$2" = "--latest" ]; then
     IS_LATEST=true
 fi
 
+# Check if mike is available
+echo "Checking if mike is available..."
+if ! command -v mike &> /dev/null; then
+    echo "Error: 'mike' command not found. use pip to install required dependencies"
+    exit 1
+fi
+
 echo "Deploying documentation for version: $VERSION"
 if [ "$IS_LATEST" = true ]; then
     echo "This will be marked as the latest release"
