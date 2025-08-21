@@ -12,13 +12,13 @@
         <meta name="author" content="Zac Sweers">
       
       
-        <link rel="canonical" href="https://zacsweers.github.io/metro/0.6.1/multiplatform/">
+        <link rel="canonical" href="https://zacsweers.github.io/metro/0.6.1/samples/">
       
       
-        <link rel="prev" href="../aggregation/">
+        <link rel="prev" href="../faq/">
       
       
-        <link rel="next" href="../validation-and-error-reporting/">
+        <link rel="next" href="../api/">
       
       
       <link rel="icon" href="../site-assets/img/favicon.ico">
@@ -26,7 +26,7 @@
     
     
       
-        <title>Multiplatform - Metro</title>
+        <title>Samples - Metro</title>
       
     
     
@@ -61,11 +61,11 @@
       
         <meta  property="og:type"  content="website" >
       
-        <meta  property="og:title"  content="Multiplatform - Metro" >
+        <meta  property="og:title"  content="Samples - Metro" >
       
         <meta  property="og:description"  content="A multiplatform dependency injection framework for Kotlin" >
       
-        <meta  property="og:image"  content="https://zacsweers.github.io/metro/0.6.1/assets/images/social/multiplatform.png" >
+        <meta  property="og:image"  content="https://zacsweers.github.io/metro/0.6.1/assets/images/social/samples.png" >
       
         <meta  property="og:image:type"  content="image/png" >
       
@@ -73,15 +73,15 @@
       
         <meta  property="og:image:height"  content="630" >
       
-        <meta  property="og:url"  content="https://zacsweers.github.io/metro/0.6.1/multiplatform/" >
+        <meta  property="og:url"  content="https://zacsweers.github.io/metro/0.6.1/samples/" >
       
         <meta  name="twitter:card"  content="summary_large_image" >
       
-        <meta  name="twitter:title"  content="Multiplatform - Metro" >
+        <meta  name="twitter:title"  content="Samples - Metro" >
       
         <meta  name="twitter:description"  content="A multiplatform dependency injection framework for Kotlin" >
       
-        <meta  name="twitter:image"  content="https://zacsweers.github.io/metro/0.6.1/assets/images/social/multiplatform.png" >
+        <meta  name="twitter:image"  content="https://zacsweers.github.io/metro/0.6.1/assets/images/social/samples.png" >
       
     
     
@@ -104,7 +104,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#multiplatform" class="md-skip">
+        <a href="#metro-samples" class="md-skip">
           Skip to content
         </a>
       
@@ -143,7 +143,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Multiplatform
+              Samples
             
           </span>
         </div>
@@ -420,20 +420,18 @@
       
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
         
           
           <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
@@ -449,7 +447,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             Usage
@@ -621,19 +619,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../multiplatform/" class="md-nav__link">
         
   
   
@@ -644,7 +633,6 @@
   
 
       </a>
-      
     </li>
   
 
@@ -840,10 +828,32 @@
       
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../samples/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Samples
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -854,6 +864,71 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#android-app" class="md-nav__link">
+    <span class="md-ellipsis">
+      android-app
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#circuit-app" class="md-nav__link">
+    <span class="md-ellipsis">
+      circuit-app
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#interop" class="md-nav__link">
+    <span class="md-ellipsis">
+      interop
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#multi-module-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      multi-module-test
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#weather-app" class="md-nav__link">
+    <span class="md-ellipsis">
+      weather-app
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -988,6 +1063,59 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#android-app" class="md-nav__link">
+    <span class="md-ellipsis">
+      android-app
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#circuit-app" class="md-nav__link">
+    <span class="md-ellipsis">
+      circuit-app
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#interop" class="md-nav__link">
+    <span class="md-ellipsis">
+      interop
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#multi-module-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      multi-module-test
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#weather-app" class="md-nav__link">
+    <span class="md-ellipsis">
+      weather-app
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -1005,27 +1133,19 @@
   
 
 
-<h1 id="multiplatform">Multiplatform<a class="headerlink" href="#multiplatform" title="Permanent link">&para;</a></h1>
-<p>Should Just Work™️! The runtime and code gen have been implemented to be entirely platform-agnostic so far.</p>
-<p>There is one issue in the repo right now where the compiler appears to have a bug with generated FIR declarations where it doesn’t deserialize them correctly on non-JVM targets. Waiting for feedback from JB.</p>
-<p>When mixing contributions between common and platform-specific source sets, you must define your final <code>@DependencyGraph</code> in the platform-specific code. This is because a graph defined in commonMain wouldn’t have full visibility of contributions from platform-specific types. A good pattern for this is to define your canonical graph in commonMain <em>without</em> a <code>@DependencyGraph</code> annotation and then a <code>{Platform}{Graph}</code> type in the platform source set that extends it and does have the <code>@DependencyGraph</code>. Metro automatically exposes bindings of the base graph type on the graph for any injections that need it.</p>
-<div class="highlight"><pre><span></span><code><span class="c1">// In commonMain</span>
-<span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">httpClient</span><span class="p">:</span><span class="w"> </span><span class="n">HttpClient</span>
-<span class="p">}</span>
-
-<span class="c1">// In jvmMain</span>
-<span class="nd">@DependencyGraph</span>
-<span class="kd">interface</span><span class="w"> </span><span class="nc">JvmAppGraph</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">AppGraph</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideHttpClient</span><span class="p">():</span><span class="w"> </span><span class="n">HttpClient</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">(</span><span class="n">Netty</span><span class="p">)</span>
-<span class="p">}</span>
-
-<span class="c1">// In androidMain</span>
-<span class="nd">@DependencyGraph</span>
-<span class="kd">interface</span><span class="w"> </span><span class="nc">AndroidAppGraph</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">AppGraph</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideHttpClient</span><span class="p">():</span><span class="w"> </span><span class="n">HttpClient</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">(</span><span class="n">OkHttp</span><span class="p">)</span>
-<span class="p">}</span>
-</code></pre></div>
+<h1 id="metro-samples">Metro Samples<a class="headerlink" href="#metro-samples" title="Permanent link">&para;</a></h1>
+<p>The samples directory contains various sample projects demonstrating different use cases and integrations for Metro.</p>
+<h2 id="android-app"><a href="https://github.com/ZacSweers/metro/tree/main/samples/android-app">android-app</a><a class="headerlink" href="#android-app" title="Permanent link">&para;</a></h2>
+<p>A simple Android sample app that demonstrates using Metro to constructor-inject Android framework components like <code>Activity</code>, <code>Fragment</code>, and <code>ViewModel</code> with multibindings.</p>
+<h2 id="circuit-app"><a href="https://github.com/ZacSweers/metro/tree/main/samples/circuit-app">circuit-app</a><a class="headerlink" href="#circuit-app" title="Permanent link">&para;</a></h2>
+<p>A multiplatform sample that demonstrates using Metro with <a href="https://github.com/slackhq/circuit">Circuit</a> and Jetpack Compose.</p>
+<h2 id="interop"><a href="https://github.com/ZacSweers/metro/tree/main/samples/interop">interop</a><a class="headerlink" href="#interop" title="Permanent link">&para;</a></h2>
+<p>Various demonstrating interop between Metro and other dependency injection frameworks.</p>
+<h2 id="multi-module-test"><a href="https://github.com/ZacSweers/metro/tree/main/samples/multi-module-test">multi-module-test</a><a class="headerlink" href="#multi-module-test" title="Permanent link">&para;</a></h2>
+<p>A sample + integration test demonstrating Metro in a multi-module project structure with.</p>
+<p>This sample shows how Metro handles dependencies across module boundaries and component hierarchies.</p>
+<h2 id="weather-app"><a href="https://github.com/ZacSweers/metro/tree/main/samples/weather-app">weather-app</a><a class="headerlink" href="#weather-app" title="Permanent link">&para;</a></h2>
+<p>A simple command-line weather app that demonstrates basic Metro usage.</p>
 
 
 
