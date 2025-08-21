@@ -1,9 +1,12 @@
 #!/bin/bash
 
-# Deploy versioned docs site for a specific version using `mike`
+# Commits/deploys versioned docs site for a specific version using `mike`
+# ⚠️ Version `0.6.1` and above is required. Support for `mike` is added from `0.6.1`.
+# See https://github.com/ZacSweers/metro/pull/939
+# 
 # Usage: ./scripts/deploy_metro_docs_site.sh <version> [--latest]
-# Example: ./scripts/deploy_metro_docs_site.sh 0.6.1 --latest
-# Example: ./scripts/deploy_metro_docs_site.sh 0.5.0
+# Example: ./scripts/deploy_metro_docs_site.sh 0.6.2 --latest
+# Example: ./scripts/deploy_metro_docs_site.sh 0.6.2
 
 set -e
 
@@ -11,8 +14,8 @@ set -e
 if [ $# -eq 0 ]; then
     echo "Error: Version parameter is required"
     echo "Usage: $0 <version> [--latest]"
-    echo "Example: $0 0.6.1 --latest    (marks as latest release)"
-    echo "Example: $0 0.5.0             (does not mark as latest)"
+    echo "Example: $0 0.6.2 --latest    (marks as latest release)"
+    echo "Example: $0 0.6.2             (does not mark as latest)"
     exit 1
 fi
 
