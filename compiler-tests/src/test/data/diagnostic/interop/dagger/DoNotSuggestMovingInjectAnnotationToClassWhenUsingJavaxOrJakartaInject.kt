@@ -6,3 +6,5 @@
 class JavaxInject @javax.inject.Inject constructor()
 class JakartaInject @jakarta.inject.Inject constructor()
 class MetroInject <!SUGGEST_CLASS_INJECTION!>@Inject<!> constructor()
+
+/* GENERATED_FIR_TAGS: classDeclaration, primaryConstructor */

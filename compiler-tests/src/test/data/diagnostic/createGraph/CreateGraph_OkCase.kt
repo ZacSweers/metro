@@ -15,3 +15,5 @@ fun example() {
   val exampleGraph2: ExampleGraph = createGraph()
   val exampleGraphFactory: ExampleGraphWithFactory.Factory = createGraphFactory()
 }
+
+/* GENERATED_FIR_TAGS: functionDeclaration, interfaceDeclaration, localProperty, nestedClass, propertyDeclaration */

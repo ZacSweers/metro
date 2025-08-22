@@ -3,7 +3,7 @@
 package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.ClassIds
-import dev.zacsweers.metro.compiler.fir.FirMetroErrors
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.additionalScopesArgument
 import dev.zacsweers.metro.compiler.fir.allAnnotations
@@ -74,7 +74,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
     if (additionalScopes.isNotEmpty() && scope == null) {
       reporter.reportOn(
         dependencyGraphAnno.additionalScopesArgument()?.source ?: dependencyGraphAnno.source,
-        FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
+        MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
         "@${graphAnnotationClassId.shortClassName.asString()} should have a primary `scope` defined if `additionalScopes` are defined.",
       )
     }
@@ -91,7 +91,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
       if (constructor.valueParameterSymbols.isNotEmpty()) {
         reporter.reportOn(
           constructor.source,
-          FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
+          MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
           "Dependency graphs cannot have constructor parameters. Use @DependencyGraph.Factory instead.",
         )
         return
@@ -110,7 +110,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
       if (supertypeClass.isAnnotatedWithAny(session, classIds.graphLikeAnnotations)) {
         reporter.reportOn(
           supertypeRef.source ?: declaration.source,
-          FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
+          MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
           "Graph class '${declaration.classId.asSingleFqName()}' may not directly extend graph class '${supertypeClass.classId.asSingleFqName()}'. Use @GraphExtension instead.",
         )
         return
@@ -181,7 +181,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
 
       if (callable.isOverride) {
         val graphExtensionClass =
-          callable.directOverriddenSymbolsSafe(context).firstNotNullOfOrNull { overriddenSymbol ->
+          callable.directOverriddenSymbolsSafe().firstNotNullOfOrNull { overriddenSymbol ->
             overriddenSymbol.dispatchReceiverClassTypeOrNull()?.toClassSymbol(session)?.takeIf {
               it.isAnnotatedWithAny(session, classIds.graphExtensionFactoryAnnotations)
             }
@@ -216,13 +216,13 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
           val belongsToExtension =
             callable.isOverride &&
               creator.classId !in implementedGraphExtensionCreators &&
-              callable.directOverriddenSymbolsSafe(context).any {
+              callable.directOverriddenSymbolsSafe().any {
                 it.dispatchReceiverClassLookupTagOrNull()?.classId == creator.classId
               }
           if (!belongsToExtension) {
             reporter.reportOn(
               callable.source,
-              FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
+              MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
               "Graph extension '${returnTypeClassSymbol.classId.asSingleFqName()}' has a creator type '${creator.classId.asSingleFqName()}' that must be used to create its instances. Either make '${declaration.classId.asSingleFqName()}' implement '${creator.classId.asSingleFqName()}' or expose an accessor for '${creator.classId.asSingleFqName()}' instead of '${returnTypeClassSymbol.classId.asSingleFqName()}' directly.",
             )
             continue
@@ -231,7 +231,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
           for (parameter in callable.contextParameterSymbols) {
             reporter.reportOn(
               parameter.source,
-              FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
+              MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
               "Graph extension accessors may not have context parameters.",
             )
           }
@@ -239,7 +239,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
         } else if (callable.receiverParameterSymbol != null) {
           reporter.reportOn(
             callable.receiverParameterSymbol!!.source,
-            FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
+            MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
             "Graph extension accessors may not have extension receivers. Use `@GraphExtension.Factory` instead.",
           )
           continue
@@ -249,7 +249,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
           for (parameter in callable.valueParameterSymbols) {
             reporter.reportOn(
               parameter.source,
-              FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
+              MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
               "Graph extension accessors may not have parameters. Use `@GraphExtension.Factory` instead.",
             )
           }
@@ -266,14 +266,14 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
         if (returnType.isUnit) {
           reporter.reportOn(
             callable.resolvedReturnTypeRef.source ?: callable.source,
-            FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
+            MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
             "Graph accessor members must have a return type and cannot be Unit.",
           )
           continue
         } else if (returnType.isNothing) {
           reporter.reportOn(
             callable.source,
-            FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
+            MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
             "Graph accessor members cannot return Nothing.",
           )
           continue
@@ -283,7 +283,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
         for (scopeAnnotation in scopeAnnotations) {
           reporter.reportOn(
             scopeAnnotation.fir.source,
-            FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
+            MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
             "Graph accessor members cannot be scoped.",
           )
         }
@@ -294,7 +294,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
         if (!callable.resolvedReturnTypeRef.coneType.isUnit) {
           reporter.reportOn(
             callable.resolvedReturnTypeRef.source,
-            FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
+            MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
             "Inject functions must not return anything other than Unit.",
           )
           continue
@@ -311,7 +311,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
             if (isInjected) {
               reporter.reportOn(
                 parameter.source,
-                FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
+                MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
                 "Injected type is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary.",
               )
             }
@@ -321,7 +321,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
             // TODO Not actually sure what dagger does. Maybe we should support this?
             reporter.reportOn(
               callable.source,
-              FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
+              MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
               "Inject functions must have exactly one parameter.",
             )
           }
@@ -355,7 +355,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
         if (overlaps.isNotEmpty()) {
           reporter.reportOn(
             source ?: parentGraph.source,
-            FirMetroErrors.GRAPH_CREATORS_ERROR,
+            MetroDiagnostics.GRAPH_CREATORS_ERROR,
             buildString {
               appendLine(
                 "Graph extension '${graphExtension.classId.asSingleFqName()}' has overlapping aggregation scopes with parent graph '${parentGraph.classId.asSingleFqName()}':"
@@ -374,7 +374,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
         if (overlaps.isNotEmpty()) {
           reporter.reportOn(
             source ?: parentGraph.source,
-            FirMetroErrors.GRAPH_CREATORS_ERROR,
+            MetroDiagnostics.GRAPH_CREATORS_ERROR,
             buildString {
               appendLine(
                 "Graph extension '${graphExtension.classId.asSingleFqName()}' has overlapping scope annotations with parent graph '${parentGraph.classId.asSingleFqName()}':"

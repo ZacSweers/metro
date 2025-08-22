@@ -7,3 +7,5 @@ class Foo(factoryProvider: <!ASSISTED_FACTORIES_CANNOT_BE_LAZY!>Lazy<Factory><!>
     fun create(): Foo
   }
 }
+
+/* GENERATED_FIR_TAGS: classDeclaration, functionDeclaration, interfaceDeclaration, nestedClass, primaryConstructor */

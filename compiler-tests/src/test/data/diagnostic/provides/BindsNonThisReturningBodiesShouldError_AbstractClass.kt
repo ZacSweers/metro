@@ -4,3 +4,6 @@ abstract class ExampleGraph {
   @Binds val String.<!BINDS_ERROR!>provideCharSequence<!>: CharSequence get() = "something else"
   @Binds fun Int.<!BINDS_ERROR!>provideNumber<!>(): Number = 3
 }
+
+/* GENERATED_FIR_TAGS: classDeclaration, funWithExtensionReceiver, functionDeclaration, getter, integerLiteral,
+propertyDeclaration, propertyWithExtensionReceiver, stringLiteral */

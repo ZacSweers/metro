@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
@@ -19,7 +20,6 @@ import dev.zacsweers.metro.compiler.memoized
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
-import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
@@ -273,7 +273,7 @@ internal class DependencyGraphNodeCache(
         }
         diagnosticReporter
           .at(graphDeclaration)
-          .report(MetroIrErrors.GRAPH_DEPENDENCY_CYCLE, message)
+          .report(MetroDiagnostics.GRAPH_DEPENDENCY_CYCLE, message)
         exitProcessing()
       }
     }
@@ -654,7 +654,7 @@ internal class DependencyGraphNodeCache(
             diagnosticReporter
               .at(graphDeclaration)
               .report(
-                MetroIrErrors.METRO_ERROR,
+                MetroDiagnostics.METRO_ERROR,
                 buildString {
                   appendLine(
                     "Graph extensions (@Extends) may not have multiple ancestors with the same scopes:"
@@ -672,25 +672,19 @@ internal class DependencyGraphNodeCache(
         }
       }
       if (overlapErrors.isNotEmpty()) {
-        val message = buildString {
-          appendLine(
-            "Graph extension '${dependencyGraphNode.sourceGraph.sourceGraphIfMetroGraph.kotlinFqName}' has overlapping scope annotations with ancestor graphs':"
+        diagnosticReporter
+          .at(graphDeclaration)
+          .report(
+            MetroDiagnostics.METRO_ERROR,
+            buildString {
+              appendLine(
+                "Graph extension '${dependencyGraphNode.sourceGraph.sourceGraphIfMetroGraph.kotlinFqName}' has overlapping scope annotations with ancestor graphs':"
+              )
+              for (overlap in overlapErrors) {
+                appendLine(overlap)
+              }
+            },
           )
-          for (overlap in overlapErrors) {
-            appendLine(overlap)
-          }
-        }
-
-        // TODO in 2.2.20 use just diagnostic reporter
-        if (graphDeclaration.origin === Origins.GeneratedGraphExtension) {
-          messageCollector.report(
-            CompilerMessageSeverity.ERROR,
-            message,
-            graphDeclaration.locationOrNull(),
-          )
-        } else {
-          diagnosticReporter.at(graphDeclaration).report(MetroIrErrors.METRO_ERROR, message)
-        }
         exitProcessing()
       }
 

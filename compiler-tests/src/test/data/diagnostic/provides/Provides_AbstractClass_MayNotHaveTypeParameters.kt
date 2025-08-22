@@ -9,3 +9,6 @@ abstract class ExampleGraph {
     fun <!METRO_TYPE_PARAMETERS_ERROR!><T><!> provideInt(): Int = 0
   }
 }
+
+/* GENERATED_FIR_TAGS: classDeclaration, companionObject, functionDeclaration, integerLiteral, nullableType,
+objectDeclaration, stringLiteral, typeParameter */

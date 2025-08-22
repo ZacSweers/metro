@@ -51,7 +51,7 @@ internal fun IrAnnotationContainer.irCallableMetadata(
   val callableMetadataAnno =
     getAnnotation(Symbols.FqNames.CallableMetadataClass)
       ?: reportCompilerBug(
-        "No @CallableMetadata found on ${expectAsOrNull<IrDeclarationParent>()?.kotlinFqName}"
+        "No @CallableMetadata found on ${this.expectAsOrNull<IrDeclarationParent>()?.kotlinFqName}"
       )
   return callableMetadataAnno.toIrCallableMetadata(mirrorFunction, sourceAnnotations)
 }

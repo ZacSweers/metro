@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
@@ -59,7 +60,6 @@ import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
-import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isStatic
@@ -1148,7 +1148,7 @@ internal class IrGraphGenerator(
             // TODO FIR this
             diagnosticReporter
               .at(binding.getter)
-              .report(MetroIrErrors.METRO_ERROR, "Provider<Lazy<T>> accessors are not supported.")
+              .report(MetroDiagnostics.METRO_ERROR, "Provider<Lazy<T>> accessors are not supported.")
             exitProcessing()
           } else if (getterContextKey.isWrappedInProvider) {
             // It's already a provider
