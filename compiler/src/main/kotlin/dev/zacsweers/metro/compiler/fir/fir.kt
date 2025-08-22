@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.generators.collectAbstractFunctions
 import dev.zacsweers.metro.compiler.mapToArray
 import dev.zacsweers.metro.compiler.memoized
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import java.util.Objects
 import org.jetbrains.kotlin.GeneratedDeclarationKey
 import org.jetbrains.kotlin.KtSourceElement
@@ -368,7 +369,7 @@ internal fun FirAnnotationCall.computeAnnotationHash(
               ?.classId
           }
           else -> {
-            error("Unexpected annotation argument type: ${arg::class.java} - ${arg.render()}")
+            reportCompilerBug("Unexpected annotation argument type: ${arg::class.java} - ${arg.render()}")
           }
         }
       }
@@ -777,7 +778,7 @@ internal fun FirCallableSymbol<*>.findAnnotation(
 }
 
 internal fun FirBasedSymbol<*>.requireContainingClassSymbol(): FirClassLikeSymbol<*> =
-  getContainingClassSymbol() ?: error("No containing class symbol found for $this")
+  getContainingClassSymbol() ?: reportCompilerBug("No containing class symbol found for $this")
 
 private val FirPropertyAccessExpression.qualifierName: Name?
   get() = (calleeReference as? FirSimpleNamedReference)?.name

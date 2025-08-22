@@ -39,6 +39,7 @@ import dev.zacsweers.metro.compiler.memoized
 import dev.zacsweers.metro.compiler.newName
 import dev.zacsweers.metro.compiler.proto.InjectedClassProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irGet
@@ -120,7 +121,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
 
   private fun requireInjector(declaration: IrClass): MemberInjectClass {
     return getOrGenerateInjector(declaration)
-      ?: error("No members injector found for ${declaration.kotlinFqName}.")
+      ?: reportCompilerBug("No members injector found for ${declaration.kotlinFqName}.")
   }
 
   fun getOrGenerateAllInjectorsFor(declaration: IrClass): List<MemberInjectClass> {

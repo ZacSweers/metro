@@ -204,7 +204,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
 
     fun parameterFor(typeKey: IrTypeKey): IrValueParameter {
       return parameters.allParameters.find { it.typeKey == typeKey }?.ir
-        ?: error(
+        ?: reportCompilerBug(
           "No value parameter found for key $typeKey in ${providerFactory.callableId.asSingleFqName().asString()}."
         )
     }
@@ -247,7 +247,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
 
     init {
       if (ir != null && !annotations.isBinds) {
-        error("Aliases must be binds!")
+        reportCompilerBug("Aliases must be binds!")
       }
     }
 
@@ -386,7 +386,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val dependencies: List<IrContextualTypeKey> = emptyList()
     override val scope: IrAnnotation? = null
     override val nameHint: String
-      get() = error("Should never be called")
+      get() = reportCompilerBug("Should never be called")
 
     override val parametersByKey: Map<IrTypeKey, Parameter> = emptyMap()
     override val parameters: Parameters = Parameters.empty()

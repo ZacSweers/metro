@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.BaseBindingStack
 import dev.zacsweers.metro.compiler.graph.BaseTypeKey
 import dev.zacsweers.metro.compiler.ir.IrBindingStack.Entry
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.unsafeLazy
 import dev.zacsweers.metro.compiler.withoutLineBreaks
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -356,7 +357,7 @@ internal class IrBindingStackImpl(override val graph: IrClass, private val logge
 
   override fun pop() {
     logger.unindent()
-    val removed = stack.removeFirstOrNull() ?: error("Binding stack is empty!")
+    val removed = stack.removeFirstOrNull() ?: reportCompilerBug("Binding stack is empty!")
     entrySet.remove(removed.typeKey)
   }
 
@@ -486,6 +487,6 @@ internal fun bindingStackEntryForDependency(
     is IrBinding.GraphExtensionFactory -> {
       Entry.generatedExtensionAt(contextKey, parent = callingBinding.parent.kotlinFqName.asString(), callingBinding.accessor)
     }
-    is IrBinding.Absent -> error("Should never happen")
+    is IrBinding.Absent -> reportCompilerBug("Should never happen")
   }
 }

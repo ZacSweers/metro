@@ -26,6 +26,7 @@ import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer.AssistedFactoryFunction.Companion.toAssistedFactoryFunction
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
@@ -107,7 +108,7 @@ internal class AssistedFactoryTransformer(
           )
         return null
       } else {
-        error(
+        reportCompilerBug(
           "No expected assisted factory impl class generated for '${declaration.kotlinFqName}'. Report this bug with a repro case at https://github.com/zacsweers/metro/issues/new"
         )
       }
@@ -187,7 +188,7 @@ internal class AssistedFactoryTransformer(
               assistedParameterKeys.map { assistedParameterKey ->
                 val param =
                   functionParams[assistedParameterKey]
-                    ?: error(
+                    ?: reportCompilerBug(
                       "Could not find matching parameter for $assistedParameterKey on constructor for ${implClass.classId}.\n\nAvailable keys are\n${
                         functionParams.keys.joinToString(
                           "\n"

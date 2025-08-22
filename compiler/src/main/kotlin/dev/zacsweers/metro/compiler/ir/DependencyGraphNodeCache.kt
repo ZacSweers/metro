@@ -223,7 +223,7 @@ internal class DependencyGraphNodeCache(
           if (nonNullCreator.bindingContainersParameterIndices.isSet(i)) {
             val bindingContainer =
               bindingContainerTransformer.findContainer(sourceGraph)
-                ?: error("Binding container not found for type ${sourceGraph.classId}")
+                ?: reportCompilerBug("Binding container not found for type ${sourceGraph.classId}")
 
             bindingContainers += bindingContainer
             return@forEachIndexed

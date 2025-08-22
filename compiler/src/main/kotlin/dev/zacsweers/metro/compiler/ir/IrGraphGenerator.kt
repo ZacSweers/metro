@@ -15,6 +15,7 @@ import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.suffixIfNot
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
@@ -179,7 +180,7 @@ internal class IrGraphGenerator(
             // this constructor parameter for provider field initialization
             val graphDep =
               node.includedGraphNodes[param.typeKey]
-                ?: error("Undefined graph node ${param.typeKey}")
+                ?: reportCompilerBug("Undefined graph node ${param.typeKey}")
 
             // Don't add it if it's not used
             if (param.typeKey !in sealResult.reachableKeys) continue

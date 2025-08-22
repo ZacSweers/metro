@@ -1,3 +1,5 @@
+// Copyright (C) 2025 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.Symbols
@@ -104,7 +106,7 @@ private constructor(
   ): IrExpression =
     with(scope) {
       if (binding is IrBinding.Absent) {
-        error(
+        reportCompilerBug(
           "Absent bindings need to be checked prior to generateBindingCode(). ${binding.typeKey} missing."
         )
       }
@@ -162,7 +164,7 @@ private constructor(
         is IrBinding.Provided -> {
           val factoryClass =
             bindingContainerTransformer.getOrLookupProviderFactory(binding)?.clazz
-              ?: error(
+              ?: reportCompilerBug(
                 "No factory found for Provided binding ${binding.typeKey}. This is likely a bug in the Metro compiler, please report it to the issue tracker."
               )
 
@@ -282,7 +284,7 @@ private constructor(
 
         is IrBinding.Absent -> {
           // Should never happen, this should be checked before function/constructor injections.
-          error("Unable to generate code for unexpected Absent binding: $binding")
+          reportCompilerBug("Unable to generate code for unexpected Absent binding: $binding")
         }
 
         is IrBinding.BoundInstance -> {
@@ -291,7 +293,7 @@ private constructor(
           } else {
             // Should never happen, this should get handled in the provider/instance fields logic
             // above.
-            error("Unable to generate code for unexpected BoundInstance binding: $binding")
+            reportCompilerBug("Unable to generate code for unexpected BoundInstance binding: $binding")
           }
         }
 
@@ -344,7 +346,7 @@ private constructor(
           // Get the factory implementation that was generated alongside the extension
           val factoryImpl =
             extensionImpl.generatedGraphExtensionData?.factoryImpl
-              ?: error(
+              ?: reportCompilerBug(
                 "Expected factory implementation to be generated for graph extension factory binding"
               )
 
@@ -437,7 +439,7 @@ private constructor(
               )
             }
           } else {
-            error("Unknown graph dependency type")
+            reportCompilerBug("Unknown graph dependency type")
           }
         }
       }
@@ -575,7 +577,7 @@ private constructor(
         is IrBinding.Alias -> binding.annotations.mapKeys.first().ir
         is IrBinding.Provided -> binding.annotations.mapKeys.first().ir
         is IrBinding.ConstructorInjected -> binding.annotations.mapKeys.first().ir
-        else -> error("Unsupported multibinding source: $binding")
+        else -> reportCompilerBug("Unsupported multibinding source: $binding")
       }
 
     val unwrapValue = shouldUnwrapMapKeyValues(mapKey)

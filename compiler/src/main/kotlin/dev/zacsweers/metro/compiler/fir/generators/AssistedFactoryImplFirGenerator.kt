@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.wrapInProviderIfNecessary
 import dev.zacsweers.metro.compiler.mapToArray
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
@@ -90,10 +91,10 @@ internal class AssistedFactoryImplFirGenerator(session: FirSession) :
           if (resolvedReturnType != null) {
             injectedClass = resolvedReturnType
           } else {
-            error("No class symbol found for ${createFunction.fir.render()}")
+            reportCompilerBug("No class symbol found for ${createFunction.fir.render()}")
           }
         } else {
-          error("No class symbol found for ${createFunction.fir.render()}")
+          reportCompilerBug("No class symbol found for ${createFunction.fir.render()}")
         }
       }
 

@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
@@ -59,7 +60,7 @@ internal data class DependencyGraphNode(
 
   val metroGraph by unsafeLazy { sourceGraph.metroGraphOrNull }
 
-  val metroGraphOrFail by unsafeLazy { metroGraph ?: error("No generated MetroGraph found: ${sourceGraph.kotlinFqName}") }
+  val metroGraphOrFail by unsafeLazy { metroGraph ?: reportCompilerBug("No generated MetroGraph found: ${sourceGraph.kotlinFqName}") }
 
   /** [IrTypeKey] of the contributed graph extension, if any. */
   val contributedGraphTypeKey: IrTypeKey? by unsafeLazy {
@@ -79,7 +80,7 @@ internal data class DependencyGraphNode(
   val reportableSourceGraphDeclaration by unsafeLazy {
     generateSequence(sourceGraph) { it.parentAsClass }
       .firstOrNull { it.origin != Origins.GeneratedGraphExtension && it.fileOrNull != null }
-      ?: error(
+      ?: reportCompilerBug(
         "Could not find a reportable source graph declaration for ${sourceGraph.kotlinFqName}"
       )
   }

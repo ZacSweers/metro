@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.mapToSet
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithVisibility
@@ -131,7 +132,7 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
                 ?: return@mapNotNullToSet null
             val contributionScope =
               metroContribution.scopeOrNull()
-                ?: error("No scope found for @MetroContribution annotation")
+                ?: reportCompilerBug("No scope found for @MetroContribution annotation")
             if (contributionScope == scope) {
               nestedClass.defaultType
             } else {

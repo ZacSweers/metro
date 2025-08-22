@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irGetObject
@@ -40,7 +41,7 @@ internal object CreateGraphTransformer {
           // Get the called type
           val type =
             expression.typeArguments[0]
-              ?: error(
+              ?: reportCompilerBug(
                 "Missing type argument for ${metroContext.symbols.metroCreateGraphFactory.owner.name}"
               )
           // Already checked in FIR
@@ -90,7 +91,7 @@ internal object CreateGraphTransformer {
           // Get the called type
           val type =
             expression.typeArguments[0]
-              ?: error(
+              ?: reportCompilerBug(
                 "Missing type argument for ${metroContext.symbols.metroCreateGraph.owner.name}"
               )
           // Already checked in FIR
@@ -111,7 +112,7 @@ internal object CreateGraphTransformer {
           val factoryFunction =
             companion.functions.singleOrNull {
               it.hasAnnotation(Symbols.FqNames.GraphFactoryInvokeFunctionMarkerClass)
-            } ?: error("Cannot find a graph factory function for ${rawType.kotlinFqName}")
+            } ?: reportCompilerBug("Cannot find a graph factory function for ${rawType.kotlinFqName}")
           // Replace it with a call directly to the create function
           return metroContext.createIrBuilder(expression.symbol).run {
             irCall(callee = factoryFunction.symbol, type = type).apply {

@@ -15,6 +15,7 @@ import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.constArgumentOfTypeAt
 import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
@@ -60,7 +61,7 @@ private constructor(
   // TODO just make this nullable
   private val _ir = ir
   val ir: IrValueParameter
-    get() = _ir ?: error("Parameter $name has no backing IR value parameter!")
+    get() = _ir ?: reportCompilerBug("Parameter $name has no backing IR value parameter!")
 
   private val cachedToString by unsafeLazy {
     buildString {
@@ -264,7 +265,7 @@ internal fun IrProperty.toMemberInjectParameter(
   typeParameterRemapper: ((IrType) -> IrType)? = null,
 ): Parameter {
   val propertyType =
-    getter?.returnType ?: backingField?.type ?: error("No getter or backing field!")
+    getter?.returnType ?: backingField?.type ?: reportCompilerBug("No getter or backing field!")
 
   val setterParam = setter?.regularParameters?.singleOrNull()
 

@@ -147,7 +147,7 @@ import org.jetbrains.kotlin.types.Variance
 
 /** Finds the line and column of [this] within its file. */
 internal fun IrDeclaration.location(): CompilerMessageSourceLocation {
-  return locationOrNull() ?: error("No location found for ${dumpKotlinLike()}!")
+  return locationOrNull() ?: reportCompilerBug("No location found for ${dumpKotlinLike()}!")
 }
 
 /** Finds the line and column of [this] within its file or returns null if this has no location. */
@@ -209,7 +209,7 @@ internal fun IrType.rawType(): IrClass {
             "Type parameter encountered: ${dumpKotlinLike()}"
           else -> "Unrecognized type! ${dumpKotlinLike()} (${classifierOrNull?.javaClass})"
         }
-      error(message)
+      reportCompilerBug(message)
     }
 }
 
@@ -301,7 +301,7 @@ internal fun IrBuilderWithScope.irInvoke(
   typeArgs?.let {
     for ((i, typeArg) in typeArgs.withIndex()) {
       if (i >= call.typeArguments.size) {
-        error("Invalid type arg $typeArg at index $i for callee ${callee.owner.dumpKotlinLike()}")
+        reportCompilerBug("Invalid type arg $typeArg at index $i for callee ${callee.owner.dumpKotlinLike()}")
       }
       call.typeArguments[i] = typeArg
     }
@@ -353,7 +353,7 @@ internal fun IrConstructorCall.computeAnnotationHash(): Int {
       .filterNotNull()
       .mapIndexed { i, arg ->
         arg.computeHashSource()
-          ?: error(
+          ?: reportCompilerBug(
             "Unknown annotation argument type: ${arg::class.java }. Annotation: ${dumpKotlinLike()}"
           )
       }
@@ -648,7 +648,7 @@ internal fun IrBuilderWithScope.dispatchReceiverFor(function: IrFunction): IrExp
 }
 
 internal val IrClass.thisReceiverOrFail: IrValueParameter
-  get() = this.thisReceiver ?: error("No thisReceiver for $classId")
+  get() = this.thisReceiver ?: reportCompilerBug("No thisReceiver for $classId")
 
 context(pluginContext: IrPluginContext)
 internal fun IrClass.getAllSuperTypes(
@@ -798,7 +798,7 @@ internal fun IrVararg?.toClassReferences(): Set<IrClassReference> {
 }
 
 internal fun IrConstructorCall.requireScope(): ClassId {
-  return scopeOrNull() ?: error("No scope found for ${dumpKotlinLike()}")
+  return scopeOrNull() ?: reportCompilerBug("No scope found for ${dumpKotlinLike()}")
 }
 
 internal fun IrConstructorCall.scopeOrNull(): ClassId? {
@@ -878,7 +878,7 @@ internal fun IrType.renderTo(
             } else {
               classifier.owner.kotlinFqName.asString()
             }
-          is IrScriptSymbol -> error("No simple name for script symbol: ${type.dumpKotlinLike()}")
+          is IrScriptSymbol -> reportCompilerBug("No simple name for script symbol: ${type.dumpKotlinLike()}")
           is IrTypeParameterSymbol -> {
             classifier.owner.name.asString()
           }
@@ -948,19 +948,19 @@ internal fun metroAnnotationsOf(ir: IrAnnotationContainer) =
 
 internal fun IrClass.requireSimpleFunction(name: String) =
   getSimpleFunction(name)
-    ?: error(
+    ?: reportCompilerBug(
       "No function $name in class $classId. Available: ${functions.joinToString { it.name.asString() }}"
     )
 
 internal fun IrClassSymbol.requireSimpleFunction(name: String) =
   getSimpleFunction(name)
-    ?: error(
+    ?: reportCompilerBug(
       "No function $name in class ${owner.classId}. Available: ${functions.joinToString { it.owner.name.asString() }}"
     )
 
 internal fun IrClass.requireNestedClass(name: Name): IrClass {
   return nestedClassOrNull(name)
-    ?: error("No nested class $name in $classId. Found ${nestedClasses.map { it.name }}")
+    ?: reportCompilerBug("No nested class $name in $classId. Found ${nestedClasses.map { it.name }}")
 }
 
 internal fun IrClass.nestedClassOrNull(name: Name): IrClass? {
@@ -1041,7 +1041,7 @@ internal fun buildAnnotation(
 }
 
 internal val IrClass.metroGraphOrFail: IrClass
-  get() = metroGraphOrNull ?: error("No generated MetroGraph found: $classId")
+  get() = metroGraphOrNull ?: reportCompilerBug("No generated MetroGraph found: $classId")
 
 internal val IrClass.metroGraphOrNull: IrClass?
   get() =

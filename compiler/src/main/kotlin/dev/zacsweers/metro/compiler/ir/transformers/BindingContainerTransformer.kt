@@ -45,6 +45,7 @@ import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.unsafeLazy
 import java.util.Optional
 import kotlin.jvm.optionals.getOrNull
@@ -247,7 +248,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
       reference.parent.owner.nestedClasses.singleOrNull {
         it.origin == Origins.ProviderFactoryClassDeclaration && it.classIdOrFail == generatedClassId
       }
-        ?: error(
+        ?: reportCompilerBug(
           "No expected factory class generated for ${reference.callableId}. Report this bug with a repro case at https://github.com/zacsweers/metro/issues/new"
         )
 
@@ -291,7 +292,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
           if (irParam.origin == Origins.InstanceParameter) {
             sourceParameters.dispatchReceiverParameter!!
           } else if (irParam.indexInParameters == -1) {
-            error(
+            reportCompilerBug(
               "No source parameter found for $irParam. Index was somehow -1.\n${reference.parent.owner.dumpKotlinLike()}"
             )
           } else {
@@ -303,7 +304,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
             sourceParameters.regularParameters.getOrNull(
               regularParams.indexOfFirst { it.name == irParam.name }
             )
-              ?: error(
+              ?: reportCompilerBug(
                 "No source parameter found for $irParam\nparam is ${irParam.name} in function ${ctor.dumpKotlinLike()}\n${reference.parent.owner.dumpKotlinLike()}"
               )
           }
@@ -395,7 +396,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     return references.getOrPut(callableId) {
       val getter =
         property.getter
-          ?: error(
+          ?: reportCompilerBug(
             "No getter found for property $callableId. Note that field properties are not supported"
           )
 
@@ -652,7 +653,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
         val message =
           "No metadata found for ${metadataDeclaration.kotlinFqName} from " +
             "another module. Did you run the Metro compiler plugin on this module?"
-        error(message)
+        reportCompilerBug(message)
         // TODO kotlin 2.2.20
         //  diagnosticReporter
         //    .at(declaration)

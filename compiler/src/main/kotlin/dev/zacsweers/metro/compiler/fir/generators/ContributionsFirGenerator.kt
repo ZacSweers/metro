@@ -20,6 +20,7 @@ import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.resolvedClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
 import dev.zacsweers.metro.compiler.joinSimpleNamesAndTruncate
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.fir.FirSession
@@ -86,7 +87,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
                   .joinToString(separator = "") { it.identifier.decapitalizeUS() }
               }
                 ?: scopeArgument.scopeName(session)
-                ?: error("Could not get scope name for ${scopeArgument.render()}")
+                ?: reportCompilerBug("Could not get scope name for ${scopeArgument.render()}")
             val nestedContributionName =
               (Symbols.StringNames.METRO_CONTRIBUTION_NAME_PREFIX + "To" + suffix.capitalizeUS())
                 .asName()
@@ -294,7 +295,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
               buildAnnotationArgumentMapping {
                 val originalScopeArg =
                   contributingClassToScopedContributions.getValueIfComputed(owner)?.get(name)
-                    ?: error("Could not find a contribution scope for ${owner.classId}.$name")
+                    ?: reportCompilerBug("Could not find a contribution scope for ${owner.classId}.$name")
                 this.mapping[Symbols.Names.scope] = originalScopeArg
               }
             )

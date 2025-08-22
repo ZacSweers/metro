@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.newName
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.suffixIfNot
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.builders.declarations.addField
@@ -136,7 +137,7 @@ internal class ParentContext(
   val currentParentGraph: IrClass
     get() =
       levels.lastOrNull()?.node?.metroGraphOrFail
-        ?: error(
+        ?: reportCompilerBug(
           "No parent graph on stack - this should only be accessed when processing extensions"
         )
 

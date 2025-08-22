@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -74,7 +75,7 @@ internal class IrGraphExtensionGenerator(
           }
           ?.owner ?: contributedAccessor.ir
 
-      val parent = sourceSamFunction.parentClassOrNull ?: error("No parent class found")
+      val parent = sourceSamFunction.parentClassOrNull ?: reportCompilerBug("No parent class found")
       val isFactorySAM =
         parent.isAnnotatedWithAny(symbols.classIds.graphExtensionFactoryAnnotations)
       if (isFactorySAM) {
@@ -95,7 +96,7 @@ internal class IrGraphExtensionGenerator(
           // Simple case with no creator
           generateImpl(returnType, creatorFunction = null, typeKey)
         } else {
-          error("Not a graph extension: ${returnType.kotlinFqName}")
+          reportCompilerBug("Not a graph extension: ${returnType.kotlinFqName}")
         }
       }
     }
@@ -186,7 +187,7 @@ internal class IrGraphExtensionGenerator(
     val graphExtensionAnno =
       sourceGraph.annotationsIn(symbols.classIds.graphExtensionAnnotations).firstOrNull()
     val extensionAnno =
-      graphExtensionAnno ?: error("Expected @GraphExtension on ${sourceGraph.kotlinFqName}")
+      graphExtensionAnno ?: reportCompilerBug("Expected @GraphExtension on ${sourceGraph.kotlinFqName}")
 
     val sourceScope = extensionAnno.scopeClassOrNull()
     val scope = sourceScope?.classId

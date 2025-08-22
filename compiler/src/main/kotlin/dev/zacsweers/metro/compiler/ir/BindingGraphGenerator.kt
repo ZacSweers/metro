@@ -231,7 +231,7 @@ internal class BindingGraphGenerator(
       val parameters = bindsCallable.function.parameters()
       val bindsImplType =
         parameters.extensionOrFirstParameter?.contextualTypeKey
-          ?: error("Missing receiver parameter for @Binds function: ${bindsCallable.function}")
+          ?: reportCompilerBug("Missing receiver parameter for @Binds function: ${bindsCallable.function}")
 
       val binding =
         IrBinding.Alias(

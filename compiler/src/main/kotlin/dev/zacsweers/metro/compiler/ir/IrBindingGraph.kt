@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
@@ -134,7 +135,7 @@ internal class IrBindingGraph(
               ?: run {
                 // Hard error because the FIR checker should catch these, so this implies broken
                 // FIR code gen
-                error("Missing @MapKey for @IntoMap function: ${declaration.locationOrNull()}")
+                reportCompilerBug("Missing @MapKey for @IntoMap function: ${declaration.locationOrNull()}")
               }
           val keyType = mapKeyType(mapKey)
           val mapType =
@@ -148,7 +149,7 @@ internal class IrBindingGraph(
         }
 
         else -> {
-          error(
+          reportCompilerBug(
             "Unrecognized provider: ${declaration.locationOrNull() ?: ("\n" + declaration.dumpKotlinLike())}"
           )
         }
@@ -174,7 +175,7 @@ internal class IrBindingGraph(
     }
 
     return binding as? IrBinding.Multibinding
-      ?: error(
+      ?: reportCompilerBug(
         """
         Expected a multibinding but got $binding.
       """

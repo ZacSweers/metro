@@ -29,6 +29,7 @@ import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import java.util.Optional
 import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
@@ -163,7 +164,7 @@ internal class InjectConstructorTransformer(
         generatedFactories[injectedClassId] = Optional.empty()
         return null
       } else {
-        error(
+        reportCompilerBug(
           "No expected factory class generated for '${declaration.kotlinFqName}'. Report this bug with a repro case at https://github.com/zacsweers/metro/issues/new"
         )
       }
@@ -308,7 +309,7 @@ internal class InjectConstructorTransformer(
                 functionParamsByName.getValue(targetParam.originalName)
               }
 
-              else -> error("Unmatched top level injected function param: $targetParam")
+              else -> reportCompilerBug("Unmatched top level injected function param: $targetParam")
             }
           }
 
@@ -422,7 +423,7 @@ internal class InjectConstructorTransformer(
                     functionParamsByName.getValue(targetParam.originalName)
                   }
 
-                  else -> error("Unmatched top level injected function param: $targetParam")
+                  else -> reportCompilerBug("Unmatched top level injected function param: $targetParam")
                 }
               }
 
