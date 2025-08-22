@@ -74,8 +74,6 @@ internal class IrGraphGenerator(
   graphExtensionGenerator: IrGraphExtensionGenerator,
 ) : IrMetroContext by metroContext {
 
-  private val functionNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
-
   // TODO we can end up in awkward situations where we
   //  have the same type keys in both instance and provider fields
   //  this is tricky because depending on the context, it's not valid
@@ -411,9 +409,10 @@ internal class IrGraphGenerator(
             }
             .chunked(STATEMENTS_PER_METHOD)
 
+        val initAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
         val initFunctionsToCall =
           chunks.map { statementsChunk ->
-            val initName = functionNameAllocator.newName("init")
+            val initName = initAllocator.newName("init")
             addFunction(initName, irBuiltIns.unitType, visibility = DescriptorVisibilities.PRIVATE)
               .apply {
                 val localReceiver = thisReceiverParameter.copyTo(this)
