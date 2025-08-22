@@ -10,6 +10,8 @@ body:
 
         If you have a usage or debugging question, please use the [Q&A feature of the repo's Discussions section](https://github.com/ZacSweers/metro/discussions/new?category=q-a) instead of creating an issue.
 
+        IDE ABI issues are not currently accepted. This is unfortunately not unexpected until there is a more stable compiler plugin API.
+
         Provide a brief summary of the issue in the title above
         
         When submitting, please use conventional **markdown formatting** and **syntax highlighting** for readability.
