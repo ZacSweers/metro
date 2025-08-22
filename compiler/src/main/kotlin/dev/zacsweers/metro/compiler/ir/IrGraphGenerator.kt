@@ -59,7 +59,6 @@ import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
-import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isStatic
@@ -99,7 +98,6 @@ internal class IrGraphGenerator(
 ) : IrMetroContext by metroContext {
 
   private val functionNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
-  private val nestedClassNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
 
   // TODO we can end up in awkward situations where we
   //  have the same type keys in both instance and provider fields
@@ -289,10 +287,12 @@ internal class IrGraphGenerator(
       val deferredFields: Map<IrTypeKey, IrField> =
         sealResult.deferredTypes.associateWith { deferredTypeKey ->
           val binding = bindingGraph.requireBinding(deferredTypeKey, IrBindingStack.empty())
-          val field = getOrCreateBindingField(binding.typeKey,
-            { fieldNameAllocator.newName(binding.nameHint.decapitalizeUS() + "Provider") },
-            { deferredTypeKey.type.wrapInProvider(symbols.metroProvider) }
-            )
+          val field =
+            getOrCreateBindingField(
+                binding.typeKey,
+                { fieldNameAllocator.newName(binding.nameHint.decapitalizeUS() + "Provider") },
+                { deferredTypeKey.type.wrapInProvider(symbols.metroProvider) },
+              )
               .withInit(binding.typeKey) { _, _ ->
                 irInvoke(
                   callee = symbols.metroDelegateFactoryConstructor,
@@ -471,8 +471,8 @@ internal class IrGraphGenerator(
         }
       }
 
-      parentTracer.traceNested("Implement overrides") { tracer ->
-        node.implementOverrides(baseGenerationContext, tracer)
+      parentTracer.traceNested("Implement overrides") {
+        node.implementOverrides(baseGenerationContext)
       }
 
       if (graphClass.origin != Origins.GeneratedGraphExtension) {
@@ -508,10 +508,7 @@ internal class IrGraphGenerator(
       )
       .initFinal { initializerExpression() }
 
-  private fun DependencyGraphNode.implementOverrides(
-    context: GraphGenerationContext,
-    parentTracer: Tracer,
-  ) {
+  private fun DependencyGraphNode.implementOverrides(context: GraphGenerationContext) {
     // Implement abstract getters for accessors
     accessors.forEach { (function, contextualTypeKey) ->
       function.ir.apply {
