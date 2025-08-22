@@ -33,6 +33,7 @@ internal class BindingGraphGenerator(
   // TODO preprocess these instead and just lookup via irAttribute
   private val injectConstructorTransformer: InjectConstructorTransformer,
   private val membersInjectorTransformer: MembersInjectorTransformer,
+  private val contributionData: IrContributionData,
   private val parentContext: ParentContext?,
 ) : IrMetroContext by metroContext {
   fun generate(): IrBindingGraph {
@@ -59,6 +60,7 @@ internal class BindingGraphGenerator(
           IrBindingStack(node.sourceGraph, loggerFor(MetroLogger.Type.BindingGraphConstruction))
         },
         bindingLookup = bindingLookup,
+        contributionData = contributionData
       )
 
     // Add explicit bindings from @Provides methods

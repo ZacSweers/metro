@@ -233,6 +233,7 @@ internal class DependencyGraphTransformer(
             node,
             injectConstructorTransformer,
             membersInjectorTransformer,
+          contributionData,
             parentContext,
           )
           .generate()

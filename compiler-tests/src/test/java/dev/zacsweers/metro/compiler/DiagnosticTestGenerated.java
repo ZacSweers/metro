@@ -32,6 +32,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("InternalContributionMissingHint.kt")
+    public void testInternalContributionMissingHint() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/InternalContributionMissingHint.kt");
+    }
+
+    @Test
     @TestMetadata("InternalHintsAreNotVisibleWithoutFriends.kt")
     public void testInternalHintsAreNotVisibleWithoutFriends() {
       runTest("compiler-tests/src/test/data/diagnostic/aggregation/InternalHintsAreNotVisibleWithoutFriends.kt");

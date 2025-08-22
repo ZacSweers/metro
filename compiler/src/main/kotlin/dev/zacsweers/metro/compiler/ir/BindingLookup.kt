@@ -157,7 +157,6 @@ internal class BindingLookup(
       return classBindings
     }
 
-  context(context: IrMetroContext)
   private fun createParentGraphDependency(key: IrTypeKey, fieldAccess: ParentContext.FieldAccess): IrBinding.GraphDependency {
     val parentGraph = parentContext!!.currentParentGraph
     val cacheKey = ParentGraphDepKey(parentGraph, key)

@@ -5,6 +5,7 @@ Changelog
 --------------
 
 * **Enhancement**: Add diagnostic for contributed binding containers with no (visible) no-arg constructor.
+* **Enhancement**: Add hint for missing bindings if the binding appears to be contributed by an `internal` type in another, non-friend module.
 * **Fix**: Don't allocate new fields for deferred bindings reserved by extension graphs.
 
 0.6.1

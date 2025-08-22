@@ -60,6 +60,7 @@ import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithVisibility
 import org.jetbrains.kotlin.ir.declarations.IrExternalPackageFragment
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFile
@@ -71,6 +72,7 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrTypeParametersContainer
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.IrVariable
+import org.jetbrains.kotlin.ir.declarations.moduleDescriptor
 import org.jetbrains.kotlin.ir.expressions.IrBlockBody
 import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
@@ -127,6 +129,7 @@ import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.functions
+import org.jetbrains.kotlin.ir.util.getPackageFragment
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.getValueArgument
 import org.jetbrains.kotlin.ir.util.hasAnnotation
@@ -301,7 +304,9 @@ internal fun IrBuilderWithScope.irInvoke(
   typeArgs?.let {
     for ((i, typeArg) in typeArgs.withIndex()) {
       if (i >= call.typeArguments.size) {
-        reportCompilerBug("Invalid type arg $typeArg at index $i for callee ${callee.owner.dumpKotlinLike()}")
+        reportCompilerBug(
+          "Invalid type arg $typeArg at index $i for callee ${callee.owner.dumpKotlinLike()}"
+        )
       }
       call.typeArguments[i] = typeArg
     }
@@ -878,7 +883,8 @@ internal fun IrType.renderTo(
             } else {
               classifier.owner.kotlinFqName.asString()
             }
-          is IrScriptSymbol -> reportCompilerBug("No simple name for script symbol: ${type.dumpKotlinLike()}")
+          is IrScriptSymbol ->
+            reportCompilerBug("No simple name for script symbol: ${type.dumpKotlinLike()}")
           is IrTypeParameterSymbol -> {
             classifier.owner.name.asString()
           }
@@ -960,7 +966,9 @@ internal fun IrClassSymbol.requireSimpleFunction(name: String) =
 
 internal fun IrClass.requireNestedClass(name: Name): IrClass {
   return nestedClassOrNull(name)
-    ?: reportCompilerBug("No nested class $name in $classId. Found ${nestedClasses.map { it.name }}")
+    ?: reportCompilerBug(
+      "No nested class $name in $classId. Found ${nestedClasses.map { it.name }}"
+    )
 }
 
 internal fun IrClass.nestedClassOrNull(name: Name): IrClass? {
@@ -995,8 +1003,8 @@ internal fun IrOverridableDeclaration<*>.finalizeFakeOverride(
 }
 
 // TODO is there a faster way to do this use case?
-internal fun <S> IrOverridableDeclaration<S>.overriddenSymbolsSequence(): Sequence<S> where
-S : IrSymbol {
+internal fun <S> IrOverridableDeclaration<S>.overriddenSymbolsSequence(): Sequence<S>
+  where S : IrSymbol {
   return overriddenSymbolsSequence(mutableSetOf())
 }
 
@@ -1058,7 +1066,8 @@ internal val IrClass.sourceGraphIfMetroGraph: IrClass
         origin == Origins.GeneratedGraphExtension ||
         name == Symbols.Names.MetroGraph
     return if (isGeneratedGraph) {
-      superTypes.firstOrNull()?.rawTypeOrNull() ?: reportCompilerBug("No super type found for $kotlinFqName")
+      superTypes.firstOrNull()?.rawTypeOrNull()
+        ?: reportCompilerBug("No super type found for $kotlinFqName")
     } else {
       this
     }
@@ -1500,15 +1509,21 @@ internal fun IrClass.implicitBoundTypeOrNull(): IrType? {
 // checks for non-interop
 context(context: IrPluginContext)
 internal fun IrConstructorCall.bindingTypeOrNull(): Pair<IrType?, Boolean> {
-  // Return a binding defined using Metro's API
-  getValueArgument(Symbols.Names.binding)?.expectAsOrNull<IrConstructorCall>()?.let { bindingType ->
-    // bindingType is actually an annotation
-    return bindingType.typeArguments.getOrNull(0)?.takeUnless {
-      it == context.irBuiltIns.nothingType
-    } to false
+  return bindingTypeArgument()?.let { type ->
+    // Return a binding defined using Metro's API
+    type to false
   }
-  // Return a boundType defined using anvil KClass
-  return anvilKClassBoundTypeArgument() to anvilIgnoreQualifier()
+    ?:
+    // Return a boundType defined using anvil KClass
+    (anvilKClassBoundTypeArgument() to anvilIgnoreQualifier())
+}
+
+context(context: IrPluginContext)
+internal fun IrConstructorCall.bindingTypeArgument(): IrType? {
+  return getValueArgument(Symbols.Names.binding)?.expectAsOrNull<IrConstructorCall>()?.let {
+    bindingType ->
+    bindingType.typeArguments.getOrNull(0)?.takeUnless { it == context.irBuiltIns.nothingType }
+  }
 }
 
 internal fun IrConstructorCall.anvilKClassBoundTypeArgument(): IrType? {
@@ -1542,4 +1557,13 @@ internal fun IrConstructor.generateDefaultConstructorBody(
     )
     body()
   }
+}
+
+// Copied from CheckerUtils.kt
+internal fun IrDeclarationWithVisibility.isVisibleAsInternal(file: IrFile): Boolean {
+  val referencedDeclarationPackageFragment = getPackageFragment()
+  val module = file.module
+  return module.descriptor.shouldSeeInternalsOf(
+    referencedDeclarationPackageFragment.moduleDescriptor
+  )
 }
