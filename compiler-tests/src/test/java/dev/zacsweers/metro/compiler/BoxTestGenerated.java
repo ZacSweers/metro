@@ -521,6 +521,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("FactoryAccessorWhenParentAlsoImplementsFactory.kt")
+      public void testFactoryAccessorWhenParentAlsoImplementsFactory() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/FactoryAccessorWhenParentAlsoImplementsFactory.kt");
+      }
+
+      @Test
       @TestMetadata("FactoryIsAccessibleThroughInterop.kt")
       public void testFactoryIsAccessibleThroughInterop() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/FactoryIsAccessibleThroughInterop.kt");

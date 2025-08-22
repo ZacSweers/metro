@@ -74,7 +74,7 @@ internal class DependencyGraphNodeCache(
           bindingStack,
           parentTracer,
           metroGraph,
-          dependencyGraphAnno
+          dependencyGraphAnno,
         )
       }
     }
@@ -111,6 +111,7 @@ internal class DependencyGraphNodeCache(
     private val injectors = mutableListOf<Pair<MetroSimpleFunction, IrContextualTypeKey>>()
     private val includedGraphNodes = mutableMapOf<IrTypeKey, DependencyGraphNode>()
     private val graphTypeKey = IrTypeKey(graphDeclaration.typeWith())
+    private val sourceGraphTypeKey = IrTypeKey(graphDeclaration.sourceGraphIfMetroGraph.typeWith())
     private val graphContextKey = IrContextualTypeKey.create(graphTypeKey)
     private val bindingContainers = mutableSetOf<BindingContainer>()
 
@@ -379,9 +380,8 @@ internal class DependencyGraphNodeCache(
               val rawType = metroFunction.ir.returnType.rawType()
               val functionParent = rawType.parentClassOrNull
 
-              val isGraphExtensionFactory = rawType.isAnnotatedWithAny(
-                symbols.classIds.graphExtensionFactoryAnnotations
-              )
+              val isGraphExtensionFactory =
+                rawType.isAnnotatedWithAny(symbols.classIds.graphExtensionFactoryAnnotations)
 
               if (isGraphExtensionFactory) {
                 // For factories, add them to accessors so they participate in the binding graph
@@ -392,16 +392,22 @@ internal class DependencyGraphNodeCache(
                 val samMethod = rawType.singleAbstractFunction()
                 val graphExtensionType = samMethod.returnType
                 val graphExtensionTypeKey = IrTypeKey(graphExtensionType)
-                graphExtensions.getOrPut(graphExtensionTypeKey, ::mutableListOf) += GraphExtensionAccessor(
-                  accessor = metroFunction,
-                  key = factoryContextKey,
-                  isFactory = true,
-                  isFactorySAM = false,
-                )
+                if (graphExtensionTypeKey != sourceGraphTypeKey) {
+                  // Only add it to our graph extensions if it's not exposing itself
+                  graphExtensions.getOrPut(graphExtensionTypeKey, ::mutableListOf) +=
+                    GraphExtensionAccessor(
+                      accessor = metroFunction,
+                      key = factoryContextKey,
+                      isFactory = true,
+                      isFactorySAM = false,
+                    )
+                }
               } else {
                 // Regular graph extension
-                val isSamFunction = metroFunction.ir.overriddenSymbolsSequence()
-                  .any { it.owner.parentClassOrNull?.classId in graphExtensionSupertypes }
+                val isSamFunction =
+                  metroFunction.ir.overriddenSymbolsSequence().any {
+                    it.owner.parentClassOrNull?.classId in graphExtensionSupertypes
+                  }
 
                 val contextKey =
                   if (
@@ -414,12 +420,13 @@ internal class DependencyGraphNodeCache(
                   } else {
                     IrContextualTypeKey.from(declaration)
                   }
-                graphExtensions.getOrPut(contextKey.typeKey, ::mutableListOf) += GraphExtensionAccessor(
-                  metroFunction,
-                  key = contextKey,
-                  isFactory = false,
-                  isFactorySAM = isSamFunction,
-                )
+                graphExtensions.getOrPut(contextKey.typeKey, ::mutableListOf) +=
+                  GraphExtensionAccessor(
+                    metroFunction,
+                    key = contextKey,
+                    isFactory = false,
+                    isFactorySAM = isSamFunction,
+                  )
               }
               hasGraphExtensions = true
             } else if (isInjector) {
@@ -450,9 +457,8 @@ internal class DependencyGraphNodeCache(
             val getter = declaration.getter!!
 
             val rawType = getter.returnType.rawType()
-            val isGraphExtensionFactory = rawType.isAnnotatedWithAny(
-              symbols.classIds.graphExtensionFactoryAnnotations
-            )
+            val isGraphExtensionFactory =
+              rawType.isAnnotatedWithAny(symbols.classIds.graphExtensionFactoryAnnotations)
             var isGraphExtension = isGraphExtensionFactory
 
             // If the overridden symbol has a default getter/value then skip
@@ -490,16 +496,22 @@ internal class DependencyGraphNodeCache(
                 val samMethod = rawType.singleAbstractFunction()
                 val graphExtensionType = samMethod.returnType
                 val graphExtensionTypeKey = IrTypeKey(graphExtensionType)
-                graphExtensions.getOrPut(graphExtensionTypeKey, ::mutableListOf) += GraphExtensionAccessor(
-                  metroFunction,
-                  key = contextKey,
-                  isFactory = true,
-                  isFactorySAM = false,
-                )
+                if (graphExtensionTypeKey != sourceGraphTypeKey) {
+                  // Only add it to our graph extensions if it's not exposing itself
+                  graphExtensions.getOrPut(graphExtensionTypeKey, ::mutableListOf) +=
+                    GraphExtensionAccessor(
+                      metroFunction,
+                      key = contextKey,
+                      isFactory = true,
+                      isFactorySAM = false,
+                    )
+                }
               } else {
                 // Regular graph extension
-                val isSamFunction = metroFunction.ir.overriddenSymbolsSequence()
-                  .any { it.owner.parentClassOrNull?.classId in graphExtensionSupertypes }
+                val isSamFunction =
+                  metroFunction.ir.overriddenSymbolsSequence().any {
+                    it.owner.parentClassOrNull?.classId in graphExtensionSupertypes
+                  }
                 val functionParent = rawType.parentClassOrNull
                 val finalContextKey =
                   if (
@@ -512,12 +524,13 @@ internal class DependencyGraphNodeCache(
                   } else {
                     contextKey
                   }
-                graphExtensions.getOrPut(finalContextKey.typeKey, ::mutableListOf) += GraphExtensionAccessor(
-                  metroFunction,
-                  key = finalContextKey,
-                  isFactory = false,
-                  isFactorySAM = isSamFunction,
-                )
+                graphExtensions.getOrPut(finalContextKey.typeKey, ::mutableListOf) +=
+                  GraphExtensionAccessor(
+                    metroFunction,
+                    key = finalContextKey,
+                    isFactory = false,
+                    isFactorySAM = isSamFunction,
+                  )
               }
               hasGraphExtensions = true
             } else {
