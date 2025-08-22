@@ -96,8 +96,8 @@ internal class IrGraphGenerator(
    */
   private val fieldInitializers = mutableListOf<Pair<IrField, FieldInitializer>>()
   private val fieldsToTypeKeys = mutableMapOf<IrField, IrTypeKey>()
-  private val expressionGenerator =
-    IrGraphExpressionGenerator(
+  private val expressionGeneratorFactory =
+    IrGraphExpressionGenerator.Factory(
       context = this,
       node = node,
       instanceFields = instanceFields,
@@ -269,8 +269,6 @@ internal class IrGraphGenerator(
           }
         }
 
-      val baseGenerationContext = GraphGenerationContext(thisReceiverParameter)
-
       // For all deferred types, assign them first as factories
       // TODO For any types that depend on deferred types, they need providers too?
       @Suppress("UNCHECKED_CAST")
@@ -349,12 +347,9 @@ internal class IrGraphGenerator(
             )
 
           field.withInit(key) { thisReceiver, typeKey ->
-            expressionGenerator
-              .generateBindingCode(
-                binding,
-                baseGenerationContext.withReceiver(thisReceiver),
-                fieldInitKey = typeKey,
-              )
+            expressionGeneratorFactory
+              .create(thisReceiver)
+              .generateBindingCode(binding, fieldInitKey = typeKey)
               .letIf(binding.isScoped() && isProviderType) {
                 // If it's scoped, wrap it in double-check
                 // DoubleCheck.provider(<provider>)
@@ -378,12 +373,9 @@ internal class IrGraphGenerator(
               listOf(
                 irGetField(irGet(thisReceiver), field),
                 createIrBuilder(symbol).run {
-                  expressionGenerator
-                    .generateBindingCode(
-                      binding,
-                      baseGenerationContext.withReceiver(thisReceiver),
-                      fieldInitKey = deferredTypeKey,
-                    )
+                  expressionGeneratorFactory
+                    .create(thisReceiver)
+                    .generateBindingCode(binding, fieldInitKey = deferredTypeKey)
                     .letIf(binding.isScoped()) {
                       // If it's scoped, wrap it in double-check
                       // DoubleCheck.provider(<provider>)
@@ -463,9 +455,7 @@ internal class IrGraphGenerator(
         }
       }
 
-      parentTracer.traceNested("Implement overrides") {
-        node.implementOverrides(baseGenerationContext)
-      }
+      parentTracer.traceNested("Implement overrides") { node.implementOverrides() }
 
       if (graphClass.origin != Origins.GeneratedGraphExtension) {
         parentTracer.traceNested("Generate Metro metadata") {
@@ -500,14 +490,14 @@ internal class IrGraphGenerator(
       )
       .initFinal { initializerExpression() }
 
-  private fun DependencyGraphNode.implementOverrides(context: GraphGenerationContext) {
+  private fun DependencyGraphNode.implementOverrides() {
     // Implement abstract getters for accessors
     accessors.forEach { (function, contextualTypeKey) ->
       function.ir.apply {
         val declarationToFinalize =
           function.ir.propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
         if (declarationToFinalize.isFakeOverride) {
-          declarationToFinalize.finalizeFakeOverride(context.thisReceiver)
+          declarationToFinalize.finalizeFakeOverride(graphClass.thisReceiverOrFail)
         }
         val irFunction = this
         val binding = bindingGraph.requireBinding(contextualTypeKey, IrBindingStack.empty())
@@ -522,11 +512,9 @@ internal class IrGraphGenerator(
               symbol,
               typeAsProviderArgument(
                 contextualTypeKey,
-                expressionGenerator.generateBindingCode(
-                  binding,
-                  context.withReceiver(irFunction.dispatchReceiverParameter!!),
-                  contextualTypeKey,
-                ),
+                expressionGeneratorFactory
+                  .create(irFunction.dispatchReceiverParameter!!)
+                  .generateBindingCode(binding, contextualTypeKey),
                 isAssisted = false,
                 isGraphInstance = false,
               ),
@@ -539,7 +527,7 @@ internal class IrGraphGenerator(
     injectors.forEach { (overriddenFunction, contextKey) ->
       val typeKey = contextKey.typeKey
       overriddenFunction.ir.apply {
-        finalizeFakeOverride(context.thisReceiver)
+        finalizeFakeOverride(graphClass.thisReceiverOrFail)
         val targetParam = regularParameters[0]
         val binding =
           bindingGraph.requireBinding(contextKey, IrBindingStack.empty())
@@ -595,13 +583,9 @@ internal class IrGraphGenerator(
                         add(
                           typeAsProviderArgument(
                             parameter.contextualTypeKey,
-                            expressionGenerator.generateBindingCode(
-                              paramBinding,
-                              context.withReceiver(
-                                overriddenFunction.ir.dispatchReceiverParameter!!
-                              ),
-                              parameter.contextualTypeKey,
-                            ),
+                            expressionGeneratorFactory
+                              .create(overriddenFunction.ir.dispatchReceiverParameter!!)
+                              .generateBindingCode(paramBinding, parameter.contextualTypeKey),
                             isAssisted = false,
                             isGraphInstance = false,
                           )
@@ -622,7 +606,7 @@ internal class IrGraphGenerator(
       function.ir.apply {
         val declarationToFinalize = propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
         if (declarationToFinalize.isFakeOverride) {
-          declarationToFinalize.finalizeFakeOverride(context.thisReceiver)
+          declarationToFinalize.finalizeFakeOverride(graphClass.thisReceiverOrFail)
         }
         body = stubExpressionBody()
       }
@@ -638,7 +622,7 @@ internal class IrGraphGenerator(
           val declarationToFinalize =
             function.ir.propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
           if (declarationToFinalize.isFakeOverride) {
-            declarationToFinalize.finalizeFakeOverride(context.thisReceiver)
+            declarationToFinalize.finalizeFakeOverride(graphClass.thisReceiverOrFail)
           }
           val irFunction = this
 
@@ -663,12 +647,12 @@ internal class IrGraphGenerator(
               createIrBuilder(symbol).run {
                 irExprBodySafe(
                   symbol,
-                  expressionGenerator.generateBindingCode(
-                    binding = binding,
-                    generationContext =
-                      context.withReceiver(irFunction.dispatchReceiverParameter!!),
-                    invokeIfProvider = !contextKey.isWrappedInProvider,
-                  ),
+                  expressionGeneratorFactory
+                    .create(irFunction.dispatchReceiverParameter!!)
+                    .generateBindingCode(
+                      binding = binding,
+                      invokeIfProvider = !contextKey.isWrappedInProvider,
+                    ),
                 )
               }
           }
