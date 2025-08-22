@@ -101,7 +101,7 @@ interface MapMultibinding {
 
   @Provides
   @IntoMap
-  @MapKey(2)
+  @IntKey(2)
   fun provideInt2() = 2
 }
 ```
