@@ -9,6 +9,11 @@ on:
     tags:
       - '*.*.*' # Matches semantic versioning tags
 
+  # PR trigger for docs dry run when requirements change
+  pull_request:
+    paths:
+      - '.github/workflows/mkdocs-requirements.txt'
+
   # Allows manual deployements (if needed)
   workflow_dispatch:
 
@@ -27,7 +32,7 @@ jobs:
   # Metro docs site build job
   docs-site:
     runs-on: ubuntu-latest
-    if: github.repository == 'zacsweers/metro'
+    if: github.repository == 'zacsweers/metro' && github.event_name != 'pull_request'
     steps:
       - name: Checkout
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
@@ -124,3 +129,47 @@ jobs:
         if: ${{ success() && !contains(steps.version.outputs.METRO_VERSION, 'SNAPSHOT') }}
         run: |
           mike deploy --update-aliases --push ${{ steps.version.outputs.METRO_VERSION }} latest
+
+  # Docs dry run job for PRs that change requirements.txt
+  docs-dry-run:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+
+      - name: Configure JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version-file: .github/workflows/.java-version
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: true
+          gradle-home-cache-strict-match: true
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+
+      - name: Generate API docs
+        run: ./scripts/generate_docs_dokka.sh
+        env:
+          GRADLE_OPTS: -Xmx4g # Dokka can be memory intensive, so we increase the heap size
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install MkDocs dependencies
+        run: |
+          pip install --requirement .github/workflows/mkdocs-requirements.txt
+
+      - name: Copy documentation files
+        run: ./scripts/copy_docs_files.sh
+
+      - name: Build docs (dry run)
+        run: |
+          echo "Building docs as a dry run to verify requirements are working..."
+          mkdocs build --strict
+          echo "✅ Docs build completed successfully!"
