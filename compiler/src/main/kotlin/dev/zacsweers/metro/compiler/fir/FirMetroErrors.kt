@@ -74,6 +74,7 @@ internal object FirMetroErrors : BaseDiagnosticRendererFactory() {
   val FUNCTION_INJECT_ERROR by error1<String>(NAME_IDENTIFIER)
   val FUNCTION_INJECT_TYPE_PARAMETERS_ERROR by error1<String>(TYPE_PARAMETERS_LIST)
   val BINDING_CONTAINER_ERROR by error1<String>(NAME_IDENTIFIER)
+  val BINDING_CONTAINER_CONSTRUCTOR_VISIBILITY_ERROR by error1<String>(VISIBILITY_MODIFIER)
 
   override val MAP: KtDiagnosticFactoryToRendererMap =
     KtDiagnosticFactoryToRendererMap("FirMetroErrors").apply {

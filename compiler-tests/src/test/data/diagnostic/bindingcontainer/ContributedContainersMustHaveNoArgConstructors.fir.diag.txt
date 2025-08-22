@@ -1,0 +1,3 @@
+/ContributedContainersMustHaveNoArgConstructors.kt:(132,139): error: Contributed binding container BadContainer1's no-arg constructor must be public or internal.
+
+/ContributedContainersMustHaveNoArgConstructors.kt:(211,224): error: Contributed binding containers must have a no-arg constructor.

@@ -66,6 +66,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ContributedContainersMustHaveNoArgConstructors.kt")
+    public void testContributedContainersMustHaveNoArgConstructors() {
+      runTest("compiler-tests/src/test/data/diagnostic/bindingcontainer/ContributedContainersMustHaveNoArgConstructors.kt");
+    }
+
+    @Test
     @TestMetadata("IllegalTypes.kt")
     public void testIllegalTypes() {
       runTest("compiler-tests/src/test/data/diagnostic/bindingcontainer/IllegalTypes.kt");

@@ -4,6 +4,7 @@ Changelog
 **Unreleased**
 --------------
 
+* **Enhancement**: Add diagnostic for contributed binding containers with no (visible) no-arg constructor.
 * **Fix**: Don't allocate new fields for deferred bindings reserved by extension graphs.
 
 0.6.1
