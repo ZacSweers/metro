@@ -4,6 +4,8 @@ Changelog
 **Unreleased**
 --------------
 
+* **Fix**: Don't allocate new fields for deferred bindings reserved by extension graphs.
+
 0.6.1
 -----
 
