@@ -509,6 +509,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("ExtensionsUsingDeferredTypesAreValid.kt")
+      public void testExtensionsUsingDeferredTypesAreValid() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ExtensionsUsingDeferredTypesAreValid.kt");
+      }
+
+      @Test
       @TestMetadata("FactoriesCanBeOnTheGraph.kt")
       public void testFactoriesCanBeOnTheGraph() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/FactoriesCanBeOnTheGraph.kt");
