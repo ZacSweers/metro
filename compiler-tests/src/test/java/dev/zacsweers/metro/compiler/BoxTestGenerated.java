@@ -821,6 +821,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("DaggerModuleInteropWorksInGraphExtension.kt")
+      public void testDaggerModuleInteropWorksInGraphExtension() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/DaggerModuleInteropWorksInGraphExtension.kt");
+      }
+
+      @Test
       @TestMetadata("DaggerModulesAnnotationInterop.kt")
       public void testDaggerModulesAnnotationInterop() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/DaggerModulesAnnotationInterop.kt");
