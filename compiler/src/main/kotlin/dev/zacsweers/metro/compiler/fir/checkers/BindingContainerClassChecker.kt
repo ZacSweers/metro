@@ -171,7 +171,7 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
 
     val isInterface = declaration.isInterface
 
-    if (!isInterface) {
+    if (!isInterface && !declaration.classKind.isObject) {
       val isContributed = declaration.isAnnotatedWithAny(session, classIds.contributesToAnnotations)
       if (isContributed) {
         // Check for a single, no-arg constructor
