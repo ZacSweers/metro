@@ -74,17 +74,7 @@ internal class IrGraphGenerator(
   graphExtensionGenerator: IrGraphExtensionGenerator,
 ) : IrMetroContext by metroContext {
 
-  // TODO we can end up in awkward situations where we
-  //  have the same type keys in both instance and provider fields
-  //  this is tricky because depending on the context, it's not valid
-  //  to use an instance (for example - you need a provider). How can we
-  //  clean this up?
-  // Fields for this graph and other instance params
-  private val instanceFields = mutableMapOf<IrTypeKey, IrField>()
-
-  // Fields for providers. May include both scoped and unscoped providers as well as bound
-  // instances
-  private val providerFields = LinkedHashMap<IrTypeKey, IrField>()
+  private val bindingFieldContext = BindingFieldContext()
 
   /**
    * To avoid `MethodTooLargeException`, we split field initializations up over multiple constructor
@@ -98,8 +88,7 @@ internal class IrGraphGenerator(
     IrGraphExpressionGenerator.Factory(
       context = this,
       node = node,
-      instanceFields = instanceFields,
-      providerFields = providerFields,
+      bindingFieldContext = bindingFieldContext,
       bindingGraph = bindingGraph,
       bindingContainerTransformer = bindingContainerTransformer,
       membersInjectorTransformer = membersInjectorTransformer,
@@ -153,7 +142,8 @@ internal class IrGraphGenerator(
         // Don't add it if it's not used
         if (typeKey !in sealResult.reachableKeys) return
 
-        providerFields[typeKey] =
+        bindingFieldContext.putProviderField(
+          typeKey,
           getOrCreateBindingField(
               typeKey,
               {
@@ -170,7 +160,8 @@ internal class IrGraphGenerator(
             )
             .initFinal {
               instanceFactory(typeKey.type, initializer(thisReceiverParameter, typeKey))
-            }
+            },
+        )
       }
 
       node.creator?.let { creator ->
@@ -201,8 +192,8 @@ internal class IrGraphGenerator(
                 irGet(irParam)
               }
             // Link both the graph typekey and the (possibly-impl type)
-            instanceFields[param.typeKey] = graphDepField
-            instanceFields[graphDep.typeKey] = graphDepField
+            bindingFieldContext.putInstanceField(param.typeKey, graphDepField)
+            bindingFieldContext.putInstanceField(graphDep.typeKey, graphDepField)
 
             if (graphDep.hasExtensions) {
               val depMetroGraph = graphDep.sourceGraph.metroGraphOrFail
@@ -233,7 +224,7 @@ internal class IrGraphGenerator(
             irGet(thisReceiverParameter)
           }
 
-        instanceFields[node.typeKey] = thisGraphField
+        bindingFieldContext.putInstanceField(node.typeKey, thisGraphField)
 
         // Expose the graph as a provider field
         // TODO this isn't always actually needed but different than the instance field above
@@ -245,13 +236,15 @@ internal class IrGraphGenerator(
             { symbols.metroProvider.typeWith(node.typeKey.type) },
           )
 
-        providerFields[node.typeKey] =
+        bindingFieldContext.putProviderField(
+          node.typeKey,
           field.initFinal {
             instanceFactory(
               node.typeKey.type,
               irGetField(irGet(thisReceiverParameter), thisGraphField),
             )
-          }
+          },
+        )
       }
 
       // Collect bindings and their dependencies for provider field ordering
@@ -286,7 +279,7 @@ internal class IrGraphGenerator(
                 )
               }
 
-          providerFields[deferredTypeKey] = field
+          bindingFieldContext.putProviderField(deferredTypeKey, field)
           field
         }
 
@@ -298,8 +291,7 @@ internal class IrGraphGenerator(
           it.typeKey in deferredFields ||
             // Don't generate fields for anything already provided in provider/instance fields (i.e.
             // bound instance types)
-            it.typeKey in instanceFields ||
-            it.typeKey in providerFields ||
+            it.typeKey in bindingFieldContext ||
             // We don't generate fields for these even though we do track them in dependencies
             // above, it's just for propagating their aliased type in sorting
             it is IrBinding.Alias ||
@@ -344,17 +336,24 @@ internal class IrGraphGenerator(
               { fieldType },
             )
 
+          val accessType =
+            if (isProviderType) {
+              IrGraphExpressionGenerator.AccessType.PROVIDER
+            } else {
+              IrGraphExpressionGenerator.AccessType.INSTANCE
+            }
+
           field.withInit(key) { thisReceiver, typeKey ->
             expressionGeneratorFactory
               .create(thisReceiver)
-              .generateBindingCode(binding, fieldInitKey = typeKey)
+              .generateBindingCode(binding, accessType = accessType, fieldInitKey = typeKey)
               .letIf(binding.isScoped() && isProviderType) {
                 // If it's scoped, wrap it in double-check
                 // DoubleCheck.provider(<provider>)
                 it.doubleCheck(this@withInit, symbols, binding.typeKey)
               }
           }
-          providerFields[key] = field
+          bindingFieldContext.putProviderField(key, field)
         }
 
       // Add statements to our constructor's deferred fields _after_ we've added all provider
@@ -373,7 +372,11 @@ internal class IrGraphGenerator(
                 createIrBuilder(symbol).run {
                   expressionGeneratorFactory
                     .create(thisReceiver)
-                    .generateBindingCode(binding, fieldInitKey = deferredTypeKey)
+                    .generateBindingCode(
+                      binding,
+                      accessType = IrGraphExpressionGenerator.AccessType.PROVIDER,
+                      fieldInitKey = deferredTypeKey,
+                    )
                     .letIf(binding.isScoped()) {
                       // If it's scoped, wrap it in double-check
                       // DoubleCheck.provider(<provider>)
@@ -513,7 +516,7 @@ internal class IrGraphGenerator(
                 contextualTypeKey,
                 expressionGeneratorFactory
                   .create(irFunction.dispatchReceiverParameter!!)
-                  .generateBindingCode(binding, contextualTypeKey),
+                  .generateBindingCode(binding, contextualTypeKey = contextualTypeKey),
                 isAssisted = false,
                 isGraphInstance = false,
               ),
@@ -584,7 +587,10 @@ internal class IrGraphGenerator(
                             parameter.contextualTypeKey,
                             expressionGeneratorFactory
                               .create(overriddenFunction.ir.dispatchReceiverParameter!!)
-                              .generateBindingCode(paramBinding, parameter.contextualTypeKey),
+                              .generateBindingCode(
+                                paramBinding,
+                                contextualTypeKey = parameter.contextualTypeKey,
+                              ),
                             isAssisted = false,
                             isGraphInstance = false,
                           )
@@ -648,10 +654,7 @@ internal class IrGraphGenerator(
                   symbol,
                   expressionGeneratorFactory
                     .create(irFunction.dispatchReceiverParameter!!)
-                    .generateBindingCode(
-                      binding = binding,
-                      invokeIfProvider = !contextKey.isWrappedInProvider,
-                    ),
+                    .generateBindingCode(binding = binding, contextualTypeKey = contextKey),
                 )
               }
           }
