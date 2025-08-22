@@ -289,11 +289,10 @@ internal class IrGraphGenerator(
       val deferredFields: Map<IrTypeKey, IrField> =
         sealResult.deferredTypes.associateWith { deferredTypeKey ->
           val binding = bindingGraph.requireBinding(deferredTypeKey, IrBindingStack.empty())
-          val field =
-            addField(
-                fieldNameAllocator.newName(binding.nameHint.decapitalizeUS() + "Provider"),
-                deferredTypeKey.type.wrapInProvider(symbols.metroProvider),
-              )
+          val field = getOrCreateBindingField(binding.typeKey,
+            { fieldNameAllocator.newName(binding.nameHint.decapitalizeUS() + "Provider") },
+            { deferredTypeKey.type.wrapInProvider(symbols.metroProvider) }
+            )
               .withInit(binding.typeKey) { _, _ ->
                 irInvoke(
                   callee = symbols.metroDelegateFactoryConstructor,
