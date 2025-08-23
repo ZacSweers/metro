@@ -1,3 +1,5 @@
+// Not really a dagger-specific case but repro case used it
+// https://github.com/ZacSweers/metro/issues/983
 // ENABLE_DAGGER_INTEROP
 import dagger.Module
 

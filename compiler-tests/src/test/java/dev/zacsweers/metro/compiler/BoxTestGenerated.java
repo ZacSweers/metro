@@ -821,12 +821,6 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
-      @TestMetadata("DaggerModuleInteropWorksInGraphExtension.kt")
-      public void testDaggerModuleInteropWorksInGraphExtension() {
-        runTest("compiler-tests/src/test/data/box/interop/dagger/DaggerModuleInteropWorksInGraphExtension.kt");
-      }
-
-      @Test
       @TestMetadata("DaggerModulesAnnotationInterop.kt")
       public void testDaggerModulesAnnotationInterop() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/DaggerModulesAnnotationInterop.kt");
@@ -842,6 +836,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("GenericDaggerFactoryClassCanBeLoaded.kt")
       public void testGenericDaggerFactoryClassCanBeLoaded() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/GenericDaggerFactoryClassCanBeLoaded.kt");
+      }
+
+      @Test
+      @TestMetadata("IncludesContainersCanTransitivelyIncludeOthers.kt")
+      public void testIncludesContainersCanTransitivelyIncludeOthers() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/IncludesContainersCanTransitivelyIncludeOthers.kt");
       }
 
       @Test
