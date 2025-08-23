@@ -119,16 +119,15 @@ jobs:
         if: ${{ success() && contains(steps.version.outputs.METRO_VERSION, 'SNAPSHOT') }}
         run: mike deploy --update-aliases --push ${{ steps.version.outputs.METRO_VERSION }} snapshot
 
-      # Delete previous snapshot docs when a respective release is getting published
-      - name: Delete snapshot docs for new release
-        if: ${{ success() && !contains(steps.version.outputs.METRO_VERSION, 'SNAPSHOT') }}
-        run: |
-          mike delete --push ${{ steps.version.outputs.METRO_VERSION }}-SNAPSHOT || true
-
       - name: Deploy Release Docs with mike
         if: ${{ success() && !contains(steps.version.outputs.METRO_VERSION, 'SNAPSHOT') }}
         run: |
           mike deploy --update-aliases --push ${{ steps.version.outputs.METRO_VERSION }} latest
+
+      - name: Delete old doc versions
+        run: |
+          git fetch origin gh-pages --depth=1
+          ./scripts/delete_old_version_docs.sh
 
   # Docs dry run job for PRs that change requirements.txt
   docs-dry-run:
