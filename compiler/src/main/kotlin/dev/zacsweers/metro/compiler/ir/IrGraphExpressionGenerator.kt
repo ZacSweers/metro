@@ -146,7 +146,7 @@ private constructor(
                     it.remapTypes(remapper)
                   },
                 binding = binding,
-                fieldInitKey = fieldInitKey,
+                fieldInitKey = null,
               )
             }
           }

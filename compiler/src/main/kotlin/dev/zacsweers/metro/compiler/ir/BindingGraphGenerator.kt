@@ -555,6 +555,22 @@ internal class BindingGraphGenerator(
 
         parentKeysByClass[parentNodeClass] = parentKey
 
+        // Add bindings for the parent itself as a field reference
+        // TODO it would be nice if we could do this lazily with addLazyParentKey
+        val fieldAccess =
+          parentContext.mark(parentKey) ?: reportCompilerBug("Missing parent key $parentKey")
+        graph.addBinding(
+          parentKey,
+          IrBinding.BoundInstance(
+            parentKey,
+            "parent",
+            parentNode.sourceGraph,
+            classReceiverParameter = parentNodeClass.thisReceiver,
+            providerFieldAccess = fieldAccess,
+          ),
+          bindingStack,
+        )
+
         // Add the original type too as an alias
         val regularGraph = parentNode.sourceGraph.sourceGraphIfMetroGraph
         if (regularGraph != parentNode.sourceGraph) {
