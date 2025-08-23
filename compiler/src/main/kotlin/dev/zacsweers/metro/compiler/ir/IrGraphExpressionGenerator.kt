@@ -139,12 +139,14 @@ private constructor(
             invokeCreateExpression { createFunction ->
               val remapper = createFunction.typeRemapperFor(binding.typeKey.type)
               generateBindingArguments(
-                createFunction.parameters(remapper = remapper),
-                createFunction.deepCopyWithSymbols(initialParent = createFunction.parent).also {
-                  it.parent = createFunction.parent
-                  it.remapTypes(remapper)
-                },
-                binding,
+                targetParams = createFunction.parameters(remapper = remapper),
+                function =
+                  createFunction.deepCopyWithSymbols(initialParent = createFunction.parent).also {
+                    it.parent = createFunction.parent
+                    it.remapTypes(remapper)
+                  },
+                binding = binding,
+                fieldInitKey = fieldInitKey,
               )
             }
           }
@@ -158,7 +160,11 @@ private constructor(
           // For binds functions, just use the backing type
           val aliasedBinding = binding.aliasedBinding(bindingGraph, IrBindingStack.empty())
           check(aliasedBinding != binding) { "Aliased binding aliases itself" }
-          return generateBindingCode(aliasedBinding, accessType = accessType)
+          return generateBindingCode(
+            aliasedBinding,
+            accessType = accessType,
+            fieldInitKey = fieldInitKey,
+          )
         }
 
         is IrBinding.Provided -> {
@@ -178,7 +184,13 @@ private constructor(
           val createFunction = creatorClass.requireSimpleFunction(Symbols.StringNames.CREATE)
           // Must use the provider's params for IrTypeKey as that has qualifier
           // annotations
-          val args = generateBindingArguments(binding.parameters, createFunction.owner, binding)
+          val args =
+            generateBindingArguments(
+              targetParams = binding.parameters,
+              function = createFunction.owner,
+              binding = binding,
+              fieldInitKey = fieldInitKey,
+            )
           irInvoke(
             dispatchReceiver = irGetObject(creatorClass.symbol),
             callee = createFunction,
@@ -260,7 +272,13 @@ private constructor(
               if (injectorClass.isObject) injectorClass else injectorClass.companionObject()!!
             val createFunction =
               injectorCreatorClass.requireSimpleFunction(Symbols.StringNames.CREATE)
-            val args = generateBindingArguments(binding.parameters, createFunction.owner, binding)
+            val args =
+              generateBindingArguments(
+                targetParams = binding.parameters,
+                function = createFunction.owner,
+                binding = binding,
+                fieldInitKey = fieldInitKey,
+              )
             instanceFactory(
                 injectedType,
                 // InjectableClass_MembersInjector.create(stringValueProvider,
@@ -289,11 +307,25 @@ private constructor(
 
         is IrBinding.BoundInstance -> {
           if (binding.classReceiverParameter != null) {
-            irGet(binding.classReceiverParameter)
+            when (accessType) {
+              AccessType.INSTANCE -> {
+                // Get it directly
+                irGet(binding.classReceiverParameter)
+              }
+              AccessType.PROVIDER -> {
+                // We need the provider
+                irGetField(
+                  irGet(binding.classReceiverParameter),
+                  binding.providerFieldAccess!!.field,
+                )
+              }
+            }
           } else {
             // Should never happen, this should get handled in the provider/instance fields logic
             // above.
-            reportCompilerBug("Unable to generate code for unexpected BoundInstance binding: $binding")
+            reportCompilerBug(
+              "Unable to generate code for unexpected BoundInstance binding: $binding"
+            )
           }
         }
 
@@ -450,6 +482,7 @@ private constructor(
     targetParams: Parameters,
     function: IrFunction,
     binding: IrBinding,
+    fieldInitKey: IrTypeKey?,
   ): List<IrExpression?> =
     with(scope) {
       val params = function.parameters()
@@ -557,6 +590,7 @@ private constructor(
 
               generateBindingCode(
                 paramBinding,
+                fieldInitKey = fieldInitKey,
                 accessType = accessType,
                 contextualTypeKey = param.contextualTypeKey,
               )

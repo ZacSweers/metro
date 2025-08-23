@@ -24,7 +24,6 @@ import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.irAttribute
 import org.jetbrains.kotlin.ir.types.IrType
-import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addFakeOverrides
 import org.jetbrains.kotlin.ir.util.classId
@@ -187,7 +186,8 @@ internal class IrGraphExtensionGenerator(
     val graphExtensionAnno =
       sourceGraph.annotationsIn(symbols.classIds.graphExtensionAnnotations).firstOrNull()
     val extensionAnno =
-      graphExtensionAnno ?: reportCompilerBug("Expected @GraphExtension on ${sourceGraph.kotlinFqName}")
+      graphExtensionAnno
+        ?: reportCompilerBug("Expected @GraphExtension on ${sourceGraph.kotlinFqName}")
 
     val sourceScope = extensionAnno.scopeClassOrNull()
     val scope = sourceScope?.classId

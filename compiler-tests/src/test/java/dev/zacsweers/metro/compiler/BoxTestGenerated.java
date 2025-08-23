@@ -551,6 +551,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("MultibindingsFromDifferentScopes.kt")
+      public void testMultibindingsFromDifferentScopes() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/MultibindingsFromDifferentScopes.kt");
+      }
+
+      @Test
       @TestMetadata("OverloadedFactoryFunctions.kt")
       public void testOverloadedFactoryFunctions() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/OverloadedFactoryFunctions.kt");

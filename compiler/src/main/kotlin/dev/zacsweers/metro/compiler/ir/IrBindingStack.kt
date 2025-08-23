@@ -7,7 +7,6 @@ import com.jakewharton.picnic.renderText
 import com.jakewharton.picnic.table
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.BaseBindingStack
 import dev.zacsweers.metro.compiler.graph.BaseTypeKey
 import dev.zacsweers.metro.compiler.ir.IrBindingStack.Entry
@@ -151,13 +150,14 @@ internal interface IrBindingStack :
                   "#${(functionToUse.propertyIfAccessor as IrProperty).name.asString()}"
                 else -> "#${functionToUse.name.asString()}"
               }
-            val end = if (param == null) {
-              "()"
-            } else if (functionToUse.isPropertyAccessor) {
-              ": $displayTypeKey"
-            } else {
-              "(…, ${param.name.asString()})"
-            }
+            val end =
+              if (param == null) {
+                "()"
+              } else if (functionToUse.isPropertyAccessor) {
+                ": $displayTypeKey"
+              } else {
+                "(…, ${param.name.asString()})"
+              }
             "$targetFqName$middle$end"
           }
         return Entry(
@@ -222,11 +222,12 @@ internal interface IrBindingStack :
         declaration: IrFunction? = null,
       ): Entry {
         val targetFqName = graphExtensionKey.typeKey.type.rawType().kotlinFqName
-        val context = when (val declarationToUse = declaration?.propertyIfAccessor) {
-          is IrProperty -> "$targetFqName.${declarationToUse.name}"
-          is IrFunction -> "$targetFqName.${declarationToUse.name}(…)"
-          else -> null
-        }
+        val context =
+          when (val declarationToUse = declaration?.propertyIfAccessor) {
+            is IrProperty -> "$targetFqName.${declarationToUse.name}"
+            is IrFunction -> "$targetFqName.${declarationToUse.name}(…)"
+            else -> null
+          }
         return Entry(
           contextKey = graphExtensionKey,
           usage = "extends $parent",
@@ -482,10 +483,18 @@ internal fun bindingStackEntryForDependency(
       Entry.injectedAt(contextKey, callingBinding.getter, displayTypeKey = targetKey)
     }
     is IrBinding.GraphExtension -> {
-      Entry.generatedExtensionAt(contextKey, parent = callingBinding.parent.kotlinFqName.asString(), callingBinding.accessor)
+      Entry.generatedExtensionAt(
+        contextKey,
+        parent = callingBinding.parent.kotlinFqName.asString(),
+        callingBinding.accessor,
+      )
     }
     is IrBinding.GraphExtensionFactory -> {
-      Entry.generatedExtensionAt(contextKey, parent = callingBinding.parent.kotlinFqName.asString(), callingBinding.accessor)
+      Entry.generatedExtensionAt(
+        contextKey,
+        parent = callingBinding.parent.kotlinFqName.asString(),
+        callingBinding.accessor,
+      )
     }
     is IrBinding.Absent -> reportCompilerBug("Should never happen")
   }

@@ -60,7 +60,7 @@ internal class BindingGraphGenerator(
           IrBindingStack(node.sourceGraph, loggerFor(MetroLogger.Type.BindingGraphConstruction))
         },
         bindingLookup = bindingLookup,
-        contributionData = contributionData
+        contributionData = contributionData,
       )
 
     // Add explicit bindings from @Provides methods
@@ -233,7 +233,9 @@ internal class BindingGraphGenerator(
       val parameters = bindsCallable.function.parameters()
       val bindsImplType =
         parameters.extensionOrFirstParameter?.contextualTypeKey
-          ?: reportCompilerBug("Missing receiver parameter for @Binds function: ${bindsCallable.function}")
+          ?: reportCompilerBug(
+            "Missing receiver parameter for @Binds function: ${bindsCallable.function}"
+          )
 
       val binding =
         IrBinding.Alias(
@@ -474,7 +476,7 @@ internal class BindingGraphGenerator(
               parentKey = node.typeKey,
               accessor = accessor.accessor.ir,
             ),
-            bindingStack
+            bindingStack,
           )
         }
       }
@@ -553,17 +555,6 @@ internal class BindingGraphGenerator(
 
         parentKeysByClass[parentNodeClass] = parentKey
 
-        // Add bindings for the parent itself as a field reference
-        graph.addBinding(
-          parentKey,
-          IrBinding.BoundInstance(
-            parentKey,
-            "parent",
-            parentNode.sourceGraph,
-            classReceiverParameter = parentNodeClass!!.thisReceiver,
-          ),
-          bindingStack,
-        )
         // Add the original type too as an alias
         val regularGraph = parentNode.sourceGraph.sourceGraphIfMetroGraph
         if (regularGraph != parentNode.sourceGraph) {
@@ -600,12 +591,23 @@ internal class BindingGraphGenerator(
             fieldAccess.field.name.asString(),
           )
 
-          IrBinding.GraphDependency(
-            ownerKey = parentKeysByClass.getValue(fieldParentClass),
-            graph = node.sourceGraph,
-            fieldAccess = fieldAccess,
-            typeKey = key,
-          )
+          if (key == fieldAccess.parentKey) {
+            // Add bindings for the parent itself as a field reference
+            IrBinding.BoundInstance(
+              key,
+              "parent",
+              fieldAccess.field,
+              classReceiverParameter = fieldAccess.receiverParameter,
+              providerFieldAccess = fieldAccess,
+            )
+          } else {
+            IrBinding.GraphDependency(
+              ownerKey = parentKeysByClass.getValue(fieldParentClass),
+              graph = node.sourceGraph,
+              fieldAccess = fieldAccess,
+              typeKey = key,
+            )
+          }
         }
       }
     }

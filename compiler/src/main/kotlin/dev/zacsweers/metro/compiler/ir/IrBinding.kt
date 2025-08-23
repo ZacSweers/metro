@@ -369,6 +369,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val nameHint: String,
     override val reportableDeclaration: IrDeclarationWithName?,
     val classReceiverParameter: IrValueParameter? = null,
+    val providerFieldAccess: ParentContext.FieldAccess? = null,
   ) : IrBinding {
     constructor(
       parameter: Parameter,
