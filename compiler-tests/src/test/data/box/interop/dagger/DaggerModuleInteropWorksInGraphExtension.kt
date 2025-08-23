@@ -1,18 +1,15 @@
 // ENABLE_DAGGER_INTEROP
 import dagger.Module
 
-@Module
-class LongModule {
-  @Provides fun provideLong(): Long = 3L
+data class ExtensionType(val value: Int)
+
+@Module()
+class ExtensionModule {
+  @Provides fun provideExtensionType(): ExtensionType = ExtensionType(42)
 }
 
-@Module(includes = [LongModule::class])
-class IntModule {
-  @Provides fun provideInt(): Int = 3
-}
-
-@Module(includes = [IntModule::class])
-class StringModule(val string: String) {
+@Module(includes = [ExtensionModule::class])
+class AppGraphModule(val string: String) {
   @Provides fun provideString(): String = string
 }
 
@@ -23,7 +20,7 @@ interface AppGraph {
 
   @DependencyGraph.Factory
   interface Factory {
-    fun create(@Includes stringModule: StringModule): AppGraph
+    fun create(@Includes module: AppGraphModule): AppGraph
   }
 }
 
@@ -40,22 +37,21 @@ interface AppGraphExtension {
 class MembersInjectedClass(
   val appGraph: AppGraph
 ) {
-  @Inject lateinit var int: Int
-  @Inject lateinit var long: Long
+  @Inject lateinit var extensionType: ExtensionType
 
   fun inject() {
     appGraph.graphExtensionFactory.create().inject(this)
   }
 
   fun assertValues() {
-    assertEquals(3, int)
-    assertEquals(3L, long)
+    assertNotNull(extensionType)
+    assertEquals(extensionType, ExtensionType(42))
   }
 }
 
 fun box(): String {
   val graph = createGraphFactory<AppGraph.Factory>()
-    .create(StringModule("Hello"))
+    .create(AppGraphModule("Hello"))
 
   MembersInjectedClass(graph).apply {
     inject()
