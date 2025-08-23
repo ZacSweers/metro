@@ -4,6 +4,8 @@ Changelog
 **Unreleased**
 --------------
 
+* **Fix**: Ensure provider fields for graph instances when needed by extensions.
+
 0.6.2
 -----
 
