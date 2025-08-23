@@ -4,6 +4,7 @@ Changelog
 **Unreleased**
 --------------
 
+* **Enhancement**: Allow `@Includes` parameters that are binding containers to transitively include other binding containers.
 * **Fix**: Ensure provider fields for graph instances when needed by extensions.
 
 0.6.2

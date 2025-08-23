@@ -114,6 +114,7 @@ internal class DependencyGraphNodeCache(
     private val sourceGraphTypeKey = IrTypeKey(graphDeclaration.sourceGraphIfMetroGraph.typeWith())
     private val graphContextKey = IrContextualTypeKey.create(graphTypeKey)
     private val bindingContainers = mutableSetOf<BindingContainer>()
+    private val managedBindingContainers = mutableSetOf<IrClass>()
 
     private val dependencyGraphAnno =
       cachedDependencyGraphAnno
@@ -215,6 +216,7 @@ internal class DependencyGraphNodeCache(
         nonNullCreator.parameters.regularParameters.forEachIndexed { i, parameter ->
           if (parameter.isBindsInstance) return@forEachIndexed
 
+          // It's an `@Includes` parameter
           val klass = parameter.typeKey.type.rawType()
           val sourceGraph = klass.sourceGraphIfMetroGraph
 
@@ -222,11 +224,20 @@ internal class DependencyGraphNodeCache(
 
           // Add any included graph provider factories IFF it's a binding container
           if (nonNullCreator.bindingContainersParameterIndices.isSet(i)) {
-            val bindingContainer =
-              bindingContainerTransformer.findContainer(sourceGraph)
-                ?: reportCompilerBug("Binding container not found for type ${sourceGraph.classId}")
-
-            bindingContainers += bindingContainer
+            // Include the container itself and all its transitively included containers
+            val allContainers =
+              bindingContainerTransformer.resolveAllBindingContainersCached(setOf(sourceGraph))
+            bindingContainers += allContainers
+            // Track which transitively included containers be managed
+            for (container in allContainers) {
+              if (container.ir == klass) {
+                // Don't mark the parameter class itself as managed since we're taking it as an
+                // input
+                continue
+              } else if (container.canBeManaged) {
+                managedBindingContainers += container.ir
+              }
+            }
             return@forEachIndexed
           }
 
@@ -567,7 +578,6 @@ internal class DependencyGraphNodeCache(
         extendedGraphNodes[node.typeKey] = node
       }
 
-      val managedBindingContainers = mutableSetOf<IrClass>()
       bindingContainers +=
         dependencyGraphAnno
           ?.bindingContainerClasses(includeModulesArg = options.enableDaggerRuntimeInterop)
