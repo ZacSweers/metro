@@ -6,17 +6,14 @@ import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.mapToSet
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithVisibility
-import org.jetbrains.kotlin.ir.declarations.IrFile
-import org.jetbrains.kotlin.ir.declarations.moduleDescriptor
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrFail
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.defaultType
-import org.jetbrains.kotlin.ir.util.file
-import org.jetbrains.kotlin.ir.util.getPackageFragment
+import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.name.ClassId
 
@@ -48,13 +45,17 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
     addAll(findExternalBindingContainerContributions(scope))
   }
 
-  private fun findVisibleContributionClassesForScopeInHints(scope: Scope): Set<IrClass> {
+  fun findVisibleContributionClassesForScopeInHints(
+    scope: Scope,
+    includeNonFriendInternals: Boolean = false,
+  ): Set<IrClass> {
     val functionsInPackage = metroContext.referenceFunctions(Symbols.CallableIds.scopeHint(scope))
     val contributingClasses =
       functionsInPackage
         .filter {
           if (it.owner.visibility == Visibilities.Internal) {
-            it.owner.isVisibleAsInternal(it.owner.file)
+            includeNonFriendInternals ||
+              it.owner.fileOrNull?.let { file -> it.owner.isVisibleAsInternal(file) } ?: false
           } else {
             true
           }
@@ -131,7 +132,7 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
                 ?: return@mapNotNullToSet null
             val contributionScope =
               metroContribution.scopeOrNull()
-                ?: error("No scope found for @MetroContribution annotation")
+                ?: reportCompilerBug("No scope found for @MetroContribution annotation")
             if (contributionScope == scope) {
               nestedClass.defaultType
             } else {
@@ -140,14 +141,5 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
           }
         }
       }
-  }
-
-  // Copied from CheckerUtils.kt
-  private fun IrDeclarationWithVisibility.isVisibleAsInternal(file: IrFile): Boolean {
-    val referencedDeclarationPackageFragment = getPackageFragment()
-    val module = file.module
-    return module.descriptor.shouldSeeInternalsOf(
-      referencedDeclarationPackageFragment.moduleDescriptor
-    )
   }
 }

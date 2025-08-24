@@ -49,6 +49,8 @@ plugins:
   # Versioned Metro docs site for each release
   # https://github.com/jimporter/mike
   - mike
+  # https://github.com/sondregronas/mkdocs-callouts
+  - callouts
 
 #extra_css:
 #  - 'css/app.css'
@@ -73,12 +75,14 @@ markdown_extensions:
   - pymdownx.smartsymbols
   - pymdownx.superfences
   - pymdownx.emoji
+  - pymdownx.details
   - pymdownx.tabbed:
       alternate_style: true
   - tables
   - admonition
   - attr_list
   - md_in_html
+  - nl2br
 
 nav:
   - 'Introduction': index.md

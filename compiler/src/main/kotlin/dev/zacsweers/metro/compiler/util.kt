@@ -16,7 +16,7 @@ internal fun <T> unsafeLazy(initializer: () -> T) = lazy(LazyThreadSafetyMode.NO
 
 internal inline fun <reified T : Any> Any.expectAs(): T {
   contract { returns() implies (this@expectAs is T) }
-  return expectAsOrNull<T>() ?: error("Expected $this to be of type ${T::class.qualifiedName}")
+  return expectAsOrNull<T>() ?: reportCompilerBug("Expected $this to be of type ${T::class.qualifiedName}")
 }
 
 internal inline fun <reified T : Any> Any.expectAsOrNull(): T? {
@@ -140,7 +140,7 @@ internal fun String.split(index: Int): Pair<String, String> {
  */
 internal fun <T> Collection<T>.singleOrError(errorMessage: Collection<T>.() -> String): T {
   if (size != 1) {
-    error(errorMessage())
+    reportCompilerBug(errorMessage())
   }
   return single()
 }

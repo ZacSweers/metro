@@ -64,7 +64,7 @@ internal class MetroLoggerImpl(
 
   override fun unindent() = apply {
     indent--
-    if (indent < 0) error("Unindented too much!")
+    if (indent < 0) reportCompilerBug("Unindented too much!")
   }
 
   override fun log(message: () -> String) {

@@ -427,7 +427,7 @@ internal class ProvidesFactorySupertypeGenerator(session: FirSession) :
               """
                     .trimIndent()
                 if (session is FirCliSession) {
-                  error(message)
+                  reportCompilerBug(message)
                 } else {
                   // TODO TypeResolveService appears to be unimplemented in the IDE
                   //  https://youtrack.jetbrains.com/issue/KT-74553/
@@ -481,7 +481,7 @@ internal class ProvidesFactorySupertypeGenerator(session: FirSession) :
       val message =
         "Could not resolve function type parameters for function type: ${typeRef.render()}"
       if (session is FirCliSession) {
-        error(message)
+        reportCompilerBug(message)
       } else {
         // TODO TypeResolveService appears to be unimplemented in the IDE
         //  https://youtrack.jetbrains.com/issue/KT-74553/

@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.graph.BaseBindingStack
 import dev.zacsweers.metro.compiler.graph.BaseTypeKey
 import dev.zacsweers.metro.compiler.ir.IrBindingStack.Entry
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.unsafeLazy
 import dev.zacsweers.metro.compiler.withoutLineBreaks
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -149,13 +150,14 @@ internal interface IrBindingStack :
                   "#${(functionToUse.propertyIfAccessor as IrProperty).name.asString()}"
                 else -> "#${functionToUse.name.asString()}"
               }
-            val end = if (param == null) {
-              "()"
-            } else if (functionToUse.isPropertyAccessor) {
-              ": $displayTypeKey"
-            } else {
-              "(…, ${param.name.asString()})"
-            }
+            val end =
+              if (param == null) {
+                "()"
+              } else if (functionToUse.isPropertyAccessor) {
+                ": $displayTypeKey"
+              } else {
+                "(…, ${param.name.asString()})"
+              }
             "$targetFqName$middle$end"
           }
         return Entry(
@@ -220,11 +222,12 @@ internal interface IrBindingStack :
         declaration: IrFunction? = null,
       ): Entry {
         val targetFqName = graphExtensionKey.typeKey.type.rawType().kotlinFqName
-        val context = when (val declarationToUse = declaration?.propertyIfAccessor) {
-          is IrProperty -> "$targetFqName.${declarationToUse.name}"
-          is IrFunction -> "$targetFqName.${declarationToUse.name}(…)"
-          else -> null
-        }
+        val context =
+          when (val declarationToUse = declaration?.propertyIfAccessor) {
+            is IrProperty -> "$targetFqName.${declarationToUse.name}"
+            is IrFunction -> "$targetFqName.${declarationToUse.name}(…)"
+            else -> null
+          }
         return Entry(
           contextKey = graphExtensionKey,
           usage = "extends $parent",
@@ -355,7 +358,7 @@ internal class IrBindingStackImpl(override val graph: IrClass, private val logge
 
   override fun pop() {
     logger.unindent()
-    val removed = stack.removeFirstOrNull() ?: error("Binding stack is empty!")
+    val removed = stack.removeFirstOrNull() ?: reportCompilerBug("Binding stack is empty!")
     entrySet.remove(removed.typeKey)
   }
 
@@ -480,11 +483,19 @@ internal fun bindingStackEntryForDependency(
       Entry.injectedAt(contextKey, callingBinding.getter, displayTypeKey = targetKey)
     }
     is IrBinding.GraphExtension -> {
-      Entry.generatedExtensionAt(contextKey, parent = callingBinding.parent.kotlinFqName.asString(), callingBinding.accessor)
+      Entry.generatedExtensionAt(
+        contextKey,
+        parent = callingBinding.parent.kotlinFqName.asString(),
+        callingBinding.accessor,
+      )
     }
     is IrBinding.GraphExtensionFactory -> {
-      Entry.generatedExtensionAt(contextKey, parent = callingBinding.parent.kotlinFqName.asString(), callingBinding.accessor)
+      Entry.generatedExtensionAt(
+        contextKey,
+        parent = callingBinding.parent.kotlinFqName.asString(),
+        callingBinding.accessor,
+      )
     }
-    is IrBinding.Absent -> error("Should never happen")
+    is IrBinding.Absent -> reportCompilerBug("Should never happen")
   }
 }

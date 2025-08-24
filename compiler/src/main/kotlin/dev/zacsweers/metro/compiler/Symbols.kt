@@ -787,7 +787,7 @@ internal class Symbols(
     ): IrExpression {
       val targetClass = target.rawType?.classOrNull?.owner
       val targetClassId =
-        targetClass?.classId ?: error("Unexpected non-jakarta/javax provider type $target")
+        targetClass?.classId ?: reportCompilerBug("Unexpected non-jakarta/javax provider type $target")
       val interopFunction =
         when (targetClassId) {
           ClassIds.DAGGER_INTERNAL_PROVIDER_CLASS_ID -> asDaggerInternalProvider
@@ -796,7 +796,7 @@ internal class Symbols(
           ClassIds.DAGGER_LAZY_CLASS_ID -> {
             return invokeDoubleCheckLazy(target, metroProvider)
           }
-          else -> error("Unexpected non-dagger/jakarta/javax provider $targetClassId")
+          else -> reportCompilerBug("Unexpected non-dagger/jakarta/javax provider $targetClassId")
         }
       return irInvoke(
         extensionReceiver = metroProvider,
@@ -902,7 +902,7 @@ internal class Symbols(
           return symbol
         }
       }
-      error("Unexpected provider type: ${providerType.dumpKotlinLike()}")
+      reportCompilerBug("Unexpected provider type: ${providerType.dumpKotlinLike()}")
     }
 
     object ClassIds {

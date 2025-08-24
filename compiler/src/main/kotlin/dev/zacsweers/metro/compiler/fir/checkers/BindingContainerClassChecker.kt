@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.resolvedBindingContainersClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedClassId
 import dev.zacsweers.metro.compiler.fir.resolvedIncludesClassIds
+import dev.zacsweers.metro.compiler.fir.validateVisibility
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
@@ -24,6 +25,7 @@ import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.constructors
 import org.jetbrains.kotlin.fir.declarations.processAllDeclarations
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClass
+import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.declarations.utils.isEnumClass
 import org.jetbrains.kotlin.fir.declarations.utils.isInterface
@@ -167,7 +169,34 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
       }
     }
 
-    val isAbstract = declaration.isAbstract || declaration.isInterface
+    val isInterface = declaration.isInterface
+
+    if (!isInterface && !declaration.classKind.isObject) {
+      val isContributed = declaration.isAnnotatedWithAny(session, classIds.contributesToAnnotations)
+      if (isContributed) {
+        // Check for a single, no-arg constructor
+        val constructors = declaration.constructors(session)
+        if (constructors.isNotEmpty()) {
+          val noArgConstructor =
+            declaration.constructors(session).find { it.valueParameterSymbols.isEmpty() }
+          if (noArgConstructor == null) {
+            reporter.reportOn(
+              source,
+              BINDING_CONTAINER_ERROR,
+              "Contributed binding containers must have a no-arg constructor.",
+            )
+          } else {
+            noArgConstructor.validateVisibility(
+              "Contributed binding container ${declaration.classId.asFqNameString()}'s no-arg constructor"
+            ) {
+              return
+            }
+          }
+        }
+      }
+    }
+
+    val isAbstract = isInterface || declaration.isAbstract
 
     // Check for no conflicting names, requires class-level
     val providerNames = mutableMapOf<Name, FirCallableSymbol<*>>()

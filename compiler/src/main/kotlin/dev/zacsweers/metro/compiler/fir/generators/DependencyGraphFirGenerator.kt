@@ -20,6 +20,7 @@ import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.metro.compiler.fir.requireContainingClassSymbol
 import dev.zacsweers.metro.compiler.mapToArray
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
@@ -474,7 +475,7 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
       // Graph factory $$Impl class, just generate the SAM function
       log("Generating factory impl into ${owner.classId}")
       val graphClass = owner.requireContainingClassSymbol().requireContainingClassSymbol()
-      val graphObject = graphObject(graphClass) ?: error("No graph object found for $graphClass")
+      val graphObject = graphObject(graphClass) ?: reportCompilerBug("No graph object found for $graphClass")
       val creator =
         graphObject.findCreator(session, "generateFunctions ${context.owner.classId}", ::log)!!
       val samFunction = creator.classSymbol.findSamFunction(session)

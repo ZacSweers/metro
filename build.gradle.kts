@@ -32,7 +32,8 @@ plugins {
 
 apiValidation {
   ignoredProjects += listOf("compiler", "compiler-tests")
-  ignoredPackages += listOf("dev.zacsweers.metro.internal")
+  ignoredPackages +=
+    listOf("dev.zacsweers.metro.internal", "dev.zacsweers.metro.interop.dagger.internal")
   @OptIn(ExperimentalBCVApi::class)
   klib {
     // This is only really possible to run on macOS
@@ -51,9 +52,7 @@ dokka {
 
 val ktfmtVersion = libs.versions.ktfmt.get()
 
-spotless {
-  predeclareDeps()
-}
+spotless { predeclareDeps() }
 
 configure<SpotlessExtensionPredeclare> {
   kotlin { ktfmt(ktfmtVersion).googleStyle().configure { it.setRemoveUnusedImports(true) } }
@@ -188,6 +187,11 @@ subprojects {
       dokkaSourceSets.configureEach {
         skipDeprecated.set(true)
         documentedVisibilities.add(VisibilityModifier.Public)
+        reportUndocumented.set(true)
+        perPackageOption {
+          matchingRegex.set(".*\\.internal.*")
+          suppress.set(true)
+        }
         sourceLink {
           localDirectory.set(layout.projectDirectory.dir("src"))
           val relPath = rootProject.projectDir.toPath().relativize(projectDir.toPath())

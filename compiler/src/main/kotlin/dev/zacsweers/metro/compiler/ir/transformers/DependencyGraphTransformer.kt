@@ -230,6 +230,7 @@ internal class DependencyGraphTransformer(
             node,
             injectConstructorTransformer,
             membersInjectorTransformer,
+          contributionData,
             parentContext,
           )
           .generate()
@@ -460,7 +461,7 @@ internal class DependencyGraphTransformer(
             bindingContainerTransformer = bindingContainerTransformer,
             membersInjectorTransformer = membersInjectorTransformer,
             assistedFactoryTransformer = assistedFactoryTransformer,
-            contributedGraphGenerator = graphExtensionGenerator,
+            graphExtensionGenerator = graphExtensionGenerator,
           )
           .generate()
       }

@@ -515,9 +515,21 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("ExtensionsUsingDeferredTypesAreValid.kt")
+      public void testExtensionsUsingDeferredTypesAreValid() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ExtensionsUsingDeferredTypesAreValid.kt");
+      }
+
+      @Test
       @TestMetadata("FactoriesCanBeOnTheGraph.kt")
       public void testFactoriesCanBeOnTheGraph() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/FactoriesCanBeOnTheGraph.kt");
+      }
+
+      @Test
+      @TestMetadata("FactoryAccessorWhenParentAlsoImplementsFactory.kt")
+      public void testFactoryAccessorWhenParentAlsoImplementsFactory() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/FactoryAccessorWhenParentAlsoImplementsFactory.kt");
       }
 
       @Test
@@ -542,6 +554,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("MultiLevelEmptyExtensions.kt")
       public void testMultiLevelEmptyExtensions() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/MultiLevelEmptyExtensions.kt");
+      }
+
+      @Test
+      @TestMetadata("MultibindingsFromDifferentScopes.kt")
+      public void testMultibindingsFromDifferentScopes() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/MultibindingsFromDifferentScopes.kt");
       }
 
       @Test
@@ -824,6 +842,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("GenericDaggerFactoryClassCanBeLoaded.kt")
       public void testGenericDaggerFactoryClassCanBeLoaded() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/GenericDaggerFactoryClassCanBeLoaded.kt");
+      }
+
+      @Test
+      @TestMetadata("IncludesContainersCanTransitivelyIncludeOthers.kt")
+      public void testIncludesContainersCanTransitivelyIncludeOthers() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/IncludesContainersCanTransitivelyIncludeOthers.kt");
       }
 
       @Test

@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.appendIterableWith
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
@@ -106,7 +107,7 @@ private fun StringBuilder.renderAsAnnotationArgument(irElement: IrElement?, shor
       append(irElement.symbol.owner.name.asString())
     }
     else ->
-      error("Unrecognized annotation argument type: $irElement (type ${irElement::class.java})")
+      reportCompilerBug("Unrecognized annotation argument type: $irElement (type ${irElement::class.java})")
   }
 }
 

@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import java.util.Objects
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.ir.builders.irString
@@ -29,10 +30,10 @@ internal fun IrTypeKey.transformMultiboundQualifier(
     return this
   }
 
-  val rawSymbol = annotations.symbol ?: error("No symbol found for multibinding annotation")
+  val rawSymbol = annotations.symbol ?: reportCompilerBug("No symbol found for multibinding annotation")
   val declaration =
     rawSymbol.expectAsOrNull<IrSymbol>()?.owner?.expectAsOrNull<IrOverridableDeclaration<*>>()
-      ?: error("Expected symbol to be an IrSymbol but was ${rawSymbol::class.simpleName}")
+      ?: reportCompilerBug("Expected symbol to be an IrSymbol but was ${rawSymbol::class.simpleName}")
 
   val elementId = declaration.multibindingElementId
   val bindingId =

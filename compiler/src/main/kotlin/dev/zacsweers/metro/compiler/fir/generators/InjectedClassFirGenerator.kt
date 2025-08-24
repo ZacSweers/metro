@@ -25,6 +25,7 @@ import dev.zacsweers.metro.compiler.fir.wrapInProviderIfNecessary
 import dev.zacsweers.metro.compiler.mapToArray
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.newName
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Visibilities
@@ -684,7 +685,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
             )
           }
           else -> {
-            error("Unrecognized function $callableId")
+            reportCompilerBug("Unrecognized function $callableId")
           }
         }
     } else if (targetClass.hasOrigin(Keys.MembersInjectorClassDeclaration)) {
@@ -771,7 +772,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
   }
 
   private fun functionFor(classId: ClassId) =
-    functionForOrNullable(classId) ?: error("No injected function for $classId")
+    functionForOrNullable(classId) ?: reportCompilerBug("No injected function for $classId")
 
   private fun functionForOrNullable(classId: ClassId) = symbols.getValue(Unit, null)[classId]
 

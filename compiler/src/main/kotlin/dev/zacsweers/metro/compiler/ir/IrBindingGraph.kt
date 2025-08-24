@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
@@ -25,6 +26,7 @@ import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.isSubtypeOf
@@ -36,6 +38,7 @@ internal class IrBindingGraph(
   private val node: DependencyGraphNode,
   newBindingStack: () -> IrBindingStack,
   private val bindingLookup: BindingLookup,
+  private val contributionData: IrContributionData,
 ) {
   private val realGraph =
     MutableBindingGraph(
@@ -132,7 +135,9 @@ internal class IrBindingGraph(
               ?: run {
                 // Hard error because the FIR checker should catch these, so this implies broken
                 // FIR code gen
-                error("Missing @MapKey for @IntoMap function: ${declaration.locationOrNull()}")
+                reportCompilerBug(
+                  "Missing @MapKey for @IntoMap function: ${declaration.locationOrNull()}"
+                )
               }
           val keyType = mapKeyType(mapKey)
           val mapType =
@@ -146,7 +151,7 @@ internal class IrBindingGraph(
         }
 
         else -> {
-          error(
+          reportCompilerBug(
             "Unrecognized provider: ${declaration.locationOrNull() ?: ("\n" + declaration.dumpKotlinLike())}"
           )
         }
@@ -172,10 +177,10 @@ internal class IrBindingGraph(
     }
 
     return binding as? IrBinding.Multibinding
-      ?: error(
+      ?: reportCompilerBug(
         """
-        Expected a multibinding but got $binding.
-      """
+          Expected a multibinding but got $binding.
+        """
           .trimIndent()
       )
   }
@@ -351,77 +356,129 @@ internal class IrBindingGraph(
     }
   }
 
-  private fun findSimilarBindings(key: IrTypeKey): Map<IrTypeKey, SimilarBinding> {
-    // Use a map to avoid reporting duplicates
-    val similarBindings = mutableMapOf<IrTypeKey, SimilarBinding>()
+  private fun findSimilarBindings(key: IrTypeKey): Map<IrTypeKey, SimilarBinding> =
+    context(metroContext) {
+      // Use a map to avoid reporting duplicates
+      val similarBindings = mutableMapOf<IrTypeKey, SimilarBinding>()
 
-    // Same type with different qualifier
-    if (key.qualifier != null) {
-      findBinding(key.copy(qualifier = null))?.let {
-        similarBindings.putIfAbsent(it.typeKey, SimilarBinding(it, "Different qualifier"))
-      }
-    }
-
-    // Check for nullable/non-nullable equivalent
-    val isNullable = key.type.isMarkedNullable()
-    val equivalentType =
-      if (isNullable) {
-        key.type.makeNotNull()
-      } else {
-        key.type.makeNullable()
-      }
-    val equivalentKey = key.copy(type = equivalentType)
-    findBinding(equivalentKey)?.let {
-      val nullabilityDescription =
-        if (isNullable) "Non-nullable equivalent" else "Nullable equivalent"
-      similarBindings.putIfAbsent(it.typeKey, SimilarBinding(it, nullabilityDescription))
-    }
-
-    // Merge graph bindings and cached bindings from BindingLookup
-    val allBindings = buildMap {
-      putAll(realGraph.bindings)
-      // Add cached bindings that aren't already in the graph
-      bindingLookup.getAvailableStaticBindings().forEach { (bindingKey, binding) ->
-        putIfAbsent(bindingKey, binding)
-      }
-    }
-
-    // Iterate through all bindings to find similar ones
-    allBindings.forEach { (bindingKey, binding) ->
-      when {
-        bindingKey.type == key.type && key.qualifier != bindingKey.qualifier -> {
-          similarBindings.putIfAbsent(bindingKey, SimilarBinding(binding, "Different qualifier"))
+      // Same type with different qualifier
+      if (key.qualifier != null) {
+        findBinding(key.copy(qualifier = null))?.let {
+          similarBindings.putIfAbsent(
+            it.typeKey,
+            SimilarBinding(it.typeKey, it, "Different qualifier"),
+          )
         }
-        binding is IrBinding.Multibinding -> {
-          val valueType =
-            if (binding.isSet) {
-              (bindingKey.type.type as IrSimpleType).arguments[0].typeOrFail
-            } else {
-              // Map binding
-              (bindingKey.type.type as IrSimpleType).arguments[1].typeOrFail
+      }
+
+      // Check for nullable/non-nullable equivalent
+      val isNullable = key.type.isMarkedNullable()
+      val equivalentType =
+        if (isNullable) {
+          key.type.makeNotNull()
+        } else {
+          key.type.makeNullable()
+        }
+      val equivalentKey = key.copy(type = equivalentType)
+      findBinding(equivalentKey)?.let {
+        val nullabilityDescription =
+          if (isNullable) "Non-nullable equivalent" else "Nullable equivalent"
+        similarBindings.putIfAbsent(
+          it.typeKey,
+          SimilarBinding(it.typeKey, it, nullabilityDescription),
+        )
+      }
+
+      // Merge graph bindings and cached bindings from BindingLookup
+      val allBindings = buildMap {
+        putAll(realGraph.bindings)
+        // Add cached bindings that aren't already in the graph
+        bindingLookup.getAvailableStaticBindings().forEach { (bindingKey, binding) ->
+          putIfAbsent(bindingKey, binding)
+        }
+      }
+
+      // Iterate through all bindings to find similar ones
+      allBindings.forEach { (bindingKey, binding) ->
+        when {
+          bindingKey.type == key.type && key.qualifier != bindingKey.qualifier -> {
+            similarBindings.putIfAbsent(
+              bindingKey,
+              SimilarBinding(bindingKey, binding, "Different qualifier"),
+            )
+          }
+          binding is IrBinding.Multibinding -> {
+            val valueType =
+              if (binding.isSet) {
+                (bindingKey.type.type as IrSimpleType).arguments[0].typeOrFail
+              } else {
+                // Map binding
+                (bindingKey.type.type as IrSimpleType).arguments[1].typeOrFail
+              }
+            if (valueType == key.type) {
+              similarBindings.putIfAbsent(
+                bindingKey,
+                SimilarBinding(bindingKey, binding, "Multibinding"),
+              )
             }
-          if (valueType == key.type) {
-            similarBindings.putIfAbsent(bindingKey, SimilarBinding(binding, "Multibinding"))
+          }
+          bindingKey.type == key.type -> {
+            // Already covered above but here to avoid falling through to the subtype checks
+            // below as they would always return true for this
+          }
+          bindingKey.type.isSubtypeOf(key.type, metroContext.irTypeSystemContext) -> {
+            similarBindings.putIfAbsent(bindingKey, SimilarBinding(bindingKey, binding, "Subtype"))
+          }
+          key.type.type.isSubtypeOf(bindingKey.type, metroContext.irTypeSystemContext) -> {
+            similarBindings.putIfAbsent(
+              bindingKey,
+              SimilarBinding(bindingKey, binding, "Supertype"),
+            )
           }
         }
-        bindingKey.type == key.type -> {
-          // Already covered above but here to avoid falling through to the subtype checks
-          // below as they would always return true for this
-        }
-        bindingKey.type.isSubtypeOf(key.type, metroContext.irTypeSystemContext) -> {
-          similarBindings.putIfAbsent(bindingKey, SimilarBinding(binding, "Subtype"))
-        }
-        key.type.type.isSubtypeOf(bindingKey.type, metroContext.irTypeSystemContext) -> {
-          similarBindings.putIfAbsent(bindingKey, SimilarBinding(binding, "Supertype"))
+      }
+
+      // Does the class exist but is internal with a @Contributes annotation?
+      key.type.rawTypeOrNull()?.let { klass ->
+        // Ask contribution data if it's there but not visible
+        val contributingClass =
+          node.aggregationScopes
+            .flatMap { scope ->
+              contributionData.findVisibleContributionClassesForScopeInHints(
+                scope,
+                includeNonFriendInternals = true,
+              )
+            }
+            .find { contribution ->
+              val implementsKey = contribution.implements(klass.classId!!)
+              val bindsKey =
+                contribution
+                  .annotationsIn(metroContext.symbols.classIds.allContributesAnnotations)
+                  .any {
+                    val boundType = it.bindingTypeOrNull().first?.rawTypeOrNull()?.classId
+                    boundType == null || boundType == klass.classId
+                  }
+              implementsKey && bindsKey
+            }
+
+        if (contributingClass != null) {
+          similarBindings.putIfAbsent(
+            key,
+            SimilarBinding(
+              typeKey = key,
+              binding = null,
+              description =
+                "Contributed by '${contributingClass.kotlinFqName.asString()}' but that class is internal to its module and its module is not a friend module to this one.",
+            ),
+          )
         }
       }
-    }
 
-    return similarBindings.filterNot {
-      (it.value.binding as? IrBinding.BindingWithAnnotations)?.annotations?.isIntoMultibinding ==
-        true
+      return similarBindings.filterNot {
+        (it.value.binding as? IrBinding.BindingWithAnnotations)?.annotations?.isIntoMultibinding ==
+          true
+      }
     }
-  }
 
   // TODO iterate on this more!
   internal fun dumpGraph(name: String, short: Boolean): String {
@@ -714,18 +771,25 @@ internal class IrBindingGraph(
     }
   }
 
-  data class SimilarBinding(val binding: IrBinding, val description: String) {
+  data class SimilarBinding(
+    val typeKey: IrTypeKey,
+    val binding: IrBinding?,
+    val description: String,
+  ) {
     override fun toString(): String {
       return buildString {
-        append(binding.typeKey.render(short = true))
+        append(typeKey.render(short = true))
         append(" (")
         append(description)
-        append("). Type: ")
-        append(binding.javaClass.simpleName)
-        append('.')
-        binding.reportableDeclaration?.locationOrNull()?.render()?.let {
-          append(" Source: ")
-          append(it)
+        append(")")
+        binding?.let {
+          append(". Type: ")
+          append(binding.javaClass.simpleName)
+          append('.')
+          binding.reportableDeclaration?.locationOrNull()?.render()?.let {
+            append(" Source: ")
+            append(it)
+          }
         }
       }
     }

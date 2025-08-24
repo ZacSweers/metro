@@ -39,7 +39,7 @@ internal class BindingLookup(
   private val parentGraphDepCache = mutableMapOf<ParentGraphDepKey, IrBinding.GraphDependency>()
 
   // Lazy parent key bindings - only created when actually accessed
-  private val lazyParentKeys = mutableMapOf<IrTypeKey, Lazy<IrBinding.GraphDependency>>()
+  private val lazyParentKeys = mutableMapOf<IrTypeKey, Lazy<IrBinding>>()
 
   /** Returns all static bindings for similarity checking. */
   fun getAvailableStaticBindings(): Map<IrTypeKey, IrBinding.StaticBinding> {
@@ -69,7 +69,7 @@ internal class BindingLookup(
     aliasBindingsCache.remove(typeKey)
   }
 
-  fun addLazyParentKey(typeKey: IrTypeKey, bindingFactory: () -> IrBinding.GraphDependency) {
+  fun addLazyParentKey(typeKey: IrTypeKey, bindingFactory: () -> IrBinding) {
     lazyParentKeys[typeKey] = unsafeLazy(bindingFactory)
   }
 
@@ -158,7 +158,6 @@ internal class BindingLookup(
       return classBindings
     }
 
-  context(context: IrMetroContext)
   private fun createParentGraphDependency(key: IrTypeKey, fieldAccess: ParentContext.FieldAccess): IrBinding.GraphDependency {
     val parentGraph = parentContext!!.currentParentGraph
     val cacheKey = ParentGraphDepKey(parentGraph, key)

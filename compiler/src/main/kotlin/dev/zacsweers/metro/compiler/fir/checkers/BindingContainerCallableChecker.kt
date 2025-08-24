@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
 import dev.zacsweers.metro.compiler.metroAnnotations
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.isObject
@@ -206,7 +207,7 @@ internal object BindingContainerCallableChecker :
             }
           val diagnosticFactory =
             when (session.metroFirBuiltIns.options.publicProviderSeverity) {
-              MetroOptions.DiagnosticSeverity.NONE -> error("Not possible")
+              MetroOptions.DiagnosticSeverity.NONE -> reportCompilerBug("Not possible")
               MetroOptions.DiagnosticSeverity.WARN ->
                 MetroDiagnostics.PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_WARNING
               MetroOptions.DiagnosticSeverity.ERROR ->

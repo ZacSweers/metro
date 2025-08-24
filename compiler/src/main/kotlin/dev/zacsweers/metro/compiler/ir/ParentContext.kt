@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.newName
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.suffixIfNot
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.builders.declarations.buildField
@@ -21,6 +22,7 @@ internal class ParentContext(
 
   // Data for field access tracking
   internal data class FieldAccess(
+    val parentKey: IrTypeKey,
     val field: IrField,
     val receiverParameter: IrValueParameter,
   )
@@ -69,7 +71,7 @@ internal class ParentContext(
 
       // Only mark in the provider level - inner classes can access parent fields directly
       providerLevel.usedKeys.add(key)
-      return FieldAccess(field, providerLevel.node.metroGraphOrFail.thisReceiverOrFail)
+      return FieldAccess(providerLevel.node.typeKey, field, providerLevel.node.metroGraphOrFail.thisReceiverOrFail)
     }
 
     // Not found but is scoped. Treat as constructor-injected with matching scope.
@@ -86,7 +88,7 @@ internal class ParentContext(
 
           // Only mark in the level that owns the scope
           level.usedKeys.add(key)
-          return FieldAccess(field, level.node.metroGraphOrFail.thisReceiverOrFail)
+          return FieldAccess(level.node.typeKey, field, level.node.metroGraphOrFail.thisReceiverOrFail)
         }
       }
     }
@@ -135,7 +137,7 @@ internal class ParentContext(
   val currentParentGraph: IrClass
     get() =
       levels.lastOrNull()?.node?.metroGraphOrFail
-        ?: error(
+        ?: reportCompilerBug(
           "No parent graph on stack - this should only be accessed when processing extensions"
         )
 
@@ -189,7 +191,7 @@ internal class ParentContext(
     keyIntroStack[key]?.lastOrNull()?.let { providerIdx ->
       val level = levels[providerIdx]
       level.fields[key]?.let { field ->
-        return FieldAccess(field, level.node.metroGraphOrFail.thisReceiverOrFail)
+        return FieldAccess(level.node.typeKey, field, level.node.metroGraphOrFail.thisReceiverOrFail)
       }
     }
     return null
