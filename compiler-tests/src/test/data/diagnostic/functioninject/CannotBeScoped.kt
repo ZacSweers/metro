@@ -5,5 +5,3 @@
 fun Example() {
 
 }
-
-/* GENERATED_FIR_TAGS: classReference, functionDeclaration */

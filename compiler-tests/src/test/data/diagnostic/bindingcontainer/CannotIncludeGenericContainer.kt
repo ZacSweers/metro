@@ -10,6 +10,3 @@ interface IncludingContainer
 
 @DependencyGraph(bindingContainers = [<!BINDING_CONTAINER_ERROR!>SomeBindings::class<!>])
 interface AppGraph
-
-/* GENERATED_FIR_TAGS: classDeclaration, classReference, collectionLiteral, functionDeclaration, integerLiteral,
-interfaceDeclaration, nullableType, typeParameter */

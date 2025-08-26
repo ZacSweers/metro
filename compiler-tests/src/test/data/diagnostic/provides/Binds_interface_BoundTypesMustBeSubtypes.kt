@@ -8,6 +8,3 @@ interface ExampleGraph {
   @Binds val Number.<!PROVIDES_ERROR!>bind<!>: Int
   @Binds fun CharSequence.<!PROVIDES_ERROR!>bind<!>(): String
 }
-
-/* GENERATED_FIR_TAGS: funWithExtensionReceiver, functionDeclaration, interfaceDeclaration, propertyDeclaration,
-propertyWithExtensionReceiver */

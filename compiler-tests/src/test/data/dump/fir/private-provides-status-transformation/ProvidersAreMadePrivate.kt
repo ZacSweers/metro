@@ -19,5 +19,3 @@ interface ExampleProviders {
     internal fun shouldNotBePrivate2(): String = "hello"
   }
 }
-
-/* GENERATED_FIR_TAGS: companionObject, functionDeclaration, interfaceDeclaration, objectDeclaration, stringLiteral */

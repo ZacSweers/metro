@@ -7,5 +7,3 @@ abstract class ExampleGraph {
   @Provides val provideCharSequence: String get() = "Hello"
   @Provides fun <!PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_WARNING!>provideString<!>(): String = "Hello"
 }
-
-/* GENERATED_FIR_TAGS: classDeclaration, functionDeclaration, getter, integerLiteral, propertyDeclaration, stringLiteral */

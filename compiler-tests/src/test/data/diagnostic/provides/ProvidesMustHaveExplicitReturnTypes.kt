@@ -28,7 +28,3 @@ interface ExampleGraphInterface {
   @get:Binds
   val String.bindCharSequence2: CharSequence
 }
-
-/* GENERATED_FIR_TAGS: annotationUseSiteTargetPropertyGetter, classDeclaration, companionObject, functionDeclaration,
-integerLiteral, interfaceDeclaration, objectDeclaration, propertyDeclaration, propertyWithExtensionReceiver,
-stringLiteral */

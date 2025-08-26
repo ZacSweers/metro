@@ -9,6 +9,3 @@ abstract class BindsClass {
   @Binds <!BINDS_ERROR!>@SingleIn(AppScope::class)<!> abstract val String.bind: CharSequence
   @Binds <!BINDS_ERROR!>@SingleIn(AppScope::class)<!> abstract fun String.bindFunction(): CharSequence
 }
-
-/* GENERATED_FIR_TAGS: classDeclaration, classReference, funWithExtensionReceiver, functionDeclaration,
-interfaceDeclaration, propertyDeclaration, propertyWithExtensionReceiver */

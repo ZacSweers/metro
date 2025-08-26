@@ -6,5 +6,3 @@ abstract class ExampleGraph {
 }
 
 @Provides fun <!PROVIDES_ERROR!>provideInt<!>(): Int = 0
-
-/* GENERATED_FIR_TAGS: classDeclaration, functionDeclaration, integerLiteral, propertyDeclaration */

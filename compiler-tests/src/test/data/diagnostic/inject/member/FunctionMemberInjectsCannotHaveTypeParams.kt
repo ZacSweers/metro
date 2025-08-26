@@ -3,5 +3,3 @@ class Example {
 
   }
 }
-
-/* GENERATED_FIR_TAGS: classDeclaration, functionDeclaration, nullableType, typeParameter */

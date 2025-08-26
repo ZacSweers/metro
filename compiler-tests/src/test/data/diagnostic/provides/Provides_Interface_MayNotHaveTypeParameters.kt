@@ -9,6 +9,3 @@ interface ExampleGraph {
     fun <!METRO_TYPE_PARAMETERS_ERROR!><T><!> provideInt(): Int = 0
   }
 }
-
-/* GENERATED_FIR_TAGS: companionObject, functionDeclaration, integerLiteral, interfaceDeclaration, nullableType,
-objectDeclaration, stringLiteral, typeParameter */

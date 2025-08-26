@@ -14,6 +14,3 @@ interface ExampleGraph {
   @Binds
   val Int.bind: Number
 }
-
-/* GENERATED_FIR_TAGS: functionDeclaration, integerLiteral, interfaceDeclaration, propertyDeclaration,
-propertyWithExtensionReceiver */

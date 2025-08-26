@@ -32,6 +32,3 @@ interface SubscopeGraph {
 
 @DependencyGraph(AppScope::class)
 interface TestGraph
-
-/* GENERATED_FIR_TAGS: classDeclaration, classReference, functionDeclaration, interfaceDeclaration, nestedClass,
-primaryConstructor, propertyDeclaration, starProjection */

@@ -15,5 +15,3 @@ internal class Impl : ContributedInterface
 interface AppGraph {
   val <!METRO_ERROR!>contributed<!>: ContributedInterface
 }
-
-/* GENERATED_FIR_TAGS: classDeclaration, classReference, interfaceDeclaration, propertyDeclaration */

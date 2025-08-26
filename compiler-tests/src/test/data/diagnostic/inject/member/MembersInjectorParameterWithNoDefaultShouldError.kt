@@ -16,6 +16,3 @@ interface TestGraph {
     return instance
   }
 }
-
-/* GENERATED_FIR_TAGS: classDeclaration, classReference, functionDeclaration, interfaceDeclaration, propertyDeclaration,
-starProjection */

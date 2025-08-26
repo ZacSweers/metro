@@ -4,6 +4,3 @@ abstract class ExampleGraph {
   @Provides val String.<!PROVIDES_ERROR!>provideCharSequence<!>: CharSequence get() = "hello"
   @Provides fun Int.<!PROVIDES_ERROR!>provideNumber<!>(): Number = 3
 }
-
-/* GENERATED_FIR_TAGS: classDeclaration, funWithExtensionReceiver, functionDeclaration, getter, integerLiteral,
-propertyDeclaration, propertyWithExtensionReceiver, stringLiteral */

@@ -10,5 +10,3 @@ interface ConfusedContainer {
     @Provides fun provideBoolean(): Boolean = false
   }
 }
-
-/* GENERATED_FIR_TAGS: companionObject, functionDeclaration, integerLiteral, interfaceDeclaration, objectDeclaration */

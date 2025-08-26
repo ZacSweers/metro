@@ -28,6 +28,3 @@ fun box(): String {
   val foo = <!AS_CONTRIBUTION_ERROR!>childGraph<!>.asContribution<FooProvider>().foo
   return "OK"
 }
-
-/* GENERATED_FIR_TAGS: classDeclaration, classReference, functionDeclaration, interfaceDeclaration, localProperty,
-nestedClass, propertyDeclaration, stringLiteral */

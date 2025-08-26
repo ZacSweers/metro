@@ -6,6 +6,3 @@ interface ExampleGraph {
   @Binds val Int.bind: Number get() = this
   @Binds fun String.<!PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_WARNING!>bind<!>(): CharSequence = this
 }
-
-/* GENERATED_FIR_TAGS: funWithExtensionReceiver, functionDeclaration, getter, interfaceDeclaration, propertyDeclaration,
-propertyWithExtensionReceiver, thisExpression */

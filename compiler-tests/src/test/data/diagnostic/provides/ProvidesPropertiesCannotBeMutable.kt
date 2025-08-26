@@ -6,5 +6,3 @@ abstract class ExampleGraph {
 
   @Provides var <!PROVIDES_ERROR!>provideInt<!>: Int = 0
 }
-
-/* GENERATED_FIR_TAGS: classDeclaration, integerLiteral, propertyDeclaration */

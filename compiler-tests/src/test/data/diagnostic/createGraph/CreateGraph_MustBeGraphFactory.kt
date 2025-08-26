@@ -11,5 +11,3 @@ fun example() {
   val exampleGraphWithFactory = createGraphFactory<<!CREATE_GRAPH_ERROR!>ExampleGraphWithFactory<!>>()
   val exampleGraphFactory: ExampleGraphWithFactory = <!CREATE_GRAPH_ERROR!>createGraphFactory<!>()
 }
-
-/* GENERATED_FIR_TAGS: functionDeclaration, interfaceDeclaration, localProperty, nestedClass, propertyDeclaration */

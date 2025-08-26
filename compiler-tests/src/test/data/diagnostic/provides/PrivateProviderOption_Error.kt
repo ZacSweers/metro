@@ -6,5 +6,3 @@ interface ExampleGraph {
   @Provides val provideCharSequence: String get() = "Hello"
   @Provides fun <!PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_ERROR!>provideString<!>(): String = "Hello"
 }
-
-/* GENERATED_FIR_TAGS: functionDeclaration, getter, interfaceDeclaration, propertyDeclaration, stringLiteral */
