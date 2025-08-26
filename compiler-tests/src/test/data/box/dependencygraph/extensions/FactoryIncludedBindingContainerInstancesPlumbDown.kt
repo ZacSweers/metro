@@ -1,3 +1,4 @@
+//https://github.com/ZacSweers/metro/issues/993
 @DependencyGraph()
 interface AppGraph {
   fun childGraphFactory(): ChildGraph.Factory
