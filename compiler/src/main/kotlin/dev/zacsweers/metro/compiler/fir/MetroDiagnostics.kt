@@ -20,6 +20,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FACTORY_MUST_HAVE_ONE_A
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FUNCTION_INJECT_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FUNCTION_INJECT_TYPE_PARAMETERS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.GRAPH_CREATORS_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.GRAPH_CREATORS_VARARG_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.GRAPH_DEPENDENCY_CYCLE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INJECTED_CLASSES_MUST_BE_VISIBLE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.LOCAL_CLASSES_CANNOT_BE_INJECTED
@@ -144,6 +145,7 @@ private object FirMetroErrorMessages : BaseDiagnosticRendererFactory() {
 
         // DependencyGraph creator errors
         put(GRAPH_CREATORS_ERROR, "{0}", STRING)
+        put(GRAPH_CREATORS_VARARG_ERROR, "{0}", STRING)
 
         // DependencyGraph errors
         put(DEPENDENCY_GRAPH_ERROR, "{0}", STRING)
