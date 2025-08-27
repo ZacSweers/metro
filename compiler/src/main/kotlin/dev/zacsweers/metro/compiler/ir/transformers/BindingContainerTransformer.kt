@@ -41,6 +41,7 @@ import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toProto
+import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.isWordPrefixRegex
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.mapToSet
@@ -171,8 +172,8 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     val graphAnnotation =
       declaration.annotationsIn(symbols.classIds.graphLikeAnnotations).firstOrNull()
     val isContributedGraph =
-      (graphAnnotation?.annotationClass?.classId in
-        symbols.classIds.graphExtensionAnnotations) && declaration.isAnnotatedWithAny(symbols.classIds.contributesToAnnotations)
+      (graphAnnotation?.annotationClass?.classId in symbols.classIds.graphExtensionAnnotations) &&
+        declaration.isAnnotatedWithAny(symbols.classIds.contributesToAnnotations)
     val isGraph = graphAnnotation != null
     val container =
       BindingContainer(
@@ -357,6 +358,10 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
       )
 
     factoryCls.dumpToMetroLog()
+
+    writeDiagnostic("provider-factory-${factoryCls.kotlinFqName.asString()}.kt") {
+      factoryCls.dumpKotlinLike()
+    }
 
     generatedFactories[reference.callableId] = providerFactory
     return providerFactory
@@ -655,10 +660,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
         val message =
           "No metadata found for ${metadataDeclaration.kotlinFqName} from " +
             "another module. Did you run the Metro compiler plugin on this module?"
-        reportCompat(declaration,
-          MetroDiagnostics.METRO_ERROR,
-            message,
-          )
+        reportCompat(declaration, MetroDiagnostics.METRO_ERROR, message)
         return null
       }
       cache[declarationFqName] = Optional.empty()
