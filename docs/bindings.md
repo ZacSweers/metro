@@ -111,7 +111,7 @@ Alternatively, they can be declared with an `@Multibinds`-annotated accessor pro
 ```kotlin
 @DependencyGraph
 interface MapMultibinding {
-  @Multibinds
+  @Multibinds(allowEmpty = true)
   val ints: Map<Int, Int>
 }
 ```
@@ -123,7 +123,7 @@ Map multibindings support injecting *map providers*, where the value type can be
 ```kotlin
 @DependencyGraph
 interface MapMultibinding {
-  @Multibinds
+  @Multibinds(allowEmpty = true)
   val ints: Map<Int, Provider<Int>>
 }
 ```
