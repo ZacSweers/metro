@@ -60,7 +60,7 @@ kotlin {
   }
 }
 
-metro { debug.set(false) }
+metro { reportsDestination.set(layout.buildDirectory.dir("metro")) }
 
 tasks.withType<Test>().configureEach {
   maxParallelForks = Runtime.getRuntime().availableProcessors() * 2

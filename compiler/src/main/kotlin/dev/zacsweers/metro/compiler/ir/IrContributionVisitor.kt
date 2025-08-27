@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.exitProcessing
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -30,9 +31,11 @@ internal class IrContributionVisitor(context: IrMetroContext) :
       val scope =
         metroContribution.scopeOrNull()
           ?: with(metroContext) {
-            diagnosticReporter
-              .at(declaration)
-              .report(MetroIrErrors.METRO_ERROR, "No scope found for @MetroContribution annotation")
+            reportCompat(
+              declaration,
+              MetroDiagnostics.METRO_ERROR,
+              "No scope found for @MetroContribution annotation",
+            )
             exitProcessing()
           }
       if (declaration.isAnnotatedWithAny(symbols.classIds.bindingContainerAnnotations)) {
@@ -50,12 +53,11 @@ internal class IrContributionVisitor(context: IrMetroContext) :
         val scope =
           contributesToAnno.scopeOrNull()
             ?: with(metroContext) {
-              diagnosticReporter
-                .at(declaration)
-                .report(
-                  MetroIrErrors.METRO_ERROR,
-                  "No scope found for @${contributesToAnno.annotationClass.name} annotation",
-                )
+              reportCompat(
+                declaration,
+                MetroDiagnostics.METRO_ERROR,
+                "No scope found for @${contributesToAnno.annotationClass.name} annotation",
+              )
               exitProcessing()
             }
         data.addBindingContainerContribution(scope, declaration)

@@ -4,9 +4,9 @@ package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.generatedClass
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
-import dev.zacsweers.metro.compiler.ir.MetroIrErrors
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
@@ -22,6 +22,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameter.AssistedParameterKey
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer.AssistedFactoryFunction.Companion.toAssistedFactoryFunction
@@ -77,10 +78,8 @@ internal class AssistedFactoryTransformer(
         // If not external, double check its origin
         if (isMetroImpl && !isExternal) {
           if (it.origin != Origins.AssistedFactoryImplClassDeclaration) {
-            diagnosticReporter
-              .at(declaration)
-              .report(
-                MetroIrErrors.METRO_ERROR,
+            reportCompat(declaration,
+                MetroDiagnostics.METRO_ERROR,
                 "Found a Metro assisted factory impl declaration in ${declaration.kotlinFqName} but with an unexpected origin ${it.origin}",
               )
             return null
@@ -100,10 +99,8 @@ internal class AssistedFactoryTransformer(
             return daggerImplClass
           }
         }
-        diagnosticReporter
-          .at(declaration)
-          .report(
-            MetroIrErrors.METRO_ERROR,
+        reportCompat(declaration,
+          MetroDiagnostics.METRO_ERROR,
             "Could not find generated assisted factory impl for '${declaration.kotlinFqName}' in upstream module where it's defined. Run the Metro compiler over that module too.",
           )
         return null

@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
-import dev.zacsweers.metro.compiler.fir.FirMetroErrors
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.allScopeClassIds
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
@@ -54,7 +54,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
       if (declaration.classKind != ClassKind.INTERFACE) {
         reporter.reportOn(
           declaration.source,
-          FirMetroErrors.GRAPH_CREATORS_ERROR,
+          MetroDiagnostics.GRAPH_CREATORS_ERROR,
           "Contributed @${annotationClassId.relativeClassName.asString()} declarations can only be interfaces.",
         )
         return
@@ -87,7 +87,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
       if (targetGraphAnnotation == null) {
         reporter.reportOn(
           createFunction.resolvedReturnTypeRef.source ?: declaration.source,
-          FirMetroErrors.GRAPH_CREATORS_ERROR,
+          MetroDiagnostics.GRAPH_CREATORS_ERROR,
           "@${annotationClassId.relativeClassName.asString()} abstract function '${createFunction.name}' must return a dependency graph but found ${it.classId.asSingleFqName()}.",
         )
         return
@@ -100,7 +100,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
         ) {
           reporter.reportOn(
             targetGraphAnnotation.source ?: declaration.source,
-            FirMetroErrors.GRAPH_CREATORS_ERROR,
+            MetroDiagnostics.GRAPH_CREATORS_ERROR,
             "@${annotationClassId.relativeClassName.asString()} abstract function '${createFunction.name}' must return a graph extension but found ${it.classId.asSingleFqName()}.",
           )
           return
@@ -109,7 +109,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
         if (it.classId != declaration.getContainingClassSymbol()?.classId) {
           reporter.reportOn(
             targetGraphAnnotation.source ?: declaration.source,
-            FirMetroErrors.GRAPH_CREATORS_ERROR,
+            MetroDiagnostics.GRAPH_CREATORS_ERROR,
             "@${annotationClassId.relativeClassName.asString()} declarations must be nested within the contributed graph they create but was ${declaration.getContainingClassSymbol()?.classId?.asSingleFqName() ?: "top-level"}.",
           )
           return
@@ -127,7 +127,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
       if (overlapping.isNotEmpty()) {
         reporter.reportOn(
           graphFactoryAnnotation.source ?: declaration.source,
-          FirMetroErrors.GRAPH_CREATORS_ERROR,
+          MetroDiagnostics.GRAPH_CREATORS_ERROR,
           "${annotationClassId.relativeClassName.asString()} declarations must contribute to a different scope than their contributed graph. However, this factory and its contributed graph both contribute to '${overlapping.map { it.asFqNameString() }.single()}'.",
         )
         return
@@ -141,7 +141,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
       if (!paramTypes.add(typeKey)) {
         reporter.reportOn(
           param.source,
-          FirMetroErrors.GRAPH_CREATORS_ERROR,
+          MetroDiagnostics.GRAPH_CREATORS_ERROR,
           "${annotationClassId.relativeClassName.asString()} abstract function parameters must be unique.",
         )
         continue
@@ -150,7 +150,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
       if (param.isVararg) {
         reporter.reportOn(
           param.source,
-          FirMetroErrors.GRAPH_CREATORS_VARARG_ERROR,
+          MetroDiagnostics.GRAPH_CREATORS_VARARG_ERROR,
           "${annotationClassId.relativeClassName.asString()} abstract function parameters may not be vararg.",
         )
         continue
@@ -176,7 +176,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
       val reportAnnotationCountError = {
         reporter.reportOn(
           param.source,
-          FirMetroErrors.GRAPH_CREATORS_ERROR,
+          MetroDiagnostics.GRAPH_CREATORS_ERROR,
           "${annotationClassId.relativeClassName.asString()} abstract function parameters must be annotated with exactly one @Includes or @Provides.",
         )
       }
@@ -191,7 +191,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
       if (type.classId == targetGraph?.classId) {
         reporter.reportOn(
           param.resolvedReturnTypeRef.source ?: param.source ?: declaration.source,
-          FirMetroErrors.GRAPH_CREATORS_ERROR,
+          MetroDiagnostics.GRAPH_CREATORS_ERROR,
           "${annotationClassId.relativeClassName.asString()} declarations cannot have their target graph type as parameters.",
         )
         continue
@@ -202,7 +202,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
           if (type.classKind in NON_INCLUDES_KINDS || type.classId.isPlatformType()) {
             reporter.reportOn(
               param.source,
-              FirMetroErrors.GRAPH_CREATORS_ERROR,
+              MetroDiagnostics.GRAPH_CREATORS_ERROR,
               "@Includes cannot be applied to enums, annotations, or platform types.",
             )
           }

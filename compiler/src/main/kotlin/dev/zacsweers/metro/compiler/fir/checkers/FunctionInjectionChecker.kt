@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
-import dev.zacsweers.metro.compiler.fir.FirMetroErrors.FUNCTION_INJECT_ERROR
-import dev.zacsweers.metro.compiler.fir.FirMetroErrors.FUNCTION_INJECT_TYPE_PARAMETERS_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FUNCTION_INJECT_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FUNCTION_INJECT_TYPE_PARAMETERS_ERROR
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.metroAnnotations
