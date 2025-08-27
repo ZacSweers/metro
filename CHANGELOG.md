@@ -4,6 +4,8 @@ Changelog
 **Unreleased**
 --------------
 
+* **Enhancement**: Transform and collect contribution data in a single pass during IR.
+
 0.6.3
 -----
 
