@@ -437,9 +437,7 @@ private constructor(
 
             if (getterContextKey.isLazyWrappedInProvider) {
               // TODO FIR this
-              diagnosticReporter
-                .at(binding.getter)
-                .report(MetroDiagnostics.METRO_ERROR, "Provider<Lazy<T>> accessors are not supported.")
+              reportCompat(binding.getter, MetroDiagnostics.METRO_ERROR, "Provider<Lazy<T>> accessors are not supported.")
               exitProcessing()
             } else if (getterContextKey.isWrappedInProvider) {
               // It's already a provider

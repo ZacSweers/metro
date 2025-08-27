@@ -34,6 +34,7 @@ import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.rawType
+import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireNestedClass
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.scopeAnnotations
@@ -230,7 +231,7 @@ internal class DependencyGraphTransformer(
             node,
             injectConstructorTransformer,
             membersInjectorTransformer,
-          contributionData,
+            contributionData,
             parentContext,
           )
           .generate()
@@ -392,9 +393,11 @@ internal class DependencyGraphTransformer(
           tracer.traceNested("Validate graph") {
             bindingGraph.seal(it) { errors ->
               for ((declaration, message) in errors) {
-                diagnosticReporter
-                  .at(declaration ?: dependencyGraphDeclaration)
-                  .report(MetroDiagnostics.METRO_ERROR, message)
+                reportCompat(
+                  irDeclarations = sequenceOf(declaration, dependencyGraphDeclaration),
+                  factory = MetroDiagnostics.METRO_ERROR,
+                  a = message,
+                )
               }
               exitProcessing()
             }
@@ -435,12 +438,11 @@ internal class DependencyGraphTransformer(
                 .proto
           }
           if (proto == null) {
-            diagnosticReporter
-              .at(parent.sourceGraph)
-              .report(
-                MetroDiagnostics.METRO_ERROR,
-                "Extended parent graph ${parent.sourceGraph.kotlinFqName} is missing Metro metadata. Was it compiled by the Metro compiler?",
-              )
+            reportCompat(
+              parent.sourceGraph,
+              MetroDiagnostics.METRO_ERROR,
+              "Extended parent graph ${parent.sourceGraph.kotlinFqName} is missing Metro metadata. Was it compiled by the Metro compiler?",
+            )
             exitProcessing()
           }
         }

@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler
 
 import dev.drewhamilton.poko.Poko
+import dev.zacsweers.metro.compiler.MetroAnnotations.Kind
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
@@ -12,6 +13,7 @@ import dev.zacsweers.metro.compiler.ir.asIrAnnotation
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
+import java.util.EnumSet
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
@@ -135,6 +137,25 @@ internal class MetroAnnotations<T>(
       mapKeys = mapKeys + other.mapKeys,
     )
 
+  enum class Kind {
+    DependencyGraph,
+    DependencyGraphFactory,
+    Inject,
+    Provides,
+    Binds,
+    BindsInstance,
+    IntoSet,
+    ElementsIntoSet,
+    IntoMap,
+    AssistedFactory,
+    Composable,
+    Multibinds,
+    Assisted,
+    Scope,
+    Qualifier,
+    MapKey,
+  }
+
   companion object {
     private val NONE =
       MetroAnnotations<Any>(
@@ -161,12 +182,37 @@ internal class MetroAnnotations<T>(
   }
 }
 
-internal fun IrAnnotationContainer.metroAnnotations(ids: ClassIds): MetroAnnotations<IrAnnotation> =
-  metroAnnotations(ids, null)
+private val ALL_KINDS = EnumSet.allOf(Kind::class.java)
+
+private fun kindSetOf(vararg kinds: Kind): Set<Kind> {
+  return if (kinds.isEmpty()) {
+    ALL_KINDS
+  } else if (kinds.size == 1) {
+    EnumSet.of(kinds[0])
+  } else {
+    EnumSet.of(kinds[0], *kinds.copyOfRange(1, kinds.size))
+  }
+}
+
+internal fun IrAnnotationContainer.metroAnnotations(
+  ids: ClassIds,
+  vararg kinds: Kind,
+): MetroAnnotations<IrAnnotation> {
+  return metroAnnotations(
+    ids,
+    kindSetOf(*kinds),
+  )
+}
+
+internal fun IrAnnotationContainer.metroAnnotations(
+  ids: ClassIds,
+  kinds: Set<Kind> = ALL_KINDS,
+): MetroAnnotations<IrAnnotation> = metroAnnotations(ids, null, kinds)
 
 private fun IrAnnotationContainer.metroAnnotations(
   ids: ClassIds,
   callingContainer: IrAnnotationContainer?,
+  kinds: Set<Kind>,
 ): MetroAnnotations<IrAnnotation> {
   var isDependencyGraph = false
   var isDependencyGraphFactory = false
@@ -193,11 +239,11 @@ private fun IrAnnotationContainer.metroAnnotations(
       is IrValueParameter -> {
         // Only BindsInstance and Assisted go here
         when (classId) {
-          in ids.providesAnnotations -> {
+          in ids.providesAnnotations if (Kind.Provides in kinds) -> {
             isBindsInstance = true
             continue
           }
-          in ids.assistedAnnotations -> {
+          in ids.assistedAnnotations if (Kind.Assisted in kinds) -> {
             assisted = expectNullAndSet("assisted", assisted, annotation.asIrAnnotation())
             continue
           }
@@ -208,23 +254,23 @@ private fun IrAnnotationContainer.metroAnnotations(
       is IrProperty -> {
         // Binds, Provides
         when (classId) {
-          in ids.bindsAnnotations -> {
+          in ids.bindsAnnotations if (Kind.Binds in kinds) -> {
             isBinds = true
             continue
           }
-          in ids.providesAnnotations -> {
+          in ids.providesAnnotations if (Kind.Provides in kinds) -> {
             isProvides = true
             continue
           }
-          in ids.intoSetAnnotations -> {
+          in ids.intoSetAnnotations if (Kind.IntoSet in kinds) -> {
             isIntoSet = true
             continue
           }
-          in ids.elementsIntoSetAnnotations -> {
+          in ids.elementsIntoSetAnnotations if (Kind.ElementsIntoSet in kinds) -> {
             isElementsIntoSet = true
             continue
           }
-          in ids.intoMapAnnotations -> {
+          in ids.intoMapAnnotations if (Kind.IntoMap in kinds) -> {
             isIntoMap = true
             continue
           }
@@ -232,7 +278,7 @@ private fun IrAnnotationContainer.metroAnnotations(
             multibinds = expectNullAndSet("multibindings", multibinds, annotation.asIrAnnotation())
             continue
           }
-          Symbols.ClassIds.Composable -> {
+          Symbols.ClassIds.Composable if (Kind.Composable in kinds) -> {
             isComposable = true
             continue
           }
@@ -242,15 +288,15 @@ private fun IrAnnotationContainer.metroAnnotations(
       is IrClass -> {
         // AssistedFactory, DependencyGraph, DependencyGraph.Factory
         when (classId) {
-          in ids.assistedFactoryAnnotations -> {
+          in ids.assistedFactoryAnnotations if (Kind.AssistedFactory in kinds) -> {
             isAssistedFactory = true
             continue
           }
-          in ids.dependencyGraphAnnotations -> {
+          in ids.dependencyGraphAnnotations if (Kind.DependencyGraph in kinds) -> {
             isDependencyGraph = true
             continue
           }
-          in ids.dependencyGraphFactoryAnnotations -> {
+          in ids.dependencyGraphFactoryAnnotations if (Kind.DependencyGraphFactory in kinds) -> {
             isDependencyGraphFactory = true
             continue
           }
@@ -265,13 +311,13 @@ private fun IrAnnotationContainer.metroAnnotations(
       continue
     }
 
-    if (annotationClass.isAnnotatedWithAny(ids.scopeAnnotations)) {
+    if (Kind.Scope in kinds && annotationClass.isAnnotatedWithAny(ids.scopeAnnotations)) {
       scope = expectNullAndSet("scope", scope, annotation.asIrAnnotation())
       continue
-    } else if (annotationClass.isAnnotatedWithAny(ids.qualifierAnnotations)) {
+    } else if (Kind.Qualifier in kinds && annotationClass.isAnnotatedWithAny(ids.qualifierAnnotations)) {
       qualifier = expectNullAndSet("qualifier", qualifier, annotation.asIrAnnotation())
       continue
-    } else if (annotationClass.isAnnotatedWithAny(ids.mapKeyAnnotations)) {
+    } else if (Kind.MapKey in kinds && annotationClass.isAnnotatedWithAny(ids.mapKeyAnnotations)) {
       mapKeys += annotation.asIrAnnotation()
       continue
     }
@@ -309,17 +355,17 @@ private fun IrAnnotationContainer.metroAnnotations(
           // Retrieve annotations from this property's various accessors
           getter?.let { getter ->
             if (getter != callingContainer) {
-              yield(getter.metroAnnotations(ids, callingContainer = thisContainer))
+              yield(getter.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds))
             }
           }
           setter?.let { setter ->
             if (setter != callingContainer) {
-              yield(setter.metroAnnotations(ids, callingContainer = thisContainer))
+              yield(setter.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds))
             }
           }
           backingField?.let { field ->
             if (field != callingContainer) {
-              yield(field.metroAnnotations(ids, callingContainer = thisContainer))
+              yield(field.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds))
             }
           }
         }
@@ -328,7 +374,7 @@ private fun IrAnnotationContainer.metroAnnotations(
           correspondingPropertySymbol?.owner?.let { property ->
             if (property != callingContainer) {
               val propertyAnnotations =
-                property.metroAnnotations(ids, callingContainer = thisContainer)
+                property.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds)
               yield(propertyAnnotations)
             }
           }
@@ -338,7 +384,7 @@ private fun IrAnnotationContainer.metroAnnotations(
           correspondingPropertySymbol?.owner?.let { property ->
             if (property != callingContainer) {
               val propertyAnnotations =
-                property.metroAnnotations(ids, callingContainer = thisContainer)
+                property.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds)
               yield(propertyAnnotations)
             }
           }
@@ -349,7 +395,7 @@ private fun IrAnnotationContainer.metroAnnotations(
           parentAsClass.let { parentClass ->
             if (parentClass != callingContainer) {
               val classAnnotations =
-                parentClass.metroAnnotations(ids, callingContainer = thisContainer)
+                parentClass.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds)
               yield(classAnnotations)
             }
           }
@@ -362,7 +408,7 @@ private fun IrAnnotationContainer.metroAnnotations(
           if (constructor != null) {
             if (constructor != callingContainer) {
               val constructorAnnotations =
-                constructor.metroAnnotations(ids, callingContainer = thisContainer)
+                constructor.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds)
               yield(constructorAnnotations)
             }
           }
@@ -373,14 +419,26 @@ private fun IrAnnotationContainer.metroAnnotations(
 }
 
 internal fun FirBasedSymbol<*>.metroAnnotations(
-  session: FirSession
+  session: FirSession,
+  vararg kinds: Kind,
 ): MetroAnnotations<MetroFirAnnotation> {
-  return metroAnnotations(session, null)
+  return metroAnnotations(
+    session,
+    kindSetOf(*kinds),
+  )
+}
+
+internal fun FirBasedSymbol<*>.metroAnnotations(
+  session: FirSession,
+  kinds: Set<Kind> = ALL_KINDS,
+): MetroAnnotations<MetroFirAnnotation> {
+  return metroAnnotations(session, null, kinds)
 }
 
 private fun FirBasedSymbol<*>.metroAnnotations(
   session: FirSession,
   callingContainer: FirBasedSymbol<*>?,
+  kinds: Set<Kind>,
 ): MetroAnnotations<MetroFirAnnotation> {
   val ids = session.classIds
   var isDependencyGraph = false
@@ -410,11 +468,11 @@ private fun FirBasedSymbol<*>.metroAnnotations(
       is FirValueParameterSymbol -> {
         // Only BindsInstance and Assisted go here
         when (classId) {
-          in ids.providesAnnotations -> {
+          in ids.providesAnnotations if (Kind.Provides in kinds) -> {
             isBindsInstance = true
             continue
           }
-          in ids.assistedAnnotations -> {
+          in ids.assistedAnnotations if (Kind.Assisted in kinds) -> {
             assisted =
               expectNullAndSet("assisted", assisted, MetroFirAnnotation(annotation, session))
             continue
@@ -427,32 +485,32 @@ private fun FirBasedSymbol<*>.metroAnnotations(
       is FirPropertySymbol -> {
         // Binds, Provides
         when (classId) {
-          in ids.bindsAnnotations -> {
+          in ids.bindsAnnotations if (Kind.Binds in kinds) -> {
             isBinds = true
             continue
           }
-          in ids.providesAnnotations -> {
+          in ids.providesAnnotations if (Kind.Provides in kinds) -> {
             isProvides = true
             continue
           }
-          in ids.intoSetAnnotations -> {
+          in ids.intoSetAnnotations if (Kind.IntoSet in kinds) -> {
             isIntoSet = true
             continue
           }
-          in ids.elementsIntoSetAnnotations -> {
+          in ids.elementsIntoSetAnnotations if (Kind.ElementsIntoSet in kinds) -> {
             isElementsIntoSet = true
             continue
           }
-          in ids.intoMapAnnotations -> {
+          in ids.intoMapAnnotations if (Kind.IntoMap in kinds) -> {
             isIntoMap = true
             continue
           }
-          in ids.multibindsAnnotations -> {
+          in ids.multibindsAnnotations if (Kind.Multibinds in kinds) -> {
             multibinds =
               expectNullAndSet("multibinds", assisted, MetroFirAnnotation(annotation, session))
             continue
           }
-          Symbols.ClassIds.Composable -> {
+          Symbols.ClassIds.Composable if (Kind.Composable in kinds) -> {
             isComposable = true
             continue
           }
@@ -461,13 +519,15 @@ private fun FirBasedSymbol<*>.metroAnnotations(
 
       is FirClassSymbol<*> -> {
         // AssistedFactory, DependencyGraph, DependencyGraph.Factory
-        if (classId in ids.assistedFactoryAnnotations) {
+        if (Kind.AssistedFactory in kinds && classId in ids.assistedFactoryAnnotations) {
           isAssistedFactory = true
           continue
-        } else if (classId in ids.dependencyGraphAnnotations) {
+        } else if (Kind.DependencyGraph in kinds && classId in ids.dependencyGraphAnnotations) {
           isDependencyGraph = true
           continue
-        } else if (classId in ids.dependencyGraphFactoryAnnotations) {
+        } else if (
+          Kind.DependencyGraphFactory in kinds && classId in ids.dependencyGraphFactoryAnnotations
+        ) {
           isDependencyGraphFactory = true
           continue
         }
@@ -476,18 +536,23 @@ private fun FirBasedSymbol<*>.metroAnnotations(
 
     // Everything below applies to multiple targets
 
-    if (classId in ids.injectAnnotations) {
+    if (Kind.Inject in kinds && classId in ids.injectAnnotations) {
       isInject = true
       continue
     }
 
-    if (annotationClass.isAnnotatedWithAny(session, ids.scopeAnnotations)) {
+    if (Kind.Scope in kinds && annotationClass.isAnnotatedWithAny(session, ids.scopeAnnotations)) {
       scope = expectNullAndSet("scope", scope, MetroFirAnnotation(annotation, session))
       continue
-    } else if (annotationClass.isAnnotatedWithAny(session, ids.qualifierAnnotations)) {
+    } else if (
+      Kind.Qualifier in kinds &&
+        annotationClass.isAnnotatedWithAny(session, ids.qualifierAnnotations)
+    ) {
       qualifier = expectNullAndSet("qualifier", qualifier, MetroFirAnnotation(annotation, session))
       continue
-    } else if (annotationClass.isAnnotatedWithAny(session, ids.mapKeyAnnotations)) {
+    } else if (
+      Kind.MapKey in kinds && annotationClass.isAnnotatedWithAny(session, ids.mapKeyAnnotations)
+    ) {
       mapKeys += MetroFirAnnotation(annotation, session)
       continue
     }
@@ -524,17 +589,17 @@ private fun FirBasedSymbol<*>.metroAnnotations(
         // Retrieve annotations from this property's various accessors
         getterSymbol?.let { getter ->
           if (getter != callingContainer) {
-            yield(getter.metroAnnotations(session, callingContainer = thisContainer))
+            yield(getter.metroAnnotations(session, callingContainer = thisContainer, kinds = kinds))
           }
         }
         setterSymbol?.let { setter ->
           if (setter != callingContainer) {
-            yield(setter.metroAnnotations(session, callingContainer = thisContainer))
+            yield(setter.metroAnnotations(session, callingContainer = thisContainer, kinds = kinds))
           }
         }
         backingFieldSymbol?.let { field ->
           if (field != callingContainer) {
-            yield(field.metroAnnotations(session, callingContainer = thisContainer))
+            yield(field.metroAnnotations(session, callingContainer = thisContainer, kinds = kinds))
           }
         }
       } else if (thisContainer is FirNamedFunctionSymbol) {
@@ -542,7 +607,7 @@ private fun FirBasedSymbol<*>.metroAnnotations(
         //  correspondingPropertySymbol?.owner?.let { property ->
         //    if (property != callingContainer) {
         //      val propertyAnnotations =
-        //        property.metroAnnotations(ids, callingContainer = thisContainer)
+        //        property.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds)
         //      yield(propertyAnnotations)
         //    }
         //  }

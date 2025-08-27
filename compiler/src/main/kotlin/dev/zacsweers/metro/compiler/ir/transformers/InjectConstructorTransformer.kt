@@ -24,6 +24,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
@@ -103,12 +104,11 @@ internal class InjectConstructorTransformer(
         // If not external, double check its origin
         if (isMetroFactory && !isExternal) {
           if (it.origin != Origins.InjectConstructorFactoryClassDeclaration) {
-            diagnosticReporter
-              .at(declaration)
-              .report(
-                MetroDiagnostics.METRO_ERROR,
-                "Found a Metro factory declaration in ${declaration.kotlinFqName} but with an unexpected origin ${it.origin}",
-              )
+            reportCompat(
+              declaration,
+              MetroDiagnostics.METRO_ERROR,
+              "Found a Metro factory declaration in ${declaration.kotlinFqName} but with an unexpected origin ${it.origin}",
+            )
             return null
           }
         }
@@ -141,12 +141,11 @@ internal class InjectConstructorTransformer(
           generatedFactories[injectedClassId] = Optional.empty()
           return null
         }
-        diagnosticReporter
-          .at(declaration)
-          .report(
-            MetroDiagnostics.METRO_ERROR,
-            "Could not find generated factory for '${declaration.kotlinFqName}' in upstream module where it's defined. Run the Metro compiler over that module too.",
-          )
+        reportCompat(
+          declaration,
+          MetroDiagnostics.METRO_ERROR,
+          "Could not find generated factory for '${declaration.kotlinFqName}' in upstream module where it's defined. Run the Metro compiler over that module too, or Dagger if you're using its interop for Java files.",
+        )
         return null
       } else if (doNotErrorOnMissing) {
         // Store a null here because it's absent
@@ -412,7 +411,8 @@ internal class InjectConstructorTransformer(
                     functionParamsByName.getValue(targetParam.originalName)
                   }
 
-                  else -> reportCompilerBug("Unmatched top level injected function param: $targetParam")
+                  else ->
+                    reportCompilerBug("Unmatched top level injected function param: $targetParam")
                 }
               }
 

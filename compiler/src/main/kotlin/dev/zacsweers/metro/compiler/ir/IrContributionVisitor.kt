@@ -31,9 +31,11 @@ internal class IrContributionVisitor(context: IrMetroContext) :
       val scope =
         metroContribution.scopeOrNull()
           ?: with(metroContext) {
-            diagnosticReporter
-              .at(declaration)
-              .report(MetroDiagnostics.METRO_ERROR, "No scope found for @MetroContribution annotation")
+            reportCompat(
+              declaration,
+              MetroDiagnostics.METRO_ERROR,
+              "No scope found for @MetroContribution annotation",
+            )
             exitProcessing()
           }
       if (declaration.isAnnotatedWithAny(symbols.classIds.bindingContainerAnnotations)) {
@@ -51,12 +53,11 @@ internal class IrContributionVisitor(context: IrMetroContext) :
         val scope =
           contributesToAnno.scopeOrNull()
             ?: with(metroContext) {
-              diagnosticReporter
-                .at(declaration)
-                .report(
-                  MetroDiagnostics.METRO_ERROR,
-                  "No scope found for @${contributesToAnno.annotationClass.name} annotation",
-                )
+              reportCompat(
+                declaration,
+                MetroDiagnostics.METRO_ERROR,
+                "No scope found for @${contributesToAnno.annotationClass.name} annotation",
+              )
               exitProcessing()
             }
         data.addBindingContainerContribution(scope, declaration)

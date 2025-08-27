@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir
 
+import dev.zacsweers.metro.compiler.MetroAnnotations.Kind
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.metroAnnotations
 import org.jetbrains.kotlin.descriptors.isInterface
@@ -64,7 +65,7 @@ internal class FirAccessorOverrideStatusTransformer(session: FirSession) :
     if (containingClass.classKind?.isInterface != true && !declaration.isAbstract) return false
 
     // Exclude Provides/Binds
-    val annotations = declaration.symbol.metroAnnotations(session)
+    val annotations = declaration.symbol.metroAnnotations(session, Kind.Provides, Kind.Binds)
     val isAccessor = !annotations.isProvides && !annotations.isBinds
 
     if (!isAccessor) return false

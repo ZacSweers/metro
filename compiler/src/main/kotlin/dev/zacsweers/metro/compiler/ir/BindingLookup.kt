@@ -227,7 +227,7 @@ internal class BindingLookup(
             )
             appendBindingStack(stack)
           }
-          context.diagnosticReporter.at(irClass).report(MetroDiagnostics.METRO_ERROR, message)
+          context.reportCompat(irClass, MetroDiagnostics.METRO_ERROR, message)
           exitProcessing()
         }
 

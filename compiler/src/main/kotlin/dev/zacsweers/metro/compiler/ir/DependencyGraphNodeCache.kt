@@ -283,9 +283,11 @@ internal class DependencyGraphNodeCache(
           }
           appendBindingStack(bindingStack, short = false)
         }
-        diagnosticReporter
-          .at(graphDeclaration)
-          .report(MetroDiagnostics.GRAPH_DEPENDENCY_CYCLE, message)
+        metroContext.reportCompat(
+          graphDeclaration,
+          MetroDiagnostics.GRAPH_DEPENDENCY_CYCLE,
+          message,
+        )
         exitProcessing()
       }
     }
@@ -674,40 +676,38 @@ internal class DependencyGraphNodeCache(
         }
         for (parentScope in depNode.scopes) {
           seenAncestorScopes.put(parentScope, depNode)?.let { previous ->
-            diagnosticReporter
-              .at(graphDeclaration)
-              .report(
-                MetroDiagnostics.METRO_ERROR,
-                buildString {
-                  appendLine(
-                    "Graph extensions (@Extends) may not have multiple ancestors with the same scopes:"
-                  )
-                  append("Scope: ")
-                  appendLine(parentScope.render(short = false))
-                  append("Ancestor 1: ")
-                  appendLine(previous.sourceGraph.kotlinFqName)
-                  append("Ancestor 2: ")
-                  appendLine(depNode.sourceGraph.kotlinFqName)
-                },
-              )
+            metroContext.reportCompat(
+              graphDeclaration,
+              MetroDiagnostics.METRO_ERROR,
+              buildString {
+                appendLine(
+                  "Graph extensions (@Extends) may not have multiple ancestors with the same scopes:"
+                )
+                append("Scope: ")
+                appendLine(parentScope.render(short = false))
+                append("Ancestor 1: ")
+                appendLine(previous.sourceGraph.kotlinFqName)
+                append("Ancestor 2: ")
+                appendLine(depNode.sourceGraph.kotlinFqName)
+              },
+            )
             exitProcessing()
           }
         }
       }
       if (overlapErrors.isNotEmpty()) {
-        diagnosticReporter
-          .at(graphDeclaration)
-          .report(
-            MetroDiagnostics.METRO_ERROR,
-            buildString {
-              appendLine(
-                "Graph extension '${dependencyGraphNode.sourceGraph.sourceGraphIfMetroGraph.kotlinFqName}' has overlapping scope annotations with ancestor graphs':"
-              )
-              for (overlap in overlapErrors) {
-                appendLine(overlap)
-              }
-            },
-          )
+        metroContext.reportCompat(
+          graphDeclaration,
+          MetroDiagnostics.METRO_ERROR,
+          buildString {
+            appendLine(
+              "Graph extension '${dependencyGraphNode.sourceGraph.sourceGraphIfMetroGraph.kotlinFqName}' has overlapping scope annotations with ancestor graphs':"
+            )
+            for (overlap in overlapErrors) {
+              appendLine(overlap)
+            }
+          },
+        )
         exitProcessing()
       }
 

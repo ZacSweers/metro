@@ -48,10 +48,11 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
       )
     IrGenerationExtension.registerExtension(
       MetroIrGenerationExtension(
-        classIds,
-        options,
-        lookupTracker,
-        expectActualTracker,
+        messageCollector = configuration.messageCollector,
+        classIds = classIds,
+        options = options,
+        lookupTracker = lookupTracker,
+        expectActualTracker = expectActualTracker,
       )
     )
   }

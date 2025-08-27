@@ -525,7 +525,7 @@ internal class IrBindingGraph(
     val declaration =
       stack.lastEntryOrGraph?.originalDeclarationIfOverride()
         ?: node.reportableSourceGraphDeclaration
-    metroContext.diagnosticReporter.at(declaration).report(MetroDiagnostics.METRO_ERROR, message)
+    metroContext.reportCompat(declaration, MetroDiagnostics.METRO_ERROR, message)
     exitProcessing()
   }
 
@@ -608,9 +608,7 @@ internal class IrBindingGraph(
             )
           }
         }
-        metroContext.diagnosticReporter
-          .at(declarationToReport)
-          .report(MetroDiagnostics.METRO_ERROR, message)
+        metroContext.reportCompat(declarationToReport, MetroDiagnostics.METRO_ERROR, message)
       }
     }
   }
@@ -642,9 +640,7 @@ internal class IrBindingGraph(
           )
         }
       }
-      metroContext.diagnosticReporter
-        .at(declaration ?: node.sourceGraph)
-        .report(MetroDiagnostics.METRO_ERROR, message)
+      metroContext.reportCompat(declaration ?: node.sourceGraph, MetroDiagnostics.METRO_ERROR, message)
     }
 
     reverseAdjacency[binding.typeKey]?.let { dependents ->

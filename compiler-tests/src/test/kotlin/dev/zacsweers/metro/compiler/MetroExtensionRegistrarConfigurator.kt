@@ -198,6 +198,7 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
     FirExtensionRegistrarAdapter.registerExtension(MetroFirExtensionRegistrar(classIds, options))
     IrGenerationExtension.registerExtension(
       MetroIrGenerationExtension(
+        messageCollector = configuration.messageCollector,
         classIds = classIds,
         options = options,
         // TODO ever support this in tests?

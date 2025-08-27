@@ -37,6 +37,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toProto
@@ -654,10 +655,8 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
         val message =
           "No metadata found for ${metadataDeclaration.kotlinFqName} from " +
             "another module. Did you run the Metro compiler plugin on this module?"
-        diagnosticReporter
-          .at(declaration)
-          .report(
-            MetroDiagnostics.METRO_ERROR,
+        reportCompat(declaration,
+          MetroDiagnostics.METRO_ERROR,
             message,
           )
         return null
