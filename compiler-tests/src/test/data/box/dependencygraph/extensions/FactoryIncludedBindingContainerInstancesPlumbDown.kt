@@ -1,5 +1,5 @@
 //https://github.com/ZacSweers/metro/issues/993
-@DependencyGraph()
+@DependencyGraph
 interface AppGraph {
   fun childGraphFactory(): ChildGraph.Factory
 
@@ -11,7 +11,8 @@ interface AppGraph {
 
 @BindingContainer
 class Bindings {
-  @Provides fun provideInt(): Int = 3
+  @Provides
+  fun provideInt(): Int = 3
 }
 
 @GraphExtension

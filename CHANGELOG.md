@@ -6,6 +6,7 @@ Changelog
 
 * **Enhancement**: Transform and collect contribution data in a single pass during IR.
 * **Fix**: Ensure contributed binding containers' included containers are available in root dependency graphs.
+* **Fix**: Make `@Includes` parameter keys available to extensions.
 
 0.6.3
 -----
