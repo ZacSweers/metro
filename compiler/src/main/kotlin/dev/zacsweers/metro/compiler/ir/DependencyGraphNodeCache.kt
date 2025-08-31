@@ -15,6 +15,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.wrapInMembersInjector
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.mapNotNullToSet
+import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.memoized
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.Tracer
@@ -622,6 +623,11 @@ internal class DependencyGraphNodeCache(
             .orEmpty()
         }
       val mergedContainers = bindingContainers.filterNot { it.ir.classId in replaced }
+        .mapToSet { it.ir }
+        .let { rootContainers ->
+          // Now that we've filtered out the removed and excluded containers, we can pull in the transitively included ones
+          bindingContainerTransformer.resolveAllBindingContainersCached(rootContainers)
+        }
 
       for (container in mergedContainers) {
         providerFactories += container.providerFactories.values.map { it.typeKey to it }

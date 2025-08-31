@@ -4,6 +4,9 @@ Changelog
 **Unreleased**
 --------------
 
+* **Enhancement**: Transform and collect contribution data in a single pass during IR.
+* **Fix**: Ensure contributed binding containers' included containers are available in root dependency graphs.
+
 0.6.3
 -----
 
