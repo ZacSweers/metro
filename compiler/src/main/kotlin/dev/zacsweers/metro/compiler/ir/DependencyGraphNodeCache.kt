@@ -622,12 +622,16 @@ internal class DependencyGraphNodeCache(
             ?.mapNotNullToSet { replacedClass -> replacedClass.classType.rawTypeOrNull()?.classId }
             .orEmpty()
         }
-      val mergedContainers = bindingContainers.filterNot { it.ir.classId in replaced }
-        .mapToSet { it.ir }
-        .let { rootContainers ->
-          // Now that we've filtered out the removed and excluded containers, we can pull in the transitively included ones
-          bindingContainerTransformer.resolveAllBindingContainersCached(rootContainers)
-        }
+
+      val mergedContainers =
+        bindingContainers
+          .filterNot { it.ir.classId in replaced }
+          .mapToSet { it.ir }
+          .let { rootContainers ->
+            // Now that we've filtered out the removed and excluded containers, we can pull in the
+            // transitively included ones
+            bindingContainerTransformer.resolveAllBindingContainersCached(rootContainers)
+          }
 
       for (container in mergedContainers) {
         providerFactories += container.providerFactories.values.map { it.typeKey to it }
