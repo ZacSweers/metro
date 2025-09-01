@@ -50,7 +50,6 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
-import org.jetbrains.kotlin.ir.util.render
 import org.jetbrains.kotlin.name.ClassId
 
 internal class DependencyGraphNodeCache(
@@ -319,12 +318,16 @@ internal class DependencyGraphNodeCache(
       val message =
         "[Metro/QualifierOverrideMismatch] Overridden $type '${declaration.fqNameWhenAvailable}' must have the same qualifier annotations as the overridden $type. However, the final $type qualifier is '${expectedQualifier}' but overridden symbol ${declWithName.fqNameWhenAvailable} has '${overriddenQualifier}'.'"
 
-      val location = when (declaration) {
-        is IrSimpleFunction -> declaration.locationOrNull()
-        is IrProperty -> declaration.getter?.locationOrNull()
-      } ?: graphDeclaration.sourceGraphIfMetroGraph.locationOrNull()
+      val errorDecl = when (declaration) {
+        is IrSimpleFunction -> declaration.propertyIfAccessor
+        is IrProperty -> declaration
+      }
 
-      messageCollector.report(CompilerMessageSeverity.ERROR, message, location)
+      reportCompat(
+        sequenceOf(errorDecl, graphDeclaration.sourceGraphIfMetroGraph),
+        MetroDiagnostics.METRO_ERROR,
+        message,
+      )
       exitProcessing()
     }
 
@@ -460,11 +463,10 @@ internal class DependencyGraphNodeCache(
 
             if (isInjector && !declaration.returnType.isUnit()) {
               // TODO move to FIR?
-              // TODO irdiagnosticreporter
-              metroContext.messageCollector.report(
-                CompilerMessageSeverity.ERROR,
-                "Injector function ${declaration.kotlinFqName} must return Unit. Or, if it's not an injector, remove its parameter.",
-                declaration.locationOrNull() ?: graphDeclaration.sourceGraphIfMetroGraph.locationOrNull(),
+              reportCompat(
+                sequenceOf(declaration, graphDeclaration.sourceGraphIfMetroGraph),
+                MetroDiagnostics.METRO_ERROR,
+                "Injector function ${declaration.kotlinFqName} must return Unit. Or, if it's not an injector, remove its parameter."
               )
               exitProcessing()
             }
