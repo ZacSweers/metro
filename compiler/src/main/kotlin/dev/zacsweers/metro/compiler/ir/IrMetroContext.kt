@@ -73,17 +73,19 @@ internal interface IrMetroContext : IrPluginContext {
   val typeRemapperCache: MutableMap<Pair<ClassId, IrType>, TypeRemapper>
 
   fun log(message: String) {
+    @Suppress("DEPRECATION")
     messageCollector.report(CompilerMessageSeverity.LOGGING, "$LOG_PREFIX $message")
     logFile?.appendText("$message\n")
   }
 
   fun logTrace(message: String) {
+    @Suppress("DEPRECATION")
     messageCollector.report(CompilerMessageSeverity.LOGGING, "$LOG_PREFIX $message")
     traceLogFile?.appendText("$message\n")
   }
 
-  @Suppress("DEPRECATION")
   fun logVerbose(message: String) {
+    @Suppress("DEPRECATION")
     messageCollector.report(CompilerMessageSeverity.STRONG_WARNING, "$LOG_PREFIX $message")
   }
 
@@ -151,6 +153,7 @@ internal interface IrMetroContext : IrPluginContext {
 
     private class SimpleIrMetroContext(
       override val pluginContext: IrPluginContext,
+      @Suppress("DEPRECATION")
       override val messageCollector: MessageCollector,
       override val symbols: Symbols,
       override val options: MetroOptions,

@@ -32,6 +32,7 @@ internal fun <A : Any> IrMetroContext.reportCompat(
 }
 
 @OptIn(InternalDiagnosticFactoryMethod::class)
+@Suppress("DEPRECATION")
 internal fun <A : Any> IrMetroContext.reportCompat(
   irDeclaration: IrDeclaration?,
   factory: KtDiagnosticFactory1<A>,
