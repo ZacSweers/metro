@@ -297,36 +297,33 @@ internal class DependencyGraphNodeCache(
       }
     }
 
-    private fun IrSimpleFunction.checkOverriddenSymbols(finalKey: IrTypeKey, isInjector: Boolean) {
-      // Validate all overrides have the same qualifier
-      for (overridden in overriddenSymbolsSequence()) {
-        val qualifier =
-          if (isInjector) {
-            overridden.owner.regularParameters[0].qualifierAnnotation()
-          } else {
-            overridden.owner.metroAnnotations(symbols.classIds).qualifier
-          }
-        if (qualifier != finalKey.qualifier) {
-          val type =
-            if (isInjector) {
-              "injector function"
-            } else if (isPropertyAccessor) {
-              "accessor property"
-            } else {
-              "accessor function"
-            }
-          // TODO report with irdiagnosticreporter
-          val declWithName = overridden.owner.propertyIfAccessor.expectAs<IrDeclarationWithName>()
-          val message =
-            "[Metro/QualifierOverrideMismatch] Overridden $type '${fqNameWhenAvailable}' must have the same qualifier annotations as the overridden $type. However, the final $type qualifier is '${finalKey.qualifier}' but overridden symbol ${declWithName.fqNameWhenAvailable} has '${qualifier}'.'"
-          messageCollector.report(
-            CompilerMessageSeverity.ERROR,
-            message,
-            locationOrNull() ?: graphDeclaration.sourceGraphIfMetroGraph.locationOrNull(),
-          )
-          exitProcessing()
-        }
+    private fun reportQualifierMismatch(
+      declaration: IrOverridableDeclaration<*>,
+      expectedQualifier: IrAnnotation?,
+      overriddenQualifier: IrAnnotation?,
+      overriddenDeclaration: IrOverridableDeclaration<*>,
+      isInjector: Boolean,
+    ) {
+      val type = when {
+        isInjector -> "injector function"
+        declaration is IrProperty || (declaration as? IrSimpleFunction)?.isPropertyAccessor == true -> "accessor property"
+        else -> "accessor function"
       }
+
+      val declWithName = when (overriddenDeclaration) {
+        is IrSimpleFunction -> overriddenDeclaration.propertyIfAccessor.expectAs<IrDeclarationWithName>()
+        is IrProperty -> overriddenDeclaration as IrDeclarationWithName
+      }
+      val message =
+        "[Metro/QualifierOverrideMismatch] Overridden $type '${declaration.fqNameWhenAvailable}' must have the same qualifier annotations as the overridden $type. However, the final $type qualifier is '${expectedQualifier}' but overridden symbol ${declWithName.fqNameWhenAvailable} has '${overriddenQualifier}'.'"
+
+      val location = when (declaration) {
+        is IrSimpleFunction -> declaration.locationOrNull()
+        is IrProperty -> declaration.getter?.locationOrNull()
+      } ?: graphDeclaration.sourceGraphIfMetroGraph.locationOrNull()
+
+      messageCollector.report(CompilerMessageSeverity.ERROR, message, location)
+      exitProcessing()
     }
 
     fun build(): DependencyGraphNode {
@@ -381,15 +378,19 @@ internal class DependencyGraphNodeCache(
           is IrSimpleFunction -> {
             // Could be an injector, accessor, or graph extension
             var isGraphExtension = false
-
-            // If the overridden symbol has a default getter/value then skip
             var hasDefaultImplementation = false
+            var qualifierMismatchData: Triple<IrAnnotation?, IrAnnotation?, IrSimpleFunction>? = null
+
+            val isInjectorCandidate = declaration.regularParameters.size == 1 && !annotations.isBinds
+
+            // Single pass through overridden symbols
             for (overridden in declaration.overriddenSymbolsSequence()) {
               if (overridden.owner.body != null) {
                 hasDefaultImplementation = true
                 break
               }
 
+              // Check for graph extension patterns
               val overriddenParentClass = overridden.owner.parentClassOrNull ?: continue
               val isGraphExtensionFactory =
                 overriddenParentClass.isAnnotatedWithAny(
@@ -416,13 +417,44 @@ internal class DependencyGraphNodeCache(
                   continue
                 }
               }
+
+              // Check qualifier consistency for injectors and non-binds accessors
+              if (!isGraphExtension && !annotations.isBinds) {
+                val expectedQualifier = if (isInjectorCandidate) {
+                  // For injectors, get the qualifier from the first parameter
+                  declaration.regularParameters[0].qualifierAnnotation()
+                } else {
+                  // For accessors, get it from the function's annotations
+                  metroAnnotationsOf(declaration).qualifier
+                }
+
+                val overriddenQualifier = if (isInjectorCandidate) {
+                  overridden.owner.regularParameters[0].qualifierAnnotation()
+                } else {
+                  overridden.owner.metroAnnotations(symbols.classIds).qualifier
+                }
+
+                if (overriddenQualifier != expectedQualifier && qualifierMismatchData == null) {
+                  qualifierMismatchData = Triple(expectedQualifier, overriddenQualifier, overridden.owner)
+                }
+              }
             }
+
             if (hasDefaultImplementation) continue
 
-            val isInjector =
-              !isGraphExtension &&
-                declaration.regularParameters.size == 1 &&
-                !annotations.isBinds
+            // Report qualifier mismatch error if found
+            if (qualifierMismatchData != null) {
+              val (expectedQualifier, overriddenQualifier, overriddenFunction) = qualifierMismatchData
+              reportQualifierMismatch(
+                declaration,
+                expectedQualifier,
+                overriddenQualifier,
+                overriddenFunction,
+                isInjectorCandidate
+              )
+            }
+
+            val isInjector = !isGraphExtension && isInjectorCandidate
 
             if (isInjector && !declaration.returnType.isUnit()) {
               // TODO move to FIR?
@@ -499,17 +531,11 @@ internal class DependencyGraphNodeCache(
                 contextKey.typeKey.copy(contextKey.typeKey.type.wrapInMembersInjector())
               val finalContextKey = contextKey.withTypeKey(memberInjectorTypeKey)
 
-              metroFunction.ir.checkOverriddenSymbols(contextKey.typeKey, isInjector = true)
-
               injectors += (metroFunction to finalContextKey)
             } else {
               // Accessor or binds
               val metroFunction = metroFunctionOf(declaration, annotations)
               val contextKey = IrContextualTypeKey.from(declaration)
-
-              if (!metroFunction.annotations.isBinds) {
-                metroFunction.ir.checkOverriddenSymbols(contextKey.typeKey, isInjector = false)
-              }
 
               val collection =
                 if (metroFunction.annotations.isBinds) {
@@ -529,9 +555,10 @@ internal class DependencyGraphNodeCache(
             val isGraphExtensionFactory =
               rawType.isAnnotatedWithAny(symbols.classIds.graphExtensionFactoryAnnotations)
             var isGraphExtension = isGraphExtensionFactory
-
-            // If the overridden symbol has a default getter/value then skip
             var hasDefaultImplementation = false
+            var qualifierMismatchData: Triple<IrAnnotation?, IrAnnotation?, IrProperty>? = null
+
+            // Single pass through overridden symbols
             if (!isGraphExtensionFactory) {
               for (overridden in declaration.overriddenSymbolsSequence()) {
                 if (overridden.owner.getter?.body != null) {
@@ -547,12 +574,36 @@ internal class DependencyGraphNodeCache(
                     returnClass.isAnnotatedWithAny(symbols.classIds.graphExtensionAnnotations)
                   if (returnsExtension) {
                     isGraphExtension = true
-                    break
+                    // Don't break - continue checking qualifiers
+                  }
+                }
+
+                // Check qualifier consistency for non-binds accessors
+                if (!isGraphExtension && !annotations.isBinds) {
+                  val expectedQualifier = metroAnnotationsOf(getter).qualifier
+                  val overriddenGetter = overridden.owner.getter ?: continue
+                  val overriddenQualifier = overriddenGetter.metroAnnotations(symbols.classIds).qualifier
+
+                  if (overriddenQualifier != expectedQualifier && qualifierMismatchData == null) {
+                    qualifierMismatchData = Triple(expectedQualifier, overriddenQualifier, overridden.owner)
                   }
                 }
               }
             }
+
             if (hasDefaultImplementation) continue
+
+            // Report qualifier mismatch error if found
+            if (qualifierMismatchData != null) {
+              val (expectedQualifier, overriddenQualifier, overriddenProperty) = qualifierMismatchData
+              reportQualifierMismatch(
+                declaration,
+                expectedQualifier,
+                overriddenQualifier,
+                overriddenProperty,
+                false // properties are never injectors
+              )
+            }
 
             val metroFunction = metroFunctionOf(getter, annotations)
             val contextKey = IrContextualTypeKey.from(getter)
@@ -603,11 +654,6 @@ internal class DependencyGraphNodeCache(
               }
               hasGraphExtensions = true
             } else {
-              if (!metroFunction.annotations.isBinds) {
-                // TODO inline this into the overridden symbols search above?
-                metroFunction.ir.checkOverriddenSymbols(contextKey.typeKey, isInjector = false)
-              }
-
               val collection =
                 if (metroFunction.annotations.isBinds) {
                   bindsFunctions
