@@ -218,6 +218,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     public void testTransitiveContributedContainersInContributedGraphs() {
       runTest("compiler-tests/src/test/data/box/bindingcontainers/TransitiveContributedContainersInContributedGraphs.kt");
     }
+
+    @Test
+    @TestMetadata("TransitiveContributedContainersInRootGraphs.kt")
+    public void testTransitiveContributedContainersInRootGraphs() {
+      runTest("compiler-tests/src/test/data/box/bindingcontainers/TransitiveContributedContainersInRootGraphs.kt");
+    }
   }
 
   @Nested
@@ -509,6 +515,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("ExplicitRedundantTransitiveContainersStillWork.kt")
+      public void testExplicitRedundantTransitiveContainersStillWork() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ExplicitRedundantTransitiveContainersStillWork.kt");
+      }
+
+      @Test
       @TestMetadata("ExtensionsCanBeDeclaredWithoutFactories.kt")
       public void testExtensionsCanBeDeclaredWithoutFactories() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ExtensionsCanBeDeclaredWithoutFactories.kt");
@@ -530,6 +542,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("FactoryAccessorWhenParentAlsoImplementsFactory.kt")
       public void testFactoryAccessorWhenParentAlsoImplementsFactory() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/FactoryAccessorWhenParentAlsoImplementsFactory.kt");
+      }
+
+      @Test
+      @TestMetadata("FactoryIncludedBindingContainerInstancesPlumbDown.kt")
+      public void testFactoryIncludedBindingContainerInstancesPlumbDown() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/FactoryIncludedBindingContainerInstancesPlumbDown.kt");
       }
 
       @Test

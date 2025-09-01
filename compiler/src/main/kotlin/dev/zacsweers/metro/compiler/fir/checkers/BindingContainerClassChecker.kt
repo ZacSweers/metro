@@ -32,10 +32,13 @@ import org.jetbrains.kotlin.fir.declarations.utils.isInterface
 import org.jetbrains.kotlin.fir.declarations.utils.isLocal
 import org.jetbrains.kotlin.fir.declarations.utils.modality
 import org.jetbrains.kotlin.fir.declarations.utils.nameOrSpecialName
+import org.jetbrains.kotlin.fir.declarations.utils.superConeTypes
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
+import org.jetbrains.kotlin.fir.resolve.getSuperTypes
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
+import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.toLookupTag
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
@@ -98,6 +101,22 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
     }
 
     val isBindingContainer = bindingContainerAnno != null
+
+    if (isBindingContainer) {
+      // Binding containers can't extend other binding containers
+      for (supertype in declaration.symbol.getSuperTypes(session)) {
+        val supertypeClass = supertype.toClassSymbol(session) ?: continue
+        if (supertypeClass.isAnnotatedWithAny(session, classIds.bindingContainerAnnotations)) {
+          val directRef = declaration.superTypeRefs.firstOrNull { it.coneType == supertype }
+          val source = directRef?.source ?: source
+          reporter.reportOn(
+            source,
+            BINDING_CONTAINER_ERROR,
+            "Binding containers cannot extend other binding containers, use `includes` instead. Container '${declaration.classId.asFqNameString()}' extends '${supertypeClass.classId.asFqNameString()}'.",
+          )
+        }
+      }
+    }
 
     val includesToCheck =
       bindingContainerAnno?.resolvedIncludesClassIds()

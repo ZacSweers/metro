@@ -32,7 +32,7 @@ Graphs are relatively cheap and should be used freely.
 
 ## Inputs
 
-Runtime inputs can be provided via a `@DependencyGraph.Factory` interface that returns the target graph. These parameters must be annotated with exactly one of `@Provides`, `@Includes`, or `@Extends`.
+Runtime inputs can be provided via a `@DependencyGraph.Factory` interface that returns the target graph. These parameters must be annotated with either `@Provides` or `@Includes`.
 
 ### Provides
 
@@ -101,10 +101,6 @@ interface AppGraph {
     Includes parameters cannot be injected from the graph.
 
 [Binding Containers](#binding-containers) are a special type of `@Includes` type, see more in its section below.
-
-### Extends
-
-`@Extends`-annotated parameters are for extending parent graphs. See _Graph Extensions_ at the bottom of this doc for more information.
 
 ### Creating factories
 

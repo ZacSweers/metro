@@ -41,8 +41,7 @@ class TracingTest : MetroCompilerTest() {
       assertThat(withoutTime)
         .isEqualTo(
           """
-          main,Transforming Metro contributions
-          main,Collecting contributions
+          main,Transform contributions
           ExampleGraph,Build DependencyGraphNode
           ExampleGraph,Implement creator functions
           ExampleGraph,Build binding graph
@@ -78,10 +77,8 @@ class TracingTest : MetroCompilerTest() {
         .isEqualTo(
           """
             [main] ▶ Metro compiler
-              ▶ Transforming Metro contributions
-              ◀ Transforming Metro contributions (xx ms)
-              ▶ Collecting contributions
-              ◀ Collecting contributions (xx ms)
+              ▶ Transform contributions
+              ◀ Transform contributions (xx ms)
               ▶ Core transformers
                 ▶ [ExampleGraph] Transform dependency graph
                   ▶ Build DependencyGraphNode
@@ -176,8 +173,7 @@ class TracingTest : MetroCompilerTest() {
       assertThat(withoutTime)
         .isEqualTo(
           """
-          main,Transforming Metro contributions
-          main,Collecting contributions
+          main,Transform contributions
           ExampleGraph,Build DependencyGraphNode
           ExampleGraph,Implement creator functions
           ExampleGraph,Build binding graph
@@ -236,10 +232,8 @@ class TracingTest : MetroCompilerTest() {
         .isEqualTo(
           """
             [main] ▶ Metro compiler
-              ▶ Transforming Metro contributions
-              ◀ Transforming Metro contributions (xx ms)
-              ▶ Collecting contributions
-              ◀ Collecting contributions (xx ms)
+              ▶ Transform contributions
+              ◀ Transform contributions (xx ms)
               ▶ Core transformers
                 ▶ [ExampleGraph] Transform dependency graph
                   ▶ Build DependencyGraphNode
@@ -380,8 +374,7 @@ class TracingTest : MetroCompilerTest() {
       assertThat(withoutTime)
         .isEqualTo(
           $$$"""
-          main,Transforming Metro contributions
-          main,Collecting contributions
+          main,Transform contributions
           ExampleGraph,Build DependencyGraphNode
           ExampleGraph,Implement creator functions
           ExampleGraph,Build binding graph
@@ -440,10 +433,8 @@ class TracingTest : MetroCompilerTest() {
         .isEqualTo(
           $$$"""
             [main] ▶ Metro compiler
-              ▶ Transforming Metro contributions
-              ◀ Transforming Metro contributions (xx ms)
-              ▶ Collecting contributions
-              ◀ Collecting contributions (xx ms)
+              ▶ Transform contributions
+              ◀ Transform contributions (xx ms)
               ▶ Core transformers
                 ▶ [ExampleGraph] Transform dependency graph
                   ▶ Build DependencyGraphNode
