@@ -124,7 +124,9 @@ jobs:
           echo "Updated mike versions after deployment:"
           mike list
 
-      - name: Delete old doc versions
-        run: |
-          git fetch origin gh-pages --depth=1
-          ./scripts/delete_old_version_docs.sh
+      # ℹ️ NOTE: 
+      # The 'delete_old_version_docs.sh' step is intentionally skipped for the manual deployment,
+      # because in case manual deployment was used to generate old versioned site
+      # that is not latest, then the cleanup script would immidiately delete it.
+      #
+      # So, skipping it here, and let the normal docs workflow handle cleanup on next run.
