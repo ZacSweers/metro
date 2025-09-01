@@ -509,6 +509,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("ExplicitRedundantTransitiveContainersStillWork.kt")
+      public void testExplicitRedundantTransitiveContainersStillWork() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ExplicitRedundantTransitiveContainersStillWork.kt");
+      }
+
+      @Test
       @TestMetadata("ExtensionsCanBeDeclaredWithoutFactories.kt")
       public void testExtensionsCanBeDeclaredWithoutFactories() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ExtensionsCanBeDeclaredWithoutFactories.kt");

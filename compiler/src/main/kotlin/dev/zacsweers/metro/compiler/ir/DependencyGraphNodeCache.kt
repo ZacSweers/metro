@@ -684,6 +684,7 @@ internal class DependencyGraphNodeCache(
             ?.mapNotNullToSet { replacedClass -> replacedClass.classType.rawTypeOrNull()?.classId }
             .orEmpty()
         }
+
       val mergedContainers =
         bindingContainers
           .filterNot { it.ir.classId in replaced }

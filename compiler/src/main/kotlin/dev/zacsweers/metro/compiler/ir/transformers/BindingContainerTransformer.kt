@@ -169,8 +169,8 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     val graphAnnotation =
       declaration.annotationsIn(symbols.classIds.graphLikeAnnotations).firstOrNull()
     val isContributedGraph =
-      (graphAnnotation?.annotationClass?.classId in
-        symbols.classIds.graphExtensionAnnotations) && declaration.isAnnotatedWithAny(symbols.classIds.contributesToAnnotations)
+      (graphAnnotation?.annotationClass?.classId in symbols.classIds.graphExtensionAnnotations) &&
+        declaration.isAnnotatedWithAny(symbols.classIds.contributesToAnnotations)
     val isGraph = graphAnnotation != null
     val container =
       BindingContainer(
@@ -584,34 +584,94 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     val localVisited = mutableSetOf<ClassId>()
     val queue = ArrayDeque<IrClass>()
 
+    // Map to track direct containers (before computing transitive closure)
+    val directContainers = mutableMapOf<ClassId, BindingContainer?>()
+
     queue += root
 
+    // First pass: collect all direct binding containers
     while (queue.isNotEmpty()) {
       val bindingContainerClass = queue.removeFirst()
       val classId = bindingContainerClass.classIdOrFail
 
-      // Skip if we've already processed this class in any context
-      if (classId in globalVisited || classId in localVisited) continue
+      // Skip if we've already processed this class locally
+      if (classId in localVisited) continue
       localVisited += classId
+
+      // Check if we already have the transitive closure cached
+      if (classId in globalVisited) {
+        transitiveBindingContainerCache[classId]?.let { cachedResult -> result += cachedResult }
+        continue
+      }
+
       globalVisited += classId
 
-      // Check cache first for this specific class
+      // Check if already cached (shouldn't happen but be defensive)
       transitiveBindingContainerCache[classId]?.let { cachedResult ->
         result += cachedResult
         continue
       }
 
-      findContainer(bindingContainerClass)?.let { bindingContainer ->
-        result += bindingContainer
+      // Find the direct container for this class
+      val bindingContainer = findContainer(bindingContainerClass)
+      directContainers[classId] = bindingContainer
 
-        // Add included binding containers to the queue
-        for (includedClassId in bindingContainer.includes) {
-          val includedClass = pluginContext.referenceClass(includedClassId)?.owner
-          if (includedClass != null && includedClassId !in localVisited) {
+      // Add included binding containers to the queue for processing
+      bindingContainer?.includes?.forEach { includedClassId ->
+        pluginContext.referenceClass(includedClassId)?.owner?.let { includedClass ->
+          if (includedClassId !in localVisited && includedClassId !in globalVisited) {
             queue += includedClass
           }
         }
       }
+    }
+
+    // Second pass: compute transitive closures with proper caching
+    fun computeTransitiveClosure(
+      classId: ClassId,
+      visited: MutableSet<ClassId> = mutableSetOf(),
+    ): Set<BindingContainer> {
+      // Check cache first
+      transitiveBindingContainerCache[classId]?.let {
+        return it
+      }
+
+      // Prevent cycles
+      if (classId in visited) return emptySet()
+
+      visited += classId
+
+      val transitiveClosure = mutableSetOf<BindingContainer>()
+
+      // Add the direct container if it exists
+      directContainers[classId]?.let { container ->
+        transitiveClosure += container
+
+        // Recursively add transitive closures of includes
+        container.includes.forEach { includedClassId ->
+          // First check if we have it in the cache
+          val includedClosure =
+            transitiveBindingContainerCache[includedClassId]
+              ?: if (includedClassId in directContainers.keys) {
+                // We have the direct container, compute its closure
+                computeTransitiveClosure(includedClassId, visited)
+              } else {
+                // Not in our local processing, might be cached from global
+                emptySet()
+              }
+          transitiveClosure += includedClosure
+        }
+      }
+
+      // Cache the result
+      transitiveBindingContainerCache[classId] = transitiveClosure
+      return transitiveClosure
+    }
+
+    // Compute transitive closures for all processed containers
+    for (classId in directContainers.keys) {
+      val closure = computeTransitiveClosure(classId)
+      result += closure
     }
 
     return result
