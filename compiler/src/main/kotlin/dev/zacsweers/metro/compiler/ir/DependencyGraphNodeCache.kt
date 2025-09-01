@@ -17,12 +17,14 @@ import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.memoized
+import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
@@ -39,12 +41,16 @@ import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.defaultType
+import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.getValueArgument
+import org.jetbrains.kotlin.ir.util.isPropertyAccessor
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.primaryConstructor
+import org.jetbrains.kotlin.ir.util.propertyIfAccessor
+import org.jetbrains.kotlin.ir.util.render
 import org.jetbrains.kotlin.name.ClassId
 
 internal class DependencyGraphNodeCache(
@@ -291,6 +297,38 @@ internal class DependencyGraphNodeCache(
       }
     }
 
+    private fun IrSimpleFunction.checkOverriddenSymbols(finalKey: IrTypeKey, isInjector: Boolean) {
+      // Validate all overrides have the same qualifier
+      for (overridden in overriddenSymbolsSequence()) {
+        val qualifier =
+          if (isInjector) {
+            overridden.owner.regularParameters[0].qualifierAnnotation()
+          } else {
+            overridden.owner.metroAnnotations(symbols.classIds).qualifier
+          }
+        if (qualifier != finalKey.qualifier) {
+          val type =
+            if (isInjector) {
+              "injector function"
+            } else if (isPropertyAccessor) {
+              "accessor property"
+            } else {
+              "accessor function"
+            }
+          // TODO report with irdiagnosticreporter
+          val declWithName = overridden.owner.propertyIfAccessor.expectAs<IrDeclarationWithName>()
+          val message =
+            "[Metro/QualifierOverrideMismatch] Overridden $type '${fqNameWhenAvailable}' must have the same qualifier annotations as the overridden $type. However, the final $type qualifier is '${finalKey.qualifier}' but overridden symbol ${declWithName.fqNameWhenAvailable} has '${qualifier}'.'"
+          messageCollector.report(
+            CompilerMessageSeverity.ERROR,
+            message,
+            locationOrNull() ?: graphDeclaration.sourceGraphIfMetroGraph.locationOrNull(),
+          )
+          exitProcessing()
+        }
+      }
+    }
+
     fun build(): DependencyGraphNode {
       if (graphDeclaration.isExternalParent || !isGraph) {
         return buildExternalGraphOrBindingContainer()
@@ -384,8 +422,19 @@ internal class DependencyGraphNodeCache(
             val isInjector =
               !isGraphExtension &&
                 declaration.regularParameters.size == 1 &&
-                !annotations.isBinds &&
-                declaration.returnType.isUnit()
+                !annotations.isBinds
+
+            if (isInjector && !declaration.returnType.isUnit()) {
+              // TODO move to FIR?
+              // TODO irdiagnosticreporter
+              metroContext.messageCollector.report(
+                CompilerMessageSeverity.ERROR,
+                "Injector function ${declaration.kotlinFqName} must return Unit. Or, if it's not an injector, remove its parameter.",
+                declaration.locationOrNull() ?: graphDeclaration.sourceGraphIfMetroGraph.locationOrNull(),
+              )
+              exitProcessing()
+            }
+
             if (isGraphExtension) {
               val metroFunction = metroFunctionOf(declaration, annotations)
               // if the class is a factory type, need to use its parent class
@@ -449,11 +498,19 @@ internal class DependencyGraphNodeCache(
               val memberInjectorTypeKey =
                 contextKey.typeKey.copy(contextKey.typeKey.type.wrapInMembersInjector())
               val finalContextKey = contextKey.withTypeKey(memberInjectorTypeKey)
+
+              metroFunction.ir.checkOverriddenSymbols(contextKey.typeKey, isInjector = true)
+
               injectors += (metroFunction to finalContextKey)
             } else {
               // Accessor or binds
               val metroFunction = metroFunctionOf(declaration, annotations)
               val contextKey = IrContextualTypeKey.from(declaration)
+
+              if (!metroFunction.annotations.isBinds) {
+                metroFunction.ir.checkOverriddenSymbols(contextKey.typeKey, isInjector = false)
+              }
+
               val collection =
                 if (metroFunction.annotations.isBinds) {
                   bindsFunctions
@@ -546,6 +603,11 @@ internal class DependencyGraphNodeCache(
               }
               hasGraphExtensions = true
             } else {
+              if (!metroFunction.annotations.isBinds) {
+                // TODO inline this into the overridden symbols search above?
+                metroFunction.ir.checkOverriddenSymbols(contextKey.typeKey, isInjector = false)
+              }
+
               val collection =
                 if (metroFunction.annotations.isBinds) {
                   bindsFunctions
@@ -622,12 +684,15 @@ internal class DependencyGraphNodeCache(
             ?.mapNotNullToSet { replacedClass -> replacedClass.classType.rawTypeOrNull()?.classId }
             .orEmpty()
         }
-      val mergedContainers = bindingContainers.filterNot { it.ir.classId in replaced }
-        .mapToSet { it.ir }
-        .let { rootContainers ->
-          // Now that we've filtered out the removed and excluded containers, we can pull in the transitively included ones
-          bindingContainerTransformer.resolveAllBindingContainersCached(rootContainers)
-        }
+      val mergedContainers =
+        bindingContainers
+          .filterNot { it.ir.classId in replaced }
+          .mapToSet { it.ir }
+          .let { rootContainers ->
+            // Now that we've filtered out the removed and excluded containers, we can pull in the
+            // transitively included ones
+            bindingContainerTransformer.resolveAllBindingContainersCached(rootContainers)
+          }
 
       for (container in mergedContainers) {
         providerFactories += container.providerFactories.values.map { it.typeKey to it }

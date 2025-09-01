@@ -2887,4 +2887,120 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       )
     }
   }
+
+  @Test
+  fun `conflicting overrides for accessor properties`() {
+    compile(
+      source(
+        """
+          interface Parent1 {
+            val string: String
+          }
+
+          interface Parent2 {
+            @Named("qualified") val string: String
+          }
+
+          @DependencyGraph interface AppGraph : Parent1, Parent2
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: Parent1.kt:14:1 [Metro/QualifierOverrideMismatch] Overridden accessor property 'test.AppGraph.$${'$'}MetroGraph.<get-string>' must have the same qualifier annotations as the overridden accessor property. However, the final accessor property qualifier is 'null' but overridden symbol test.Parent2.string has '@Named("qualified")'.'
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `conflicting overrides for accessor functions`() {
+    compile(
+      source(
+        """
+          interface Parent1 {
+            fun string(): String
+          }
+
+          interface Parent2 {
+            @Named("qualified") fun string(): String
+          }
+
+          @DependencyGraph interface AppGraph : Parent1, Parent2
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: Parent1.kt:14:1 [Metro/QualifierOverrideMismatch] Overridden accessor function 'test.AppGraph.$${'$'}MetroGraph.string' must have the same qualifier annotations as the overridden accessor function. However, the final accessor function qualifier is 'null' but overridden symbol test.Parent2.string has '@Named("qualified")'.'
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `conflicting overrides for injectors`() {
+    compile(
+      source(
+        """
+          class Thing {
+            @Inject lateinit var string: String
+          }
+
+          interface Parent1 {
+            fun injectThing(thing: Thing)
+          }
+
+          interface Parent2 {
+            fun injectThing(@Named("qualified") thing: Thing)
+          }
+
+          @DependencyGraph interface AppGraph : Parent1, Parent2
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: Thing.kt:18:1 [Metro/QualifierOverrideMismatch] Overridden injector function 'test.AppGraph.$${'$'}MetroGraph.injectThing' must have the same qualifier annotations as the overridden injector function. However, the final injector function qualifier is 'null' but overridden symbol test.Parent2.injectThing has '@Named("qualified")'.'
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `injectors cannot have return types`() {
+    compile(
+      source(
+        """
+          class Thing {
+            @Inject lateinit var string: String
+          }
+
+          interface Parent {
+            fun injectThing(thing: Thing): String
+          }
+
+          @DependencyGraph interface AppGraph : Parent
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: Thing.kt:14:1 Injector function test.AppGraph.$${'$'}MetroGraph.injectThing must return Unit. Or, if it's not an injector, remove its parameter.
+        """
+          .trimIndent()
+      )
+    }
+  }
 }
