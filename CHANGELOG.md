@@ -9,6 +9,8 @@ Changelog
 * **Fix**: Ensure contributed binding containers' included containers are available in root dependency graphs.
 * **Fix**: Make `@Includes` parameter keys available to extensions.
 * **Fix**: Fix an edge case where an included binding container that's transitively included by another container is seen to have zero bindings.
+* **Fix**: Report diagnostic errors if accessors or injectors have conflicting qualifiers in overridden functions.
+* **Fix**: Report diagnostic errors if an injector function does not return `Unit`.
 
 0.6.3
 -----
