@@ -1,0 +1,3 @@
+/ContainersCannotExtendOtherContainers.kt:(156,172): error: Binding containers cannot extend other binding containers, use `includes` instead. Container 'ConfusedContainer' extends 'AnotherContainer'.
+
+/ContainersCannotExtendOtherContainers.kt:(245,263): error: Binding containers cannot extend other binding containers, use `includes` instead. Container 'ConfusedContainer2' extends 'AnotherContainer'.

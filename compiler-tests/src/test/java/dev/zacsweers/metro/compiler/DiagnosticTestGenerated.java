@@ -72,6 +72,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ContainersCannotExtendOtherContainers.kt")
+    public void testContainersCannotExtendOtherContainers() {
+      runTest("compiler-tests/src/test/data/diagnostic/bindingcontainer/ContainersCannotExtendOtherContainers.kt");
+    }
+
+    @Test
     @TestMetadata("ContributedContainersMustHaveNoArgConstructors.kt")
     public void testContributedContainersMustHaveNoArgConstructors() {
       runTest("compiler-tests/src/test/data/diagnostic/bindingcontainer/ContributedContainersMustHaveNoArgConstructors.kt");
