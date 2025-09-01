@@ -2909,7 +2909,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: Parent1.kt:14:1 [Metro/QualifierOverrideMismatch] Overridden accessor property 'test.AppGraph.$${'$'}MetroGraph.<get-string>' must have the same qualifier annotations as the overridden accessor property. However, the final accessor property qualifier is 'null' but overridden symbol test.Parent2.string has '@Named("qualified")'.'
+          e: Parent1.kt:14:1 [Metro/QualifierOverrideMismatch] Overridden accessor property 'test.AppGraph.$${'$'}MetroGraph.string' must have the same qualifier annotations as the overridden accessor property. However, the final accessor property qualifier is 'null' but overridden symbol test.Parent2.string has '@Named("qualified")'.'
         """
           .trimIndent()
       )
