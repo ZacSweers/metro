@@ -78,7 +78,7 @@ jobs:
           GRADLE_OPTS: -Xmx4g # Dokka can be memory intensive, so we increase the heap size
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.13'
 
