@@ -477,6 +477,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       required = false,
       allowMultipleOccurrences = false,
     )
+  ),
+  CUSTOM_ORIGIN(
+    RawMetroOption(
+      name = "custom-origin",
+      defaultValue = emptySet(),
+      valueDescription = "Origin annotations",
+      description = "Custom annotations that indicate the origin class of generated types for contribution merging",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
+    )
   );
 
   companion object {
@@ -571,6 +582,8 @@ public data class MetroOptions(
     MetroOption.ENABLE_DAGGER_ANVIL_INTEROP.raw.defaultValue.expectAs(),
   val enableFullBindingGraphValidation: Boolean =
     MetroOption.ENABLE_FULL_BINDING_GRAPH_VALIDATION.raw.defaultValue.expectAs(),
+  val customOriginAnnotations: Set<ClassId> =
+    MetroOption.CUSTOM_ORIGIN.raw.defaultValue.expectAs(),
 ) {
   internal companion object {
     fun load(configuration: CompilerConfiguration): MetroOptions {
@@ -601,6 +614,7 @@ public data class MetroOptions(
       val customScopeAnnotations = mutableSetOf<ClassId>()
       val customBindingContainerAnnotations = mutableSetOf<ClassId>()
       val customContributesIntoSetAnnotations = mutableSetOf<ClassId>()
+      val customOriginAnnotations = mutableSetOf<ClassId>()
 
       for (entry in MetroOption.entries) {
         when (entry) {
@@ -712,6 +726,8 @@ public data class MetroOptions(
           MetroOption.ENABLE_FULL_BINDING_GRAPH_VALIDATION -> {
             options = options.copy(enableFullBindingGraphValidation = configuration.getAsBoolean(entry))
           }
+          MetroOption.CUSTOM_ORIGIN ->
+            customOriginAnnotations.addAll(configuration.getAsSet(entry))
         }
       }
 
@@ -745,6 +761,7 @@ public data class MetroOptions(
           customScopeAnnotations = customScopeAnnotations,
           customBindingContainerAnnotations = customBindingContainerAnnotations,
           customContributesIntoSetAnnotations = customContributesIntoSetAnnotations,
+          customOriginAnnotations = customOriginAnnotations,
         )
 
       return options

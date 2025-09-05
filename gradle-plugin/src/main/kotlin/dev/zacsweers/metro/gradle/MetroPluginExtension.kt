@@ -189,6 +189,7 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     public val qualifier: SetProperty<String> = objects.setProperty(String::class.java)
     public val scope: SetProperty<String> = objects.setProperty(String::class.java)
     public val bindingContainer: SetProperty<String> = objects.setProperty(String::class.java)
+    public val origin: SetProperty<String> = objects.setProperty(String::class.java)
 
     // Interop markers
     public val enableDaggerAnvilInterop: Property<Boolean> = objects.property(Boolean::class.java)
@@ -286,6 +287,7 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
         graphExtensionFactory.add(
           "software/amazon/lastmile/kotlin/inject/anvil/ContributesSubcomponent.Factory"
         )
+        origin.add("software/amazon/lastmile/kotlin/inject/anvil/internal/Origin")
       }
     }
   }
