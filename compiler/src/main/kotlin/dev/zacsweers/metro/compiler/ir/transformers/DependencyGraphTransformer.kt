@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ir.BindingGraphGenerator
 import dev.zacsweers.metro.compiler.ir.DependencyGraphNode
 import dev.zacsweers.metro.compiler.ir.DependencyGraphNodeCache
@@ -22,7 +23,6 @@ import dev.zacsweers.metro.compiler.ir.IrGraphExtensionGenerator
 import dev.zacsweers.metro.compiler.ir.IrGraphGenerator
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
-import dev.zacsweers.metro.compiler.ir.MetroIrErrors
 import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
@@ -32,9 +32,9 @@ import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.isExternalParent
-import dev.zacsweers.metro.compiler.ir.location
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.rawType
+import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireNestedClass
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.scopeAnnotations
@@ -46,7 +46,6 @@ import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import dev.zacsweers.metro.compiler.unsafeLazy
-import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.irBlockBody
@@ -63,7 +62,6 @@ import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.isLocal
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -233,7 +231,7 @@ internal class DependencyGraphTransformer(
           node,
           injectConstructorTransformer,
           membersInjectorTransformer,
-          contributionData,
+            contributionData,
           parentContext,
         )
           .generate()
@@ -392,22 +390,11 @@ internal class DependencyGraphTransformer(
           tracer.traceNested("Validate graph") {
             bindingGraph.seal(it) { errors ->
               for ((declaration, message) in errors) {
-                // TODO in kotlin 2.2.20 we can just use the reporter
-                val toReport =
-                  declaration?.takeIf {
-                    it.fileOrNull != null && it.origin != Origins.GeneratedGraphExtension
-                  } ?: dependencyGraphDeclaration
-                if (
-                  toReport.fileOrNull != null && toReport.origin != Origins.GeneratedGraphExtension
-                ) {
-                  diagnosticReporter.at(toReport).report(MetroIrErrors.METRO_ERROR, message)
-                } else {
-                  messageCollector.report(
-                    CompilerMessageSeverity.ERROR,
-                    message,
-                    toReport.location(),
-                  )
-                }
+                reportCompat(
+                  irDeclarations = sequenceOf(declaration, dependencyGraphDeclaration),
+                  factory = MetroDiagnostics.METRO_ERROR,
+                  a = message,
+                )
               }
               exitProcessing()
             }
@@ -448,12 +435,11 @@ internal class DependencyGraphTransformer(
                 .proto
           }
           if (proto == null) {
-            diagnosticReporter
-              .at(parent.sourceGraph)
-              .report(
-                MetroIrErrors.METRO_ERROR,
-                "Extended parent graph ${parent.sourceGraph.kotlinFqName} is missing Metro metadata. Was it compiled by the Metro compiler?",
-              )
+            reportCompat(
+              parent.sourceGraph,
+              MetroDiagnostics.METRO_ERROR,
+              "Extended parent graph ${parent.sourceGraph.kotlinFqName} is missing Metro metadata. Was it compiled by the Metro compiler?",
+            )
             exitProcessing()
           }
         }

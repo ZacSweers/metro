@@ -102,12 +102,12 @@ interface ExampleGraph : $$MetroContributionToAppScope {
 
     @Binds
     @IntoSet
-    @CallableMetadata(callableName = "<get-bind>", propertyName = "bind", startOffset = 297, endOffset = 337)
+    @CallableMetadata(callableName = "<get-bind>", propertyName = "bind", startOffset = 313, endOffset = 337)
     abstract fun TaskImpl1.bind_intoset(): Task
 
     @Binds
     @IntoSet
-    @CallableMetadata(callableName = "<get-bind>", propertyName = "bind", startOffset = 254, endOffset = 294)
+    @CallableMetadata(callableName = "<get-bind>", propertyName = "bind", startOffset = 270, endOffset = 294)
     abstract fun TaskImpl2.bind_intoset(): Task
 
   }

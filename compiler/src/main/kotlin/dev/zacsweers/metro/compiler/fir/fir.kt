@@ -304,7 +304,7 @@ internal inline fun FirClass.singleAbstractFunction(
     if (abstractFunctions.isEmpty()) {
       reporter.reportOn(
         source,
-        FirMetroErrors.FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION,
+        MetroDiagnostics.FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION,
         type,
         "none",
       )
@@ -313,7 +313,7 @@ internal inline fun FirClass.singleAbstractFunction(
       for (abstractFunction in abstractFunctions) {
         reporter.reportOn(
           abstractFunction.source,
-          FirMetroErrors.FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION,
+          MetroDiagnostics.FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION,
           type,
           abstractFunctions.size.toString(),
         )
@@ -326,7 +326,7 @@ internal inline fun FirClass.singleAbstractFunction(
   function.checkVisibility(allowProtected) { source, allowedVisibilities ->
     reporter.reportOn(
       source,
-      FirMetroErrors.METRO_DECLARATION_VISIBILITY_ERROR,
+      MetroDiagnostics.METRO_DECLARATION_VISIBILITY_ERROR,
       "$type classes' single abstract functions",
       allowedVisibilities,
     )
@@ -408,7 +408,7 @@ internal inline fun FirClassSymbol<*>.findInjectConstructor(
               inject != null &&
               KotlinTarget.CLASS in inject.getAllowedAnnotationTargets(session)
           ) {
-            reporter.reportOn(inject.source, FirMetroErrors.SUGGEST_CLASS_INJECTION)
+            reporter.reportOn(inject.source, MetroDiagnostics.SUGGEST_CLASS_INJECTION)
           }
         }
       }
@@ -420,7 +420,7 @@ internal inline fun FirClassSymbol<*>.findInjectConstructor(
           .annotationsIn(session, session.classIds.injectAnnotations)
           .single()
           .source,
-        FirMetroErrors.CANNOT_HAVE_MULTIPLE_INJECTED_CONSTRUCTORS,
+        MetroDiagnostics.CANNOT_HAVE_MULTIPLE_INJECTED_CONSTRUCTORS,
       )
       onError()
     }
@@ -452,7 +452,7 @@ internal inline fun FirClass.validateInjectedClass(
   onError: () -> Nothing,
 ) {
   if (isLocal) {
-    reporter.reportOn(source, FirMetroErrors.LOCAL_CLASSES_CANNOT_BE_INJECTED, context)
+    reporter.reportOn(source, MetroDiagnostics.LOCAL_CLASSES_CANNOT_BE_INJECTED, context)
     onError()
   }
 
@@ -467,7 +467,7 @@ internal inline fun FirClass.validateInjectedClass(
           // sealed/abstract
           reporter.reportOn(
             source,
-            FirMetroErrors.ONLY_FINAL_AND_OPEN_CLASSES_CAN_BE_INJECTED,
+            MetroDiagnostics.ONLY_FINAL_AND_OPEN_CLASSES_CAN_BE_INJECTED,
             context,
           )
           onError()
@@ -475,7 +475,7 @@ internal inline fun FirClass.validateInjectedClass(
       }
     }
     else -> {
-      reporter.reportOn(source, FirMetroErrors.ONLY_CLASSES_CAN_BE_INJECTED, context)
+      reporter.reportOn(source, MetroDiagnostics.ONLY_CLASSES_CAN_BE_INJECTED, context)
       onError()
     }
   }
@@ -483,7 +483,7 @@ internal inline fun FirClass.validateInjectedClass(
   checkVisibility { source, allowedVisibilities ->
     reporter.reportOn(
       source,
-      FirMetroErrors.INJECTED_CLASSES_MUST_BE_VISIBLE,
+      MetroDiagnostics.INJECTED_CLASSES_MUST_BE_VISIBLE,
       allowedVisibilities,
       context,
     )
@@ -511,7 +511,7 @@ internal inline fun FirClass.validateApiDeclaration(
   if (isLocal) {
     reporter.reportOn(
       source,
-      FirMetroErrors.METRO_DECLARATION_ERROR,
+      MetroDiagnostics.METRO_DECLARATION_ERROR,
       "$type cannot be local classes.",
     )
     onError()
@@ -524,7 +524,7 @@ internal inline fun FirClass.validateApiDeclaration(
         Modality.SEALED -> {
           reporter.reportOn(
             source,
-            FirMetroErrors.METRO_DECLARATION_ERROR,
+            MetroDiagnostics.METRO_DECLARATION_ERROR,
             "$type should be non-sealed abstract classes or interfaces.",
           )
           onError()
@@ -543,7 +543,7 @@ internal inline fun FirClass.validateApiDeclaration(
           // final/open/sealed
           reporter.reportOn(
             source,
-            FirMetroErrors.METRO_DECLARATION_ERROR,
+            MetroDiagnostics.METRO_DECLARATION_ERROR,
             "$type should be non-sealed abstract classes or interfaces.",
           )
           onError()
@@ -553,7 +553,7 @@ internal inline fun FirClass.validateApiDeclaration(
     else -> {
       reporter.reportOn(
         source,
-        FirMetroErrors.METRO_DECLARATION_ERROR,
+        MetroDiagnostics.METRO_DECLARATION_ERROR,
         "$type should be non-sealed abstract classes or interfaces.",
       )
       onError()
@@ -563,7 +563,7 @@ internal inline fun FirClass.validateApiDeclaration(
   checkVisibility { source, allowedVisibilities ->
     reporter.reportOn(
       source,
-      FirMetroErrors.METRO_DECLARATION_VISIBILITY_ERROR,
+      MetroDiagnostics.METRO_DECLARATION_VISIBILITY_ERROR,
       type,
       allowedVisibilities,
     )
@@ -581,7 +581,7 @@ internal inline fun FirConstructorSymbol.validateVisibility(type: String, onErro
   checkVisibility { source, allowedVisibilities ->
     reporter.reportOn(
       source,
-      FirMetroErrors.METRO_DECLARATION_VISIBILITY_ERROR,
+      MetroDiagnostics.METRO_DECLARATION_VISIBILITY_ERROR,
       type,
       allowedVisibilities,
     )
@@ -1090,7 +1090,7 @@ internal fun StringBuilder.renderType(short: Boolean, type: ConeKotlinType) {
 context(context: CheckerContext)
 internal fun FirClassSymbol<*>.nestedClasses(): List<FirRegularClassSymbol> {
   val collected = mutableListOf<FirRegularClassSymbol>()
-  declaredMemberScope(context).processAllClassifiers { symbol ->
+  declaredMemberScope().processAllClassifiers { symbol ->
     if (symbol is FirRegularClassSymbol) {
       collected += symbol
     }
@@ -1111,7 +1111,7 @@ internal fun NestedClassGenerationContext.nestedClasses(): List<FirRegularClassS
 context(context: CheckerContext)
 internal fun FirClassSymbol<*>.directCallableSymbols(): List<FirCallableSymbol<*>> {
   val collected = mutableListOf<FirCallableSymbol<*>>()
-  declaredMemberScope(context).processAllCallables { collected += it }
+  declaredMemberScope().processAllCallables { collected += it }
   return collected
 }
 

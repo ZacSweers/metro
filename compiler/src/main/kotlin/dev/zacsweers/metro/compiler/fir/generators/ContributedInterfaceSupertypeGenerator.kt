@@ -42,7 +42,6 @@ import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
-import org.jetbrains.kotlin.fir.firForVisibilityChecker
 import org.jetbrains.kotlin.fir.lookupTracker
 import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.moduleVisibilityChecker
@@ -121,7 +120,8 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
             when (it.visibility) {
               Visibilities.Internal -> {
                 it.moduleData == session.moduleData ||
-                  session.moduleVisibilityChecker?.isInFriendModule(it.firForVisibilityChecker) ==
+                  @OptIn(SymbolInternals::class)
+                  session.moduleVisibilityChecker?.isInFriendModule(it.fir) ==
                     true
               }
               else -> true

@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.expectAs
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrBinding
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
@@ -36,9 +37,11 @@ import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toProto
+import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.isWordPrefixRegex
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.mapToSet
@@ -355,6 +358,10 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
       )
 
     factoryCls.dumpToMetroLog()
+
+    writeDiagnostic("provider-factory-${factoryCls.kotlinFqName.asString()}.kt") {
+      factoryCls.dumpKotlinLike()
+    }
 
     generatedFactories[reference.callableId] = providerFactory
     return providerFactory
@@ -713,14 +720,8 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
         val message =
           "No metadata found for ${metadataDeclaration.kotlinFqName} from " +
             "another module. Did you run the Metro compiler plugin on this module?"
-        reportCompilerBug(message)
-        // TODO kotlin 2.2.20
-        //  diagnosticReporter
-        //    .at(declaration)
-        //    .report(
-        //      MetroIrErrors.METRO_ERROR,
-        //      message,
-        //    )
+        reportCompat(declaration, MetroDiagnostics.METRO_ERROR, message)
+        return null
       }
       cache[declarationFqName] = Optional.empty()
       return null
