@@ -190,6 +190,13 @@ open annotation class dev.zacsweers.metro/Named : kotlin/Annotation { // dev.zac
         final fun <get-name>(): kotlin/String // dev.zacsweers.metro/Named.name.<get-name>|<get-name>(){}[0]
 }
 
+open annotation class dev.zacsweers.metro/Origin : kotlin/Annotation { // dev.zacsweers.metro/Origin|null[0]
+    constructor <init>(kotlin.reflect/KClass<*>) // dev.zacsweers.metro/Origin.<init>|<init>(kotlin.reflect.KClass<*>){}[0]
+
+    final val value // dev.zacsweers.metro/Origin.value|{}value[0]
+        final fun <get-value>(): kotlin.reflect/KClass<*> // dev.zacsweers.metro/Origin.value.<get-value>|<get-value>(){}[0]
+}
+
 open annotation class dev.zacsweers.metro/Provides : kotlin/Annotation { // dev.zacsweers.metro/Provides|null[0]
     constructor <init>() // dev.zacsweers.metro/Provides.<init>|<init>(){}[0]
 }
