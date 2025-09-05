@@ -192,6 +192,12 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
               add(ClassId.fromString("dagger/multibindings/Multibinds"))
             }
           },
+        customOriginAnnotations =
+          buildSet {
+            if (MetroDirectives.WITH_KI_ANVIL in module.directives) {
+              add(ClassId.fromString("software/amazon/lastmile/kotlin/inject/anvil/internal/Origin"))
+            }
+          },
         // TODO other dagger annotations/types not yet implemented
       )
     val classIds = ClassIds.fromOptions(options)

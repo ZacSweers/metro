@@ -22,6 +22,7 @@ buildConfig {
 
 val metroRuntimeClasspath: Configuration by configurations.creating { isTransitive = false }
 val anvilRuntimeClasspath: Configuration by configurations.creating { isTransitive = false }
+val kiAnvilRuntimeClasspath: Configuration by configurations.creating { isTransitive = false }
 // include transitive in this case to grab jakarta and javax
 val daggerRuntimeClasspath: Configuration by configurations.creating {}
 val daggerInteropClasspath: Configuration by configurations.creating { isTransitive = false }
@@ -45,6 +46,7 @@ dependencies {
   anvilRuntimeClasspath(libs.anvil.annotations)
   anvilRuntimeClasspath(libs.anvil.annotations.optional)
   daggerRuntimeClasspath(libs.dagger.runtime)
+  kiAnvilRuntimeClasspath(libs.kotlinInject.anvil.runtime)
 
   // Dependencies required to run the internal test framework.
   testRuntimeOnly(libs.kotlin.reflect)
@@ -88,6 +90,7 @@ tasks.withType<Test> {
 
   systemProperty("metroRuntime.classpath", metroRuntimeClasspath.asPath)
   systemProperty("anvilRuntime.classpath", anvilRuntimeClasspath.asPath)
+  systemProperty("kiAnvilRuntime.classpath", kiAnvilRuntimeClasspath.asPath)
   systemProperty("daggerRuntime.classpath", daggerRuntimeClasspath.asPath)
   systemProperty("daggerInterop.classpath", daggerInteropClasspath.asPath)
 
