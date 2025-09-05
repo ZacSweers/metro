@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.irReturn
@@ -14,6 +15,8 @@ import org.jetbrains.kotlin.ir.expressions.IrGetValue
 import org.jetbrains.kotlin.ir.expressions.impl.IrCallImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrGetValueImpl
 import org.jetbrains.kotlin.ir.expressions.impl.fromSymbolOwner
+import org.jetbrains.kotlin.ir.types.IrSimpleType
+import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -63,7 +66,8 @@ internal fun copyParameterDefaultValues(
             IrCallImpl.fromSymbolOwner(
                 SYNTHETIC_OFFSET,
                 SYNTHETIC_OFFSET,
-                newGet.type,
+                // Unpack the provider type
+                newGet.type.expectAs<IrSimpleType>().arguments[0].typeOrFail,
                 context.symbols.providerInvoke,
               )
               .apply { this.dispatchReceiver = newGet }
