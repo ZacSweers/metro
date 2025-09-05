@@ -243,7 +243,7 @@ internal class IrGraphExtensionGenerator(
         // Remove contributions from excluded classes that have nested $$MetroContribution classes
         // (binding containers don't have these, so this only affects @ContributesBinding etc.)
         allContributions.remove(excludedClassId)
-        
+
         // Remove contributions that have @Origin annotation pointing to the excluded class
         originToContributions[excludedClassId]?.forEach { contributionId ->
           allContributions.remove(contributionId)
@@ -256,9 +256,9 @@ internal class IrGraphExtensionGenerator(
           .annotationsIn(symbols.classIds.allContributesAnnotations)
           .flatMap { annotation -> annotation.replacedClasses() }
           .mapNotNull { replacedClass -> replacedClass.classType.rawType().classId }
-          .forEach { replacedClassId -> 
+          .forEach { replacedClassId ->
             allContributions.remove(replacedClassId)
-            
+
             // Remove contributions that have @Origin annotation pointing to the replaced class
             originToContributions[replacedClassId]?.forEach { contributionId ->
               allContributions.remove(contributionId)
