@@ -4,6 +4,8 @@ Changelog
 **Unreleased**
 --------------
 
+* **Fix**: Fix wrong `IrType` for default value expressions wrapped in `Provider`.
+
 0.6.4
 -----
 
