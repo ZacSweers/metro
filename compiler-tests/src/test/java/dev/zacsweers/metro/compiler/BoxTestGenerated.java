@@ -80,6 +80,18 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ExcludesWithOrigin.kt")
+    public void testExcludesWithOrigin() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ExcludesWithOrigin.kt");
+    }
+
+    @Test
+    @TestMetadata("ExcludesWithOriginInExtension.kt")
+    public void testExcludesWithOriginInExtension() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ExcludesWithOriginInExtension.kt");
+    }
+
+    @Test
     @TestMetadata("InternalHintsInContributedGraph.kt")
     public void testInternalHintsInContributedGraph() {
       runTest("compiler-tests/src/test/data/box/aggregation/InternalHintsInContributedGraph.kt");
@@ -116,6 +128,18 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ReplacementsWithOrigin.kt")
+    public void testReplacementsWithOrigin() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ReplacementsWithOrigin.kt");
+    }
+
+    @Test
+    @TestMetadata("ReplacementsWithOriginInExtension.kt")
+    public void testReplacementsWithOriginInExtension() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ReplacementsWithOriginInExtension.kt");
+    }
+
+    @Test
     @TestMetadata("ScopedContributedBindingCanBeAccessedFromChildWithClassHintsEnabled.kt")
     public void testScopedContributedBindingCanBeAccessedFromChildWithClassHintsEnabled() {
       runTest("compiler-tests/src/test/data/box/aggregation/ScopedContributedBindingCanBeAccessedFromChildWithClassHintsEnabled.kt");
@@ -146,6 +170,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("ContributesMultibindingInteropAnnotationsAddBindingToSetOrMapWithMapKey.kt")
       public void testContributesMultibindingInteropAnnotationsAddBindingToSetOrMapWithMapKey() {
         runTest("compiler-tests/src/test/data/box/aggregation/interop/ContributesMultibindingInteropAnnotationsAddBindingToSetOrMapWithMapKey.kt");
+      }
+
+      @Test
+      @TestMetadata("ExcludesWithOriginInterop.kt")
+      public void testExcludesWithOriginInterop() {
+        runTest("compiler-tests/src/test/data/box/aggregation/interop/ExcludesWithOriginInterop.kt");
       }
 
       @Test
