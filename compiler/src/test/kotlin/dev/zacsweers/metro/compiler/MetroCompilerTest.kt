@@ -241,6 +241,13 @@ abstract class MetroCompilerTest {
                   customGraphExtensionFactoryAnnotations.joinToString(":"),
                 )
               }
+              MetroOption.CUSTOM_ORIGIN -> {
+                if (customOriginAnnotations.isEmpty()) continue
+                processor.option(
+                  entry.raw.cliOption,
+                  customOriginAnnotations.joinToString(":"),
+                )
+              }
               MetroOption.ENABLE_DAGGER_ANVIL_INTEROP -> {
                 processor.option(entry.raw.cliOption, enableDaggerAnvilInterop)
               }
