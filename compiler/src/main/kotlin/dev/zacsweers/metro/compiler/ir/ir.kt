@@ -817,6 +817,11 @@ internal fun IrConstructorCall.scopeClassOrNull(): IrClass? {
     ?.rawTypeOrNull()
 }
 
+context(context: IrMetroContext)
+internal fun IrClass.originClassId(): ClassId? {
+  return annotationsIn(context.symbols.classIds.originAnnotations).firstOrNull()?.originOrNull()
+}
+
 internal fun IrConstructorCall.requireOrigin(): ClassId {
   return originOrNull() ?: reportCompilerBug("No origin found for ${dumpKotlinLike()}")
 }

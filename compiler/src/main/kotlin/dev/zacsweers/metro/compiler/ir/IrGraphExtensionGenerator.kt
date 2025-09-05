@@ -219,6 +219,19 @@ internal class IrGraphExtensionGenerator(
 
       // TODO do we exclude directly contributed ones or also include transitives?
 
+      // Build a cache of origin class -> contribution classes mappings upfront
+      // This maps from an origin class to all contributions that have an @Origin pointing to it
+      val originToContributions = mutableMapOf<ClassId, MutableSet<ClassId>>()
+      for ((contributionClassId, contributions) in allContributions) {
+        // Get the actual contribution class (nested $$MetroContribution)
+        val contributionClass = contributions.firstOrNull()?.rawTypeOrNull()
+        if (contributionClass != null) {
+          contributionClass.originClassId()?.let { originClassId ->
+            originToContributions.getOrPut(originClassId) { mutableSetOf() }.add(contributionClassId)
+          }
+        }
+      }
+
       // Process excludes
       val excluded = extensionAnno.excludedClasses()
       for (excludedClass in excluded) {
@@ -230,6 +243,11 @@ internal class IrGraphExtensionGenerator(
         // Remove contributions from excluded classes that have nested $$MetroContribution classes
         // (binding containers don't have these, so this only affects @ContributesBinding etc.)
         allContributions.remove(excludedClassId)
+        
+        // Remove contributions that have @Origin annotation pointing to the excluded class
+        originToContributions[excludedClassId]?.forEach { contributionId ->
+          allContributions.remove(contributionId)
+        }
       }
 
       // Apply replacements from remaining (non-excluded) binding containers
@@ -238,7 +256,14 @@ internal class IrGraphExtensionGenerator(
           .annotationsIn(symbols.classIds.allContributesAnnotations)
           .flatMap { annotation -> annotation.replacedClasses() }
           .mapNotNull { replacedClass -> replacedClass.classType.rawType().classId }
-          .forEach { replacedClassId -> allContributions.remove(replacedClassId) }
+          .forEach { replacedClassId -> 
+            allContributions.remove(replacedClassId)
+            
+            // Remove contributions that have @Origin annotation pointing to the replaced class
+            originToContributions[replacedClassId]?.forEach { contributionId ->
+              allContributions.remove(contributionId)
+            }
+          }
       }
 
       // Process rank-based replacements if Dagger-Anvil interop is enabled
