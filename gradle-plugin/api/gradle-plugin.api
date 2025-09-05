@@ -68,6 +68,7 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension$InteropHan
 	public final fun getLazy ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getMapKey ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getMultibinds ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getOrigin ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getProvider ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getProvides ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getQualifier ()Lorg/gradle/api/provider/SetProperty;
