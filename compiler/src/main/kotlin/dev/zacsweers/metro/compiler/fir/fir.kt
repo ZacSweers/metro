@@ -783,6 +783,8 @@ internal fun FirBasedSymbol<*>.requireContainingClassSymbol(): FirClassLikeSymbo
 private val FirPropertyAccessExpression.qualifierName: Name?
   get() = (calleeReference as? FirSimpleNamedReference)?.name
 
+internal fun FirAnnotation.originArgument() = classArgument(StandardNames.DEFAULT_VALUE_PARAMETER, index = 0)
+
 internal fun FirAnnotation.scopeArgument() = classArgument(Symbols.Names.scope, index = 0)
 
 internal fun FirAnnotation.additionalScopesArgument() =
