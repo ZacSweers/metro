@@ -164,7 +164,7 @@ ksp-symbolProcessing-commonDeps = { module = "com.google.devtools.ksp:symbol-pro
 ksp-symbolProcessing-aaEmbeddable = { module = "com.google.devtools.ksp:symbol-processing-aa-embeddable", version.ref = "ksp" }
 testkit-support = { module =  "com.autonomousapps:gradle-testkit-support", version = "0.20"}
 testkit-truth = { module =  "com.autonomousapps:gradle-testkit-truth", version = "1.6.1"}
-truth = { module = "com.google.truth:truth", version = "1.4.4" }
+truth = { module = "com.google.truth:truth", version = "1.4.5" }
 kct = { module = "dev.zacsweers.kctfork:core", version.ref = "kct" }
 kct-ksp = { module = "dev.zacsweers.kctfork:ksp", version.ref = "kct" }
 
