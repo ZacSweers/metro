@@ -158,6 +158,7 @@ internal class Symbols(
       ClassId(FqNames.metroRuntimeInternalPackage, StringNames.INJECTED_FUNCTION_CLASS.asName())
     val metroIntoMap = ClassId(FqNames.metroRuntimePackage, StringNames.INTO_MAP.asName())
     val metroIntoSet = ClassId(FqNames.metroRuntimePackage, StringNames.INTO_SET.asName())
+    val metroOrigin = ClassId(FqNames.metroRuntimePackage, "Origin".asName())
     val metroProvider = ClassId(FqNames.metroRuntimePackage, Names.ProviderClass)
     val metroProvides = ClassId(FqNames.metroRuntimePackage, StringNames.PROVIDES.asName())
     val metroSingleIn = ClassId(FqNames.metroRuntimePackage, StringNames.SINGLE_IN.asName())

@@ -128,6 +128,10 @@ public abstract interface annotation class dev/zacsweers/metro/Named : java/lang
 	public abstract fun name ()Ljava/lang/String;
 }
 
+public abstract interface annotation class dev/zacsweers/metro/Origin : java/lang/annotation/Annotation {
+	public abstract fun value ()Ljava/lang/Class;
+}
+
 public abstract interface class dev/zacsweers/metro/Provider {
 	public abstract fun invoke ()Ljava/lang/Object;
 }

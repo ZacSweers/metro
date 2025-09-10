@@ -4,6 +4,7 @@ Changelog
 **Unreleased**
 --------------
 
+* **New**: Add `@Origin` annotation for custom code generators to link origin classes. See the [docs](https://zacsweers.github.io/metro/latest/generating-metro-code.html#origin-annotations).
 * **Fix**: Fix wrong `IrType` for default value expressions wrapped in `Provider`.
 
 0.6.4

@@ -369,7 +369,9 @@ internal fun FirAnnotationCall.computeAnnotationHash(
               ?.classId
           }
           else -> {
-            reportCompilerBug("Unexpected annotation argument type: ${arg::class.java} - ${arg.render()}")
+            reportCompilerBug(
+              "Unexpected annotation argument type: ${arg::class.java} - ${arg.render()}"
+            )
           }
         }
       }
@@ -783,6 +785,9 @@ internal fun FirBasedSymbol<*>.requireContainingClassSymbol(): FirClassLikeSymbo
 private val FirPropertyAccessExpression.qualifierName: Name?
   get() = (calleeReference as? FirSimpleNamedReference)?.name
 
+internal fun FirAnnotation.originArgument() =
+  classArgument(StandardNames.DEFAULT_VALUE_PARAMETER, index = 0)
+
 internal fun FirAnnotation.scopeArgument() = classArgument(Symbols.Names.scope, index = 0)
 
 internal fun FirAnnotation.additionalScopesArgument() =
@@ -921,9 +926,7 @@ internal fun FirAnnotation.resolvedReplacedClassIds(
   return replaced.toSet()
 }
 
-internal fun FirGetClassCall.resolveClassId(
-  typeResolver: MetroFirTypeResolver
-): ClassId? {
+internal fun FirGetClassCall.resolveClassId(typeResolver: MetroFirTypeResolver): ClassId? {
   // If it's available and resolved, just use it directly!
   coneTypeIfResolved()?.classId?.let {
     return it
@@ -1195,3 +1198,12 @@ internal fun typeRefFromQualifierParts(
 
 internal val FirSession.memoizedAllSessionsSequence: Sequence<FirSession>
   get() = sequenceOf(this).plus(moduleData.allDependsOnDependencies.map { it.session }).memoized()
+
+internal fun FirClassSymbol<*>.originClassId(
+  session: FirSession,
+  typeResolver: MetroFirTypeResolver,
+): ClassId? =
+  annotationsIn(session, session.classIds.originAnnotations)
+    .firstOrNull()
+    ?.originArgument()
+    ?.resolveClassId(typeResolver)

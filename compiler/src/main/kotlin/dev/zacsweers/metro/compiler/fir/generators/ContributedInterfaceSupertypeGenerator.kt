@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.memoizedAllSessionsSequence
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
+import dev.zacsweers.metro.compiler.fir.originClassId
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.rankValue
@@ -23,7 +24,9 @@ import dev.zacsweers.metro.compiler.fir.resolvedReplacedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
 import dev.zacsweers.metro.compiler.singleOrError
+import java.util.Optional
 import java.util.TreeMap
+import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirSession
@@ -205,6 +208,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
         graphExtensionFactoryPredicate,
         qualifiersPredicate,
         bindingContainerPredicate,
+        originPredicate,
       )
     }
   }
@@ -255,7 +259,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
 
     // Stable sort
     val contributions =
-      TreeMap<ClassId, ConeKotlinType>(compareBy(ClassId::asString)).apply {
+      TreeMap<ClassId, ConeClassLikeType>(compareBy(ClassId::asString)).apply {
         for (contribution in contributionClassLikes) {
           // This is always the $$MetroContribution, the contribution is its parent
           val classId = contribution.classId?.parentClassId ?: continue
@@ -268,18 +272,50 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
       return emptyList()
     }
 
+    fun removeContribution(classId: ClassId, unmatched: MutableSet<ClassId>) {
+      val removed = contributions.remove(classId)
+      if (removed == null) {
+        unmatched += classId
+      }
+    }
+
+    val typeResolverCache = mutableMapOf<FirClassLikeSymbol<*>, Optional<MetroFirTypeResolver>>()
+
+    fun typeResolverFor(symbol: FirClassLikeSymbol<*>): MetroFirTypeResolver? {
+      return typeResolverCache
+        .getOrPut(symbol) { Optional.ofNullable(typeResolverFactory.create(symbol)) }
+        .getOrNull()
+    }
+
+    // Build a cache of origin class -> contribution classes mappings upfront
+    // This maps from an origin class to all contributions that have @Origin pointing to it
+    // TODO make this lazily computed?
+    val originToContributions = mutableMapOf<ClassId, MutableSet<ClassId>>()
+    for ((parentClassId, _) in contributions) {
+      val parentSymbol = parentClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()
+      if (parentSymbol != null) {
+        val localTypeResolver = typeResolverFor(parentSymbol) ?: continue
+
+        parentSymbol.originClassId(session, localTypeResolver)?.let { originClassId ->
+          originToContributions.getOrPut(originClassId) { mutableSetOf() }.add(parentClassId)
+        }
+      }
+    }
+
     val unmatchedExclusions = mutableSetOf<ClassId>()
 
     for (excludedClassId in excluded) {
-      val removed = contributions.remove(excludedClassId)
-      if (removed == null) {
-        unmatchedExclusions += excludedClassId
-      }
+      removeContribution(excludedClassId, unmatchedExclusions)
 
       // If the target is a binding container, remove it from our mappings
       contributionMappingsByClassId[excludedClassId]
         ?.takeIf { it }
         ?.let { contributionMappingsByClassId.remove(excludedClassId) }
+
+      // Remove contributions that have @Origin annotation pointing to the excluded class
+      originToContributions[excludedClassId]?.forEach { contributionId ->
+        removeContribution(contributionId, unmatchedExclusions)
+      }
 
       // If the target is `@GraphExtension`, also implicitly exclude its nested factory if available
       // TODO this is finicky and the target class's annotations aren't resolved.
@@ -293,13 +329,10 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
           if (nestedClassId in contributions) {
             nestedClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()?.let {
               if (
-                it.isAnnotatedWithAny(
-                  session,
-                  session.classIds.graphExtensionFactoryAnnotations,
-                )
+                it.isAnnotatedWithAny(session, session.classIds.graphExtensionFactoryAnnotations)
               ) {
                 // Exclude its factory class too
-                contributions.remove(nestedClassId)
+                removeContribution(nestedClassId, unmatchedExclusions)
               }
             }
           }
@@ -325,8 +358,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
         }
       }
       .flatMap { contributingType ->
-        val localTypeResolver =
-          typeResolverFactory.create(contributingType) ?: return@flatMap emptySequence()
+        val localTypeResolver = typeResolverFor(contributingType) ?: return@flatMap emptySequence()
 
         contributingType
           .annotationsIn(session, session.classIds.allContributesAnnotationsWithContainers)
@@ -335,9 +367,11 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
       }
       .distinct()
       .forEach { replacedClassId ->
-        val removed = contributions.remove(replacedClassId)
-        if (removed != null) {
-          unmatchedReplacements += replacedClassId
+        removeContribution(replacedClassId, unmatchedReplacements)
+
+        // Remove contributions that have @Origin annotation pointing to the replaced class
+        originToContributions[replacedClassId]?.forEach { contributionId ->
+          removeContribution(contributionId, unmatchedReplacements)
         }
       }
 
@@ -347,13 +381,11 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
 
     if (session.metroFirBuiltIns.options.enableDaggerAnvilInterop) {
       val unmatchedRankReplacements = mutableSetOf<ClassId>()
-      val pendingRankReplacements = processRankBasedReplacements(scopes, contributions, typeResolver)
+      val pendingRankReplacements =
+        processRankBasedReplacements(scopes, contributions, typeResolver)
 
       pendingRankReplacements.distinct().forEach { replacedClassId ->
-        val removed = contributions.remove(replacedClassId)
-        if (removed != null) {
-          unmatchedRankReplacements += replacedClassId
-        }
+        removeContribution(replacedClassId, unmatchedReplacements)
       }
 
       if (unmatchedRankReplacements.isNotEmpty()) {
@@ -391,7 +423,6 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
           contributingType
             .annotationsIn(session, session.classIds.contributesBindingAnnotations)
             .mapNotNull { annotation ->
-
               val scope = annotation.resolvedScopeClassId(typeResolver) ?: return@mapNotNull null
               if (scope !in allScopes) return@mapNotNull null
 
