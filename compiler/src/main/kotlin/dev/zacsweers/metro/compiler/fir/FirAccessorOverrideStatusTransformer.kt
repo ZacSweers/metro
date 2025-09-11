@@ -85,13 +85,8 @@ internal class FirAccessorOverrideStatusTransformer(session: FirSession) :
     val name = declaration.symbol.callableId?.callableName ?: return status
 
     var needsOverride = false
-    for (superType in containingClass.getSuperTypes(session, recursive = false)) {
+    for (superType in containingClass.getSuperTypes(session)) {
       val classSymbol = superType.toClassSymbol(session) ?: continue
-      if (
-        !classSymbol.name.asString().startsWith(Symbols.StringNames.METRO_CONTRIBUTION_NAME_PREFIX)
-      ) {
-        continue
-      }
 
       // We only want @ContributesTo types, which have supertypes
       val contributedInterface =
