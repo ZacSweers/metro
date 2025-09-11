@@ -460,6 +460,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("OverrideCompatibleAccessorsFromGraph.kt")
+    public void testOverrideCompatibleAccessorsFromGraph() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/OverrideCompatibleAccessorsFromGraph.kt");
+    }
+
+    @Test
     @TestMetadata("OverrideCompatibleAccessorsFromIncludes.kt")
     public void testOverrideCompatibleAccessorsFromIncludes() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/OverrideCompatibleAccessorsFromIncludes.kt");
