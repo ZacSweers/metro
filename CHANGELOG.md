@@ -11,7 +11,7 @@ Changelog
       interface StringRequester {
         val string: String
       }
-      
+
       @DependencyGraph(AppScope::class)
       interface AppGraph {
         val string: String // <-- previously failed to compile due to missing override
