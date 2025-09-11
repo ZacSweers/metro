@@ -4,6 +4,21 @@ Changelog
 **Unreleased**
 --------------
 
+- **Fix:** If a graph declares an overridable declaration that matches one of a contributed supertype, transform it to add the requisite `override` modifier.
+    - All that is to say, this code now works
+      ```kotlin
+      @ContributesTo(AppScope::class)
+      interface StringRequester {
+        val string: String
+      }
+      
+      @DependencyGraph(AppScope::class)
+      interface AppGraph {
+        val string: String // <-- previously failed to compile due to missing override
+      }
+      ```
+- Update to Kotlin `2.2.20`. This release requires `2.2.20` or later. See the compatibility [docs](https://zacsweers.github.io/metro/latest/compatibility).
+
 0.6.5
 -----
 
