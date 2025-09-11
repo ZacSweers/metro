@@ -53,7 +53,7 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         project.logger.warn(
           """
             Metro '$VERSION' is compiled against Kotlin $BASE_KOTLIN_VERSION and this build uses '$kotlinVersion'.
-            If you have any issues, please upgrade Metro (if applicable) or downgrade Kotlin to '$BASE_KOTLIN_VERSION'. See https://zacsweers.github.io/metro/compatibility. .
+            If you have any issues, please upgrade Metro (if applicable) or downgrade Kotlin to '$BASE_KOTLIN_VERSION'. See https://zacsweers.github.io/metro/latest/compatibility .
             You can also disable this warning via `metro.version.check=false` or setting the `metro.enableKotlinVersionCompatibilityChecks` DSL property.
           """
             .trimIndent()
