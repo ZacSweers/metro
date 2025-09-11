@@ -1,6 +1,6 @@
 @DependencyGraph(AppScope::class)
 interface AppGraph {
-  // If the fun is named the same as val acccessor, transformer shouldn't add override on this
+  // If the fun is named the same as val accessor, transformer shouldn't add override on this
   fun int(): Int
 
   // Transformer should add override when the field is inherited in the contributed type
