@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.fir
 
 import dev.zacsweers.metro.compiler.MetroAnnotations.Kind
-import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.metroAnnotations
 import org.jetbrains.kotlin.descriptors.isInterface
 import org.jetbrains.kotlin.fir.FirSession
@@ -15,6 +14,7 @@ import org.jetbrains.kotlin.fir.declarations.FirConstructor
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationStatus
 import org.jetbrains.kotlin.fir.declarations.FirField
+import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
 import org.jetbrains.kotlin.fir.declarations.utils.hasBody
@@ -24,6 +24,8 @@ import org.jetbrains.kotlin.fir.extensions.FirStatusTransformerExtension
 import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
 import org.jetbrains.kotlin.fir.resolve.getSuperTypes
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
+import org.jetbrains.kotlin.fir.symbols.SymbolInternals
+import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 
@@ -78,11 +80,10 @@ internal class FirAccessorOverrideStatusTransformer(session: FirSession) :
     declaration: FirDeclaration,
   ): FirDeclarationStatus {
     if (declaration !is FirCallableDeclaration) return status
-    val returnType = declaration.returnTypeRef.coneTypeOrNull ?: return status
+    declaration.returnTypeRef.coneTypeOrNull ?: return status
+    declaration.symbol.callableId?.callableName ?: return status
 
     val containingClass = declaration.getContainingClassSymbol() ?: return status
-
-    val name = declaration.symbol.callableId?.callableName ?: return status
 
     var needsOverride = false
     for (superType in containingClass.getSuperTypes(session)) {
@@ -97,12 +98,7 @@ internal class FirAccessorOverrideStatusTransformer(session: FirSession) :
         contributedInterface
           .callableDeclarations(session, includeSelf = true, includeAncestors = false)
           .firstOrNull {
-            // Functions with params are not accessor candidates
-            if (it is FirNamedFunctionSymbol && it.valueParameterSymbols.isNotEmpty())
-              return@firstOrNull false
-            // Extensions are not accessor candidates
-            if (it.receiverParameterSymbol != null) return@firstOrNull false
-            it.name == name && it.resolvedReturnType == returnType
+            it.isOverrideCompatibleWith(declaration.symbol)
           }
 
       if (matchingCallable != null) {
@@ -113,5 +109,25 @@ internal class FirAccessorOverrideStatusTransformer(session: FirSession) :
 
     if (!needsOverride) return status
     return status.copy(isOverride = true)
+  }
+
+  @OptIn(SymbolInternals::class)
+  private fun FirCallableSymbol<*>.isOverrideCompatibleWith(
+    other: FirCallableSymbol<*>
+  ): Boolean {
+    // Functions with params are not accessor candidates
+    if (this is FirNamedFunctionSymbol && valueParameterSymbols.isNotEmpty())
+      return false
+    // Extensions are not accessor candidates
+    if (receiverParameterSymbol != null) return false
+
+    // Validate name + return type, then check if the fir type are the same
+    if (name == other.name && resolvedReturnType == other.resolvedReturnType) {
+      val isBothProperties = fir is FirProperty && other.fir is FirProperty
+      val isBothFunctions = fir is FirFunction && other.fir is FirFunction
+      return isBothProperties || isBothFunctions
+    }
+
+    return false
   }
 }
