@@ -454,15 +454,15 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
-    @TestMetadata("OverrideCompatibleGraphBindingAccessors.kt")
-    public void testOverrideCompatibleGraphBindingAccessors() {
-      runTest("compiler-tests/src/test/data/box/dependencygraph/OverrideCompatibleGraphBindingAccessors.kt");
+    @TestMetadata("OverrideCompatibleAccessorsFromContributedInterface.kt")
+    public void testOverrideCompatibleAccessorsFromContributedInterface() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/OverrideCompatibleAccessorsFromContributedInterface.kt");
     }
 
     @Test
-    @TestMetadata("OverrideCompatibleIncludesBindingAccessors.kt")
-    public void testOverrideCompatibleIncludesBindingAccessors() {
-      runTest("compiler-tests/src/test/data/box/dependencygraph/OverrideCompatibleIncludesBindingAccessors.kt");
+    @TestMetadata("OverrideCompatibleAccessorsFromIncludes.kt")
+    public void testOverrideCompatibleAccessorsFromIncludes() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/OverrideCompatibleAccessorsFromIncludes.kt");
     }
 
     @Test
