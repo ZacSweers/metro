@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.fir.findInjectConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
+import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.KtFakeSourceElementKind
@@ -167,7 +168,11 @@ internal object BindingContainerCallableChecker :
 
     // Check property is not var
     if (declaration is FirProperty && declaration.isVar) {
-      reporter.reportOn(source, MetroDiagnostics.PROVIDES_ERROR, "@Provides properties cannot be var")
+      reporter.reportOn(
+        source,
+        MetroDiagnostics.PROVIDES_ERROR,
+        "@Provides properties cannot be var",
+      )
       return
     }
 
@@ -344,13 +349,22 @@ internal object BindingContainerCallableChecker :
       if (declaration is FirSimpleFunction) {
         for (parameter in declaration.valueParameters) {
           val assistedAnnotation =
-            parameter.annotationsIn(session, classIds.assistedAnnotations).firstOrNull() ?: continue
-          reporter.reportOn(
-            assistedAnnotation.source ?: parameter.source ?: source,
-            MetroDiagnostics.PROVIDES_ERROR,
-            "Assisted parameters are not supported for `@Provides` methods. Create a concrete assisted-injected factory class instead.",
-          )
-          return
+            parameter.annotationsIn(session, classIds.assistedAnnotations).firstOrNull()
+          if (assistedAnnotation != null) {
+            reporter.reportOn(
+              assistedAnnotation.source ?: parameter.source ?: source,
+              MetroDiagnostics.PROVIDES_ERROR,
+              "Assisted parameters are not supported for `@Provides` methods. Create a concrete assisted-injected factory class instead.",
+            )
+            return
+          }
+
+          // Check for lazy-wrapped assisted factories in provides function parameters
+          if (
+            validateInjectionSiteType(session, parameter.returnTypeRef, parameter.source ?: source)
+          ) {
+            return
+          }
         }
       }
     }

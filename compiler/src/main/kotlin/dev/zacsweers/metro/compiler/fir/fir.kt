@@ -1207,3 +1207,43 @@ internal fun FirClassSymbol<*>.originClassId(
     .firstOrNull()
     ?.originArgument()
     ?.resolveClassId(typeResolver)
+
+/**
+ * Validates that a type is not a lazy-wrapped assisted factory or other disallowed injection site
+ * type.
+ *
+ * @param typeRef The type reference to check
+ * @param source The source element for error reporting
+ * @return true if validation fails (error was reported), false if validation passes
+ */
+context(context: CheckerContext, reporter: DiagnosticReporter)
+internal fun validateInjectionSiteType(
+  session: FirSession,
+  typeRef: FirTypeRef,
+  source: KtSourceElement?,
+): Boolean {
+  val type = typeRef.coneTypeOrNull ?: return true
+  val contextKey = type.asFirContextualTypeKey(session, null, false)
+
+  if (contextKey.isWrappedInLazy) {
+    val canonicalType = contextKey.typeKey.type
+    val canonicalClass = canonicalType.toClassSymbol(session)
+
+    if (
+      canonicalClass != null &&
+        canonicalClass.isAnnotatedWithAny(session, session.classIds.assistedFactoryAnnotations)
+    ) {
+      reporter.reportOn(
+        typeRef.source ?: source,
+        MetroDiagnostics.ASSISTED_FACTORIES_CANNOT_BE_LAZY,
+        canonicalClass.name.asString(),
+        canonicalClass.classId.asFqNameString(),
+      )
+      return true
+    }
+  }
+
+  // Future injection site checks can be added here
+
+  return false
+}

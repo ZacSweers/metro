@@ -265,6 +265,22 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/diagnostic/graph")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Graph {
+    @Test
+    public void testAllFilesPresentInGraph() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/graph"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    }
+
+    @Test
+    @TestMetadata("LazyAssistedFactoryGraphAccessor.kt")
+    public void testLazyAssistedFactoryGraphAccessor() {
+      runTest("compiler-tests/src/test/data/diagnostic/graph/LazyAssistedFactoryGraphAccessor.kt");
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/diagnostic/inject")
   @TestDataPath("$PROJECT_ROOT")
   public class Inject {
@@ -292,6 +308,22 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       @TestMetadata("LazyAssistedFactoryInjection.kt")
       public void testLazyAssistedFactoryInjection() {
         runTest("compiler-tests/src/test/data/diagnostic/inject/assisted/LazyAssistedFactoryInjection.kt");
+      }
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/diagnostic/inject/function")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Function {
+      @Test
+      public void testAllFilesPresentInFunction() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/inject/function"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      }
+
+      @Test
+      @TestMetadata("LazyAssistedFactoryFunctionInjection.kt")
+      public void testLazyAssistedFactoryFunctionInjection() {
+        runTest("compiler-tests/src/test/data/diagnostic/inject/function/LazyAssistedFactoryFunctionInjection.kt");
       }
     }
 
@@ -429,6 +461,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("DaggerReusable_IsUnsupported.kt")
     public void testDaggerReusable_IsUnsupported() {
       runTest("compiler-tests/src/test/data/diagnostic/provides/DaggerReusable_IsUnsupported.kt");
+    }
+
+    @Test
+    @TestMetadata("LazyAssistedFactoryProvides.kt")
+    public void testLazyAssistedFactoryProvides() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/LazyAssistedFactoryProvides.kt");
     }
 
     @Test
