@@ -4,6 +4,7 @@ Changelog
 **Unreleased**
 --------------
 
+- **Enhancement**: Always check for available assisted factories when reporting `InvalidBinding` errors about misused assisted injects.
 - **Enhancement**: Always specifically report mismatched assisted parameter mismatches.
 - **Fix**: Register `MetroDiagnostics` in FIR.
 

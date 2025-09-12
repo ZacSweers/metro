@@ -27,10 +27,12 @@ import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classId
+import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.kotlinFqName
+import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
 
 internal class IrBindingGraph(
@@ -624,7 +626,19 @@ internal class IrBindingGraph(
     fun reportInvalidBinding(declaration: IrDeclarationWithName?) {
       // Look up the assisted factory as a hint
       val assistedFactory =
-        bindings.values.find { it is IrBinding.Assisted && it.target.typeKey == binding.typeKey }
+        bindings.values
+          .find { it is IrBinding.Assisted && it.target.typeKey == binding.typeKey }
+          ?.typeKey
+          // Check in the class itself for @AssistedFactory
+          ?: binding.typeKey.type.rawTypeOrNull()?.let { rawType ->
+            rawType.nestedClasses
+              .firstOrNull { nestedClass ->
+                nestedClass.isAnnotatedWithAny(
+                  metroContext.symbols.classIds.assistedFactoryAnnotations
+                )
+              }
+              ?.let { IrTypeKey(it.defaultType) }
+          }
       // Report an error for anything that isn't an assisted binding depending on this
       val message = buildString {
         append("[Metro/InvalidBinding] ")
@@ -636,11 +650,15 @@ internal class IrBindingGraph(
           appendLine()
           appendLine("(Hint)")
           appendLine(
-            "It looks like the @AssistedFactory for '${binding.typeKey}' is '${assistedFactory.typeKey}'."
+            "It looks like the @AssistedFactory for '${binding.typeKey}' is '${assistedFactory}'."
           )
         }
       }
-      metroContext.reportCompat(declaration ?: node.sourceGraph, MetroDiagnostics.METRO_ERROR, message)
+      metroContext.reportCompat(
+        declaration ?: node.sourceGraph,
+        MetroDiagnostics.METRO_ERROR,
+        message,
+      )
     }
 
     reverseAdjacency[binding.typeKey]?.let { dependents ->
