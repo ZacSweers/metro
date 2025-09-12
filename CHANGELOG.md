@@ -7,6 +7,7 @@ Changelog
 - **Enhancement**: Always check for available assisted factories when reporting `InvalidBinding` errors about misused assisted injects.
 - **Enhancement**: Always specifically report mismatched assisted parameter mismatches.
 - **Enhancement**: Validate `Lazy` assisted factory injections in more places.
+- **Enhancement**: Allow private `@Binds` properties.
 - **Fix**: Register `MetroDiagnostics` in FIR.
 
 0.6.6
