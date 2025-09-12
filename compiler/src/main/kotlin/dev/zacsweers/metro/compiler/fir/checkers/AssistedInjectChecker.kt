@@ -94,16 +94,6 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
         it.isAnnotatedWithAny(session, classIds.assistedAnnotations)
       }
 
-    // ensure assisted params match
-    if (functionParams.size != constructorAssistedParams.size) {
-      reporter.reportOn(
-        targetType.source,
-        ASSISTED_INJECTION_ERROR,
-        "Assisted parameter mismatch. Expected ${functionParams.size} assisted parameters but found ${constructorAssistedParams.size}.",
-      )
-      return
-    }
-
     // Extract concrete type arguments from the factory's return type
     val returnType = function.resolvedReturnTypeRef.coneType
     val targetSubstitutionMap = mutableMapOf<FirTypeParameterSymbol, ConeKotlinType>()

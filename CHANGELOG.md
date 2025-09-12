@@ -4,6 +4,7 @@ Changelog
 **Unreleased**
 --------------
 
+- **Enhancement**: Always specifically report mismatched assisted parameter mismatches.
 - **Fix**: Register `MetroDiagnostics` in FIR.
 
 0.6.6
