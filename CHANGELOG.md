@@ -4,6 +4,8 @@ Changelog
 **Unreleased**
 --------------
 
+- **Fix**: Register `MetroDiagnostics` in FIR.
+
 0.6.6
 -----
 
