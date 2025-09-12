@@ -238,6 +238,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("PrivateBindsProperty.kt")
+    public void testPrivateBindsProperty() {
+      runTest("compiler-tests/src/test/data/box/bindingcontainers/PrivateBindsProperty.kt");
+    }
+
+    @Test
     @TestMetadata("SimpleContainersWithHintsWork.kt")
     public void testSimpleContainersWithHintsWork() {
       runTest("compiler-tests/src/test/data/box/bindingcontainers/SimpleContainersWithHintsWork.kt");

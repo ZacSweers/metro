@@ -221,14 +221,6 @@ internal object BindingContainerCallableChecker :
           reporter.reportOn(source, diagnosticFactory, message)
         }
       }
-    } else if (isPrivate /* && is FirProperty */) {
-      val annotationName = if (annotations.isProvides) "Provides" else "Binds"
-      reporter.reportOn(
-        source,
-        MetroDiagnostics.PROVIDES_PROPERTIES_CANNOT_BE_PRIVATE,
-        "`@$annotationName` properties cannot be private yet.",
-      )
-      return
     }
 
     // TODO support first, non-receiver parameter
