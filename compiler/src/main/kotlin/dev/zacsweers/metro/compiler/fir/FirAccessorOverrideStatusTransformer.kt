@@ -28,9 +28,14 @@ import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
+import org.jetbrains.kotlin.name.ClassId
 
 internal class FirAccessorOverrideStatusTransformer(session: FirSession) :
   FirStatusTransformerExtension(session) {
+
+  // Cache the callable symbols of a given contributed class id.
+  private val contributedCallableSymbols = mutableMapOf<ClassId, Sequence<FirCallableSymbol<*>>>()
+
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(session.predicates.dependencyGraphPredicate)
   }
@@ -95,8 +100,13 @@ internal class FirAccessorOverrideStatusTransformer(session: FirSession) :
 
       // Walk its direct callables. If any clash, mark needsOverride as true
       val matchingCallable =
-        contributedInterface
-          .callableDeclarations(session, includeSelf = true, includeAncestors = false)
+        contributedCallableSymbols.getOrPut(contributedInterface.classId) {
+          contributedInterface.callableDeclarations(
+            session,
+            includeSelf = true,
+            includeAncestors = false
+          )
+        }
           .firstOrNull {
             it.isOverrideCompatibleWith(declaration.symbol)
           }
