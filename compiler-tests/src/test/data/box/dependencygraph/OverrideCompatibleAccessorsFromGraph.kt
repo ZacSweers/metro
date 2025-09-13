@@ -6,21 +6,28 @@ interface AppGraph {
   // Transformer should add override when the field is inherited in the contributed type
   val string: String
 
+  // Transformer should differentiate function and property accessors, and add override here
+  val boolean: Boolean
+
   @Provides
   fun provideInt(): Int = 3
 
   @Provides
   fun provideString(): String = "str"
+
+  @Provides
+  fun provideBoolean(): Boolean = true
 }
 
 @ContributesTo(AppScope::class)
-interface IntProvider : StringProvider {
+interface ChildProvider : ParentProvider {
   val int: Int
-  fun string(): String
+  fun boolean(): Boolean
 }
 
-interface StringProvider {
+interface ParentProvider {
   val string: String
+  val boolean: Boolean
 }
 
 fun box(): String {
@@ -28,5 +35,7 @@ fun box(): String {
   assertEquals(appGraph.int(), 3)
   assertEquals(appGraph.int, 3)
   assertEquals(appGraph.string, "str")
+  assertEquals(appGraph.boolean(), true)
+  assertEquals(appGraph.boolean, true)
   return "OK"
 }
