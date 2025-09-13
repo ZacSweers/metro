@@ -16,6 +16,7 @@ interface AppGraph {
 @ContributesTo(AppScope::class)
 interface IntProvider : StringProvider {
   val int: Int
+  fun string(): String
 }
 
 interface StringProvider {
