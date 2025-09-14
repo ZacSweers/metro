@@ -9,6 +9,9 @@ interface AppGraph {
   // Transformer should differentiate function and property accessors, and add override here
   val boolean: Boolean
 
+  val long: Long
+    get() = 1L
+
   @Provides
   fun provideInt(): Int = 3
 
@@ -23,6 +26,7 @@ interface AppGraph {
 interface ChildProvider : ParentProvider {
   val int: Int
   fun boolean(): Boolean
+  val long: Long
 }
 
 interface ParentProvider {
@@ -37,5 +41,6 @@ fun box(): String {
   assertEquals(appGraph.string, "str")
   assertEquals(appGraph.boolean(), true)
   assertEquals(appGraph.boolean, true)
+  assertEquals(appGraph.long, 1L)
   return "OK"
 }
