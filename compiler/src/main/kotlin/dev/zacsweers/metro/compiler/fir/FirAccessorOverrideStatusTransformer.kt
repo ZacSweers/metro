@@ -14,7 +14,6 @@ import org.jetbrains.kotlin.fir.declarations.FirConstructor
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationStatus
 import org.jetbrains.kotlin.fir.declarations.FirField
-import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
 import org.jetbrains.kotlin.fir.declarations.utils.hasBody
@@ -24,8 +23,8 @@ import org.jetbrains.kotlin.fir.extensions.FirStatusTransformerExtension
 import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
 import org.jetbrains.kotlin.fir.resolve.getSuperTypes
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
-import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
@@ -49,7 +48,7 @@ internal class FirAccessorOverrideStatusTransformer(session: FirSession) :
     // Only abstract callables
     if (
       declaration is FirSimpleFunction && declaration.hasBody ||
-      (declaration as? FirProperty)?.getter?.hasBody == true
+        (declaration as? FirProperty)?.getter?.hasBody == true
     ) {
       return false
     }
@@ -129,11 +128,10 @@ internal class FirAccessorOverrideStatusTransformer(session: FirSession) :
     val returnType: ConeKotlinType
   )
 
-  @OptIn(SymbolInternals::class)
   private val FirCallableSymbol<*>.accessor: Accessor
     get() = Accessor(
       name,
-      isFunction = fir is FirFunction,
+      isFunction = this is FirFunctionSymbol,
       returnType = resolvedReturnType
     )
 }
