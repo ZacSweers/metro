@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.classKind
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.copy
+import org.jetbrains.kotlin.fir.declarations.FirBackingField
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirConstructor
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
@@ -41,6 +42,7 @@ internal class FirAccessorOverrideStatusTransformer(session: FirSession) :
     if (declaration !is FirCallableDeclaration) return false
     if (declaration is FirConstructor) return false
     if (declaration is FirField) return false
+    if (declaration is FirBackingField) return false
 
     // If it's already an override, nothing needed here
     if (declaration.symbol.rawStatus.isOverride) return false
