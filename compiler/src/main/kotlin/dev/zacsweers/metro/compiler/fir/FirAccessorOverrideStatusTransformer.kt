@@ -124,11 +124,11 @@ internal class FirAccessorOverrideStatusTransformer(session: FirSession) :
             // Extensions are not accessor candidates
             && it.receiverParameterSymbol == null
           }
-          .map { it.accessor }
+          .map { it.toAccessor() }
           .filterNot { it in checkedAccessors }
           .find {
             checkedAccessors.add(it)
-            it == declaration.symbol.accessor
+            it == declaration.symbol.toAccessor()
           }
 
       if (matchingCallable != null) {
@@ -147,6 +147,6 @@ internal class FirAccessorOverrideStatusTransformer(session: FirSession) :
     val returnType: ConeKotlinType,
   )
 
-  private val FirCallableSymbol<*>.accessor: Accessor
-    get() = Accessor(name, isFunction = this is FirFunctionSymbol, returnType = resolvedReturnType)
+  private fun FirCallableSymbol<*>.toAccessor(): Accessor =
+    Accessor(name, isFunction = this is FirFunctionSymbol, returnType = resolvedReturnType)
 }
