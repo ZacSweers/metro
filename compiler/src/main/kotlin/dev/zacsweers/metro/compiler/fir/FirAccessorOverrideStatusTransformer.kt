@@ -16,7 +16,6 @@ import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationStatus
 import org.jetbrains.kotlin.fir.declarations.FirField
 import org.jetbrains.kotlin.fir.declarations.FirProperty
-import org.jetbrains.kotlin.fir.declarations.FirPropertyAccessor
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
 import org.jetbrains.kotlin.fir.declarations.utils.hasBody
 import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
@@ -44,7 +43,6 @@ internal class FirAccessorOverrideStatusTransformer(session: FirSession) :
     if (declaration is FirConstructor) return false
     if (declaration is FirField) return false
     if (declaration is FirBackingField) return false
-    if (declaration is FirPropertyAccessor) return false
 
     // If it's already an override, nothing needed here
     if (declaration.symbol.rawStatus.isOverride) return false
