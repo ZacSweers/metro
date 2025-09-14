@@ -9,14 +9,19 @@ import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.classKind
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.copy
+import org.jetbrains.kotlin.fir.declarations.FirAnonymousFunction
 import org.jetbrains.kotlin.fir.declarations.FirBackingField
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirConstructor
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationStatus
+import org.jetbrains.kotlin.fir.declarations.FirEnumEntry
+import org.jetbrains.kotlin.fir.declarations.FirErrorFunction
 import org.jetbrains.kotlin.fir.declarations.FirField
 import org.jetbrains.kotlin.fir.declarations.FirProperty
+import org.jetbrains.kotlin.fir.declarations.FirPropertyAccessor
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
+import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.declarations.utils.hasBody
 import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
@@ -40,9 +45,21 @@ internal class FirAccessorOverrideStatusTransformer(session: FirSession) :
   override fun needTransformStatus(declaration: FirDeclaration): Boolean {
     // First check if this is an accessor in a dependency graph
     if (declaration !is FirCallableDeclaration) return false
-    if (declaration is FirConstructor) return false
-    if (declaration is FirField) return false
-    if (declaration is FirBackingField) return false
+
+    when (declaration) {
+      is FirAnonymousFunction,
+      is FirConstructor,
+      is FirErrorFunction,
+      is FirPropertyAccessor,
+      is FirBackingField,
+      is FirEnumEntry,
+      is FirField,
+      is FirValueParameter -> return false
+      is FirSimpleFunction,
+      is FirProperty -> {
+        // Continue on
+      }
+    }
 
     // If it's already an override, nothing needed here
     if (declaration.symbol.rawStatus.isOverride) return false
@@ -104,8 +121,8 @@ internal class FirAccessorOverrideStatusTransformer(session: FirSession) :
           .filter {
             // Functions with params are not accessor candidates
             (it !is FirNamedFunctionSymbol || it.valueParameterSymbols.isEmpty())
-              // Extensions are not accessor candidates
-              && it.receiverParameterSymbol == null
+            // Extensions are not accessor candidates
+            && it.receiverParameterSymbol == null
           }
           .map { it.accessor }
           .filterNot { it in checkedAccessors }
@@ -127,13 +144,9 @@ internal class FirAccessorOverrideStatusTransformer(session: FirSession) :
   private data class Accessor(
     val name: Name,
     val isFunction: Boolean,
-    val returnType: ConeKotlinType
+    val returnType: ConeKotlinType,
   )
 
   private val FirCallableSymbol<*>.accessor: Accessor
-    get() = Accessor(
-      name,
-      isFunction = this is FirFunctionSymbol,
-      returnType = resolvedReturnType
-    )
+    get() = Accessor(name, isFunction = this is FirFunctionSymbol, returnType = resolvedReturnType)
 }
