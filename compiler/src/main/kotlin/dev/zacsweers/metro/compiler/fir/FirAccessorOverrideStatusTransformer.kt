@@ -3,20 +3,25 @@
 package dev.zacsweers.metro.compiler.fir
 
 import dev.zacsweers.metro.compiler.MetroAnnotations.Kind
-import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.metroAnnotations
 import org.jetbrains.kotlin.descriptors.isInterface
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.classKind
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.copy
+import org.jetbrains.kotlin.fir.declarations.FirAnonymousFunction
+import org.jetbrains.kotlin.fir.declarations.FirBackingField
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirConstructor
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationStatus
+import org.jetbrains.kotlin.fir.declarations.FirEnumEntry
+import org.jetbrains.kotlin.fir.declarations.FirErrorFunction
 import org.jetbrains.kotlin.fir.declarations.FirField
 import org.jetbrains.kotlin.fir.declarations.FirProperty
+import org.jetbrains.kotlin.fir.declarations.FirPropertyAccessor
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
+import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.declarations.utils.hasBody
 import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
@@ -24,7 +29,10 @@ import org.jetbrains.kotlin.fir.extensions.FirStatusTransformerExtension
 import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
 import org.jetbrains.kotlin.fir.resolve.getSuperTypes
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
+import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 
 internal class FirAccessorOverrideStatusTransformer(session: FirSession) :
@@ -36,8 +44,21 @@ internal class FirAccessorOverrideStatusTransformer(session: FirSession) :
   override fun needTransformStatus(declaration: FirDeclaration): Boolean {
     // First check if this is an accessor in a dependency graph
     if (declaration !is FirCallableDeclaration) return false
-    if (declaration is FirConstructor) return false
-    if (declaration is FirField) return false
+
+    when (declaration) {
+      is FirAnonymousFunction,
+      is FirConstructor,
+      is FirErrorFunction,
+      is FirPropertyAccessor,
+      is FirBackingField,
+      is FirEnumEntry,
+      is FirField,
+      is FirValueParameter -> return false
+      is FirSimpleFunction,
+      is FirProperty -> {
+        // Continue on
+      }
+    }
 
     // If it's already an override, nothing needed here
     if (declaration.symbol.rawStatus.isOverride) return false
@@ -78,45 +99,48 @@ internal class FirAccessorOverrideStatusTransformer(session: FirSession) :
     declaration: FirDeclaration,
   ): FirDeclarationStatus {
     if (declaration !is FirCallableDeclaration) return status
-    val returnType = declaration.returnTypeRef.coneTypeOrNull ?: return status
-
+    declaration.returnTypeRef.coneTypeOrNull ?: return status
+    declaration.symbol.callableId?.callableName ?: return status
     val containingClass = declaration.getContainingClassSymbol() ?: return status
 
-    val name = declaration.symbol.callableId?.callableName ?: return status
+    // Track checked types to avoid duplicate checks
+    val checkedSuperTypes = mutableSetOf<ConeKotlinType>()
 
-    var needsOverride = false
-    for (superType in containingClass.getSuperTypes(session, recursive = false)) {
+    for (superType in containingClass.getSuperTypes(session)) {
+      // Skip if we've already checked this super type
+      if (!checkedSuperTypes.add(superType)) continue
+
       val classSymbol = superType.toClassSymbol(session) ?: continue
-      if (
-        !classSymbol.name.asString().startsWith(Symbols.StringNames.METRO_CONTRIBUTION_NAME_PREFIX)
-      ) {
-        continue
-      }
 
       // We only want @ContributesTo types, which have supertypes
       val contributedInterface =
         classSymbol.resolvedSuperTypes.firstOrNull()?.toClassSymbol(session) ?: continue
 
       // Walk its direct callables. If any clash, mark needsOverride as true
-      val matchingCallable =
+      val hasMatchingCallable =
         contributedInterface
           .callableDeclarations(session, includeSelf = true, includeAncestors = false)
-          .firstOrNull {
-            // Functions with params are not accessor candidates
-            if (it is FirNamedFunctionSymbol && it.valueParameterSymbols.isNotEmpty())
-              return@firstOrNull false
+          .any { callable ->
             // Extensions are not accessor candidates
-            if (it.receiverParameterSymbol != null) return@firstOrNull false
-            it.name == name && it.resolvedReturnType == returnType
+            callable.receiverParameterSymbol == null &&
+              // Functions with params are not accessor candidates
+              (callable !is FirNamedFunctionSymbol || callable.valueParameterSymbols.isEmpty()) &&
+              callable.matchesSignatureOf(declaration.symbol)
           }
 
-      if (matchingCallable != null) {
-        needsOverride = true
-        break
+      if (hasMatchingCallable) {
+        // Found a match - immediately return transformed status
+        return status.copy(isOverride = true)
       }
     }
 
-    if (!needsOverride) return status
-    return status.copy(isOverride = true)
+    return status
+  }
+
+  fun FirCallableSymbol<*>.matchesSignatureOf(other: FirCallableSymbol<*>): Boolean {
+    val thisIsFunction = this is FirFunctionSymbol
+    val otherIsFunction = other is FirFunctionSymbol
+    if (thisIsFunction != otherIsFunction) return false
+    return name == other.name
   }
 }

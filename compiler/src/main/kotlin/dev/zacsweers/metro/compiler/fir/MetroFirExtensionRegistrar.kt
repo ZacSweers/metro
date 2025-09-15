@@ -72,6 +72,8 @@ public class MetroFirExtensionRegistrar(
       )
     }
     +declarationGenerator("FirGen - DependencyGraph", ::DependencyGraphFirGenerator, true)
+
+    registerDiagnosticContainers(MetroDiagnostics)
   }
 
   private fun loggerFor(type: MetroLogger.Type, tag: String): MetroLogger {

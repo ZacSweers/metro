@@ -1,0 +1,3 @@
+/LazyAssistedFactoryGraphAccessor.kt:(214,237): error: Metro does not support injecting Lazy<MyAssistedFactory> because MyAssistedFactory is an @AssistedFactory-annotated type.
+
+/LazyAssistedFactoryGraphAccessor.kt:(265,288): error: Metro does not support injecting Lazy<MyAssistedFactory> because MyAssistedFactory is an @AssistedFactory-annotated type.

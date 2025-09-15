@@ -213,7 +213,10 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleClass.kt:6:7 Assisted parameter mismatch. Expected 1 assisted parameters but found 0."
+        """
+          e: ExampleClass.kt:6:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:
+            Missing from factory: kotlin.Int
+        """.trimIndent()
       )
     }
   }
@@ -616,7 +619,10 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleClass.kt:6:7 Assisted parameter mismatch. Expected 0 assisted parameters but found 1."
+        """
+          e: ExampleClass.kt:6:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:
+            Missing from constructor: kotlin.Int
+        """.trimIndent()
       )
     }
   }
@@ -641,7 +647,10 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleClass.kt:6:7 Assisted parameter mismatch. Expected 1 assisted parameters but found 2."
+        """
+          e: ExampleClass.kt:6:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:
+            Missing from constructor: kotlin.String
+        """.trimIndent()
       )
     }
   }
