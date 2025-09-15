@@ -9,6 +9,7 @@ Changelog
 - **Enhancement**: Validate `Lazy` assisted factory injections in more places.
 - **Enhancement**: Allow private `@Binds` properties.
 - **Fix**: Register `MetroDiagnostics` in FIR.
+- **Fix**: When transforming FIR override statuses, check all supertypes and not just immediate supertype.
 
 0.6.6
 -----
