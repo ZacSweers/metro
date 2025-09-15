@@ -141,6 +141,41 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
       )
 
   /**
+   * Enable/disable fast initialization mode for generated providers.
+   * When enabled (default), uses a single SwitchingProvider class with integer-based
+   * dispatch instead of generating N provider classes. This significantly reduces
+   * generated code size and compilation time.
+   *
+   * This is equivalent to Dagger's fastInit mode and applies to all JVM targets.
+   * Only disable this for debugging purposes.
+   */
+  public val fastInit: Property<Boolean> =
+    objects.property(Boolean::class.javaObjectType).convention(true)
+
+  /**
+   * Maximum number of bindings per shard before a new shard is created.
+   * Set to 0 to disable sharding completely.
+   *
+   * Default is 150 for JVM targets, 0 (disabled) for other platforms.
+   * Lower values create more shards but with smaller generated code,
+   * while higher values create fewer shards.
+   *
+   * Sharding splits large dependency graphs into smaller nested classes
+   * to work around platform limitations (e.g., JVM's 64KB method size limit).
+   * Recommended range: 100-5000 depending on binding complexity.
+   */
+  public val keysPerShard: Property<Int> =
+    objects.property(Int::class.javaObjectType)
+
+  /**
+   * Enable/disable cycle breaking in sharding.
+   * When enabled (default), the sharding algorithm will attempt to break cycles
+   * by distributing strongly connected components across shards.
+   */
+  public val shardingBreakCycles: Property<Boolean> =
+    objects.property(Boolean::class.javaObjectType).convention(true)
+
+  /**
    * Configures interop to support in generated code, usually from another DI framework.
    *
    * This is primarily for supplying custom annotations and custom runtime intrinsic types (i.e.

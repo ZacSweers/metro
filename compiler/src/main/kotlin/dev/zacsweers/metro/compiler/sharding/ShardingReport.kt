@@ -1,0 +1,297 @@
+// Copyright (C) 2025 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
+package dev.zacsweers.metro.compiler.sharding
+
+import dev.zacsweers.metro.compiler.ir.IrBinding
+import dev.zacsweers.metro.compiler.ir.IrBindingGraph
+import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.render
+
+/**
+ * Comprehensive report of sharding analysis and distribution.
+ * Provides structured documentation of how bindings were distributed across shards.
+ */
+internal data class ShardingReport(
+  val graphName: String,
+  val totalBindings: Int,
+  val keysPerShardThreshold: Int,
+  val shardCount: Int,
+  val shards: List<ShardDetail>,
+  val crossShardDependencies: Map<Pair<Int, Int>, Int>, // (from, to) -> count
+  val analysisMetrics: AnalysisMetrics,
+) {
+  
+  /**
+   * Detailed information about a single shard.
+   */
+  data class ShardDetail(
+    val index: Int,
+    val name: String,
+    val bindingCount: Int,
+    val bindingTypes: Map<String, Int>, // Binding type -> count
+    val sampleBindings: List<String>, // Sample of binding names
+    val dependencies: DependencyInfo,
+    val moduleRequirements: Set<String>, // Module types required
+  )
+  
+  /**
+   * Dependency information for a shard.
+   */
+  data class DependencyInfo(
+    val dependsOnShards: Set<Int>, // Which shards this depends on
+    val dependedByShards: Set<Int>, // Which shards depend on this
+    val crossShardAccessCount: Int, // Total cross-shard accesses
+  )
+  
+  /**
+   * Metrics about the sharding analysis.
+   */
+  data class AnalysisMetrics(
+    val averageBindingsPerShard: Double,
+    val maxBindingsInShard: Int,
+    val minBindingsInShard: Int,
+    val sccCount: Int, // Number of strongly connected components
+    val largestSccSize: Int,
+    val cyclesDetected: Int,
+    val analysisTimeMs: Long,
+  )
+  
+  /**
+   * Generates a Markdown report.
+   */
+  fun toMarkdown(): String = buildString {
+    appendLine("# Metro Sharding Report")
+    appendLine()
+    appendLine("## Summary")
+    appendLine("- **Graph**: `$graphName`")
+    appendLine("- **Total Bindings**: $totalBindings")
+    appendLine("- **Shards Created**: $shardCount")
+    appendLine("- **Keys Per Shard Threshold**: $keysPerShardThreshold")
+    appendLine()
+    
+    appendLine("## Distribution Statistics")
+    appendLine("| Metric | Value |")
+    appendLine("|--------|-------|")
+    appendLine("| Average Bindings/Shard | ${String.format("%.1f", analysisMetrics.averageBindingsPerShard)} |")
+    appendLine("| Maximum Bindings | ${analysisMetrics.maxBindingsInShard} |")
+    appendLine("| Minimum Bindings | ${analysisMetrics.minBindingsInShard} |")
+    appendLine("| SCCs Detected | ${analysisMetrics.sccCount} |")
+    appendLine("| Largest SCC | ${analysisMetrics.largestSccSize} bindings |")
+    appendLine("| Analysis Time | ${analysisMetrics.analysisTimeMs}ms |")
+    appendLine()
+    
+    appendLine("## Shard Details")
+    shards.forEach { shard ->
+      appendLine()
+      appendLine("### ${shard.name}")
+      appendLine("- **Index**: ${shard.index}")
+      appendLine("- **Bindings**: ${shard.bindingCount}")
+      
+      if (shard.bindingTypes.isNotEmpty()) {
+        appendLine("- **Binding Types**:")
+        shard.bindingTypes.forEach { (type, count) ->
+          appendLine("  - $type: $count")
+        }
+      }
+      
+      if (shard.dependencies.dependsOnShards.isNotEmpty()) {
+        appendLine("- **Depends On**: Shard${shard.dependencies.dependsOnShards.joinToString(", Shard")}")
+      }
+      
+      if (shard.dependencies.dependedByShards.isNotEmpty()) {
+        appendLine("- **Depended By**: Shard${shard.dependencies.dependedByShards.joinToString(", Shard")}")
+      }
+      
+      if (shard.dependencies.crossShardAccessCount > 0) {
+        appendLine("- **Cross-Shard Accesses**: ${shard.dependencies.crossShardAccessCount}")
+      }
+      
+      if (shard.moduleRequirements.isNotEmpty()) {
+        appendLine("- **Required Modules**: ${shard.moduleRequirements.joinToString(", ")}")
+      }
+      
+      if (shard.sampleBindings.isNotEmpty()) {
+        appendLine()
+        appendLine("#### Sample Bindings")
+        appendLine("```")
+        shard.sampleBindings.forEach { binding ->
+          appendLine(binding)
+        }
+        if (shard.bindingCount > shard.sampleBindings.size) {
+          appendLine("... and ${shard.bindingCount - shard.sampleBindings.size} more")
+        }
+        appendLine("```")
+      }
+    }
+    
+    if (crossShardDependencies.isNotEmpty()) {
+      appendLine()
+      appendLine("## Cross-Shard Dependencies")
+      appendLine("| From | To | Count |")
+      appendLine("|------|----|-------|")
+      crossShardDependencies.entries
+        .sortedBy { (pair, _) -> pair.first * 1000 + pair.second }
+        .forEach { (pair, count) ->
+          appendLine("| Shard${pair.first} | Shard${pair.second} | $count |")
+        }
+    }
+    
+    appendLine()
+    appendLine("---")
+    appendLine("*Generated by Metro Compiler Plugin*")
+  }
+  
+  /**
+   * Generates a JSON report.
+   */
+  fun toJson(): String {
+    // Simple JSON generation without external dependencies
+    return buildString {
+      appendLine("{")
+      appendLine("  \"graphName\": \"$graphName\",")
+      appendLine("  \"totalBindings\": $totalBindings,")
+      appendLine("  \"keysPerShardThreshold\": $keysPerShardThreshold,")
+      appendLine("  \"shardCount\": $shardCount,")
+      appendLine("  \"metrics\": {")
+      appendLine("    \"averageBindingsPerShard\": ${analysisMetrics.averageBindingsPerShard},")
+      appendLine("    \"maxBindingsInShard\": ${analysisMetrics.maxBindingsInShard},")
+      appendLine("    \"minBindingsInShard\": ${analysisMetrics.minBindingsInShard},")
+      appendLine("    \"sccCount\": ${analysisMetrics.sccCount},")
+      appendLine("    \"largestSccSize\": ${analysisMetrics.largestSccSize},")
+      appendLine("    \"analysisTimeMs\": ${analysisMetrics.analysisTimeMs}")
+      appendLine("  },")
+      appendLine("  \"shards\": [")
+      shards.forEachIndexed { index, shard ->
+        appendLine("    {")
+        appendLine("      \"index\": ${shard.index},")
+        appendLine("      \"name\": \"${shard.name}\",")
+        appendLine("      \"bindingCount\": ${shard.bindingCount},")
+        appendLine("      \"dependsOn\": [${shard.dependencies.dependsOnShards.joinToString(", ")}],")
+        appendLine("      \"dependedBy\": [${shard.dependencies.dependedByShards.joinToString(", ")}]")
+        append("    }")
+        if (index < shards.size - 1) append(",")
+        appendLine()
+      }
+      appendLine("  ]")
+      appendLine("}")
+    }
+  }
+  
+  companion object {
+    /**
+     * Generates a sharding report from a sharding plan and binding graph.
+     */
+    fun generate(
+      graphName: String,
+      shardingPlan: ShardingPlan,
+      bindingGraph: IrBindingGraph,
+      analysisTimeMs: Long = 0,
+    ): ShardingReport {
+      val bindings = bindingGraph.bindingsSnapshot()
+      
+      // Calculate shard details
+      val shardDetails = shardingPlan.shards.map { shard ->
+        val shardBindings = shard.bindings.mapNotNull { key ->
+          bindings[key]?.let { key to it }
+        }
+        
+        // Count binding types
+        val bindingTypes = shardBindings.groupBy { (_, binding) ->
+          when (binding) {
+            is IrBinding.ConstructorInjected -> "ConstructorInjected"
+            is IrBinding.Provided -> "Provided"
+            is IrBinding.BoundInstance -> "BoundInstance"
+            is IrBinding.Alias -> "Alias"
+            is IrBinding.Multibinding -> "Multibinding"
+            is IrBinding.ObjectClass -> "ObjectClass"
+            is IrBinding.GraphExtension -> "GraphExtension"
+            is IrBinding.GraphDependency -> "GraphDependency"
+            is IrBinding.MembersInjected -> "MembersInjected"
+            is IrBinding.Absent -> "Absent"
+            else -> "Other"
+          }
+        }.mapValues { it.value.size }
+        
+        // Sample bindings (first 10)
+        val sampleBindings = shardBindings.take(10).map { (key, _) ->
+          key.render(short = true)
+        }
+        
+        // Calculate dependencies
+        val dependsOn = mutableSetOf<Int>()
+        val crossShardAccesses = mutableSetOf<IrTypeKey>()
+        
+        shardBindings.forEach { (_, binding) ->
+          binding.dependencies.forEach { dep ->
+            val depShardIndex = shardingPlan.bindingToShard[dep.typeKey]
+            if (depShardIndex != null && depShardIndex != shard.index) {
+              dependsOn.add(depShardIndex)
+              crossShardAccesses.add(dep.typeKey)
+            }
+          }
+        }
+        
+        // Calculate who depends on this shard
+        val dependedBy = shardingPlan.shards
+          .filter { otherShard ->
+            otherShard.index != shard.index &&
+            otherShard.dependencies.any { dep ->
+              shardingPlan.bindingToShard[dep] == shard.index
+            }
+          }
+          .map { it.index }
+          .toSet()
+        
+        ShardDetail(
+          index = shard.index,
+          name = if (shard.isComponentShard) "Component Shard" else "Shard${shard.index}",
+          bindingCount = shardBindings.size,
+          bindingTypes = bindingTypes,
+          sampleBindings = sampleBindings,
+          dependencies = DependencyInfo(
+            dependsOnShards = dependsOn,
+            dependedByShards = dependedBy,
+            crossShardAccessCount = crossShardAccesses.size,
+          ),
+          moduleRequirements = shard.requiredModules.map { it.render(short = true) }.toSet(),
+        )
+      }
+      
+      // Calculate cross-shard dependencies
+      val crossShardDeps = mutableMapOf<Pair<Int, Int>, Int>()
+      shardingPlan.shards.forEach { shard ->
+        shard.dependencies.forEach { dep ->
+          val targetShard = shardingPlan.bindingToShard[dep]
+          if (targetShard != null && targetShard != shard.index) {
+            val key = shard.index to targetShard
+            crossShardDeps[key] = crossShardDeps.getOrDefault(key, 0) + 1
+          }
+        }
+      }
+      
+      // Calculate metrics
+      val bindingCounts = shardDetails.map { it.bindingCount }
+      val metrics = AnalysisMetrics(
+        averageBindingsPerShard = if (bindingCounts.isNotEmpty()) {
+          bindingCounts.average()
+        } else 0.0,
+        maxBindingsInShard = bindingCounts.maxOrNull() ?: 0,
+        minBindingsInShard = bindingCounts.minOrNull() ?: 0,
+        sccCount = 0, // TODO: Get from Tarjan analysis
+        largestSccSize = 0, // TODO: Get from Tarjan analysis
+        cyclesDetected = 0, // TODO: Track cycles
+        analysisTimeMs = analysisTimeMs,
+      )
+      
+      return ShardingReport(
+        graphName = graphName,
+        totalBindings = bindings.size,
+        keysPerShardThreshold = shardingPlan.keysPerShard,
+        shardCount = shardingPlan.shards.size,
+        shards = shardDetails,
+        crossShardDependencies = crossShardDeps,
+        analysisMetrics = metrics,
+      )
+    }
+  }
+}

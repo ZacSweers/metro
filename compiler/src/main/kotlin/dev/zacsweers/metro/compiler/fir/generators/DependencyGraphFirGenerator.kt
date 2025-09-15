@@ -22,10 +22,12 @@ import dev.zacsweers.metro.compiler.fir.requireContainingClassSymbol
 import dev.zacsweers.metro.compiler.mapToArray
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.descriptors.ClassKind
+import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameter
+import org.jetbrains.kotlin.fir.declarations.builder.buildTypeParameter
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.declarations.utils.isInterface
 import org.jetbrains.kotlin.fir.declarations.utils.isLocal
@@ -38,6 +40,7 @@ import org.jetbrains.kotlin.fir.plugin.createCompanionObject
 import org.jetbrains.kotlin.fir.plugin.createConstructor
 import org.jetbrains.kotlin.fir.plugin.createDefaultPrivateConstructor
 import org.jetbrains.kotlin.fir.plugin.createMemberFunction
+import org.jetbrains.kotlin.fir.plugin.createMemberProperty
 import org.jetbrains.kotlin.fir.plugin.createNestedClass
 import org.jetbrains.kotlin.fir.scopes.impl.toConeType
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
@@ -45,7 +48,9 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.types.constructType
+import org.jetbrains.kotlin.fir.types.toLookupTag
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
@@ -175,6 +180,48 @@ import org.jetbrains.kotlin.name.SpecialNames
 internal class DependencyGraphFirGenerator(session: FirSession) :
   FirDeclarationGenerationExtension(session) {
 
+  @OptIn(DirectDeclarationsAccess::class)
+  private fun createSwitchingProviderSkeleton(
+    session: FirSession,
+    owner: FirClassSymbol<*>,
+    name: Name
+  ): FirClassLikeSymbol<*> {
+    // Check if already exists (idempotent on incremental builds)
+    val existing = owner.declarationSymbols
+      .filterIsInstance<FirClassSymbol<*>>()
+      .firstOrNull { it.name == name }
+    if (existing != null) return existing
+
+    // Create SwitchingProvider<T> : Provider<T>
+    val switchingProviderClass = createNestedClass(owner, name, Keys.SwitchingProviderDeclaration) {
+      visibility = Visibilities.Private
+      modality = Modality.FINAL
+
+      // Add type parameter T with OUT variance (covariant)
+      // Use the typeParameter builder method provided by the class configurator
+      typeParameter(Name.identifier("T"), variance = org.jetbrains.kotlin.types.Variance.OUT_VARIANCE)
+
+      // Add supertype: Provider<T>
+      // The typeParameter method adds to typeParameters, and we need to build the supertype
+      // after adding the type parameter but we need to use the superType function to access it
+      superType { typeParameters ->
+        // Build the Provider<T> type using the type parameter
+        val providerClassId = session.metroFirBuiltIns.providesClassSymbol
+        providerClassId.toLookupTag().constructType(
+          arrayOf(typeParameters.first().toConeType()),
+          isMarkedNullable = false,
+        )
+      }
+    }
+
+    // Properties will be generated via generateProperties when getCallableNamesForClass
+    // returns "graph" and "id" for SwitchingProviderDeclaration
+    // These properties are created with hasBackingField = true to ensure IR can populate them
+    // The IR phase will find these backing fields and initialize them in the constructor body
+
+    return switchingProviderClass.symbol
+  }
+
   companion object {
     private val PLACEHOLDER_SAM_FUNCTION = "$\$PLACEHOLDER_FOR_SAM".asName()
   }
@@ -205,6 +252,14 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
       // Always generate this impl though we may not use it. It's just easier to do it this way in
       // FIR unfortunately due to lifecycles
       names += Symbols.Names.MetroImpl
+    } else if (classSymbol.hasOrigin(Keys.MetroGraphDeclaration)) {
+      // For the $$Metro class, generate the SwitchingProvider if enabled
+      if (session.metroFirBuiltIns.options.fastInit) {
+        log("Found MetroGraph class ${classSymbol.classId}, adding SwitchingProvider")
+        names += Name.identifier("SwitchingProvider")
+      } else {
+        log("Found MetroGraph class ${classSymbol.classId}, SwitchingProvider disabled by option")
+      }
     }
 
     if (names.isNotEmpty()) {
@@ -265,6 +320,17 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
           .apply { markAsDeprecatedHidden(session) }
           .symbol
       }
+      Name.identifier("SwitchingProvider") -> {
+        // Only generate if enabled
+        if (session.metroFirBuiltIns.options.fastInit) {
+          log("Generating SwitchingProvider class in ${owner.classId}")
+          // Create SwitchingProvider<T> nested class with full FIR structure
+          createSwitchingProviderSkeleton(session, owner, name)
+        } else {
+          log("Skipping SwitchingProvider generation - disabled by option")
+          null
+        }
+      }
       else -> null
     }
   }
@@ -297,6 +363,12 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
     } else if (classSymbol.hasOrigin(Keys.MetroGraphDeclaration)) {
       // $$MetroGraph, generate a constructor
       names += SpecialNames.INIT
+    } else if (classSymbol.hasOrigin(Keys.SwitchingProviderDeclaration)) {
+      // SwitchingProvider, generate constructor, properties, and invoke method
+      names += SpecialNames.INIT
+      names += Symbols.Names.invoke
+      names += Name.identifier("graph")
+      names += Name.identifier("id")
     }
 
     if (names.isNotEmpty()) {
@@ -363,10 +435,84 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
         ) {
           visibility = Visibilities.Private
         }
+      } else if (context.owner.hasOrigin(Keys.SwitchingProviderDeclaration)) {
+        // SwitchingProvider constructor(graph: GraphImpl, id: Int)
+        val graphClass = context.owner.requireContainingClassSymbol()
+        createConstructor(
+          context.owner,
+          Keys.Default,
+          isPrimary = true,
+          generateDelegatedNoArgConstructorCall = true,
+        ) {
+          visibility = Visibilities.Public
+          // Add graph parameter
+          valueParameter(
+            name = Name.identifier("graph"),
+            type = graphClass.constructType(),
+            key = Keys.RegularParameter
+          )
+          // Add id parameter
+          valueParameter(
+            name = Name.identifier("id"),
+            type = session.builtinTypes.intType.coneType,
+            key = Keys.RegularParameter
+          )
+        }
       } else {
         return emptyList()
       }
     return listOf(constructor.symbol)
+  }
+
+  override fun generateProperties(
+    callableId: CallableId,
+    context: MemberGenerationContext?
+  ): List<FirPropertySymbol> {
+    log("Generating property $callableId")
+    val owner = context?.owner ?: return emptyList()
+
+    val properties = mutableListOf<FirPropertySymbol>()
+
+    if (owner.hasOrigin(Keys.SwitchingProviderDeclaration)) {
+      // Generate backing field properties for SwitchingProvider
+      when (callableId.callableName.asString()) {
+        "graph" -> {
+          // Generate private val graph: GraphImpl
+          val graphClass = owner.requireContainingClassSymbol()
+          val property = createMemberProperty(
+            owner,
+            Keys.Default,
+            Name.identifier("graph"),
+            returnType = graphClass.constructType(),
+            isVal = true,
+            hasBackingField = true
+          ) {
+            visibility = Visibilities.Private
+          }
+          properties += property.symbol
+        }
+        "id" -> {
+          // Generate private val id: Int
+          val property = createMemberProperty(
+            owner,
+            Keys.Default,
+            Name.identifier("id"),
+            returnType = session.builtinTypes.intType.coneType,
+            isVal = true,
+            hasBackingField = true
+          ) {
+            visibility = Visibilities.Private
+          }
+          properties += property.symbol
+        }
+      }
+    }
+
+    if (properties.isNotEmpty()) {
+      log("Generated ${properties.size} properties for ${owner.classId}: ${properties.joinToString { it.name.asString() }}")
+    }
+
+    return properties
   }
 
   override fun generateFunctions(
@@ -480,6 +626,31 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
         graphObject.findCreator(session, "generateFunctions ${context.owner.classId}", ::log)!!
       val samFunction = creator.classSymbol.findSamFunction(session)
       samFunction?.let { functions += generateSAMFunction(graphObject.classSymbol, it) }
+    } else if (owner.hasOrigin(Keys.SwitchingProviderDeclaration)) {
+      // SwitchingProvider's invoke method - stub for now, will be populated in IR
+      if (callableId.callableName == Symbols.Names.invoke) {
+        // Get the type parameter T to use as return type
+        val typeParam = owner.typeParameterSymbols.firstOrNull()
+        val returnType = if (typeParam != null) {
+          typeParam.toConeType()
+        } else {
+          // Fallback to Any if type parameter not found
+          session.builtinTypes.anyType.coneType
+        }
+
+        val generatedFunction = createMemberFunction(
+          owner,
+          Keys.Default,
+          Symbols.Names.invoke,
+          returnType = returnType
+        ) {
+          status {
+            isOperator = true
+            isOverride = true
+          }
+        }
+        functions += generatedFunction.symbol
+      }
     }
 
     if (functions.isNotEmpty()) {

@@ -15,6 +15,7 @@ import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
+import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.companionObject
@@ -74,12 +75,34 @@ internal sealed interface ClassFactory : IrMetroFactory {
         }
       val createFunction = creatorClass.requireSimpleFunction(Symbols.StringNames.CREATE)
       val args = computeArgs(createFunction.owner)
-      return irInvoke(
+      val factory = irInvoke(
         dispatchReceiver = irGetObject(creatorClass.symbol),
         callee = createFunction,
         args = args,
-        typeHint = factoryClass.typeWith(),
+        // Use the return type of create function, not the factory class type
+        typeHint = createFunction.owner.returnType,
       )
+
+      // The create() method returns a Factory, we need to invoke it to get the instance
+      // Check if the return type is a Factory type and invoke it
+      val returnType = createFunction.owner.returnType
+      if (returnType.classOrNull?.owner?.name?.asString() == "Factory") {
+        // It's a Factory, invoke it to get the instance
+        val invokeFunction = (returnType.classOrNull?.owner as? IrClass)
+          ?.declarations
+          ?.filterIsInstance<IrSimpleFunction>()
+          ?.firstOrNull { it.name.asString() == "invoke" }
+
+        if (invokeFunction != null) {
+          return irInvoke(
+            dispatchReceiver = factory,
+            callee = invokeFunction.symbol,
+          )
+        }
+      }
+
+      // Not a Factory, return as-is (might be the instance directly)
+      return factory
     }
   }
 

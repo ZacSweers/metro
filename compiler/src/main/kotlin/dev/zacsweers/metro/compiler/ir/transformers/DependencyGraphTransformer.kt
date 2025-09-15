@@ -461,6 +461,7 @@ internal class DependencyGraphTransformer(
           membersInjectorTransformer = membersInjectorTransformer,
           assistedFactoryTransformer = assistedFactoryTransformer,
           graphExtensionGenerator = graphExtensionGenerator,
+          shardingPlan = result.shardingPlan,
         )
           .generate()
       }

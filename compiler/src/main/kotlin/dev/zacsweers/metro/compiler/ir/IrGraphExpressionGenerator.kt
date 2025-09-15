@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.Symbols.Names.scope
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
@@ -15,23 +16,32 @@ import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import dev.zacsweers.metro.compiler.reportCompilerBug
+// import dev.zacsweers.metro.compiler.sharding.CycleBreaker // Removed - not implemented yet
+import dev.zacsweers.metro.compiler.sharding.ShardFieldRegistry
+import dev.zacsweers.metro.compiler.sharding.ShardingPlan
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
+import org.jetbrains.kotlin.ir.expressions.IrGetField
+import org.jetbrains.kotlin.ir.expressions.IrGetValue
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irInt
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.builders.parent
+import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
@@ -59,6 +69,10 @@ private constructor(
   private val assistedFactoryTransformer: AssistedFactoryTransformer,
   private val graphExtensionGenerator: IrGraphExtensionGenerator,
   private val parentTracer: Tracer,
+  private val shardingPlan: ShardingPlan? = null,
+  private val currentShardIndex: Int? = null,
+  private val shardFieldRegistry: ShardFieldRegistry? = null,
+  // private val cycleBreaker: CycleBreaker? = null, // TODO: Implement cycle breaking
 ) : IrMetroContext by context {
 
   class Factory(
@@ -71,8 +85,41 @@ private constructor(
     private val assistedFactoryTransformer: AssistedFactoryTransformer,
     private val graphExtensionGenerator: IrGraphExtensionGenerator,
     private val parentTracer: Tracer,
+    private val shardFieldRegistry: ShardFieldRegistry? = null,
+    private val shardingPlan: ShardingPlan? = null,
+    private val currentShardIndex: Int? = null,
   ) {
     fun create(thisReceiver: IrValueParameter): IrGraphExpressionGenerator {
+      val cycleBreaker = if (shardingPlan != null) {
+        null // CycleBreaker(bindingGraph, shardingPlan) // TODO: Implement
+      } else {
+        null
+      }
+
+      // Determine the shard context from the thisReceiver
+      // If the parent class is a shard class, extract its index
+      val actualShardIndex = if (shardingPlan != null) {
+        val parentClass = thisReceiver.parent as? IrClass
+        if (parentClass != null) {
+          // Check if this is a shard class by examining its name
+          val className = parentClass.name.asString()
+          when {
+            // Main component class - shard index 0
+            className == node.sourceGraph.name.asString() -> 0
+            // Shard class - extract index from name (e.g., "Shard1" -> 1)
+            className.startsWith("Shard") -> {
+              className.removePrefix("Shard").toIntOrNull() ?: currentShardIndex
+            }
+
+            else -> currentShardIndex
+          }
+        } else {
+          currentShardIndex
+        }
+      } else {
+        null
+      }
+
       return IrGraphExpressionGenerator(
         context = context,
         node = node,
@@ -84,10 +131,16 @@ private constructor(
         assistedFactoryTransformer = assistedFactoryTransformer,
         graphExtensionGenerator = graphExtensionGenerator,
         parentTracer = parentTracer,
+        shardingPlan = shardingPlan,
+        currentShardIndex = actualShardIndex,
+        shardFieldRegistry = shardFieldRegistry,
+        // cycleBreaker = cycleBreaker, // TODO: Implement cycle breaking
       )
     }
   }
 
+
+  /** Resolve correct receiver for a field's owning shard. */
   enum class AccessType {
     INSTANCE,
     PROVIDER,
@@ -104,13 +157,24 @@ private constructor(
         AccessType.INSTANCE
       },
     fieldInitKey: IrTypeKey? = null,
+    bypassProviderFor: IrTypeKey? = null,
   ): IrExpression =
     with(scope) {
+      if (bypassProviderFor != null && binding.typeKey == bypassProviderFor) {
+        if (debug) {
+          log("IrGraphExpressionGenerator: Bypassing provider for ${binding.typeKey.render(short = true)} to prevent recursion")
+          log("  Reason: Direct inline generation requested to avoid infinite loop through SwitchingProvider")
+        }
+        return@with generateInlineInstance(binding)
+      }
+
       if (binding is IrBinding.Absent) {
         reportCompilerBug(
           "Absent bindings need to be checked prior to generateBindingCode(). ${binding.typeKey} missing."
         )
       }
+
+      // Note: Cross-shard access is now handled in the unified field access logic below
 
       val metroProviderSymbols = symbols.providerSymbolsFor(contextualTypeKey)
 
@@ -118,9 +182,44 @@ private constructor(
       // provider for it.
       // This is important for cases like DelegateFactory and breaking cycles.
       if (fieldInitKey == null || fieldInitKey != binding.typeKey) {
-        bindingFieldContext.providerField(binding.typeKey)?.let {
+        log("generateBindingCode: Looking for field for ${binding.typeKey.render(short = true)}, currentShard=$currentShardIndex, fieldInitKey=$fieldInitKey")
+
+        // Unified field access logic: always resolve the proper owner
+        val info = shardFieldRegistry?.findField(binding.typeKey)
+        val plan = shardingPlan
+
+        if (info != null && plan != null) {
+          // Determine current and target shard indices
+          val curr = currentShardIndex  // null means main graph
+          val target = info.shardIndex
+
+          log("generateBindingCode: Found field in registry for ${binding.typeKey.render(short = true)} in shard $target, current=$curr")
+
+          // Resolve the correct receiver based on owner relationships
+          val recv = resolveFieldOwner(thisReceiver, curr, target, plan)
+
+          // Access the provider field through the resolved receiver
+          // Already using resolved receiver, but double-check with safeGetField
+          val providerAccess = safeGetField(recv, info.field, contextualTypeKey.typeKey).let {
+            with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) }
+          }
+
+          return when (accessType) {
+            AccessType.PROVIDER -> providerAccess
+            AccessType.INSTANCE -> irInvoke(providerAccess, callee = symbols.providerInvoke)
+          }
+        }
+
+        // Fallback to bindingFieldContext for backward compatibility (non-sharded case)
+        bindingFieldContext.providerField(binding.typeKey)?.let { field ->
+          log("generateBindingCode: Found field in bindingFieldContext for ${binding.typeKey.render(short = true)}")
+
+          // Even in fallback, we must check if this field belongs to the current context
+          // When sharding is enabled, fields may belong to different classes
+          val fieldOwner = resolveFieldOwnerForBindingContext(field, binding.typeKey)
+
           val providerInstance =
-            irGetField(irGet(thisReceiver), it).let {
+            safeGetField(fieldOwner, field, contextualTypeKey.typeKey).let {
               with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) }
             }
           return if (accessType == AccessType.INSTANCE) {
@@ -129,7 +228,13 @@ private constructor(
             providerInstance
           }
         }
+
+        log("generateBindingCode: No existing field found for ${binding.typeKey.render(short = true)}, will create new instance")
+      } else {
+        log("generateBindingCode: Initializing field for ${binding.typeKey.render(short = true)}, fieldInitKey=$fieldInitKey")
       }
+
+      log("generateBindingCode: Creating new expression for ${binding.typeKey.render(short = true)} of type ${binding::class.simpleName}")
 
       return when (binding) {
         is IrBinding.ConstructorInjected -> {
@@ -165,6 +270,7 @@ private constructor(
             aliasedBinding,
             accessType = accessType,
             fieldInitKey = fieldInitKey,
+            bypassProviderFor = bypassProviderFor,
           )
         }
 
@@ -180,7 +286,9 @@ private constructor(
             if (factoryClass.isObject) {
               factoryClass
             } else {
-              factoryClass.companionObject()!!
+              requireNotNull(factoryClass.companionObject()) {
+                "Factory class ${factoryClass.name} missing companion object"
+              }
             }
           val createFunction = creatorClass.requireSimpleFunction(Symbols.StringNames.CREATE)
           // Must use the provider's params for IrTypeKey as that has qualifier
@@ -215,14 +323,16 @@ private constructor(
                 .simpleFunctions()
                 .first {
                   it.isStatic &&
-                    (it.name == Symbols.Names.create ||
-                      it.name == Symbols.Names.createFactoryProvider)
+                      (it.name == Symbols.Names.create ||
+                          it.name == Symbols.Names.createFactoryProvider)
                 }
                 .symbol
             dispatchReceiver = null
             isFromDagger = true
           } else {
-            val implClassCompanion = implClass.companionObject()!!
+            val implClassCompanion = requireNotNull(implClass.companionObject()) {
+              "Implementation class ${implClass.name} missing companion object"
+            }
             createFunction = implClassCompanion.requireSimpleFunction(Symbols.StringNames.CREATE)
             dispatchReceiver = irGetObject(implClassCompanion.symbol)
             isFromDagger = false
@@ -253,7 +363,9 @@ private constructor(
         }
 
         is IrBinding.MembersInjected -> {
-          val injectedClass = referenceClass(binding.targetClassId)!!.owner
+          val injectedClass = requireNotNull(referenceClass(binding.targetClassId)) {
+            "Could not find injected class for ${binding.targetClassId}"
+          }.owner
           val injectedType = injectedClass.defaultType
           val injectorClass = membersInjectorTransformer.getOrGenerateInjector(injectedClass)?.ir
 
@@ -270,7 +382,9 @@ private constructor(
             }
           } else {
             val injectorCreatorClass =
-              if (injectorClass.isObject) injectorClass else injectorClass.companionObject()!!
+              if (injectorClass.isObject) injectorClass else requireNotNull(injectorClass.companionObject()) {
+                "Injector class ${injectorClass.name} missing companion object"
+              }
             val createFunction =
               injectorCreatorClass.requireSimpleFunction(Symbols.StringNames.CREATE)
             val args =
@@ -281,22 +395,22 @@ private constructor(
                 fieldInitKey = fieldInitKey,
               )
             instanceFactory(
-                injectedType,
-                // InjectableClass_MembersInjector.create(stringValueProvider,
-                // exampleComponentProvider)
-                irInvoke(
-                  dispatchReceiver =
-                    if (injectorCreatorClass.isObject) {
-                      irGetObject(injectorCreatorClass.symbol)
-                    } else {
-                      // It's static from java, dagger interop
-                      check(createFunction.owner.isStatic)
-                      null
-                    },
-                  callee = createFunction,
-                  args = args,
-                ),
-              )
+              injectedType,
+              // InjectableClass_MembersInjector.create(stringValueProvider,
+              // exampleComponentProvider)
+              irInvoke(
+                dispatchReceiver =
+                  if (injectorCreatorClass.isObject) {
+                    irGetObject(injectorCreatorClass.symbol)
+                  } else {
+                    // It's static from java, dagger interop
+                    check(createFunction.owner.isStatic)
+                    null
+                  },
+                callee = createFunction,
+                args = args,
+              ),
+            )
               .let { with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) } }
           }
         }
@@ -307,27 +421,36 @@ private constructor(
         }
 
         is IrBinding.BoundInstance -> {
+          // Outer-class receiver
           if (binding.classReceiverParameter != null) {
-            when (accessType) {
-              AccessType.INSTANCE -> {
-                // Get it directly
-                irGet(binding.classReceiverParameter)
-              }
+            return@with when (accessType) {
+              AccessType.INSTANCE -> irGet(binding.classReceiverParameter)
               AccessType.PROVIDER -> {
-                // We need the provider
-                irGetField(
-                  irGet(binding.classReceiverParameter),
-                  binding.providerFieldAccess!!.field,
-                )
+                val pf = binding.providerFieldAccess?.field
+                  ?: reportCompilerBug("Missing provider field for receiver-based BoundInstance ${binding.typeKey}")
+                safeGetField(irGet(binding.classReceiverParameter), pf, binding.typeKey)
               }
             }
-          } else {
-            // Should never happen, this should get handled in the provider/instance fields logic
-            // above.
-            reportCompilerBug(
-              "Unable to generate code for unexpected BoundInstance binding: $binding"
-            )
           }
+          // True @BindsInstance param: prefer provider field if present, else instance field
+          val provField = bindingFieldContext.providerField(binding.typeKey)
+          if (provField != null) {
+            val owner = resolveFieldOwnerForBindingContext(provField, binding.typeKey)
+            val providerExpr = safeGetField(owner, provField, binding.typeKey)
+            return@with if (accessType == AccessType.INSTANCE) {
+              with(symbols.providerSymbolsFor(binding.typeKey.type)) {
+                transformMetroProvider(providerExpr, IrContextualTypeKey.create(binding.typeKey))
+              }
+            } else {
+              providerExpr
+            }
+          }
+          val instField = bindingFieldContext.instanceField(binding.typeKey)
+            ?: reportCompilerBug("No instance/provider field found for @BindsInstance ${binding.typeKey}")
+          val owner = resolveFieldOwnerForBindingContext(instField, binding.typeKey)
+          val instExpr = safeGetField(owner, instField, binding.typeKey)
+          return@with if (accessType == AccessType.INSTANCE) instExpr
+          else instanceFactory(binding.typeKey.type, instExpr)
         }
 
         is IrBinding.GraphExtension -> {
@@ -341,7 +464,9 @@ private constructor(
               parentTracer,
             )
 
-          val ctor = extensionImpl.primaryConstructor!!
+          val ctor = requireNotNull(extensionImpl.primaryConstructor) {
+            "Extension implementation ${extensionImpl.name} missing primary constructor"
+          }
           val instanceExpression =
             irCallConstructor(ctor.symbol, node.sourceGraph.typeParameters.map { it.defaultType })
               .apply {
@@ -360,6 +485,7 @@ private constructor(
               // Already not a provider
               instanceExpression
             }
+
             AccessType.PROVIDER -> {
               instanceFactory(binding.typeKey.type, instanceExpression)
             }
@@ -383,13 +509,15 @@ private constructor(
                 "Expected factory implementation to be generated for graph extension factory binding"
               )
 
-          val constructor = factoryImpl.primaryConstructor!!
+          val constructor = requireNotNull(factoryImpl.primaryConstructor) {
+            "Factory implementation ${factoryImpl.name} missing primary constructor"
+          }
           val parameters = constructor.parameters()
           val factoryInstance =
             irCallConstructor(
-                constructor.symbol,
-                binding.accessor.typeParameters.map { it.defaultType },
-              )
+              constructor.symbol,
+              binding.accessor.typeParameters.map { it.defaultType },
+            )
               .apply {
                 // Pass the parent graph instance
                 arguments[0] =
@@ -407,6 +535,7 @@ private constructor(
               // Factories are not providers, return directly
               factoryInstance
             }
+
             AccessType.PROVIDER -> {
               // Wrap in an instance factory
               instanceFactory(binding.typeKey.type, factoryInstance)
@@ -417,8 +546,12 @@ private constructor(
         is IrBinding.GraphDependency -> {
           val ownerKey = binding.ownerKey
           if (binding.fieldAccess != null) {
-            // Just get the field
-            irGetField(irGet(binding.fieldAccess.receiverParameter), binding.fieldAccess.field)
+            // Just get the field - using safeGetField for proper cross-shard access
+            safeGetField(
+              irGet(binding.fieldAccess.receiverParameter),
+              binding.fieldAccess.field,
+              binding.typeKey
+            )
           } else if (binding.getter != null) {
             val graphInstanceField =
               bindingFieldContext.instanceField(ownerKey)
@@ -428,9 +561,12 @@ private constructor(
 
             val getterContextKey = IrContextualTypeKey.from(binding.getter)
 
+            // Use proper owner resolution for the instance field
+            val fieldOwner = resolveFieldOwnerForBindingContext(graphInstanceField, ownerKey)
+
             val invokeGetter =
               irInvoke(
-                dispatchReceiver = irGetField(irGet(thisReceiver), graphInstanceField),
+                dispatchReceiver = safeGetField(fieldOwner, graphInstanceField, ownerKey),
                 callee = binding.getter.symbol,
                 typeHint = binding.typeKey.type,
               )
@@ -476,6 +612,251 @@ private constructor(
       }
     }
 
+  /**
+   * Helper to access the graph from within a shard or return this for main graph.
+   * Safely resolves thisReceiver owner via function → class.
+   * Returns this.graph when in a shard, or this when in main graph.
+   */
+  context(scope: IrBuilderWithScope)
+  private fun irThisGraph(thisReceiver: IrValueParameter): IrExpression = with(scope) {
+    // Safely resolve thisReceiver owner via function → class
+    val parentFunction = thisReceiver.parent as? IrFunction
+    val thisClass = parentFunction?.parent as? IrClass
+      ?: reportCompilerBug("Could not resolve class from thisReceiver")
+
+    // Check if we're in a shard class (has a graph field) or main graph
+    val graphField = thisClass.declarations
+      .filterIsInstance<IrField>()
+      .firstOrNull { it.name.asString() == "graph" }
+
+    // If graph field exists, this is a shard - return this.graph
+    // Otherwise, this is the main graph - return this
+    return if (graphField != null) {
+      // Direct field access is OK here - we know the graph field is always local
+      irGetField(irGet(thisReceiver), graphField)
+    } else {
+      // Main graph - just return this
+      irGet(thisReceiver)
+    }
+  }
+
+  /**
+   * Safely accesses a field with proper owner resolution for cross-shard access.
+   * This is the central function that should be used for ALL field accesses
+   * to ensure proper routing through shard boundaries.
+   *
+   * IMPORTANT: Use this instead of direct irGetField() to avoid NoSuchFieldError at runtime.
+   */
+  context(scope: IrBuilderWithScope)
+  internal fun safeGetField(
+    receiver: IrExpression,
+    field: IrField,
+    typeKey: IrTypeKey? = null,
+  ): IrExpression = with(scope) {
+    // If sharding is enabled and we have a typeKey, check if cross-shard access is needed
+    if (shardingPlan != null && shardFieldRegistry != null && typeKey != null) {
+      val fieldInfo = shardFieldRegistry.findField(typeKey)
+      if (fieldInfo != null) {
+        val targetShardIndex = fieldInfo.shardIndex
+        // currentShardIndex is null for main graph, treat as 0 for comparison
+        val currentShardIndex = currentShardIndex ?: 0
+
+        // Only re-route if accessing a field in a different shard
+        if (targetShardIndex != currentShardIndex) {
+          if (debug) {
+            log("IrGraphExpressionGenerator.safeGetField: Cross-shard access detected for ${typeKey.render(short = true)}")
+            log("  Current context: ${if (currentShardIndex == 0) "main" else "shard$currentShardIndex"}")
+            log("  Target location: ${if (targetShardIndex == 0) "main" else "shard$targetShardIndex"}")
+          }
+
+          // Resolve the correct owner for cross-shard access
+          // Pass null for main graph, actual index for shards
+          val correctOwner = resolveFieldOwner(
+            thisReceiver = thisReceiver,
+            currentShard = if (currentShardIndex == 0) null else currentShardIndex,
+            targetShard = targetShardIndex,
+            plan = shardingPlan
+          )
+
+          // Access the field from the correct owner
+          return irGetField(correctOwner, field)
+        }
+      }
+    }
+
+    // Same-shard access or no sharding - use the provided receiver directly
+    irGetField(receiver, field)
+  }
+
+  /**
+   * Resolves the correct receiver for accessing a field based on shard ownership.
+   * Handles exactly 4 cases: main→main, main→shardN, shardA→main, shardA→shardB
+   *
+   * @param thisReceiver The current this receiver
+   * @param currentShard The current shard index (null for main graph, >0 for shards)
+   * @param targetShard The target shard index where the field is located (0 for main, >0 for shards)
+   * @param plan The sharding plan containing shard information
+   * @return The correct receiver expression to access the field
+   */
+  context(scope: IrBuilderWithScope)
+  private fun resolveFieldOwner(
+    thisReceiver: IrValueParameter,
+    currentShard: Int?,
+    targetShard: Int,
+    plan: ShardingPlan,
+  ): IrExpression = with(scope) {
+    // Normalize the comparison: null means main graph (0)
+    val normalizedCurrent = currentShard ?: 0
+
+    when {
+      // Case 1: Same location (main→main or shardN→shardN)
+      normalizedCurrent == targetShard -> {
+        if (debug) {
+          log("IrGraphExpressionGenerator.resolveFieldOwner: Same-context access (both in ${if (targetShard == 0) "main" else "shard$targetShard"})")
+        }
+        irGet(thisReceiver)
+      }
+
+      // Case 2: Main → shardN - access through this.shardN field
+      currentShard == null && targetShard > 0 -> {
+        if (debug) {
+          log("IrGraphExpressionGenerator.resolveFieldOwner: Cross-shard path main → shard$targetShard")
+        }
+        val shardFieldName = "shard$targetShard"
+
+        // Get the main graph class from thisReceiver's parent chain
+        val parentFunction = thisReceiver.parent as? IrFunction
+          ?: reportCompilerBug("thisReceiver parent is not a function")
+        val componentClass = parentFunction.parent as? IrClass
+          ?: reportCompilerBug("Function parent is not a class")
+
+        // Find the shard field in the main graph class
+        val shardField = componentClass.declarations
+          .filterIsInstance<IrField>()
+          .find { it.name.asString() == shardFieldName }
+          ?: reportCompilerBug("Shard field '$shardFieldName' not found in component class ${componentClass.name}")
+
+        irGetField(irGet(thisReceiver), shardField)
+      }
+
+      // Case 3: ShardA → main - access through this.graph field
+      currentShard != null && currentShard > 0 && targetShard == 0 -> {
+        if (debug) {
+          log("IrGraphExpressionGenerator.resolveFieldOwner: Cross-shard path shard$currentShard → main")
+        }
+        // Use irThisGraph which handles getting the graph field from shard
+        irThisGraph(thisReceiver)
+      }
+
+      // Case 4: ShardA → shardB - access through this.graph.shardB
+      currentShard != null && currentShard > 0 && targetShard > 0 && currentShard != targetShard -> {
+        if (debug) {
+          log("IrGraphExpressionGenerator.resolveFieldOwner: Cross-shard path shard$currentShard → shard$targetShard (via main graph)")
+        }
+
+        // First get the main graph reference from this shard
+        val mainGraph = irThisGraph(thisReceiver)
+
+        // Then access the target shard field through the main graph
+        val shardFieldName = "shard$targetShard"
+
+        // Get the type of the main graph to find its class
+        val mainGraphType = when (mainGraph) {
+          is IrGetField -> mainGraph.type
+          is IrGetValue -> mainGraph.type
+          else -> reportCompilerBug("Unexpected main graph expression type: ${mainGraph::class.simpleName}")
+        }
+
+        // Get the main graph class
+        val mainGraphClass = mainGraphType
+          .expectAs<IrSimpleType>()
+          .classifier
+          .expectAs<IrClassSymbol>()
+          .owner
+
+        // Find the target shard field in the main graph
+        val targetShardField = mainGraphClass.declarations
+          .filterIsInstance<IrField>()
+          .find { it.name.asString() == shardFieldName }
+          ?: reportCompilerBug("Shard field '$shardFieldName' not found in main graph class ${mainGraphClass.name}")
+
+        irGetField(mainGraph, targetShardField)
+      }
+
+      // This should never happen if inputs are valid
+      else -> {
+        reportCompilerBug("Invalid shard routing: current=$currentShard, target=$targetShard")
+      }
+    }
+  }
+
+  /**
+   * Resolves the correct field owner for backward compatibility with bindingFieldContext.
+   * When sharding is enabled, this ensures fields are accessed from their correct owner.
+   *
+   * @param field The field to access
+   * @param typeKey The type key for the field (used for sharding lookup)
+   * @return The correct receiver expression to access the field
+   */
+  context(scope: IrBuilderWithScope)
+  private fun resolveFieldOwnerForBindingContext(
+    field: IrField,
+    typeKey: IrTypeKey,
+  ): IrExpression = with(scope) {
+    // Check if thisReceiver is a SwitchingProvider
+    // If so, we need to access fields through the graph field
+    val receiverType = thisReceiver.type
+    val receiverClass = receiverType.classOrNull?.owner
+    if (receiverClass != null && receiverClass.name.asString().contains("SwitchingProvider")) {
+      // This is a SwitchingProvider, access fields through the graph
+      val graphField = receiverClass.declarations
+        .filterIsInstance<IrField>()
+        .firstOrNull { it.name.asString() == "graph" }
+
+      if (graphField != null) {
+        val graphAccess = irGetField(irGet(thisReceiver), graphField)
+
+        // If sharding is enabled, resolve through the graph's shards
+        if (shardingPlan != null && shardFieldRegistry != null) {
+          val fieldInfo = shardFieldRegistry.findField(typeKey)
+          if (fieldInfo != null && fieldInfo.shardIndex > 0) {
+            // Access through shard: graph.shardN
+            val shardFieldName = "shard${fieldInfo.shardIndex}"
+            val shardField = graphAccess.type.classOrNull?.owner?.declarations
+              ?.filterIsInstance<IrField>()
+              ?.firstOrNull { it.name.asString() == shardFieldName }
+
+            if (shardField != null) {
+              return irGetField(graphAccess, shardField)
+            }
+          }
+        }
+
+        // Return the graph itself for main graph fields
+        return graphAccess
+      }
+    }
+
+    // If sharding is enabled, check if this field might be in a different shard
+    if (shardingPlan != null && shardFieldRegistry != null) {
+      // Try to find the field in the shard registry
+      val fieldInfo = shardFieldRegistry.findField(typeKey)
+      if (fieldInfo != null) {
+        // Use the standard owner resolution logic
+        return resolveFieldOwner(
+          thisReceiver,
+          currentShardIndex,
+          fieldInfo.shardIndex,
+          shardingPlan
+        )
+      }
+    }
+
+    // Fallback: assume the field is in the current context
+    // This handles non-sharded cases and backward compatibility
+    irGet(thisReceiver)
+  }
+
   context(scope: IrBuilderWithScope)
   private fun generateBindingArguments(
     targetParams: Parameters,
@@ -489,7 +870,7 @@ private constructor(
       var paramsToMap = buildList {
         if (
           binding is IrBinding.Provided &&
-            targetParams.dispatchReceiverParameter?.type?.rawTypeOrNull()?.isObject != true
+          targetParams.dispatchReceiverParameter?.type?.rawTypeOrNull()?.isObject != true
         ) {
           targetParams.dispatchReceiverParameter?.let(::add)
         }
@@ -535,7 +916,7 @@ private constructor(
 
       if (
         binding is IrBinding.Provided &&
-          binding.providerFactory.function.correspondingPropertySymbol == null
+        binding.providerFactory.function.correspondingPropertySymbol == null
       ) {
         check(params.regularParameters.size == paramsToMap.size) {
           """
@@ -563,10 +944,46 @@ private constructor(
           }
 
         // TODO consolidate this logic with generateBindingCode
+        // First check the shard field registry for both INSTANCE and PROVIDER access types
+        val fieldFromRegistry = shardFieldRegistry?.findField(typeKey)?.let { fieldInfo ->
+          // If the field is in the current shard (or main graph), use it directly
+          if (fieldInfo.shardIndex == (currentShardIndex ?: 0)) {
+            log("generateBindingArguments: Found field in registry for ${typeKey.render(short = true)} in current shard ${fieldInfo.shardIndex}")
+            // Direct access - field is in current shard
+            irGetField(irGet(thisReceiver), fieldInfo.field)
+          } else if (shardingPlan != null) {
+            log("generateBindingArguments: Field for ${typeKey.render(short = true)} is in shard ${fieldInfo.shardIndex}, current shard is $currentShardIndex, using cross-shard access")
+            // If it's in a different shard, resolve the correct owner and access the field
+            val fieldOwner = resolveFieldOwner(
+              thisReceiver,
+              currentShardIndex,
+              fieldInfo.shardIndex,
+              shardingPlan
+            )
+            irGetField(fieldOwner, fieldInfo.field)
+          } else {
+            null
+          }
+        }
+
+        if (fieldFromRegistry != null) {
+          // We found the field in the registry, use it
+          return@mapIndexed if (accessType == AccessType.INSTANCE) {
+            fieldFromRegistry.let {
+              with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) }
+            }
+          } else {
+            fieldFromRegistry
+          }
+        }
+
+        // Check bindingFieldContext for backward compatibility
         if (accessType == AccessType.INSTANCE) {
           // IFF the parameter can take a direct instance, try our instance fields
           bindingFieldContext.instanceField(typeKey)?.let { instanceField ->
-            return@mapIndexed irGetField(irGet(thisReceiver), instanceField).let {
+            log("generateBindingArguments: Found instance field in bindingFieldContext for ${typeKey.render(short = true)}")
+            val fieldOwner = resolveFieldOwnerForBindingContext(instanceField, typeKey)
+            return@mapIndexed safeGetField(fieldOwner, instanceField, typeKey).let {
               with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) }
             }
           }
@@ -575,9 +992,12 @@ private constructor(
         val providerInstance =
           bindingFieldContext.providerField(typeKey)?.let { field ->
             // If it's in provider fields, invoke that field
-            irGetField(irGet(thisReceiver), field)
+            log("generateBindingArguments: Found provider field in bindingFieldContext for ${typeKey.render(short = true)}")
+            val fieldOwner = resolveFieldOwnerForBindingContext(field, typeKey)
+            safeGetField(fieldOwner, field, typeKey)
           }
             ?: run {
+              log("generateBindingArguments: No existing field found for ${typeKey.render(short = true)}, calling generateBindingCode")
               // Generate binding code for each param
               val paramBinding =
                 bindingGraph.requireBinding(contextualTypeKey, IrBindingStack.empty())
@@ -724,10 +1144,10 @@ private constructor(
       }
 
       return irCall(
-          callee = callee,
-          type = binding.typeKey.type,
-          typeArguments = listOf(elementType),
-        )
+        callee = callee,
+        type = binding.typeKey.type,
+        typeArguments = listOf(elementType),
+      )
         .apply {
           for ((i, arg) in args.withIndex()) {
             arguments[i] = arg
@@ -950,10 +1370,10 @@ private constructor(
                 listOf(
                   generateMapKeyLiteral(sourceBinding),
                   generateBindingCode(
-                      sourceBinding,
-                      accessType = AccessType.PROVIDER,
-                      fieldInitKey = fieldInitKey,
-                    )
+                    sourceBinding,
+                    accessType = AccessType.PROVIDER,
+                    fieldInitKey = fieldInitKey,
+                  )
                     .let {
                       with(valueProviderSymbols) {
                         transformMetroProvider(it, originalValueContextKey)
@@ -995,4 +1415,16 @@ private constructor(
         isGraphInstance = false,
       )
     }
+
+  private fun IrBuilderWithScope.generateInlineInstance(binding: IrBinding): IrExpression {
+    // Produce a direct instance. Setting fieldInitKey to this key prevents
+    // provider-field reuse and avoids recursion via SwitchingProvider.
+    return generateBindingCode(
+      binding = binding,
+      contextualTypeKey = binding.contextualTypeKey,
+      accessType = AccessType.INSTANCE,
+      fieldInitKey = binding.typeKey,
+      bypassProviderFor = null
+    )
+  }
 }

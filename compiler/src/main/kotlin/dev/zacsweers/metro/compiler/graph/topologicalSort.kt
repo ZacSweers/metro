@@ -120,11 +120,13 @@ internal fun <TypeKey : Comparable<TypeKey>, Binding> buildFullAdjacency(
  * @param sortedKeys Topologically sorted list of keys.
  * @param deferredTypes Vertices that sit inside breakable cycles.
  * @param reachableKeys Vertices that were deemed reachable by any input roots.
+ * @param tarjanResult The Tarjan SCC result for sharding analysis (optional).
  */
-internal data class TopoSortResult<T>(
+internal data class TopoSortResult<T : Comparable<T>>(
   val sortedKeys: List<T>,
   val deferredTypes: List<T>,
   val reachableKeys: Set<T>,
+  val tarjanResult: TarjanResult<T>? = null,
 )
 
 /**
@@ -251,6 +253,7 @@ internal fun <V : Comparable<V>> topologicalSort(
     sortedKeys,
     deferredTypes.toList(),
     reachableKeys.keys,
+    TarjanResult(components, componentOf),
   )
 }
 

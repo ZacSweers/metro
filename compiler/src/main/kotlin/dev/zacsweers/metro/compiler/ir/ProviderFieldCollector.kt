@@ -11,15 +11,28 @@ private const val INITIAL_VALUE = 512
 /** Computes the set of bindings that must end up in provider fields. */
 internal class ProviderFieldCollector(private val graph: IrBindingGraph) {
 
-  private data class Node(val binding: IrBinding, var refCount: Int = 0) {
+  private data class Node(val binding: IrBinding, var refCount: Int = 0, var isGraphAccessor: Boolean = false) {
     val needsField: Boolean
       get() {
-        // Scoped, graph, and members injector bindings always need provider fields
+        // Always create provider fields for qualified bindings to prevent collisions
+        if (binding.typeKey.qualifier != null) return true
+
+        // Always create provider fields for graph interface returns to ensure singleton semantics
+        if (binding.isGraphInterfaceReturn) return true
+
+        // Always create provider fields for graph interface accessors to ensure singleton semantics (legacy)
+        if (isGraphAccessor) return true
+
+        // Scoped bindings always need provider fields for proper caching
         if (binding.isScoped()) return true
+
+        // Multibindings are always created adhoc - no field needed
+        if (binding is IrBinding.Multibinding) return false
+
+        // Additional cases that require fields
         if (binding is IrBinding.GraphDependency) return true
         if (binding is IrBinding.MembersInjected && !binding.isFromInjectorFunction) return true
-        // Multibindings are always created adhoc
-        if (binding is IrBinding.Multibinding) return false
+
         // Assisted types always need to be a single field to ensure use of the same provider
         if (binding is IrBinding.Assisted) return true
         // TODO what about assisted but no assisted params? These also don't become providers
@@ -34,7 +47,7 @@ internal class ProviderFieldCollector(private val graph: IrBindingGraph) {
         }
 
         // If it's unscoped but used more than once and not into a multibinding,
-        // we can generate a reusable field
+        // we can generate a reusable field for efficiency
         return refCount >= 2
       }
 
@@ -66,6 +79,14 @@ internal class ProviderFieldCollector(private val graph: IrBindingGraph) {
         }
       }
     }
+  }
+
+  fun markForField(contextualTypeKey: IrContextualTypeKey) {
+    // Mark as graph accessor to ensure field creation for singleton semantics
+    val binding = graph.requireBinding(contextualTypeKey, IrBindingStack.empty())
+    val node = nodes.getOrPut(binding.typeKey) { Node(binding) }
+    node.isGraphAccessor = true
+    node.mark()
   }
 
   private fun IrContextualTypeKey.mark(): Boolean {

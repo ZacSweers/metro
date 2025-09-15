@@ -16,7 +16,7 @@ dependencyResolutionManagement {
   }
 }
 
-plugins { id("com.gradle.develocity") }
+// plugins { id("com.gradle.develocity") } // Temporarily disabled
 
 rootProject.name = "metro"
 
@@ -24,6 +24,7 @@ include(":compiler", ":compiler-tests", ":gradle-plugin", ":interop-dagger", ":r
 
 val VERSION_NAME: String by extra.properties
 
+/* Temporarily disabled
 develocity {
   buildScan {
     termsOfUseUrl = "https://gradle.com/terms-of-service"
@@ -39,3 +40,4 @@ develocity {
     }
   }
 }
+*/

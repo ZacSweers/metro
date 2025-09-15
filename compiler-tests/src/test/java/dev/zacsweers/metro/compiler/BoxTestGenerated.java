@@ -22,6 +22,84 @@ public class BoxTestGenerated extends AbstractBoxTest {
     KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
   }
 
+  @Test
+  @TestMetadata("binds_instance_inline.kt")
+  public void testBinds_instance_inline() {
+    runTest("compiler-tests/src/test/data/box/binds_instance_inline.kt");
+  }
+
+  @Test
+  @TestMetadata("debug_sharding.kt")
+  public void testDebug_sharding() {
+    runTest("compiler-tests/src/test/data/box/debug_sharding.kt");
+  }
+
+  @Test
+  @TestMetadata("sharding_backedge_cycle_guarantee.kt")
+  public void testSharding_backedge_cycle_guarantee() {
+    runTest("compiler-tests/src/test/data/box/sharding_backedge_cycle_guarantee.kt");
+  }
+
+  @Test
+  @TestMetadata("sharding_basic.kt")
+  public void testSharding_basic() {
+    runTest("compiler-tests/src/test/data/box/sharding_basic.kt");
+  }
+
+  @Test
+  @TestMetadata("sharding_chunked_init.kt")
+  public void testSharding_chunked_init() {
+    runTest("compiler-tests/src/test/data/box/sharding_chunked_init.kt");
+  }
+
+  @Test
+  @TestMetadata("sharding_cross_shard.kt")
+  public void testSharding_cross_shard() {
+    runTest("compiler-tests/src/test/data/box/sharding_cross_shard.kt");
+  }
+
+  @Test
+  @TestMetadata("sharding_cycle_breaking.kt")
+  public void testSharding_cycle_breaking() {
+    runTest("compiler-tests/src/test/data/box/sharding_cycle_breaking.kt");
+  }
+
+  @Test
+  @TestMetadata("sharding_cycles.kt")
+  public void testSharding_cycles() {
+    runTest("compiler-tests/src/test/data/box/sharding_cycles.kt");
+  }
+
+  @Test
+  @TestMetadata("sharding_init_chunking_guarantee.kt")
+  public void testSharding_init_chunking_guarantee() {
+    runTest("compiler-tests/src/test/data/box/sharding_init_chunking_guarantee.kt");
+  }
+
+  @Test
+  @TestMetadata("sharding_minimal.kt")
+  public void testSharding_minimal() {
+    runTest("compiler-tests/src/test/data/box/sharding_minimal.kt");
+  }
+
+  @Test
+  @TestMetadata("sharding_robust_params.kt")
+  public void testSharding_robust_params() {
+    runTest("compiler-tests/src/test/data/box/sharding_robust_params.kt");
+  }
+
+  @Test
+  @TestMetadata("sharding_scc.kt")
+  public void testSharding_scc() {
+    runTest("compiler-tests/src/test/data/box/sharding_scc.kt");
+  }
+
+  @Test
+  @TestMetadata("switching_provider_no_recursion.kt")
+  public void testSwitching_provider_no_recursion() {
+    runTest("compiler-tests/src/test/data/box/switching_provider_no_recursion.kt");
+  }
+
   @Nested
   @TestMetadata("compiler-tests/src/test/data/box/aggregation")
   @TestDataPath("$PROJECT_ROOT")

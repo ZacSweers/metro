@@ -47,6 +47,9 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
   override val contextualTypeKey: IrContextualTypeKey
   val reportableDeclaration: IrDeclarationWithName?
 
+  /** True if this binding is exposed through the graph interface and needs caching */
+  var isGraphInterfaceReturn: Boolean
+
   /**
    * Returns true if this binding should be scoped (cached) in the graph. For most bindings, this is
    * true if [scope] != null. For [GraphExtension] bindings, this is true if
@@ -90,6 +93,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val typeKey: IrTypeKey,
     val injectedMembers: Set<IrContextualTypeKey>,
   ) : IrBinding, BindingWithAnnotations, InjectedClassBinding<ConstructorInjected> {
+    override var isGraphInterfaceReturn: Boolean = false
     override val parameters: Parameters = classFactory.targetFunctionParameters
 
     override val parametersByKey: Map<IrTypeKey, Parameter> by unsafeLazy {
@@ -139,6 +143,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val annotations: MetroAnnotations<IrAnnotation>,
     override val typeKey: IrTypeKey,
   ) : IrBinding, BindingWithAnnotations, InjectedClassBinding<ObjectClass> {
+    override var isGraphInterfaceReturn: Boolean = false
     override val dependencies: List<IrContextualTypeKey> = emptyList()
     override val scope: IrAnnotation? = null
     override val parameters: Parameters = Parameters.empty()
@@ -171,6 +176,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val contextualTypeKey: IrContextualTypeKey,
     override val parameters: Parameters,
   ) : StaticBinding {
+    override var isGraphInterfaceReturn: Boolean = false
     override val dependencies: List<IrContextualTypeKey> by unsafeLazy {
       parameters.allParameters.map { it.contextualTypeKey }
     }
@@ -241,6 +247,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     val bindsCallable: BindsCallable?,
     override val parameters: Parameters,
   ) : StaticBinding {
+    override var isGraphInterfaceReturn: Boolean = false
     val ir = bindsCallable?.function
     override val annotations: MetroAnnotations<IrAnnotation> =
       bindsCallable?.callableMetadata?.annotations ?: MetroAnnotations.none()
@@ -340,6 +347,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val parameters: Parameters,
     override val typeKey: IrTypeKey,
   ) : IrBinding, BindingWithAnnotations, InjectedClassBinding<Assisted> {
+    override var isGraphInterfaceReturn: Boolean = false
     // Dependencies are handled by the target class
     override val dependencies: List<IrContextualTypeKey> = listOf(target)
     override val parametersByKey: Map<IrTypeKey, Parameter> = emptyMap()
@@ -376,6 +384,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
       reportableLocation: IrDeclarationWithName,
     ) : this(parameter.typeKey, "${parameter.name.asString()}Instance", reportableLocation)
 
+    override var isGraphInterfaceReturn: Boolean = false
     override val dependencies: List<IrContextualTypeKey> = emptyList()
     override val scope: IrAnnotation? = null
     override val parametersByKey: Map<IrTypeKey, Parameter> = emptyMap()
@@ -384,6 +393,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
   }
 
   data class Absent(override val typeKey: IrTypeKey) : IrBinding {
+    override var isGraphInterfaceReturn: Boolean = false
     override val dependencies: List<IrContextualTypeKey> = emptyList()
     override val scope: IrAnnotation? = null
     override val nameHint: String
@@ -409,6 +419,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
         ?: getter?.callableId
         ?: reportCompilerBug("One of getter or fieldAccess must be present"),
   ) : IrBinding {
+    override var isGraphInterfaceReturn: Boolean = false
     override val dependencies: List<IrContextualTypeKey> = listOf(IrContextualTypeKey(ownerKey))
     override val scope: IrAnnotation? = null
     override val nameHint: String = buildString {
@@ -469,6 +480,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     // TreeSet sorting for consistency
     val sourceBindings: MutableSet<IrTypeKey> = TreeSet(),
   ) : IrBinding {
+    override var isGraphInterfaceReturn: Boolean = false
     override val scope: IrAnnotation? = null
     override val dependencies by unsafeLazy { sourceBindings.map { IrContextualTypeKey(it) } }
     override val parametersByKey: Map<IrTypeKey, Parameter> = emptyMap()
@@ -556,6 +568,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     val isFromInjectorFunction: Boolean,
     val targetClassId: ClassId,
   ) : IrBinding {
+    override var isGraphInterfaceReturn: Boolean = false
     override val typeKey: IrTypeKey = contextualTypeKey.typeKey
 
     override val dependencies: List<IrContextualTypeKey> =
@@ -584,6 +597,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     val extensionScopes: Set<IrAnnotation>,
     override val dependencies: List<IrContextualTypeKey> = emptyList(),
   ) : IrBinding {
+    override var isGraphInterfaceReturn: Boolean = false
     override val reportableDeclaration: IrDeclarationWithName = accessor
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
     override val parameters: Parameters = Parameters.empty()
@@ -614,6 +628,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     parentKey: IrTypeKey,
     val accessor: IrSimpleFunction,
   ) : IrBinding {
+    override var isGraphInterfaceReturn: Boolean = false
     override val dependencies: List<IrContextualTypeKey> = listOf(IrContextualTypeKey(parentKey))
     override val reportableDeclaration: IrDeclarationWithName = accessor
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)

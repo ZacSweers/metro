@@ -34,6 +34,7 @@ import org.jetbrains.kotlin.ir.util.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.platform.jvm.isJvm
 
 internal class IrBindingGraph(
   private val metroContext: IrMetroContext,
@@ -193,39 +194,41 @@ internal class IrBindingGraph(
     val sortedKeys: List<IrTypeKey>,
     val deferredTypes: List<IrTypeKey>,
     val reachableKeys: Set<IrTypeKey>,
+    val shardingPlan: dev.zacsweers.metro.compiler.sharding.ShardingPlan? = null,
   )
 
   data class GraphError(val declaration: IrDeclaration?, val message: String)
 
   fun seal(parentTracer: Tracer, onError: (List<GraphError>) -> Nothing): BindingGraphResult =
     context(metroContext) {
-      val (sortedKeys, deferredTypes, reachableKeys) =
-        parentTracer.traceNested("seal graph") { tracer ->
-          val roots = buildMap {
-            putAll(accessors)
-            putAll(injectors)
-          }
-
-          realGraph.seal(
-            roots = roots,
-            keep = extraKeeps,
-            shrinkUnusedBindings = metroContext.options.shrinkUnusedBindings,
-            tracer = tracer,
-            onPopulated = {
-              writeDiagnostic("keys-populated-${parentTracer.tag}.txt") {
-                realGraph.bindings.keys.sorted().joinToString("\n")
-              }
-            },
-            onSortedCycle = { elementsInCycle ->
-              writeDiagnostic(
-                "cycle-${parentTracer.tag}-${elementsInCycle[0].render(short = true, includeQualifier = false)}.txt"
-              ) {
-                elementsInCycle.plus(elementsInCycle[0]).joinToString("\n")
-              }
-            },
-            validateBindings = ::validateBindings,
-          )
+      val topoResult = parentTracer.traceNested("seal graph") { tracer ->
+        val roots = buildMap {
+          putAll(accessors)
+          putAll(injectors)
         }
+
+        realGraph.seal(
+          roots = roots,
+          keep = extraKeeps,
+          shrinkUnusedBindings = metroContext.options.shrinkUnusedBindings,
+          tracer = tracer,
+          onPopulated = {
+            writeDiagnostic("keys-populated-${parentTracer.tag}.txt") {
+              realGraph.bindings.keys.sorted().joinToString("\n")
+            }
+          },
+          onSortedCycle = { elementsInCycle ->
+            writeDiagnostic(
+              "cycle-${parentTracer.tag}-${elementsInCycle[0].render(short = true, includeQualifier = false)}.txt"
+            ) {
+              elementsInCycle.plus(elementsInCycle[0]).joinToString("\n")
+            }
+          },
+          validateBindings = ::validateBindings,
+        )
+      }
+      
+      val (sortedKeys, deferredTypes, reachableKeys) = topoResult
 
       writeDiagnostic("keys-validated-${parentTracer.tag}.txt") {
         sortedKeys.joinToString(separator = "\n")
@@ -249,7 +252,103 @@ internal class IrBindingGraph(
           "Found absent bindings in the binding graph: ${dumpGraph("Absent bindings", short = true)}"
         }
       }
-      return BindingGraphResult(sortedKeys, deferredTypes, reachableKeys)
+      
+      // Analyze for sharding if keysPerShard > 0
+      val shardingPlan = if (metroContext.options.keysPerShard > 0) {
+        parentTracer.traceNested("analyze sharding") { tracer ->
+          val startTime = System.currentTimeMillis()
+          
+          if (metroContext.options.debug) {
+            metroContext.log("[MetroSharding] Starting sharding analysis with keysPerShard=${metroContext.options.keysPerShard}")
+          }
+          
+          val analyzer = dev.zacsweers.metro.compiler.sharding.ShardAnalyzer(
+            keysPerShard = metroContext.options.keysPerShard
+          )
+          val tarjanResult = topoResult.tarjanResult
+          if (tarjanResult != null) {
+            val plan = analyzer.analyze(
+              bindingGraph = this,
+              sccs = tarjanResult
+            )
+            
+            if (plan != null) {
+              val analysisTime = System.currentTimeMillis() - startTime
+              
+              if (metroContext.options.debug) {
+                metroContext.log("[MetroSharding] Created ${plan.shards.size} shards with distribution: " +
+                  plan.shards.joinToString { "Shard${it.index}=${it.bindings.size} bindings" })
+                metroContext.log("[MetroSharding] Total bindings to shard: ${plan.bindingToShard.size}")
+                metroContext.log("[MetroSharding] Analysis completed in ${analysisTime}ms")
+              }
+              
+              // Generate sharding report using the same pattern as other diagnostics
+              tracer.traceNested("generate sharding report") {
+                val graphName = node.sourceGraph.kotlinFqName.asString().replace(".", "-")
+                val report = dev.zacsweers.metro.compiler.sharding.ShardingReport.generate(
+                  graphName = node.sourceGraph.kotlinFqName.asString(),
+                  shardingPlan = plan,
+                  bindingGraph = this,
+                  analysisTimeMs = analysisTime,
+                )
+                
+                // Write Markdown report
+                writeDiagnostic("sharding-report-${graphName}.md") {
+                  report.toMarkdown()
+                }
+                
+                // Write JSON report
+                writeDiagnostic("sharding-report-${graphName}.json") {
+                  report.toJson()
+                }
+                
+                if (metroContext.options.debug) {
+                  metroContext.log("[MetroSharding] Sharding report written to reports directory")
+                }
+              }
+            }
+            
+            plan
+          } else {
+            if (metroContext.options.debug) {
+              metroContext.log("[MetroSharding] No Tarjan result available, skipping sharding")
+            }
+            null
+          }
+        }
+      } else {
+        if (metroContext.options.debug && metroContext.options.keysPerShard == 0) {
+          metroContext.log("[MetroSharding] Sharding disabled (keysPerShard=0)")
+        }
+        null
+      }
+      
+      if (shardingPlan != null) {
+        writeDiagnostic("sharding-plan-${parentTracer.tag}.txt") {
+          buildString {
+            appendLine("Sharding Plan:")
+            appendLine("Total shards: ${shardingPlan.shards.size}")
+            appendLine("Keys per shard threshold: ${shardingPlan.keysPerShard}")
+            appendLine()
+            shardingPlan.shards.forEach { shard ->
+              appendLine("Shard ${shard.index} (${if (shard.isComponentShard) "Component" else shard.shardClassName()}):")
+              appendLine("  Bindings: ${shard.bindings.size}")
+              appendLine("  Dependencies from other shards: ${shard.dependencies.size}")
+              
+              // Log sample bindings when debug is enabled
+              if (metroContext.options.debug && shard.bindings.isNotEmpty()) {
+                val sampleBindings = shard.bindings.take(5).joinToString { it.render(short = true) }
+                appendLine("  Sample bindings: $sampleBindings")
+                if (shard.bindings.size > 5) {
+                  appendLine("  ... and ${shard.bindings.size - 5} more")
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      return BindingGraphResult(sortedKeys, deferredTypes, reachableKeys, shardingPlan)
     }
 
   fun reportDuplicateBinding(
