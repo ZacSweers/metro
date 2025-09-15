@@ -34,7 +34,6 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
-import org.jetbrains.kotlin.name.Name
 
 internal class FirAccessorOverrideStatusTransformer(session: FirSession) :
   FirStatusTransformerExtension(session) {
@@ -102,12 +101,15 @@ internal class FirAccessorOverrideStatusTransformer(session: FirSession) :
     if (declaration !is FirCallableDeclaration) return status
     declaration.returnTypeRef.coneTypeOrNull ?: return status
     declaration.symbol.callableId?.callableName ?: return status
-
     val containingClass = declaration.getContainingClassSymbol() ?: return status
 
-    val checkedAccessors = mutableSetOf<Accessor>()
-    var needsOverride = false
+    // Track checked types to avoid duplicate checks
+    val checkedSuperTypes = mutableSetOf<ConeKotlinType>()
+
     for (superType in containingClass.getSuperTypes(session)) {
+      // Skip if we've already checked this super type
+      if (!checkedSuperTypes.add(superType)) continue
+
       val classSymbol = superType.toClassSymbol(session) ?: continue
 
       // We only want @ContributesTo types, which have supertypes
@@ -115,38 +117,30 @@ internal class FirAccessorOverrideStatusTransformer(session: FirSession) :
         classSymbol.resolvedSuperTypes.firstOrNull()?.toClassSymbol(session) ?: continue
 
       // Walk its direct callables. If any clash, mark needsOverride as true
-      val matchingCallable =
+      val hasMatchingCallable =
         contributedInterface
           .callableDeclarations(session, includeSelf = true, includeAncestors = false)
-          .filter {
-            // Functions with params are not accessor candidates
-            (it !is FirNamedFunctionSymbol || it.valueParameterSymbols.isEmpty())
+          .any { callable ->
             // Extensions are not accessor candidates
-            && it.receiverParameterSymbol == null
-          }
-          .map { it.toAccessor() }
-          .filterNot { it in checkedAccessors }
-          .find {
-            checkedAccessors.add(it)
-            it == declaration.symbol.toAccessor()
+            callable.receiverParameterSymbol == null &&
+              // Functions with params are not accessor candidates
+              (callable !is FirNamedFunctionSymbol || callable.valueParameterSymbols.isEmpty()) &&
+              callable.matchesSignatureOf(declaration.symbol)
           }
 
-      if (matchingCallable != null) {
-        needsOverride = true
-        break
+      if (hasMatchingCallable) {
+        // Found a match - immediately return transformed status
+        return status.copy(isOverride = true)
       }
     }
 
-    if (!needsOverride) return status
-    return status.copy(isOverride = true)
+    return status
   }
 
-  private data class Accessor(
-    val name: Name,
-    val isFunction: Boolean,
-    val returnType: ConeKotlinType,
-  )
-
-  private fun FirCallableSymbol<*>.toAccessor(): Accessor =
-    Accessor(name, isFunction = this is FirFunctionSymbol, returnType = resolvedReturnType)
+  fun FirCallableSymbol<*>.matchesSignatureOf(other: FirCallableSymbol<*>): Boolean {
+    val thisIsFunction = this is FirFunctionSymbol
+    val otherIsFunction = other is FirFunctionSymbol
+    if (thisIsFunction != otherIsFunction) return false
+    return name == other.name
+  }
 }
