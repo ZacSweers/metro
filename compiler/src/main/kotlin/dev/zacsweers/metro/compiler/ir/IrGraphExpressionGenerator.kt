@@ -627,7 +627,7 @@ private constructor(
     // Check if we're in a shard class (has a graph field) or main graph
     val graphField = thisClass.declarations
       .filterIsInstance<IrField>()
-      .firstOrNull { it.name.asString() == "graph" }
+      .firstOrNull { it.name == Symbols.Names.graph }
 
     // If graph field exists, this is a shard - return this.graph
     // Otherwise, this is the main graph - return this
@@ -811,7 +811,7 @@ private constructor(
       // This is a SwitchingProvider, access fields through the graph
       val graphField = receiverClass.declarations
         .filterIsInstance<IrField>()
-        .firstOrNull { it.name.asString() == "graph" }
+        .firstOrNull { it.name == Symbols.Names.graph }
 
       if (graphField != null) {
         val graphAccess = irGetField(irGet(thisReceiver), graphField)

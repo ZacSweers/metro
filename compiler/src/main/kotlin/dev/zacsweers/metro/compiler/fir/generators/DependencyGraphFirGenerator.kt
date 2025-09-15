@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
+import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.constructType
 import dev.zacsweers.metro.compiler.fir.copyTypeParametersFrom
 import dev.zacsweers.metro.compiler.fir.hasOrigin
@@ -54,6 +55,7 @@ import org.jetbrains.kotlin.fir.types.toLookupTag
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
+import org.jetbrains.kotlin.types.Variance
 
 /**
  * Generates implementation class headers for `@DependencyGraph` types.
@@ -256,7 +258,7 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
       // For the $$Metro class, generate the SwitchingProvider if enabled
       if (session.metroFirBuiltIns.options.fastInit) {
         log("Found MetroGraph class ${classSymbol.classId}, adding SwitchingProvider")
-        names += Name.identifier("SwitchingProvider")
+        names += Symbols.Names.SwitchingProvider
       } else {
         log("Found MetroGraph class ${classSymbol.classId}, SwitchingProvider disabled by option")
       }
@@ -320,6 +322,37 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
           .apply { markAsDeprecatedHidden(session) }
           .symbol
       }
+      Symbols.Names.SwitchingProvider -> {
+        // Only generate if enabled
+        if (session.metroFirBuiltIns.options.fastInit) {
+          log("Generating SwitchingProvider class in ${owner.classId}")
+          createNestedClass(owner, name, Keys.SwitchingProviderDeclaration) {
+            visibility = Visibilities.Private
+            modality = Modality.FINAL
+
+            // Add type parameter T with OUT variance (covariant)
+            // Use the typeParameter builder method provided by the class configurator
+            typeParameter(Name.identifier("T"), variance = Variance.OUT_VARIANCE)
+
+            // Add supertype: Provider<T>
+            // The typeParameter method adds to typeParameters, and we need to build the supertype
+            // after adding the type parameter but we need to use the superType function to access it
+            superType { typeParameters ->
+              // Build the Provider<T> type using the type parameter
+              val providerClassId = session.metroFirBuiltIns.providerClassSymbol
+              providerClassId.toLookupTag().constructType(
+                arrayOf(typeParameters.first().toConeType()),
+                isMarkedNullable = false,
+              )
+            }
+          }
+          .apply { markAsDeprecatedHidden(session) }
+          .symbol
+        } else {
+          log("Skipping SwitchingProvider generation - disabled by option")
+          null
+        }
+      }
       Name.identifier("SwitchingProvider") -> {
         // Only generate if enabled
         if (session.metroFirBuiltIns.options.fastInit) {
@@ -350,7 +383,7 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
      * In either case, we'll just generate a constructor and a PLACEHOLDER_SAM_FUNCTION. The
      * placeholder is important because not everything about a creator is resolvable at
      * this point, but we can use this marker later to indicate we expect generateFunctions()
-     * to generate the correct functions .
+     * to generate the correct functions.
      */
     val isGraphCompanion =
       classSymbol.isCompanion &&
@@ -367,8 +400,8 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
       // SwitchingProvider, generate constructor, properties, and invoke method
       names += SpecialNames.INIT
       names += Symbols.Names.invoke
-      names += Name.identifier("graph")
-      names += Name.identifier("id")
+      names += Symbols.Names.graph
+      names += Symbols.Names.id
     }
 
     if (names.isNotEmpty()) {
@@ -447,13 +480,13 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
           visibility = Visibilities.Public
           // Add graph parameter
           valueParameter(
-            name = Name.identifier("graph"),
+            name = Symbols.Names.graph,
             type = graphClass.constructType(),
             key = Keys.RegularParameter
           )
           // Add id parameter
           valueParameter(
-            name = Name.identifier("id"),
+            name = Symbols.Names.id,
             type = session.builtinTypes.intType.coneType,
             key = Keys.RegularParameter
           )
@@ -482,7 +515,7 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
           val property = createMemberProperty(
             owner,
             Keys.Default,
-            Name.identifier("graph"),
+            Symbols.Names.graph,
             returnType = graphClass.constructType(),
             isVal = true,
             hasBackingField = true
@@ -496,7 +529,7 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
           val property = createMemberProperty(
             owner,
             Keys.Default,
-            Name.identifier("id"),
+            Symbols.Names.id,
             returnType = session.builtinTypes.intType.coneType,
             isVal = true,
             hasBackingField = true

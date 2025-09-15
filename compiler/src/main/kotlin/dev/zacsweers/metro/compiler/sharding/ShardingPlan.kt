@@ -6,7 +6,7 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
 
 /**
  * Represents a plan for sharding a dependency graph into multiple classes.
- * 
+ *
  * Following Dagger's approach, this plan partitions bindings across shards while:
  * - Keeping strongly connected components (cycles) together
  * - Maintaining reverse topological order (Shard{i} doesn't depend on Shard{i+j})
@@ -41,7 +41,7 @@ internal data class ShardingPlan(
      * Returns the name for this shard class.
      * Component shard (0) uses the graph name, others are named Shard1, Shard2, etc.
      */
-    internal fun shardClassName(): String = 
+    internal fun shardClassName(): String =
       if (isComponentShard) "" else "Shard$index"
   }
 
@@ -62,13 +62,13 @@ internal data class ShardingPlan(
    * Returns all non-component shards (i.e., nested shard classes to generate).
    */
   internal fun additionalShards(): List<Shard> = shards.drop(1)
-  
+
   /**
    * Returns the shard index for a given binding, or null if not sharded.
    * Added by Phase 3 for compatibility.
    */
   internal fun getShardForBinding(typeKey: IrTypeKey): Int? = bindingToShard[typeKey]
-  
+
   /**
    * Returns true if the binding is in a different shard than the current one.
    * Added by Phase 3 for cross-shard detection.

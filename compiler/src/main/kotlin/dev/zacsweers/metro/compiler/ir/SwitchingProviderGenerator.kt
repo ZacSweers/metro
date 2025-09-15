@@ -4,6 +4,7 @@
 
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.sharding.ShardFieldRegistry
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
@@ -78,7 +79,7 @@ internal class SwitchingProviderGenerator(
       ?: error("invoke() must have dispatch receiver")
 
     val graphField = switchingProviderClass.declarations.filterIsInstance<IrField>()
-      .firstOrNull { it.name.asString() == "graph" }
+      .firstOrNull { it.name == Symbols.Names.graph }
       ?: error("SwitchingProvider must have field: graph")
 
     val freshGraphExpr = irGetField(irGet(spThis), graphField)
@@ -303,7 +304,7 @@ internal class SwitchingProviderGenerator(
                 }
               }
             }
-            
+
             else -> {
               // For all other binding types, generate the instance directly
               // NEVER invoke provider fields as they might recursively call back to SwitchingProvider
@@ -364,7 +365,7 @@ internal class SwitchingProviderGenerator(
           ?: error("invoke() must have dispatch receiver")
 
         val idField = switchingProviderClass.declarations.filterIsInstance<IrField>()
-          .firstOrNull { it.name.asString() == "id" }
+          .firstOrNull { it.name == Symbols.Names.id }
           ?: error("SwitchingProvider must have field: id")
 
         irGetField(irGet(spThis), idField)
@@ -406,7 +407,7 @@ internal class SwitchingProviderGenerator(
       type = returnType,
       branches = branches
     )
-    
+
     return listOf(builder.irReturn(whenExpr))
   }
 
@@ -547,12 +548,12 @@ internal class SwitchingProviderGenerator(
 
     // Add parameters: graph and id
     val graphParam = helperMethod.addValueParameter {
-      name = Name.identifier("graph")
+      name = Symbols.Names.graph
       type = graphClass.defaultType
     }
 
     val idParam = helperMethod.addValueParameter {
-      name = Name.identifier("id")
+      name = Symbols.Names.id
       type = symbols.irBuiltIns.intType
     }
 

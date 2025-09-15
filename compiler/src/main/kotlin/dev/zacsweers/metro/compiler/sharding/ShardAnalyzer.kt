@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.sharding
 
-import dev.zacsweers.metro.compiler.graph.Component
+import dev.zacsweers.metro.compiler.MetroConstants
 import dev.zacsweers.metro.compiler.graph.TarjanResult
 import dev.zacsweers.metro.compiler.ir.IrBinding
 import dev.zacsweers.metro.compiler.ir.IrBindingGraph
@@ -13,17 +13,14 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
  *
  * This implementation follows Dagger's ComponentImplementation.bindingPartitions() exactly:
  * 1. Iterates through SCCs in topological order
- * 2. Accumulates bindings until threshold is reached
+ * 2. Accumulates bindings until a threshold is reached
  * 3. Keeps cycles (SCCs) together in the same shard
  * 4. Ensures Shard{i} doesn't depend on Shard{i+j}
  */
 internal class ShardAnalyzer(
-  private val keysPerShard: Int = DEFAULT_KEYS_PER_SHARD
+  private val keysPerShard: Int = MetroConstants.DEFAULT_KEYS_PER_SHARD
 ) {
-  
-  companion object {
-    private const val DEFAULT_KEYS_PER_SHARD = 100
-  }
+
   /**
    * Analyzes the binding graph and creates a sharding plan.
    *
@@ -49,14 +46,14 @@ internal class ShardAnalyzer(
 
     // Partition bindings following Dagger's algorithm
     val partitions = partitionBindings(localBindings, sccs)
-    
+
     // Build the sharding plan
     return buildShardingPlan(partitions, bindingGraph)
   }
 
   /**
    * Partitions bindings into shards following Dagger's exact algorithm.
-   * 
+   *
    * From Dagger's bindingPartitions():
    * "Iterate through all SCCs in order until all bindings local to this component are partitioned."
    */
@@ -66,7 +63,7 @@ internal class ShardAnalyzer(
   ): List<List<IrTypeKey>> {
     val partitions = mutableListOf<List<IrTypeKey>>()
     var currentPartition = mutableListOf<IrTypeKey>()
-    
+
     // Iterate through SCCs in topological order
     for (component in sccs.components) {
       // Add all bindings from this SCC to current partition
@@ -75,19 +72,19 @@ internal class ShardAnalyzer(
           currentPartition.add(vertex)
         }
       }
-      
+
       // Check if we've reached the threshold
       if (currentPartition.size >= keysPerShard) {
         partitions.add(currentPartition.toList())
         currentPartition = mutableListOf()
       }
     }
-    
+
     // Add remaining bindings if any
     if (currentPartition.isNotEmpty()) {
       partitions.add(currentPartition.toList())
     }
-    
+
     return partitions
   }
 
@@ -100,11 +97,11 @@ internal class ShardAnalyzer(
   ): ShardingPlan {
     val shards = mutableListOf<ShardingPlan.Shard>()
     val bindingToShard = mutableMapOf<IrTypeKey, Int>()
-    
+
     partitions.forEachIndexed { index, partition ->
       // Calculate dependencies for this shard
       val dependencies = calculateShardDependencies(partition, bindingGraph, bindingToShard)
-      
+
       // Create the shard
       val shard = ShardingPlan.Shard(
         index = index,
@@ -113,13 +110,13 @@ internal class ShardAnalyzer(
         isComponentShard = index == 0
       )
       shards.add(shard)
-      
+
       // Map bindings to shard index
       partition.forEach { key ->
         bindingToShard[key] = index
       }
     }
-    
+
     return ShardingPlan(
       shards = shards,
       bindingToShard = bindingToShard,
@@ -136,10 +133,10 @@ internal class ShardAnalyzer(
     bindingToShard: Map<IrTypeKey, Int>
   ): Set<IrTypeKey> {
     val dependencies = mutableSetOf<IrTypeKey>()
-    
+
     for (key in shardBindings) {
       val binding = bindingGraph.findBinding(key) ?: continue
-      
+
       // Check each dependency
       for (dependency in binding.dependencies.toList()) {
         val depKey = dependency.typeKey
@@ -149,13 +146,13 @@ internal class ShardAnalyzer(
         }
       }
     }
-    
+
     return dependencies
   }
 
   /**
    * Determines if a binding should be included in sharding.
-   * 
+   *
    * Following Dagger, certain bindings stay in the main graph:
    * - BoundInstance bindings (constructor parameters)
    * - Alias bindings
@@ -164,7 +161,7 @@ internal class ShardAnalyzer(
   private fun shouldIncludeInSharding(binding: IrBinding): Boolean {
     return when (binding) {
       is IrBinding.BoundInstance -> false // Keep in main graph
-      is IrBinding.Alias -> false // Keep in main graph  
+      is IrBinding.Alias -> false // Keep in main graph
       is IrBinding.Provided -> {
         // Module provisions stay in main graph to avoid circular init
         // (Following Dagger's pattern)

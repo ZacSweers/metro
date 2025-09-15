@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.MetroConstants
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
@@ -36,12 +37,9 @@ import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 
-// Use shared constant from ShardingConstants
-private const val SHARD_STATEMENTS_PER_METHOD = ShardingConstants.STATEMENTS_PER_METHOD
-
 /**
  * Generates IR for shard classes following Dagger's pattern.
- * 
+ *
  * Shards are static nested classes within the main component that contain
  * a subset of the bindings to avoid method size limits.
  */
@@ -158,7 +156,7 @@ internal class ShardGenerator(
    */
   fun generateShardField(shardClass: IrClass): IrField {
     val fieldName = "shard${shard.index}"
-    
+
     return parentClass.addField {
       name = fieldName.asName()
       type = shardClass.defaultType
@@ -180,7 +178,7 @@ internal class ShardGenerator(
     return with(context.createIrBuilder(parentClass.symbol)) {
       val constructor = shardClass.primaryConstructor
         ?: error("Shard class missing primary constructor")
-      
+
       // Build arguments list: main graph + module parameters
       val args = buildList {
         add(irGet(thisReceiver)) // Pass 'this' (the main graph) as first parameter
@@ -188,7 +186,7 @@ internal class ShardGenerator(
           add(irGet(param)) // Pass module parameters
         }
       }
-      
+
       // Use irCall with arguments array instead of deprecated putValueArgument
       irCall(constructor.symbol).apply {
         args.forEachIndexed { index, arg ->
@@ -220,24 +218,24 @@ internal class ShardGenerator(
    * Generates an initialization method inside the shard class.
    * Creates a private initializeFields() method that populates all fields in the shard.
    * If there are too many initializers, splits them into multiple initializePart{N}() methods.
-   * 
+   *
    * @param shardInfo The shard information containing the shard class
    * @param initializers List of (field, typeKey, initializerFunction) triples for this shard
    * @return The generated initializeFields IrFunction
    */
   fun generateShardFieldInitialization(
-    shardInfo: ShardInfo, 
+    shardInfo: ShardInfo,
     initializers: List<Triple<IrField, IrTypeKey, FieldInitializer>>
   ): IrFunction {
     val shardClass = shardInfo.shardClass
-    
+
     // Check if we need to chunk the initializers
-    val needsChunking = initializers.size > SHARD_STATEMENTS_PER_METHOD
-    
+    val needsChunking = initializers.size > MetroConstants.STATEMENTS_PER_METHOD
+
     if (needsChunking) {
       // Split initializers into chunks
-      val chunks = initializers.chunked(SHARD_STATEMENTS_PER_METHOD)
-      
+      val chunks = initializers.chunked(MetroConstants.STATEMENTS_PER_METHOD)
+
       // Generate initializePart{N} methods for each chunk
       val partFunctions = chunks.mapIndexed { index, chunk ->
         val partMethod = shardClass.addFunction {
@@ -270,7 +268,7 @@ internal class ShardGenerator(
 
         partMethod
       }
-      
+
       // Create the main initializeFields method that calls all parts
       val initMethod = shardClass.addFunction {
         name = "initializeFields".asName()
@@ -297,7 +295,7 @@ internal class ShardGenerator(
           }
         }
       }
-      
+
       return initMethod
     } else {
       // No chunking needed, generate single method as before
@@ -442,21 +440,21 @@ internal class ShardGenerator(
      * Maps shard classes to their metadata containing important symbols.
      */
     private val shardMetadataMap = mutableMapOf<IrClass, ShardMetadata>()
-    
+
     /**
      * Stores metadata for a shard class.
      */
     fun setShardMetadata(shardClass: IrClass, metadata: ShardMetadata) {
       shardMetadataMap[shardClass] = metadata
     }
-    
+
     /**
      * Retrieves metadata for a shard class.
      */
     fun getShardMetadata(shardClass: IrClass): ShardMetadata? {
       return shardMetadataMap[shardClass]
     }
-    
+
     /**
      * Generates all shard classes for a sharding plan.
      * Returns a map of shard index to ShardInfo containing the generated class and field.
@@ -470,7 +468,7 @@ internal class ShardGenerator(
       fieldRegistry: ShardFieldRegistry
     ): Map<Int, ShardInfo> {
       val result = mutableMapOf<Int, ShardInfo>()
-      
+
       // Generate each additional shard (skip shard 0 which is the main component)
       for (shard in shardingPlan.additionalShards()) {
         val generator = ShardGenerator(
@@ -482,10 +480,10 @@ internal class ShardGenerator(
           shardingPlan = shardingPlan,
           fieldRegistry = fieldRegistry
         )
-        
+
         val shardClass = generator.generateShardClass()
         val shardField = generator.generateShardField(shardClass)
-        
+
         result[shard.index] = ShardInfo(
           shard = shard,
           shardClass = shardClass,
@@ -493,7 +491,7 @@ internal class ShardGenerator(
           generator = generator
         )
       }
-      
+
       return result
     }
   }
@@ -507,7 +505,7 @@ internal class ShardGenerator(
     val shardField: IrField?,
     val generator: ShardGenerator
   )
-  
+
   /**
    * Metadata for a shard class containing important symbols.
    * This allows robust access to shard constructor parameters without relying on names.

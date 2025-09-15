@@ -264,7 +264,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
         val contextualTypeKey = IrContextualTypeKey.create(typeKey = IrTypeKey(graphType))
         Parameter.regular(
           kind = IrParameterKind.Regular,
-          name = Name.identifier("graph"),
+          name = Symbols.Names.graph,
           contextualTypeKey = contextualTypeKey,
           isAssisted = false,
           assistedIdentifier = "",
