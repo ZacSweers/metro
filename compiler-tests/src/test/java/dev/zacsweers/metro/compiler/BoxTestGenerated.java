@@ -725,6 +725,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("AssistedFactoryDependenciesAreValidated.kt")
+      public void testAssistedFactoryDependenciesAreValidated() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedFactoryDependenciesAreValidated.kt");
+      }
+
+      @Test
       @TestMetadata("AssistedTypesCanBeExplicitlyProvided.kt")
       public void testAssistedTypesCanBeExplicitlyProvided() {
         runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedTypesCanBeExplicitlyProvided.kt");
