@@ -172,7 +172,6 @@ internal class AssistedFactoryTransformer(
           name = Symbols.Names.MetroImpl
           kind = ClassKind.CLASS
           visibility = DescriptorVisibilities.PUBLIC
-          origin = Origins.AssistedFactoryImplClassDeclaration
         }
         .apply {
           superTypes = listOf(declaration.defaultType)

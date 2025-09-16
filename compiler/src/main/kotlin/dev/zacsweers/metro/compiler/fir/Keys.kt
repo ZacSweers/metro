@@ -21,18 +21,6 @@ internal object Keys {
     override fun toString() = "RegularParameter"
   }
 
-  data object AssistedFactoryImplClassDeclaration : GeneratedDeclarationKey() {
-    override fun toString() = "AssistedFactoryImplClassDeclaration"
-  }
-
-  data object AssistedFactoryImplCompanionDeclaration : GeneratedDeclarationKey() {
-    override fun toString() = "AssistedFactoryImplCompanionDeclaration"
-  }
-
-  data object AssistedFactoryImplCreatorFunctionDeclaration : GeneratedDeclarationKey() {
-    override fun toString() = "AssistedFactoryImplCreatorFunctionDeclaration"
-  }
-
   data object InjectConstructorFactoryClassDeclaration : GeneratedDeclarationKey() {
     override fun toString() = "InjectConstructorFactoryClassDeclaration"
   }
