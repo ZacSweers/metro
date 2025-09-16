@@ -60,7 +60,6 @@ public class MetroFirExtensionRegistrar(
     if (options.generateAssistedFactories) {
       +declarationGenerator("FirGen - AssistedFactory", ::AssistedFactoryFirGenerator, true)
     }
-    +declarationGenerator("FirGen - AssistedFactoryImpl", ::AssistedFactoryImplFirGenerator, true)
     +declarationGenerator("FirGen - ProvidesFactory", ::ProvidesFactoryFirGenerator, true)
     +declarationGenerator("FirGen - BindingMirrorClass", ::BindingMirrorClassFirGenerator, true)
     +declarationGenerator("FirGen - ContributionsGenerator", ::ContributionsFirGenerator, true)
