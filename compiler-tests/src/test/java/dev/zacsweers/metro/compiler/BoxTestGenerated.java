@@ -741,6 +741,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       public void testPreserveNullabilityInRemapping() {
         runTest("compiler-tests/src/test/data/box/inject/assisted/PreserveNullabilityInRemapping.kt");
       }
+
+      @Test
+      @TestMetadata("SimpleAssistedFactory.kt")
+      public void testSimpleAssistedFactory() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/SimpleAssistedFactory.kt");
+      }
     }
 
     @Nested
