@@ -737,6 +737,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("GenericAssistedParamsAcrossModules.kt")
+      public void testGenericAssistedParamsAcrossModules() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/GenericAssistedParamsAcrossModules.kt");
+      }
+
+      @Test
       @TestMetadata("ImplsAreVisibleAcrossModules.kt")
       public void testImplsAreVisibleAcrossModules() {
         runTest("compiler-tests/src/test/data/box/inject/assisted/ImplsAreVisibleAcrossModules.kt");
