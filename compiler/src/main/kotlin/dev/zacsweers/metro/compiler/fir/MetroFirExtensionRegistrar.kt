@@ -6,7 +6,6 @@ import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.fir.generators.AssistedFactoryFirGenerator
-import dev.zacsweers.metro.compiler.fir.generators.AssistedFactoryImplFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.BindingMirrorClassFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.ContributedInterfaceSupertypeGenerator
 import dev.zacsweers.metro.compiler.fir.generators.ContributionHintFirGenerator
