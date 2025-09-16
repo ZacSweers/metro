@@ -38,13 +38,11 @@ import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
-import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isStatic
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.remapTypes
-import org.jetbrains.kotlin.ir.util.simpleFunctions
 import org.jetbrains.kotlin.name.Name
 
 internal class IrGraphExpressionGenerator
@@ -201,51 +199,13 @@ private constructor(
 
         is IrBinding.Assisted -> {
           // Example9_Factory_Impl.create(example9Provider);
-          val implClass =
-            assistedFactoryTransformer.getOrGenerateImplClass(binding.type)
-              ?: return stubExpression()
-
-          val dispatchReceiver: IrExpression?
-          val createFunction: IrSimpleFunctionSymbol
-          val isFromDagger: Boolean
-          if (options.enableDaggerRuntimeInterop && implClass.isFromJava()) {
-            // Dagger interop
-            createFunction =
-              implClass
-                .simpleFunctions()
-                .first {
-                  it.isStatic &&
-                    (it.name == Symbols.Names.create ||
-                      it.name == Symbols.Names.createFactoryProvider)
-                }
-                .symbol
-            dispatchReceiver = null
-            isFromDagger = true
-          } else {
-            val implClassCompanion = implClass.companionObject()!!
-            createFunction = implClassCompanion.requireSimpleFunction(Symbols.StringNames.CREATE)
-            dispatchReceiver = irGetObject(implClassCompanion.symbol)
-            isFromDagger = false
-          }
+          val factoryImpl = assistedFactoryTransformer.getOrGenerateImplClass(binding.type)
 
           val targetBinding =
             bindingGraph.requireBinding(binding.target.typeKey, IrBindingStack.empty())
           val delegateFactoryProvider = generateBindingCode(targetBinding, accessType = accessType)
-          val invokeCreateExpression =
-            irInvoke(
-              dispatchReceiver = dispatchReceiver,
-              callee = createFunction,
-              args = listOf(delegateFactoryProvider),
-            )
-          if (isFromDagger) {
-            with(symbols.daggerSymbols) {
-              val targetType =
-                (createFunction.owner.returnType as IrSimpleType).arguments[0].typeOrFail
-              transformToMetroProvider(invokeCreateExpression, targetType)
-            }
-          } else {
-            invokeCreateExpression
-          }
+
+          with(factoryImpl) { invokeCreate(delegateFactoryProvider) }
         }
 
         is IrBinding.Multibinding -> {
@@ -437,7 +397,11 @@ private constructor(
 
             if (getterContextKey.isLazyWrappedInProvider) {
               // TODO FIR this
-              reportCompat(binding.getter, MetroDiagnostics.METRO_ERROR, "Provider<Lazy<T>> accessors are not supported.")
+              reportCompat(
+                binding.getter,
+                MetroDiagnostics.METRO_ERROR,
+                "Provider<Lazy<T>> accessors are not supported.",
+              )
               exitProcessing()
             } else if (getterContextKey.isWrappedInProvider) {
               // It's already a provider
