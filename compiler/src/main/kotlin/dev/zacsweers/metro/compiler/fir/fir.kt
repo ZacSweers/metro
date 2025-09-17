@@ -35,7 +35,6 @@ import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.constructors
 import org.jetbrains.kotlin.fir.declarations.evaluateAs
 import org.jetbrains.kotlin.fir.declarations.findArgumentByName
-import org.jetbrains.kotlin.fir.declarations.getBooleanArgument
 import org.jetbrains.kotlin.fir.declarations.getDeprecationsProvider
 import org.jetbrains.kotlin.fir.declarations.getTargetType
 import org.jetbrains.kotlin.fir.declarations.hasAnnotation
@@ -65,7 +64,6 @@ import org.jetbrains.kotlin.fir.expressions.builder.buildEnumEntryDeserializedAc
 import org.jetbrains.kotlin.fir.expressions.builder.buildLiteralExpression
 import org.jetbrains.kotlin.fir.expressions.unexpandedClassId
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension.TypeResolveService
-import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.extensions.NestedClassGenerationContext
 import org.jetbrains.kotlin.fir.extensions.QualifierPartBuilder
 import org.jetbrains.kotlin.fir.moduleData
@@ -91,13 +89,11 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
-import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertyAccessorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
-import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
@@ -196,15 +192,6 @@ internal fun FirBasedSymbol<*>.isAnnotatedWithAny(
     .any { it.toAnnotationClassIdSafe(session) in names }
 }
 
-internal fun FirBasedSymbol<*>.findAnnotation(
-  session: FirSession,
-  names: Set<ClassId>,
-): FirAnnotation? {
-  return resolvedCompilerAnnotationsWithClassIds
-    .filter { it.isResolved }
-    .find { it.toAnnotationClassIdSafe(session) in names }
-}
-
 internal fun List<FirAnnotation>.isAnnotatedWithAny(
   session: FirSession,
   names: Set<ClassId>,
@@ -291,7 +278,7 @@ internal fun FirClassSymbol<*>.callableDeclarations(
   }
 }
 
-context(context: CheckerContext, diagnosticReporter: DiagnosticReporter)
+context(context: CheckerContext)
 internal inline fun FirClass.singleAbstractFunction(
   session: FirSession,
   reporter: DiagnosticReporter,
@@ -843,10 +830,6 @@ internal fun FirAnnotation.anvilKClassBoundTypeArgument(
     ?.toFirResolvedTypeRef()
 }
 
-internal fun FirAnnotation.anvilIgnoreQualifier(session: FirSession): Boolean {
-  return getBooleanArgument(Symbols.Names.ignoreQualifier, session) ?: false
-}
-
 internal fun FirAnnotation.getAnnotationKClassArgument(
   name: Name,
   session: FirSession,
@@ -937,16 +920,6 @@ internal fun FirGetClassCall.resolveClassId(typeResolver: MetroFirTypeResolver):
 }
 
 internal fun FirGetClassCall.resolvedClassId() = (argument as? FirResolvedQualifier)?.classId
-
-internal fun FirAnnotation.resolvedArgumentConeKotlinType(
-  name: Name,
-  index: Int,
-  typeResolver: TypeResolveService,
-): ConeKotlinType? {
-  // TODO if the annotation is resolved we can skip ahead
-  val getClassCall = argumentAsOrNull<FirGetClassCall>(name, index) ?: return null
-  return getClassCall.resolvedArgumentConeKotlinType(typeResolver)
-}
 
 internal fun FirGetClassCall.resolvedArgumentConeKotlinType(
   typeResolver: TypeResolveService
@@ -1064,9 +1037,6 @@ internal fun FirClassSymbol<*>.implements(supertype: ClassId, session: FirSessio
     .any { it.classId?.let { it == supertype } == true }
 }
 
-internal val FirValueParameterSymbol.containingFunctionSymbol: FirFunctionSymbol<*>?
-  get() = containingDeclarationSymbol as? FirFunctionSymbol<*>
-
 internal fun ConeKotlinType.render(short: Boolean): String {
   return buildString { renderType(short, this@render) }
 }
@@ -1113,21 +1083,6 @@ internal fun FirClassSymbol<*>.directCallableSymbols(): List<FirCallableSymbol<*
   val collected = mutableListOf<FirCallableSymbol<*>>()
   declaredMemberScope().processAllCallables { collected += it }
   return collected
-}
-
-internal fun MemberGenerationContext.directCallableSymbols(): List<FirCallableSymbol<*>> {
-  val collected = mutableListOf<FirCallableSymbol<*>>()
-  this.declaredScope?.processAllCallables { collected += it }
-  return collected
-}
-
-// Build a complete substitution map that includes mappings for ancestor type parameters
-internal fun buildShallowSubstitutionMap(
-  targetClass: FirClassSymbol<*>,
-  directMappings: Map<FirTypeParameterSymbol, ConeKotlinType>,
-  session: FirSession,
-): Map<FirTypeParameterSymbol, ConeKotlinType> {
-  return buildSubstitutionMapInner(targetClass, directMappings, session, full = false)
 }
 
 // Build a complete substitution map that includes mappings for ancestor type parameters
@@ -1207,3 +1162,43 @@ internal fun FirClassSymbol<*>.originClassId(
     .firstOrNull()
     ?.originArgument()
     ?.resolveClassId(typeResolver)
+
+/**
+ * Validates that a type is not a lazy-wrapped assisted factory or other disallowed injection site
+ * type.
+ *
+ * @param typeRef The type reference to check
+ * @param source The source element for error reporting
+ * @return true if validation fails (error was reported), false if validation passes
+ */
+context(context: CheckerContext, reporter: DiagnosticReporter)
+internal fun validateInjectionSiteType(
+  session: FirSession,
+  typeRef: FirTypeRef,
+  source: KtSourceElement?,
+): Boolean {
+  val type = typeRef.coneTypeOrNull ?: return true
+  val contextKey = type.asFirContextualTypeKey(session, null, false)
+
+  if (contextKey.isWrappedInLazy) {
+    val canonicalType = contextKey.typeKey.type
+    val canonicalClass = canonicalType.toClassSymbol(session)
+
+    if (
+      canonicalClass != null &&
+        canonicalClass.isAnnotatedWithAny(session, session.classIds.assistedFactoryAnnotations)
+    ) {
+      reporter.reportOn(
+        typeRef.source ?: source,
+        MetroDiagnostics.ASSISTED_FACTORIES_CANNOT_BE_LAZY,
+        canonicalClass.name.asString(),
+        canonicalClass.classId.asFqNameString(),
+      )
+      return true
+    }
+  }
+
+  // Future injection site checks can be added here
+
+  return false
+}

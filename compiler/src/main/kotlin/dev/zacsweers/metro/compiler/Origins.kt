@@ -13,10 +13,6 @@ internal object Origins {
     IrDeclarationOrigin.GeneratedByPlugin(Keys.ReceiverParameter)
   val RegularParameter: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.RegularParameter)
-  val AssistedFactoryImplClassDeclaration: IrDeclarationOrigin =
-    IrDeclarationOrigin.GeneratedByPlugin(Keys.AssistedFactoryImplClassDeclaration)
-  val AssistedFactoryImplCreatorFunctionDeclaration: IrDeclarationOrigin =
-    IrDeclarationOrigin.GeneratedByPlugin(Keys.AssistedFactoryImplCreatorFunctionDeclaration)
   val MetroGraphCreatorsObjectInvokeDeclaration: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.MetroGraphCreatorsObjectInvokeDeclaration)
   val MetroGraphDeclaration: IrDeclarationOrigin =

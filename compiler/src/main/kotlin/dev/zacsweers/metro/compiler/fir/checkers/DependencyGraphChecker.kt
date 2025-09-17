@@ -19,6 +19,7 @@ import dev.zacsweers.metro.compiler.fir.resolvedAdditionalScopesClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
 import dev.zacsweers.metro.compiler.fir.validateApiDeclaration
+import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
 import dev.zacsweers.metro.compiler.mapToSet
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
@@ -118,9 +119,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
         scopeAnnotations +=
           supertypeClass.resolvedAnnotationsWithArguments.scopeAnnotations(session)
 
-        if (
-          supertypeClass.isAnnotatedWithAny(session, classIds.graphExtensionFactoryAnnotations)
-        ) {
+        if (supertypeClass.isAnnotatedWithAny(session, classIds.graphExtensionFactoryAnnotations)) {
           graphExtensionFactorySupertypes[supertypeRef] = supertypeClass
         }
       }
@@ -278,6 +277,9 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
           )
           continue
         }
+
+        // Check for lazy-wrapped assisted factories in graph accessors
+        validateInjectionSiteType(session, callable.resolvedReturnTypeRef, callable.source)
 
         val scopeAnnotations = callable.allAnnotations().scopeAnnotations(session)
         for (scopeAnnotation in scopeAnnotations) {

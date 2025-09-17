@@ -14,10 +14,8 @@ import dagger.assisted.AssistedInject;
 import dagger.assisted.AssistedFactory;
 
 public class ExampleClass {
-  @AssistedInject public ExampleClass(
-  @Assisted int intValue
-  ) {
-  }
+  @AssistedInject
+  public ExampleClass(@Assisted int intValue) {}
   @AssistedFactory
   public interface Factory {
     ExampleClass create(int intValue);

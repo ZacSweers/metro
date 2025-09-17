@@ -6,7 +6,6 @@ import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.fir.generators.AssistedFactoryFirGenerator
-import dev.zacsweers.metro.compiler.fir.generators.AssistedFactoryImplFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.BindingMirrorClassFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.ContributedInterfaceSupertypeGenerator
 import dev.zacsweers.metro.compiler.fir.generators.ContributionHintFirGenerator
@@ -60,7 +59,6 @@ public class MetroFirExtensionRegistrar(
     if (options.generateAssistedFactories) {
       +declarationGenerator("FirGen - AssistedFactory", ::AssistedFactoryFirGenerator, true)
     }
-    +declarationGenerator("FirGen - AssistedFactoryImpl", ::AssistedFactoryImplFirGenerator, true)
     +declarationGenerator("FirGen - ProvidesFactory", ::ProvidesFactoryFirGenerator, true)
     +declarationGenerator("FirGen - BindingMirrorClass", ::BindingMirrorClassFirGenerator, true)
     +declarationGenerator("FirGen - ContributionsGenerator", ::ContributionsFirGenerator, true)
@@ -72,6 +70,8 @@ public class MetroFirExtensionRegistrar(
       )
     }
     +declarationGenerator("FirGen - DependencyGraph", ::DependencyGraphFirGenerator, true)
+
+    registerDiagnosticContainers(MetroDiagnostics)
   }
 
   private fun loggerFor(type: MetroLogger.Type, tag: String): MetroLogger {

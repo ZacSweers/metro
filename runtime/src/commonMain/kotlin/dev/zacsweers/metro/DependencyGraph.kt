@@ -183,7 +183,7 @@ public annotation class DependencyGraph(
    * ## Using generated declarations directly
    *
    * If you
-   * [enable third party FIR plugins in the IDE](https://zacsweers.github.io/metro/installation/#ide-support),
+   * [enable third party FIR plugins in the IDE](https://zacsweers.github.io/metro/latest/installation/#ide-support),
    * these will be visible and directly linkable. However, your mileage may vary and it's
    * recommended to stick with the graph creator intrinsics for now until the IDE support is
    * improved.

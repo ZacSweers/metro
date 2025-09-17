@@ -1,3 +1,3 @@
-/DaggerReusable_IsUnsupported.kt:(128,137): error: Dagger's `@Reusable` is not supported in Metro. See https://zacsweers.github.io/metro/faq#why-doesnt-metro-support-reusable for more information.
+/DaggerReusable_IsUnsupported.kt:(128,137): error: Dagger's `@Reusable` is not supported in Metro. See https://zacsweers.github.io/metro/latest/faq#why-doesnt-metro-support-reusable for more information.
 
-/DaggerReusable_IsUnsupported.kt:(196,205): error: Dagger's `@Reusable` is not supported in Metro. See https://zacsweers.github.io/metro/faq#why-doesnt-metro-support-reusable for more information.
+/DaggerReusable_IsUnsupported.kt:(196,205): error: Dagger's `@Reusable` is not supported in Metro. See https://zacsweers.github.io/metro/latest/faq#why-doesnt-metro-support-reusable for more information.

@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FUNCTION_INJECT_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FUNCTION_INJECT_TYPE_PARAMETERS_ERROR
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
 import dev.zacsweers.metro.compiler.metroAnnotations
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
@@ -60,6 +61,11 @@ internal object FunctionInjectionChecker : FirSimpleFunctionChecker(MppCheckerKi
         FUNCTION_INJECT_ERROR,
         "Injected functions are stateless and should not be scoped.",
       )
+    }
+
+    for (param in declaration.valueParameters) {
+      if (param.isAnnotatedWithAny(session, classIds.assistedAnnotations)) continue
+      validateInjectionSiteType(session, param.returnTypeRef, param.source ?: source)
     }
   }
 }

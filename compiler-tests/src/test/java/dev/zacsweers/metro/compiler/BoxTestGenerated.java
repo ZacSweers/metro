@@ -238,6 +238,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("PrivateBindsProperty.kt")
+    public void testPrivateBindsProperty() {
+      runTest("compiler-tests/src/test/data/box/bindingcontainers/PrivateBindsProperty.kt");
+    }
+
+    @Test
     @TestMetadata("SimpleContainersWithHintsWork.kt")
     public void testSimpleContainersWithHintsWork() {
       runTest("compiler-tests/src/test/data/box/bindingcontainers/SimpleContainersWithHintsWork.kt");
@@ -454,15 +460,21 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
-    @TestMetadata("OverrideCompatibleGraphBindingAccessors.kt")
-    public void testOverrideCompatibleGraphBindingAccessors() {
-      runTest("compiler-tests/src/test/data/box/dependencygraph/OverrideCompatibleGraphBindingAccessors.kt");
+    @TestMetadata("OverrideCompatibleAccessorsFromContributedInterface.kt")
+    public void testOverrideCompatibleAccessorsFromContributedInterface() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/OverrideCompatibleAccessorsFromContributedInterface.kt");
     }
 
     @Test
-    @TestMetadata("OverrideCompatibleIncludesBindingAccessors.kt")
-    public void testOverrideCompatibleIncludesBindingAccessors() {
-      runTest("compiler-tests/src/test/data/box/dependencygraph/OverrideCompatibleIncludesBindingAccessors.kt");
+    @TestMetadata("OverrideCompatibleAccessorsFromGraph.kt")
+    public void testOverrideCompatibleAccessorsFromGraph() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/OverrideCompatibleAccessorsFromGraph.kt");
+    }
+
+    @Test
+    @TestMetadata("OverrideCompatibleAccessorsFromIncludes.kt")
+    public void testOverrideCompatibleAccessorsFromIncludes() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/OverrideCompatibleAccessorsFromIncludes.kt");
     }
 
     @Test
@@ -722,6 +734,18 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("GenericAssistedParams.kt")
       public void testGenericAssistedParams() {
         runTest("compiler-tests/src/test/data/box/inject/assisted/GenericAssistedParams.kt");
+      }
+
+      @Test
+      @TestMetadata("GenericAssistedParamsAcrossModules.kt")
+      public void testGenericAssistedParamsAcrossModules() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/GenericAssistedParamsAcrossModules.kt");
+      }
+
+      @Test
+      @TestMetadata("ImplsAreVisibleAcrossModules.kt")
+      public void testImplsAreVisibleAcrossModules() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/ImplsAreVisibleAcrossModules.kt");
       }
 
       @Test

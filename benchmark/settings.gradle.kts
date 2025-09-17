@@ -7,7 +7,7 @@ pluginManagement {
     gradlePluginPortal()
     mavenLocal() // For local testing
   }
-  plugins { id("com.gradle.develocity") version "4.1.1" }
+  plugins { id("com.gradle.develocity") version "4.2" }
 }
 
 dependencyResolutionManagement {
