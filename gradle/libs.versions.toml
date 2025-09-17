@@ -97,7 +97,7 @@ circuit-codegenAnnotations = { module = "com.slack.circuit:circuit-codegen-annot
 
 compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose-jb" }
 compose-materialIcons = { module = "org.jetbrains.compose.material:material-icons-core", version = "1.7.3" }
-compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "compose-jb" }
+compose-material3 = { module = "org.jetbrains.compose.material3:material3", version = "1.9.0-beta06" }
 compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "compose-jb" }
 compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "compose-jb" }
 
