@@ -1,6 +1,12 @@
-# pip3 install mkdocs mkdocs-material
+# For local development/live edit:
+# python3 -m venv .venv (required only once)
+# source .venv/bin/activate
+# pip install -r .github/workflows/mkdocs-requirements.txt
+# ./scripts/copy_docs_files.sh
 # mkdocs serve
-# mkdocs gh-deploy
+#
+# ℹ️ NOTE: Deployment is done via `mike` for versioned site using GitHub Actions
+#          For manual deployment, use `./scripts/deploy_metro_docs_site.sh`
 
 site_name: Metro
 repo_name: Metro
