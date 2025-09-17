@@ -15,25 +15,15 @@ import kotlin.io.path.createDirectories
 import kotlin.io.path.createFile
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.writeText
-import org.jetbrains.kotlin.AbstractKtSourceElement
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
-import org.jetbrains.kotlin.cli.common.messages.AnalyzerWithCompilerReport
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
-import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
-import org.jetbrains.kotlin.diagnostics.InternalDiagnosticFactoryMethod
-import org.jetbrains.kotlin.diagnostics.KtDiagnostic
-import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
-import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory2
-import org.jetbrains.kotlin.diagnostics.reportOn
-import org.jetbrains.kotlin.diagnostics.requireNotNull
 import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
 import org.jetbrains.kotlin.incremental.components.LookupTracker
 import org.jetbrains.kotlin.incremental.components.Position
 import org.jetbrains.kotlin.incremental.components.ScopeKind
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContextImpl
@@ -41,7 +31,6 @@ import org.jetbrains.kotlin.ir.util.KotlinLikeDumpOptions
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.VisibilityPrintingStrategy
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.parentDeclarationsWithSelf
 import org.jetbrains.kotlin.name.ClassId
 
@@ -154,6 +143,9 @@ internal interface IrMetroContext : IrPluginContext {
     private class SimpleIrMetroContext(
       override val pluginContext: IrPluginContext,
       @Suppress("DEPRECATION")
+      @Deprecated(
+        "Consider using diagnosticReporter instead. See https://youtrack.jetbrains.com/issue/KT-78277 for more details"
+      )
       override val messageCollector: MessageCollector,
       override val symbols: Symbols,
       override val options: MetroOptions,
