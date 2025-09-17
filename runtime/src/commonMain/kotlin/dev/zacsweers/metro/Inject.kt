@@ -267,8 +267,8 @@ package dev.zacsweers.metro
  * }
  * ```
  *
- * @see <a href="https://zacsweers.github.io/metro/installation/#ide-support">Docs for how to enable
- *   IDE support</a>
+ * @see <a href="https://zacsweers.github.io/metro/latest/installation/#ide-support">Docs for how to
+ *   enable IDE support</a>
  */
 @Target(
   AnnotationTarget.CLASS,

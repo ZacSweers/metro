@@ -272,14 +272,14 @@ internal object BindingContainerCallableChecker :
           reporter.reportOn(
             source,
             MetroDiagnostics.PROVIDES_COULD_BE_BINDS,
-            "`@Provides` extension $name just returning `this` should be annotated with `@Binds` instead for these. See https://zacsweers.github.io/metro/bindings/#binds for more information.",
+            "`@Provides` extension $name just returning `this` should be annotated with `@Binds` instead for these. See https://zacsweers.github.io/metro/latest/bindings/#binds for more information.",
           )
           return
         } else if (!returnsThis && annotations.isBinds) {
           reporter.reportOn(
             source,
             MetroDiagnostics.BINDS_ERROR,
-            "`@Binds` declarations with bodies should just return `this`. See https://zacsweers.github.io/metro/bindings/#binds for more information.",
+            "`@Binds` declarations with bodies should just return `this`. See https://zacsweers.github.io/metro/latest/bindings/#binds for more information.",
           )
           return
         }
@@ -288,7 +288,7 @@ internal object BindingContainerCallableChecker :
           reporter.reportOn(
             source,
             MetroDiagnostics.PROVIDES_ERROR,
-            "`@Provides` $name may not be extension $name. Use `@Binds` instead for these. See https://zacsweers.github.io/metro/bindings/#binds for more information.",
+            "`@Provides` $name may not be extension $name. Use `@Binds` instead for these. See https://zacsweers.github.io/metro/latest/bindings/#binds for more information.",
           )
           return
         }
