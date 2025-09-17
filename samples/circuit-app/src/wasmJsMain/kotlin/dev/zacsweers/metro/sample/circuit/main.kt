@@ -3,14 +3,14 @@
 package dev.zacsweers.metro.sample.circuit
 
 import androidx.compose.ui.ExperimentalComposeUiApi
-import androidx.compose.ui.window.CanvasBasedWindow
+import androidx.compose.ui.window.ComposeViewport
 import dev.zacsweers.metro.createGraph
 
 @OptIn(ExperimentalComposeUiApi::class)
 fun main() {
   try {
     val app = createGraph<AppGraph>().app
-    CanvasBasedWindow { app() }
+    ComposeViewport { app() }
   } catch (ex: Throwable) {
     // Annoyingly this is the only way to get a useful stacktrace in the web console
     ex.printStackTrace()

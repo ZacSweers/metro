@@ -20,7 +20,7 @@ atomicfu = "0.29.0"
 autoService = "1.1.1"
 circuit = "0.30.0"
 classgraph = "4.8.181"
-compose-jb = "1.8.2"
+compose-jb = "1.9.0"
 dagger = "2.57.1"
 gjf = "1.28.0"
 jdk = "23"
@@ -97,7 +97,7 @@ circuit-codegenAnnotations = { module = "com.slack.circuit:circuit-codegen-annot
 
 compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose-jb" }
 compose-materialIcons = { module = "org.jetbrains.compose.material:material-icons-core", version = "1.7.3" }
-compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "compose-jb" }
+compose-material3 = { module = "org.jetbrains.compose.material3:material3", version = "1.9.0-beta06" }
 compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "compose-jb" }
 compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "compose-jb" }
 
