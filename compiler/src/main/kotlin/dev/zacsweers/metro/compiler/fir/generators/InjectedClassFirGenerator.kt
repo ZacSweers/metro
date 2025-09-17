@@ -415,7 +415,15 @@ internal class InjectedClassFirGenerator(session: FirSession) :
               }
             }
           }
-          .apply { markAsDeprecatedHidden(session) }
+          .apply {
+            markAsDeprecatedHidden(session)
+            // Add @AssistedMarker annotation if this is an assisted factory
+            if (injectedClass.isAssisted) {
+              replaceAnnotationsSafe(
+                annotations + buildAssistedMarkerAnnotation()
+              )
+            }
+          }
           .symbol
           .also { injectFactoryClassIdsToSymbols[it.classId] = it }
       }
@@ -782,6 +790,10 @@ internal class InjectedClassFirGenerator(session: FirSession) :
 
   private fun buildAssistedAnnotation(): FirAnnotation {
     return buildSimpleAnnotation { session.metroFirBuiltIns.assistedClassSymbol }
+  }
+
+  private fun buildAssistedMarkerAnnotation(): FirAnnotation {
+    return buildSimpleAnnotation { session.metroFirBuiltIns.assistedMarkerClassSymbol }
   }
 
   private fun buildComposableAnnotation(): FirAnnotation {

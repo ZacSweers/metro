@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.Symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.unsafeLazy
@@ -20,6 +21,7 @@ import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
+import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.remapTypes
@@ -34,6 +36,7 @@ internal sealed interface ClassFactory : IrMetroFactory {
   val factoryClass: IrClass
   val invokeFunctionSymbol: IrFunctionSymbol
   val targetFunctionParameters: Parameters
+  val isAssistedInject: Boolean
 
   context(context: IrMetroContext)
   fun remapTypes(typeRemapper: TypeRemapper): ClassFactory
@@ -47,6 +50,11 @@ internal sealed interface ClassFactory : IrMetroFactory {
     override val targetFunctionParameters: Parameters,
   ) : ClassFactory {
     override val function: IrSimpleFunction = targetFunctionParameters.ir!! as IrSimpleFunction
+
+    override val isAssistedInject: Boolean by unsafeLazy {
+      // Check if the factory has the @AssistedMarker annotation
+      factoryClass.hasAnnotation(Symbols.ClassIds.metroAssistedMarker)
+    }
 
     override val invokeFunctionSymbol: IrFunctionSymbol by unsafeLazy {
       factoryClass.requireSimpleFunction(Symbols.StringNames.INVOKE)
@@ -89,6 +97,12 @@ internal sealed interface ClassFactory : IrMetroFactory {
     override val targetFunctionParameters: Parameters,
   ) : ClassFactory {
     override val function: IrConstructor = targetFunctionParameters.ir!! as IrConstructor
+
+    override val isAssistedInject: Boolean by unsafeLazy {
+      // Check if the constructor has an @AssistedInject annotation
+      function.hasAnnotation(DaggerSymbols.ClassIds.DAGGER_ASSISTED_INJECT)
+    }
+
     override val invokeFunctionSymbol: IrFunctionSymbol
       get() = factoryClass.requireSimpleFunction(Symbols.StringNames.GET)
 
