@@ -7,7 +7,7 @@
 # pip install -r .github/workflows/mkdocs-requirements.txt
 #
 # To run the site locally with hot-reload support, use:
-# ./run_local_docs_site.sh
+# ./scripts/run_local_docs_site.sh
 
 # Check if mkdocs is installed
 if ! command -v mkdocs &> /dev/null; then
