@@ -31,6 +31,7 @@ fi
 echo "Checking if mike is available..."
 if ! command -v mike &> /dev/null; then
     echo "Error: 'mike' command not found. use pip to install required dependencies"
+    echo "pip install -r .github/workflows/mkdocs-requirements.txt"
     exit 1
 fi
 
