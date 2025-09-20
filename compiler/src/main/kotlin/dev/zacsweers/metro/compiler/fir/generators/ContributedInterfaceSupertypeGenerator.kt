@@ -69,9 +69,9 @@ import org.jetbrains.kotlin.name.StandardClassIds
 internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
   FirSupertypeGenerationExtension(session) {
 
-  private val dependencyGraphs by lazy {
+  private val dependencyGraphsAndExtensions by lazy {
     session.predicateBasedProvider
-      .getSymbolsByPredicate(session.predicates.dependencyGraphPredicate)
+      .getSymbolsByPredicate(session.predicates.dependencyGraphAndExtensionPredicate)
       .filterIsInstance<FirRegularClassSymbol>()
       .toSet()
   }
@@ -121,8 +121,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
               Visibilities.Internal -> {
                 it.moduleData == session.moduleData ||
                   @OptIn(SymbolInternals::class)
-                  session.moduleVisibilityChecker?.isInFriendModule(it.fir) ==
-                    true
+                  session.moduleVisibilityChecker?.isInFriendModule(it.fir) == true
               }
               else -> true
             }
@@ -185,12 +184,15 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
 
   private fun FirAnnotationContainer.graphAnnotation(): FirAnnotation? {
     return annotations
-      .annotationsIn(session, session.classIds.dependencyGraphAnnotations)
+      .annotationsIn(
+        session,
+        session.classIds.dependencyGraphAnnotations + session.classIds.graphExtensionAnnotations,
+      )
       .firstOrNull()
   }
 
   override fun needTransformSupertypes(declaration: FirClassLikeDeclaration): Boolean {
-    if (declaration.symbol !in dependencyGraphs) {
+    if (declaration.symbol !in dependencyGraphsAndExtensions) {
       return false
     }
     val graphAnnotation = declaration.graphAnnotation() ?: return false
@@ -203,7 +205,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     with(session.predicates) {
       register(
-        dependencyGraphPredicate,
+        dependencyGraphAndExtensionPredicate,
         contributesAnnotationPredicate,
         graphExtensionFactoryPredicate,
         qualifiersPredicate,

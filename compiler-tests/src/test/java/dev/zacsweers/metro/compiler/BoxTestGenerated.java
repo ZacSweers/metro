@@ -326,6 +326,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("WithContributedAccessorInterface.kt")
+    public void testWithContributedAccessorInterface() {
+      runTest("compiler-tests/src/test/data/box/contributesgraphextension/WithContributedAccessorInterface.kt");
+    }
+
+    @Test
     @TestMetadata("WithContributesBinding.kt")
     public void testWithContributesBinding() {
       runTest("compiler-tests/src/test/data/box/contributesgraphextension/WithContributesBinding.kt");

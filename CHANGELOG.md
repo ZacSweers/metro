@@ -11,6 +11,7 @@ Changelog
 - **Enhancement**: Simplify assisted factory impl class generation by moving it entirely to IR.
 - **Fix**: Register `MetroDiagnostics` in FIR.
 - **Fix**: When transforming FIR override statuses, check all supertypes and not just immediate supertype.
+  **Fix:** Ensure graph extension classes implement contributed interfaces. Previously, only instances of an extension would implement the contributed interfaces.
 
 0.6.6
 -----
