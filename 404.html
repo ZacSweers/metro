@@ -129,7 +129,24 @@
         }
 
         const [, requestedVersion, pagePath] = pathMatch;
-        console.log(`📍 Requested: ${requestedVersion}/${pagePath}`);
+        const hashFragment = window.location.hash; // Preserve anchor/fragment
+        console.log(`📍 Requested: ${requestedVersion}/${pagePath}${hashFragment}`);
+
+        // Normalize HTML-based URLs to directory-based URLs
+        // e.g., "compatibility.html" -> "compatibility/"
+        let normalizedPagePath = pagePath;
+        if (pagePath.endsWith('.html')) {
+          // Remove .html extension and add trailing slash for directory-style URLs
+          const pathWithoutExtension = pagePath.slice(0, -5); // Remove '.html'
+          if (pathWithoutExtension && pathWithoutExtension !== 'index') {
+            normalizedPagePath = pathWithoutExtension + '/';
+            console.log(`🔄 Normalized HTML URL: ${pagePath} -> ${normalizedPagePath}`);
+          } else if (pathWithoutExtension === 'index') {
+            // index.html maps to root directory
+            normalizedPagePath = '';
+            console.log(`🔄 Normalized index.html to root directory`);
+          }
+        }
 
         // Fetch versions.json to get current version information
         const versionsFetchStart = performance.now();
@@ -162,13 +179,14 @@
           return;
         }
 
-        // Construct the target URL with the latest version
-        const targetUrl = `${METRO_CONFIG.latestUrl}/${pagePath}`;
-        console.log(`🔍 Checking if page exists: ${targetUrl}`);
+        // Construct the target URL with the latest version and normalized path
+        const baseTargetUrl = `${METRO_CONFIG.latestUrl}/${normalizedPagePath}`;
+        const targetUrlWithFragment = `${baseTargetUrl}${hashFragment}`;
+        console.log(`🔍 Checking if page exists: ${baseTargetUrl}${hashFragment ? ` (with fragment: ${hashFragment})` : ''}`);
 
-        // Check if the page exists in the latest version
+        // Check if the page exists in the latest version (without fragment for HEAD request)
         const pageCheckStart = performance.now();
-        const pageCheckResponse = await fetch(targetUrl, { method: 'HEAD' });
+        const pageCheckResponse = await fetch(baseTargetUrl, { method: 'HEAD' });
         const pageCheckEnd = performance.now();
 
         console.log(`📊 Page check completed in ${(pageCheckEnd - pageCheckStart).toFixed(2)}ms (Status: ${pageCheckResponse.status})`);
@@ -176,17 +194,24 @@
         if (pageCheckResponse.ok) {
           // Page exists in latest version, redirect there
           const totalTime = performance.now() - startTime;
-          console.log(`✅ Redirecting from ${currentPath} to ${targetUrl}`);
+          console.log(`✅ Redirecting from ${currentPath}${hashFragment} to ${targetUrlWithFragment}`);
           console.log(`⏱️ Total redirect process took ${totalTime.toFixed(2)}ms`);
-          updateMessage(`Found page in latest version. Redirecting to ${targetUrl.split('/').pop()}...`);
+          
+          // Show appropriate message based on whether we normalized the URL
+          const targetPageName = normalizedPagePath ? 
+            (normalizedPagePath === pagePath ? normalizedPagePath.split('/').filter(p => p).pop() : `${normalizedPagePath.split('/').filter(p => p).pop()} (updated URL format)`) : 
+            'home page';
+          const fragmentMessage = hashFragment ? ` with anchor ${hashFragment}` : '';
+          updateMessage(`Found page in latest version. Redirecting to ${targetPageName}${fragmentMessage}...`);
+          
           setTimeout(() => {
             hideLoading();
-            window.location.replace(targetUrl);
+            window.location.replace(targetUrlWithFragment);
           }, 500);
         } else {
           // Page doesn't exist in latest version, fallback to home
           const totalTime = performance.now() - startTime;
-          console.log(`❌ Page ${pagePath} not found in latest version, redirecting to home`);
+          console.log(`❌ Page ${normalizedPagePath || pagePath} not found in latest version, redirecting to home`);
           console.log(`⏱️ Total process took ${totalTime.toFixed(2)}ms before fallback`);
           updateMessage('Page not found in latest version. Redirecting to home page...');
           setTimeout(() => {
@@ -233,12 +258,15 @@
 
     // Update message after a short delay to show we're working
     setTimeout(() => {
-      updateMessage('Analyzing URL and checking latest version...');
+      const hasFragment = window.location.hash;
+      const fragmentText = hasFragment ? ' (preserving anchor)' : '';
+      updateMessage(`Analyzing URL and checking latest version${fragmentText}...`);
     }, 500);
   </script>
 
   <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
-  <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+  <!-- Search is disabled on 404 page to prevent errors from missing search indexes -->
+  <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off" disabled style="display: none;">
   <label class="md-overlay" for="__drawer"></label>
   <div data-md-component="skip">
 
@@ -334,14 +362,14 @@
         }
       </script>
 
-      <label class="md-header__button md-icon" for="__search">
+      <label class="md-header__button md-icon" for="__search" style="display: none;">
 
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
           <path
             d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5" />
         </svg>
       </label>
-      <div class="md-search" data-md-component="search" role="dialog">
+      <div class="md-search" data-md-component="search" role="dialog" style="display: none;">
         <label class="md-search__overlay" for="__search"></label>
         <div class="md-search__inner" role="search">
           <form class="md-search__form" name="search">
@@ -446,8 +474,7 @@
             <div class="md-typeset">
               <div class="admonition tip">
                 <p class="admonition-title">Looking for something specific?</p>
-                <p>Try using the search functionality in the header or browse the <a href="/metro/latest/">latest
-                    documentation</a> to find what you need.</p>
+                <p>Browse the <a href="/metro/latest/">latest documentation</a> to find what you need, or visit the <a href="https://github.com/ZacSweers/metro">GitHub repository</a> for code and issues.</p>
               </div>
             </div>
 
@@ -465,6 +492,11 @@
               #loading-indicator {
                 font-size: 0.9em;
                 color: var(--md-default-fg-color--light);
+              }
+
+              /* Hide mike version dropdown on 404 page */
+              .md-version {
+                display: none !important;
               }
             </style>
 
@@ -508,7 +540,7 @@
 
 
   <script id="__config"
-    type="application/json">{"base": ".", "features": ["content.code.copy", "content.code.select"], "search": "/metro/404-assets/javascripts/workers/search.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    type="application/json">{"base": ".", "features": ["content.code.copy", "content.code.select"], "search": null, "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
 
 
   <script src="/metro/404-assets/javascripts/bundle.min.js"></script>
