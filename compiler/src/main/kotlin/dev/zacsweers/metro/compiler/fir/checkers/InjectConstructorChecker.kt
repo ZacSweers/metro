@@ -28,10 +28,14 @@ internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common
     val classIds = session.classIds
 
     val classInjectAnnotation =
-      declaration.annotationsIn(session, classIds.injectAnnotations).toList()
+      declaration.annotationsIn(session, classIds.allInjectAnnotations).toList()
 
     val injectedConstructor =
-      declaration.symbol.findInjectConstructor(session, checkClass = false) {
+      declaration.symbol.findInjectConstructor(
+        session,
+        checkClass = false,
+        classIds = classIds.allInjectAnnotations,
+      ) {
         return
       }
 
@@ -47,7 +51,7 @@ internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common
 
     if (classInjectAnnotation.isNotEmpty() && injectedConstructor != null) {
       reporter.reportOn(
-        injectedConstructor.source,
+        injectedConstructor.annotation.source,
         MetroDiagnostics.CANNOT_HAVE_INJECT_IN_MULTIPLE_TARGETS,
       )
       return
@@ -58,7 +62,7 @@ internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common
     }
 
     val constructorToValidate =
-      injectedConstructor ?: declaration.primaryConstructorIfAny(session) ?: return
+      injectedConstructor?.constructor ?: declaration.primaryConstructorIfAny(session) ?: return
 
     for (parameter in constructorToValidate.valueParameterSymbols) {
       if (parameter.isAnnotatedWithAny(session, classIds.assistedAnnotations)) continue

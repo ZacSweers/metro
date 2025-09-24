@@ -7,7 +7,7 @@ interface ExampleGraph {
     fun create(@Includes dependentGraph: DependentGraph): ExampleGraph
   }
 
-  class ExampleClass @Inject constructor(@Assisted val intValue: Int, val message: String) {
+  class ExampleClass @AssistedInject constructor(@Assisted val intValue: Int, val message: String) {
     @AssistedFactory
     fun interface Factory {
       fun create(intValue: Int): ExampleClass

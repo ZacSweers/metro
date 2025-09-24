@@ -67,7 +67,8 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         chunkFieldInits =
           module.directives.singleOrZeroValue(MetroDirectives.CHUNK_FIELD_INITS)
             ?: optionDefaults.chunkFieldInits,
-        enableFullBindingGraphValidation = MetroDirectives.ENABLE_FULL_BINDING_GRAPH_VALIDATION in module.directives,
+        enableFullBindingGraphValidation =
+          MetroDirectives.ENABLE_FULL_BINDING_GRAPH_VALIDATION in module.directives,
         generateJvmContributionHintsInFir =
           MetroDirectives.GENERATE_JVM_CONTRIBUTION_HINTS_IN_FIR in module.directives,
         publicProviderSeverity =
@@ -77,6 +78,9 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
             module.directives.singleOrZeroValue(MetroDirectives.PUBLIC_PROVIDER_SEVERITY)
               ?: optionDefaults.publicProviderSeverity
           },
+        assistedInjectMigrationSeverity =
+          module.directives.singleOrZeroValue(MetroDirectives.ASSISTED_INJECT_MIGRATION_SEVERITY)
+            ?: optionDefaults.assistedInjectMigrationSeverity,
         enableDaggerAnvilInterop = MetroDirectives.WITH_ANVIL in module.directives,
         customGraphAnnotations =
           buildSet {
@@ -195,7 +199,9 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         customOriginAnnotations =
           buildSet {
             if (MetroDirectives.WITH_KI_ANVIL in module.directives) {
-              add(ClassId.fromString("software/amazon/lastmile/kotlin/inject/anvil/internal/Origin"))
+              add(
+                ClassId.fromString("software/amazon/lastmile/kotlin/inject/anvil/internal/Origin")
+              )
             }
           },
         // TODO other dagger annotations/types not yet implemented

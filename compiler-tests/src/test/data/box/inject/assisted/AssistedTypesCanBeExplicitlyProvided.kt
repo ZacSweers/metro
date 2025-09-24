@@ -1,7 +1,7 @@
 // Edge case of explicitly providing a constructor-injected assisted type
 // overriding the one on the graph and thus bypassing the error reporting
 // we do for doing this normally
-@Inject
+@AssistedInject
 class Example(@Assisted val input: String) {
   @AssistedFactory
   fun interface Factory {

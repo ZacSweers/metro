@@ -88,7 +88,12 @@ class InjectConstructorErrorsTest : MetroCompilerTest() {
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
-      assertDiagnostics("e: ExampleClass.kt:6:20 Only one `@Inject` constructor is allowed.")
+      assertDiagnostics(
+        """
+          e: ExampleClass.kt:6:20 Only one `@Inject` constructor is allowed.
+          e: ExampleClass.kt:7:3 Only one `@Inject` constructor is allowed.
+        """.trimIndent()
+      )
     }
   }
 

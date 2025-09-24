@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.directCallableSymbols
 import dev.zacsweers.metro.compiler.fir.findInjectConstructors
+import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.nestedClasses
 import dev.zacsweers.metro.compiler.fir.requireContainingClassSymbol
@@ -308,7 +309,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
             val parameter = callable.valueParameterSymbols[0]
             val clazz = parameter.resolvedReturnTypeRef.firClassLike(session) ?: continue
             val classSymbol = clazz.symbol as? FirClassSymbol<*> ?: continue
-            val isInjected = classSymbol.findInjectConstructors(session).isNotEmpty()
+            val isInjected = classSymbol.findInjectLikeConstructors(session).isNotEmpty()
 
             if (isInjected) {
               reporter.reportOn(

@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.constructType
 import dev.zacsweers.metro.compiler.fir.copyTypeParametersFrom
 import dev.zacsweers.metro.compiler.fir.findInjectConstructors
+import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isAnnotatedInject
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
@@ -36,6 +37,8 @@ import org.jetbrains.kotlin.fir.caches.firCachesFactory
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.hasAnnotation
+import org.jetbrains.kotlin.fir.declarations.toAnnotationClass
+import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.declarations.utils.isLateInit
 import org.jetbrains.kotlin.fir.declarations.utils.isSuspend
@@ -79,13 +82,14 @@ internal class InjectedClassFirGenerator(session: FirSession) :
   FirDeclarationGenerationExtension(session) {
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
-    register(session.predicates.injectAndAssistedAnnotationPredicate)
+    register(session.predicates.allInjectAnnotationsPredicate)
+    register(session.predicates.assistedAnnotationPredicate)
   }
 
   private val symbols: FirCache<Unit, Map<ClassId, FirNamedFunctionSymbol>, TypeResolveService?> =
     session.firCachesFactory.createCache { _, _ ->
       session.predicateBasedProvider
-        .getSymbolsByPredicate(session.predicates.injectAndAssistedAnnotationPredicate)
+        .getSymbolsByPredicate(session.predicates.injectAnnotationPredicate)
         .filterIsInstance<FirNamedFunctionSymbol>()
         .filter { it.callableId.classId == null }
         .associateBy {
@@ -159,6 +163,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
     val classSymbol: FirClassSymbol<*>,
     var isConstructorInjected: Boolean,
     val constructorParameters: List<MetroFirValueParameter>,
+    val isAssistedInject: Boolean,
   ) {
     private val parameterNameAllocator = NameAllocator()
     private val memberNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
@@ -338,15 +343,16 @@ internal class InjectedClassFirGenerator(session: FirSession) :
             function.valueParameterSymbols
               .filterNot { it.isAnnotatedWithAny(session, session.classIds.assistedAnnotations) }
               .map { MetroFirValueParameter(session, it, wrapInProvider = true) }
-          InjectedClass(classSymbol, true, params)
+          InjectedClass(classSymbol, true, params, false)
         } else {
           // If the class is annotated with @Inject, look for its primary constructor
-          val injectConstructor = classSymbol.findInjectConstructors(session).singleOrNull()
+          val injectConstructor = classSymbol.findInjectLikeConstructors(session).singleOrNull()
           val params =
-            injectConstructor?.valueParameterSymbols.orEmpty().map {
+            injectConstructor?.constructor?.valueParameterSymbols.orEmpty().map {
               MetroFirValueParameter(session, it)
             }
-          InjectedClass(classSymbol, injectConstructor != null, params)
+          val isAssistedInject = injectConstructor?.annotation?.toAnnotationClassIdSafe(session) in session.classIds.assistedInjectAnnotations || params.any { it.isAssisted }
+          InjectedClass(classSymbol, injectConstructor != null, params, isAssistedInject)
         }
 
       // Ancestors not available at this phase, but we don't need them here anyway
@@ -479,10 +485,9 @@ internal class InjectedClassFirGenerator(session: FirSession) :
       // Only generate an invoke() function if it has assisted parameters, as it won't be inherited
       // from Factory<T> in this case
       val target = injectFactoryClassIdsToInjectedClass[classSymbol.classId]?.classSymbol
-      val injectConstructor = target?.findInjectConstructors(session).orEmpty().singleOrNull()
+      val injectConstructor = target?.findInjectLikeConstructors(session).orEmpty().singleOrNull()
       if (
-        injectConstructor != null &&
-          injectConstructor.valueParameterSymbols.any {
+          injectConstructor?.constructor?.valueParameterSymbols.orEmpty().any {
             it.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)
           }
       ) {

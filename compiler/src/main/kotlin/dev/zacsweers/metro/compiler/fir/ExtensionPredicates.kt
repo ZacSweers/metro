@@ -47,10 +47,9 @@ internal class ExtensionPredicates(private val classIds: ClassIds) {
 
   internal val injectAnnotationPredicate = annotated(classIds.injectAnnotations.asFqNames())
 
-  internal val assistedAnnotationPredicate = annotated(classIds.assistedAnnotations.asFqNames())
+  internal val allInjectAnnotationsPredicate = annotated(classIds.allInjectAnnotations.asFqNames())
 
-  internal val injectAndAssistedAnnotationPredicate =
-    annotated((classIds.injectAnnotations + classIds.assistedAnnotations).asFqNames())
+  internal val assistedAnnotationPredicate = annotated(classIds.assistedAnnotations.asFqNames())
 
   internal val assistedFactoryAnnotationPredicate =
     annotated(classIds.assistedFactoryAnnotations.asFqNames())

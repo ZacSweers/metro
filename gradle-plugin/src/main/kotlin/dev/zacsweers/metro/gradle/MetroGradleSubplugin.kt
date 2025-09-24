@@ -142,6 +142,7 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         add(lazyOption("shrink-unused-bindings", extension.shrinkUnusedBindings))
         add(lazyOption("chunk-field-inits", extension.chunkFieldInits))
         add(lazyOption("public-provider-severity", extension.publicProviderSeverity))
+        add(lazyOption("assisted-inject-deprecation-severity", extension.assistedInjectMigrationSeverity))
         add(
           lazyOption(
             "warn-on-inject-annotation-placement",

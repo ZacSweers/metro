@@ -81,7 +81,10 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
   public val enableFullBindingGraphValidation: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(false)
 
-  @Deprecated("Use enableFullBindingGraphValidation", ReplaceWith("enableFullBindingGraphValidation"))
+  @Deprecated(
+    "Use enableFullBindingGraphValidation",
+    ReplaceWith("enableFullBindingGraphValidation"),
+  )
   public val enableStrictValidation: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(false)
 
@@ -102,6 +105,14 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
    * provider callables. See the kdoc on `Provides` for more details.
    */
   public val publicProviderSeverity: Property<DiagnosticSeverity> =
+    objects.property(DiagnosticSeverity::class.javaObjectType).convention(DiagnosticSeverity.NONE)
+
+  /**
+   * Control diagnostic severity reporting of issues with the `@AssistedInject` migration. `NONE` is
+   * the future behavior, `WARN` is the current default. See the kdoc on `AssistedInject` for more
+   * details.
+   */
+  public val assistedInjectMigrationSeverity: Property<DiagnosticSeverity> =
     objects.property(DiagnosticSeverity::class.javaObjectType).convention(DiagnosticSeverity.NONE)
 
   /**

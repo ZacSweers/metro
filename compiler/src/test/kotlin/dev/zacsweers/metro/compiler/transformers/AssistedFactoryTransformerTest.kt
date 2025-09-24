@@ -28,7 +28,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @Inject constructor(
+            class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
               val message: String,
             ) : Callable<String> {
@@ -55,7 +55,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @Inject constructor(
+            class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
               val message: String,
             ) : Callable<String> {
@@ -87,7 +87,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @Inject constructor(
+            class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
               val message: String,
             ) : Callable<String> {
@@ -124,7 +124,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @Inject constructor(
+            class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int = 2,
               val message: String,
             ) : Callable<String> {
@@ -161,7 +161,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @Inject constructor(
+            class ExampleClass @AssistedInject constructor(
               @Assisted("1") val count1: Int,
               @Assisted("2") val count2: Int,
               val message: String,
@@ -198,7 +198,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @Inject constructor(
+            class ExampleClass @AssistedInject constructor(
               val count: Int,
               val message: String,
             )
@@ -238,7 +238,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleClass.kt:10:7 Invalid return type: test.ExampleClass. `@AssistedFactory` target classes must have a single `@Inject`-annotated constructor or be annotated `@Inject` with only a primary constructor."
+        "e: ExampleClass.kt:10:7 Invalid return type: test.ExampleClass. `@AssistedFactory` target classes must have a single `@AssistedInject`-annotated constructor or be annotated `@AssistedInject` with only a primary constructor."
       )
     }
   }
@@ -259,7 +259,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleClassFactory.kt:8:7 Invalid return type: kotlin.Unit. `@AssistedFactory` target classes must have a single `@Inject`-annotated constructor or be annotated `@Inject` with only a primary constructor."
+        "e: ExampleClassFactory.kt:8:7 Invalid return type: kotlin.Unit. `@AssistedFactory` target classes must have a single `@AssistedInject`-annotated constructor or be annotated `@AssistedInject` with only a primary constructor."
       )
     }
   }
@@ -283,7 +283,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleClass.kt:10:18 @Assisted.Factory declarations cannot be local classes."
+        "e: ExampleClass.kt:10:18 @AssistedFactory declarations cannot be local classes."
       )
     }
   }
@@ -293,7 +293,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @Inject constructor(
+            class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
             ) {
               @AssistedFactory
@@ -307,7 +307,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleClass.kt:10:3 @Assisted.Factory declarations must be public or internal."
+        "e: ExampleClass.kt:10:3 @AssistedFactory declarations must be public or internal."
       )
     }
   }
@@ -317,7 +317,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @Inject constructor(
+            class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
             ) {
               @AssistedFactory
@@ -331,7 +331,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleClass.kt:10:3 @Assisted.Factory declarations must be public or internal."
+        "e: ExampleClass.kt:10:3 @AssistedFactory declarations must be public or internal."
       )
     }
   }
@@ -341,7 +341,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @Inject constructor(
+            class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
             ) {
               @AssistedFactory
@@ -357,7 +357,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleClass.kt:10:9 @Assisted.Factory declarations should be non-sealed abstract classes or interfaces."
+        "e: ExampleClass.kt:10:9 @AssistedFactory declarations should be non-sealed abstract classes or interfaces."
       )
     }
   }
@@ -367,7 +367,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @Inject constructor(
+            class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
             ) {
               @AssistedFactory
@@ -381,7 +381,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleClass.kt:10:16 @Assisted.Factory declarations should be non-sealed abstract classes or interfaces."
+        "e: ExampleClass.kt:10:16 @AssistedFactory declarations should be non-sealed abstract classes or interfaces."
       )
     }
   }
@@ -391,7 +391,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @Inject constructor(
+            class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
             ) {
               @AssistedFactory
@@ -405,7 +405,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleClass.kt:10:20 @Assisted.Factory declarations should be non-sealed abstract classes or interfaces."
+        "e: ExampleClass.kt:10:20 @AssistedFactory declarations should be non-sealed abstract classes or interfaces."
       )
     }
   }
@@ -415,7 +415,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @Inject constructor(
+            class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
             ) {
               @AssistedFactory
@@ -434,7 +434,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleClass.kt:10:14 @Assisted.Factory declarations should be non-sealed abstract classes or interfaces."
+        "e: ExampleClass.kt:10:14 @AssistedFactory declarations should be non-sealed abstract classes or interfaces."
       )
     }
   }
@@ -444,7 +444,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @Inject constructor(
+            class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
             ) {
               @AssistedFactory
@@ -457,7 +457,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-            e: ExampleClass.kt:10:20 @Assisted.Factory declarations should be non-sealed abstract classes or interfaces.
+            e: ExampleClass.kt:10:20 @AssistedFactory declarations should be non-sealed abstract classes or interfaces.
           """
           .trimIndent()
       )
@@ -469,7 +469,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @Inject constructor(
+            class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
             ) {
               @AssistedFactory
@@ -485,7 +485,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleClass.kt:10:10 @Assisted.Factory declarations should be non-sealed abstract classes or interfaces."
+        "e: ExampleClass.kt:10:10 @AssistedFactory declarations should be non-sealed abstract classes or interfaces."
       )
     }
   }
@@ -495,7 +495,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @Inject constructor(
+            class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
             ) {
               @AssistedFactory
@@ -517,7 +517,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @Inject constructor(
+            class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
             ) {
               @AssistedFactory
@@ -546,7 +546,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @Inject constructor(
+            class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
             ) {
               interface BaseFactory {
@@ -575,7 +575,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @Inject constructor(
+            class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
             ) {
               interface GrandParentFactory {
@@ -605,7 +605,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @Inject constructor(
+            class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
             ) {
               @AssistedFactory
@@ -632,7 +632,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @Inject constructor(
+            class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
               @Assisted val message: String,
             ) {
@@ -660,7 +660,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @Inject constructor(
+            class ExampleClass @AssistedInject constructor(
               @Assisted val count: String,
             ) {
               @AssistedFactory
@@ -689,7 +689,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @Inject constructor(
+            class ExampleClass @AssistedInject constructor(
               @Assisted("count") val count: String,
             ) {
               @AssistedFactory
@@ -718,7 +718,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @Inject constructor(
+            class ExampleClass @AssistedInject constructor(
               @Assisted("count") val count: String,
             ) {
               @AssistedFactory
@@ -754,7 +754,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
             @Provides val int: Int get() = 0
           }
 
-          class ExampleClass @Inject constructor(
+          class ExampleClass @AssistedInject constructor(
             val count: Int,
             @Assisted val text: String,
           ) {
@@ -785,7 +785,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @Inject constructor(
+            class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
               val message: String,
             ) : Callable<String> {
@@ -815,7 +815,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @Inject constructor(
+            class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
               val message: String,
             ) : Callable<String> {
@@ -842,7 +842,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @Inject constructor(
+            class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
               val message: String,
             ) : Callable<String> {
@@ -871,7 +871,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @Inject constructor(
+            class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
               val message: String,
             )
@@ -913,7 +913,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @Inject constructor(
+            class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
               val message: String,
             )
@@ -955,7 +955,7 @@ It looks like the @AssistedFactory for 'test.ExampleClass' is 'test.ExampleClass
     compile(
       source(
         """
-            class ExampleClass @Inject constructor(
+            class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
               val message: String,
             )
@@ -998,7 +998,7 @@ It looks like the @AssistedFactory for 'test.ExampleClass' is 'test.ExampleClass
     compile(
       source(
         """
-            class ExampleClass @Inject constructor(
+            class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
               val message: String,
             )
@@ -1037,7 +1037,7 @@ It looks like the @AssistedFactory for 'test.ExampleClass' is 'test.ExampleClass
     compile(
       source(
         """
-            class ExampleClass @Inject constructor(
+            class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
               val message: String,
             )

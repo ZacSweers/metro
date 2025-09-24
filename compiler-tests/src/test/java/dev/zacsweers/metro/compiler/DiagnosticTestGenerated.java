@@ -305,6 +305,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("AssistedInjectMigrationsErrors.kt")
+      public void testAssistedInjectMigrationsErrors() {
+        runTest("compiler-tests/src/test/data/diagnostic/inject/assisted/AssistedInjectMigrationsErrors.kt");
+      }
+
+      @Test
       @TestMetadata("LazyAssistedFactoryInjection.kt")
       public void testLazyAssistedFactoryInjection() {
         runTest("compiler-tests/src/test/data/diagnostic/inject/assisted/LazyAssistedFactoryInjection.kt");

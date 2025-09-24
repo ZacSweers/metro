@@ -5,7 +5,7 @@ interface MyAssistedFactory {
   fun create(param: String): MyClass
 }
 
-@Inject
+@AssistedInject
 class MyClass(
   @Assisted val param: String,
   val dependency: String

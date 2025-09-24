@@ -114,6 +114,8 @@ abstract class MetroCompilerTest {
                 processor.option(entry.raw.cliOption, chunkFieldInits)
               MetroOption.PUBLIC_PROVIDER_SEVERITY ->
                 processor.option(entry.raw.cliOption, publicProviderSeverity)
+              MetroOption.ASSISTED_INJECT_DEPRECATION_SEVERITY ->
+                processor.option(entry.raw.cliOption, assistedInjectMigrationSeverity)
               MetroOption.WARN_ON_INJECT_ANNOTATION_PLACEMENT ->
                 processor.option(entry.raw.cliOption, warnOnInjectAnnotationPlacement)
               MetroOption.LOGGING -> {

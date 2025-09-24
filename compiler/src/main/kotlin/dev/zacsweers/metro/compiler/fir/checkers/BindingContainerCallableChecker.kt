@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.BINDING_CONTAINER_ERROR
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.findInjectConstructors
+import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
@@ -307,7 +308,8 @@ internal object BindingContainerCallableChecker :
 
       if (returnType.typeArguments.isEmpty()) {
         val returnClass = returnType.toClassSymbol(session) ?: return
-        val injectConstructor = returnClass.findInjectConstructors(session).firstOrNull()
+        // TODO after we migrate fully to AssistedInject, allow qualified assisted inject types
+        val injectConstructor = returnClass.findInjectLikeConstructors(session).firstOrNull()
 
         if (injectConstructor != null) {
           // If the type keys and scope are the same, this is redundant

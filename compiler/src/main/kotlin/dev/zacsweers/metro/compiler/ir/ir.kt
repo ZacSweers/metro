@@ -1469,7 +1469,7 @@ private fun List<IrConstructorCall>?.annotationsAnnotatedWith(
 
 context(context: IrMetroContext)
 internal fun IrClass.findInjectableConstructor(onlyUsePrimaryConstructor: Boolean): IrConstructor? {
-  return findInjectableConstructor(onlyUsePrimaryConstructor, context.symbols.injectAnnotations)
+  return findInjectableConstructor(onlyUsePrimaryConstructor, context.symbols.classIds.allInjectAnnotations)
 }
 
 internal fun IrClass.findInjectableConstructor(

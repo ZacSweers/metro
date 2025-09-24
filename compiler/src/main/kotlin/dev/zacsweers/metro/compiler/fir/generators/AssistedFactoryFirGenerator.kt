@@ -3,10 +3,13 @@
 package dev.zacsweers.metro.compiler.fir.generators
 
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.fir.FirInjectConstructor
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.copyParameters
+import dev.zacsweers.metro.compiler.fir.findInjectConstructors
+import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.generateMemberFunction
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.predicates
@@ -48,12 +51,12 @@ internal class AssistedFactoryFirGenerator(session: FirSession) :
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(
-      session.predicates.injectAnnotationPredicate,
+      session.predicates.allInjectAnnotationsPredicate,
       session.predicates.assistedAnnotationPredicate,
     )
   }
 
-  private val assistedInjectClasses = mutableMapOf<FirClassLikeSymbol<*>, FirConstructorSymbol>()
+  private val assistedInjectClasses = mutableMapOf<FirClassLikeSymbol<*>, FirInjectConstructor>()
   private val assistedFactoriesToClasses =
     mutableMapOf<FirClassLikeSymbol<*>, FirClassLikeSymbol<*>>()
   private val createIdsToFactories = mutableMapOf<CallableId, FirClassSymbol<*>>()
@@ -87,7 +90,7 @@ internal class AssistedFactoryFirGenerator(session: FirSession) :
           // Collect assisted params, we need to potentially port their assisted annotations if they
           // have custom identifiers
           val assistedParams =
-            constructor.valueParameterSymbols.mapNotNull { param ->
+            constructor.constructor?.valueParameterSymbols.orEmpty().mapNotNull { param ->
               if (!param.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)) {
                 return@mapNotNull null
               }
@@ -121,25 +124,16 @@ internal class AssistedFactoryFirGenerator(session: FirSession) :
   }
 
   // Called for generating nested names
-  @OptIn(DirectDeclarationsAccess::class)
   override fun getNestedClassifiersNames(
     classSymbol: FirClassSymbol<*>,
     context: NestedClassGenerationContext,
   ): Set<Name> {
-    val constructor =
-      if (classSymbol.isAnnotatedWithAny(session, session.classIds.injectAnnotations)) {
-        classSymbol.declarationSymbols.filterIsInstance<FirConstructorSymbol>().singleOrNull {
-          it.isPrimary
-        }
-      } else {
-        classSymbol.declarationSymbols.filterIsInstance<FirConstructorSymbol>().firstOrNull {
-          it.isAnnotatedWithAny(session, session.classIds.injectAnnotations)
-        }
-      }
+    val constructor = classSymbol.findInjectLikeConstructors(session).firstOrNull()
 
     if (constructor != null) {
       // Check if there is already a nested factory. If there is, do nothing.
       val existingFactory =
+        @OptIn(DirectDeclarationsAccess::class)
         classSymbol.declarationSymbols.filterIsInstance<FirClassSymbol<*>>().singleOrNull {
           // TODO also check for factory annotation? Not sure what else we'd do anyway though
           it.name == Symbols.Names.FactoryClass

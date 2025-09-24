@@ -25,7 +25,7 @@ import kotlin.reflect.KClass
 interface Node
 
 // This node is in AppScope, and can instantiate a ChildScope
-@Inject
+@AssistedInject
 class NodeA(
   @Assisted text: String,
   val childGraphFactory: PublicChildGraphFactory,
@@ -37,7 +37,7 @@ class NodeA(
 }
 
 // This node goes into the ChildScope
-@Inject
+@AssistedInject
 class NodeB(
   @Assisted text: String,
 ) : Node {

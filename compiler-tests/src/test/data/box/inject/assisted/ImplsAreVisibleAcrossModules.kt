@@ -1,5 +1,5 @@
 // MODULE: lib
-@Inject
+@AssistedInject
 class Example(@Assisted val input: String) {
   @AssistedFactory
   interface Factory {
