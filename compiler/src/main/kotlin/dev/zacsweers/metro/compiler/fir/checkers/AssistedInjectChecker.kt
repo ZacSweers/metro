@@ -99,7 +99,7 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
       targetType.symbol.findInjectLikeConstructors(session, checkClass = true).firstOrNull()
     if (injectConstructor == null) {
       reporter.reportOn(
-        function.source ?: source,
+        function.resolvedReturnTypeRef.source ?: function.source ?: source,
         ASSISTED_INJECTION_ERROR,
         "Invalid return type: ${targetType.symbol.classId.asSingleFqName()}. `@AssistedFactory` target classes must have a single `@AssistedInject`-annotated constructor or be annotated `@AssistedInject` with only a primary constructor.",
       )
