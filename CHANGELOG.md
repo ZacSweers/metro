@@ -4,6 +4,19 @@ Changelog
 **Unreleased**
 --------------
 
+### New `@AssistedInject` annotation
+
+Assisted-injected classes must now use `@AssistedInject` instead of `@Inject`.
+
+This is for multiple reasons:
+  - It's more explicit at the source declaration site that this uses assisted injection and cannot be requested directly on the DI graph. This is particularly useful for scenarios where there no assisted parameters but you still want to use assisted injection.
+  - This will allow adding more granular checks at compile-time to validate use-sites.
+  - Will simplify some of Metro's internal logic.
+
+Note that not all internal changes are implemented yet to allow for a migration period. In this release, use of `@Inject` with `@Assisted` parameters is a compiler _warning_ and will become an error in the future. This diagnostic is configurable via the `assistedInjectMigrationSeverity` Gradle DSL option.
+
+### Other changes
+
 - **Enhancement**: Always check for available assisted factories when reporting `InvalidBinding` errors about misused assisted injects.
 - **Enhancement**: Always specifically report mismatched assisted parameter mismatches.
 - **Enhancement**: Validate `Lazy` assisted factory injections in more places.
