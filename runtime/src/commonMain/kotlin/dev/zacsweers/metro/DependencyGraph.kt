@@ -92,8 +92,8 @@ import kotlin.reflect.KClass
  * }
  * ```
  *
- * @property scope The scope this graph extension aggregates.
- * @property additionalScopes Additional scopes this graph extension aggregates. [scope] must be
+ * @property scope The scope this dependency graph aggregates.
+ * @property additionalScopes Additional scopes this dependency graph aggregates. [scope] must be
  *   defined if this is defined, as this property is purely for convenience.
  * @property excludes Optional list of excluded contributing classes (requires a [scope] to be
  *   defined).
