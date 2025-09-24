@@ -238,7 +238,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleClass.kt:10:7 Invalid return type: test.ExampleClass. `@AssistedFactory` target classes must have a single `@AssistedInject`-annotated constructor or be annotated `@AssistedInject` with only a primary constructor."
+        "e: ExampleClass.kt:10:27 Invalid return type: test.ExampleClass. `@AssistedFactory` target classes must have a single `@AssistedInject`-annotated constructor or be annotated `@AssistedInject` with only a primary constructor."
       )
     }
   }
