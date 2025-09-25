@@ -24,6 +24,7 @@ Note that not all internal changes are implemented yet to allow for a migration 
 - **Enhancement**: Simplify assisted factory impl class generation by moving it entirely to IR.
 - **Fix**: Register `MetroDiagnostics` in FIR.
 - **Fix**: When transforming FIR override statuses, check all supertypes and not just immediate supertype.
+- Dagger runtime interop is enabled, do not run status transformation on `@Provides` declarations in dagger modules.
 
 0.6.6
 -----
