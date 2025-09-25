@@ -42,7 +42,8 @@ internal sealed interface IrMetroFactory {
 
   context(context: IrMetroContext, scope: IrBuilderWithScope)
   fun invokeCreateExpression(
-    computeArgs: IrBuilderWithScope.(createFunction: IrSimpleFunction) -> List<IrExpression?>
+    typeKey: IrTypeKey,
+    computeArgs: IrBuilderWithScope.(createFunction: IrSimpleFunction, parameters: Parameters) -> List<IrExpression?>
   ): IrExpression = with(scope) {
     // Anvil may generate the factory
     val isJava = factoryClass.isFromJava()
@@ -58,12 +59,27 @@ internal sealed interface IrMetroFactory {
         .first {
           it.name in createFunctionNames
         }
-        .symbol
-    val args = computeArgs(createFunction.owner)
+
+    val remapper = createFunction.typeRemapperFor(typeKey.type)
+    val finalFunction = createFunction.deepCopyWithSymbols(initialParent = createFunction.parent).also {
+      it.parent = createFunction.parent
+      it.remapTypes(remapper)
+    }
+
+    val parameters = if (isDaggerFactory) {
+      // Dagger factories don't copy over qualifiers, so we wanna copy them over here
+      val qualifiers = function.parameters.map { it.qualifierAnnotation() }
+      createFunction.parameters(remapper)
+        .overlayQualifiers(qualifiers)
+    } else {
+      createFunction.parameters(remapper)
+    }
+
+    val args = computeArgs(finalFunction, parameters)
     val createExpression =
       irInvoke(
         dispatchReceiver = if (isJava) null else irGetObject(creatorClass.symbol),
-        callee = createFunction,
+        callee = createFunction.symbol,
         args = args,
         typeHint = factoryClass.typeWith(),
       )

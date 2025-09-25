@@ -976,6 +976,18 @@ public class BoxTestGenerated extends AbstractBoxTest {
         runTest("compiler-tests/src/test/data/box/interop/dagger/QualifiedDaggerProviderFactoryClassCanBeLoaded.kt");
       }
 
+      @Test
+      @TestMetadata("QualifiersFromDaggerConstructorParametersAreCarried.kt")
+      public void testQualifiersFromDaggerConstructorParametersAreCarried() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/QualifiersFromDaggerConstructorParametersAreCarried.kt");
+      }
+
+      @Test
+      @TestMetadata("QualifiersFromDaggerProviderParamsAreCarried.kt")
+      public void testQualifiersFromDaggerProviderParamsAreCarried() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/QualifiersFromDaggerProviderParamsAreCarried.kt");
+      }
+
       @Nested
       @TestMetadata("compiler-tests/src/test/data/box/interop/dagger/anvil")
       @TestDataPath("$PROJECT_ROOT")

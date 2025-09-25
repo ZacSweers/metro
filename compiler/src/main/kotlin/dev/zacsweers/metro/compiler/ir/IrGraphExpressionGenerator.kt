@@ -132,15 +132,10 @@ private constructor(
       return when (binding) {
         is IrBinding.ConstructorInjected -> {
           // Example_Factory.create(...)
-          binding.classFactory.invokeCreateExpression { createFunction ->
-            val remapper = createFunction.typeRemapperFor(binding.typeKey.type)
+          binding.classFactory.invokeCreateExpression(binding.typeKey) { createFunction, parameters ->
             generateBindingArguments(
-              targetParams = createFunction.parameters(remapper = remapper),
-              function =
-                createFunction.deepCopyWithSymbols(initialParent = createFunction.parent).also {
-                  it.parent = createFunction.parent
-                  it.remapTypes(remapper)
-                },
+              targetParams = parameters,
+              function = createFunction,
               binding = binding,
               fieldInitKey = null,
             )
@@ -170,9 +165,9 @@ private constructor(
               )
 
           // Invoke its factory's create() function
-          providerFactory.invokeCreateExpression { createFunction ->
+          providerFactory.invokeCreateExpression(binding.typeKey) { createFunction, params ->
             generateBindingArguments(
-              targetParams = binding.parameters,
+              targetParams = params,
               function = createFunction,
               binding = binding,
               fieldInitKey = fieldInitKey,

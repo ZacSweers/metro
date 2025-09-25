@@ -158,6 +158,13 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
               add(ClassId.fromString("jakarta/inject/Inject"))
             }
           },
+        customQualifierAnnotations =
+          buildSet {
+            if (addDaggerAnnotations) {
+              add(ClassId.fromString("javax/inject/Qualifier"))
+              add(ClassId.fromString("jakarta/inject/Qualifier"))
+            }
+          },
         customProviderTypes =
           buildSet {
             if (addDaggerAnnotations) {

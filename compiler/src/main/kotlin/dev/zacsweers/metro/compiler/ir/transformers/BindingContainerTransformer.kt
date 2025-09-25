@@ -6,10 +6,10 @@ import dev.zacsweers.metro.compiler.METRO_VERSION
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
+import dev.zacsweers.metro.compiler.generatedClass
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrBinding
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
@@ -39,7 +39,6 @@ import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
-import dev.zacsweers.metro.compiler.ir.replacedClasses
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.subcomponentsArgument
@@ -85,13 +84,11 @@ import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.isFakeOverride
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isPropertyAccessor
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
-import org.jetbrains.kotlin.ir.util.packageFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
@@ -764,21 +761,11 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
 
               if (annotations.isProvides) {
                 // Look up the expected provider factory class
-                // Try both with and without the declaration's `@JvmName`. Dagger doesn't seem to
-                // read this in KSP but would in KAPT
+                // Try both with and without the declaration's `@JvmName` (if present). Dagger
+                // doesn't seem to read this in KSP but would implicitly in KAPT
                 val factoryClass =
-                  referenceClass(
-                    ClassId(
-                      declaration.packageFqName!!,
-                      daggerFactoryClassNameOf(decl, useJvmName = false).asName(),
-                    )
-                  )
-                    ?: referenceClass(
-                      ClassId(
-                        declaration.packageFqName!!,
-                        daggerFactoryClassNameOf(decl, useJvmName = true).asName(),
-                      )
-                    )
+                  referenceClass(daggerFactoryClassIdOf(decl, useJvmName = false))
+                    ?: referenceClass(daggerFactoryClassIdOf(decl, useJvmName = true))
 
                 if (factoryClass == null) {
                   reportCompat(
@@ -817,7 +804,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
             reportCompat(
               declaration,
               MetroDiagnostics.METRO_WARNING,
-              "Included Dagger module '${declarationFqName}' declares a `subcomponents` parameter but this will be ignored by Metro in interop."
+              "Included Dagger module '${declarationFqName}' declares a `subcomponents` parameter but this will be ignored by Metro in interop.",
             )
           }
 
@@ -914,10 +901,10 @@ internal class BindingContainer(
   override fun toString(): String = classId.asString()
 }
 
-private fun daggerFactoryClassNameOf(
+private fun daggerFactoryClassIdOf(
   declaration: IrOverridableDeclaration<*>,
   useJvmName: Boolean,
-): String {
+): ClassId {
   val isProperty = declaration is IrProperty
   val containingClass = declaration.parentAsClass
   val nameToUse =
@@ -926,10 +913,7 @@ private fun daggerFactoryClassNameOf(
     } else {
       declaration.name.asString()
     }
-  return buildString {
-    containingClass.classIdOrFail.relativeClassName.pathSegments().joinTo(this, separator = "_") {
-      it.asString().capitalizeUS()
-    }
+  val suffix = buildString {
     append("_")
     if (isProperty) {
       append("Get")
@@ -937,4 +921,5 @@ private fun daggerFactoryClassNameOf(
     append(nameToUse.capitalizeUS())
     append("Factory")
   }
+  return containingClass.classIdOrFail.generatedClass(suffix)
 }
