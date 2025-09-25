@@ -544,7 +544,7 @@ class AnvilInteropTest : MetroCompilerTest() {
       ),
       options = metroOptions.withAnvilInterop(),
     ) {
-      println("asdf")
+      // Compile-only test
     }
   }
 
