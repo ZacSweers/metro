@@ -25,6 +25,7 @@ Note that not all internal changes are implemented yet to allow for a migration 
 - **Enhancement**: Better canonicalize flexible mutability from Dagger interop in collections and flexible nullability.
 - **Enhancement**: Better canonicalize flexible nullability from Dagger interop in generic type arguments.
 - **Enhancement**: Simplify assisted factory impl class generation by moving it entirely to IR.
+- **Enhancement**: Allow qualifier narrowing but not widening on graph accessor types. Essentially, you can have a base interface with an unqualified accessor and then override that to add a qualifier in a subtype, but not the other way around.
 - **Fix**: Register `MetroDiagnostics` in FIR.
 - **Fix**: Use correct severity when reporting warnings to `MessageCollector` from newer IR diagnostics factories.
 - **Fix**: When transforming FIR override statuses, check all supertypes and not just immediate supertype.
