@@ -2889,6 +2889,58 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
   }
 
   @Test
+  fun `qualified accessors are valid when narrowing`() {
+    compile(
+      source(
+        """
+          interface Parent1 {
+            val prop: String
+            fun function(): String
+          }
+
+          @DependencyGraph interface AppGraph : Parent1 {
+            @Named("qualified") override val prop: String
+            @Named("qualified") override fun function(): String
+            
+            @Named("qualified") @Provides fun provideString(): String = "hello"
+          }
+        """
+          .trimIndent()
+      ),
+    )
+  }
+
+  @Test
+  fun `qualified accessors are invalid when widening`() {
+    compile(
+      source(
+        """
+          interface Parent1 {
+            @Named("qualified") val prop: String
+            @Named("qualified") fun function(): String
+          }
+
+          @DependencyGraph interface AppGraph : Parent1 {
+            override val prop: String
+            override fun function(): String
+            
+            @Named("qualified") @Provides fun provideString(): String = "hello"
+          }
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: Parent1.kt:11:1 [Metro/QualifierOverrideMismatch] Overridden accessor property 'test.AppGraph.$${'$'}MetroGraph.prop' must have the same qualifier annotations as the overridden accessor property. However, the final accessor property qualifier is 'null' but overridden symbol test.Parent1.prop has '@Named("qualified")'.'
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
   fun `conflicting overrides for accessor properties`() {
     compile(
       source(
