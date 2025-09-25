@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.Symbols.DaggerSymbols
+import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.unsafeLazy
@@ -27,13 +28,60 @@ import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.remapTypes
 import org.jetbrains.kotlin.ir.util.simpleFunctions
 import org.jetbrains.kotlin.name.CallableId
+import org.jetbrains.kotlin.name.Name
 
 internal sealed interface IrMetroFactory {
   val function: IrFunction
+  val factoryClass: IrClass
+
+  val createFunctionNames: Set<Name> get() = setOf(
+    Symbols.Names.create
+  )
+
+  val isDaggerFactory: Boolean
+
+  context(context: IrMetroContext, scope: IrBuilderWithScope)
+  fun invokeCreateExpression(
+    computeArgs: IrBuilderWithScope.(createFunction: IrSimpleFunction) -> List<IrExpression?>
+  ): IrExpression = with(scope) {
+    // Anvil may generate the factory
+    val isJava = factoryClass.isFromJava()
+    val creatorClass =
+      if (isJava || factoryClass.isObject) {
+        factoryClass
+      } else {
+        factoryClass.companionObject()!!
+      }
+    val createFunction =
+      creatorClass
+        .simpleFunctions()
+        .first {
+          it.name in createFunctionNames
+        }
+        .symbol
+    val args = computeArgs(createFunction.owner)
+    val createExpression =
+      irInvoke(
+        dispatchReceiver = if (isJava) null else irGetObject(creatorClass.symbol),
+        callee = createFunction,
+        args = args,
+        typeHint = factoryClass.typeWith(),
+      )
+
+    // Wrap in a metro provider if this is a provider
+    return if (isDaggerFactory && factoryClass.defaultType.implementsProviderType()) {
+      irInvoke(
+        extensionReceiver = createExpression,
+        callee = context.symbols.daggerSymbols.asMetroProvider,
+      )
+        .apply { typeArguments[0] = factoryClass.typeWith() }
+    } else {
+      createExpression
+    }
+  }
 }
 
 internal sealed interface ClassFactory : IrMetroFactory {
-  val factoryClass: IrClass
   val invokeFunctionSymbol: IrFunctionSymbol
   val targetFunctionParameters: Parameters
   val isAssistedInject: Boolean
@@ -41,15 +89,12 @@ internal sealed interface ClassFactory : IrMetroFactory {
   context(context: IrMetroContext)
   fun remapTypes(typeRemapper: TypeRemapper): ClassFactory
 
-  fun IrBuilderWithScope.invokeCreateExpression(
-    computeArgs: IrBuilderWithScope.(createFunction: IrSimpleFunction) -> List<IrExpression?>
-  ): IrExpression
-
   class MetroFactory(
     override val factoryClass: IrClass,
     override val targetFunctionParameters: Parameters,
   ) : ClassFactory {
     override val function: IrSimpleFunction = targetFunctionParameters.ir!! as IrSimpleFunction
+    override val isDaggerFactory: Boolean = false
 
     override val isAssistedInject: Boolean by unsafeLazy {
       // Check if the factory has the @AssistedMarker annotation
@@ -69,26 +114,6 @@ internal sealed interface ClassFactory : IrMetroFactory {
         function.deepCopyWithSymbols(factoryClass).also { it.remapTypes(typeRemapper) }
       return MetroFactory(factoryClass, newFunction.parameters())
     }
-
-    override fun IrBuilderWithScope.invokeCreateExpression(
-      computeArgs: IrBuilderWithScope.(IrSimpleFunction) -> List<IrExpression?>
-    ): IrExpression {
-      // Invoke its factory's create() function
-      val creatorClass =
-        if (factoryClass.isObject) {
-          factoryClass
-        } else {
-          factoryClass.companionObject()!!
-        }
-      val createFunction = creatorClass.requireSimpleFunction(Symbols.StringNames.CREATE)
-      val args = computeArgs(createFunction.owner)
-      return irInvoke(
-        dispatchReceiver = irGetObject(creatorClass.symbol),
-        callee = createFunction,
-        args = args,
-        typeHint = factoryClass.typeWith(),
-      )
-    }
   }
 
   class DaggerFactory(
@@ -97,7 +122,9 @@ internal sealed interface ClassFactory : IrMetroFactory {
     override val targetFunctionParameters: Parameters,
   ) : ClassFactory {
     override val function: IrConstructor = targetFunctionParameters.ir!! as IrConstructor
-
+    override val createFunctionNames: Set<Name> = setOf(
+      Symbols.Names.create, Symbols.Names.createFactoryProvider
+    )
     override val isAssistedInject: Boolean by unsafeLazy {
       // Check if the constructor has an @AssistedInject annotation
       function.hasAnnotation(DaggerSymbols.ClassIds.DAGGER_ASSISTED_INJECT)
@@ -105,6 +132,8 @@ internal sealed interface ClassFactory : IrMetroFactory {
 
     override val invokeFunctionSymbol: IrFunctionSymbol
       get() = factoryClass.requireSimpleFunction(Symbols.StringNames.GET)
+
+    override val isDaggerFactory: Boolean = true
 
     context(context: IrMetroContext)
     override fun remapTypes(typeRemapper: TypeRemapper): DaggerFactory {
@@ -115,68 +144,54 @@ internal sealed interface ClassFactory : IrMetroFactory {
         function.deepCopyWithSymbols(factoryClass).also { it.remapTypes(typeRemapper) }
       return DaggerFactory(metroContext, factoryClass, newFunction.parameters())
     }
-
-    override fun IrBuilderWithScope.invokeCreateExpression(
-      computeArgs: IrBuilderWithScope.(createFunction: IrSimpleFunction) -> List<IrExpression?>
-    ): IrExpression {
-      // Anvil may generate the factory
-      val isJava = factoryClass.isFromJava()
-      val creatorClass =
-        if (isJava || factoryClass.isObject) {
-          factoryClass
-        } else {
-          factoryClass.companionObject()!!
-        }
-      val createFunction =
-        creatorClass
-          .simpleFunctions()
-          .first {
-            it.name == Symbols.Names.create || it.name == Symbols.Names.createFactoryProvider
-          }
-          .symbol
-      val args = computeArgs(createFunction.owner)
-      val createExpression =
-        irInvoke(
-          dispatchReceiver = if (isJava) null else irGetObject(creatorClass.symbol),
-          callee = createFunction,
-          args = args,
-          typeHint = factoryClass.typeWith(),
-        )
-
-      // Wrap in a metro provider if this is a provider
-      return if (context(metroContext) { factoryClass.defaultType.implementsProviderType() }) {
-        irInvoke(
-            extensionReceiver = createExpression,
-            callee = metroContext.symbols.daggerSymbols.asMetroProvider,
-          )
-          .apply { typeArguments[0] = factoryClass.typeWith() }
-      } else {
-        createExpression
-      }
-    }
   }
 }
 
-internal class ProviderFactory(
-  val clazz: IrClass,
-  val typeKey: IrTypeKey,
-  private val callableMetadata: IrCallableMetadata,
-  parametersLazy: Lazy<Parameters>,
-) : IrMetroFactory {
-  val mirrorFunction: IrSimpleFunction
-    get() = callableMetadata.mirrorFunction
-
+internal sealed interface ProviderFactory : IrMetroFactory {
+  val typeKey: IrTypeKey
   val callableId: CallableId
-    get() = callableMetadata.callableId
-
-  override val function: IrSimpleFunction
-    get() = callableMetadata.function
-
   val annotations: MetroAnnotations<IrAnnotation>
-    get() = callableMetadata.annotations
-
+  val parameters: Parameters
   val isPropertyAccessor: Boolean
-    get() = callableMetadata.isPropertyAccessor
+  override val function: IrSimpleFunction
+
+  class Metro(
+    override val factoryClass: IrClass,
+    override val typeKey: IrTypeKey,
+    private val callableMetadata: IrCallableMetadata,
+    parametersLazy: Lazy<Parameters>,
+  ) : ProviderFactory {
+    val mirrorFunction: IrSimpleFunction
+      get() = callableMetadata.mirrorFunction
+
+    override val callableId: CallableId
+      get() = callableMetadata.callableId
+
+    override val function: IrSimpleFunction
+      get() = callableMetadata.function
+
+    override val annotations: MetroAnnotations<IrAnnotation>
+      get() = callableMetadata.annotations
+
+    override val isPropertyAccessor: Boolean
+      get() = callableMetadata.isPropertyAccessor
+
+    override val parameters by parametersLazy
+
+    override val isDaggerFactory: Boolean = false
+  }
+
+  class Dagger(
+    override val factoryClass: IrClass,
+    override val typeKey: IrTypeKey,
+    override val callableId: CallableId,
+    override val annotations: MetroAnnotations<IrAnnotation>,
+    override val parameters: Parameters,
+    override val function: IrSimpleFunction,
+    override val isPropertyAccessor: Boolean
+  ) : ProviderFactory {
+    override val isDaggerFactory: Boolean = true
+  }
 
   companion object {
     context(context: IrMetroContext)
@@ -185,18 +200,16 @@ internal class ProviderFactory(
       clazz: IrClass,
       mirrorFunction: IrSimpleFunction,
       sourceAnnotations: MetroAnnotations<IrAnnotation>?,
-    ): ProviderFactory {
-      val callableMetadata = clazz.irCallableMetadata(mirrorFunction, sourceAnnotations)
+    ): Metro {
+      val callableMetadata = clazz.irCallableMetadata(mirrorFunction, sourceAnnotations, isInterop = false)
       val typeKey = sourceTypeKey.copy(qualifier = callableMetadata.annotations.qualifier)
 
-      return ProviderFactory(
-        clazz = clazz,
+      return Metro(
+        factoryClass = clazz,
         typeKey = typeKey,
         callableMetadata = callableMetadata,
         parametersLazy = unsafeLazy { callableMetadata.function.parameters() },
       )
     }
   }
-
-  val parameters by parametersLazy
 }

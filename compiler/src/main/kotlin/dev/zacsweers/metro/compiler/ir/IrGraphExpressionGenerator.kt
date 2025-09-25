@@ -132,22 +132,18 @@ private constructor(
       return when (binding) {
         is IrBinding.ConstructorInjected -> {
           // Example_Factory.create(...)
-          val factory = binding.classFactory
-
-          with(factory) {
-            invokeCreateExpression { createFunction ->
-              val remapper = createFunction.typeRemapperFor(binding.typeKey.type)
-              generateBindingArguments(
-                targetParams = createFunction.parameters(remapper = remapper),
-                function =
-                  createFunction.deepCopyWithSymbols(initialParent = createFunction.parent).also {
-                    it.parent = createFunction.parent
-                    it.remapTypes(remapper)
-                  },
-                binding = binding,
-                fieldInitKey = null,
-              )
-            }
+          binding.classFactory.invokeCreateExpression { createFunction ->
+            val remapper = createFunction.typeRemapperFor(binding.typeKey.type)
+            generateBindingArguments(
+              targetParams = createFunction.parameters(remapper = remapper),
+              function =
+                createFunction.deepCopyWithSymbols(initialParent = createFunction.parent).also {
+                  it.parent = createFunction.parent
+                  it.remapTypes(remapper)
+                },
+              binding = binding,
+              fieldInitKey = null,
+            )
           }
         }
 
@@ -167,34 +163,21 @@ private constructor(
         }
 
         is IrBinding.Provided -> {
-          val factoryClass =
-            bindingContainerTransformer.getOrLookupProviderFactory(binding)?.clazz
+          val providerFactory =
+            bindingContainerTransformer.getOrLookupProviderFactory(binding)
               ?: reportCompilerBug(
                 "No factory found for Provided binding ${binding.typeKey}. This is likely a bug in the Metro compiler, please report it to the issue tracker."
               )
 
           // Invoke its factory's create() function
-          val creatorClass =
-            if (factoryClass.isObject) {
-              factoryClass
-            } else {
-              factoryClass.companionObject()!!
-            }
-          val createFunction = creatorClass.requireSimpleFunction(Symbols.StringNames.CREATE)
-          // Must use the provider's params for IrTypeKey as that has qualifier
-          // annotations
-          val args =
+          providerFactory.invokeCreateExpression { createFunction ->
             generateBindingArguments(
               targetParams = binding.parameters,
-              function = createFunction.owner,
+              function = createFunction,
               binding = binding,
               fieldInitKey = fieldInitKey,
             )
-          irInvoke(
-            dispatchReceiver = irGetObject(creatorClass.symbol),
-            callee = createFunction,
-            args = args,
-          )
+          }
         }
 
         is IrBinding.Assisted -> {
@@ -793,7 +776,7 @@ private constructor(
       val keyType: IrType = mapTypeArgs[0].typeOrFail
       val rawValueType = mapTypeArgs[1].typeOrFail
       val rawValueTypeMetadata =
-        rawValueType.typeOrFail.asContextualTypeKey(null, hasDefault = false)
+        rawValueType.typeOrFail.asContextualTypeKey(null, hasDefault = false, patchMutableCollections = false)
 
       // TODO what about Map<String, Provider<Lazy<String>>>?
       //  isDeferrable() but we need to be able to convert back to the middle type
@@ -802,7 +785,7 @@ private constructor(
       // Used to unpack the right provider type
       val originalType = contextualTypeKey.toIrType()
       val originalValueType = valueWrappedType.toIrType()
-      val originalValueContextKey = originalValueType.asContextualTypeKey(null, hasDefault = false)
+      val originalValueContextKey = originalValueType.asContextualTypeKey(null, hasDefault = false, patchMutableCollections = false)
       val valueProviderSymbols = symbols.providerSymbolsFor(originalValueType)
 
       val valueType: IrType = rawValueTypeMetadata.typeKey.type

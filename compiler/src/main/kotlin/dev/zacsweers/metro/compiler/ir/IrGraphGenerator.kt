@@ -43,6 +43,7 @@ import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.classIdOrFail
+import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
@@ -214,7 +215,9 @@ internal class IrGraphGenerator(
         .sortedBy { it.kotlinFqName.asString() }
         .forEach { clazz ->
           addBoundInstanceField(IrTypeKey(clazz), clazz.name) { _, _ ->
-            irCallConstructor(clazz.primaryConstructor!!.symbol, emptyList())
+            // Can't use primaryConstructor here because it may be a Java dagger Module in interop
+            val noArgConstructor = clazz.constructors.first { it.parameters.isEmpty() }
+            irCallConstructor(noArgConstructor.symbol, emptyList())
           }
         }
 

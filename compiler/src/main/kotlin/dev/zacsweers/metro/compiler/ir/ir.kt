@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.Symbols.DaggerSymbols
+import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ifNotEmpty
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
@@ -104,18 +105,22 @@ import org.jetbrains.kotlin.ir.types.IrStarProjection
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeArgument
 import org.jetbrains.kotlin.ir.types.IrTypeProjection
+import org.jetbrains.kotlin.ir.types.classOrFail
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.classifierOrFail
 import org.jetbrains.kotlin.ir.types.classifierOrNull
 import org.jetbrains.kotlin.ir.types.createType
 import org.jetbrains.kotlin.ir.types.defaultType
+import org.jetbrains.kotlin.ir.types.impl.IrTypeProjectionImpl
 import org.jetbrains.kotlin.ir.types.impl.buildSimpleType
 import org.jetbrains.kotlin.ir.types.impl.makeTypeProjection
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.makeNotNull
 import org.jetbrains.kotlin.ir.types.mergeNullability
 import org.jetbrains.kotlin.ir.types.removeAnnotations
+import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.types.typeWithArguments
 import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.classId
@@ -146,6 +151,7 @@ import org.jetbrains.kotlin.ir.util.remapTypes
 import org.jetbrains.kotlin.ir.util.superClass
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.name.StandardClassIds
 import org.jetbrains.kotlin.types.Variance
 
 /** Finds the line and column of [this] within its file. */
@@ -762,6 +768,9 @@ internal fun IrConstructorCall.replacedClasses(): Set<IrClassReference> {
   return replacesArgument().toClassReferences()
 }
 
+internal fun IrConstructorCall.subcomponentsArgument() =
+  getValueArgument(Symbols.Names.subcomponents)?.expectAsOrNull<IrVararg>()
+
 internal fun IrConstructorCall.excludesArgument() =
   getValueArgument(Symbols.Names.excludes)?.expectAsOrNull<IrVararg>()
 
@@ -945,16 +954,70 @@ internal fun IrType.renderTo(
 /**
  * Canonicalizes an [IrType].
  * - If it's seen as a flexible nullable type from java, assume not null here
+ * - If it's a flexible mutable type from java, patch to immutable if [patchMutableCollections] is
+ *   true
  * - Remove annotations
  */
-internal fun IrType.canonicalize(): IrType {
-  return if (type.isWithFlexibleNullability()) {
+internal fun IrType.canonicalize(
+  patchMutableCollections: Boolean,
+  context: IrMetroContext?,
+): IrType {
+  return type
+    .letIf(type.isWithFlexibleNullability()) {
       // Java types may be "Flexible" nullable types, assume not null here
       type.makeNotNull()
-    } else {
-      type
+    }
+    .letIf(patchMutableCollections) {
+      context?.let { metroContext ->
+        context(metroContext) { (it as? IrSimpleType)?.patchMutableCollections() }
+      } ?: it
     }
     .removeAnnotations()
+    .let {
+      if (it is IrSimpleType && it.arguments.isNotEmpty()) {
+        // Canonicalize the args too
+        it
+          .classifier
+          .typeWithArguments(
+            it.arguments.map { arg ->
+              when (arg) {
+                is IrStarProjection -> arg
+                is IrTypeProjection -> {
+                  makeTypeProjection(
+                    arg.typeOrFail.canonicalize(patchMutableCollections, context),
+                    arg.variance,
+                  )
+                }
+              }
+            }
+          )
+      } else {
+        it
+      }
+    }
+}
+
+/**
+ * Sources from Java will have FlexibleMutability up to `MutableSet` or `MutableMap` types, so we
+ * patch them here.
+ */
+context(context: IrMetroContext)
+private fun IrSimpleType.patchMutableCollections(): IrSimpleType {
+  return if (type.hasAnnotation(StandardClassIds.Annotations.FlexibleMutability)) {
+    val classifier = type.classifierOrNull
+    val fixedType =
+      when (classifier) {
+        context.irBuiltIns.mutableSetClass -> context.irBuiltIns.setClass
+        context.irBuiltIns.mutableMapClass -> context.irBuiltIns.mapClass
+        else ->
+          reportCompilerBug(
+            "Unexpected multibinds collection type: ${type.render(short = false, includeAnnotations = true)}"
+          )
+      }
+    fixedType.typeWithArguments(type.expectAs<IrSimpleType>().arguments)
+  } else {
+    this
+  }
 }
 
 internal val IrProperty.allAnnotations: List<IrConstructorCall>
@@ -1469,7 +1532,10 @@ private fun List<IrConstructorCall>?.annotationsAnnotatedWith(
 
 context(context: IrMetroContext)
 internal fun IrClass.findInjectableConstructor(onlyUsePrimaryConstructor: Boolean): IrConstructor? {
-  return findInjectableConstructor(onlyUsePrimaryConstructor, context.symbols.classIds.allInjectAnnotations)
+  return findInjectableConstructor(
+    onlyUsePrimaryConstructor,
+    context.symbols.classIds.allInjectAnnotations,
+  )
 }
 
 internal fun IrClass.findInjectableConstructor(

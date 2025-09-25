@@ -17,10 +17,13 @@ Note that not all internal changes are implemented yet to allow for a migration 
 
 ### Other changes
 
+- **New**: Support for interop with externally generated Dagger modules.
 - **Enhancement**: Always check for available assisted factories when reporting `InvalidBinding` errors about misused assisted injects.
 - **Enhancement**: Always specifically report mismatched assisted parameter mismatches.
 - **Enhancement**: Validate `Lazy` assisted factory injections in more places.
 - **Enhancement**: Allow private `@Binds` properties.
+- **Enhancement**: Better canonicalize flexible mutability from Dagger interop in collections and flexible nullability.
+- **Enhancement**: Better canonicalize flexible nullability from Dagger interop in generic type arguments.
 - **Enhancement**: Simplify assisted factory impl class generation by moving it entirely to IR.
 - **Fix**: Register `MetroDiagnostics` in FIR.
 - **Fix**: Use correct severity when reporting warnings to `MessageCollector` from newer IR diagnostics factories.

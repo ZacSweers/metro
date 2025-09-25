@@ -66,7 +66,7 @@ private fun createGraphProto(
   return DependencyGraphProto(
     is_graph = isGraph,
     provider_factory_classes =
-      providerFactories.map { (_, factory) -> factory.clazz.classIdOrFail.protoString }.sorted(),
+      providerFactories.map { (_, factory) -> factory.factoryClass.classIdOrFail.protoString }.sorted(),
     accessor_callable_names = accessorNames.sorted(),
     multibinding_accessor_indices = multibindingAccessorIndices,
     included_binding_containers = includedBindingContainers.sorted(),

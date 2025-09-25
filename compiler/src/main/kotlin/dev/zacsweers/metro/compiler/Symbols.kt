@@ -205,6 +205,7 @@ internal class Symbols(
     val rank = StringNames.RANK.asName()
     val receiver = "receiver".asName()
     val replaces = StringNames.REPLACES.asName()
+    val subcomponents = "subcomponents".asName()
     val scope = StringNames.SCOPE.asName()
 
     val metroNames = setOf(MetroFactory, MetroGraph, MetroImpl, MetroMembersInjector)
@@ -913,6 +914,9 @@ internal class Symbols(
       private val daggerMultibindsPackageFqName = FqName("dagger.multibindings")
       private val daggerAssistedPackageFqName = FqName("dagger.assisted")
       val DAGGER_LAZY_CLASS_ID = ClassId(daggerRuntimePackageFqName, "Lazy".asName())
+      val DAGGER_MODULE = ClassId(daggerRuntimePackageFqName, "Module".asName())
+      val DAGGER_PROVIDES = ClassId(daggerRuntimePackageFqName, "Provides".asName())
+      val DAGGER_BINDS = ClassId(daggerRuntimePackageFqName, "Binds".asName())
       val DAGGER_REUSABLE_CLASS_ID = ClassId(daggerRuntimePackageFqName, "Reusable".asName())
       val DAGGER_INTERNAL_PROVIDER_CLASS_ID =
         ClassId(daggerInternalPackageFqName, Names.ProviderClass)
