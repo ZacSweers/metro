@@ -911,6 +911,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("DaggerProviderFactoryClassInKotlinCanBeLoaded.kt")
+      public void testDaggerProviderFactoryClassInKotlinCanBeLoaded() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/DaggerProviderFactoryClassInKotlinCanBeLoaded.kt");
+      }
+
+      @Test
       @TestMetadata("GenericDaggerFactoryClassCanBeLoaded.kt")
       public void testGenericDaggerFactoryClassCanBeLoaded() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/GenericDaggerFactoryClassCanBeLoaded.kt");
@@ -956,6 +962,18 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("KotlinDaggerObjectFactoryClassCanBeLoaded.kt")
       public void testKotlinDaggerObjectFactoryClassCanBeLoaded() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/KotlinDaggerObjectFactoryClassCanBeLoaded.kt");
+      }
+
+      @Test
+      @TestMetadata("QualifiedDaggerFactoryClassCanBeLoaded.kt")
+      public void testQualifiedDaggerFactoryClassCanBeLoaded() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/QualifiedDaggerFactoryClassCanBeLoaded.kt");
+      }
+
+      @Test
+      @TestMetadata("QualifiedDaggerProviderFactoryClassCanBeLoaded.kt")
+      public void testQualifiedDaggerProviderFactoryClassCanBeLoaded() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/QualifiedDaggerProviderFactoryClassCanBeLoaded.kt");
       }
 
       @Nested

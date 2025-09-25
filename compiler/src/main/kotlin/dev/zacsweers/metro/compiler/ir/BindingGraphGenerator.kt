@@ -111,9 +111,11 @@ internal class BindingGraphGenerator(
 
     for ((typeKey, providerFactory) in providerFactoriesToAdd) {
       // Track IC lookups but don't add bindings yet - they'll be added lazily
-      trackClassLookup(node.sourceGraph, providerFactory.clazz)
-      trackFunctionCall(node.sourceGraph, providerFactory.mirrorFunction)
+      trackClassLookup(node.sourceGraph, providerFactory.factoryClass)
       trackFunctionCall(node.sourceGraph, providerFactory.function)
+      if (providerFactory is ProviderFactory.Metro) {
+        trackFunctionCall(node.sourceGraph, providerFactory.mirrorFunction)
+      }
 
       if (
         !providerFactory.annotations.isIntoMultibinding &&

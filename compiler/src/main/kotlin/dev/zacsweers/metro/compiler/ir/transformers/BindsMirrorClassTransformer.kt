@@ -15,8 +15,6 @@ import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
 import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
-import dev.zacsweers.metro.compiler.ir.toBindsCallable
-import dev.zacsweers.metro.compiler.ir.toMultibindsCallable
 import dev.zacsweers.metro.compiler.mirrorIrConstructorCalls
 import java.util.Optional
 import kotlin.jvm.optionals.getOrNull
@@ -75,9 +73,7 @@ internal data class BindsMirror(
 context(context: IrMetroContext)
 private fun transformBindingMirrorClass(parentClass: IrClass, mirrorClass: IrClass): BindsMirror {
   val isExternal = mirrorClass.isExternalParent
-  // Find all @Binds and @Multibinds declarations in the parent class
-  val bindsCallables = mutableSetOf<BindsCallable>()
-  val multibindsCallables = mutableSetOf<MultibindsCallable>()
+  val collector = BindsMirrorCollector(isInterop = false)
 
   fun processFunction(declaration: IrSimpleFunction) {
     if (!declaration.isFakeOverride) {
@@ -86,15 +82,12 @@ private fun transformBindingMirrorClass(parentClass: IrClass, mirrorClass: IrCla
         // TODO we round-trip generating -> reading back. Should we optimize that path?
         val function =
           if (isExternal) metroFunction else generateMirrorFunction(mirrorClass, metroFunction)
-        if (metroFunction.annotations.isBinds) {
-          bindsCallables += function.toBindsCallable()
-        } else {
-          multibindsCallables += function.toMultibindsCallable()
-        }
+        collector += function
       }
     }
   }
 
+  // Find all @Binds and @Multibinds declarations in the parent class
   // If external, just read the mirror class directly. If current round, transform the parent and
   // generate its mirrors
   val classToProcess = if (isExternal) mirrorClass else parentClass
@@ -108,8 +101,7 @@ private fun transformBindingMirrorClass(parentClass: IrClass, mirrorClass: IrCla
     }
   }
 
-  val bindsMirror = BindsMirror(mirrorClass, bindsCallables, multibindsCallables)
-  return bindsMirror
+  return collector.buildMirror(mirrorClass)
 }
 
 context(context: IrMetroContext)

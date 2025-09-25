@@ -61,7 +61,7 @@ private constructor(override val type: IrType, override val qualifier: IrAnnotat
 
     operator fun invoke(type: IrType, qualifier: IrAnnotation? = null): IrTypeKey {
       // Canonicalize on the way through
-      return IrTypeKey(type.canonicalize(), qualifier)
+      return IrTypeKey(type.canonicalize(patchMutableCollections = false, context = null), qualifier)
     }
   }
 }

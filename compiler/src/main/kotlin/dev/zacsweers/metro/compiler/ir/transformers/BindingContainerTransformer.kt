@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.METRO_VERSION
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
@@ -21,6 +22,7 @@ import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.dispatchReceiverFor
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
+import dev.zacsweers.metro.compiler.ir.findAnnotations
 import dev.zacsweers.metro.compiler.ir.includedClasses
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
@@ -37,9 +39,12 @@ import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.ir.replacedClasses
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
+import dev.zacsweers.metro.compiler.ir.subcomponentsArgument
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
+import dev.zacsweers.metro.compiler.ir.toClassReferences
 import dev.zacsweers.metro.compiler.ir.toProto
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.isWordPrefixRegex
@@ -53,6 +58,7 @@ import dev.zacsweers.metro.compiler.unsafeLazy
 import java.util.Optional
 import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
+import org.jetbrains.kotlin.backend.jvm.ir.getJvmNameFromAnnotation
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.builders.irGet
@@ -60,6 +66,8 @@ import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrField
+import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -77,11 +85,13 @@ import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
+import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.isFakeOverride
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isPropertyAccessor
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
+import org.jetbrains.kotlin.ir.util.packageFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
@@ -232,7 +242,11 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     }
 
     // If the parent hasn't been checked before, visit it and look again
-    findContainer(binding.providerFactory.clazz.parentAsClass)
+    // Note the parent may be just a package if this is a Dagger-generated module provider
+    val parent = binding.providerFactory.factoryClass.parent
+    if (parent is IrClass) {
+      findContainer(binding.providerFactory.factoryClass.parentAsClass)
+    }
 
     // If it's still not present after, there's nothing here
     return generatedFactories[binding.providerFactory.callableId]
@@ -684,7 +698,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     return result
   }
 
-  private fun externalProviderFactoryFor(factoryCls: IrClass): ProviderFactory {
+  private fun externalProviderFactoryFor(factoryCls: IrClass): ProviderFactory.Metro {
     // Extract IrTypeKey from Factory supertype
     // Qualifier will be populated in ProviderFactory construction
     val factoryType = factoryCls.superTypes.first { it.classOrNull == symbols.metroFactory }
@@ -703,7 +717,6 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     declarationFqName: FqName,
     graphProto: DependencyGraphProto?,
   ): BindingContainer? {
-
     cache[declarationFqName]?.let {
       return it.getOrNull()
     }
@@ -713,6 +726,115 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     val graphProto = graphProto ?: metadataDeclaration.metroMetadata?.dependency_graph
 
     if (graphProto == null) {
+      if (options.enableDaggerRuntimeInterop) {
+        val moduleAnno =
+          declaration.findAnnotations(Symbols.DaggerSymbols.ClassIds.DAGGER_MODULE).firstOrNull()
+
+        if (moduleAnno != null) {
+          // It's a dagger module! Iterate over its Provides and Binds
+          // Add any provider factories
+          val providerFactories = mutableMapOf<CallableId, ProviderFactory.Dagger>()
+          val bindsCollector = BindsMirrorCollector(isInterop = true)
+
+          for (decl in declaration.declarations) {
+            if (decl !is IrSimpleFunction && decl !is IrProperty) continue
+
+            val annotations = decl.metroAnnotations(symbols.classIds)
+            if (annotations.isProvides || annotations.isBinds || annotations.isMultibinds) {
+              val isProperty = decl is IrProperty
+              val callableId: CallableId
+              val typeKey: IrTypeKey
+              val parameters: Parameters
+              val function: IrFunction
+              when (decl) {
+                is IrProperty -> {
+                  callableId = decl.callableId
+                  typeKey = IrContextualTypeKey.from(decl.getter!!).typeKey
+                  parameters =
+                    if (annotations.isBinds) Parameters.empty() else decl.getter!!.parameters()
+                  function = decl.getter!!
+                }
+                is IrSimpleFunction -> {
+                  callableId = decl.callableId
+                  typeKey = IrContextualTypeKey.from(decl).typeKey
+                  parameters = if (annotations.isBinds) Parameters.empty() else decl.parameters()
+                  function = decl
+                }
+              }
+
+              if (annotations.isProvides) {
+                // Look up the expected provider factory class
+                // Try both with and without the declaration's `@JvmName`. Dagger doesn't seem to
+                // read this in KSP but would in KAPT
+                val factoryClass =
+                  referenceClass(
+                    ClassId(
+                      declaration.packageFqName!!,
+                      daggerFactoryClassNameOf(decl, useJvmName = false).asName(),
+                    )
+                  )
+                    ?: referenceClass(
+                      ClassId(
+                        declaration.packageFqName!!,
+                        daggerFactoryClassNameOf(decl, useJvmName = true).asName(),
+                      )
+                    )
+
+                if (factoryClass == null) {
+                  reportCompat(
+                    decl,
+                    MetroDiagnostics.METRO_ERROR,
+                    "Couldn't find Dagger-generated provider factory class for $declaration.$decl",
+                  )
+                  return null
+                }
+                providerFactories[callableId] =
+                  ProviderFactory.Dagger(
+                    factoryClass = factoryClass.owner,
+                    typeKey = typeKey,
+                    callableId = callableId,
+                    annotations = annotations,
+                    parameters = parameters,
+                    function = function,
+                    isPropertyAccessor = isProperty,
+                  )
+              } else {
+                // binds or multibinds
+                val function = metroFunctionOf(function, annotations)
+                bindsCollector += function
+              }
+            }
+          }
+
+          val includedModules =
+            moduleAnno.includedClasses().mapNotNullToSet {
+              it.classType.rawTypeOrNull()?.classIdOrFail
+            }
+
+          // If subcomponents isn't empty, report a warning
+          val subcomponents = moduleAnno.subcomponentsArgument()?.toClassReferences().orEmpty()
+          if (subcomponents.isNotEmpty()) {
+            reportCompat(
+              declaration,
+              MetroDiagnostics.METRO_WARNING,
+              "Included Dagger module '${declarationFqName}' declares a `subcomponents` parameter but this will be ignored by Metro in interop."
+            )
+          }
+
+          val container =
+            BindingContainer(
+              false,
+              declaration,
+              includedModules,
+              providerFactories,
+              bindsCollector.buildMirror(declaration),
+            )
+          cache[declarationFqName] = Optional.of(container)
+          generatedFactories.putAll(providerFactories)
+          return container
+        }
+      }
+
       val requireMetadata =
         declaration.isAnnotatedWithAny(symbols.classIds.dependencyGraphAnnotations) ||
           declaration.isAnnotatedWithAny(symbols.classIds.bindingContainerAnnotations)
@@ -790,4 +912,29 @@ internal class BindingContainer(
   override fun hashCode(): Int = classId.hashCode()
 
   override fun toString(): String = classId.asString()
+}
+
+private fun daggerFactoryClassNameOf(
+  declaration: IrOverridableDeclaration<*>,
+  useJvmName: Boolean,
+): String {
+  val isProperty = declaration is IrProperty
+  val containingClass = declaration.parentAsClass
+  val nameToUse =
+    if (useJvmName) {
+      declaration.getJvmNameFromAnnotation() ?: declaration.name.asString()
+    } else {
+      declaration.name.asString()
+    }
+  return buildString {
+    containingClass.classIdOrFail.relativeClassName.pathSegments().joinTo(this, separator = "_") {
+      it.asString().capitalizeUS()
+    }
+    append("_")
+    if (isProperty) {
+      append("Get")
+    }
+    append(nameToUse.capitalizeUS())
+    append("Factory")
+  }
 }

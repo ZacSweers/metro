@@ -3,9 +3,17 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.drewhamilton.poko.Poko
+import dev.zacsweers.metro.compiler.expectAs
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.types.IrSimpleType
+import org.jetbrains.kotlin.ir.types.classOrFail
+import org.jetbrains.kotlin.ir.types.typeOrFail
+import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.name.CallableId
+import org.jetbrains.kotlin.name.StandardClassIds
 
 internal sealed interface BindsLikeCallable {
   val callableMetadata: IrCallableMetadata
@@ -30,18 +38,18 @@ internal class MultibindsCallable(
 ) : BindsLikeCallable
 
 context(context: IrMetroContext)
-internal fun MetroSimpleFunction.toBindsCallable(): BindsCallable {
+internal fun MetroSimpleFunction.toBindsCallable(isInterop: Boolean): BindsCallable {
   return BindsCallable(
-    ir.irCallableMetadata(annotations),
+    ir.irCallableMetadata(annotations, isInterop),
     IrContextualTypeKey.from(ir.nonDispatchParameters.single()).typeKey,
     IrContextualTypeKey.from(ir).typeKey,
   )
 }
 
 context(context: IrMetroContext)
-internal fun MetroSimpleFunction.toMultibindsCallable(): MultibindsCallable {
+internal fun MetroSimpleFunction.toMultibindsCallable(isInterop: Boolean): MultibindsCallable {
   return MultibindsCallable(
-    ir.irCallableMetadata(annotations),
-    IrContextualTypeKey.from(ir).typeKey,
+    ir.irCallableMetadata(annotations, isInterop),
+    IrContextualTypeKey.from(ir, patchMutableCollections = isInterop).typeKey,
   )
 }

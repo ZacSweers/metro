@@ -34,6 +34,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.METRO_DECLARATION_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.METRO_DECLARATION_VISIBILITY_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.METRO_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.METRO_TYPE_PARAMETERS_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.METRO_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MULTIBINDS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MULTIBINDS_OVERRIDE_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ONLY_CLASSES_CAN_BE_INJECTED
@@ -120,6 +121,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   // IR errors
   val GRAPH_DEPENDENCY_CYCLE by error1<String>(NAME_IDENTIFIER)
   val METRO_ERROR by error1<String>(NAME_IDENTIFIER)
+  val METRO_WARNING by warning1<String>(NAME_IDENTIFIER)
 
   override fun getRendererFactory(): BaseDiagnosticRendererFactory {
     return FirMetroErrorMessages
@@ -214,8 +216,9 @@ private object FirMetroErrorMessages : BaseDiagnosticRendererFactory() {
           "Dagger's `@Reusable` is not supported in Metro. See https://zacsweers.github.io/metro/latest/faq#why-doesnt-metro-support-reusable for more information.",
         )
 
-        // IR errors
+        // IR diagnostics
         put(METRO_ERROR, "{0}", TO_STRING)
+        put(METRO_WARNING, "{0}", TO_STRING)
         put(GRAPH_DEPENDENCY_CYCLE, "[Metro/GraphDependencyCycle] {0}", TO_STRING)
       }
     }

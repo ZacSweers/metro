@@ -20,6 +20,7 @@ import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.getAnnotation
 import org.jetbrains.kotlin.ir.util.getAnnotationStringValue
+import org.jetbrains.kotlin.ir.util.isPropertyAccessor
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
@@ -38,16 +39,29 @@ internal class IrCallableMetadata(
 
 context(context: IrMetroContext)
 internal fun IrSimpleFunction.irCallableMetadata(
-  sourceAnnotations: MetroAnnotations<IrAnnotation>?
+  sourceAnnotations: MetroAnnotations<IrAnnotation>?,
+  isInterop: Boolean,
 ): IrCallableMetadata {
-  return propertyIfAccessor.irCallableMetadata(this, sourceAnnotations)
+  return propertyIfAccessor.irCallableMetadata(this, sourceAnnotations, isInterop)
 }
 
 context(context: IrMetroContext)
 internal fun IrAnnotationContainer.irCallableMetadata(
   mirrorFunction: IrSimpleFunction,
   sourceAnnotations: MetroAnnotations<IrAnnotation>?,
+  isInterop: Boolean,
 ): IrCallableMetadata {
+  if (isInterop) {
+    return IrCallableMetadata(
+      callableId = mirrorFunction.callableId,
+      mirrorCallableId = mirrorFunction.callableId,
+      annotations = sourceAnnotations ?: mirrorFunction.metroAnnotations(context.symbols.classIds),
+      isPropertyAccessor = mirrorFunction.isPropertyAccessor,
+      function = mirrorFunction,
+      mirrorFunction = mirrorFunction,
+    )
+  }
+
   val callableMetadataAnno =
     getAnnotation(Symbols.FqNames.CallableMetadataClass)
       ?: reportCompilerBug(

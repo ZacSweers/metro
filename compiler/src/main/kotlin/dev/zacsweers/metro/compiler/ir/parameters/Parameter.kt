@@ -209,7 +209,7 @@ internal fun IrValueParameter.toConstructorParameter(
   // type mangling
   val declaredType = remapper.remapType(this@toConstructorParameter.type)
 
-  val contextKey = declaredType.asContextualTypeKey(qualifierAnnotation(), defaultValue != null)
+  val contextKey = declaredType.asContextualTypeKey(qualifierAnnotation(), defaultValue != null, patchMutableCollections = false)
 
   val assistedAnnotation = annotationsIn(context.symbols.assistedAnnotations).singleOrNull()
 
@@ -283,7 +283,7 @@ internal fun IrProperty.toMemberInjectParameter(
       getter?.body ?: backingField?.initializer
     }
   val contextKey =
-    declaredType.asContextualTypeKey(with(context) { qualifierAnnotation() }, defaultValue != null)
+    declaredType.asContextualTypeKey(with(context) { qualifierAnnotation() }, defaultValue != null, patchMutableCollections = false)
 
   return Parameter.member(
     kind = kind,
@@ -307,7 +307,7 @@ internal fun IrValueParameter.toMemberInjectParameter(
       ?: this@toMemberInjectParameter.type
 
   val contextKey =
-    declaredType.asContextualTypeKey(with(context) { qualifierAnnotation() }, defaultValue != null)
+    declaredType.asContextualTypeKey(with(context) { qualifierAnnotation() }, defaultValue != null, patchMutableCollections = false)
 
   return Parameter.member(
     kind = kind,
