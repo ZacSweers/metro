@@ -278,6 +278,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ChildGraphIsUsedAsReturnType.kt")
+    public void testChildGraphIsUsedAsReturnType() {
+      runTest("compiler-tests/src/test/data/box/contributesgraphextension/ChildGraphIsUsedAsReturnType.kt");
+    }
+
+    @Test
     @TestMetadata("ContributedFactoryIsAvailableAsBinding.kt")
     public void testContributedFactoryIsAvailableAsBinding() {
       runTest("compiler-tests/src/test/data/box/contributesgraphextension/ContributedFactoryIsAvailableAsBinding.kt");

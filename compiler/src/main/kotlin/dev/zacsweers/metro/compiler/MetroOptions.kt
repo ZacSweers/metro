@@ -490,6 +490,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE(
+    RawMetroOption.boolean(
+      name = "enable-graph-impl-class-as-return-type",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "If true changes the return type of generated Graph Factories from the declared interface type to the generated Metro graph type. This is helpful for Dagger/Anvil interop.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   CUSTOM_ORIGIN(
     RawMetroOption(
       name = "custom-origin",
@@ -598,6 +609,8 @@ public data class MetroOptions(
     MetroOption.ENABLE_DAGGER_ANVIL_INTEROP.raw.defaultValue.expectAs(),
   val enableFullBindingGraphValidation: Boolean =
     MetroOption.ENABLE_FULL_BINDING_GRAPH_VALIDATION.raw.defaultValue.expectAs(),
+  val enableGraphImplClassAsReturnType: Boolean =
+    MetroOption.ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE.raw.defaultValue.expectAs(),
   val customOriginAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_ORIGIN.raw.defaultValue.expectAs(),
 ) {
@@ -750,6 +763,9 @@ public data class MetroOptions(
           }
           MetroOption.ENABLE_FULL_BINDING_GRAPH_VALIDATION -> {
             options = options.copy(enableFullBindingGraphValidation = configuration.getAsBoolean(entry))
+          }
+          MetroOption.ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE -> {
+            options = options.copy(enableGraphImplClassAsReturnType = configuration.getAsBoolean(entry))
           }
           MetroOption.CUSTOM_ORIGIN ->
             customOriginAnnotations.addAll(configuration.getAsSet(entry))

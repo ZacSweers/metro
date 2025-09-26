@@ -256,6 +256,9 @@ abstract class MetroCompilerTest {
               MetroOption.ENABLE_FULL_BINDING_GRAPH_VALIDATION -> {
                 processor.option(entry.raw.cliOption, enableFullBindingGraphValidation)
               }
+              MetroOption.ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE -> {
+                processor.option(entry.raw.cliOption, enableGraphImplClassAsReturnType)
+              }
             }
           yield(option)
         }

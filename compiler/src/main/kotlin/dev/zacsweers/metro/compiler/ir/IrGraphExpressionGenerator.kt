@@ -279,6 +279,12 @@ private constructor(
               parentTracer,
             )
 
+          if (options.enableGraphImplClassAsReturnType) {
+            // This is probably not the right spot to change the return type, but the IrClass
+            // implementation is not exposed otherwise.
+            binding.accessor.returnType = extensionImpl.defaultType
+          }
+
           val ctor = extensionImpl.primaryConstructor!!
           val instanceExpression =
             irCallConstructor(ctor.symbol, node.sourceGraph.typeParameters.map { it.defaultType })

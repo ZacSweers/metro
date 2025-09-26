@@ -81,6 +81,13 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
   public val enableFullBindingGraphValidation: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(false)
 
+  /**
+   * If true changes the return type of generated Graph Factories from the declared interface
+   * type to the generated Metro graph type. This is helpful for Dagger/Anvil interop.
+   */
+  public val enableGraphImplClassAsReturnType: Property<Boolean> =
+    objects.property(Boolean::class.javaObjectType).convention(false)
+
   @Deprecated(
     "Use enableFullBindingGraphValidation",
     ReplaceWith("enableFullBindingGraphValidation"),

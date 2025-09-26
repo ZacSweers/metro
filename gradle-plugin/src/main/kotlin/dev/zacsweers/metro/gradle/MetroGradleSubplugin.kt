@@ -138,6 +138,12 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
             extension.enableFullBindingGraphValidation.orElse(extension.enableStrictValidation),
           )
         )
+        add(
+          lazyOption(
+            "enable-graph-impl-class-as-return-type",
+            extension.enableGraphImplClassAsReturnType.orElse(false),
+          )
+        )
         add(lazyOption("transform-providers-to-private", extension.transformProvidersToPrivate))
         add(lazyOption("shrink-unused-bindings", extension.shrinkUnusedBindings))
         add(lazyOption("chunk-field-inits", extension.chunkFieldInits))

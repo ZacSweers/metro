@@ -30,6 +30,10 @@ object MetroDirectives : SimpleDirectivesContainer() {
     directive(
       "Enable/disable full binding graph validation of binds and provides declarations even if they are unused."
     )
+  val ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE by
+    directive(
+      "If true changes the return type of generated Graph Factories from the declared interface type to the generated Metro graph type. This is helpful for Dagger/Anvil interop."
+    )
 
   // Dependency directives.
   val WITH_ANVIL by directive("Add Anvil as dependency and configure custom annotations.")
