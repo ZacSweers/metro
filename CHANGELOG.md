@@ -4,6 +4,8 @@ Changelog
 **Unreleased**
 --------------
 
+- **Fix**: Preserve original nullability when canonicalizing generic types.
+
 0.6.7
 -----
 

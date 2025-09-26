@@ -460,6 +460,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("NullabilityInContributions.kt")
+    public void testNullabilityInContributions() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/NullabilityInContributions.kt");
+    }
+
+    @Test
     @TestMetadata("OverrideCompatibleAccessorsFromContributedInterface.kt")
     public void testOverrideCompatibleAccessorsFromContributedInterface() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/OverrideCompatibleAccessorsFromContributedInterface.kt");

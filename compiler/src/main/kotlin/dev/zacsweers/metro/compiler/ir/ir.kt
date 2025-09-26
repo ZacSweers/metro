@@ -105,13 +105,11 @@ import org.jetbrains.kotlin.ir.types.IrStarProjection
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeArgument
 import org.jetbrains.kotlin.ir.types.IrTypeProjection
-import org.jetbrains.kotlin.ir.types.classOrFail
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.classifierOrFail
 import org.jetbrains.kotlin.ir.types.classifierOrNull
 import org.jetbrains.kotlin.ir.types.createType
 import org.jetbrains.kotlin.ir.types.defaultType
-import org.jetbrains.kotlin.ir.types.impl.IrTypeProjectionImpl
 import org.jetbrains.kotlin.ir.types.impl.buildSimpleType
 import org.jetbrains.kotlin.ir.types.impl.makeTypeProjection
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
@@ -976,8 +974,7 @@ internal fun IrType.canonicalize(
     .let {
       if (it is IrSimpleType && it.arguments.isNotEmpty()) {
         // Canonicalize the args too
-        it
-          .classifier
+        it.classifier
           .typeWithArguments(
             it.arguments.map { arg ->
               when (arg) {
@@ -991,6 +988,8 @@ internal fun IrType.canonicalize(
               }
             }
           )
+          // Preserve nullability
+          .mergeNullability(it)
       } else {
         it
       }
