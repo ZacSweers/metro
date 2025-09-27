@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.findInjectConstructor
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.validateInjectedClass
 import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
@@ -66,15 +67,12 @@ internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common
 
     for (parameter in constructorToValidate.valueParameterSymbols) {
       if (parameter.isAnnotatedWithAny(session, classIds.assistedAnnotations)) continue
-      if (
-        validateInjectionSiteType(
-          session,
-          parameter.resolvedReturnTypeRef,
-          parameter.source ?: source,
-        )
-      ) {
-        return
-      }
+      validateInjectionSiteType(
+        session,
+        parameter.resolvedReturnTypeRef,
+        parameter.qualifierAnnotation(session),
+        parameter.source ?: source,
+      )
     }
   }
 }

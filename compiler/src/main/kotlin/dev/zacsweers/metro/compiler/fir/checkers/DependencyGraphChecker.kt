@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.fir.directCallableSymbols
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.nestedClasses
+import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.requireContainingClassSymbol
 import dev.zacsweers.metro.compiler.fir.resolvedAdditionalScopesClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
@@ -279,7 +280,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
         }
 
         // Check for lazy-wrapped assisted factories in graph accessors
-        validateInjectionSiteType(session, callable.resolvedReturnTypeRef, callable.source)
+        validateInjectionSiteType(session, callable.resolvedReturnTypeRef, callable.qualifierAnnotation(session), callable.source)
 
         val scopeAnnotations = callable.allAnnotations().scopeAnnotations(session)
         for (scopeAnnotation in scopeAnnotations) {

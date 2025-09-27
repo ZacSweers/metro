@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
+import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
 import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
 import dev.zacsweers.metro.compiler.metroAnnotations
@@ -354,7 +355,7 @@ internal object BindingContainerCallableChecker :
 
           // Check for lazy-wrapped assisted factories in provides function parameters
           if (
-            validateInjectionSiteType(session, parameter.returnTypeRef, parameter.source ?: source)
+            validateInjectionSiteType(session, parameter.returnTypeRef, parameter.annotations.qualifierAnnotation(session), parameter.source ?: source)
           ) {
             return
           }

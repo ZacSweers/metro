@@ -1,0 +1,3 @@
+/InjectingAssistedInjectClassesIsAnError.kt:(399,413): error: Cannot directly inject/access unqualified assisted injected types. Inject its associated `@AssistedFactory`-annotated factory instead or provide a qualified instance on the graph instead.
+
+/InjectingAssistedInjectClassesIsAnError.kt:(422,442): error: Cannot directly inject/access unqualified assisted injected types. Inject its associated `@AssistedFactory`-annotated factory instead or provide a qualified instance on the graph instead.

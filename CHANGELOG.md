@@ -4,6 +4,8 @@ Changelog
 **Unreleased**
 --------------
 
+- **Enhancement**: Add diagnostic for directly injecting unqualified assisted-injected classes rather than using their factories.
+
 0.6.8
 -----
 
