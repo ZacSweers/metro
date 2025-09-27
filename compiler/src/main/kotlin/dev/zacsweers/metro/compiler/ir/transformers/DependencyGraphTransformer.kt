@@ -396,7 +396,6 @@ internal class DependencyGraphTransformer(
                   a = message,
                 )
               }
-              exitProcessing()
             }
           }
         }

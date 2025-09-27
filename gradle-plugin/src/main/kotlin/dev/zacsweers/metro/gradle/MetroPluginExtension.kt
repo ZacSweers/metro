@@ -23,9 +23,9 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     objects.property(Boolean::class.javaObjectType).convention(true)
 
   /**
-   * Maximum number of errors to report before exiting IR processing. Default is 20, must be > 0.
+   * Maximum number of IR errors to report before exiting IR processing. Default is 20, must be > 0.
    */
-  public val maxIrErrorsCount: Property<Int> =
+  public val maxIrErrors: Property<Int> =
     objects.property(Int::class.javaObjectType).convention(20)
 
   /**

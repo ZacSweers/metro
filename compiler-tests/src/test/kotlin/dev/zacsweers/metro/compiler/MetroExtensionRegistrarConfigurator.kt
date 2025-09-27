@@ -83,6 +83,7 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         assistedInjectMigrationSeverity =
           module.directives.singleOrZeroValue(MetroDirectives.ASSISTED_INJECT_MIGRATION_SEVERITY)
             ?: optionDefaults.assistedInjectMigrationSeverity,
+        maxIrErrorsCount = module.directives.singleOrZeroValue(MetroDirectives.MAX_IR_ERRORS_COUNT) ?: 20,
         enableDaggerAnvilInterop = MetroDirectives.WITH_ANVIL in module.directives,
         customGraphAnnotations =
           buildSet {

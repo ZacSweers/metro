@@ -117,7 +117,7 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
     return project.provider {
       buildList {
         add(lazyOption("enabled", extension.enabled))
-        add(lazyOption("max-ir-errors-count", extension.maxIrErrorsCount))
+        add(lazyOption("max-ir-errors-count", extension.maxIrErrors))
         add(lazyOption("debug", extension.debug))
         add(lazyOption("generate-assisted-factories", extension.generateAssistedFactories))
         add(

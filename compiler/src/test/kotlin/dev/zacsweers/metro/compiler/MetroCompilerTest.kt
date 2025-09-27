@@ -124,6 +124,8 @@ abstract class MetroCompilerTest {
               }
               MetroOption.ENABLE_DAGGER_RUNTIME_INTEROP ->
                 processor.option(entry.raw.cliOption, enableDaggerRuntimeInterop)
+              MetroOption.MAX_IR_ERRORS_COUNT ->
+                processor.option(entry.raw.cliOption, maxIrErrorsCount)
               MetroOption.CUSTOM_PROVIDER -> {
                 if (customProviderTypes.isEmpty()) continue
                 processor.option(entry.raw.cliOption, customProviderTypes.joinToString(":"))

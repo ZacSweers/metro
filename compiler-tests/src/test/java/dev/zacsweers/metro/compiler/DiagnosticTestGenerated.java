@@ -186,6 +186,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ConfigurableMaxIrErrors.kt")
+    public void testConfigurableMaxIrErrors() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/ConfigurableMaxIrErrors.kt");
+    }
+
+    @Test
     @TestMetadata("GraphsCannotDirectlyExtendOtherGraphs.kt")
     public void testGraphsCannotDirectlyExtendOtherGraphs() {
       runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/GraphsCannotDirectlyExtendOtherGraphs.kt");

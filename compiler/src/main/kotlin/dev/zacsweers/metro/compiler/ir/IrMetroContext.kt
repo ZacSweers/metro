@@ -158,8 +158,8 @@ internal interface IrMetroContext : IrPluginContext {
       private var reportedErrors = 0
 
       override fun onErrorReported() {
-        val count = reportedErrors++
-        if (count >= options.maxIrErrorsCount) {
+        reportedErrors++
+        if (reportedErrors >= options.maxIrErrorsCount) {
           // Exit processing as we've reached the max
           exitProcessing()
         }

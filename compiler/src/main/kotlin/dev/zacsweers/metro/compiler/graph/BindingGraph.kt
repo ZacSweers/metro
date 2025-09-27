@@ -59,7 +59,8 @@ internal open class MutableBindingGraph<
     { _, _, _ ->
       emptySet()
     },
-  private val onError: (String, BindingStack) -> Nothing = { message, _ -> error(message) },
+  private val onError: (String, BindingStack) -> Unit = { message, _ -> error(message) },
+  private val onHardError: (String, BindingStack) -> Nothing = { message, _ -> error(message) },
   private val findSimilarBindings: (key: TypeKey) -> Map<TypeKey, String> = { emptyMap() },
 ) : BindingGraph<Type, TypeKey, ContextualTypeKey, Binding, BindingStackEntry, BindingStack> {
   // Populated by initial graph setup and later seal()
@@ -146,8 +147,7 @@ internal open class MutableBindingGraph<
         )
       }
 
-    // Report missing bindings _after_ building adjacency so we can backtrace where possible
-    // TODO report all
+    // Report all missing bindings _after_ building adjacency so we can backtrace where possible
     missingBindings.forEach { (key, stack) -> reportMissingBinding(key, stack) }
 
     // Validate bindings
@@ -334,7 +334,7 @@ internal open class MutableBindingGraph<
         short = false,
       )
     }
-    onError(message, stack)
+    onHardError(message, stack)
   }
 
   fun replace(binding: Binding) {
@@ -409,17 +409,11 @@ internal open class MutableBindingGraph<
     return bindingIndices.getValue(this) >= bindingIndices.getValue(other)
   }
 
-  fun requireBinding(contextKey: ContextualTypeKey, stack: BindingStack): Binding {
-    return bindings[contextKey.typeKey]
-      ?: contextKey.takeIf { it.hasDefault }?.let { absentBinding(it.typeKey) }
-      ?: reportMissingBinding(contextKey.typeKey, stack)
-  }
-
   fun reportMissingBinding(
     typeKey: TypeKey,
     bindingStack: BindingStack,
     extraContent: StringBuilder.() -> Unit = {},
-  ): Nothing {
+  ) {
     val message = buildString {
       append(
         "[Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: "

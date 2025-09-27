@@ -34,6 +34,10 @@ object MetroDirectives : SimpleDirectivesContainer() {
     directive(
       "If true changes the return type of generated Graph Factories from the declared interface type to the generated Metro graph type. This is helpful for Dagger/Anvil interop."
     )
+  val MAX_IR_ERRORS_COUNT by
+    valueDirective(
+      "Maximum number of errors to report before exiting IR processing. Default is 20, must be > 0."
+    ) { it.toInt() }
 
   // Dependency directives.
   val WITH_ANVIL by directive("Add Anvil as dependency and configure custom annotations.")

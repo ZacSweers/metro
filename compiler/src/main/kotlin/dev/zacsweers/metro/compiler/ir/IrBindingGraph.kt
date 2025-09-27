@@ -57,6 +57,10 @@ internal class IrBindingGraph(
         bindingLookup.lookup(contextKey, currentBindings, stack)
       },
       onError = ::onError,
+      onHardError = { message, stack ->
+        onError(message, stack)
+        exitProcessing()
+      },
       findSimilarBindings = { key -> findSimilarBindings(key).mapValues { it.value.toString() } },
     )
 
@@ -107,6 +111,7 @@ internal class IrBindingGraph(
             appendLine(dumpGraph(stack.graphFqName.asString(), short = false))
           }
         }
+        exitProcessing()
       }
   }
 
@@ -197,7 +202,7 @@ internal class IrBindingGraph(
 
   data class GraphError(val declaration: IrDeclaration?, val message: String)
 
-  fun seal(parentTracer: Tracer, onError: (List<GraphError>) -> Nothing): BindingGraphResult =
+  fun seal(parentTracer: Tracer, onError: (List<GraphError>) -> Unit): BindingGraphResult =
     context(metroContext) {
       val (sortedKeys, deferredTypes, reachableKeys) =
         parentTracer.traceNested("seal graph") { tracer ->
@@ -261,7 +266,7 @@ internal class IrBindingGraph(
     realGraph.reportDuplicateBinding(key, existing, duplicate, bindingStack)
   }
 
-  private fun checkEmptyMultibindings(onError: (List<GraphError>) -> Nothing) {
+  private fun checkEmptyMultibindings(onError: (List<GraphError>) -> Unit) {
     val multibindings = realGraph.bindings.values.filterIsInstance<IrBinding.Multibinding>()
     val errors = mutableListOf<GraphError>()
     for (multibinding in multibindings) {
@@ -523,12 +528,11 @@ internal class IrBindingGraph(
     }
   }
 
-  private fun onError(message: String, stack: IrBindingStack): Nothing {
+  private fun onError(message: String, stack: IrBindingStack) {
     val declaration =
       stack.lastEntryOrGraph?.originalDeclarationIfOverride()
         ?: node.reportableSourceGraphDeclaration
     metroContext.reportCompat(declaration, MetroDiagnostics.METRO_ERROR, message)
-    exitProcessing()
   }
 
   private fun validateBindings(

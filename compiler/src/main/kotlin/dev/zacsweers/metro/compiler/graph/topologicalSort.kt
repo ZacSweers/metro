@@ -170,7 +170,7 @@ internal data class TopoSortResult<T>(
 internal fun <V : Comparable<V>> topologicalSort(
   fullAdjacency: SortedMap<V, SortedSet<V>>,
   isDeferrable: (from: V, to: V) -> Boolean,
-  onCycle: (List<V>) -> Nothing,
+  onCycle: (List<V>) -> Unit,
   roots: SortedSet<V>? = null,
   parentTracer: Tracer = Tracer.NONE,
   isImplicitlyDeferrable: (V) -> Boolean = { false },
