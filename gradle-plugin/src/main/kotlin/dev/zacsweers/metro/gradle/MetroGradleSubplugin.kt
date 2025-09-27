@@ -117,6 +117,7 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
     return project.provider {
       buildList {
         add(lazyOption("enabled", extension.enabled))
+        add(lazyOption("max-ir-errors-count", extension.maxIrErrorsCount))
         add(lazyOption("debug", extension.debug))
         add(lazyOption("generate-assisted-factories", extension.generateAssistedFactories))
         add(
@@ -313,6 +314,10 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
 
 @JvmName("booleanPluginOptionOf")
 private fun lazyOption(key: String, value: Provider<Boolean>): SubpluginOption =
+  lazyOption(key, value.map { it.toString() })
+
+@JvmName("intPluginOptionOf")
+private fun lazyOption(key: String, value: Provider<Int>): SubpluginOption =
   lazyOption(key, value.map { it.toString() })
 
 @JvmName("enumPluginOptionOf")

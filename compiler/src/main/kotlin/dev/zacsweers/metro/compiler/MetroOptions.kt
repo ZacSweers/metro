@@ -215,6 +215,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       valueMapper = { it.splitToSequence('|').map(MetroLogger.Type::valueOf).toSet() },
     )
   ),
+  MAX_IR_ERRORS_COUNT(
+    RawMetroOption(
+      name = "max-ir-errors-count",
+      defaultValue = 20,
+      valueDescription = "<count>",
+      description = "Maximum number of errors to report before exiting IR processing. Default is 20, must be > 0.",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it.toInt() },
+    )
+  ),
   CUSTOM_PROVIDER(
     RawMetroOption(
       name = "custom-provider",
@@ -562,6 +573,8 @@ public data class MetroOptions(
     },
   val enableDaggerRuntimeInterop: Boolean =
     MetroOption.ENABLE_DAGGER_RUNTIME_INTEROP.raw.defaultValue.expectAs(),
+  val maxIrErrorsCount: Int =
+    MetroOption.MAX_IR_ERRORS_COUNT.raw.defaultValue.expectAs(),
   // Intrinsics
   val customProviderTypes: Set<ClassId> = MetroOption.CUSTOM_PROVIDER.raw.defaultValue.expectAs(),
   val customLazyTypes: Set<ClassId> = MetroOption.CUSTOM_LAZY.raw.defaultValue.expectAs(),
@@ -713,6 +726,10 @@ public data class MetroOptions(
             options = options.copy(enableDaggerRuntimeInterop = configuration.getAsBoolean(entry))
           }
 
+          MetroOption.MAX_IR_ERRORS_COUNT -> {
+            options = options.copy(maxIrErrorsCount = configuration.getAsInt(entry))
+          }
+
           // Intrinsics
           MetroOption.CUSTOM_PROVIDER -> customProviderTypes.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_LAZY -> customLazyTypes.addAll(configuration.getAsSet(entry))
@@ -815,6 +832,12 @@ public data class MetroOptions(
 
     private fun CompilerConfiguration.getAsBoolean(option: MetroOption): Boolean {
       @Suppress("UNCHECKED_CAST") val typed = option.raw as RawMetroOption<Boolean>
+      return get(typed.key, typed.defaultValue)
+    }
+
+
+    private fun CompilerConfiguration.getAsInt(option: MetroOption): Int {
+      @Suppress("UNCHECKED_CAST") val typed = option.raw as RawMetroOption<Int>
       return get(typed.key, typed.defaultValue)
     }
 

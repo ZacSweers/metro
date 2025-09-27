@@ -23,6 +23,12 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     objects.property(Boolean::class.javaObjectType).convention(true)
 
   /**
+   * Maximum number of errors to report before exiting IR processing. Default is 20, must be > 0.
+   */
+  public val maxIrErrorsCount: Property<Int> =
+    objects.property(Int::class.javaObjectType).convention(20)
+
+  /**
    * If enabled, the Metro compiler plugin will emit _extremely_ noisy debug logging.
    *
    * Optionally, you can specify a `metro.debug` gradle property to enable this globally.
@@ -82,8 +88,8 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     objects.property(Boolean::class.javaObjectType).convention(false)
 
   /**
-   * If true changes the return type of generated Graph Factories from the declared interface
-   * type to the generated Metro graph type. This is helpful for Dagger/Anvil interop.
+   * If true changes the return type of generated Graph Factories from the declared interface type
+   * to the generated Metro graph type. This is helpful for Dagger/Anvil interop.
    */
   public val enableGraphImplClassAsReturnType: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(false)
