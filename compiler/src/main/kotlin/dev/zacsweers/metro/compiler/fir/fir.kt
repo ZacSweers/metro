@@ -103,6 +103,7 @@ import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.FirUserTypeRef
 import org.jetbrains.kotlin.fir.types.builder.buildUserTypeRef
 import org.jetbrains.kotlin.fir.types.classId
+import org.jetbrains.kotlin.fir.types.classLikeLookupTagIfAny
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.fir.types.constructType
@@ -1212,10 +1213,11 @@ context(context: CheckerContext, reporter: DiagnosticReporter)
 internal fun validateInjectionSiteType(
   session: FirSession,
   typeRef: FirTypeRef,
+  qualifier: MetroFirAnnotation?,
   source: KtSourceElement?,
 ): Boolean {
   val type = typeRef.coneTypeOrNull ?: return true
-  val contextKey = type.asFirContextualTypeKey(session, null, false)
+  val contextKey = type.asFirContextualTypeKey(session, qualifier, false)
 
   if (contextKey.isWrappedInLazy) {
     val canonicalType = contextKey.typeKey.type
@@ -1230,6 +1232,21 @@ internal fun validateInjectionSiteType(
         MetroDiagnostics.ASSISTED_FACTORIES_CANNOT_BE_LAZY,
         canonicalClass.name.asString(),
         canonicalClass.classId.asFqNameString(),
+      )
+      return true
+    }
+  }
+
+  // Check if we're directly injecting a qualifier type
+  if (qualifier == null) {
+    val clazz = type.classLikeLookupTagIfAny?.toClassSymbol(session) ?: return false
+    val isAssistedInject = clazz.findAssistedInjectConstructors(session, checkClass = true)
+      .isNotEmpty()
+    if (isAssistedInject) {
+      reporter.reportOn(
+        typeRef.source ?: source,
+        MetroDiagnostics.ASSISTED_INJECTION_ERROR,
+        "Cannot directly inject/access unqualified assisted injected types. Inject its associated `@AssistedFactory`-annotated factory instead or provide a qualified instance on the graph instead."
       )
       return true
     }
