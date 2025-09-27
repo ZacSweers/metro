@@ -743,6 +743,24 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("DefaultAssistedFactoryIsGeneratedInFIR.kt")
+      public void testDefaultAssistedFactoryIsGeneratedInFIR() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/DefaultAssistedFactoryIsGeneratedInFIR.kt");
+      }
+
+      @Test
+      @TestMetadata("DefaultAssistedFactoryWithCustomIdentifiers.kt")
+      public void testDefaultAssistedFactoryWithCustomIdentifiers() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/DefaultAssistedFactoryWithCustomIdentifiers.kt");
+      }
+
+      @Test
+      @TestMetadata("DefaultAssistedFactoryWithDefaultValues.kt")
+      public void testDefaultAssistedFactoryWithDefaultValues() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/DefaultAssistedFactoryWithDefaultValues.kt");
+      }
+
+      @Test
       @TestMetadata("GenericAssistedParams.kt")
       public void testGenericAssistedParams() {
         runTest("compiler-tests/src/test/data/box/inject/assisted/GenericAssistedParams.kt");

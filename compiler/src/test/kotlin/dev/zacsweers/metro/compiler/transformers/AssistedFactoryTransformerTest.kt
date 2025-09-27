@@ -18,7 +18,6 @@ import dev.zacsweers.metro.compiler.invokeInstanceMethod
 import dev.zacsweers.metro.compiler.invokeMain
 import dev.zacsweers.metro.provider
 import java.util.concurrent.Callable
-import org.junit.Ignore
 import org.junit.Test
 
 class AssistedFactoryTransformerTest : MetroCompilerTest() {
@@ -78,118 +77,6 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       val factoryImpl = factoryImplProvider()
       val exampleClass2 = factoryImpl.invokeInstanceMethod<Callable<String>>("create", 2)
       assertThat(exampleClass2.call()).isEqualTo("Hello, 2")
-    }
-  }
-
-  @Ignore("Ignored until we merge the assisted FIR generators")
-  @Test
-  fun `default assisted factory is generated in FIR`() {
-    compile(
-      source(
-        """
-          class ExampleClass @AssistedInject constructor(
-            @Assisted val count: Int,
-            val message: String,
-          ) : Callable<String> {
-            override fun call(): String = message + count
-          }
-
-          fun main(factory: ExampleClass.Factory, count: Int): ExampleClass {
-            // Smoke test to ensure that the FIR-generated
-            return factory.create(count = count)
-          }
-        """
-          .trimIndent()
-      ),
-      generateAssistedFactories = true,
-    ) {
-      val exampleClassFactory =
-        ExampleClass.generatedFactoryClassAssisted().invokeCreate(provider { "Hello, " })
-
-      val factoryImplClass = ExampleClass.Factory.generatedAssistedFactoryImpl()
-      val factoryImplProvider = factoryImplClass.invokeCreateAsProvider<Any>(exampleClassFactory)
-      val factoryImpl = factoryImplProvider()
-      val exampleClass2 = factoryImpl.invokeInstanceMethod<Callable<String>>("create", 2)
-      assertThat(exampleClass2.call()).isEqualTo("Hello, 2")
-
-      // Run through FIR's generated one too
-      val exampleClass3 = invokeMain<Callable<String>>(factoryImpl, 3)
-      assertThat(exampleClass3.call()).isEqualTo("Hello, 3")
-    }
-  }
-
-  @Ignore("Ignored until we merge the assisted FIR generators")
-  @Test
-  fun `default assisted factory with default values`() {
-    compile(
-      source(
-        """
-          class ExampleClass @AssistedInject constructor(
-            @Assisted val count: Int = 2,
-            val message: String,
-          ) : Callable<String> {
-            override fun call(): String = message + count
-          }
-
-          fun main(factory: ExampleClass.Factory): ExampleClass {
-            // Smoke test to ensure that the FIR-generated create() supports default args
-            return factory.create()
-          }
-        """
-          .trimIndent()
-      ),
-      generateAssistedFactories = true,
-    ) {
-      val exampleClassFactory =
-        ExampleClass.generatedFactoryClassAssisted().invokeCreate(provider { "Hello, " })
-
-      val factoryImplClass = ExampleClass.Factory.generatedAssistedFactoryImpl()
-      val factoryImplProvider = factoryImplClass.invokeCreateAsProvider<Any>(exampleClassFactory)
-      val factoryImpl = factoryImplProvider()
-      val exampleClass2 = factoryImpl.invokeInstanceMethod<Callable<String>>("create", 2)
-      assertThat(exampleClass2.call()).isEqualTo("Hello, 2")
-
-      // Run through FIR's generated one too
-      val exampleClass3 = invokeMain<Callable<String>>(factoryImpl)
-      assertThat(exampleClass3.call()).isEqualTo("Hello, 2")
-    }
-  }
-
-  @Ignore("Ignored until we merge the assisted FIR generators")
-  @Test
-  fun `default assisted factory with custom identifiers`() {
-    compile(
-      source(
-        """
-          class ExampleClass @AssistedInject constructor(
-            @Assisted("1") val count1: Int,
-            @Assisted("2") val count2: Int,
-            val message: String,
-          ) : Callable<String> {
-            override fun call(): String = message + count1 + " " + count2
-          }
-
-          fun main(factory: ExampleClass.Factory, count1: Int, count2: Int): ExampleClass {
-            // Smoke test to ensure that the FIR-generated create() respects identifiers. Note the order switch
-            return factory.create(count2 = count2, count1 = count1)
-          }
-        """
-          .trimIndent()
-      ),
-      generateAssistedFactories = true,
-    ) {
-      val exampleClassFactory =
-        ExampleClass.generatedFactoryClassAssisted().invokeCreate(provider { "Hello, " })
-
-      val factoryImplClass = ExampleClass.Factory.generatedAssistedFactoryImpl()
-      val factoryImplProvider = factoryImplClass.invokeCreateAsProvider<Any>(exampleClassFactory)
-      val factoryImpl = factoryImplProvider()
-      val exampleClass2 = factoryImpl.invokeInstanceMethod<Callable<String>>("create", 2, 3)
-      assertThat(exampleClass2.call()).isEqualTo("Hello, 2 3")
-
-      // Run through FIR's generated one too
-      val exampleClass3 = invokeMain<Callable<String>>(factoryImpl, 2, 3)
-      assertThat(exampleClass3.call()).isEqualTo("Hello, 2 3")
     }
   }
 
