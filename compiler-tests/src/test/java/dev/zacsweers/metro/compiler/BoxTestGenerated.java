@@ -767,6 +767,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("BasicAssistedInject.kt")
+      public void testBasicAssistedInject() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/BasicAssistedInject.kt");
+      }
+
+      @Test
       @TestMetadata("DefaultAssistedFactoryIsGeneratedInFIR.kt")
       public void testDefaultAssistedFactoryIsGeneratedInFIR() {
         runTest("compiler-tests/src/test/data/box/inject/assisted/DefaultAssistedFactoryIsGeneratedInFIR.kt");
