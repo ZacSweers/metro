@@ -737,6 +737,30 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("AssistedFactoryWithAGenericMethodWorks.kt")
+      public void testAssistedFactoryWithAGenericMethodWorks() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedFactoryWithAGenericMethodWorks.kt");
+      }
+
+      @Test
+      @TestMetadata("AssistedFactoryWithAProtectedMethodWorks.kt")
+      public void testAssistedFactoryWithAProtectedMethodWorks() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedFactoryWithAProtectedMethodWorks.kt");
+      }
+
+      @Test
+      @TestMetadata("AssistedFactoryWithAdditionalNonAbstractMethods.kt")
+      public void testAssistedFactoryWithAdditionalNonAbstractMethods() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedFactoryWithAdditionalNonAbstractMethods.kt");
+      }
+
+      @Test
+      @TestMetadata("AssistedParametersInLaterOrderWork.kt")
+      public void testAssistedParametersInLaterOrderWork() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedParametersInLaterOrderWork.kt");
+      }
+
+      @Test
       @TestMetadata("AssistedTypesCanBeExplicitlyProvided.kt")
       public void testAssistedTypesCanBeExplicitlyProvided() {
         runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedTypesCanBeExplicitlyProvided.kt");
