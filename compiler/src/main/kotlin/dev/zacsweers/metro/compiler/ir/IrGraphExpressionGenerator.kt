@@ -148,7 +148,7 @@ private constructor(
 
         is IrBinding.Alias -> {
           // For binds functions, just use the backing type
-          val aliasedBinding = binding.aliasedBinding(bindingGraph, IrBindingStack.empty())
+          val aliasedBinding = binding.aliasedBinding(bindingGraph)
           check(aliasedBinding != binding) { "Aliased binding aliases itself" }
           return generateBindingCode(
             aliasedBinding,
@@ -180,7 +180,7 @@ private constructor(
           val factoryImpl = assistedFactoryTransformer.getOrGenerateImplClass(binding.type)
 
           val targetBinding =
-            bindingGraph.requireBinding(binding.target.typeKey, IrBindingStack.empty())
+            bindingGraph.requireBinding(binding.target.typeKey)
           val delegateFactoryProvider = generateBindingCode(targetBinding, accessType = accessType)
 
           with(factoryImpl) { invokeCreate(delegateFactoryProvider) }
@@ -340,7 +340,6 @@ private constructor(
                   generateBindingCode(
                     bindingGraph.requireBinding(
                       parameters.regularParameters.single().typeKey,
-                      IrBindingStack.empty(),
                     ),
                     accessType = AccessType.INSTANCE,
                   )
@@ -528,7 +527,7 @@ private constructor(
             ?: run {
               // Generate binding code for each param
               val paramBinding =
-                bindingGraph.requireBinding(contextualTypeKey, IrBindingStack.empty())
+                bindingGraph.requireBinding(contextualTypeKey)
 
               if (paramBinding is IrBinding.Absent) {
                 // Null argument expressions get treated as absent in the final call
@@ -598,7 +597,7 @@ private constructor(
       binding.sourceBindings
         .map {
           bindingGraph
-            .requireBinding(it, IrBindingStack.empty())
+            .requireBinding(it)
             .expectAs<IrBinding.BindingWithAnnotations>()
         }
         .partition { it.annotations.isElementsIntoSet }
@@ -636,7 +635,7 @@ private constructor(
           callee = symbols.setOfSingleton
           val provider =
             binding.sourceBindings.first().let {
-              bindingGraph.requireBinding(it, IrBindingStack.empty())
+              bindingGraph.requireBinding(it)
             }
           args = listOf(generateMultibindingArgument(provider, fieldInitKey))
         }
@@ -657,7 +656,7 @@ private constructor(
                 // This is the mutable set receiver
                 val functionReceiver = function.extensionReceiverParameterCompat!!
                 binding.sourceBindings
-                  .map { bindingGraph.requireBinding(it, IrBindingStack.empty()) }
+                  .map { bindingGraph.requireBinding(it) }
                   .forEach { provider ->
                     +irInvoke(
                       dispatchReceiver = irGet(functionReceiver),
@@ -873,7 +872,7 @@ private constructor(
 
       val withProviders =
         binding.sourceBindings
-          .map { bindingGraph.requireBinding(it, IrBindingStack.empty()) }
+          .map { bindingGraph.requireBinding(it) }
           .fold(builder) { receiver, sourceBinding ->
             val providerTypeMetadata = sourceBinding.contextualTypeKey
 

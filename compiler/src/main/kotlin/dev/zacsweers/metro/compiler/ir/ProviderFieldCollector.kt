@@ -69,7 +69,7 @@ internal class ProviderFieldCollector(private val graph: IrBindingGraph) {
   }
 
   private fun IrContextualTypeKey.mark(): Boolean {
-    val binding = graph.requireBinding(this, IrBindingStack.empty())
+    val binding = graph.requireBinding(this)
     return binding.mark()
   }
 

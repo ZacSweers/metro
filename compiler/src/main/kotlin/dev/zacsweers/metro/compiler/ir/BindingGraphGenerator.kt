@@ -376,7 +376,7 @@ internal class BindingGraphGenerator(
         // If it's already in the graph, ensure its allowEmpty is up to date and update its
         // location
         graph
-          .requireBinding(contextualTypeKey.typeKey, bindingStack)
+          .requireBinding(contextualTypeKey.typeKey)
           .expectAs<IrBinding.Multibinding>()
           .let {
             it.allowEmpty = multibinds.allowEmpty()

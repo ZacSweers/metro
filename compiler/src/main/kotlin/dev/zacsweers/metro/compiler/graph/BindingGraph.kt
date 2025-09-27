@@ -46,7 +46,6 @@ internal open class MutableBindingGraph<
       callingBinding: Binding?,
       roots: Map<ContextualTypeKey, BindingStackEntry>,
     ) -> BindingStackEntry,
-  private val absentBinding: (typeKey: TypeKey) -> Binding,
   /**
    * Creates bindings for keys not necessarily manually added to the graph (e.g.,
    * constructor-injected types). Note one key may incur the creation of multiple bindings, so this
@@ -66,6 +65,7 @@ internal open class MutableBindingGraph<
   // Populated by initial graph setup and later seal()
   override val bindings = mutableMapOf<TypeKey, Binding>()
   private val bindingIndices = mutableMapOf<TypeKey, Int>()
+  private val reportedMissingKeys = mutableSetOf<TypeKey>()
 
   var sealed = false
     private set
@@ -414,22 +414,24 @@ internal open class MutableBindingGraph<
     bindingStack: BindingStack,
     extraContent: StringBuilder.() -> Unit = {},
   ) {
-    val message = buildString {
-      append(
-        "[Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: "
-      )
-      appendLine(typeKey.render(short = false))
-      appendLine()
-      appendBindingStack(bindingStack, short = false)
-      val similarBindings = findSimilarBindings(typeKey)
-      if (similarBindings.isNotEmpty()) {
+    if (reportedMissingKeys.add(typeKey)) {
+      val message = buildString {
+        append(
+          "[Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: "
+        )
+        appendLine(typeKey.render(short = false))
         appendLine()
-        appendLine("Similar bindings:")
-        similarBindings.values.map { "  - $it" }.sorted().forEach(::appendLine)
+        appendBindingStack(bindingStack, short = false)
+        val similarBindings = findSimilarBindings(typeKey)
+        if (similarBindings.isNotEmpty()) {
+          appendLine()
+          appendLine("Similar bindings:")
+          similarBindings.values.map { "  - $it" }.sorted().forEach(::appendLine)
+        }
+        extraContent()
       }
-      extraContent()
-    }
 
-    onError(message, bindingStack)
+      onError(message, bindingStack)
+    }
   }
 }

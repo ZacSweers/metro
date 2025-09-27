@@ -31,7 +31,7 @@ internal fun DependencyGraphNode.toProto(
       .sortedBy { it.first.ir.name.asString() }
       .onEachIndexed { index, (_, contextKey) ->
         val isMultibindingAccessor =
-          bindingGraph.requireBinding(contextKey, IrBindingStack.empty()) is IrBinding.Multibinding
+          bindingGraph.requireBinding(contextKey) is IrBinding.Multibinding
         if (isMultibindingAccessor) {
           multibindingAccessors = multibindingAccessors or (1 shl index)
         }
