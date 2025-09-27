@@ -1,9 +1,0 @@
-$dokka.format:html-v1
-$dokka.linkExtension:html
-
-module:gradle-plugin
-dev.zacsweers.metro.gradle
-module:interop-dagger
-dev.zacsweers.metro.interop.dagger
-module:runtime
-dev.zacsweers.metro
