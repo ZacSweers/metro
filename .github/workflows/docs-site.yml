@@ -136,6 +136,12 @@ jobs:
           rm -rf /tmp/docs-site-validation
           echo "Docs validation completed successfully"
 
+      - name: Re-sync gh-pages branch before deployment
+        run: |
+          # Safely update local gh-pages to match remote state to avoid push conflicts
+          git fetch origin gh-pages
+          git update-ref refs/heads/gh-pages origin/gh-pages
+
       - name: Deploy SNAPSHOT Docs with mike
         if: ${{ success() && contains(steps.version.outputs.METRO_VERSION, 'SNAPSHOT') }}
         run: mike deploy --update-aliases --push ${{ steps.version.outputs.METRO_VERSION }} snapshot
