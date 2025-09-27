@@ -44,25 +44,19 @@ internal class FirProvidesStatusTransformer(session: FirSession) :
       }
     }
 
-    return when (declaration) {
-      is FirCallableDeclaration -> {
-        if (declaration.symbol.rawStatus.isOverride) return false
-        if (declaration !is FirSimpleFunction) return false
+    if (declaration.symbol.rawStatus.isOverride) return false
+    if (declaration !is FirSimpleFunction) return false
 
-        // A later FIR checker will check this case
-        if (!declaration.hasBody) return false
-        true
-      }
-      else -> false
-    }
+    // A later FIR checker will check this case
+    if (!declaration.hasBody) return false
+    return true
   }
 
   override fun transformStatus(
     status: FirDeclarationStatus,
     declaration: FirDeclaration,
   ): FirDeclarationStatus {
-    val visibility = (declaration as FirSimpleFunction).visibility
-    return when (visibility) {
+    return when ((declaration as FirSimpleFunction).visibility) {
       Visibilities.Unknown -> {
         status.copyWithNewDefaults(
           visibility = Visibilities.Private,
