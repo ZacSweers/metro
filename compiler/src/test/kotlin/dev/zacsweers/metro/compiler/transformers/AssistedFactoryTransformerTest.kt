@@ -28,18 +28,18 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @AssistedInject constructor(
-              @Assisted val count: Int,
-              val message: String,
-            ) : Callable<String> {
-              override fun call(): String = message + count
-            }
+          class ExampleClass @AssistedInject constructor(
+            @Assisted val count: Int,
+            val message: String,
+          ) : Callable<String> {
+            override fun call(): String = message + count
+          }
 
-            @AssistedFactory
-            fun interface ExampleClassFactory {
-              fun create(count: Int): ExampleClass
-            }
-          """
+          @AssistedFactory
+          fun interface ExampleClassFactory {
+            fun create(count: Int): ExampleClass
+          }
+        """
           .trimIndent()
       )
     ) {
@@ -55,18 +55,18 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @AssistedInject constructor(
-              @Assisted val count: Int,
-              val message: String,
-            ) : Callable<String> {
-              override fun call(): String = message + count
-            }
+          class ExampleClass @AssistedInject constructor(
+            @Assisted val count: Int,
+            val message: String,
+          ) : Callable<String> {
+            override fun call(): String = message + count
+          }
 
-            @AssistedFactory
-            fun interface ExampleClassFactory {
-              fun create(count: Int): ExampleClass
-            }
-          """
+          @AssistedFactory
+          fun interface ExampleClassFactory {
+            fun create(count: Int): ExampleClass
+          }
+        """
           .trimIndent()
       )
     ) {
@@ -87,18 +87,18 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @AssistedInject constructor(
-              @Assisted val count: Int,
-              val message: String,
-            ) : Callable<String> {
-              override fun call(): String = message + count
-            }
+          class ExampleClass @AssistedInject constructor(
+            @Assisted val count: Int,
+            val message: String,
+          ) : Callable<String> {
+            override fun call(): String = message + count
+          }
 
-            fun main(factory: ExampleClass.Factory, count: Int): ExampleClass {
-              // Smoke test to ensure that the FIR-generated
-              return factory.create(count = count)
-            }
-          """
+          fun main(factory: ExampleClass.Factory, count: Int): ExampleClass {
+            // Smoke test to ensure that the FIR-generated
+            return factory.create(count = count)
+          }
+        """
           .trimIndent()
       ),
       generateAssistedFactories = true,
@@ -124,18 +124,18 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @AssistedInject constructor(
-              @Assisted val count: Int = 2,
-              val message: String,
-            ) : Callable<String> {
-              override fun call(): String = message + count
-            }
+          class ExampleClass @AssistedInject constructor(
+            @Assisted val count: Int = 2,
+            val message: String,
+          ) : Callable<String> {
+            override fun call(): String = message + count
+          }
 
-            fun main(factory: ExampleClass.Factory): ExampleClass {
-              // Smoke test to ensure that the FIR-generated create() supports default args
-              return factory.create()
-            }
-          """
+          fun main(factory: ExampleClass.Factory): ExampleClass {
+            // Smoke test to ensure that the FIR-generated create() supports default args
+            return factory.create()
+          }
+        """
           .trimIndent()
       ),
       generateAssistedFactories = true,
@@ -161,19 +161,19 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @AssistedInject constructor(
-              @Assisted("1") val count1: Int,
-              @Assisted("2") val count2: Int,
-              val message: String,
-            ) : Callable<String> {
-              override fun call(): String = message + count1 + " " + count2
-            }
+          class ExampleClass @AssistedInject constructor(
+            @Assisted("1") val count1: Int,
+            @Assisted("2") val count2: Int,
+            val message: String,
+          ) : Callable<String> {
+            override fun call(): String = message + count1 + " " + count2
+          }
 
-            fun main(factory: ExampleClass.Factory, count1: Int, count2: Int): ExampleClass {
-              // Smoke test to ensure that the FIR-generated create() respects identifiers. Note the order switch
-              return factory.create(count2 = count2, count1 = count1)
-            }
-          """
+          fun main(factory: ExampleClass.Factory, count1: Int, count2: Int): ExampleClass {
+            // Smoke test to ensure that the FIR-generated create() respects identifiers. Note the order switch
+            return factory.create(count2 = count2, count1 = count1)
+          }
+        """
           .trimIndent()
       ),
       generateAssistedFactories = true,
@@ -198,16 +198,16 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @AssistedInject constructor(
-              val count: Int,
-              val message: String,
-            )
+          class ExampleClass @AssistedInject constructor(
+            val count: Int,
+            val message: String,
+          )
 
-            @AssistedFactory
-            fun interface ExampleClassFactory {
-              fun create(count: Int): ExampleClass
-            }
-          """
+          @AssistedFactory
+          fun interface ExampleClassFactory {
+            fun create(count: Int): ExampleClass
+          }
+        """
           .trimIndent()
       ),
       expectedExitCode = COMPILATION_ERROR,
@@ -216,7 +216,8 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
         """
           e: ExampleClass.kt:6:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:
             Missing from factory: kotlin.Int
-        """.trimIndent()
+        """
+          .trimIndent()
       )
     }
   }
@@ -226,13 +227,13 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass
+          class ExampleClass
 
-            @AssistedFactory
-            fun interface ExampleClassFactory {
-              fun create(count: Int): ExampleClass
-            }
-          """
+          @AssistedFactory
+          fun interface ExampleClassFactory {
+            fun create(count: Int): ExampleClass
+          }
+        """
           .trimIndent()
       ),
       expectedExitCode = COMPILATION_ERROR,
@@ -249,11 +250,11 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @AssistedFactory
-            fun interface ExampleClassFactory {
-              fun create(count: Int)
-            }
-          """
+          @AssistedFactory
+          fun interface ExampleClassFactory {
+            fun create(count: Int)
+          }
+        """
           .trimIndent()
       ),
       expectedExitCode = COMPILATION_ERROR,
@@ -269,15 +270,15 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass
+          class ExampleClass
 
-            fun example() {
-              @AssistedFactory
-              abstract class ExampleClassFactory {
-                abstract fun create(count: Int): ExampleClass
-              }
+          fun example() {
+            @AssistedFactory
+            abstract class ExampleClassFactory {
+              abstract fun create(count: Int): ExampleClass
             }
-          """
+          }
+        """
           .trimIndent()
       ),
       expectedExitCode = COMPILATION_ERROR,
@@ -293,15 +294,15 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @AssistedInject constructor(
-              @Assisted val count: Int,
-            ) {
-              @AssistedFactory
-              protected fun interface Factory {
-                fun create(count: Int): ExampleClass
-              }
+          class ExampleClass @AssistedInject constructor(
+            @Assisted val count: Int,
+          ) {
+            @AssistedFactory
+            protected fun interface Factory {
+              fun create(count: Int): ExampleClass
             }
-          """
+          }
+        """
           .trimIndent()
       ),
       expectedExitCode = COMPILATION_ERROR,
@@ -317,15 +318,15 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @AssistedInject constructor(
-              @Assisted val count: Int,
-            ) {
-              @AssistedFactory
-              private fun interface Factory {
-                fun create(count: Int): ExampleClass
-              }
+          class ExampleClass @AssistedInject constructor(
+            @Assisted val count: Int,
+          ) {
+            @AssistedFactory
+            private fun interface Factory {
+              fun create(count: Int): ExampleClass
             }
-          """
+          }
+        """
           .trimIndent()
       ),
       expectedExitCode = COMPILATION_ERROR,
@@ -341,17 +342,17 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @AssistedInject constructor(
-              @Assisted val count: Int,
-            ) {
-              @AssistedFactory
-              class Factory {
-                fun create(count: Int): ExampleClass {
-                  throw NotImplementedError()
-                }
+          class ExampleClass @AssistedInject constructor(
+            @Assisted val count: Int,
+          ) {
+            @AssistedFactory
+            class Factory {
+              fun create(count: Int): ExampleClass {
+                throw NotImplementedError()
               }
             }
-          """
+          }
+        """
           .trimIndent()
       ),
       expectedExitCode = COMPILATION_ERROR,
@@ -367,15 +368,15 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @AssistedInject constructor(
-              @Assisted val count: Int,
-            ) {
-              @AssistedFactory
-              sealed class Factory {
-                abstract fun create(count: Int): ExampleClass
-              }
+          class ExampleClass @AssistedInject constructor(
+            @Assisted val count: Int,
+          ) {
+            @AssistedFactory
+            sealed class Factory {
+              abstract fun create(count: Int): ExampleClass
             }
-          """
+          }
+        """
           .trimIndent()
       ),
       expectedExitCode = COMPILATION_ERROR,
@@ -391,15 +392,15 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @AssistedInject constructor(
-              @Assisted val count: Int,
-            ) {
-              @AssistedFactory
-              sealed interface Factory {
-                fun create(count: Int): ExampleClass
-              }
+          class ExampleClass @AssistedInject constructor(
+            @Assisted val count: Int,
+          ) {
+            @AssistedFactory
+            sealed interface Factory {
+              fun create(count: Int): ExampleClass
             }
-          """
+          }
+        """
           .trimIndent()
       ),
       expectedExitCode = COMPILATION_ERROR,
@@ -415,20 +416,20 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @AssistedInject constructor(
-              @Assisted val count: Int,
-            ) {
-              @AssistedFactory
-              enum class Factory {
-                INSTANCE {
-                  override fun create(count: Int): ExampleClass {
-                    throw NotImplementedError()
-                  }
-                };
-                abstract fun create(count: Int): ExampleClass
-              }
+          class ExampleClass @AssistedInject constructor(
+            @Assisted val count: Int,
+          ) {
+            @AssistedFactory
+            enum class Factory {
+              INSTANCE {
+                override fun create(count: Int): ExampleClass {
+                  throw NotImplementedError()
+                }
+              };
+              abstract fun create(count: Int): ExampleClass
             }
-          """
+          }
+        """
           .trimIndent()
       ),
       expectedExitCode = COMPILATION_ERROR,
@@ -444,21 +445,21 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @AssistedInject constructor(
-              @Assisted val count: Int,
-            ) {
-              @AssistedFactory
-              annotation class Factory
-            }
-          """
+          class ExampleClass @AssistedInject constructor(
+            @Assisted val count: Int,
+          ) {
+            @AssistedFactory
+            annotation class Factory
+          }
+        """
           .trimIndent()
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
         """
-            e: ExampleClass.kt:10:20 @AssistedFactory declarations should be non-sealed abstract classes or interfaces.
-          """
+          e: ExampleClass.kt:10:20 @AssistedFactory declarations should be non-sealed abstract classes or interfaces.
+        """
           .trimIndent()
       )
     }
@@ -469,17 +470,17 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @AssistedInject constructor(
-              @Assisted val count: Int,
-            ) {
-              @AssistedFactory
-              object Factory {
-                fun create(count: Int): ExampleClass {
-                  throw NotImplementedError()
-                }
+          class ExampleClass @AssistedInject constructor(
+            @Assisted val count: Int,
+          ) {
+            @AssistedFactory
+            object Factory {
+              fun create(count: Int): ExampleClass {
+                throw NotImplementedError()
               }
             }
-          """
+          }
+        """
           .trimIndent()
       ),
       expectedExitCode = COMPILATION_ERROR,
@@ -495,13 +496,13 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @AssistedInject constructor(
-              @Assisted val count: Int,
-            ) {
-              @AssistedFactory
-              interface Factory
-            }
-          """
+          class ExampleClass @AssistedInject constructor(
+            @Assisted val count: Int,
+          ) {
+            @AssistedFactory
+            interface Factory
+          }
+        """
           .trimIndent()
       ),
       expectedExitCode = COMPILATION_ERROR,
@@ -517,25 +518,25 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @AssistedInject constructor(
-              @Assisted val count: Int,
-            ) {
-              @AssistedFactory
-              interface Factory {
-                fun create(count: Int): ExampleClass
-                fun create2(count: Int): ExampleClass
-              }
+          class ExampleClass @AssistedInject constructor(
+            @Assisted val count: Int,
+          ) {
+            @AssistedFactory
+            interface Factory {
+              fun create(count: Int): ExampleClass
+              fun create2(count: Int): ExampleClass
             }
-          """
+          }
+        """
           .trimIndent()
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
         """
-            e: ExampleClass.kt:11:9 @AssistedFactory declarations must have exactly one abstract function but found 2.
-            e: ExampleClass.kt:12:9 @AssistedFactory declarations must have exactly one abstract function but found 2.
-          """
+          e: ExampleClass.kt:11:9 @AssistedFactory declarations must have exactly one abstract function but found 2.
+          e: ExampleClass.kt:12:9 @AssistedFactory declarations must have exactly one abstract function but found 2.
+        """
           .trimIndent()
       )
     }
@@ -546,20 +547,20 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @AssistedInject constructor(
-              @Assisted val count: Int,
-            ) {
-              interface BaseFactory {
-                fun create(count: Int): ExampleClass
-              }
-              @AssistedFactory
-              interface Factory : BaseFactory {
-                override fun create(count: Int): ExampleClass {
-                  throw NotImplementedError()
-                }
+          class ExampleClass @AssistedInject constructor(
+            @Assisted val count: Int,
+          ) {
+            interface BaseFactory {
+              fun create(count: Int): ExampleClass
+            }
+            @AssistedFactory
+            interface Factory : BaseFactory {
+              override fun create(count: Int): ExampleClass {
+                throw NotImplementedError()
               }
             }
-          """
+          }
+        """
           .trimIndent()
       ),
       expectedExitCode = COMPILATION_ERROR,
@@ -575,21 +576,21 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @AssistedInject constructor(
-              @Assisted val count: Int,
-            ) {
-              interface GrandParentFactory {
-                fun create(count: Int): ExampleClass
-              }
-              interface ParentFactory : GrandParentFactory {
-                override fun create(count: Int): ExampleClass {
-                  throw NotImplementedError()
-                }
-              }
-              @AssistedFactory
-              interface Factory : ParentFactory
+          class ExampleClass @AssistedInject constructor(
+            @Assisted val count: Int,
+          ) {
+            interface GrandParentFactory {
+              fun create(count: Int): ExampleClass
             }
-          """
+            interface ParentFactory : GrandParentFactory {
+              override fun create(count: Int): ExampleClass {
+                throw NotImplementedError()
+              }
+            }
+            @AssistedFactory
+            interface Factory : ParentFactory
+          }
+        """
           .trimIndent()
       ),
       expectedExitCode = COMPILATION_ERROR,
@@ -605,15 +606,15 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @AssistedInject constructor(
-              @Assisted val count: Int,
-            ) {
-              @AssistedFactory
-              interface Factory {
-                fun create(): ExampleClass
-              }
+          class ExampleClass @AssistedInject constructor(
+            @Assisted val count: Int,
+          ) {
+            @AssistedFactory
+            interface Factory {
+              fun create(): ExampleClass
             }
-          """
+          }
+        """
           .trimIndent()
       ),
       expectedExitCode = COMPILATION_ERROR,
@@ -622,7 +623,8 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
         """
           e: ExampleClass.kt:6:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:
             Missing from constructor: kotlin.Int
-        """.trimIndent()
+        """
+          .trimIndent()
       )
     }
   }
@@ -632,16 +634,16 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @AssistedInject constructor(
-              @Assisted val count: Int,
-              @Assisted val message: String,
-            ) {
-              @AssistedFactory
-              interface Factory {
-                fun create(count: Int): ExampleClass
-              }
+          class ExampleClass @AssistedInject constructor(
+            @Assisted val count: Int,
+            @Assisted val message: String,
+          ) {
+            @AssistedFactory
+            interface Factory {
+              fun create(count: Int): ExampleClass
             }
-          """
+          }
+        """
           .trimIndent()
       ),
       expectedExitCode = COMPILATION_ERROR,
@@ -650,7 +652,8 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
         """
           e: ExampleClass.kt:6:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:
             Missing from constructor: kotlin.String
-        """.trimIndent()
+        """
+          .trimIndent()
       )
     }
   }
@@ -660,15 +663,15 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @AssistedInject constructor(
-              @Assisted val count: String,
-            ) {
-              @AssistedFactory
-              interface Factory {
-                fun create(count: Int): ExampleClass
-              }
+          class ExampleClass @AssistedInject constructor(
+            @Assisted val count: String,
+          ) {
+            @AssistedFactory
+            interface Factory {
+              fun create(count: Int): ExampleClass
             }
-          """
+          }
+        """
           .trimIndent()
       ),
       expectedExitCode = COMPILATION_ERROR,
@@ -689,25 +692,25 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @AssistedInject constructor(
-              @Assisted("count") val count: String,
-            ) {
-              @AssistedFactory
-              interface Factory {
-                fun create(@Assisted("notcount") count: Int): ExampleClass
-              }
+          class ExampleClass @AssistedInject constructor(
+            @Assisted("count") val count: String,
+          ) {
+            @AssistedFactory
+            interface Factory {
+              fun create(@Assisted("notcount") count: Int): ExampleClass
             }
-          """
+          }
+        """
           .trimIndent()
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
         """
-            e: ExampleClass.kt:6:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:
-              Missing from factory: kotlin.Int (notcount)
-              Missing from constructor: kotlin.String (count)
-          """
+          e: ExampleClass.kt:6:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:
+            Missing from factory: kotlin.Int (notcount)
+            Missing from constructor: kotlin.String (count)
+        """
           .trimIndent()
       )
     }
@@ -718,25 +721,25 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @AssistedInject constructor(
-              @Assisted("count") val count: String,
-            ) {
-              @AssistedFactory
-              interface Factory {
-                fun create(@Assisted("count") count: Int): ExampleClass
-              }
+          class ExampleClass @AssistedInject constructor(
+            @Assisted("count") val count: String,
+          ) {
+            @AssistedFactory
+            interface Factory {
+              fun create(@Assisted("count") count: Int): ExampleClass
             }
-          """
+          }
+        """
           .trimIndent()
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
         """
-            e: ExampleClass.kt:6:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:
-              Missing from factory: kotlin.Int (count)
-              Missing from constructor: kotlin.String (count)
-          """
+          e: ExampleClass.kt:6:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:
+            Missing from factory: kotlin.Int (count)
+            Missing from constructor: kotlin.String (count)
+        """
           .trimIndent()
       )
     }
@@ -747,31 +750,31 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph
-          interface ExampleGraph {
-            val exampleClassFactory: ExampleClass.Factory
+        @DependencyGraph
+        interface ExampleGraph {
+          val exampleClassFactory: ExampleClass.Factory
 
-            @Provides val int: Int get() = 0
+          @Provides val int: Int get() = 0
+        }
+
+        class ExampleClass @AssistedInject constructor(
+          val count: Int,
+          @Assisted val text: String,
+        ) {
+          fun template(): String = text + count
+
+          @AssistedFactory
+          interface Factory {
+            fun create(@Assisted text: String): ExampleClass
           }
+        }
 
-          class ExampleClass @AssistedInject constructor(
-            val count: Int,
-            @Assisted val text: String,
-          ) {
-            fun template(): String = text + count
-
-            @AssistedFactory
-            interface Factory {
-              fun create(@Assisted text: String): ExampleClass
-            }
-          }
-
-          fun main(text: String): String {
-            val graph = createGraph<ExampleGraph>()
-            val exampleClass = graph.exampleClassFactory.create(text)
-            return exampleClass.template()
-          }
-          """
+        fun main(text: String): String {
+          val graph = createGraph<ExampleGraph>()
+          val exampleClass = graph.exampleClassFactory.create(text)
+          return exampleClass.template()
+        }
+        """
           .trimIndent()
       )
     ) {
@@ -785,21 +788,21 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @AssistedInject constructor(
-              @Assisted val count: Int,
-              val message: String,
-            ) : Callable<String> {
-              override fun call(): String = message + count
-            }
+          class ExampleClass @AssistedInject constructor(
+            @Assisted val count: Int,
+            val message: String,
+          ) : Callable<String> {
+            override fun call(): String = message + count
+          }
 
-            @AssistedFactory
-            interface ExampleClassFactory {
-              fun foo(): ExampleClass = create(0)
-              fun bar() {}
+          @AssistedFactory
+          interface ExampleClassFactory {
+            fun foo(): ExampleClass = create(0)
+            fun bar() {}
 
-              fun create(count: Int): ExampleClass
-            }
-          """
+            fun create(count: Int): ExampleClass
+          }
+        """
           .trimIndent()
       )
     ) {
@@ -815,18 +818,18 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @AssistedInject constructor(
-              @Assisted val count: Int,
-              val message: String,
-            ) : Callable<String> {
-              override fun call(): String = message + count
-            }
+          class ExampleClass @AssistedInject constructor(
+            @Assisted val count: Int,
+            val message: String,
+          ) : Callable<String> {
+            override fun call(): String = message + count
+          }
 
-            @AssistedFactory
-            abstract class ExampleClassFactory {
-              protected abstract fun create(count: Int): ExampleClass
-            }
-          """
+          @AssistedFactory
+          abstract class ExampleClassFactory {
+            protected abstract fun create(count: Int): ExampleClass
+          }
+        """
           .trimIndent()
       )
     ) {
@@ -842,20 +845,20 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @AssistedInject constructor(
-              @Assisted val count: Int,
-              val message: String,
-            ) : Callable<String> {
-              override fun call(): String = message + count
-            }
+          class ExampleClass @AssistedInject constructor(
+            @Assisted val count: Int,
+            val message: String,
+          ) : Callable<String> {
+            override fun call(): String = message + count
+          }
 
-            interface BaseFactory<B, T> {
-              fun create(b: B): T
-            }
+          interface BaseFactory<B, T> {
+            fun create(b: B): T
+          }
 
-            @AssistedFactory
-            abstract class ExampleClassFactory : BaseFactory<Int, ExampleClass>
-          """
+          @AssistedFactory
+          abstract class ExampleClassFactory : BaseFactory<Int, ExampleClass>
+        """
           .trimIndent()
       )
     ) {
@@ -871,37 +874,37 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @AssistedInject constructor(
-              @Assisted val count: Int,
-              val message: String,
-            )
+          class ExampleClass @AssistedInject constructor(
+            @Assisted val count: Int,
+            val message: String,
+          )
 
-            @AssistedFactory
-            interface ExampleClassFactory {
-              fun create(count: Int): ExampleClass
-            }
+          @AssistedFactory
+          interface ExampleClassFactory {
+            fun create(count: Int): ExampleClass
+          }
 
-            @DependencyGraph
-            interface ExampleGraph {
-              val exampleClassFactory: ExampleClassFactory
-              val exampleClass: Consumer
+          @DependencyGraph
+          interface ExampleGraph {
+            val exampleClassFactory: ExampleClassFactory
+            val exampleClass: Consumer
 
-              @Provides val string: String get() = "Hello, world!"
-            }
+            @Provides val string: String get() = "Hello, world!"
+          }
 
-            @Inject
-            class Consumer(val exampleClass: ExampleClass)
-          """
+          @Inject
+          class Consumer(val exampleClass: ExampleClass)
+        """
           .trimIndent()
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        $$$"""
-          e: ExampleClass.kt:25:16 [Metro/InvalidBinding] 'test.ExampleClass' uses assisted injection and cannot be injected directly into 'test.Consumer.$$MetroFactory.mirrorFunction.exampleClass'. You must inject a corresponding @AssistedFactory type instead.
+        """
+          e: ExampleClass.kt:25:34 [Metro/InvalidBinding] 'test.ExampleClass' uses assisted injection and cannot be injected directly into 'test.ExampleGraph.exampleClass'. You must inject a corresponding @AssistedFactory type or provide a qualified instance on the graph instead.
 
           (Hint)
-          It looks like the @AssistedFactory for 'test.ExampleClass' is 'test.ExampleClassFactory'.
+          It looks like the @AssistedFactory for 'test.ExampleClass' may be 'test.ExampleClassFactory'.
         """
           .trimIndent()
       )
@@ -913,37 +916,37 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @AssistedInject constructor(
-              @Assisted val count: Int,
-              val message: String,
-            )
+          class ExampleClass @AssistedInject constructor(
+            @Assisted val count: Int,
+            val message: String,
+          )
 
-            @AssistedFactory
-            interface ExampleClassFactory {
-              fun create(count: Int): ExampleClass
-            }
+          @AssistedFactory
+          interface ExampleClassFactory {
+            fun create(count: Int): ExampleClass
+          }
 
-            @DependencyGraph
-            interface ExampleGraph {
-              val exampleClassFactory: ExampleClassFactory
-              val exampleClass: Consumer
+          @DependencyGraph
+          interface ExampleGraph {
+            val exampleClassFactory: ExampleClassFactory
+            val exampleClass: Consumer
 
-              @Provides val string: String get() = "Hello, world!"
-              @Provides fun provideConsumer(exampleClass: ExampleClass): Consumer = Consumer(exampleClass)
-            }
+            @Provides val string: String get() = "Hello, world!"
+            @Provides fun provideConsumer(exampleClass: ExampleClass): Consumer = Consumer(exampleClass)
+          }
 
-            class Consumer(val exampleClass: ExampleClass)
-          """
+          class Consumer(val exampleClass: ExampleClass)
+        """
           .trimIndent()
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
         """
-          e: ExampleClass.kt:22:33 [Metro/InvalidBinding] 'test.ExampleClass' uses assisted injection and cannot be injected directly into 'test.ExampleGraph.provideConsumer.exampleClass'. You must inject a corresponding @AssistedFactory type instead.
+          e: ExampleClass.kt:22:47 [Metro/InvalidBinding] 'test.ExampleClass' uses assisted injection and cannot be injected directly into 'test.ExampleGraph.exampleClass'. You must inject a corresponding @AssistedFactory type or provide a qualified instance on the graph instead.
 
-(Hint)
-It looks like the @AssistedFactory for 'test.ExampleClass' is 'test.ExampleClassFactory'.
+          (Hint)
+          It looks like the @AssistedFactory for 'test.ExampleClass' may be 'test.ExampleClassFactory'.
         """
           .trimIndent()
       )
@@ -955,28 +958,28 @@ It looks like the @AssistedFactory for 'test.ExampleClass' is 'test.ExampleClass
     compile(
       source(
         """
-            class ExampleClass @AssistedInject constructor(
-              @Assisted val count: Int,
-              val message: String,
-            )
+          class ExampleClass @AssistedInject constructor(
+            @Assisted val count: Int,
+            val message: String,
+          )
 
-            @AssistedFactory
-            interface ExampleClassFactory {
-              fun create(count: Int): ExampleClass
-            }
+          @AssistedFactory
+          interface ExampleClassFactory {
+            fun create(count: Int): ExampleClass
+          }
 
-            @DependencyGraph
-            interface ExampleGraph {
-              val exampleClassFactory: ExampleClassFactory
-              fun inject(exampleClass: Consumer)
+          @DependencyGraph
+          interface ExampleGraph {
+            val exampleClassFactory: ExampleClassFactory
+            fun inject(exampleClass: Consumer)
 
-              @Provides val string: String get() = "Hello, world!"
-            }
+            @Provides val string: String get() = "Hello, world!"
+          }
 
-            class Consumer {
-              @Inject lateinit var exampleClass: ExampleClass
-            }
-          """
+          class Consumer {
+            @Inject lateinit var exampleClass: ExampleClass
+          }
+        """
           .trimIndent()
       ),
       expectedExitCode = COMPILATION_ERROR,
@@ -998,34 +1001,34 @@ It looks like the @AssistedFactory for 'test.ExampleClass' is 'test.ExampleClass
     compile(
       source(
         """
-            class ExampleClass @AssistedInject constructor(
-              @Assisted val count: Int,
-              val message: String,
-            )
+          class ExampleClass @AssistedInject constructor(
+            @Assisted val count: Int,
+            val message: String,
+          )
 
-            @AssistedFactory
-            interface ExampleClassFactory {
-              fun create(count: Int): ExampleClass
-            }
+          @AssistedFactory
+          interface ExampleClassFactory {
+            fun create(count: Int): ExampleClass
+          }
 
-            @DependencyGraph
-            interface ExampleGraph {
-              val exampleClassFactory: ExampleClassFactory
-              val exampleClass: ExampleClass
+          @DependencyGraph
+          interface ExampleGraph {
+            val exampleClassFactory: ExampleClassFactory
+            val exampleClass: ExampleClass
 
-              @Provides val string: String get() = "Hello, world!"
-            }
-          """
+            @Provides val string: String get() = "Hello, world!"
+          }
+        """
           .trimIndent()
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
         """
-          e: ExampleClass.kt:19:7 [Metro/InvalidBinding] 'test.ExampleClass' uses assisted injection and cannot be injected directly into 'test.ExampleGraph.exampleClass'. You must inject a corresponding @AssistedFactory type instead.
+          e: ExampleClass.kt:19:21 [Metro/InvalidBinding] 'test.ExampleClass' uses assisted injection and cannot be injected directly into 'test.ExampleGraph.exampleClass'. You must inject a corresponding @AssistedFactory type or provide a qualified instance on the graph instead.
 
-(Hint)
-It looks like the @AssistedFactory for 'test.ExampleClass' is 'test.ExampleClassFactory'.
+          (Hint)
+          It looks like the @AssistedFactory for 'test.ExampleClass' may be 'test.ExampleClassFactory'.
         """
           .trimIndent()
       )
@@ -1037,33 +1040,36 @@ It looks like the @AssistedFactory for 'test.ExampleClass' is 'test.ExampleClass
     compile(
       source(
         """
-            class ExampleClass @AssistedInject constructor(
-              @Assisted val count: Int,
-              val message: String,
-            )
+          class ExampleClass @AssistedInject constructor(
+            @Assisted val count: Int,
+            val message: String,
+          )
 
-            @AssistedFactory
-            interface ExampleClassFactory {
-              fun create(count: Int): ExampleClass
-            }
+          @AssistedFactory
+          interface ExampleClassFactory {
+            fun create(count: Int): ExampleClass
+          }
 
-            @DependencyGraph
-            interface ExampleGraph {
-              // The omission of ExampleClassFactory from accessors is intentional, prevents
-              // regression of https://github.com/ZacSweers/metro/issues/538 caused by existence
-              // of other dependents short-circuiting the check on roots
-              val exampleClass: ExampleClass
+          @DependencyGraph
+          interface ExampleGraph {
+            // The omission of ExampleClassFactory from accessors is intentional, prevents
+            // regression of https://github.com/ZacSweers/metro/issues/538 caused by existence
+            // of other dependents short-circuiting the check on roots
+            val exampleClass: ExampleClass
 
-              @Provides val string: String get() = "Hello, world!"
-            }
-          """
+            @Provides val string: String get() = "Hello, world!"
+          }
+        """
           .trimIndent()
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
         """
-          e: ExampleClass.kt:21:7 [Metro/InvalidBinding] 'test.ExampleClass' uses assisted injection and cannot be injected directly into 'test.ExampleGraph.exampleClass'. You must inject a corresponding @AssistedFactory type instead.
+          e: ExampleClass.kt:21:21 [Metro/InvalidBinding] 'test.ExampleClass' uses assisted injection and cannot be injected directly into 'test.ExampleGraph.exampleClass'. You must inject a corresponding @AssistedFactory type or provide a qualified instance on the graph instead.
+
+          (Hint)
+          It looks like the @AssistedFactory for 'test.ExampleClass' may be 'test.ExampleClassFactory'.
         """
           .trimIndent()
       )

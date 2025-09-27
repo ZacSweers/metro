@@ -75,6 +75,7 @@ import org.jetbrains.kotlin.fir.renderer.ConeTypeRendererForReadability
 import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.resolve.getSuperTypes
 import org.jetbrains.kotlin.fir.resolve.lookupSuperTypes
+import org.jetbrains.kotlin.fir.resolve.providers.firProvider
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
@@ -1240,13 +1241,37 @@ internal fun validateInjectionSiteType(
   // Check if we're directly injecting a qualifier type
   if (qualifier == null) {
     val clazz = type.classLikeLookupTagIfAny?.toClassSymbol(session) ?: return false
-    val isAssistedInject = clazz.findAssistedInjectConstructors(session, checkClass = true)
-      .isNotEmpty()
+    val isAssistedInject =
+      clazz.findAssistedInjectConstructors(session, checkClass = true).isNotEmpty()
     if (isAssistedInject) {
+      @OptIn(DirectDeclarationsAccess::class)
+      val nestedFactory =
+        clazz.nestedClasses().find {
+          it.isAnnotatedWithAny(session, session.classIds.assistedFactoryAnnotations)
+        } ?: session.firProvider.getFirClassifierContainerFile(clazz.classId)
+          .declarations
+          .filterIsInstance<FirClass>()
+          .find { it.isAnnotatedWithAny(session, session.classIds.assistedFactoryAnnotations) }
+          ?.symbol
+
+      val message = buildString {
+        val fqName = clazz.classId.asFqNameString()
+        append(
+          "[Metro/InvalidBinding] '$fqName' uses assisted injection and cannot be injected directly into 'test.ExampleGraph.exampleClass'. You must inject a corresponding @AssistedFactory type or provide a qualified instance on the graph instead."
+        )
+        if (nestedFactory != null) {
+          appendLine()
+          appendLine()
+          appendLine("(Hint)")
+          appendLine(
+            "It looks like the @AssistedFactory for '$fqName' may be '${nestedFactory.classId.asFqNameString()}'."
+          )
+        }
+      }
       reporter.reportOn(
         typeRef.source ?: source,
         MetroDiagnostics.ASSISTED_INJECTION_ERROR,
-        "Cannot directly inject/access unqualified assisted injected types. Inject its associated `@AssistedFactory`-annotated factory instead or provide a qualified instance on the graph instead."
+        message,
       )
       return true
     }
