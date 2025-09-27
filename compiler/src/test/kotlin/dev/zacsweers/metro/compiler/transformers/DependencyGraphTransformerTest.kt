@@ -2936,10 +2936,10 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           e: Parent1.kt:11:1 [Metro/QualifierOverrideMismatch] Overridden accessor property 'test.AppGraph.$$MetroGraph.prop' must have the same qualifier annotations as the overridden accessor property. However, the final accessor property qualifier is 'null' but overridden symbol test.Parent1.prop has '@Named("qualified")'.'
           e: Parent1.kt:11:1 [Metro/QualifierOverrideMismatch] Overridden accessor function 'test.AppGraph.$$MetroGraph.function' must have the same qualifier annotations as the overridden accessor function. However, the final accessor function qualifier is 'null' but overridden symbol test.Parent1.function has '@Named("qualified")'.'
           e: Parent1.kt:13:16 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
-          
+
               kotlin.String is requested at
                   [test.AppGraph] test.AppGraph#function()
-          
+
           Similar bindings:
             - @Named("qualified") String (Different qualifier). Type: Provided. Source: Parent1.kt:15:3
         """
@@ -3041,7 +3041,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         $$$"""
           e: Thing.kt:18:1 [Metro/QualifierOverrideMismatch] Overridden injector function 'test.AppGraph.$$MetroGraph.injectThing' must have the same qualifier annotations as the overridden injector function. However, the final injector function qualifier is 'null' but overridden symbol test.Parent2.injectThing has '@Named("qualified")'.'
           e: Thing.kt:18:28 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
-          
+
               kotlin.String is injected at
                   [test.AppGraph] test.AppGraph#injectThing()
               dev.zacsweers.metro.MembersInjector<test.Thing> is requested at
