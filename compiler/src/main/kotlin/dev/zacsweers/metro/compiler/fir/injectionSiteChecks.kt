@@ -46,7 +46,6 @@ internal fun validateInjectionSiteType(
         canonicalClass.name.asString(),
         canonicalClass.classId.asFqNameString(),
       )
-      return true
     }
   }
 
@@ -85,7 +84,6 @@ internal fun validateInjectionSiteType(
         MetroDiagnostics.ASSISTED_INJECTION_ERROR,
         message,
       )
-      return true
     }
   }
 
