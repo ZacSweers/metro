@@ -868,7 +868,6 @@ private constructor(
           .fold(builder) { receiver, sourceBinding ->
             val providerTypeMetadata = sourceBinding.contextualTypeKey
 
-            // TODO FIR this should be an error actually
             val isMap = providerTypeMetadata.typeKey.type.rawType().symbol == irBuiltIns.mapClass
 
             val putter =
