@@ -115,7 +115,7 @@ jobs:
             ${{ runner.os }}-konan-
 
       - name: Check samples
-        run: ./gradlew -p samples check --continue --quiet
+        run: ./gradlew -p samples check --continue --quiet ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
       - name: (Fail-only) Upload reports
         if: failure()
