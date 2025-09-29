@@ -8,6 +8,7 @@ Changelog
 - **Behavior change**: Assisted-inject types can only be directly exposed on a graph if qualified.
 - **Enhancement**: Add diagnostic for directly injecting unqualified assisted-injected classes rather than using their factories.
 - **Enhancement**: Add diagnostic mixing `Provider` and `Lazy` types for `Provider<Lazy<T>>` injections.
+- **Enhancement**: Fully allow exposing `Provider<Lazy<T>>` accessor types.
 - **Fix**: Avoid obscure `UnsupportedOperationException` failures when reporting missing bindings.
 
 0.6.8

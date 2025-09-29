@@ -378,15 +378,7 @@ private constructor(
                 typeHint = binding.typeKey.type,
               )
 
-            if (getterContextKey.isLazyWrappedInProvider) {
-              // TODO FIR this
-              reportCompat(
-                binding.getter,
-                MetroDiagnostics.METRO_ERROR,
-                "Provider<Lazy<T>> accessors are not supported.",
-              )
-              exitProcessing()
-            } else if (getterContextKey.isWrappedInProvider) {
+            if (getterContextKey.isWrappedInProvider) {
               // It's already a provider
               invokeGetter
             } else {

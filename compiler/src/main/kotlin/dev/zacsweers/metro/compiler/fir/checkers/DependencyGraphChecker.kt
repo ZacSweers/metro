@@ -279,8 +279,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
           continue
         }
 
-        // Check for lazy-wrapped assisted factories in graph accessors
-        validateInjectionSiteType(session, callable.resolvedReturnTypeRef, callable.qualifierAnnotation(session), callable.source)
+        validateInjectionSiteType(session, callable.resolvedReturnTypeRef, callable.qualifierAnnotation(session), callable.source, isAccessor = true)
 
         val scopeAnnotations = callable.allAnnotations().scopeAnnotations(session)
         for (scopeAnnotation in scopeAnnotations) {

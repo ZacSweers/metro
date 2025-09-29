@@ -563,7 +563,6 @@ internal class IrBindingGraph(
   }
 
   // Check scoping compatibility
-  // TODO FIR error?
   private fun checkScope(
     binding: IrBinding,
     stack: IrBindingStack,
