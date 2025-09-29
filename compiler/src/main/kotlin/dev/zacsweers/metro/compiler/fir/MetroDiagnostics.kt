@@ -27,6 +27,8 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.GRAPH_DEPENDENCY_CYCLE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INJECTED_CLASSES_MUST_BE_VISIBLE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDERS_OF_LAZY_CANNOT_BE_ACCESSORS
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.LOCAL_CLASSES_CANNOT_BE_INJECTED
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MAP_KEY_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MAP_KEY_TYPE_PARAM_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MEMBERS_INJECT_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MEMBERS_INJECT_RETURN_TYPE_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MEMBERS_INJECT_STATUS_ERROR
@@ -55,6 +57,7 @@ import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactoryToRendererMap
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticRenderers.TO_STRING
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticsContainer
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.DECLARATION_RETURN_TYPE
+import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.DECLARATION_SIGNATURE
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.MODALITY_MODIFIER
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.NAME_IDENTIFIER
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.OVERRIDE_MODIFIER
@@ -112,6 +115,8 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val AS_CONTRIBUTION_ERROR by error1<String>(NAME_IDENTIFIER)
   val MULTIBINDS_ERROR by error1<String>(NAME_IDENTIFIER)
   val MULTIBINDS_OVERRIDE_ERROR by error1<String>(OVERRIDE_MODIFIER)
+  val MAP_KEY_ERROR by error1<String>(NAME_IDENTIFIER)
+  val MAP_KEY_TYPE_PARAM_ERROR by error1<String>(TYPE_PARAMETERS_LIST)
   val MEMBERS_INJECT_ERROR by error1<String>(NAME_IDENTIFIER)
   val MEMBERS_INJECT_STATUS_ERROR by error1<String>(MODALITY_MODIFIER)
   val MEMBERS_INJECT_WARNING by warning1<String>(NAME_IDENTIFIER)
@@ -206,6 +211,8 @@ private object FirMetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(BINDS_ERROR, "{0}", STRING)
         put(MULTIBINDS_ERROR, "{0}", STRING)
         put(MULTIBINDS_OVERRIDE_ERROR, "{0}", STRING)
+        put(MAP_KEY_ERROR, "{0}", STRING)
+        put(MAP_KEY_TYPE_PARAM_ERROR, "{0}", STRING)
         put(PROVIDES_COULD_BE_BINDS, "{0}", STRING)
         put(PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_ERROR, "{0}", STRING)
         put(PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_WARNING, "{0}", STRING)

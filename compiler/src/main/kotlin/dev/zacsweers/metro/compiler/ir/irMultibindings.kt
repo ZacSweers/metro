@@ -102,14 +102,10 @@ internal fun shouldUnwrapMapKeyValues(mapKey: IrAnnotation): Boolean {
 context(context: IrMetroContext)
 internal fun shouldUnwrapMapKeyValues(mapKey: IrConstructorCall): Boolean {
   val mapKeyMapKeyAnnotation = mapKey.annotationClass.explicitMapKeyAnnotation()!!.ir
-  // TODO FIR check valid MapKey
-  //  - single arg
-  //  - no generics
   val unwrapValue = mapKeyMapKeyAnnotation.getSingleConstBooleanArgumentOrNull() != false
   return unwrapValue
 }
 
-// TODO this is probably not robust enough
 context(context: IrMetroContext)
 internal fun mapKeyType(mapKey: IrAnnotation): IrType {
   val unwrapValues = shouldUnwrapMapKeyValues(mapKey)

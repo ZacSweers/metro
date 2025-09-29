@@ -207,6 +207,7 @@ internal class Symbols(
     val replaces = StringNames.REPLACES.asName()
     val subcomponents = "subcomponents".asName()
     val scope = StringNames.SCOPE.asName()
+    val unwrapValue = "unwrapValue".asName()
 
     val metroNames = setOf(MetroFactory, MetroGraph, MetroImpl, MetroMembersInjector)
   }
