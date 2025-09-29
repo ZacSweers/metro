@@ -1733,6 +1733,9 @@
 <li><strong>New</strong>: Report more IR errors up to a maximum. The default is <code>20</code>, but is configurable via the <code>maxIrErrors</code> Gradle DSL option. If you want to restore the previous &ldquo;fail-fast&rdquo; behavior, you can set this value to <code>1</code>.</li>
 <li><strong>Behavior change</strong>: Assisted-inject types can only be directly exposed on a graph if qualified.</li>
 <li><strong>Enhancement</strong>: Add diagnostic for directly injecting unqualified assisted-injected classes rather than using their factories.</li>
+<li><strong>Enhancement</strong>: Add diagnostic mixing <code>Provider</code> and <code>Lazy</code> types for <code>Provider&lt;Lazy&lt;T&gt;&gt;</code> injections.</li>
+<li><strong>Enhancement</strong>: Add diagnostics for custom map keys.</li>
+<li><strong>Enhancement</strong>: Fully allow exposing <code>Provider&lt;Lazy&lt;T&gt;&gt;</code> accessor types.</li>
 <li><strong>Fix</strong>: Avoid obscure <code>UnsupportedOperationException</code> failures when reporting missing bindings.</li>
 </ul>
 <h2 id="068">0.6.8<a class="headerlink" href="#068" title="Permanent link">&para;</a></h2>
