@@ -1,5 +1,7 @@
 package dev.zacsweers.metro.compiler.fir
 
+import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.graph.WrappedType
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
@@ -12,7 +14,6 @@ import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.classLikeLookupTagIfAny
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
-
 
 /**
  * Validates that a type is not a lazy-wrapped assisted factory or other disallowed injection site
@@ -33,20 +34,9 @@ internal fun validateInjectionSiteType(
   val contextKey = type.asFirContextualTypeKey(session, qualifier, false)
 
   if (contextKey.isWrappedInLazy) {
-    val canonicalType = contextKey.typeKey.type
-    val canonicalClass = canonicalType.toClassSymbol(session)
-
-    if (
-      canonicalClass != null &&
-      canonicalClass.isAnnotatedWithAny(session, session.classIds.assistedFactoryAnnotations)
-    ) {
-      reporter.reportOn(
-        typeRef.source ?: source,
-        MetroDiagnostics.ASSISTED_FACTORIES_CANNOT_BE_LAZY,
-        canonicalClass.name.asString(),
-        canonicalClass.classId.asFqNameString(),
-      )
-    }
+    checkLazyAssistedFactory(session, contextKey, typeRef, source)
+  } else if (contextKey.isLazyWrappedInProvider) {
+    checkProviderOfLazy(contextKey, typeRef, source)
   }
 
   // Check if we're directly injecting a qualifier type
@@ -59,11 +49,13 @@ internal fun validateInjectionSiteType(
       val nestedFactory =
         clazz.nestedClasses().find {
           it.isAnnotatedWithAny(session, session.classIds.assistedFactoryAnnotations)
-        } ?: session.firProvider.getFirClassifierContainerFile(clazz.classId)
-          .declarations
-          .filterIsInstance<FirClass>()
-          .find { it.isAnnotatedWithAny(session, session.classIds.assistedFactoryAnnotations) }
-          ?.symbol
+        }
+          ?: session.firProvider
+            .getFirClassifierContainerFile(clazz.classId)
+            .declarations
+            .filterIsInstance<FirClass>()
+            .find { it.isAnnotatedWithAny(session, session.classIds.assistedFactoryAnnotations) }
+            ?.symbol
 
       val message = buildString {
         val fqName = clazz.classId.asFqNameString()
@@ -90,4 +82,49 @@ internal fun validateInjectionSiteType(
   // Future injection site checks can be added here
 
   return false
+}
+
+context(context: CheckerContext, reporter: DiagnosticReporter)
+private fun checkLazyAssistedFactory(
+  session: FirSession,
+  contextKey: FirContextualTypeKey,
+  typeRef: FirTypeRef,
+  source: KtSourceElement?,
+) {
+  val canonicalType = contextKey.typeKey.type
+  val canonicalClass = canonicalType.toClassSymbol(session)
+
+  if (
+    canonicalClass != null &&
+      canonicalClass.isAnnotatedWithAny(session, session.classIds.assistedFactoryAnnotations)
+  ) {
+    reporter.reportOn(
+      typeRef.source ?: source,
+      MetroDiagnostics.ASSISTED_FACTORIES_CANNOT_BE_LAZY,
+      canonicalClass.name.asString(),
+      canonicalClass.classId.asFqNameString(),
+    )
+  }
+}
+
+context(context: CheckerContext, reporter: DiagnosticReporter)
+private fun checkProviderOfLazy(
+  contextKey: FirContextualTypeKey,
+  typeRef: FirTypeRef,
+  source: KtSourceElement?,
+) {
+  // Check if this is a non-metro provider + kotlin lazy. We only support either all dagger or all
+  // metro
+  val providerType = contextKey.wrappedType as WrappedType.Provider
+  val lazyType = providerType.innerType as WrappedType.Lazy
+  val providerIsMetro = providerType.providerType == Symbols.ClassIds.metroProvider
+  val lazyIsStdLib = lazyType.lazyType == Symbols.ClassIds.Lazy
+  if (!providerIsMetro || !lazyIsStdLib) {
+    reporter.reportOn(
+      typeRef.source ?: source,
+      MetroDiagnostics.PROVIDERS_OF_LAZY_MUST_BE_METRO_ONLY,
+      providerType.providerType.asString(),
+      lazyType.lazyType.asString(),
+    )
+  }
 }

@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.BINDING_CONTAINER_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.BINDS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CANNOT_HAVE_INJECT_IN_MULTIPLE_TARGETS
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CANNOT_HAVE_MULTIPLE_INJECTED_CONSTRUCTORS
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDERS_OF_LAZY_MUST_BE_METRO_ONLY
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CREATE_GRAPH_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DAGGER_REUSABLE_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DEPENDENCY_GRAPH_ERROR
@@ -88,6 +89,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val ONLY_FINAL_AND_OPEN_CLASSES_CAN_BE_INJECTED by error0(MODALITY_MODIFIER)
   val LOCAL_CLASSES_CANNOT_BE_INJECTED by error0(NAME_IDENTIFIER)
   val INJECTED_CLASSES_MUST_BE_VISIBLE by error1<String>(VISIBILITY_MODIFIER)
+  val PROVIDERS_OF_LAZY_MUST_BE_METRO_ONLY by error2<String, String>(NAME_IDENTIFIER)
 
   // Assisted factory/inject errors
   val ASSISTED_INJECTION_ERROR by error1<String>(NAME_IDENTIFIER)
@@ -185,6 +187,7 @@ private object FirMetroErrorMessages : BaseDiagnosticRendererFactory() {
           "Only final and open classes be annotated with @Inject or have @Inject-annotated constructors.",
         )
         put(INJECTED_CLASSES_MUST_BE_VISIBLE, "Injected classes must be {0}.", STRING)
+        put(PROVIDERS_OF_LAZY_MUST_BE_METRO_ONLY, "Cannot mix intrinsic types across libraries for Provider<Lazy<T>> types. They must be dev.zacsweers.metro.Provider and kotlin.Lazy but found {0} and {1}.", STRING, STRING)
         put(ASSISTED_INJECTION_ERROR, "{0}", STRING)
         put(ASSISTED_INJECTION_WARNING, "{0}", STRING)
         put(PROVIDES_ERROR, "{0}", STRING)

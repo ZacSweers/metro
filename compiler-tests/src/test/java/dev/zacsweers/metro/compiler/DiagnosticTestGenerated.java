@@ -296,6 +296,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("CannotMixProviderOfLazyTypes.kt")
+    public void testCannotMixProviderOfLazyTypes() {
+      runTest("compiler-tests/src/test/data/diagnostic/inject/CannotMixProviderOfLazyTypes.kt");
+    }
+
+    @Test
     @TestMetadata("SuggestInjectClassOnSingleContructor.kt")
     public void testSuggestInjectClassOnSingleContructor() {
       runTest("compiler-tests/src/test/data/diagnostic/inject/SuggestInjectClassOnSingleContructor.kt");

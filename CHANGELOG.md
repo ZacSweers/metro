@@ -7,6 +7,7 @@ Changelog
 - **New**: Report more IR errors up to a maximum. The default is `20`, but is configurable via the `maxIrErrors` Gradle DSL option. If you want to restore the previous "fail-fast" behavior, you can set this value to `1`.
 - **Behavior change**: Assisted-inject types can only be directly exposed on a graph if qualified.
 - **Enhancement**: Add diagnostic for directly injecting unqualified assisted-injected classes rather than using their factories.
+- **Enhancement**: Add diagnostic mixing `Provider` and `Lazy` types for `Provider<Lazy<T>>` injections.
 - **Fix**: Avoid obscure `UnsupportedOperationException` failures when reporting missing bindings.
 
 0.6.8

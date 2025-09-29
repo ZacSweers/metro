@@ -556,7 +556,6 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
 
   return when {
     contextKey.isLazyWrappedInProvider -> {
-      // TODO FIR error if mixing non-metro provider and kotlin lazy
       // ProviderOfLazy.create(provider)
       irInvoke(
         dispatchReceiver = irGetObject(symbols.providerOfLazyCompanionObject),
