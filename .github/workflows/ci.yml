@@ -60,7 +60,7 @@ jobs:
             ${{ runner.os }}-konan-
 
       - name: Check root project
-        run: ./gradlew check --continue --quiet ${{ github.event_name == 'pull_request' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+        run: ./gradlew check --continue --quiet ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
       - name: (Fail-only) Upload reports
         if: failure()
