@@ -39,8 +39,6 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     get() = contextualTypeKey.typeKey
 
   val scope: IrAnnotation?
-  // TODO reconcile parametersByKey vs parameters in collectBindings
-  val parametersByKey: Map<IrTypeKey, Parameter>
   // Track the list of parameters, which may not have unique type keys
   val parameters: Parameters
   val nameHint: String
@@ -58,7 +56,8 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     // First check if we have the contributing file and line number
     return reportableDeclaration?.locationOrNull()?.render()
       // Or the fully-qualified contributing class name
-      ?: parametersByKey.entries.firstOrNull()?.key?.toString()
+      // TODO is this right
+      ?: parameters.allParameters.firstOrNull()?.typeKey?.toString()
       // Or print the full set of info we know about the binding
       ?: buildString {
         val binding = this@IrBinding
@@ -92,10 +91,6 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
   ) : IrBinding, BindingWithAnnotations, InjectedClassBinding<ConstructorInjected> {
     override val parameters: Parameters = classFactory.targetFunctionParameters
 
-    override val parametersByKey: Map<IrTypeKey, Parameter> by unsafeLazy {
-      parameters.nonDispatchParameters.associateBy { it.typeKey }
-    }
-
     val isAssisted by unsafeLazy { parameters.regularParameters.any { it.isAssisted } }
 
     override val dependencies: List<IrContextualTypeKey> by unsafeLazy {
@@ -109,7 +104,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val nameHint: String = type.name.asString()
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey.create(typeKey)
 
-    override val reportableDeclaration: IrDeclarationWithName?
+    override val reportableDeclaration: IrDeclarationWithName
       get() = type
 
     fun parameterFor(typeKey: IrTypeKey) =
@@ -142,12 +137,11 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val dependencies: List<IrContextualTypeKey> = emptyList()
     override val scope: IrAnnotation? = null
     override val parameters: Parameters = Parameters.empty()
-    override val parametersByKey: Map<IrTypeKey, Parameter> = emptyMap()
 
     override val nameHint: String = type.name.asString()
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey.create(typeKey)
 
-    override val reportableDeclaration: IrDeclarationWithName?
+    override val reportableDeclaration: IrDeclarationWithName
       get() = type
 
     override fun toString() = buildString {
@@ -175,9 +169,6 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
       parameters.allParameters.map { it.contextualTypeKey }
     }
 
-    override val parametersByKey: Map<IrTypeKey, Parameter> =
-      parameters.nonDispatchParameters.associateBy { it.typeKey }
-
     override val scope: IrAnnotation?
       get() = annotations.scope
 
@@ -199,7 +190,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
 
     override val nameHint: String = providerFactory.callableId.callableName.asString()
 
-    override val reportableDeclaration: IrDeclarationWithName?
+    override val reportableDeclaration: IrDeclarationWithName
       get() = providerFactory.function
 
     fun parameterFor(typeKey: IrTypeKey): IrValueParameter {
@@ -257,8 +248,6 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     }
 
     override val scope: IrAnnotation? = null
-    override val parametersByKey: Map<IrTypeKey, Parameter> =
-      parameters.nonDispatchParameters.associateBy { it.typeKey }
     override val dependencies: List<IrContextualTypeKey> =
       listOf(IrContextualTypeKey.create(aliasedType))
     override val nameHint: String = ir?.name?.asString() ?: typeKey.type.rawType().name.asString()
@@ -302,7 +291,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
           }
         }
       }
-      return super<StaticBinding>.renderLocationDiagnostic()
+      return super.renderLocationDiagnostic()
     }
 
     override fun toString() = buildString {
@@ -342,11 +331,10 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
   ) : IrBinding, BindingWithAnnotations, InjectedClassBinding<Assisted> {
     // Dependencies are handled by the target class
     override val dependencies: List<IrContextualTypeKey> = listOf(target)
-    override val parametersByKey: Map<IrTypeKey, Parameter> = emptyMap()
     override val nameHint: String = type.name.asString()
     override val scope: IrAnnotation? = null
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
-    override val reportableDeclaration: IrDeclarationWithName?
+    override val reportableDeclaration: IrDeclarationWithName
       get() = type
 
     override val isImplicitlyDeferrable: Boolean = true
@@ -378,7 +366,6 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
 
     override val dependencies: List<IrContextualTypeKey> = emptyList()
     override val scope: IrAnnotation? = null
-    override val parametersByKey: Map<IrTypeKey, Parameter> = emptyMap()
     override val parameters: Parameters = Parameters.empty()
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
   }
@@ -389,7 +376,6 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val nameHint: String
       get() = reportCompilerBug("Should never be called")
 
-    override val parametersByKey: Map<IrTypeKey, Parameter> = emptyMap()
     override val parameters: Parameters = Parameters.empty()
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
 
@@ -428,7 +414,6 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
         }
       }
     }
-    override val parametersByKey: Map<IrTypeKey, Parameter> = emptyMap()
     override val parameters: Parameters = Parameters.empty()
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
 
@@ -471,7 +456,6 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
   ) : IrBinding {
     override val scope: IrAnnotation? = null
     override val dependencies by unsafeLazy { sourceBindings.map { IrContextualTypeKey(it) } }
-    override val parametersByKey: Map<IrTypeKey, Parameter> = emptyMap()
     override val parameters: Parameters = Parameters.empty()
 
     override val nameHint: String
@@ -564,9 +548,6 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
         .filterNot { it.isAssisted }
         .map { it.contextualTypeKey }
 
-    override val parametersByKey: Map<IrTypeKey, Parameter> =
-      parameters.nonDispatchParameters.associateBy { it.typeKey }
-
     override val scope: IrAnnotation? = null
 
     override val nameHint: String = "${typeKey.type.rawType().name}MembersInjector"
@@ -587,7 +568,6 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val reportableDeclaration: IrDeclarationWithName = accessor
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
     override val parameters: Parameters = Parameters.empty()
-    override val parametersByKey: Map<IrTypeKey, Parameter> = emptyMap()
 
     // The scope field always returns null for GraphExtension
     // Use shouldBeScoped to check if this binding needs to be scoped
@@ -618,7 +598,6 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val reportableDeclaration: IrDeclarationWithName = accessor
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
     override val parameters: Parameters = Parameters.empty()
-    override val parametersByKey: Map<IrTypeKey, Parameter> = emptyMap()
     override val scope: IrAnnotation? = null
     override val nameHint: String = "${typeKey.type.rawType().name.asString()}Factory"
 

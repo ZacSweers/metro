@@ -670,7 +670,7 @@ internal class IrBindingGraph(
         val dependentBinding = bindings[dependentKey] ?: continue
         if (dependentBinding !is IrBinding.Assisted) {
           reportInvalidBinding(
-            dependentBinding.parametersByKey[binding.typeKey]?.ir?.takeIf {
+            dependentBinding.parameters.allParameters.find { it.typeKey == binding.typeKey }?.ir?.takeIf {
               val location = it.locationOrNull() ?: return@takeIf false
               location.line != 0 || location.column != 0
             } ?: dependentBinding.reportableDeclaration
@@ -758,18 +758,11 @@ internal class IrBindingGraph(
       appendLine("├─ Aliased type: ${binding.aliasedType.render(short)}")
     }
 
-    if (binding.parametersByKey.isNotEmpty()) {
-      appendLine("├─ Dependencies:")
-      binding.parametersByKey.forEach { (depKey, param) ->
-        appendLine("│  ├─ ${depKey.render(short)}")
-        appendLine("│  │  └─ Parameter: ${param.name} (${param.contextualTypeKey.render(short)})")
-      }
-    }
-
     if (binding.parameters.allParameters.isNotEmpty()) {
-      appendLine("├─ Parameters:")
+      appendLine("├─ Dependencies:")
       binding.parameters.allParameters.forEach { param ->
-        appendLine("│  └─ ${param.name}: ${param.contextualTypeKey.render(short)}")
+        appendLine("│  ├─ ${param.typeKey.render(short)}")
+        appendLine("│  │  └─ Parameter: ${param.name} (${param.contextualTypeKey.render(short)})")
       }
     }
 
