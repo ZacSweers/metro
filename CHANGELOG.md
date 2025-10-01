@@ -10,6 +10,7 @@ Changelog
 - **Enhancement**: Add diagnostic mixing `Provider` and `Lazy` types for `Provider<Lazy<T>>` injections.
 - **Enhancement**: Add diagnostics for custom map keys.
 - **Enhancement**: Fully allow exposing `Provider<Lazy<T>>` accessor types.
+- **Enhancement**: Significantly improve duplicate binding error message rendering.
 - **Fix**: Avoid obscure `UnsupportedOperationException` failures when reporting missing bindings.
 
 0.6.8
