@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
+import dev.zacsweers.metro.compiler.appendLineWithUnderlinedContent
 import dev.zacsweers.metro.compiler.ir.appendBindingStack
 import dev.zacsweers.metro.compiler.ir.appendBindingStackEntries
 import dev.zacsweers.metro.compiler.ir.withEntry
@@ -373,27 +374,35 @@ internal open class MutableBindingGraph<
       bindingStack,
     ) {
       if (existing === duplicate) {
-        appendLine("├─ Bindings are the same: $existing")
+        appendLine()
+        appendLine("(Hint) Bindings are the same")
       } else if (existing == duplicate) {
-        appendLine("├─ Bindings are equal: $existing")
+        appendLine()
+        appendLine("(Hint) Bindings are equal")
       }
     }
   }
 
   fun reportDuplicateBinding(
     key: TypeKey,
-    location1: String,
-    location2: String,
+    location1: LocationDiagnostic,
+    location2: LocationDiagnostic,
     bindingStack: BindingStack,
     extraContent: StringBuilder.() -> Unit = {},
   ) {
     val message = buildString {
       appendLine(
-        "[Metro/DuplicateBinding] Duplicate binding for ${key.render(short = false, includeQualifier = true)}"
+        "[Metro/DuplicateBinding] Multiple bindings found for ${key.render(short = false, includeQualifier = true)}"
       )
-      // TODO include a binding "type" key? i.e. @Binds
-      appendLine("├─ Binding 1: $location1")
-      appendLine("├─ Binding 2: $location2")
+      appendLine()
+      appendLine("  ${location1.location}")
+      location1.description?.let {
+        appendLine(it.prependIndent("    "))
+      }
+      appendLine("  ${location2.location}")
+      location2.description?.let {
+        appendLine(it.prependIndent("    "))
+      }
       extraContent()
       appendBindingStack(bindingStack)
     }

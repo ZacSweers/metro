@@ -181,3 +181,12 @@ internal fun ClassId.scopeHintFunctionName(): Name = joinSimpleNames().shortClas
 internal fun reportCompilerBug(message: String): Nothing {
   error("${message.suffixIfNot(".")} $REPORT_METRO_MESSAGE ")
 }
+
+internal fun StringBuilder.appendLineWithUnderlinedContent(content: String, target: String = content, char: Char = '~') {
+  appendLine(content)
+  val lines = lines()
+  val index = lines[lines.lastIndex - 1].lastIndexOf(target)
+  if (index == -1) return
+  repeat(index) { append(' ') }
+  repeat(target.length) { append(char) }
+}

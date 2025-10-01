@@ -35,9 +35,13 @@ internal class IrAnnotation(val ir: IrConstructorCall) : Comparable<IrAnnotation
 
   override fun compareTo(other: IrAnnotation): Int = cachedToString.compareTo(other.cachedToString)
 
-  fun render(short: Boolean = true): String {
+  fun render(short: Boolean = true, useSiteTarget: String? = null): String {
     return buildString {
       append('@')
+      useSiteTarget?.let {
+        append(it)
+        append(":")
+      }
       renderAsAnnotation(ir, short)
     }
   }

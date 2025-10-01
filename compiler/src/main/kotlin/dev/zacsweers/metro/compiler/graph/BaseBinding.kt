@@ -23,5 +23,11 @@ internal interface BaseBinding<
   val isImplicitlyDeferrable: Boolean
     get() = contextualTypeKey.isDeferrable
 
-  fun renderLocationDiagnostic(): String
+  fun renderLocationDiagnostic(short: Boolean = false): LocationDiagnostic
+  fun renderDescriptionDiagnostic(short: Boolean = false, underlineTypeKey: Boolean = false): String
 }
+
+internal data class LocationDiagnostic(
+  val location: String,
+  val description: String?,
+)

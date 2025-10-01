@@ -44,25 +44,25 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
 
 @Poko
 internal class MetroAnnotations<T>(
-  val isDependencyGraph: Boolean,
-  val isDependencyGraphFactory: Boolean,
-  val isInject: Boolean,
-  val isProvides: Boolean,
-  val isBinds: Boolean,
-  val isBindsInstance: Boolean,
-  val isIntoSet: Boolean,
-  val isElementsIntoSet: Boolean,
-  val isIntoMap: Boolean,
-  val isAssistedFactory: Boolean,
-  val isComposable: Boolean,
-  val multibinds: T?,
-  val assisted: T?,
-  val scope: T?,
-  val qualifier: T?,
-  val mapKeys: Set<T>,
+  val isDependencyGraph: Boolean = false,
+  val isDependencyGraphFactory: Boolean = false,
+  val isInject: Boolean = false,
+  val isProvides: Boolean = false,
+  val isBinds: Boolean = false,
+  val isBindsInstance: Boolean = false,
+  val isIntoSet: Boolean = false,
+  val isElementsIntoSet: Boolean = false,
+  val isIntoMap: Boolean = false,
+  val isAssistedFactory: Boolean = false,
+  val isComposable: Boolean = false,
+  val multibinds: T? = null,
+  val assisted: T? = null,
+  val scope: T? = null,
+  val qualifier: T? = null,
+  val mapKeys: Set<T> = emptySet(),
   // An IrAnnotation or FirAnnotation
   // TODO the lack of a type here is unfortunate
-  @Poko.Skip val symbol: Any?,
+  @Poko.Skip val symbol: Any? = null,
 ) {
   val isMultibinds: Boolean
     get() = multibinds != null
