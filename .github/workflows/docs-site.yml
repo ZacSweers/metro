@@ -44,7 +44,7 @@ jobs:
           java-version-file: .github/workflows/.java-version
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v5
         with:
           # Only save Gradle User Home state for builds on the 'main' branch.
           # Builds on other branches will only read existing entries from the cache.
@@ -171,7 +171,7 @@ jobs:
           java-version-file: .github/workflows/.java-version
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v5
         with:
           cache-read-only: true
           gradle-home-cache-strict-match: true
