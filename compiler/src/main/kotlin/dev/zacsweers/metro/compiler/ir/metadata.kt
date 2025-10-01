@@ -31,7 +31,7 @@ internal fun DependencyGraphNode.toProto(
       .sortedBy { it.first.ir.name.asString() }
       .onEachIndexed { index, (_, contextKey) ->
         val isMultibindingAccessor =
-          bindingGraph.requireBinding(contextKey, IrBindingStack.empty()) is IrBinding.Multibinding
+          bindingGraph.requireBinding(contextKey) is IrBinding.Multibinding
         if (isMultibindingAccessor) {
           multibindingAccessors = multibindingAccessors or (1 shl index)
         }
@@ -66,7 +66,7 @@ private fun createGraphProto(
   return DependencyGraphProto(
     is_graph = isGraph,
     provider_factory_classes =
-      providerFactories.map { (_, factory) -> factory.clazz.classIdOrFail.protoString }.sorted(),
+      providerFactories.map { (_, factory) -> factory.factoryClass.classIdOrFail.protoString }.sorted(),
     accessor_callable_names = accessorNames.sorted(),
     multibinding_accessor_indices = multibindingAccessorIndices,
     included_binding_containers = includedBindingContainers.sorted(),

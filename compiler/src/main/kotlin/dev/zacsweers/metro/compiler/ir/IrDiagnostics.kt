@@ -53,10 +53,13 @@ internal fun <A : Any> IrMetroContext.reportCompat(
       )
       return
     }
-    messageCollector.report(CompilerMessageSeverity.ERROR, a.toString(), irDeclaration?.locationOrNull())
+    val severity = AnalyzerWithCompilerReport.convertSeverity(factory.severity)
+    messageCollector.report(severity, a.toString(), irDeclaration?.locationOrNull())
   } else {
     diagnosticReporter.at(irDeclaration).report(factory, a)
   }
+  // Log an error to MetroContext
+  onErrorReported()
 }
 
 

@@ -2546,93 +2546,6 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     }
   }
 
-  // TODO
-  //  providing a Map<String, Int> should not make it possible to get a
-  //  Map<String, Provider<Int>> later
-  // TODO good candidate for a box test
-  @Test
-  fun `multibindings - map provider - different wrapping types`() {
-    compile(
-      source(
-        """
-          @DependencyGraph
-          interface ExampleGraph {
-            @Provides
-            @IntoMap
-            @StringKey("a")
-            fun provideEntryA(): Int = 1
-
-            @Provides
-            @IntoMap
-            @StringKey("b")
-            fun provideEntryB(): Int = 2
-
-            @Provides
-            @IntoMap
-            @StringKey("c")
-            fun provideEntryC(): Int = 3
-
-            // Inject it with different formats
-            val directMap: Map<String, Int>
-            val providerValueMap: Map<String, Provider<Int>>
-            val providerMap: Provider<Map<String, Int>>
-            val providerOfProviderValueMap: Provider<Map<String, Provider<Int>>>
-            val lazyOfProviderValueMap: Lazy<Map<String, Provider<Int>>>
-            val providerOfLazyOfProviderValueMap: Provider<Lazy<Map<String, Provider<Int>>>>
-
-            // Class that injects the map with yet another format
-            val exampleClass: ExampleClass
-          }
-
-          @Inject
-          class ExampleClass(val map: Map<String, Provider<Int>>)
-        """
-          .trimIndent()
-      )
-    ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
-
-      // Test direct map
-      val directMap = graph.callProperty<Map<String, Int>>("directMap")
-      assertThat(directMap).containsExactly("a", 1, "b", 2, "c", 3)
-
-      // Test map with provider values
-      val providerValueMap = graph.callProperty<Map<String, Provider<Int>>>("providerValueMap")
-      assertThat(providerValueMap.mapValues { (_, value) -> value() })
-        .containsExactly("a", 1, "b", 2, "c", 3)
-
-      // Test provider of map
-      val providerMap = graph.callProperty<Provider<Map<String, Int>>>("providerMap")
-      assertThat(providerMap()).containsExactly("a", 1, "b", 2, "c", 3)
-
-      // Test provider of map with provider values
-      val providerOfProviderValueMap =
-        graph.callProperty<Provider<Map<String, Provider<Int>>>>("providerOfProviderValueMap")
-      assertThat(providerOfProviderValueMap().mapValues { (_, value) -> value() })
-        .containsExactly("a", 1, "b", 2, "c", 3)
-
-      // Test lazy of map with provider values
-      val lazyOfProviderValueMap =
-        graph.callProperty<Lazy<Map<String, Provider<Int>>>>("lazyOfProviderValueMap")
-      assertThat(lazyOfProviderValueMap.value.mapValues { (_, value) -> value() })
-        .containsExactly("a", 1, "b", 2, "c", 3)
-
-      // Test provider of lazy map with provider values
-      val providerOfLazyOfProviderValueMap =
-        graph.callProperty<Provider<Lazy<Map<String, Provider<Int>>>>>(
-          "providerOfLazyOfProviderValueMap"
-        )
-      assertThat(providerOfLazyOfProviderValueMap().value.mapValues { (_, value) -> value() })
-        .containsExactly("a", 1, "b", 2, "c", 3)
-
-      // Test injected class
-      val exampleClass = graph.callProperty<Any>("exampleClass")
-      val injectedMap = exampleClass.callProperty<Map<String, Provider<Int>>>("map")
-      assertThat(injectedMap.mapValues { (_, value) -> value() })
-        .containsExactly("a", 1, "b", 2, "c", 3)
-    }
-  }
-
   // Regression test
   @Test
   fun `scoped provider with declared accessor still works`() {
@@ -2857,22 +2770,42 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `providers of lazy are not valid graph accessors`() {
+  fun `qualified accessors are valid when narrowing`() {
     compile(
       source(
         """
-          interface Accessors {
-            val intLazyProvider: Provider<Lazy<Int>>
+          interface Parent1 {
+            val prop: String
+            fun function(): String
           }
 
-          @DependencyGraph
-          interface ExampleGraph {
-            val int: Int
+          @DependencyGraph interface AppGraph : Parent1 {
+            @Named("qualified") override val prop: String
+            @Named("qualified") override fun function(): String
 
-            @DependencyGraph.Factory
-            interface Factory {
-              fun create(@Includes accessors: Accessors): ExampleGraph
-            }
+            @Named("qualified") @Provides fun provideString(): String = "hello"
+          }
+        """
+          .trimIndent()
+      ),
+    )
+  }
+
+  @Test
+  fun `qualified accessors are invalid when widening`() {
+    compile(
+      source(
+        """
+          interface Parent1 {
+            @Named("qualified") val prop: String
+            @Named("qualified") fun function(): String
+          }
+
+          @DependencyGraph interface AppGraph : Parent1 {
+            override val prop: String
+            override fun function(): String
+
+            @Named("qualified") @Provides fun provideString(): String = "hello"
           }
         """
           .trimIndent()
@@ -2880,8 +2813,16 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        """
-          e: Accessors.kt:7:7 Provider<Lazy<T>> accessors are not supported.
+        $$$"""
+          e: Parent1.kt:11:1 [Metro/QualifierOverrideMismatch] Overridden accessor property 'test.AppGraph.$$MetroGraph.prop' must have the same qualifier annotations as the overridden accessor property. However, the final accessor property qualifier is 'null' but overridden symbol test.Parent1.prop has '@Named("qualified")'.'
+          e: Parent1.kt:11:1 [Metro/QualifierOverrideMismatch] Overridden accessor function 'test.AppGraph.$$MetroGraph.function' must have the same qualifier annotations as the overridden accessor function. However, the final accessor function qualifier is 'null' but overridden symbol test.Parent1.function has '@Named("qualified")'.'
+          e: Parent1.kt:13:16 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+
+              kotlin.String is requested at
+                  [test.AppGraph] test.AppGraph#function()
+
+          Similar bindings:
+            - @Named("qualified") String (Different qualifier). Type: Provided. Source: Parent1.kt:15:3
         """
           .trimIndent()
       )
@@ -2908,8 +2849,13 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        """
-          e: Parent1.kt:14:1 [Metro/QualifierOverrideMismatch] Overridden accessor property 'test.AppGraph.$${'$'}MetroGraph.string' must have the same qualifier annotations as the overridden accessor property. However, the final accessor property qualifier is 'null' but overridden symbol test.Parent2.string has '@Named("qualified")'.'
+        $$$"""
+          e: Parent1.kt:11:27 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+
+              kotlin.String is requested at
+                  [test.AppGraph] test.AppGraph#string
+
+          e: Parent1.kt:14:1 [Metro/QualifierOverrideMismatch] Overridden accessor property 'test.AppGraph.$$MetroGraph.string' must have the same qualifier annotations as the overridden accessor property. However, the final accessor property qualifier is 'null' but overridden symbol test.Parent2.string has '@Named("qualified")'.'
         """
           .trimIndent()
       )
@@ -2936,8 +2882,13 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        """
-          e: Parent1.kt:14:1 [Metro/QualifierOverrideMismatch] Overridden accessor function 'test.AppGraph.$${'$'}MetroGraph.string' must have the same qualifier annotations as the overridden accessor function. However, the final accessor function qualifier is 'null' but overridden symbol test.Parent2.string has '@Named("qualified")'.'
+        $$$"""
+          e: Parent1.kt:11:27 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+
+              kotlin.String is requested at
+                  [test.AppGraph] test.AppGraph#string()
+
+          e: Parent1.kt:14:1 [Metro/QualifierOverrideMismatch] Overridden accessor function 'test.AppGraph.$$MetroGraph.string' must have the same qualifier annotations as the overridden accessor function. However, the final accessor function qualifier is 'null' but overridden symbol test.Parent2.string has '@Named("qualified")'.'
         """
           .trimIndent()
       )
@@ -2968,8 +2919,14 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        """
-          e: Thing.kt:18:1 [Metro/QualifierOverrideMismatch] Overridden injector function 'test.AppGraph.$${'$'}MetroGraph.injectThing' must have the same qualifier annotations as the overridden injector function. However, the final injector function qualifier is 'null' but overridden symbol test.Parent2.injectThing has '@Named("qualified")'.'
+        $$$"""
+          e: Thing.kt:18:1 [Metro/QualifierOverrideMismatch] Overridden injector function 'test.AppGraph.$$MetroGraph.injectThing' must have the same qualifier annotations as the overridden injector function. However, the final injector function qualifier is 'null' but overridden symbol test.Parent2.injectThing has '@Named("qualified")'.'
+          e: Thing.kt:18:28 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+
+              kotlin.String is injected at
+                  [test.AppGraph] test.AppGraph#injectThing()
+              dev.zacsweers.metro.MembersInjector<test.Thing> is requested at
+                  [test.AppGraph] test.AppGraph#injectThing()
         """
           .trimIndent()
       )

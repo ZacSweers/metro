@@ -5,7 +5,7 @@ package dev.zacsweers.metro.compiler.fir.checkers
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.directCallableSymbols
-import dev.zacsweers.metro.compiler.fir.findInjectConstructors
+import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isDependencyGraph
 import dev.zacsweers.metro.compiler.fir.isGraphFactory
@@ -44,7 +44,7 @@ internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
       return
 
     val isConstructorInjected by unsafeLazy {
-      declaration.symbol.findInjectConstructors(session, checkClass = true).firstOrNull() != null
+      declaration.symbol.findInjectLikeConstructors(session, checkClass = true).firstOrNull() != null
     }
 
     val isInClass = declaration.classKind == ClassKind.CLASS

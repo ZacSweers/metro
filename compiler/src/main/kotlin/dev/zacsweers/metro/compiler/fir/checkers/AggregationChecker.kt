@@ -7,7 +7,7 @@ import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.classIds
-import dev.zacsweers.metro.compiler.fir.findInjectConstructors
+import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isOrImplements
 import dev.zacsweers.metro.compiler.fir.mapKeyAnnotation
@@ -179,11 +179,10 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
     isMapBinding: Boolean,
     createBinding: (FirTypeKey, mapKey: MetroFirAnnotation?) -> T,
   ): Boolean {
-    val injectConstructor = declaration.symbol.findInjectConstructors(session).singleOrNull()
     val isAssistedFactory =
       declaration.symbol.isAnnotatedWithAny(session, session.classIds.assistedFactoryAnnotations)
     // Ensure the class is injected or an object. Objects are ok IFF they are not @ContributesTo
-    val isNotInjectedOrFactory = !isAssistedFactory && injectConstructor == null
+    val isNotInjectedOrFactory = !isAssistedFactory && declaration.symbol.findInjectLikeConstructors(session).singleOrNull() == null
     val isValidObject = declaration.classKind.isObject && kind != ContributionKind.CONTRIBUTES_TO
     if (isNotInjectedOrFactory && !isValidObject) {
       reporter.reportOn(

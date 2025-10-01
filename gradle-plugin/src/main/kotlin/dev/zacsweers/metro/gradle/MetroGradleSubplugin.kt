@@ -117,6 +117,7 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
     return project.provider {
       buildList {
         add(lazyOption("enabled", extension.enabled))
+        add(lazyOption("max-ir-errors-count", extension.maxIrErrors))
         add(lazyOption("debug", extension.debug))
         add(lazyOption("generate-assisted-factories", extension.generateAssistedFactories))
         add(
@@ -138,10 +139,17 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
             extension.enableFullBindingGraphValidation.orElse(extension.enableStrictValidation),
           )
         )
+        add(
+          lazyOption(
+            "enable-graph-impl-class-as-return-type",
+            extension.enableGraphImplClassAsReturnType.orElse(false),
+          )
+        )
         add(lazyOption("transform-providers-to-private", extension.transformProvidersToPrivate))
         add(lazyOption("shrink-unused-bindings", extension.shrinkUnusedBindings))
         add(lazyOption("chunk-field-inits", extension.chunkFieldInits))
         add(lazyOption("public-provider-severity", extension.publicProviderSeverity))
+        add(lazyOption("assisted-inject-deprecation-severity", extension.assistedInjectMigrationSeverity))
         add(
           lazyOption(
             "warn-on-inject-annotation-placement",
@@ -306,6 +314,10 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
 
 @JvmName("booleanPluginOptionOf")
 private fun lazyOption(key: String, value: Provider<Boolean>): SubpluginOption =
+  lazyOption(key, value.map { it.toString() })
+
+@JvmName("intPluginOptionOf")
+private fun lazyOption(key: String, value: Provider<Int>): SubpluginOption =
   lazyOption(key, value.map { it.toString() })
 
 @JvmName("enumPluginOptionOf")

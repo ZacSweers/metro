@@ -5,6 +5,7 @@ package dev.zacsweers.metro.test.integration
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
+import dev.zacsweers.metro.AssistedInject
 import dev.zacsweers.metro.Binds
 import dev.zacsweers.metro.ClassKey
 import dev.zacsweers.metro.DependencyGraph
@@ -395,7 +396,7 @@ class DependencyGraphProcessingTest {
       fun create(@Provides message: String): AssistedInjectGraph
     }
 
-    @Inject
+    @AssistedInject
     class ExampleClass(@Assisted val intValue: Int, val message: String) {
       @AssistedFactory
       fun interface Factory {
@@ -423,7 +424,7 @@ class DependencyGraphProcessingTest {
   interface AssistedInjectGraphWithCustomAssistedKeys {
     val factory: ExampleClass.Factory
 
-    @Inject
+    @AssistedInject
     class ExampleClass(@Assisted("1") val intValue1: Int, @Assisted("2") val intValue2: Int) {
       @AssistedFactory
       fun interface Factory {
@@ -444,7 +445,7 @@ class DependencyGraphProcessingTest {
   interface AssistedInjectGraphWithGenericFactorySupertype {
     val factory: ExampleClass.Factory
 
-    @Inject
+    @AssistedInject
     class ExampleClass(@Assisted val intValue: Int) {
       fun interface BaseFactory<T> {
         fun create(intValue: Int): T
@@ -469,7 +470,7 @@ class DependencyGraphProcessingTest {
   interface AssistedInjectGraphDiamondInheritance {
     val factory: ExampleClass.Factory
 
-    @Inject
+    @AssistedInject
     class ExampleClass(@Assisted val intValue: Int) {
       fun interface GrandParentBaseFactory<T> {
         fun create(intValue: Int): T
@@ -1141,7 +1142,7 @@ class DependencyGraphProcessingTest {
 
     @Inject @SingleIn(AppScope::class) class ExampleSingleton
 
-    @Inject
+    @AssistedInject
     class ExampleClass(@Assisted val intValue: Int, val singleton: ExampleSingleton) {
       @AssistedFactory
       fun interface Factory {

@@ -396,10 +396,14 @@ internal class DependencyGraphTransformer(
                   a = message,
                 )
               }
-              exitProcessing()
             }
           }
         }
+
+      if (result.hasErrors) {
+        // Return early, nothing we can do here
+        return result
+      }
 
       // Mark bindings from enclosing parents to ensure they're generated there
       // Only applicable in graph extensions

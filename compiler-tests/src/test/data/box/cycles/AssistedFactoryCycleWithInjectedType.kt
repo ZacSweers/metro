@@ -13,7 +13,7 @@ interface CycleGraph {
 @Inject
 class Foo(barFactory: Bar.Factory)
 
-@Inject
+@AssistedInject
 class Bar(
   @Assisted str: String,
   bazFactory: Baz.Factory,
@@ -24,7 +24,7 @@ class Bar(
   }
 }
 
-@Inject
+@AssistedInject
 class Baz(
   @Assisted str: String,
   foo: Foo,

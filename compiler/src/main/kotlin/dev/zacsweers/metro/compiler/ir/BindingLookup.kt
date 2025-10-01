@@ -228,7 +228,7 @@ internal class BindingLookup(
             appendBindingStack(stack)
           }
           context.reportCompat(irClass, MetroDiagnostics.METRO_ERROR, message)
-          exitProcessing()
+          return@getOrPut emptySet()
         }
 
         val binding =

@@ -23,6 +23,12 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     objects.property(Boolean::class.javaObjectType).convention(true)
 
   /**
+   * Maximum number of IR errors to report before exiting IR processing. Default is 20, must be > 0.
+   */
+  public val maxIrErrors: Property<Int> =
+    objects.property(Int::class.javaObjectType).convention(20)
+
+  /**
    * If enabled, the Metro compiler plugin will emit _extremely_ noisy debug logging.
    *
    * Optionally, you can specify a `metro.debug` gradle property to enable this globally.
@@ -81,7 +87,17 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
   public val enableFullBindingGraphValidation: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(false)
 
-  @Deprecated("Use enableFullBindingGraphValidation", ReplaceWith("enableFullBindingGraphValidation"))
+  /**
+   * If true changes the return type of generated Graph Factories from the declared interface type
+   * to the generated Metro graph type. This is helpful for Dagger/Anvil interop.
+   */
+  public val enableGraphImplClassAsReturnType: Property<Boolean> =
+    objects.property(Boolean::class.javaObjectType).convention(false)
+
+  @Deprecated(
+    "Use enableFullBindingGraphValidation",
+    ReplaceWith("enableFullBindingGraphValidation"),
+  )
   public val enableStrictValidation: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(false)
 
@@ -102,6 +118,14 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
    * provider callables. See the kdoc on `Provides` for more details.
    */
   public val publicProviderSeverity: Property<DiagnosticSeverity> =
+    objects.property(DiagnosticSeverity::class.javaObjectType).convention(DiagnosticSeverity.NONE)
+
+  /**
+   * Control diagnostic severity reporting of issues with the `@AssistedInject` migration. `NONE` is
+   * the future behavior, `WARN` is the current default. See the kdoc on `AssistedInject` for more
+   * details.
+   */
+  public val assistedInjectMigrationSeverity: Property<DiagnosticSeverity> =
     objects.property(DiagnosticSeverity::class.javaObjectType).convention(DiagnosticSeverity.NONE)
 
   /**

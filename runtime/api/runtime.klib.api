@@ -21,6 +21,10 @@ open annotation class dev.zacsweers.metro/AssistedFactory : kotlin/Annotation { 
     constructor <init>() // dev.zacsweers.metro/AssistedFactory.<init>|<init>(){}[0]
 }
 
+open annotation class dev.zacsweers.metro/AssistedInject : kotlin/Annotation { // dev.zacsweers.metro/AssistedInject|null[0]
+    constructor <init>() // dev.zacsweers.metro/AssistedInject.<init>|<init>(){}[0]
+}
+
 open annotation class dev.zacsweers.metro/BindingContainer : kotlin/Annotation { // dev.zacsweers.metro/BindingContainer|null[0]
     constructor <init>(kotlin/Array<kotlin.reflect/KClass<*>> = ...) // dev.zacsweers.metro/BindingContainer.<init>|<init>(kotlin.Array<kotlin.reflect.KClass<*>>){}[0]
 

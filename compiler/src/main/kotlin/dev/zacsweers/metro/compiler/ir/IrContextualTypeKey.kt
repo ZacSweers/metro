@@ -7,14 +7,19 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.BaseContextualTypeKey
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.classOrFail
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.types.typeWithArguments
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
+import org.jetbrains.kotlin.ir.util.copyAnnotations
+import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.render
 import org.jetbrains.kotlin.name.StandardClassIds
 
@@ -83,6 +88,7 @@ internal class IrContextualTypeKey(
       function: IrSimpleFunction,
       type: IrType = function.returnType,
       wrapInProvider: Boolean = false,
+      patchMutableCollections: Boolean = false,
     ): IrContextualTypeKey {
       val typeToConvert =
         if (wrapInProvider) {
@@ -96,6 +102,7 @@ internal class IrContextualTypeKey(
             ?: function.qualifierAnnotation()
         },
         false,
+        patchMutableCollections
       )
     }
 
@@ -104,6 +111,7 @@ internal class IrContextualTypeKey(
       type.asContextualTypeKey(
         qualifierAnnotation = with(context) { parameter.qualifierAnnotation() },
         hasDefault = parameter.defaultValue != null,
+        patchMutableCollections = false
       )
 
     fun create(
@@ -176,13 +184,14 @@ context(context: IrMetroContext)
 internal fun IrType.asContextualTypeKey(
   qualifierAnnotation: IrAnnotation?,
   hasDefault: Boolean,
+  patchMutableCollections: Boolean,
 ): IrContextualTypeKey {
   check(this is IrSimpleType) { "Unrecognized IrType '${javaClass}': ${render()}" }
 
   val declaredType = this
 
   // Analyze the type to determine its wrapped structure
-  val wrappedType = declaredType.asWrappedType()
+  val wrappedType = declaredType.asWrappedType(patchMutableCollections)
 
   val typeKey =
     IrTypeKey(
@@ -204,19 +213,19 @@ internal fun IrType.asContextualTypeKey(
 }
 
 context(context: IrMetroContext)
-private fun IrSimpleType.asWrappedType(): WrappedType<IrType> {
+private fun IrSimpleType.asWrappedType(patchMutableCollections: Boolean): WrappedType<IrType> {
   val rawClassId = rawTypeOrNull()?.classId
 
   // Check if this is a Map type
   if (rawClassId == StandardClassIds.Map && arguments.size == 2) {
-    val keyType = arguments[0].typeOrFail
-    val valueType = arguments[1].typeOrFail
+    val keyType = arguments[0]
+    val valueType = arguments[1]
 
     // Recursively analyze the value type
-    val valueWrappedType = valueType.expectAs<IrSimpleType>().asWrappedType()
+    val valueWrappedType = valueType.typeOrFail.expectAs<IrSimpleType>().asWrappedType(patchMutableCollections)
 
-    return WrappedType.Map(keyType, valueWrappedType) {
-      context.irBuiltIns.mapClass.typeWith(keyType, valueWrappedType.canonicalType())
+    return WrappedType.Map(keyType.typeOrFail, valueWrappedType) {
+      context.irBuiltIns.mapClass.typeWithArguments(listOf(keyType, valueWrappedType.canonicalType()))
     }
   }
 
@@ -225,7 +234,7 @@ private fun IrSimpleType.asWrappedType(): WrappedType<IrType> {
     val innerType = arguments[0].typeOrFail
 
     // Recursively analyze the inner type
-    val innerWrappedType = innerType.expectAs<IrSimpleType>().asWrappedType()
+    val innerWrappedType = innerType.expectAs<IrSimpleType>().asWrappedType(patchMutableCollections)
 
     return WrappedType.Provider(innerWrappedType, rawClassId!!)
   }
@@ -235,13 +244,13 @@ private fun IrSimpleType.asWrappedType(): WrappedType<IrType> {
     val innerType = arguments[0].typeOrFail
 
     // Recursively analyze the inner type
-    val innerWrappedType = innerType.expectAs<IrSimpleType>().asWrappedType()
+    val innerWrappedType = innerType.expectAs<IrSimpleType>().asWrappedType(patchMutableCollections)
 
     return WrappedType.Lazy(innerWrappedType, rawClassId!!)
   }
 
   // If it's not a special type, it's a canonical type
-  return WrappedType.Canonical(canonicalize())
+  return WrappedType.Canonical(canonicalize(patchMutableCollections, context))
 }
 
 context(context: IrMetroContext)

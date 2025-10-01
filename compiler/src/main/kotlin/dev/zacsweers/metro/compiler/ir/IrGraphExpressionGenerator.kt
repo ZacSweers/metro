@@ -132,22 +132,13 @@ private constructor(
       return when (binding) {
         is IrBinding.ConstructorInjected -> {
           // Example_Factory.create(...)
-          val factory = binding.classFactory
-
-          with(factory) {
-            invokeCreateExpression { createFunction ->
-              val remapper = createFunction.typeRemapperFor(binding.typeKey.type)
-              generateBindingArguments(
-                targetParams = createFunction.parameters(remapper = remapper),
-                function =
-                  createFunction.deepCopyWithSymbols(initialParent = createFunction.parent).also {
-                    it.parent = createFunction.parent
-                    it.remapTypes(remapper)
-                  },
-                binding = binding,
-                fieldInitKey = null,
-              )
-            }
+          binding.classFactory.invokeCreateExpression(binding.typeKey) { createFunction, parameters ->
+            generateBindingArguments(
+              targetParams = parameters,
+              function = createFunction,
+              binding = binding,
+              fieldInitKey = null,
+            )
           }
         }
 
@@ -157,7 +148,7 @@ private constructor(
 
         is IrBinding.Alias -> {
           // For binds functions, just use the backing type
-          val aliasedBinding = binding.aliasedBinding(bindingGraph, IrBindingStack.empty())
+          val aliasedBinding = binding.aliasedBinding(bindingGraph)
           check(aliasedBinding != binding) { "Aliased binding aliases itself" }
           return generateBindingCode(
             aliasedBinding,
@@ -167,34 +158,21 @@ private constructor(
         }
 
         is IrBinding.Provided -> {
-          val factoryClass =
-            bindingContainerTransformer.getOrLookupProviderFactory(binding)?.clazz
+          val providerFactory =
+            bindingContainerTransformer.getOrLookupProviderFactory(binding)
               ?: reportCompilerBug(
                 "No factory found for Provided binding ${binding.typeKey}. This is likely a bug in the Metro compiler, please report it to the issue tracker."
               )
 
           // Invoke its factory's create() function
-          val creatorClass =
-            if (factoryClass.isObject) {
-              factoryClass
-            } else {
-              factoryClass.companionObject()!!
-            }
-          val createFunction = creatorClass.requireSimpleFunction(Symbols.StringNames.CREATE)
-          // Must use the provider's params for IrTypeKey as that has qualifier
-          // annotations
-          val args =
+          providerFactory.invokeCreateExpression(binding.typeKey) { createFunction, params ->
             generateBindingArguments(
-              targetParams = binding.parameters,
-              function = createFunction.owner,
+              targetParams = params,
+              function = createFunction,
               binding = binding,
               fieldInitKey = fieldInitKey,
             )
-          irInvoke(
-            dispatchReceiver = irGetObject(creatorClass.symbol),
-            callee = createFunction,
-            args = args,
-          )
+          }
         }
 
         is IrBinding.Assisted -> {
@@ -202,7 +180,7 @@ private constructor(
           val factoryImpl = assistedFactoryTransformer.getOrGenerateImplClass(binding.type)
 
           val targetBinding =
-            bindingGraph.requireBinding(binding.target.typeKey, IrBindingStack.empty())
+            bindingGraph.requireBinding(binding.target.typeKey)
           val delegateFactoryProvider = generateBindingCode(targetBinding, accessType = accessType)
 
           with(factoryImpl) { invokeCreate(delegateFactoryProvider) }
@@ -301,6 +279,12 @@ private constructor(
               parentTracer,
             )
 
+          if (options.enableGraphImplClassAsReturnType) {
+            // This is probably not the right spot to change the return type, but the IrClass
+            // implementation is not exposed otherwise.
+            binding.accessor.returnType = extensionImpl.defaultType
+          }
+
           val ctor = extensionImpl.primaryConstructor!!
           val instanceExpression =
             irCallConstructor(ctor.symbol, node.sourceGraph.typeParameters.map { it.defaultType })
@@ -356,7 +340,6 @@ private constructor(
                   generateBindingCode(
                     bindingGraph.requireBinding(
                       parameters.regularParameters.single().typeKey,
-                      IrBindingStack.empty(),
                     ),
                     accessType = AccessType.INSTANCE,
                   )
@@ -395,15 +378,7 @@ private constructor(
                 typeHint = binding.typeKey.type,
               )
 
-            if (getterContextKey.isLazyWrappedInProvider) {
-              // TODO FIR this
-              reportCompat(
-                binding.getter,
-                MetroDiagnostics.METRO_ERROR,
-                "Provider<Lazy<T>> accessors are not supported.",
-              )
-              exitProcessing()
-            } else if (getterContextKey.isWrappedInProvider) {
+            if (getterContextKey.isWrappedInProvider) {
               // It's already a provider
               invokeGetter
             } else {
@@ -544,7 +519,7 @@ private constructor(
             ?: run {
               // Generate binding code for each param
               val paramBinding =
-                bindingGraph.requireBinding(contextualTypeKey, IrBindingStack.empty())
+                bindingGraph.requireBinding(contextualTypeKey)
 
               if (paramBinding is IrBinding.Absent) {
                 // Null argument expressions get treated as absent in the final call
@@ -614,7 +589,7 @@ private constructor(
       binding.sourceBindings
         .map {
           bindingGraph
-            .requireBinding(it, IrBindingStack.empty())
+            .requireBinding(it)
             .expectAs<IrBinding.BindingWithAnnotations>()
         }
         .partition { it.annotations.isElementsIntoSet }
@@ -652,7 +627,7 @@ private constructor(
           callee = symbols.setOfSingleton
           val provider =
             binding.sourceBindings.first().let {
-              bindingGraph.requireBinding(it, IrBindingStack.empty())
+              bindingGraph.requireBinding(it)
             }
           args = listOf(generateMultibindingArgument(provider, fieldInitKey))
         }
@@ -673,7 +648,7 @@ private constructor(
                 // This is the mutable set receiver
                 val functionReceiver = function.extensionReceiverParameterCompat!!
                 binding.sourceBindings
-                  .map { bindingGraph.requireBinding(it, IrBindingStack.empty()) }
+                  .map { bindingGraph.requireBinding(it) }
                   .forEach { provider ->
                     +irInvoke(
                       dispatchReceiver = irGet(functionReceiver),
@@ -793,7 +768,7 @@ private constructor(
       val keyType: IrType = mapTypeArgs[0].typeOrFail
       val rawValueType = mapTypeArgs[1].typeOrFail
       val rawValueTypeMetadata =
-        rawValueType.typeOrFail.asContextualTypeKey(null, hasDefault = false)
+        rawValueType.typeOrFail.asContextualTypeKey(null, hasDefault = false, patchMutableCollections = false)
 
       // TODO what about Map<String, Provider<Lazy<String>>>?
       //  isDeferrable() but we need to be able to convert back to the middle type
@@ -802,7 +777,7 @@ private constructor(
       // Used to unpack the right provider type
       val originalType = contextualTypeKey.toIrType()
       val originalValueType = valueWrappedType.toIrType()
-      val originalValueContextKey = originalValueType.asContextualTypeKey(null, hasDefault = false)
+      val originalValueContextKey = originalValueType.asContextualTypeKey(null, hasDefault = false, patchMutableCollections = false)
       val valueProviderSymbols = symbols.providerSymbolsFor(originalValueType)
 
       val valueType: IrType = rawValueTypeMetadata.typeKey.type
@@ -889,11 +864,10 @@ private constructor(
 
       val withProviders =
         binding.sourceBindings
-          .map { bindingGraph.requireBinding(it, IrBindingStack.empty()) }
+          .map { bindingGraph.requireBinding(it) }
           .fold(builder) { receiver, sourceBinding ->
             val providerTypeMetadata = sourceBinding.contextualTypeKey
 
-            // TODO FIR this should be an error actually
             val isMap = providerTypeMetadata.typeKey.type.rawType().symbol == irBuiltIns.mapClass
 
             val putter =

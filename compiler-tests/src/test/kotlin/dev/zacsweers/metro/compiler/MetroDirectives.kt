@@ -18,6 +18,10 @@ object MetroDirectives : SimpleDirectivesContainer() {
     enumDirective<MetroOptions.DiagnosticSeverity>(
       "Control diagnostic severity reporting of public providers."
     )
+  val ASSISTED_INJECT_MIGRATION_SEVERITY by
+    enumDirective<MetroOptions.DiagnosticSeverity>(
+      "Control diagnostic severity reporting of assisted inject migration issues."
+    )
   val SHRINK_UNUSED_BINDINGS by
     valueDirective("Enable/disable shrinking of unused bindings.") { it.toBoolean() }
   val CHUNK_FIELD_INITS by
@@ -26,6 +30,14 @@ object MetroDirectives : SimpleDirectivesContainer() {
     directive(
       "Enable/disable full binding graph validation of binds and provides declarations even if they are unused."
     )
+  val ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE by
+    directive(
+      "If true changes the return type of generated Graph Factories from the declared interface type to the generated Metro graph type. This is helpful for Dagger/Anvil interop."
+    )
+  val MAX_IR_ERRORS_COUNT by
+    valueDirective(
+      "Maximum number of errors to report before exiting IR processing. Default is 20, must be > 0."
+    ) { it.toInt() }
 
   // Dependency directives.
   val WITH_ANVIL by directive("Add Anvil as dependency and configure custom annotations.")

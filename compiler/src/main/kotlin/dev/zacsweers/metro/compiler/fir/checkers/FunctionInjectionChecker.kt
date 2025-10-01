@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FUNCTION_INJECT_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FUNCTION_INJECT_TYPE_PARAMETERS_ERROR
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
 import dev.zacsweers.metro.compiler.metroAnnotations
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
@@ -65,7 +66,7 @@ internal object FunctionInjectionChecker : FirSimpleFunctionChecker(MppCheckerKi
 
     for (param in declaration.valueParameters) {
       if (param.isAnnotatedWithAny(session, classIds.assistedAnnotations)) continue
-      validateInjectionSiteType(session, param.returnTypeRef, param.source ?: source)
+      validateInjectionSiteType(session, param.returnTypeRef, param.annotations.qualifierAnnotation(session), param.source ?: source)
     }
   }
 }

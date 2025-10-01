@@ -1,7 +1,7 @@
 // Edge case of explicitly providing a constructor-injected assisted type
 // overriding the one on the graph and thus bypassing the error reporting
 // we do for doing this normally
-@Inject
+@AssistedInject
 class Example(@Assisted val input: String) {
   @AssistedFactory
   fun interface Factory {
@@ -12,14 +12,14 @@ class Example(@Assisted val input: String) {
 @DependencyGraph
 interface AppGraph {
   // Request the assisted type
-  val example: Example
+  @Named("qualified") val example: Example
 
   @Provides
   val string: String
     get() = "Hello"
 
   // Scenario 1: do your own assistance, bypass injection
-  @Provides fun provideExample(input: String): Example = Example(input)
+  @Provides @Named("qualified") fun provideExample(input: String): Example = Example(input)
 }
 
 fun box(): String {

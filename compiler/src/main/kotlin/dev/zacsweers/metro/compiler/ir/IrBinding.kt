@@ -251,9 +251,9 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
       }
     }
 
-    fun aliasedBinding(graph: IrBindingGraph, stack: IrBindingStack): IrBinding {
+    fun aliasedBinding(graph: IrBindingGraph): IrBinding {
       // O(1) lookup at this point
-      return graph.requireBinding(contextualTypeKey.withTypeKey(aliasedType), stack)
+      return graph.requireBinding(contextualTypeKey.withTypeKey(aliasedType))
     }
 
     override val scope: IrAnnotation? = null

@@ -80,6 +80,9 @@ public class ClassIds(
       customGraphFactoryAnnotations
 
   // Assisted inject
+  internal val assistedInjectAnnotations =
+    setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("AssistedInject")) +
+      customAssistedInjectAnnotations
   private val metroAssisted = Symbols.FqNames.metroRuntimePackage.classIdOf("Assisted")
   internal val assistedAnnotations = setOf(metroAssisted) + customAssistedAnnotations
   internal val metroAssistedFactory =
@@ -89,8 +92,9 @@ public class ClassIds(
 
   internal val injectAnnotations =
     setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("Inject")) +
-      customInjectAnnotations +
-      customAssistedInjectAnnotations
+      customInjectAnnotations
+
+  internal val allInjectAnnotations = injectAnnotations + assistedInjectAnnotations
 
   internal val qualifierAnnotations =
     setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("Qualifier")) + customQualifierAnnotations

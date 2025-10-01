@@ -118,6 +118,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("GraphImplClassAsReturnType.kt")
+    public void testGraphImplClassAsReturnType() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/GraphImplClassAsReturnType.kt");
+    }
+
+    @Test
     @TestMetadata("InitsAreChunked.kt")
     public void testInitsAreChunked() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/InitsAreChunked.kt");

@@ -5,6 +5,7 @@ package dev.zacsweers.metro.sample
 import dagger.Component
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
+import dev.zacsweers.metro.AssistedInject
 import dev.zacsweers.metro.Named
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.createGraphFactory
@@ -45,7 +46,9 @@ class MixedTest {
   @Inject
   constructor(val message: String, @Named("qualified") val qualifiedMessage: String)
 
-  class AssistedClass @Inject constructor(@Assisted val assisted: String, val message: String) {
+  class AssistedClass
+  @AssistedInject
+  constructor(@Assisted val assisted: String, val message: String) {
     @AssistedFactory
     interface Factory {
       fun create(assisted: String): AssistedClass

@@ -63,7 +63,7 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
       return
     }
 
-    // @Multibinds cannot be overrides
+    // Multibinds cannot be overrides
     if (declaration.isOverride) {
       reporter.reportOn(
         source,

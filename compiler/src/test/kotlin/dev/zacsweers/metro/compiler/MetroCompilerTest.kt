@@ -114,6 +114,8 @@ abstract class MetroCompilerTest {
                 processor.option(entry.raw.cliOption, chunkFieldInits)
               MetroOption.PUBLIC_PROVIDER_SEVERITY ->
                 processor.option(entry.raw.cliOption, publicProviderSeverity)
+              MetroOption.ASSISTED_INJECT_DEPRECATION_SEVERITY ->
+                processor.option(entry.raw.cliOption, assistedInjectMigrationSeverity)
               MetroOption.WARN_ON_INJECT_ANNOTATION_PLACEMENT ->
                 processor.option(entry.raw.cliOption, warnOnInjectAnnotationPlacement)
               MetroOption.LOGGING -> {
@@ -122,6 +124,8 @@ abstract class MetroCompilerTest {
               }
               MetroOption.ENABLE_DAGGER_RUNTIME_INTEROP ->
                 processor.option(entry.raw.cliOption, enableDaggerRuntimeInterop)
+              MetroOption.MAX_IR_ERRORS_COUNT ->
+                processor.option(entry.raw.cliOption, maxIrErrorsCount)
               MetroOption.CUSTOM_PROVIDER -> {
                 if (customProviderTypes.isEmpty()) continue
                 processor.option(entry.raw.cliOption, customProviderTypes.joinToString(":"))
@@ -217,8 +221,8 @@ abstract class MetroCompilerTest {
                 processor.option(entry.raw.cliOption, customScopeAnnotations.joinToString(":"))
               }
               MetroOption.CUSTOM_BINDING_CONTAINER -> {
-                if (customBindsAnnotations.isEmpty()) continue
-                processor.option(entry.raw.cliOption, customBindsAnnotations.joinToString(":"))
+                if (customBindingContainerAnnotations.isEmpty()) continue
+                processor.option(entry.raw.cliOption, customBindingContainerAnnotations.joinToString(":"))
               }
               MetroOption.CUSTOM_CONTRIBUTES_INTO_SET -> {
                 if (customContributesIntoSetAnnotations.isEmpty()) continue
@@ -253,6 +257,9 @@ abstract class MetroCompilerTest {
               }
               MetroOption.ENABLE_FULL_BINDING_GRAPH_VALIDATION -> {
                 processor.option(entry.raw.cliOption, enableFullBindingGraphValidation)
+              }
+              MetroOption.ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE -> {
+                processor.option(entry.raw.cliOption, enableGraphImplClassAsReturnType)
               }
             }
           yield(option)

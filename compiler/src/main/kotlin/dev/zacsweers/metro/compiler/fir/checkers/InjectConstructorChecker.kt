@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.findInjectConstructor
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.validateInjectedClass
 import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
@@ -28,10 +29,14 @@ internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common
     val classIds = session.classIds
 
     val classInjectAnnotation =
-      declaration.annotationsIn(session, classIds.injectAnnotations).toList()
+      declaration.annotationsIn(session, classIds.allInjectAnnotations).toList()
 
     val injectedConstructor =
-      declaration.symbol.findInjectConstructor(session, checkClass = false) {
+      declaration.symbol.findInjectConstructor(
+        session,
+        checkClass = false,
+        classIds = classIds.allInjectAnnotations,
+      ) {
         return
       }
 
@@ -47,7 +52,7 @@ internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common
 
     if (classInjectAnnotation.isNotEmpty() && injectedConstructor != null) {
       reporter.reportOn(
-        injectedConstructor.source,
+        injectedConstructor.annotation.source,
         MetroDiagnostics.CANNOT_HAVE_INJECT_IN_MULTIPLE_TARGETS,
       )
       return
@@ -58,19 +63,16 @@ internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common
     }
 
     val constructorToValidate =
-      injectedConstructor ?: declaration.primaryConstructorIfAny(session) ?: return
+      injectedConstructor?.constructor ?: declaration.primaryConstructorIfAny(session) ?: return
 
     for (parameter in constructorToValidate.valueParameterSymbols) {
       if (parameter.isAnnotatedWithAny(session, classIds.assistedAnnotations)) continue
-      if (
-        validateInjectionSiteType(
-          session,
-          parameter.resolvedReturnTypeRef,
-          parameter.source ?: source,
-        )
-      ) {
-        return
-      }
+      validateInjectionSiteType(
+        session,
+        parameter.resolvedReturnTypeRef,
+        parameter.qualifierAnnotation(session),
+        parameter.source ?: source,
+      )
     }
   }
 }

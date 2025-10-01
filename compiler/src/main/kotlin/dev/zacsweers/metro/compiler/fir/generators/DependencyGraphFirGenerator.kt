@@ -284,7 +284,7 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
      * In either case, we'll just generate a constructor and a PLACEHOLDER_SAM_FUNCTION. The
      * placeholder is important because not everything about a creator is resolvable at
      * this point, but we can use this marker later to indicate we expect generateFunctions()
-     * to generate the correct functions .
+     * to generate the correct functions.
      */
     val isGraphCompanion =
       classSymbol.isCompanion &&

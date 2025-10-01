@@ -328,7 +328,6 @@ internal class DependencyGraphNodeCache(
         MetroDiagnostics.METRO_ERROR,
         message,
       )
-      exitProcessing()
     }
 
     fun build(): DependencyGraphNode {
@@ -424,24 +423,27 @@ internal class DependencyGraphNodeCache(
               }
 
               // Check qualifier consistency for injectors and non-binds accessors
-              if (!isGraphExtension && !annotations.isBinds) {
-                val expectedQualifier = if (isInjectorCandidate) {
-                  // For injectors, get the qualifier from the first parameter
-                  declaration.regularParameters[0].qualifierAnnotation()
-                } else {
-                  // For accessors, get it from the function's annotations
-                  metroAnnotationsOf(declaration).qualifier
-                }
-
+              if (qualifierMismatchData == null && !isGraphExtension && !annotations.isBinds) {
                 val overriddenQualifier = if (isInjectorCandidate) {
                   overridden.owner.regularParameters[0].qualifierAnnotation()
                 } else {
                   overridden.owner.metroAnnotations(symbols.classIds).qualifier
                 }
 
-                if (overriddenQualifier != expectedQualifier && qualifierMismatchData == null) {
-                  qualifierMismatchData = Triple(expectedQualifier, overriddenQualifier, overridden.owner)
+                if (overriddenQualifier != null) {
+                  val expectedQualifier = if (isInjectorCandidate) {
+                    // For injectors, get the qualifier from the first parameter
+                    declaration.regularParameters[0].qualifierAnnotation()
+                  } else {
+                    // For accessors, get it from the function's annotations
+                    metroAnnotationsOf(declaration).qualifier
+                  }
+
+                  if (overriddenQualifier != expectedQualifier) {
+                    qualifierMismatchData = Triple(expectedQualifier, overriddenQualifier, overridden.owner)
+                  }
                 }
+
               }
             }
 
@@ -583,13 +585,16 @@ internal class DependencyGraphNodeCache(
                 }
 
                 // Check qualifier consistency for non-binds accessors
-                if (!isGraphExtension && !annotations.isBinds) {
-                  val expectedQualifier = metroAnnotationsOf(getter).qualifier
+                if (qualifierMismatchData == null && !isGraphExtension && !annotations.isBinds) {
                   val overriddenGetter = overridden.owner.getter ?: continue
                   val overriddenQualifier = overriddenGetter.metroAnnotations(symbols.classIds).qualifier
 
-                  if (overriddenQualifier != expectedQualifier && qualifierMismatchData == null) {
-                    qualifierMismatchData = Triple(expectedQualifier, overriddenQualifier, overridden.owner)
+                  if (overriddenQualifier != null) {
+                    val expectedQualifier = metroAnnotationsOf(getter).qualifier
+
+                    if (overriddenQualifier != expectedQualifier) {
+                      qualifierMismatchData = Triple(expectedQualifier, overriddenQualifier, overridden.owner)
+                    }
                   }
                 }
               }
@@ -792,26 +797,6 @@ internal class DependencyGraphNodeCache(
           for (overlap in overlaps) {
             overlapErrors +=
               "- ${overlap.render(short = false)} (from ancestor '${depNode.sourceGraph.kotlinFqName}')"
-          }
-        }
-        for (parentScope in depNode.scopes) {
-          seenAncestorScopes.put(parentScope, depNode)?.let { previous ->
-            metroContext.reportCompat(
-              graphDeclaration,
-              MetroDiagnostics.METRO_ERROR,
-              buildString {
-                appendLine(
-                  "Graph extensions (@Extends) may not have multiple ancestors with the same scopes:"
-                )
-                append("Scope: ")
-                appendLine(parentScope.render(short = false))
-                append("Ancestor 1: ")
-                appendLine(previous.sourceGraph.kotlinFqName)
-                append("Ancestor 2: ")
-                appendLine(depNode.sourceGraph.kotlinFqName)
-              },
-            )
-            exitProcessing()
           }
         }
       }

@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.LOG_PREFIX
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.tracer
 import java.io.File
@@ -60,6 +61,8 @@ internal interface IrMetroContext : IrPluginContext {
   val expectActualFile: Path?
 
   val typeRemapperCache: MutableMap<Pair<ClassId, IrType>, TypeRemapper>
+
+  fun onErrorReported()
 
   fun log(message: String) {
     @Suppress("DEPRECATION")
@@ -152,6 +155,16 @@ internal interface IrMetroContext : IrPluginContext {
       lookupTracker: LookupTracker?,
       expectActualTracker: ExpectActualTracker,
     ) : IrMetroContext, IrPluginContext by pluginContext {
+      private var reportedErrors = 0
+
+      override fun onErrorReported() {
+        reportedErrors++
+        if (reportedErrors >= options.maxIrErrorsCount) {
+          // Exit processing as we've reached the max
+          exitProcessing()
+        }
+      }
+
       override val lookupTracker: LookupTracker? =
         lookupTracker?.let {
           if (options.reportsDestination != null) {

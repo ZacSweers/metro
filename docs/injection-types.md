@@ -19,10 +19,10 @@ Constructor-injected classes can be instantiated+managed entirely by Metro and e
 
 ## Assisted Injection
 
-For types that require dynamic dependencies at instantiation, assisted injection can be used to supply these inputs. In this case - an injected constructor (or class with one constructor) must be annotated with `@Inject`, assisted parameters annotated with `@Assisted`, and a factory interface or abstract class with one single abstract function that accepts these assisted parameters and returns the target class.
+For types that require dynamic dependencies at instantiation, assisted injection can be used to supply these inputs. In this case - an injected constructor (or class with one constructor) must be annotated with `@AssistedInject`, assisted parameters annotated with `@Assisted`, and a factory interface or abstract class with one single abstract function that accepts these assisted parameters and returns the target class.
 
 ```kotlin
-@Inject
+@AssistedInject
 class HttpClient(
   @Assisted val timeout: Duration,
   val cache: Cache
@@ -46,7 +46,7 @@ class ApiClient(httpClientFactory: HttpClient.Factory) {
 Like Dagger, the `@Assisted` parameters can take optional `value` keys to disambiguate matching types.
 
 ```kotlin
-@Inject
+@AssistedInject
 class HttpClient(
   @Assisted("connect") val connectTimeout: Duration,
   @Assisted("request") val requestTimeout: Duration,
@@ -68,7 +68,7 @@ Metro supports automatic generation of assisted factories via opt-in compiler op
 Metro will automatically generate a default factory as a nested class within the injected type.
 
 ```kotlin
-@Inject
+@AssistedInject
 class HttpClient(
   @Assisted timeoutDuration: Duration,
   cache: Cache,

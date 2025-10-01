@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir.parameters
 
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.compareTo
+import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.NOOP_TYPE_REMAPPER
@@ -70,6 +71,25 @@ internal class Parameters(
       dispatchReceiverParameter,
       extensionReceiverParameter,
       regularParameters,
+      contextParameters,
+      ir,
+    )
+  }
+
+  fun overlayQualifiers(qualifiers: List<IrAnnotation?>): Parameters {
+    return Parameters(
+      callableId,
+      dispatchReceiverParameter,
+      extensionReceiverParameter,
+      regularParameters.mapIndexed { i, param ->
+        val qualifier = qualifiers[i] ?: return@mapIndexed param
+        param.copy(
+          contextualTypeKey =
+            param.contextualTypeKey.withTypeKey(
+              param.contextualTypeKey.typeKey.copy(qualifier = qualifier)
+            )
+        )
+      },
       contextParameters,
       ir,
     )

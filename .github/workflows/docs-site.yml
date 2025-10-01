@@ -115,6 +115,33 @@ jobs:
           echo "Current mike versions available:"
           mike list || echo "No docs site versions found (likely first deployment)"
 
+      - name: Validate mkdocs build
+        run: |
+          echo "Building docs for validation..."
+          mkdocs build --site-dir /tmp/docs-site-validation
+          
+          echo "Validating directory URL structure..."
+          # Check that use_directory_urls: true is working correctly
+          # This setting converts installation.md -> installation/index.html
+          # enabling clean URLs like /installation/ instead of /installation.html
+          if [ -f "/tmp/docs-site-validation/installation/index.html" ]; then
+            echo "✔ Directory URLs are working correctly (installation/index.html exists)"
+          else
+            echo "✖ Directory URLs validation failed - installation/index.html not found"
+            echo "This suggests use_directory_urls: true is not working properly"
+            exit 1
+          fi
+          
+          echo "Cleaning up validation directory..."
+          rm -rf /tmp/docs-site-validation
+          echo "Docs validation completed successfully"
+
+      - name: Re-sync gh-pages branch before deployment
+        run: |
+          # Safely update local gh-pages to match remote state to avoid push conflicts
+          git fetch origin gh-pages
+          git update-ref refs/heads/gh-pages origin/gh-pages
+
       - name: Deploy SNAPSHOT Docs with mike
         if: ${{ success() && contains(steps.version.outputs.METRO_VERSION, 'SNAPSHOT') }}
         run: mike deploy --update-aliases --push ${{ steps.version.outputs.METRO_VERSION }} snapshot
@@ -169,6 +196,21 @@ jobs:
 
       - name: Build docs (dry run)
         run: |
-          echo "Building docs as a dry run to verify requirements are working..."
-          mkdocs build --strict
-          echo "✅ Docs build completed successfully!"
+          echo "Building docs as a dry run to verify requirements and other configs are working..."
+          # Build to a temporary directory for validation without side effects
+          mkdocs build --strict --site-dir /tmp/docs-site-validation
+          
+          echo "Validating directory URL structure..."
+          # Verify that use_directory_urls: true configuration is effective
+          # This creates installation/index.html from installation.md, enabling
+          # clean URLs (/installation/) instead of file URLs (/installation.html)
+          if [ -f "/tmp/docs-site-validation/installation/index.html" ]; then
+            echo "✔ Directory URLs are working correctly (installation/index.html exists)"
+          else
+            echo "✖ Directory URLs validation failed - installation/index.html not found"
+            exit 1
+          fi
+          
+          echo "Cleaning up validation directory..."
+          rm -rf /tmp/docs-site-validation
+          echo "✔ Docs build and validation completed successfully!"

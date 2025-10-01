@@ -93,6 +93,11 @@ internal class MetroFirBuiltIns(
       as FirRegularClassSymbol
   }
 
+  val assistedMarkerClassSymbol by unsafeLazy {
+    session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.metroAssistedMarker)
+      as FirRegularClassSymbol
+  }
+
   val providesClassSymbol by unsafeLazy {
     session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.metroProvides)
       as FirRegularClassSymbol

@@ -42,6 +42,7 @@ internal class IrBindingGraph(
   private val bindingLookup: BindingLookup,
   private val contributionData: IrContributionData,
 ) {
+  private var hasErrors = false
   private val realGraph =
     MutableBindingGraph(
       newBindingStack = newBindingStack,
@@ -52,11 +53,14 @@ internal class IrBindingGraph(
           bindingStackEntryForDependency(callingBinding, contextKey, contextKey.typeKey)
         }
       },
-      absentBinding = { key -> IrBinding.Absent(key) },
       computeBindings = { contextKey, currentBindings, stack ->
         bindingLookup.lookup(contextKey, currentBindings, stack)
       },
       onError = ::onError,
+      onHardError = { message, stack ->
+        onError(message, stack)
+        exitProcessing()
+      },
       findSimilarBindings = { key -> findSimilarBindings(key).mapValues { it.value.toString() } },
     )
 
@@ -94,19 +98,15 @@ internal class IrBindingGraph(
   fun findBinding(key: IrTypeKey): IrBinding? = realGraph[key]
 
   // For bindings we expect to already be cached
-  fun requireBinding(key: IrTypeKey, stack: IrBindingStack): IrBinding {
-    return requireBinding(IrContextualTypeKey.create(key), stack)
+  fun requireBinding(key: IrTypeKey): IrBinding {
+    return requireBinding(IrContextualTypeKey.create(key))
   }
 
-  fun requireBinding(contextKey: IrContextualTypeKey, stack: IrBindingStack): IrBinding {
+  fun requireBinding(contextKey: IrContextualTypeKey): IrBinding {
     return realGraph[contextKey.typeKey]
       ?: run {
         if (contextKey.hasDefault) return IrBinding.Absent(contextKey.typeKey)
-        realGraph.reportMissingBinding(contextKey.typeKey, stack) {
-          if (metroContext.debug) {
-            appendLine(dumpGraph(stack.graphFqName.asString(), short = false))
-          }
-        }
+        exitProcessing()
       }
   }
 
@@ -193,11 +193,12 @@ internal class IrBindingGraph(
     val sortedKeys: List<IrTypeKey>,
     val deferredTypes: List<IrTypeKey>,
     val reachableKeys: Set<IrTypeKey>,
+    val hasErrors: Boolean,
   )
 
   data class GraphError(val declaration: IrDeclaration?, val message: String)
 
-  fun seal(parentTracer: Tracer, onError: (List<GraphError>) -> Nothing): BindingGraphResult =
+  fun seal(parentTracer: Tracer, onError: (List<GraphError>) -> Unit): BindingGraphResult =
     context(metroContext) {
       val (sortedKeys, deferredTypes, reachableKeys) =
         parentTracer.traceNested("seal graph") { tracer ->
@@ -227,6 +228,10 @@ internal class IrBindingGraph(
           )
         }
 
+      if (hasErrors) {
+        return BindingGraphResult(emptyList(), emptyList(), emptySet(), true)
+      }
+
       writeDiagnostic("keys-validated-${parentTracer.tag}.txt") {
         sortedKeys.joinToString(separator = "\n")
       }
@@ -249,7 +254,7 @@ internal class IrBindingGraph(
           "Found absent bindings in the binding graph: ${dumpGraph("Absent bindings", short = true)}"
         }
       }
-      return BindingGraphResult(sortedKeys, deferredTypes, reachableKeys)
+      return BindingGraphResult(sortedKeys, deferredTypes, reachableKeys, false)
     }
 
   fun reportDuplicateBinding(
@@ -261,7 +266,7 @@ internal class IrBindingGraph(
     realGraph.reportDuplicateBinding(key, existing, duplicate, bindingStack)
   }
 
-  private fun checkEmptyMultibindings(onError: (List<GraphError>) -> Nothing) {
+  private fun checkEmptyMultibindings(onError: (List<GraphError>) -> Unit) {
     val multibindings = realGraph.bindings.values.filterIsInstance<IrBinding.Multibinding>()
     val errors = mutableListOf<GraphError>()
     for (multibinding in multibindings) {
@@ -523,12 +528,12 @@ internal class IrBindingGraph(
     }
   }
 
-  private fun onError(message: String, stack: IrBindingStack): Nothing {
+  private fun onError(message: String, stack: IrBindingStack) {
+    hasErrors = true
     val declaration =
       stack.lastEntryOrGraph?.originalDeclarationIfOverride()
         ?: node.reportableSourceGraphDeclaration
     metroContext.reportCompat(declaration, MetroDiagnostics.METRO_ERROR, message)
-    exitProcessing()
   }
 
   private fun validateBindings(
@@ -558,7 +563,6 @@ internal class IrBindingGraph(
   }
 
   // Check scoping compatibility
-  // TODO FIR error?
   private fun checkScope(
     binding: IrBinding,
     stack: IrBindingStack,
@@ -772,7 +776,7 @@ internal class IrBindingGraph(
     if (!isNested && binding is IrBinding.Multibinding && binding.sourceBindings.isNotEmpty()) {
       appendLine("├─ Source bindings:")
       binding.sourceBindings.forEach { sourceBindingKey ->
-        val sourceBinding = requireBinding(sourceBindingKey, IrBindingStack.empty())
+        val sourceBinding = requireBinding(sourceBindingKey)
         val nested = buildString { appendBinding(sourceBinding, short, isNested = true) }
         append("│  ├─ ")
         appendLine(nested.lines().first())

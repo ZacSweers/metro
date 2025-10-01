@@ -1,0 +1,1 @@
+/AssistedFactoriesCannotBeAnnotationObjects.kt:(157,164): error: @AssistedFactory declarations should be non-sealed abstract classes or interfaces.

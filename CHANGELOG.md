@@ -4,13 +4,56 @@ Changelog
 **Unreleased**
 --------------
 
+- **New**: Report more IR errors up to a maximum. The default is `20`, but is configurable via the `maxIrErrors` Gradle DSL option. If you want to restore the previous "fail-fast" behavior, you can set this value to `1`.
+- **Behavior change**: Assisted-inject types can only be directly exposed on a graph if qualified.
+- **Enhancement**: Add diagnostic for directly injecting unqualified assisted-injected classes rather than using their factories.
+- **Enhancement**: Add diagnostic mixing `Provider` and `Lazy` types for `Provider<Lazy<T>>` injections.
+- **Enhancement**: Add diagnostics for custom map keys.
+- **Enhancement**: Fully allow exposing `Provider<Lazy<T>>` accessor types.
+- **Fix**: Avoid obscure `UnsupportedOperationException` failures when reporting missing bindings.
+
+0.6.8
+-----
+
+_2025-09-26_
+
+- **Fix**: Preserve original nullability when canonicalizing generic types.
+
+0.6.7
+-----
+
+_2025-09-25_
+
+### New `@AssistedInject` annotation
+
+Assisted-injected classes must now use `@AssistedInject` instead of `@Inject`.
+
+This is for multiple reasons:
+  - It's more explicit at the source declaration site that this uses assisted injection and cannot be requested directly on the DI graph. This is particularly useful for scenarios where there no assisted parameters but you still want to use assisted injection.
+  - This will allow adding more granular checks at compile-time to validate use-sites.
+  - This will allow providing assisted types directly on the graph.
+  - Will simplify some of Metro's internal logic.
+
+Note that not all internal changes are implemented yet to allow for a migration period. In this release, use of `@Inject` with `@Assisted` parameters is a compiler _warning_ and will become an error in the future. This diagnostic is configurable via the `assistedInjectMigrationSeverity` Gradle DSL option.
+
+### Other changes
+
+- **New**: Support for interop with externally generated Dagger modules.
 - **Enhancement**: Always check for available assisted factories when reporting `InvalidBinding` errors about misused assisted injects.
 - **Enhancement**: Always specifically report mismatched assisted parameter mismatches.
 - **Enhancement**: Validate `Lazy` assisted factory injections in more places.
 - **Enhancement**: Allow private `@Binds` properties.
+- **Enhancement**: Better canonicalize flexible mutability from Dagger interop in collections and flexible nullability.
+- **Enhancement**: Better canonicalize flexible nullability from Dagger interop in generic type arguments.
 - **Enhancement**: Simplify assisted factory impl class generation by moving it entirely to IR.
+- **Enhancement**: Allow qualifier narrowing but not widening on graph accessor types. Essentially, you can have a base interface with an unqualified accessor and then override that to add a qualifier in a subtype, but not the other way around.
 - **Fix**: Register `MetroDiagnostics` in FIR.
+- **Fix**: Use correct severity when reporting warnings to `MessageCollector` from newer IR diagnostics factories.
 - **Fix**: When transforming FIR override statuses, check all supertypes and not just immediate supertype.
+- **Fix**: Carry qualifiers over from Dagger inject constructors when interoping with dagger factories.
+- If Dagger runtime interop is enabled, do not run status transformation on `@Provides` declarations in dagger modules.
+
+Special thanks to [@kevinguitar](https://github.com/kevinguitar), [@ChristianKatzmann](https://github.com/ChristianKatzmann), and [@hossain-khan](https://github.com/hossain-khan) for contributing to this release!
 
 0.6.6
 -----

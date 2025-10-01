@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.sample
 
 import dev.zacsweers.metro.AssistedFactory
+import dev.zacsweers.metro.AssistedInject
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.createGraph
 import dev.zacsweers.metro.createGraphFactory
@@ -46,7 +47,7 @@ class KotlinInjectTest {
   @Inject
   class ScopedInjectedClass(val message: String, @Named("qualified") val qualifiedMessage: String)
 
-  @Inject
+  @AssistedInject
   class AssistedClass(@Assisted val assisted: String, val message: String) {
     @AssistedFactory
     interface Factory {

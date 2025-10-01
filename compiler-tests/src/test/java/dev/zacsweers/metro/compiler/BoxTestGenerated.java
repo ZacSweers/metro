@@ -278,6 +278,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ChildGraphIsUsedAsReturnType.kt")
+    public void testChildGraphIsUsedAsReturnType() {
+      runTest("compiler-tests/src/test/data/box/contributesgraphextension/ChildGraphIsUsedAsReturnType.kt");
+    }
+
+    @Test
     @TestMetadata("ContributedFactoryIsAvailableAsBinding.kt")
     public void testContributedFactoryIsAvailableAsBinding() {
       runTest("compiler-tests/src/test/data/box/contributesgraphextension/ContributedFactoryIsAvailableAsBinding.kt");
@@ -457,6 +463,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("MultipleBindsInSeparateGraphsAreValid.kt")
     public void testMultipleBindsInSeparateGraphsAreValid() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/MultipleBindsInSeparateGraphsAreValid.kt");
+    }
+
+    @Test
+    @TestMetadata("NullabilityInContributions.kt")
+    public void testNullabilityInContributions() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/NullabilityInContributions.kt");
     }
 
     @Test
@@ -725,9 +737,57 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("AssistedFactoryWithAGenericMethodWorks.kt")
+      public void testAssistedFactoryWithAGenericMethodWorks() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedFactoryWithAGenericMethodWorks.kt");
+      }
+
+      @Test
+      @TestMetadata("AssistedFactoryWithAProtectedMethodWorks.kt")
+      public void testAssistedFactoryWithAProtectedMethodWorks() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedFactoryWithAProtectedMethodWorks.kt");
+      }
+
+      @Test
+      @TestMetadata("AssistedFactoryWithAdditionalNonAbstractMethods.kt")
+      public void testAssistedFactoryWithAdditionalNonAbstractMethods() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedFactoryWithAdditionalNonAbstractMethods.kt");
+      }
+
+      @Test
+      @TestMetadata("AssistedParametersInLaterOrderWork.kt")
+      public void testAssistedParametersInLaterOrderWork() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedParametersInLaterOrderWork.kt");
+      }
+
+      @Test
       @TestMetadata("AssistedTypesCanBeExplicitlyProvided.kt")
       public void testAssistedTypesCanBeExplicitlyProvided() {
         runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedTypesCanBeExplicitlyProvided.kt");
+      }
+
+      @Test
+      @TestMetadata("BasicAssistedInject.kt")
+      public void testBasicAssistedInject() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/BasicAssistedInject.kt");
+      }
+
+      @Test
+      @TestMetadata("DefaultAssistedFactoryIsGeneratedInFIR.kt")
+      public void testDefaultAssistedFactoryIsGeneratedInFIR() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/DefaultAssistedFactoryIsGeneratedInFIR.kt");
+      }
+
+      @Test
+      @TestMetadata("DefaultAssistedFactoryWithCustomIdentifiers.kt")
+      public void testDefaultAssistedFactoryWithCustomIdentifiers() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/DefaultAssistedFactoryWithCustomIdentifiers.kt");
+      }
+
+      @Test
+      @TestMetadata("DefaultAssistedFactoryWithDefaultValues.kt")
+      public void testDefaultAssistedFactoryWithDefaultValues() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/DefaultAssistedFactoryWithDefaultValues.kt");
       }
 
       @Test
@@ -911,6 +971,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("DaggerProviderFactoryClassInKotlinCanBeLoaded.kt")
+      public void testDaggerProviderFactoryClassInKotlinCanBeLoaded() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/DaggerProviderFactoryClassInKotlinCanBeLoaded.kt");
+      }
+
+      @Test
       @TestMetadata("GenericDaggerFactoryClassCanBeLoaded.kt")
       public void testGenericDaggerFactoryClassCanBeLoaded() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/GenericDaggerFactoryClassCanBeLoaded.kt");
@@ -958,6 +1024,30 @@ public class BoxTestGenerated extends AbstractBoxTest {
         runTest("compiler-tests/src/test/data/box/interop/dagger/KotlinDaggerObjectFactoryClassCanBeLoaded.kt");
       }
 
+      @Test
+      @TestMetadata("QualifiedDaggerFactoryClassCanBeLoaded.kt")
+      public void testQualifiedDaggerFactoryClassCanBeLoaded() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/QualifiedDaggerFactoryClassCanBeLoaded.kt");
+      }
+
+      @Test
+      @TestMetadata("QualifiedDaggerProviderFactoryClassCanBeLoaded.kt")
+      public void testQualifiedDaggerProviderFactoryClassCanBeLoaded() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/QualifiedDaggerProviderFactoryClassCanBeLoaded.kt");
+      }
+
+      @Test
+      @TestMetadata("QualifiersFromDaggerConstructorParametersAreCarried.kt")
+      public void testQualifiersFromDaggerConstructorParametersAreCarried() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/QualifiersFromDaggerConstructorParametersAreCarried.kt");
+      }
+
+      @Test
+      @TestMetadata("QualifiersFromDaggerProviderParamsAreCarried.kt")
+      public void testQualifiersFromDaggerProviderParamsAreCarried() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/QualifiersFromDaggerProviderParamsAreCarried.kt");
+      }
+
       @Nested
       @TestMetadata("compiler-tests/src/test/data/box/interop/dagger/anvil")
       @TestDataPath("$PROJECT_ROOT")
@@ -999,6 +1089,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @Test
     public void testAllFilesPresentInMultibindings() {
       KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/multibindings"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    }
+
+    @Test
+    @TestMetadata("DifferentMapWrappingTypes.kt")
+    public void testDifferentMapWrappingTypes() {
+      runTest("compiler-tests/src/test/data/box/multibindings/DifferentMapWrappingTypes.kt");
     }
 
     @Test
