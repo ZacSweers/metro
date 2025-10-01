@@ -426,7 +426,7 @@ class AnvilInteropTest : MetroCompilerTest() {
       assertDiagnostics(
         """
           e: ContributedInterface.kt:18:11 [Metro/DuplicateBinding] Multiple bindings found for test.ContributedInterface
-          
+
             ContributedInterface.kt:8:1
               test.Impl1 contributes a binding of test.ContributedInterface
                                                   ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -470,7 +470,7 @@ class AnvilInteropTest : MetroCompilerTest() {
       assertDiagnostics(
         """
           e: ContributedInterface.kt:15:11 [Metro/DuplicateBinding] Multiple bindings found for test.ContributedInterface
-          
+
             ContributedInterface.kt:8:1
               test.Impl1 contributes a binding of test.ContributedInterface
                                                   ~~~~~~~~~~~~~~~~~~~~~~~~~

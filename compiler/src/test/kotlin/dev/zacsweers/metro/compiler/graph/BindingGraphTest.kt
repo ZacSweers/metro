@@ -293,10 +293,10 @@ class BindingGraphTest {
       .contains(
         """
           [Metro/DuplicateBinding] Multiple bindings found for A
-          
+
             A
             A
-          
+
           (Hint) Bindings are equal
         """
           .trimIndent()
@@ -317,10 +317,10 @@ class BindingGraphTest {
       .contains(
         """
           [Metro/DuplicateBinding] Multiple bindings found for A
-    
+
             A
             A
-          
+
           (Hint) Bindings are the same
         """
           .trimIndent()
