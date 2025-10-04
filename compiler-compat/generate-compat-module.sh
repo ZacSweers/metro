@@ -1,0 +1,103 @@
+#!/bin/bash
+
+# Copyright (C) 2025 Zac Sweers
+# SPDX-License-Identifier: Apache-2.0
+
+set -euo pipefail
+
+if [ $# -ne 1 ]; then
+    echo "Usage: $0 <kotlin-version>"
+    echo "Example: $0 2.3.0-dev-9673"
+    echo "Example: $0 2.4.0-Beta1"
+    echo "Example: $0 2.3.20"
+    exit 1
+fi
+
+KOTLIN_VERSION="$1"
+
+# Transform version to valid package name
+# 1. Remove dots
+# 2. Replace dashes with underscores
+PACKAGE_SUFFIX=$(echo "$KOTLIN_VERSION" | sed 's/\.//g' | sed 's/-/_/g')
+MODULE_NAME="k$PACKAGE_SUFFIX"
+
+echo "Generating compatibility module for Kotlin $KOTLIN_VERSION"
+echo "Module name: $MODULE_NAME"
+echo "Package suffix: $PACKAGE_SUFFIX"
+
+# Create module directory structure
+MODULE_DIR="$MODULE_NAME"
+mkdir -p "$MODULE_DIR/src/main/kotlin/dev/zacsweers/metro/compiler/compat/$MODULE_NAME"
+mkdir -p "$MODULE_DIR/src/main/resources/META-INF/services"
+
+# Generate build.gradle.kts
+cat > "$MODULE_DIR/build.gradle.kts" << EOF
+// Copyright (C) 2025 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
+plugins {
+  alias(libs.plugins.kotlin.jvm)
+  alias(libs.plugins.dokka)
+  alias(libs.plugins.mavenPublish)
+}
+
+kotlin {
+  compilerOptions {
+    freeCompilerArgs.add("-Xcontext-parameters")
+    optIn.addAll(
+      "org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi",
+      "org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI",
+    )
+  }
+}
+
+dependencies {
+  compileOnly("org.jetbrains.kotlin:kotlin-compiler-embeddable:$KOTLIN_VERSION")
+  compileOnly(libs.kotlin.stdlib)
+  api(project(":compiler-compat"))
+}
+EOF
+
+# Generate gradle.properties
+cat > "$MODULE_DIR/gradle.properties" << EOF
+POM_NAME=Metro Compiler Compat (API)
+POM_ARTIFACT_ID=compiler-compat-$MODULE_NAME
+POM_PACKAGING=jar
+
+# kotlinc imposes its own
+kotlin.stdlib.default.dependency=false
+EOF
+
+# Generate FirCompatContextImpl.kt
+cat > "$MODULE_DIR/src/main/kotlin/dev/zacsweers/metro/compiler/compat/$MODULE_NAME/FirCompatContextImpl.kt" << EOF
+package dev.zacsweers.metro.compiler.compat.$MODULE_NAME
+
+import dev.zacsweers.metro.compiler.compat.FirCompatContext
+
+public class FirCompatContextImpl : FirCompatContext {
+  // TODO Implement
+
+  public class Factory : FirCompatContext.Factory {
+    override val kotlinVersion: String = "$KOTLIN_VERSION"
+
+    override fun create(): FirCompatContext = FirCompatContextImpl()
+  }
+}
+EOF
+
+# Generate service loader file
+cat > "$MODULE_DIR/src/main/resources/META-INF/services/dev.zacsweers.metro.compiler.compat.FirCompatContext\$Factory" << EOF
+dev.zacsweers.metro.compiler.compat.$MODULE_NAME.FirCompatContextImpl\$Factory
+EOF
+
+echo "✅ Generated module structure:"
+echo "  📁 $MODULE_DIR/"
+echo "  📄 $MODULE_DIR/build.gradle.kts"
+echo "  📄 $MODULE_DIR/gradle.properties"
+echo "  📄 $MODULE_DIR/src/main/kotlin/dev/zacsweers/metro/compiler/compat/$MODULE_NAME/FirCompatContextImpl.kt"
+echo "  📄 $MODULE_DIR/src/main/resources/META-INF/services/dev.zacsweers.metro.compiler.compat.FirCompatContext\$Factory"
+echo ""
+echo "Next steps:"
+echo "1. Add ':compiler-compat:$MODULE_NAME' to settings.gradle.kts"
+echo "2. Add 'implementation(project(\":compiler-compat:$MODULE_NAME\"))' to compiler/build.gradle.kts"
+echo "3. Implement the FirCompatContextImpl.kt based on Kotlin $KOTLIN_VERSION APIs"
+echo "4. Test the implementation with the target Kotlin version"
