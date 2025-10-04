@@ -25,7 +25,7 @@ rootProject.name = "metro"
 include(
   ":compiler",
   ":compiler-compat",
-  ":compiler-compat:k230_dev9673",
+  ":compiler-compat:k230_dev_9673",
   ":compiler-compat:k2220",
   ":compiler-tests",
   ":gradle-plugin",

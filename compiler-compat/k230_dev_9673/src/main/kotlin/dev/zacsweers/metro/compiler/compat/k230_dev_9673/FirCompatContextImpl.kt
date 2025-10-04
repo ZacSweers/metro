@@ -1,4 +1,4 @@
-package dev.zacsweers.metro.compiler.compat.k230_dev9673
+package dev.zacsweers.metro.compiler.compat.k230_dev_9673
 
 import dev.zacsweers.metro.compiler.compat.FirCompatContext
 import org.jetbrains.kotlin.fir.FirSession
