@@ -121,9 +121,13 @@ dependencies {
   compileOnly(libs.kotlin.compilerEmbeddable)
   compileOnly(libs.kotlin.stdlib)
   compileOnly(libs.poko.annotations)
+  implementation(project(":compiler-compat"))
+  implementation(project(":compiler-compat:k230-dev9673"))
+  implementation(project(":compiler-compat:k2220"))
 
   add(embedded.name, libs.picnic)
   add(embedded.name, libs.wire.runtime)
+//  add(embedded.name, project(":compiler-compat"))
 
   testCompileOnly(libs.poko.annotations)
 
