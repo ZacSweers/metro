@@ -25,8 +25,8 @@ echo "Generating compatibility module for Kotlin $KOTLIN_VERSION"
 echo "Module name: $MODULE_NAME"
 echo "Package suffix: $PACKAGE_SUFFIX"
 
-# Create module directory structure
-MODULE_DIR="$MODULE_NAME"
+# Create module directory structure (relative to compiler-compat/)
+MODULE_DIR="compiler-compat/$MODULE_NAME"
 mkdir -p "$MODULE_DIR/src/main/kotlin/dev/zacsweers/metro/compiler/compat/$MODULE_NAME"
 mkdir -p "$MODULE_DIR/src/main/resources/META-INF/services"
 
@@ -89,6 +89,35 @@ cat > "$MODULE_DIR/src/main/resources/META-INF/services/dev.zacsweers.metro.comp
 dev.zacsweers.metro.compiler.compat.$MODULE_NAME.FirCompatContextImpl\$Factory
 EOF
 
+# Add to settings.gradle.kts
+echo "📝 Adding module to settings.gradle.kts..."
+SETTINGS_FILE="settings.gradle.kts"
+if [ -f "$SETTINGS_FILE" ]; then
+    # Find the line with ":compiler-compat:k2220" and add our module after it
+    sed -i.bak "/\":compiler-compat:k2220\",/a\\
+  \":compiler-compat:$MODULE_NAME\",
+" "$SETTINGS_FILE"
+    rm "$SETTINGS_FILE.bak"
+    echo "✅ Added ':compiler-compat:$MODULE_NAME' to settings.gradle.kts"
+else
+    echo "⚠️  Could not find settings.gradle.kts, please add ':compiler-compat:$MODULE_NAME' manually"
+fi
+
+# Add to compiler/build.gradle.kts
+echo "📝 Adding dependency to compiler/build.gradle.kts..."
+COMPILER_BUILD_FILE="compiler/build.gradle.kts"
+if [ -f "$COMPILER_BUILD_FILE" ]; then
+    # Find the line with ":compiler-compat:k2220" and add our module after it
+    sed -i.bak "/implementation(project(\":compiler-compat:k2220\"))/a\\
+  implementation(project(\":compiler-compat:$MODULE_NAME\"))
+" "$COMPILER_BUILD_FILE"
+    rm "$COMPILER_BUILD_FILE.bak"
+    echo "✅ Added 'implementation(project(\":compiler-compat:$MODULE_NAME\"))' to compiler/build.gradle.kts"
+else
+    echo "⚠️  Could not find compiler/build.gradle.kts, please add 'implementation(project(\":compiler-compat:$MODULE_NAME\"))' manually"
+fi
+
+echo ""
 echo "✅ Generated module structure:"
 echo "  📁 $MODULE_DIR/"
 echo "  📄 $MODULE_DIR/build.gradle.kts"
@@ -96,8 +125,8 @@ echo "  📄 $MODULE_DIR/gradle.properties"
 echo "  📄 $MODULE_DIR/src/main/kotlin/dev/zacsweers/metro/compiler/compat/$MODULE_NAME/FirCompatContextImpl.kt"
 echo "  📄 $MODULE_DIR/src/main/resources/META-INF/services/dev.zacsweers.metro.compiler.compat.FirCompatContext\$Factory"
 echo ""
-echo "Next steps:"
-echo "1. Add ':compiler-compat:$MODULE_NAME' to settings.gradle.kts"
-echo "2. Add 'implementation(project(\":compiler-compat:$MODULE_NAME\"))' to compiler/build.gradle.kts"
-echo "3. Implement the FirCompatContextImpl.kt based on Kotlin $KOTLIN_VERSION APIs"
-echo "4. Test the implementation with the target Kotlin version"
+echo "✅ Updated build configuration:"
+echo "  📝 Added module to settings.gradle.kts"
+echo "  📝 Added dependency to compiler/build.gradle.kts"
+echo ""
+echo "Next step: Implement the FirCompatContextImpl.kt based on Kotlin $KOTLIN_VERSION APIs"
