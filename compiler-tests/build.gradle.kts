@@ -32,8 +32,12 @@ dependencies {
 
   testImplementation(libs.kotlin.reflect)
   testImplementation(libs.kotlin.testJunit5)
-  testImplementation(libs.kotlin.compilerTestFramework)
-  testImplementation(libs.kotlin.compiler)
+  val testCompilerVersion =
+    providers.gradleProperty("metro.testCompilerVersion").orElse(libs.versions.kotlin).get()
+  testImplementation(
+    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$testCompilerVersion"
+  )
+  testImplementation("org.jetbrains.kotlin:kotlin-compiler:$testCompilerVersion")
 
   testRuntimeOnly(libs.ksp.symbolProcessing)
   testImplementation(libs.ksp.symbolProcessing.aaEmbeddable)
