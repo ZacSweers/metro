@@ -16,21 +16,7 @@ Note this version may not actually have published artifacts anywhere, so it may 
 
 ### Core Interface
 
-The `CompatContext` interface defines the contract for version-specific operations:
-
-```kotlin
-interface CompatContext {
-  interface Factory {
-    val kotlinVersion: String
-    fun create(): CompatContext
-  }
-
-  // Version-abstracted methods
-  fun FirBasedSymbol<*>.getContainingClassSymbol(): FirClassLikeSymbol<*>?
-  fun FirCallableSymbol<*>.getContainingSymbol(session: FirSession): FirBasedSymbol<*>?
-  fun FirDeclaration.getContainingClassSymbol(): FirClassLikeSymbol<*>?
-}
-```
+The `CompatContext` interface defines the contract for version-specific operations.
 
 ### Version-Specific Implementations
 
@@ -38,6 +24,7 @@ Each supported Kotlin version has its own module with a corresponding implementa
 
 - `k2220/` - Kotlin 2.2.20 compatibility
 - `k230_dev9673/` - Kotlin 2.3.0-dev-9673 compatibility
+- etc etc.
 
 Each module contains:
 - `CompatContextImpl` - Version-specific implementation
