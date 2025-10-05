@@ -33,9 +33,8 @@ import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension
 public class MetroFirExtensionRegistrar(
   private val classIds: ClassIds,
   private val options: MetroOptions,
+  private val compatContext: CompatContext,
 ) : FirExtensionRegistrar() {
-  private val compatContext: CompatContext = CompatContext.getInstance()
-
   override fun ExtensionRegistrarContext.configurePlugin() {
     +MetroFirBuiltIns.getFactory(classIds, options)
     +::MetroFirCheckers
