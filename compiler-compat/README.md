@@ -52,23 +52,10 @@ This will create:
 - Skeleton implementation with TODOs
 - Service loader configuration
 
-### Manual Steps After Generation
-
-1. **Add to build configuration:**
-   ```kotlin
-   // settings.gradle.kts
-   include(":compiler-compat:k240_Beta1")
-
-   // compiler/build.gradle.kts
-   dependencies {
-     implementation(project(":compiler-compat:k240_Beta1"))
-   }
-   ```
-
-2. **Implement the compatibility methods:**
+1. **Implement the compatibility methods:**
    Edit the generated `CompatContextImpl.kt` and replace the `TODO()` calls with actual implementations based on the available APIs in that Kotlin version.
 
-3. **Test the implementation:**
+2. **Test the implementation:**
    Run the compiler tests with the new Kotlin version to ensure compatibility.
 
 ### Version Naming Convention
@@ -84,48 +71,15 @@ Examples:
 - `2.4.0-Beta1` → `k240_Beta1`
 - `2.5.0-dev-1234` → `k250_dev_1234`
 
-## Common API Changes
-
-### Kotlin 2.2.x → 2.3.x
-
-The `getContainingClassSymbol` and `getContainingSymbol` extension functions were moved from `org.jetbrains.kotlin.fir.analysis.checkers` to `org.jetbrains.kotlin.fir.resolve.providers.firProvider`.
-
-**Kotlin 2.2.x:**
-```kotlin
-import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
-import org.jetbrains.kotlin.fir.analysis.checkers.getContainingSymbol
-
-// Direct extension function calls
-symbol.getContainingClassSymbol()
-callableSymbol.getContainingSymbol(session)
-```
-
-**Kotlin 2.3.x:**
-```kotlin
-import org.jetbrains.kotlin.fir.resolve.providers.firProvider
-
-// Via firProvider
-session.firProvider.getContainingClass(symbol)
-session.firProvider.getFirCallableContainerFile(callableSymbol)?.symbol
-```
-
 ## Runtime Selection
 
-Metro's compiler plugin uses `ServiceLoader` to discover and select the appropriate compatibility implementation at runtime:
-
-```kotlin
-val factory = ServiceLoader.load(CompatContext.Factory::class.java)
-  .find { it.kotlinVersion == currentKotlinVersion }
-  ?: error("No compatibility implementation found for Kotlin $currentKotlinVersion")
-
-val compatContext = factory.create()
-```
+Metro's compiler plugin uses `ServiceLoader` to discover and select the appropriate compatibility implementation at runtime.
 
 This allows Metro to support multiple Kotlin versions without requiring separate builds or complex version detection logic.
 
 ## Development Notes
 
 - Always implement all interface methods, even if some are no-ops for certain versions
-- Include comprehensive KDoc comments explaining version-specific behavior
+- Include docs explaining version-specific behavior
 - Test thoroughly with the target Kotlin version before releasing
 - Keep implementations focused and minimal - avoid adding version-specific extensions beyond the interface contract
