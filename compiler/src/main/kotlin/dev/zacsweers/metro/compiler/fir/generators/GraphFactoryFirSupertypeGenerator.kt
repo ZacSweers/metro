@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.generators
 
-import dev.zacsweers.metro.compiler.compat.FirCompatContext
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.classIds
-import dev.zacsweers.metro.compiler.fir.firCompat
+import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isDependencyGraph
 import dev.zacsweers.metro.compiler.fir.predicates
@@ -62,7 +62,7 @@ import org.jetbrains.kotlin.fir.types.coneTypeOrNull
  * ```
  */
 internal class GraphFactoryFirSupertypeGenerator(session: FirSession) :
-  FirSupertypeGenerationExtension(session), FirCompatContext by session.firCompat {
+  FirSupertypeGenerationExtension(session), CompatContext by session.compatContext {
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(session.predicates.dependencyGraphPredicate)

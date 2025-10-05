@@ -12,7 +12,7 @@ import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.directCallableSymbols
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
-import dev.zacsweers.metro.compiler.fir.firCompat
+import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.nestedClasses
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
@@ -129,7 +129,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
 
     // Check supertype extensions
     for ((supertypeRef, graphExtensionFactoryClass) in graphExtensionFactorySupertypes) {
-      val graphExtensionClass = with(session.firCompat) {
+      val graphExtensionClass = with(session.compatContext) {
         graphExtensionFactoryClass.requireContainingClassSymbol()
       }
       validateGraphExtension(
@@ -169,7 +169,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
         ) == true
 
       if (isGraphExtensionCreator) {
-        val graphExtensionClass = with(session.firCompat) { returnTypeClassSymbol.requireContainingClassSymbol() }
+        val graphExtensionClass = with(session.compatContext) { returnTypeClassSymbol.requireContainingClassSymbol() }
         validateGraphExtension(
           session = session,
           classIds = classIds,

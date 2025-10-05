@@ -5,7 +5,7 @@ package dev.zacsweers.metro.compiler.fir
 import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.compat.FirCompatContext
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.extensions.FirExtensionSessionComponent
@@ -145,5 +145,5 @@ internal val FirSession.predicates: ExtensionPredicates
   get() = metroFirBuiltIns.predicates
 
 @Suppress("UnusedReceiverParameter")
-internal val FirSession.firCompat: FirCompatContext
-  get() = FirCompatContext.getInstance()
+internal val FirSession.compatContext: CompatContext
+  get() = CompatContext.getInstance()

@@ -4,7 +4,7 @@ This module provides a compatibility layer for Metro's compiler plugin to work a
 
 ## Overview
 
-The Kotlin compiler plugin APIs are not stable and can change between versions. Some APIs get deprecated, renamed, or removed entirely. This compatibility layer provides a uniform interface (`FirCompatContext`) that Metro's compiler can use regardless of the underlying Kotlin version.
+The Kotlin compiler plugin APIs are not stable and can change between versions. Some APIs get deprecated, renamed, or removed entirely. This compatibility layer provides a uniform interface (`CompatContext`) that Metro's compiler can use regardless of the underlying Kotlin version.
 
 ## IDE Plugin
 
@@ -16,13 +16,13 @@ Note this version may not actually have published artifacts anywhere, so it may 
 
 ### Core Interface
 
-The `FirCompatContext` interface defines the contract for version-specific operations:
+The `CompatContext` interface defines the contract for version-specific operations:
 
 ```kotlin
-interface FirCompatContext {
+interface CompatContext {
   interface Factory {
     val kotlinVersion: String
-    fun create(): FirCompatContext
+    fun create(): CompatContext
   }
   
   // Version-abstracted methods
@@ -40,7 +40,7 @@ Each supported Kotlin version has its own module with a corresponding implementa
 - `k230_dev9673/` - Kotlin 2.3.0-dev-9673 compatibility
 
 Each module contains:
-- `FirCompatContextImpl` - Version-specific implementation
+- `CompatContextImpl` - Version-specific implementation
 - `Factory` - Creates instances for that Kotlin version
 - Service loader configuration in `META-INF/services/`
 
@@ -79,7 +79,7 @@ This will create:
    ```
 
 2. **Implement the compatibility methods:**
-   Edit the generated `FirCompatContextImpl.kt` and replace the `TODO()` calls with actual implementations based on the available APIs in that Kotlin version.
+   Edit the generated `CompatContextImpl.kt` and replace the `TODO()` calls with actual implementations based on the available APIs in that Kotlin version.
 
 3. **Test the implementation:**
    Run the compiler tests with the new Kotlin version to ensure compatibility.
@@ -127,7 +127,7 @@ session.firProvider.getFirCallableContainerFile(callableSymbol)?.symbol
 Metro's compiler plugin uses `ServiceLoader` to discover and select the appropriate compatibility implementation at runtime:
 
 ```kotlin
-val factory = ServiceLoader.load(FirCompatContext.Factory::class.java)
+val factory = ServiceLoader.load(CompatContext.Factory::class.java)
   .find { it.kotlinVersion == currentKotlinVersion }
   ?: error("No compatibility implementation found for Kotlin $currentKotlinVersion")
 

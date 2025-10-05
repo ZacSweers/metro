@@ -6,7 +6,7 @@ import dev.zacsweers.metro.compiler.LOG_PREFIX
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.compat.FirCompatContext
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.tracer
@@ -36,7 +36,7 @@ import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.parentDeclarationsWithSelf
 import org.jetbrains.kotlin.name.ClassId
 
-internal interface IrMetroContext : IrPluginContext, FirCompatContext {
+internal interface IrMetroContext : IrPluginContext, CompatContext {
   val metroContext
     get() = this
 
@@ -130,14 +130,14 @@ internal interface IrMetroContext : IrPluginContext, FirCompatContext {
     operator fun invoke(
       pluginContext: IrPluginContext,
       messageCollector: MessageCollector,
-      firCompatContext: FirCompatContext,
+      compatContext: CompatContext,
       symbols: Symbols,
       options: MetroOptions,
       lookupTracker: LookupTracker?,
       expectActualTracker: ExpectActualTracker,
     ): IrMetroContext {
       return SimpleIrMetroContext(
-        firCompatContext,
+        compatContext,
         pluginContext,
         messageCollector,
         symbols,
@@ -148,7 +148,7 @@ internal interface IrMetroContext : IrPluginContext, FirCompatContext {
     }
 
     private class SimpleIrMetroContext(
-      firCompatContext: FirCompatContext,
+      compatContext: CompatContext,
       override val pluginContext: IrPluginContext,
       @Suppress("DEPRECATION")
       @Deprecated(
@@ -159,7 +159,7 @@ internal interface IrMetroContext : IrPluginContext, FirCompatContext {
       override val options: MetroOptions,
       lookupTracker: LookupTracker?,
       expectActualTracker: ExpectActualTracker,
-    ) : IrMetroContext, IrPluginContext by pluginContext, FirCompatContext by firCompatContext {
+    ) : IrMetroContext, IrPluginContext by pluginContext, CompatContext by compatContext {
       private var reportedErrors = 0
 
       override fun onErrorReported() {

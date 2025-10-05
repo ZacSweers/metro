@@ -3,7 +3,7 @@
 package dev.zacsweers.metro.compiler.fir
 
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.compat.FirCompatContext
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.generators.collectAbstractFunctions
 import dev.zacsweers.metro.compiler.mapToArray
@@ -75,7 +75,6 @@ import org.jetbrains.kotlin.fir.renderer.ConeTypeRendererForReadability
 import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.resolve.getSuperTypes
 import org.jetbrains.kotlin.fir.resolve.lookupSuperTypes
-import org.jetbrains.kotlin.fir.resolve.providers.firProvider
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
@@ -104,7 +103,6 @@ import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.FirUserTypeRef
 import org.jetbrains.kotlin.fir.types.builder.buildUserTypeRef
 import org.jetbrains.kotlin.fir.types.classId
-import org.jetbrains.kotlin.fir.types.classLikeLookupTagIfAny
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.fir.types.constructType
@@ -805,8 +803,8 @@ internal fun FirCallableSymbol<*>.findAnnotation(
   return null
 }
 
-context(firCompat: FirCompatContext)
-internal fun FirBasedSymbol<*>.requireContainingClassSymbol(): FirClassLikeSymbol<*> = with(firCompat) {
+context(compatContext: CompatContext)
+internal fun FirBasedSymbol<*>.requireContainingClassSymbol(): FirClassLikeSymbol<*> = with(compatContext) {
   getContainingClassSymbol() ?: reportCompilerBug("No containing class symbol found for $this")
 }
 

@@ -13,12 +13,12 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
 
-public interface FirCompatContext {
-  public companion object {
-    private val _instance: FirCompatContext by lazy { create() }
+public interface CompatContext {
+  public companion object Companion {
+    private val _instance: CompatContext by lazy { create() }
 
     // TODO ehhhh
-    public fun getInstance(): FirCompatContext = _instance
+    public fun getInstance(): CompatContext = _instance
 
     private fun loadFactories(): Sequence<Factory> {
       return ServiceLoader.load(Factory::class.java).asSequence()
@@ -48,7 +48,7 @@ public interface FirCompatContext {
       return targetFactory
     }
 
-    private fun create(): FirCompatContext = resolveFactory().create()
+    private fun create(): CompatContext = resolveFactory().create()
   }
 
   public interface Factory {
@@ -58,9 +58,9 @@ public interface FirCompatContext {
     public val currentVersion: String
       get() = loadCompilerVersion()
 
-    public fun create(): FirCompatContext
+    public fun create(): CompatContext
 
-    public companion object {
+    public companion object Companion {
       private const val COMPILER_VERSION_FILE = "META-INF/compiler.version"
 
       internal fun loadCompilerVersion(): String {
@@ -114,4 +114,4 @@ public interface FirCompatContext {
   public fun IrClass.addFakeOverrides(typeSystem: IrTypeSystemContext)
 }
 
-private data class FactoryData(val version: String, val factory: FirCompatContext.Factory)
+private data class FactoryData(val version: String, val factory: CompatContext.Factory)

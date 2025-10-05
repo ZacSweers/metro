@@ -1,6 +1,6 @@
 package dev.zacsweers.metro.compiler.compat.k2220
 
-import dev.zacsweers.metro.compiler.compat.FirCompatContext
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.fir.FirSession
@@ -12,12 +12,10 @@ import org.jetbrains.kotlin.fakeElement as fakeElementNative
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.declarations.IrOverridableMember
-import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
 import org.jetbrains.kotlin.ir.util.addFakeOverrides as addFakeOverridesNative
 
-public class FirCompatContextImpl : FirCompatContext {
+public class CompatContextImpl : CompatContext {
   override fun FirBasedSymbol<*>.getContainingClassSymbol(): FirClassLikeSymbol<*>? =
     getContainingClassSymbolNative()
 
@@ -39,9 +37,9 @@ public class FirCompatContextImpl : FirCompatContext {
     return addFakeOverridesNative(typeSystem)
   }
 
-  public class Factory : FirCompatContext.Factory {
+  public class Factory : CompatContext.Factory {
     override val minVersion: String = "2.2.20"
 
-    override fun create(): FirCompatContext = FirCompatContextImpl()
+    override fun create(): CompatContext = CompatContextImpl()
   }
 }

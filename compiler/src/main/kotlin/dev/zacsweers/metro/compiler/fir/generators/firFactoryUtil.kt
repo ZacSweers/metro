@@ -9,7 +9,7 @@ import dev.zacsweers.metro.compiler.fir.buildFullSubstitutionMap
 import dev.zacsweers.metro.compiler.fir.buildSimpleValueParameter
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.copyParameters
-import dev.zacsweers.metro.compiler.fir.firCompat
+import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.generateMemberFunction
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.wrapInProviderIfNecessary
@@ -48,7 +48,7 @@ internal fun FirExtension.buildFactoryConstructor(
   instanceReceiver: ConeClassLikeType?,
   extensionReceiver: ConeClassLikeType?,
   valueParameters: List<MetroFirValueParameter>,
-): FirConstructor = with(session.firCompat) {
+): FirConstructor = with(session.compatContext) {
   val owner = context.owner
 
   // Get the target class to build substitution map
@@ -127,7 +127,7 @@ internal fun FirExtension.buildFactoryCreateFunction(
   instanceReceiver: ConeClassLikeType?,
   extensionReceiver: ConeClassLikeType?,
   valueParameters: List<MetroFirValueParameter>,
-): FirNamedFunctionSymbol = with(session.firCompat) {
+): FirNamedFunctionSymbol = with(session.compatContext) {
   return generateMemberFunction(
       owner = context.owner,
       returnTypeProvider = returnTypeProvider,
@@ -214,7 +214,7 @@ internal fun FirExtension.buildNewInstanceFunction(
   instanceReceiver: ConeClassLikeType?,
   extensionReceiver: ConeClassLikeType?,
   valueParameters: List<MetroFirValueParameter>,
-): FirNamedFunctionSymbol = with(session.firCompat) {
+): FirNamedFunctionSymbol = with(session.compatContext) {
   return generateMemberFunction(
       context.owner,
       returnType.toFirResolvedTypeRef(),

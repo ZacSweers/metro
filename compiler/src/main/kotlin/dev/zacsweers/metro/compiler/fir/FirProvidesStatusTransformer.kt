@@ -3,7 +3,7 @@
 package dev.zacsweers.metro.compiler.fir
 
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.compat.FirCompatContext
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.copyWithNewDefaults
@@ -19,7 +19,7 @@ import org.jetbrains.kotlin.fir.extensions.FirStatusTransformerExtension
 import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
 
 internal class FirProvidesStatusTransformer(session: FirSession) :
-  FirStatusTransformerExtension(session), FirCompatContext by session.firCompat {
+  FirStatusTransformerExtension(session), CompatContext by session.compatContext {
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(session.predicates.providesAnnotationPredicate)
   }

@@ -67,26 +67,26 @@ POM_PACKAGING=jar
 kotlin.stdlib.default.dependency=false
 EOF
 
-# Generate FirCompatContextImpl.kt
-cat > "$MODULE_DIR/src/main/kotlin/dev/zacsweers/metro/compiler/compat/$MODULE_NAME/FirCompatContextImpl.kt" << EOF
+# Generate CompatContextImpl.kt
+cat > "$MODULE_DIR/src/main/kotlin/dev/zacsweers/metro/compiler/compat/$MODULE_NAME/CompatContextImpl.kt" << EOF
 package dev.zacsweers.metro.compiler.compat.$MODULE_NAME
 
-import dev.zacsweers.metro.compiler.compat.FirCompatContext
+import dev.zacsweers.metro.compiler.compat.CompatContext
 
-public class FirCompatContextImpl : FirCompatContext {
+public class CompatContextImpl : CompatContext {
   // TODO Implement
 
-  public class Factory : FirCompatContext.Factory {
+  public class Factory : CompatContext.Factory {
     override val kotlinVersion: String = "$KOTLIN_VERSION"
 
-    override fun create(): FirCompatContext = FirCompatContextImpl()
+    override fun create(): CompatContext = CompatContextImpl()
   }
 }
 EOF
 
 # Generate service loader file
-cat > "$MODULE_DIR/src/main/resources/META-INF/services/dev.zacsweers.metro.compiler.compat.FirCompatContext\$Factory" << EOF
-dev.zacsweers.metro.compiler.compat.$MODULE_NAME.FirCompatContextImpl\$Factory
+cat > "$MODULE_DIR/src/main/resources/META-INF/services/dev.zacsweers.metro.compiler.compat.CompatContext\$Factory" << EOF
+dev.zacsweers.metro.compiler.compat.$MODULE_NAME.CompatContextImpl\$Factory
 EOF
 
 # Add to settings.gradle.kts
@@ -122,11 +122,11 @@ echo "✅ Generated module structure:"
 echo "  📁 $MODULE_DIR/"
 echo "  📄 $MODULE_DIR/build.gradle.kts"
 echo "  📄 $MODULE_DIR/gradle.properties"
-echo "  📄 $MODULE_DIR/src/main/kotlin/dev/zacsweers/metro/compiler/compat/$MODULE_NAME/FirCompatContextImpl.kt"
-echo "  📄 $MODULE_DIR/src/main/resources/META-INF/services/dev.zacsweers.metro.compiler.compat.FirCompatContext\$Factory"
+echo "  📄 $MODULE_DIR/src/main/kotlin/dev/zacsweers/metro/compiler/compat/$MODULE_NAME/CompatContextImpl.kt"
+echo "  📄 $MODULE_DIR/src/main/resources/META-INF/services/dev.zacsweers.metro.compiler.compat.CompatContext\$Factory"
 echo ""
 echo "✅ Updated build configuration:"
 echo "  📝 Added module to settings.gradle.kts"
 echo "  📝 Added dependency to compiler/build.gradle.kts"
 echo ""
-echo "Next step: Implement the FirCompatContextImpl.kt based on Kotlin $KOTLIN_VERSION APIs"
+echo "Next step: Implement the CompatContextImpl.kt based on Kotlin $KOTLIN_VERSION APIs"

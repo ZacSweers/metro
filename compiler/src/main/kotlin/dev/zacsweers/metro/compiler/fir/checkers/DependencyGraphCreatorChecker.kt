@@ -2,14 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
-import dev.zacsweers.metro.compiler.compat.FirCompatContext
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.allScopeClassIds
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
-import dev.zacsweers.metro.compiler.fir.firCompat
-import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
+import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.fir.validateApiDeclaration
 import dev.zacsweers.metro.compiler.flatMapToSet
@@ -108,7 +106,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
           return
         }
         // Factory must be nested in that class
-        val containingClassId = with(session.firCompat) {
+        val containingClassId = with(session.compatContext) {
           declaration.getContainingClassSymbol()?.classId
         }
         if (it.classId != containingClassId) {

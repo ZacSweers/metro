@@ -85,7 +85,7 @@ internal fun FirExtension.generateMemberFunction(
     moduleData = session.moduleData
     this.origin = origin
 
-    source = with(session.firCompat) {
+    source = with(session.compatContext) {
       owner.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
     }
 
@@ -154,7 +154,7 @@ internal fun FirExtension.copyParameters(
           }
         }
         .apply {
-          context(session.firCompat) {
+          context(session.compatContext) {
             replaceAnnotationsSafe(original.symbol.annotations)
           }
         }

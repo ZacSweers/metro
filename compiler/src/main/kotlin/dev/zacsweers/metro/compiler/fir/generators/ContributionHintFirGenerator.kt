@@ -3,7 +3,7 @@
 package dev.zacsweers.metro.compiler.fir.generators
 
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.compat.FirCompatContext
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.annotationsIn
@@ -47,8 +47,8 @@ import org.jetbrains.kotlin.platform.jvm.isJvm
  *
  * https://youtrack.jetbrains.com/issue/KT-75865
  */
-internal class ContributionHintFirGenerator(session: FirSession, firCompat: FirCompatContext) :
-  FirDeclarationGenerationExtension(session), FirCompatContext by firCompat {
+internal class ContributionHintFirGenerator(session: FirSession, compatContext: CompatContext) :
+  FirDeclarationGenerationExtension(session), CompatContext by compatContext {
 
   private val platform = session.moduleData.platform
 

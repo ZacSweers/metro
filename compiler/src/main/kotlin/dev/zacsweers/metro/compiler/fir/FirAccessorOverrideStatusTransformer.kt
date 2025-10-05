@@ -3,7 +3,7 @@
 package dev.zacsweers.metro.compiler.fir
 
 import dev.zacsweers.metro.compiler.MetroAnnotations.Kind
-import dev.zacsweers.metro.compiler.compat.FirCompatContext
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.metroAnnotations
 import org.jetbrains.kotlin.descriptors.isInterface
 import org.jetbrains.kotlin.fir.FirSession
@@ -36,7 +36,7 @@ import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 
 internal class FirAccessorOverrideStatusTransformer(session: FirSession) :
-  FirStatusTransformerExtension(session), FirCompatContext by session.firCompat {
+  FirStatusTransformerExtension(session), CompatContext by session.compatContext {
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(session.predicates.dependencyGraphPredicate)
   }

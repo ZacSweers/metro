@@ -2,11 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir
 
-import dev.zacsweers.metro.compiler.compat.FirCompatContext
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.descriptors.annotations.AnnotationUseSiteTarget
-import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationArgumentMapping
@@ -22,20 +21,20 @@ import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.visitors.FirTransformer
 import org.jetbrains.kotlin.fir.visitors.FirVisitor
 
-context(firCompat: FirCompatContext)
+context(compatContext: CompatContext)
 internal fun FirDeclaration.replaceAnnotationsSafe(newAnnotations: List<FirAnnotation>) {
   return replaceAnnotations(newAnnotations.copy(symbol))
 }
 
-context(firCompat: FirCompatContext)
+context(compatContext: CompatContext)
 private fun List<FirAnnotation>.copy(newParent: FirBasedSymbol<*>): List<FirAnnotation> {
   return map { it.copy(newParent) }
 }
 
-context(firCompat: FirCompatContext)
+context(compatContext: CompatContext)
 private fun FirAnnotation.copy(newParent: FirBasedSymbol<*>): FirAnnotation {
   if (this !is FirAnnotationCall) return this
-  return NonAcceptingFirAnnotationCall(firCompat, this, newParent)
+  return NonAcceptingFirAnnotationCall(compatContext, this, newParent)
 }
 
 /**
@@ -45,12 +44,12 @@ private fun FirAnnotation.copy(newParent: FirBasedSymbol<*>): FirAnnotation {
  * https://kotlinlang.slack.com/archives/C7L3JB43G/p1737173850965089
  */
 private class NonAcceptingFirAnnotationCall(
-  private val firCompat: FirCompatContext,
+  private val compatContext: CompatContext,
   private val delegate: FirAnnotationCall,
   override val containingDeclarationSymbol: FirBasedSymbol<*>,
 ) : FirAnnotationCall() {
   override val source: KtSourceElement?
-    get() = with(firCompat) {
+    get() = with(compatContext) {
       delegate.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
     }
 

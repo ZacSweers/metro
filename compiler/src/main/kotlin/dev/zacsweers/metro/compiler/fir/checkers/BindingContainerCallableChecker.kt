@@ -10,7 +10,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.BINDING_CONTAINER_ERROR
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
-import dev.zacsweers.metro.compiler.fir.firCompat
+import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
@@ -63,7 +63,7 @@ internal object BindingContainerCallableChecker :
     val classIds = session.classIds
 
     val containingClassSymbol by unsafeLazy {
-      with(session.firCompat) { declaration.getContainingClassSymbol() }
+      with(session.compatContext) { declaration.getContainingClassSymbol() }
     }
     if (declaration is FirConstructor) {
       val isInBindingContainer =
