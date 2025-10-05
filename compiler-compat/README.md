@@ -24,7 +24,7 @@ interface CompatContext {
     val kotlinVersion: String
     fun create(): CompatContext
   }
-  
+
   // Version-abstracted methods
   fun FirBasedSymbol<*>.getContainingClassSymbol(): FirClassLikeSymbol<*>?
   fun FirCallableSymbol<*>.getContainingSymbol(session: FirSession): FirBasedSymbol<*>?
@@ -71,7 +71,7 @@ This will create:
    ```kotlin
    // settings.gradle.kts
    include(":compiler-compat:k240_Beta1")
-   
+
    // compiler/build.gradle.kts
    dependencies {
      implementation(project(":compiler-compat:k240_Beta1"))
