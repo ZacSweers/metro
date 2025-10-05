@@ -1,4 +1,4 @@
-package dev.zacsweers.metro.compiler.compat.k230_dev_9673
+package dev.zacsweers.metro.compiler.compat.k230_dev_7984
 
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import org.jetbrains.kotlin.GeneratedDeclarationKey

@@ -122,7 +122,7 @@ dependencies {
   compileOnly(libs.kotlin.stdlib)
   compileOnly(libs.poko.annotations)
   api(project(":compiler-compat"))
-  implementation(project(":compiler-compat:k230_dev_9673"))
+  implementation(project(":compiler-compat:k230_dev_7984"))
   implementation(project(":compiler-compat:k2220"))
 
   add(embedded.name, libs.picnic)
