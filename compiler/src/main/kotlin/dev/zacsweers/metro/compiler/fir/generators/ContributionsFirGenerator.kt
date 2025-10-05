@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.fir.generators
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
+import dev.zacsweers.metro.compiler.compat.FirCompatContext
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.Keys
@@ -54,8 +55,8 @@ import org.jetbrains.kotlin.name.SpecialNames
  * Generates `@MetroContribution`-annotated nested contribution classes for
  * `@Contributes*`-annotated classes.
  */
-internal class ContributionsFirGenerator(session: FirSession) :
-  FirDeclarationGenerationExtension(session) {
+internal class ContributionsFirGenerator(session: FirSession, firCompat: FirCompatContext) :
+  FirDeclarationGenerationExtension(session), FirCompatContext by firCompat {
 
   // For each contributing class, track its nested contribution classes and their scope arguments
   private val contributingClassToScopedContributions:

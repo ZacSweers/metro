@@ -166,6 +166,13 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
           ?.let { FilesSubpluginOption("reports-destination", listOf(it.asFile)) }
           ?.let(::add)
 
+        add(
+          lazyOption(
+            "fir-kotlin-version",
+            extension.firKotlinVersion.orElse(project.getKotlinPluginVersion()),
+          )
+        )
+
         if (isJvmTarget) {
           add(
             SubpluginOption(

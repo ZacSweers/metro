@@ -84,8 +84,8 @@ import org.jetbrains.kotlin.name.SpecialNames
 import org.jetbrains.kotlin.types.ConstantValueKind
 
 /** Generates factory declarations for `@Provides`-annotated members. */
-internal class ProvidesFactoryFirGenerator(session: FirSession) :
-  FirDeclarationGenerationExtension(session), FirCompatContext by session.firCompat {
+internal class ProvidesFactoryFirGenerator(session: FirSession, firCompat: FirCompatContext) :
+  FirDeclarationGenerationExtension(session), FirCompatContext by firCompat {
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(session.predicates.providesAnnotationPredicate)
@@ -373,7 +373,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
 }
 
 internal class ProvidesFactorySupertypeGenerator(session: FirSession) :
-  FirSupertypeGenerationExtension(session) {
+  FirSupertypeGenerationExtension(session), FirCompatContext by session.firCompat {
 
   override fun needTransformSupertypes(declaration: FirClassLikeDeclaration): Boolean {
     return declaration.symbol.hasOrigin(Keys.ProviderFactoryClassDeclaration)

@@ -21,8 +21,6 @@ internal class MetroFirBuiltIns(
   val options: MetroOptions,
 ) : FirExtensionSessionComponent(session) {
 
-  val firCompatContext: FirCompatContext by unsafeLazy { FirCompatContext.create() }
-
   val errorFunctionSymbol by unsafeLazy {
     session.symbolProvider.getTopLevelFunctionSymbols(kotlinPackageFqn, Symbols.Names.error).first {
       it.valueParameterSymbols.size == 1
@@ -146,5 +144,6 @@ internal val FirSession.classIds: ClassIds
 internal val FirSession.predicates: ExtensionPredicates
   get() = metroFirBuiltIns.predicates
 
+@Suppress("UnusedReceiverParameter")
 internal val FirSession.firCompat: FirCompatContext
-  get() = metroFirBuiltIns.firCompatContext
+  get() = FirCompatContext.getInstance()

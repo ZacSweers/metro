@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.fir
 
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.compat.FirCompatContext
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.generators.collectAbstractFunctions
 import dev.zacsweers.metro.compiler.mapToArray
@@ -804,8 +805,10 @@ internal fun FirCallableSymbol<*>.findAnnotation(
   return null
 }
 
-internal fun FirBasedSymbol<*>.requireContainingClassSymbol(): FirClassLikeSymbol<*> =
+context(firCompat: FirCompatContext)
+internal fun FirBasedSymbol<*>.requireContainingClassSymbol(): FirClassLikeSymbol<*> = with(firCompat) {
   getContainingClassSymbol() ?: reportCompilerBug("No containing class symbol found for $this")
+}
 
 private val FirPropertyAccessExpression.qualifierName: Name?
   get() = (calleeReference as? FirSimpleNamedReference)?.name

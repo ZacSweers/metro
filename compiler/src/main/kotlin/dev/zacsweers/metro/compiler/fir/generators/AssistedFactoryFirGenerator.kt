@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.fir.generators
 
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.compat.FirCompatContext
 import dev.zacsweers.metro.compiler.fir.FirInjectConstructor
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
@@ -44,8 +45,8 @@ import org.jetbrains.kotlin.name.Name
  * Note this is specifically for generating `@AssistedFactory`-annotated declarations, not for
  * generating assisted factory impls.
  */
-internal class AssistedFactoryFirGenerator(session: FirSession) :
-  FirDeclarationGenerationExtension(session) {
+internal class AssistedFactoryFirGenerator(session: FirSession, firCompat: FirCompatContext) :
+  FirDeclarationGenerationExtension(session), FirCompatContext by firCompat {
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(

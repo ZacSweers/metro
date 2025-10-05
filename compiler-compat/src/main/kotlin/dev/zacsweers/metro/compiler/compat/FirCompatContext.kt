@@ -1,14 +1,21 @@
 package dev.zacsweers.metro.compiler.compat
 
+import java.io.FileNotFoundException
 import java.util.ServiceLoader
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
+import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrar
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 
 public interface FirCompatContext {
   public companion object {
+    private val _instance: FirCompatContext by lazy { create() }
+
+    // TODO ehhhh
+    public fun getInstance(): FirCompatContext = _instance
+
     private fun loadFactories(): Sequence<Factory> {
       return ServiceLoader.load(Factory::class.java).asSequence()
     }
@@ -16,7 +23,7 @@ public interface FirCompatContext {
     /**
      * Load [factories][Factory] and pick the highest compatible version (by [Factory.minVersion])
      */
-    public fun resolveFactory(
+    private fun resolveFactory(
       factories: Sequence<Factory> = loadFactories(),
       testVersion: String? = null,
     ): Factory {
@@ -37,17 +44,28 @@ public interface FirCompatContext {
       return targetFactory
     }
 
-    public fun create(): FirCompatContext = resolveFactory().create()
+    private fun create(): FirCompatContext = resolveFactory().create()
   }
 
   public interface Factory {
     public val minVersion: String
-      get() = currentVersion
 
-    /** Attempts to get the current AGP version or throws and exception if it cannot. */
+    /** Attempts to get the current compiler version or throws and exception if it cannot. */
     public val currentVersion: String
+      get() = loadCompilerVersion()
 
     public fun create(): FirCompatContext
+
+    public companion object {
+      private const val COMPILER_VERSION_FILE = "META-INF/compiler.version"
+
+      internal fun loadCompilerVersion(): String {
+        val inputStream =
+          FirExtensionRegistrar::class.java.classLoader!!.getResourceAsStream(COMPILER_VERSION_FILE)
+            ?: throw FileNotFoundException("'$COMPILER_VERSION_FILE' not found in the classpath")
+        return inputStream.bufferedReader().use { it.readText() }
+      }
+    }
   }
 
   /**

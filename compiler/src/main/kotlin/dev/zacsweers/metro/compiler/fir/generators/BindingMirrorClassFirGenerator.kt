@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.fir.generators
 
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.compat.FirCompatContext
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.fir.predicates
@@ -25,8 +26,8 @@ import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
 
 /** Generates mirror class declarations for `@Binds` and `@Multibinds`-annotated members. */
-internal class BindingMirrorClassFirGenerator(session: FirSession) :
-  FirDeclarationGenerationExtension(session) {
+internal class BindingMirrorClassFirGenerator(session: FirSession, firCompat: FirCompatContext) :
+  FirDeclarationGenerationExtension(session), FirCompatContext by firCompat {
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(session.predicates.bindsAnnotationPredicate)

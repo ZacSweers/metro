@@ -77,8 +77,8 @@ import org.jetbrains.kotlin.name.SpecialNames
 import org.jetbrains.kotlin.types.ConstantValueKind
 
 /** Generates factory and membersinjector declarations for `@Inject`-annotated classes. */
-internal class InjectedClassFirGenerator(session: FirSession) :
-  FirDeclarationGenerationExtension(session), FirCompatContext by session.firCompat {
+internal class InjectedClassFirGenerator(session: FirSession, firCompat: FirCompatContext) :
+  FirDeclarationGenerationExtension(session), FirCompatContext by firCompat {
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(session.predicates.allInjectAnnotationsPredicate)

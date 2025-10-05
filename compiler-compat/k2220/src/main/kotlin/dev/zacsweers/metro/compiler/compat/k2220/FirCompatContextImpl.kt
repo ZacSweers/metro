@@ -20,7 +20,7 @@ public class FirCompatContextImpl : FirCompatContext {
     getContainingClassSymbolNative()
 
   public class Factory : FirCompatContext.Factory {
-    override val currentVersion: String = "2.2.20"
+    override val minVersion: String = "2.2.20"
 
     override fun create(): FirCompatContext = FirCompatContextImpl()
   }
