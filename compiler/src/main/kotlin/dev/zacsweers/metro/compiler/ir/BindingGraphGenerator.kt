@@ -328,7 +328,7 @@ internal class BindingGraphGenerator(
         creatorParam.isBindsInstance ||
           creatorParam.typeKey.type
             .rawTypeOrNull()
-            ?.isAnnotatedWithAny(symbols.classIds.bindingContainerAnnotations) == true
+            ?.isAnnotatedWithAny(metroSymbols.classIds.bindingContainerAnnotations) == true
       if (shouldExposeBinding) {
         val paramTypeKey = creatorParam.typeKey
         graph.addBinding(

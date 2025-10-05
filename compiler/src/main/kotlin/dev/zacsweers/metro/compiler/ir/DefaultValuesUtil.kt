@@ -68,7 +68,7 @@ internal fun copyParameterDefaultValues(
                 SYNTHETIC_OFFSET,
                 // Unpack the provider type
                 newGet.type.expectAs<IrSimpleType>().arguments[0].typeOrFail,
-                context.symbols.providerInvoke,
+                context.metroSymbols.providerInvoke,
               )
               .apply { this.dispatchReceiver = newGet }
           } else {
@@ -101,8 +101,8 @@ internal fun copyParameterDefaultValues(
         IrCallImpl.fromSymbolOwner(
             SYNTHETIC_OFFSET,
             SYNTHETIC_OFFSET,
-            parameter.type.wrapInProvider(context.symbols.metroProvider),
-            context.symbols.metroProviderFunction,
+            parameter.type.wrapInProvider(context.metroSymbols.metroProvider),
+            context.metroSymbols.metroProviderFunction,
           )
           .apply {
             typeArguments[0] = parameter.type

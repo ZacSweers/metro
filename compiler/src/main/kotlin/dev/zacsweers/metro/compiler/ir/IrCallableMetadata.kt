@@ -55,7 +55,7 @@ internal fun IrAnnotationContainer.irCallableMetadata(
     return IrCallableMetadata(
       callableId = mirrorFunction.callableId,
       mirrorCallableId = mirrorFunction.callableId,
-      annotations = sourceAnnotations ?: mirrorFunction.metroAnnotations(context.symbols.classIds),
+      annotations = sourceAnnotations ?: mirrorFunction.metroAnnotations(context.metroSymbols.classIds),
       isPropertyAccessor = mirrorFunction.isPropertyAccessor,
       function = mirrorFunction,
       mirrorFunction = mirrorFunction,
@@ -113,7 +113,7 @@ internal fun IrConstructorCall.toIrCallableMetadata(
     function.endOffset = annoEndOffset
   }
 
-  val annotations = sourceAnnotations ?: function.metroAnnotations(context.symbols.classIds)
+  val annotations = sourceAnnotations ?: function.metroAnnotations(context.metroSymbols.classIds)
   return IrCallableMetadata(
     callableId = callableId,
     mirrorCallableId = mirrorFunction.callableId,

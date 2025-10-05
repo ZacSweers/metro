@@ -177,7 +177,7 @@ internal class ParentContext(
       name = level.fieldNameAllocator.newName(
         key.type.rawType().name.asString().decapitalizeUS().suffixIfNot("Provider").asName()
       )
-      type = metroContext.symbols.metroProvider.typeWith(key.type)
+      type = metroContext.metroSymbols.metroProvider.typeWith(key.type)
       // TODO revisit? Can we skip synth accessors? Only if graph has extensions
       visibility = DescriptorVisibilities.PRIVATE
     }.apply {

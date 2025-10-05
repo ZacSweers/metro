@@ -5,7 +5,6 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.Symbols.DaggerSymbols
-import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.unsafeLazy
@@ -88,7 +87,7 @@ internal sealed interface IrMetroFactory {
     return if (isDaggerFactory && factoryClass.defaultType.implementsProviderType()) {
       irInvoke(
         extensionReceiver = createExpression,
-        callee = context.symbols.daggerSymbols.asMetroProvider,
+        callee = context.metroSymbols.daggerSymbols.asMetroProvider,
       )
         .apply { typeArguments[0] = factoryClass.typeWith() }
     } else {

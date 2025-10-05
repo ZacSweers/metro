@@ -542,7 +542,7 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
   isAssisted: Boolean,
   isGraphInstance: Boolean,
 ): IrExpression {
-  val symbols = context.symbols
+  val symbols = context.metroSymbols
   val providerType = bindingCode.type.findProviderSupertype()
   if (providerType == null) {
     // Not a provider, nothing else to do here!
@@ -825,7 +825,7 @@ internal fun IrConstructorCall.scopeClassOrNull(): IrClass? {
 
 context(context: IrMetroContext)
 internal fun IrClass.originClassId(): ClassId? {
-  return annotationsIn(context.symbols.classIds.originAnnotations).firstOrNull()?.originOrNull()
+  return annotationsIn(context.metroSymbols.classIds.originAnnotations).firstOrNull()?.originOrNull()
 }
 
 internal fun IrConstructorCall.requireOrigin(): ClassId {
@@ -1031,7 +1031,7 @@ internal val IrProperty.allAnnotations: List<IrConstructorCall>
 
 context(context: IrMetroContext)
 internal fun metroAnnotationsOf(ir: IrAnnotationContainer) =
-  ir.metroAnnotations(context.symbols.classIds)
+  ir.metroAnnotations(context.metroSymbols.classIds)
 
 internal fun IrClass.requireSimpleFunction(name: String) =
   getSimpleFunction(name)
@@ -1115,7 +1115,7 @@ context(context: IrMetroContext)
 internal fun IrBuilderWithScope.stubExpression(
   message: String = "Never called"
 ): IrMemberAccessExpression<*> {
-  return irInvoke(callee = context.symbols.stdlibErrorFunction, args = listOf(irString(message)))
+  return irInvoke(callee = context.metroSymbols.stdlibErrorFunction, args = listOf(irString(message)))
 }
 
 context(context: IrPluginContext)
@@ -1161,8 +1161,8 @@ internal fun hiddenDeprecated(
   message: String = "This synthesized declaration should not be used directly"
 ): IrConstructorCall {
   return IrConstructorCallImpl.fromSymbolOwner(
-      type = context.symbols.deprecated.defaultType,
-      constructorSymbol = context.symbols.deprecatedAnnotationConstructor,
+      type = context.metroSymbols.deprecated.defaultType,
+      constructorSymbol = context.metroSymbols.deprecatedAnnotationConstructor,
     )
     .also {
       it.arguments[0] =
@@ -1176,8 +1176,8 @@ internal fun hiddenDeprecated(
         IrGetEnumValueImpl(
           SYNTHETIC_OFFSET,
           SYNTHETIC_OFFSET,
-          context.symbols.deprecationLevel.defaultType,
-          context.symbols.hiddenDeprecationLevel,
+          context.metroSymbols.deprecationLevel.defaultType,
+          context.metroSymbols.hiddenDeprecationLevel,
         )
     }
 }
@@ -1490,27 +1490,27 @@ context(context: IrMetroContext)
 internal fun IrProperty?.qualifierAnnotation(): IrAnnotation? {
   if (this == null) return null
   return allAnnotations
-    .annotationsAnnotatedWith(context.symbols.qualifierAnnotations)
+    .annotationsAnnotatedWith(context.metroSymbols.qualifierAnnotations)
     .singleOrNull()
     ?.let(::IrAnnotation)
 }
 
 context(context: IrMetroContext)
 internal fun IrAnnotationContainer?.qualifierAnnotation() =
-  annotationsAnnotatedWith(context.symbols.qualifierAnnotations).singleOrNull()?.let(::IrAnnotation)
+  annotationsAnnotatedWith(context.metroSymbols.qualifierAnnotations).singleOrNull()?.let(::IrAnnotation)
 
 context(context: IrMetroContext)
 internal fun IrAnnotationContainer?.scopeAnnotations() =
-  annotationsAnnotatedWith(context.symbols.scopeAnnotations).mapToSet(::IrAnnotation)
+  annotationsAnnotatedWith(context.metroSymbols.scopeAnnotations).mapToSet(::IrAnnotation)
 
 /** Returns the `@MapKey` annotation itself, not any annotations annotated _with_ `@MapKey`. */
 context(context: IrMetroContext)
 internal fun IrAnnotationContainer.explicitMapKeyAnnotation() =
-  annotationsIn(context.symbols.mapKeyAnnotations).singleOrNull()?.let(::IrAnnotation)
+  annotationsIn(context.metroSymbols.mapKeyAnnotations).singleOrNull()?.let(::IrAnnotation)
 
 context(context: IrMetroContext)
 internal fun IrAnnotationContainer.mapKeyAnnotation() =
-  annotationsAnnotatedWith(context.symbols.mapKeyAnnotations).singleOrNull()?.let(::IrAnnotation)
+  annotationsAnnotatedWith(context.metroSymbols.mapKeyAnnotations).singleOrNull()?.let(::IrAnnotation)
 
 private fun IrAnnotationContainer?.annotationsAnnotatedWith(
   annotationsToLookFor: Collection<ClassId>
@@ -1532,7 +1532,7 @@ context(context: IrMetroContext)
 internal fun IrClass.findInjectableConstructor(onlyUsePrimaryConstructor: Boolean): IrConstructor? {
   return findInjectableConstructor(
     onlyUsePrimaryConstructor,
-    context.symbols.classIds.allInjectAnnotations,
+    context.metroSymbols.classIds.allInjectAnnotations,
   )
 }
 
@@ -1551,8 +1551,8 @@ internal fun IrClass.findInjectableConstructor(
 context(context: IrMetroContext)
 internal fun IrBuilderWithScope.instanceFactory(type: IrType, arg: IrExpression): IrExpression {
   return irInvoke(
-    irGetObject(context.symbols.instanceFactoryCompanionObject),
-    callee = context.symbols.instanceFactoryInvoke,
+    irGetObject(context.metroSymbols.instanceFactoryCompanionObject),
+    callee = context.metroSymbols.instanceFactoryInvoke,
     typeArgs = listOf(type),
     args = listOf(arg),
   )

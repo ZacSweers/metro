@@ -79,7 +79,7 @@ internal class AssistedFactoryTransformer(
   private val implsCache = mutableMapOf<ClassId, AssistedFactoryImpl>()
 
   fun visitClass(declaration: IrClass) {
-    val isAssistedFactory = declaration.isAnnotatedWithAny(symbols.assistedFactoryAnnotations)
+    val isAssistedFactory = declaration.isAnnotatedWithAny(metroSymbols.assistedFactoryAnnotations)
     if (isAssistedFactory) {
       getOrGenerateImplClass(declaration)
     }
@@ -237,7 +237,7 @@ internal class AssistedFactoryTransformer(
           visibility = DescriptorVisibilities.PUBLIC
           modality = Modality.FINAL
           origin = Origins.Default
-          returnType = symbols.metroProvider.typeWith(declaration.defaultType)
+          returnType = metroSymbols.metroProvider.typeWith(declaration.defaultType)
         }
         .apply {
           setDispatchReceiver(companionReceiver.copyTo(this))
@@ -397,7 +397,7 @@ internal class AssistedFactoryTransformer(
             originalDeclaration.regularParameters.mapIndexed { index, param ->
               val baseTypeKey = params.regularParameters[index].typeKey
               val substitutedTypeKey = remapper?.let { baseTypeKey.remapTypes(it) } ?: baseTypeKey
-              param.toAssistedParameterKey(context.symbols, substitutedTypeKey)
+              param.toAssistedParameterKey(context.metroSymbols, substitutedTypeKey)
             },
         )
       }
@@ -440,7 +440,7 @@ internal sealed interface AssistedFactoryImpl {
     override fun IrBuilderWithScope.invokeCreate(
       delegateFactoryProvider: IrExpression
     ): IrExpression {
-      return with(context.symbols.daggerSymbols) {
+      return with(context.metroSymbols.daggerSymbols) {
         val targetType = (createFunction.returnType as IrSimpleType).arguments[0].typeOrFail
         transformToMetroProvider(
           irInvoke(

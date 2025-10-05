@@ -3,9 +3,7 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
-import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
@@ -42,7 +40,6 @@ import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isStatic
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.primaryConstructor
-import org.jetbrains.kotlin.ir.util.remapTypes
 import org.jetbrains.kotlin.name.Name
 
 internal class IrGraphExpressionGenerator
@@ -110,7 +107,7 @@ private constructor(
         )
       }
 
-      val metroProviderSymbols = symbols.providerSymbolsFor(contextualTypeKey)
+      val metroProviderSymbols = metroSymbols.providerSymbolsFor(contextualTypeKey)
 
       // If we're initializing the field for this key, don't ever try to reach for an existing
       // provider for it.
@@ -122,7 +119,7 @@ private constructor(
               with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) }
             }
           return if (accessType == AccessType.INSTANCE) {
-            irInvoke(providerInstance, callee = symbols.providerInvoke)
+            irInvoke(providerInstance, callee = metroSymbols.providerInvoke)
           } else {
             providerInstance
           }
@@ -199,8 +196,8 @@ private constructor(
             // Return a noop
             val noopInjector =
               irInvoke(
-                dispatchReceiver = irGetObject(symbols.metroMembersInjectors),
-                callee = symbols.metroMembersInjectorsNoOp,
+                dispatchReceiver = irGetObject(metroSymbols.metroMembersInjectors),
+                callee = metroSymbols.metroMembersInjectorsNoOp,
                 typeArgs = listOf(injectedType),
               )
             instanceFactory(noopInjector.type, noopInjector).let {
@@ -392,9 +389,9 @@ private constructor(
                 ) {
                   val returnExpression =
                     if (getterContextKey.isWrappedInProvider) {
-                      irInvoke(invokeGetter, callee = symbols.providerInvoke)
+                      irInvoke(invokeGetter, callee = metroSymbols.providerInvoke)
                     } else if (getterContextKey.isWrappedInLazy) {
-                      irInvoke(invokeGetter, callee = symbols.lazyGetValue)
+                      irInvoke(invokeGetter, callee = metroSymbols.lazyGetValue)
                     } else {
                       invokeGetter
                     }
@@ -402,8 +399,8 @@ private constructor(
                 }
               irInvoke(
                 dispatchReceiver = null,
-                callee = symbols.metroProviderFunction,
-                typeHint = binding.typeKey.type.wrapInProvider(symbols.metroProvider),
+                callee = metroSymbols.metroProviderFunction,
+                typeHint = binding.typeKey.type.wrapInProvider(metroSymbols.metroProvider),
                 typeArgs = listOf(binding.typeKey.type),
                 args = listOf(lambda),
               )
@@ -492,7 +489,7 @@ private constructor(
         val contextualTypeKey = paramsToMap[i].contextualTypeKey
         val typeKey = contextualTypeKey.typeKey
 
-        val metroProviderSymbols = symbols.providerSymbolsFor(contextualTypeKey)
+        val metroProviderSymbols = metroSymbols.providerSymbolsFor(contextualTypeKey)
 
         val accessType =
           if (param.contextualTypeKey.requiresProviderInstance) {
@@ -618,13 +615,13 @@ private constructor(
       when (val size = binding.sourceBindings.size) {
         0 -> {
           // emptySet()
-          callee = symbols.emptySet
+          callee = metroSymbols.emptySet
           args = emptyList()
         }
 
         1 -> {
           // setOf(<one>)
-          callee = symbols.setOfSingleton
+          callee = metroSymbols.setOfSingleton
           val provider =
             binding.sourceBindings.first().let {
               bindingGraph.requireBinding(it)
@@ -634,7 +631,7 @@ private constructor(
 
         else -> {
           // buildSet(<size>) { ... }
-          callee = symbols.buildSetWithCapacity
+          callee = metroSymbols.buildSetWithCapacity
           args = buildList {
             add(irInt(size))
             add(
@@ -652,7 +649,7 @@ private constructor(
                   .forEach { provider ->
                     +irInvoke(
                       dispatchReceiver = irGet(functionReceiver),
-                      callee = symbols.mutableSetAdd.symbol,
+                      callee = metroSymbols.mutableSetAdd.symbol,
                       args = listOf(generateMultibindingArgument(provider, fieldInitKey)),
                     )
                   }
@@ -688,7 +685,7 @@ private constructor(
       //   .build()
 
       // Used to unpack the right provider type
-      val valueProviderSymbols = symbols.providerSymbolsFor(elementType)
+      val valueProviderSymbols = metroSymbols.providerSymbolsFor(elementType)
 
       // SetFactory.<String>builder(1, 1)
       val builder: IrExpression =
@@ -739,7 +736,7 @@ private constructor(
         irInvoke(
           dispatchReceiver = withCollectionProviders,
           callee = valueProviderSymbols.setFactoryBuilderBuildFunction,
-          typeHint = irBuiltIns.setClass.typeWith(elementType).wrapInProvider(symbols.metroProvider),
+          typeHint = irBuiltIns.setClass.typeWith(elementType).wrapInProvider(metroSymbols.metroProvider),
         )
       return with(valueProviderSymbols) {
         transformToMetroProvider(instance, irBuiltIns.setClass.typeWith(elementType))
@@ -778,7 +775,7 @@ private constructor(
       val originalType = contextualTypeKey.toIrType()
       val originalValueType = valueWrappedType.toIrType()
       val originalValueContextKey = originalValueType.asContextualTypeKey(null, hasDefault = false, patchMutableCollections = false)
-      val valueProviderSymbols = symbols.providerSymbolsFor(originalValueType)
+      val valueProviderSymbols = metroSymbols.providerSymbolsFor(originalValueType)
 
       val valueType: IrType = rawValueTypeMetadata.typeKey.type
 
@@ -788,12 +785,12 @@ private constructor(
           .typeWith(
             keyType,
             if (useProviderFactory) {
-              rawValueType.wrapInProvider(symbols.metroProvider)
+              rawValueType.wrapInProvider(metroSymbols.metroProvider)
             } else {
               rawValueType
             },
           )
-          .wrapInProvider(symbols.metroProvider)
+          .wrapInProvider(metroSymbols.metroProvider)
 
       if (size == 0) {
         // If it's empty then short-circuit here

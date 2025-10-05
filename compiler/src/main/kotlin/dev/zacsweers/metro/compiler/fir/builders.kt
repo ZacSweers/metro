@@ -8,7 +8,6 @@ import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.Visibility
-import org.jetbrains.kotlin.fakeElement
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
@@ -86,7 +85,9 @@ internal fun FirExtension.generateMemberFunction(
     moduleData = session.moduleData
     this.origin = origin
 
-    source = owner.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
+    source = with(session.firCompat) {
+      owner.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
+    }
 
     val functionSymbol = FirNamedFunctionSymbol(callableId)
     symbol = functionSymbol
@@ -152,7 +153,11 @@ internal fun FirExtension.copyParameters(
             }
           }
         }
-        .apply { replaceAnnotationsSafe(original.symbol.annotations) }
+        .apply {
+          context(session.firCompat) {
+            replaceAnnotationsSafe(original.symbol.annotations)
+          }
+        }
   }
 }
 

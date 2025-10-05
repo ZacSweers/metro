@@ -211,17 +211,17 @@ internal fun IrValueParameter.toConstructorParameter(
 
   val contextKey = declaredType.asContextualTypeKey(qualifierAnnotation(), defaultValue != null, patchMutableCollections = false)
 
-  val assistedAnnotation = annotationsIn(context.symbols.assistedAnnotations).singleOrNull()
+  val assistedAnnotation = annotationsIn(context.metroSymbols.assistedAnnotations).singleOrNull()
 
   var isProvides = false
   var isIncludes = false
   for (annotation in annotations) {
     val classId = annotation.symbol.owner.parentAsClass.classId
     when (classId) {
-      in context.symbols.classIds.providesAnnotations -> {
+      in context.metroSymbols.classIds.providesAnnotations -> {
         isProvides = true
       }
-      in context.symbols.classIds.includes -> {
+      in context.metroSymbols.classIds.includes -> {
         isIncludes = true
       }
 

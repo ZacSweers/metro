@@ -628,16 +628,16 @@ internal fun MetroAnnotations<IrAnnotation>.mirrorIrConstructorCalls(
 ): List<IrConstructorCall> {
   return buildList {
     if (isProvides) {
-      add(buildAnnotation(symbol, context.symbols.providesConstructor))
+      add(buildAnnotation(symbol, context.metroSymbols.providesConstructor))
     } else if (isBinds) {
-      add(buildAnnotation(symbol, context.symbols.bindsConstructor))
+      add(buildAnnotation(symbol, context.metroSymbols.bindsConstructor))
     }
     if (isIntoSet) {
-      add(buildAnnotation(symbol, context.symbols.intoSetConstructor))
+      add(buildAnnotation(symbol, context.metroSymbols.intoSetConstructor))
     } else if (isElementsIntoSet) {
-      add(buildAnnotation(symbol, context.symbols.elementsIntoSetConstructor))
+      add(buildAnnotation(symbol, context.metroSymbols.elementsIntoSetConstructor))
     } else if (isIntoMap) {
-      add(buildAnnotation(symbol, context.symbols.intoMapConstructor))
+      add(buildAnnotation(symbol, context.metroSymbols.intoMapConstructor))
     }
     scope?.let { add(it.ir.deepCopyWithSymbols()) }
     qualifier?.let { add(it.ir.deepCopyWithSymbols()) }

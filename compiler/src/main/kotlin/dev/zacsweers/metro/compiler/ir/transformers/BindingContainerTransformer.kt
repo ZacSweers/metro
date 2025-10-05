@@ -168,7 +168,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
       }
 
     val bindingContainerAnnotation =
-      declaration.annotationsIn(symbols.classIds.bindingContainerAnnotations).singleOrNull()
+      declaration.annotationsIn(metroSymbols.classIds.bindingContainerAnnotations).singleOrNull()
     val includes =
       bindingContainerAnnotation?.includedClasses()?.mapNotNullToSet {
         it.classType.rawTypeOrNull()?.classIdOrFail
@@ -177,10 +177,10 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     val bindsMirror = bindsMirrorClassTransformer.getOrComputeBindsMirror(declaration)
 
     val graphAnnotation =
-      declaration.annotationsIn(symbols.classIds.graphLikeAnnotations).firstOrNull()
+      declaration.annotationsIn(metroSymbols.classIds.graphLikeAnnotations).firstOrNull()
     val isContributedGraph =
-      (graphAnnotation?.annotationClass?.classId in symbols.classIds.graphExtensionAnnotations) &&
-        declaration.isAnnotatedWithAny(symbols.classIds.contributesToAnnotations)
+      (graphAnnotation?.annotationClass?.classId in metroSymbols.classIds.graphExtensionAnnotations) &&
+        declaration.isAnnotatedWithAny(metroSymbols.classIds.contributesToAnnotations)
     val isGraph = graphAnnotation != null
     val container =
       BindingContainer(
@@ -698,14 +698,14 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
   private fun externalProviderFactoryFor(factoryCls: IrClass): ProviderFactory.Metro {
     // Extract IrTypeKey from Factory supertype
     // Qualifier will be populated in ProviderFactory construction
-    val factoryType = factoryCls.superTypes.first { it.classOrNull == symbols.metroFactory }
+    val factoryType = factoryCls.superTypes.first { it.classOrNull == metroSymbols.metroFactory }
     val typeKey = IrTypeKey(factoryType.expectAs<IrSimpleType>().arguments.first().typeOrFail)
     val mirrorFunction = factoryCls.requireSimpleFunction(Symbols.StringNames.MIRROR_FUNCTION).owner
     return ProviderFactory(
       typeKey,
       factoryCls,
       mirrorFunction,
-      mirrorFunction.metroAnnotations(symbols.classIds),
+      mirrorFunction.metroAnnotations(metroSymbols.classIds),
     )
   }
 
@@ -736,7 +736,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
           for (decl in declaration.declarations) {
             if (decl !is IrSimpleFunction && decl !is IrProperty) continue
 
-            val annotations = decl.metroAnnotations(symbols.classIds)
+            val annotations = decl.metroAnnotations(metroSymbols.classIds)
             if (annotations.isProvides || annotations.isBinds || annotations.isMultibinds) {
               val isProperty = decl is IrProperty
               val callableId: CallableId
@@ -823,8 +823,8 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
       }
 
       val requireMetadata =
-        declaration.isAnnotatedWithAny(symbols.classIds.dependencyGraphAnnotations) ||
-          declaration.isAnnotatedWithAny(symbols.classIds.bindingContainerAnnotations)
+        declaration.isAnnotatedWithAny(metroSymbols.classIds.dependencyGraphAnnotations) ||
+          declaration.isAnnotatedWithAny(metroSymbols.classIds.bindingContainerAnnotations)
       if (requireMetadata) {
         val message =
           "No metadata found for ${metadataDeclaration.kotlinFqName} from " +

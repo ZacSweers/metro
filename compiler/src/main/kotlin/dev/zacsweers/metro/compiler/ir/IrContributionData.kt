@@ -84,7 +84,7 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
       getScopedContributions(contributingClasses, scope, bindingContainersOnly = true)
         .mapNotNullToSet {
           it.classOrNull?.owner?.takeIf {
-            it.isAnnotatedWithAny(metroContext.symbols.classIds.bindingContainerAnnotations)
+            it.isAnnotatedWithAny(metroContext.metroSymbols.classIds.bindingContainerAnnotations)
           }
         }
     }
@@ -101,7 +101,7 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
     contributingClasses
       .flatMap { contributingType ->
         contributingType
-          .annotationsIn(metroContext.symbols.classIds.allContributesAnnotations)
+          .annotationsIn(metroContext.metroSymbols.classIds.allContributesAnnotations)
           .filter { it.scopeOrNull() == scope }
           .flatMap { annotation -> annotation.replacedClasses() }
       }
@@ -114,16 +114,16 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
       .let { contributions ->
         if (bindingContainersOnly) {
           contributions.filter {
-            it.isAnnotatedWithAny(metroContext.symbols.classIds.bindingContainerAnnotations)
+            it.isAnnotatedWithAny(metroContext.metroSymbols.classIds.bindingContainerAnnotations)
           }
         } else {
           contributions.filterNot {
-            it.isAnnotatedWithAny(metroContext.symbols.classIds.bindingContainerAnnotations)
+            it.isAnnotatedWithAny(metroContext.metroSymbols.classIds.bindingContainerAnnotations)
           }
         }
       }
       .flatMapToSet {
-        if (it.isAnnotatedWithAny(metroContext.symbols.classIds.bindingContainerAnnotations)) {
+        if (it.isAnnotatedWithAny(metroContext.metroSymbols.classIds.bindingContainerAnnotations)) {
           setOf(it.defaultType)
         } else {
           it.nestedClasses.mapNotNullToSet { nestedClass ->

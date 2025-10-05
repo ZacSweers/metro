@@ -171,7 +171,7 @@ internal class IrBindingGraph(
         val valueType =
           binding.typeKey.type.arguments[1]
             .typeOrNull!!
-            .wrapInProvider(this@IrBindingGraph.metroContext.symbols.metroProvider)
+            .wrapInProvider(this@IrBindingGraph.metroContext.metroSymbols.metroProvider)
         val providerTypeKey =
           binding.typeKey.copy(type = context.irBuiltIns.mapClass.typeWith(keyType, valueType))
         realGraph.tryPut(binding, bindingStack, providerTypeKey)
@@ -460,7 +460,7 @@ internal class IrBindingGraph(
               val implementsKey = contribution.implements(klass.classId!!)
               val bindsKey =
                 contribution
-                  .annotationsIn(metroContext.symbols.classIds.allContributesAnnotations)
+                  .annotationsIn(metroContext.metroSymbols.classIds.allContributesAnnotations)
                   .any {
                     val boundType = it.bindingTypeOrNull().first?.rawTypeOrNull()?.classId
                     boundType == null || boundType == klass.classId
@@ -638,7 +638,7 @@ internal class IrBindingGraph(
             rawType.nestedClasses
               .firstOrNull { nestedClass ->
                 nestedClass.isAnnotatedWithAny(
-                  metroContext.symbols.classIds.assistedFactoryAnnotations
+                  metroContext.metroSymbols.classIds.assistedFactoryAnnotations
                 )
               }
               ?.let { IrTypeKey(it.defaultType) }

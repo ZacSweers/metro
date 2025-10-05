@@ -124,7 +124,7 @@ internal class DependencyGraphNodeCache(
 
     private val dependencyGraphAnno =
       cachedDependencyGraphAnno
-        ?: graphDeclaration.annotationsIn(symbols.dependencyGraphAnnotations).singleOrNull()
+        ?: graphDeclaration.annotationsIn(metroSymbols.dependencyGraphAnnotations).singleOrNull()
     private val aggregationScopes = mutableSetOf<ClassId>()
     private val isGraph = dependencyGraphAnno != null
     private val supertypes =
@@ -142,7 +142,7 @@ internal class DependencyGraphNodeCache(
             }
             // Create a synthetic SingleIn(scope)
             pluginContext.createIrBuilder(graphDeclaration.symbol).run {
-              irCall(symbols.metroSingleInConstructor).apply { arguments[0] = scopeArg }
+              irCall(metroSymbols.metroSingleInConstructor).apply { arguments[0] = scopeArg }
             }
           }
 
@@ -159,7 +159,7 @@ internal class DependencyGraphNodeCache(
               val scopeClassExpression = scopeArg.expectAs<IrExpression>()
               val newAnno =
                 pluginContext.createIrBuilder(graphDeclaration.symbol).run {
-                  irCall(symbols.metroSingleInConstructor).apply {
+                  irCall(metroSymbols.metroSingleInConstructor).apply {
                     arguments[0] = scopeClassExpression
                   }
                 }
@@ -179,7 +179,7 @@ internal class DependencyGraphNodeCache(
 
             linkDeclarationsInCompilation(graphDeclaration, parameterClass)
 
-            if (parameterClass.isAnnotatedWithAny(symbols.classIds.bindingContainerAnnotations)) {
+            if (parameterClass.isAnnotatedWithAny(metroSymbols.classIds.bindingContainerAnnotations)) {
               bindingContainerFields = bindingContainerFields.withSet(i)
             }
           }
@@ -202,7 +202,7 @@ internal class DependencyGraphNodeCache(
           //  somewhere
           graphDeclaration.nestedClasses
             .singleOrNull { klass ->
-              klass.isAnnotatedWithAny(symbols.dependencyGraphFactoryAnnotations)
+              klass.isAnnotatedWithAny(metroSymbols.dependencyGraphFactoryAnnotations)
             }
             ?.let { factory ->
               // Validated in FIR so we can assume we'll find just one here
@@ -347,7 +347,7 @@ internal class DependencyGraphNodeCache(
         // Index 0 is this class, which we've already computed above
         if (i != 0) {
           scopes += clazz.scopeAnnotations()
-          if (clazz.isAnnotatedWithAny(symbols.classIds.graphExtensionFactoryAnnotations)) {
+          if (clazz.isAnnotatedWithAny(metroSymbols.classIds.graphExtensionFactoryAnnotations)) {
             graphExtensionSupertypes += clazz.classIdOrFail
           }
         }
@@ -398,7 +398,7 @@ internal class DependencyGraphNodeCache(
               val overriddenParentClass = overridden.owner.parentClassOrNull ?: continue
               val isGraphExtensionFactory =
                 overriddenParentClass.isAnnotatedWithAny(
-                  symbols.classIds.graphExtensionFactoryAnnotations
+                  metroSymbols.classIds.graphExtensionFactoryAnnotations
                 )
 
               if (isGraphExtensionFactory) {
@@ -413,7 +413,7 @@ internal class DependencyGraphNodeCache(
               if (returnClass != null) {
                 val returnsExtensionOrExtensionFactory =
                   returnClass.isAnnotatedWithAny(
-                    symbols.classIds.allGraphExtensionAndFactoryAnnotations
+                    metroSymbols.classIds.allGraphExtensionAndFactoryAnnotations
                   )
                 if (returnsExtensionOrExtensionFactory) {
                   isGraphExtension = true
@@ -427,7 +427,7 @@ internal class DependencyGraphNodeCache(
                 val overriddenQualifier = if (isInjectorCandidate) {
                   overridden.owner.regularParameters[0].qualifierAnnotation()
                 } else {
-                  overridden.owner.metroAnnotations(symbols.classIds).qualifier
+                  overridden.owner.metroAnnotations(metroSymbols.classIds).qualifier
                 }
 
                 if (overriddenQualifier != null) {
@@ -480,7 +480,7 @@ internal class DependencyGraphNodeCache(
               val functionParent = rawType.parentClassOrNull
 
               val isGraphExtensionFactory =
-                rawType.isAnnotatedWithAny(symbols.classIds.graphExtensionFactoryAnnotations)
+                rawType.isAnnotatedWithAny(metroSymbols.classIds.graphExtensionFactoryAnnotations)
 
               if (isGraphExtensionFactory) {
                 // For factories, add them to accessors so they participate in the binding graph
@@ -511,7 +511,7 @@ internal class DependencyGraphNodeCache(
                 val contextKey =
                   if (
                     functionParent != null &&
-                      functionParent.isAnnotatedWithAny(symbols.classIds.graphExtensionAnnotations)
+                      functionParent.isAnnotatedWithAny(metroSymbols.classIds.graphExtensionAnnotations)
                   ) {
                     IrContextualTypeKey(
                       IrTypeKey(functionParent.defaultType, functionParent.qualifierAnnotation())
@@ -559,7 +559,7 @@ internal class DependencyGraphNodeCache(
 
             val rawType = getter.returnType.rawType()
             val isGraphExtensionFactory =
-              rawType.isAnnotatedWithAny(symbols.classIds.graphExtensionFactoryAnnotations)
+              rawType.isAnnotatedWithAny(metroSymbols.classIds.graphExtensionFactoryAnnotations)
             var isGraphExtension = isGraphExtensionFactory
             var hasDefaultImplementation = false
             var qualifierMismatchData: Triple<IrAnnotation?, IrAnnotation?, IrProperty>? = null
@@ -577,7 +577,7 @@ internal class DependencyGraphNodeCache(
                 val returnClass = returnType.classOrNull?.owner
                 if (returnClass != null) {
                   val returnsExtension =
-                    returnClass.isAnnotatedWithAny(symbols.classIds.graphExtensionAnnotations)
+                    returnClass.isAnnotatedWithAny(metroSymbols.classIds.graphExtensionAnnotations)
                   if (returnsExtension) {
                     isGraphExtension = true
                     // Don't break - continue checking qualifiers
@@ -587,7 +587,7 @@ internal class DependencyGraphNodeCache(
                 // Check qualifier consistency for non-binds accessors
                 if (qualifierMismatchData == null && !isGraphExtension && !annotations.isBinds) {
                   val overriddenGetter = overridden.owner.getter ?: continue
-                  val overriddenQualifier = overriddenGetter.metroAnnotations(symbols.classIds).qualifier
+                  val overriddenQualifier = overriddenGetter.metroAnnotations(metroSymbols.classIds).qualifier
 
                   if (overriddenQualifier != null) {
                     val expectedQualifier = metroAnnotationsOf(getter).qualifier
@@ -645,7 +645,7 @@ internal class DependencyGraphNodeCache(
                 val finalContextKey =
                   if (
                     functionParent != null &&
-                      functionParent.isAnnotatedWithAny(symbols.classIds.graphExtensionAnnotations)
+                      functionParent.isAnnotatedWithAny(metroSymbols.classIds.graphExtensionAnnotations)
                   ) {
                     IrContextualTypeKey(
                       IrTypeKey(functionParent.defaultType, functionParent.qualifierAnnotation())
@@ -733,7 +733,7 @@ internal class DependencyGraphNodeCache(
       val replaced =
         bindingContainers.flatMapToSet { container ->
           container.ir
-            .annotationsIn(symbols.classIds.contributesToAnnotations)
+            .annotationsIn(metroSymbols.classIds.contributesToAnnotations)
             .firstOrNull { it.scopeOrNull() in aggregationScopes }
             ?.replacedClasses()
             ?.mapNotNullToSet { replacedClass -> replacedClass.classType.rawTypeOrNull()?.classId }

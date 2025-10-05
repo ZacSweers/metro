@@ -40,7 +40,7 @@ internal interface IrMetroContext : IrPluginContext {
     get() = this
 
   val pluginContext: IrPluginContext
-  override val symbols: Symbols
+  val metroSymbols: Symbols
   val options: MetroOptions
   val debug: Boolean
     get() = options.debug
@@ -150,7 +150,7 @@ internal interface IrMetroContext : IrPluginContext {
         "Consider using diagnosticReporter instead. See https://youtrack.jetbrains.com/issue/KT-78277 for more details"
       )
       override val messageCollector: MessageCollector,
-      override val symbols: Symbols,
+      override val metroSymbols: Symbols,
       override val options: MetroOptions,
       lookupTracker: LookupTracker?,
       expectActualTracker: ExpectActualTracker,

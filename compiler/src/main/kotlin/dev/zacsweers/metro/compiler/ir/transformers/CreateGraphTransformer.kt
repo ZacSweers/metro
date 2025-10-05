@@ -37,12 +37,12 @@ internal object CreateGraphTransformer {
     context(metroContext) {
       val callee = expression.symbol.owner
       when (callee.symbol) {
-        metroContext.symbols.metroCreateGraphFactory -> {
+        metroContext.metroSymbols.metroCreateGraphFactory -> {
           // Get the called type
           val type =
             expression.typeArguments[0]
               ?: reportCompilerBug(
-                "Missing type argument for ${metroContext.symbols.metroCreateGraphFactory.owner.name}"
+                "Missing type argument for ${metroContext.metroSymbols.metroCreateGraphFactory.owner.name}"
               )
           // Already checked in FIR
           val rawType = type.rawType()
@@ -87,12 +87,12 @@ internal object CreateGraphTransformer {
           }
         }
 
-        metroContext.symbols.metroCreateGraph -> {
+        metroContext.metroSymbols.metroCreateGraph -> {
           // Get the called type
           val type =
             expression.typeArguments[0]
               ?: reportCompilerBug(
-                "Missing type argument for ${metroContext.symbols.metroCreateGraph.owner.name}"
+                "Missing type argument for ${metroContext.metroSymbols.metroCreateGraph.owner.name}"
               )
           // Already checked in FIR
           val rawType = type.rawType()
