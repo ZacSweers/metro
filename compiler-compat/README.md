@@ -6,6 +6,10 @@ This module provides a compatibility layer for Metro's compiler plugin to work a
 
 The Kotlin compiler plugin APIs are not stable and can change between versions. Some APIs get deprecated, renamed, or removed entirely. This compatibility layer provides a uniform interface (`FirCompatContext`) that Metro's compiler can use regardless of the underlying Kotlin version.
 
+## IDE Plugin
+
+The Kotlin IDE plugin bundles its own compiler copy, and can be checked at `lib/kotlinc.kotlin-compiler-common.jar/META-INF/compiler.version`.
+
 ## Architecture
 
 ### Core Interface
