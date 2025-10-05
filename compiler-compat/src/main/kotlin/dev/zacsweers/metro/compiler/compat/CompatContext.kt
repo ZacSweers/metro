@@ -5,8 +5,11 @@ import java.util.ServiceLoader
 import org.jetbrains.kotlin.GeneratedDeclarationKey
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
+import org.jetbrains.kotlin.descriptors.Modality
+import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
+import org.jetbrains.kotlin.fir.declarations.FirDeclarationStatus
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameter
 import org.jetbrains.kotlin.fir.extensions.ExperimentalTopLevelDeclarationsGenerationApi
@@ -157,6 +160,32 @@ public interface CompatContext {
     startOffset: Int = -1,
     endOffset: Int = -1,
   ): KtSourceElement
+
+  // Kotlin 2.3.0 changed hasMustUseReturnValue to returnValueStatus
+  public fun FirDeclarationStatus.copy(
+    visibility: Visibility? = this.visibility,
+    modality: Modality? = this.modality,
+    isExpect: Boolean = this.isExpect,
+    isActual: Boolean = this.isActual,
+    isOverride: Boolean = this.isOverride,
+    isOperator: Boolean = this.isOperator,
+    isInfix: Boolean = this.isInfix,
+    isInline: Boolean = this.isInline,
+    isValue: Boolean = this.isValue,
+    isTailRec: Boolean = this.isTailRec,
+    isExternal: Boolean = this.isExternal,
+    isConst: Boolean = this.isConst,
+    isLateInit: Boolean = this.isLateInit,
+    isInner: Boolean = this.isInner,
+    isCompanion: Boolean = this.isCompanion,
+    isData: Boolean = this.isData,
+    isSuspend: Boolean = this.isSuspend,
+    isStatic: Boolean = this.isStatic,
+    isFromSealedClass: Boolean = this.isFromSealedClass,
+    isFromEnumClass: Boolean = this.isFromEnumClass,
+    isFun: Boolean = this.isFun,
+    hasStableParameterNames: Boolean = this.hasStableParameterNames,
+  ): FirDeclarationStatus
 
   // Parameters changed in Kotlin 2.3.0
   public fun IrClass.addFakeOverrides(typeSystem: IrTypeSystemContext)
