@@ -10,7 +10,12 @@ import org.jetbrains.kotlin.fir.resolve.providers.firProvider
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
+import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrOverridableMember
+import org.jetbrains.kotlin.ir.symbols.IrSymbol
+import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
 import org.jetbrains.kotlin.fakeElement as fakeElementNative
+import org.jetbrains.kotlin.ir.util.addFakeOverrides as addFakeOverridesNative
 
 // Ships in 2025.3-EAP
 public class FirCompatContextImpl : FirCompatContext {
@@ -35,6 +40,12 @@ public class FirCompatContextImpl : FirCompatContext {
       KtSourceElementOffsetStrategy.Custom.Initialized(startOffset, endOffset),
     )
   }
+
+  override fun IrClass.addFakeOverrides(
+    typeSystem: IrTypeSystemContext,
+    implementedMembers: List<IrOverridableMember>,
+    ignoredParentSymbols: List<IrSymbol>
+  ): Unit = addFakeOverridesNative(typeSystem)
 
   public class Factory : FirCompatContext.Factory {
     override val minVersion: String = "2.3.0-dev-7984"

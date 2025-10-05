@@ -10,6 +10,8 @@ import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrar
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
+import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
 
 public interface FirCompatContext {
   public companion object {
@@ -107,6 +109,9 @@ public interface FirCompatContext {
     startOffset: Int = -1,
     endOffset: Int = -1,
   ): KtSourceElement
+
+  // Parameters changed in Kotlin 2.3.0
+  public fun IrClass.addFakeOverrides(typeSystem: IrTypeSystemContext)
 }
 
 private data class FactoryData(val version: String, val factory: FirCompatContext.Factory)

@@ -11,6 +11,11 @@ import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fakeElement as fakeElementNative
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
+import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrOverridableMember
+import org.jetbrains.kotlin.ir.symbols.IrSymbol
+import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
+import org.jetbrains.kotlin.ir.util.addFakeOverrides as addFakeOverridesNative
 
 public class FirCompatContextImpl : FirCompatContext {
   override fun FirBasedSymbol<*>.getContainingClassSymbol(): FirClassLikeSymbol<*>? =
@@ -26,8 +31,12 @@ public class FirCompatContextImpl : FirCompatContext {
     newKind: KtFakeSourceElementKind,
     startOffset: Int,
     endOffset: Int
-  ): KtSourceElement {
-    return fakeElementNative(newKind, startOffset, endOffset)
+  ): KtSourceElement = fakeElementNative(newKind, startOffset, endOffset)
+
+  override fun IrClass.addFakeOverrides(
+    typeSystem: IrTypeSystemContext,
+  ) {
+    return addFakeOverridesNative(typeSystem)
   }
 
   public class Factory : FirCompatContext.Factory {

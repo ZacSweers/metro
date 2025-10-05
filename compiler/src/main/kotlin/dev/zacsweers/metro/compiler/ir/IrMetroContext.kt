@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.LOG_PREFIX
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.compat.FirCompatContext
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.tracer
@@ -35,7 +36,7 @@ import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.parentDeclarationsWithSelf
 import org.jetbrains.kotlin.name.ClassId
 
-internal interface IrMetroContext : IrPluginContext {
+internal interface IrMetroContext : IrPluginContext, FirCompatContext {
   val metroContext
     get() = this
 
@@ -129,12 +130,14 @@ internal interface IrMetroContext : IrPluginContext {
     operator fun invoke(
       pluginContext: IrPluginContext,
       messageCollector: MessageCollector,
+      firCompatContext: FirCompatContext,
       symbols: Symbols,
       options: MetroOptions,
       lookupTracker: LookupTracker?,
       expectActualTracker: ExpectActualTracker,
-    ): IrMetroContext =
-      SimpleIrMetroContext(
+    ): IrMetroContext {
+      return SimpleIrMetroContext(
+        firCompatContext,
         pluginContext,
         messageCollector,
         symbols,
@@ -142,8 +145,10 @@ internal interface IrMetroContext : IrPluginContext {
         lookupTracker,
         expectActualTracker,
       )
+    }
 
     private class SimpleIrMetroContext(
+      firCompatContext: FirCompatContext,
       override val pluginContext: IrPluginContext,
       @Suppress("DEPRECATION")
       @Deprecated(
@@ -154,7 +159,7 @@ internal interface IrMetroContext : IrPluginContext {
       override val options: MetroOptions,
       lookupTracker: LookupTracker?,
       expectActualTracker: ExpectActualTracker,
-    ) : IrMetroContext, IrPluginContext by pluginContext {
+    ) : IrMetroContext, IrPluginContext by pluginContext, FirCompatContext by firCompatContext {
       private var reportedErrors = 0
 
       override fun onErrorReported() {
