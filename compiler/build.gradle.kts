@@ -61,18 +61,20 @@ wire { kotlin { javaInterop = false } }
  * In order to do this, we replace the default jar task with a shadowJar task that embeds the
  * dependencies from the "embedded" configuration.
  */
-@Suppress("UnstableApiUsage") val embedded = configurations.resolvable("embedded")
+val embedded by configurations.dependencyScope("embedded")
 
-configurations.named("compileOnly").configure { extendsFrom(embedded.get()) }
+val embeddedClasspath by configurations.resolvable("embeddedClasspath") { extendsFrom(embedded) }
 
-configurations.named("testImplementation").configure { extendsFrom(embedded.get()) }
+configurations.named("compileOnly").configure { extendsFrom(embedded) }
+
+configurations.named("testImplementation").configure { extendsFrom(embedded) }
 
 tasks.jar.configure { enabled = false }
 
 val shadowJar =
   tasks.register("shadowJar", ShadowJar::class.java) {
     from(java.sourceSets.main.map { it.output })
-    configurations.add(embedded)
+    configurations.add(embeddedClasspath)
 
     // TODO these are relocated, do we need to/can we exclude these?
     //  exclude("META-INF/wire-runtime.kotlin_module")
@@ -121,13 +123,12 @@ dependencies {
   compileOnly(libs.kotlin.compilerEmbeddable)
   compileOnly(libs.kotlin.stdlib)
   compileOnly(libs.poko.annotations)
-  api(project(":compiler-compat"))
-  implementation(project(":compiler-compat:k230_dev_7984"))
-  implementation(project(":compiler-compat:k2220"))
 
   add(embedded.name, libs.picnic)
   add(embedded.name, libs.wire.runtime)
-  //  add(embedded.name, project(":compiler-compat"))
+  add(embedded.name, project(":compiler-compat"))
+  add(embedded.name, project(":compiler-compat:k230_dev_7984"))
+  add(embedded.name, project(":compiler-compat:k2220"))
 
   testCompileOnly(libs.poko.annotations)
 
