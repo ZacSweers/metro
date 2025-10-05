@@ -59,8 +59,8 @@ EOF
 
 # Generate gradle.properties
 cat > "$MODULE_DIR/gradle.properties" << EOF
-POM_NAME=Metro Compiler Compat (API)
-POM_ARTIFACT_ID=compiler-compat-$MODULE_NAME
+POM_NAME=Metro Compiler Compat ($KOTLIN_VERSION)
+POM_ARTIFACT_ID=compiler-compat-$KOTLIN_VERSION
 POM_PACKAGING=jar
 
 # kotlinc imposes its own
@@ -69,6 +69,8 @@ EOF
 
 # Generate CompatContextImpl.kt
 cat > "$MODULE_DIR/src/main/kotlin/dev/zacsweers/metro/compiler/compat/$MODULE_NAME/CompatContextImpl.kt" << EOF
+// Copyright (C) 2025 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.compat.$MODULE_NAME
 
 import dev.zacsweers.metro.compiler.compat.CompatContext
