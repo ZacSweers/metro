@@ -26,6 +26,7 @@ import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirFunctionCallChec
 import org.jetbrains.kotlin.fir.analysis.extensions.FirAdditionalCheckersExtension
 
 internal class MetroFirCheckers(session: FirSession) : FirAdditionalCheckersExtension(session) {
+  private val context = session.metroFirBuiltIns.firCompatContext
   override val declarationCheckers: DeclarationCheckers =
     object : DeclarationCheckers() {
       override val classCheckers: Set<FirClassChecker>

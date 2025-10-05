@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.fir
 import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.compat.FirCompatContext
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.extensions.FirExtensionSessionComponent
@@ -19,6 +20,8 @@ internal class MetroFirBuiltIns(
   val predicates: ExtensionPredicates,
   val options: MetroOptions,
 ) : FirExtensionSessionComponent(session) {
+
+  val firCompatContext: FirCompatContext by unsafeLazy { FirCompatContext.create() }
 
   val errorFunctionSymbol by unsafeLazy {
     session.symbolProvider.getTopLevelFunctionSymbols(kotlinPackageFqn, Symbols.Names.error).first {
@@ -142,3 +145,6 @@ internal val FirSession.classIds: ClassIds
 
 internal val FirSession.predicates: ExtensionPredicates
   get() = metroFirBuiltIns.predicates
+
+internal val FirSession.firCompat: FirCompatContext
+  get() = metroFirBuiltIns.firCompatContext
