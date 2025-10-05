@@ -23,7 +23,11 @@ import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
+import org.jetbrains.kotlin.ir.builders.Scope
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
+import org.jetbrains.kotlin.ir.declarations.IrVariable
+import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
 import org.jetbrains.kotlin.ir.util.addFakeOverrides as addFakeOverridesNative
 import org.jetbrains.kotlin.name.CallableId
@@ -117,6 +121,15 @@ public class CompatContextImpl : CompatContext {
   override fun IrClass.addFakeOverrides(typeSystem: IrTypeSystemContext) {
     return addFakeOverridesNative(typeSystem)
   }
+
+  override fun Scope.createTemporaryVariableDeclarationCompat(
+    irType: IrType,
+    nameHint: String?,
+    isMutable: Boolean,
+    origin: IrDeclarationOrigin,
+    startOffset: Int,
+    endOffset: Int
+  ): IrVariable = createTemporaryVariableDeclaration(irType, nameHint, isMutable, origin, startOffset, endOffset)
 
   public class Factory : CompatContext.Factory {
     override val minVersion: String = "2.2.20"

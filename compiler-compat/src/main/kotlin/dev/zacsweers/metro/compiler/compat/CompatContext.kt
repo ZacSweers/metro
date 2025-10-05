@@ -20,7 +20,11 @@ import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
+import org.jetbrains.kotlin.ir.builders.Scope
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
+import org.jetbrains.kotlin.ir.declarations.IrVariable
+import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
 import org.jetbrains.kotlin.name.CallableId
 
@@ -189,6 +193,16 @@ public interface CompatContext {
 
   // Parameters changed in Kotlin 2.3.0
   public fun IrClass.addFakeOverrides(typeSystem: IrTypeSystemContext)
+
+  // Kotlin 2.3.0 added inventUniqueName param
+  public fun Scope.createTemporaryVariableDeclarationCompat(
+    irType: IrType,
+    nameHint: String? = null,
+    isMutable: Boolean = false,
+    origin: IrDeclarationOrigin = IrDeclarationOrigin.IR_TEMPORARY_VARIABLE,
+    startOffset: Int,
+    endOffset: Int
+  ): IrVariable
 }
 
 private data class FactoryData(val version: String, val factory: CompatContext.Factory)

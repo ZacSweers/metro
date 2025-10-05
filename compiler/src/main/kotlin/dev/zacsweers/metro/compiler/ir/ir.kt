@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.Symbols.DaggerSymbols
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ifNotEmpty
@@ -330,15 +331,16 @@ internal fun IrBuilderWithScope.irInvoke(
   return call
 }
 
+context(context: CompatContext)
 internal fun IrStatementsBuilder<*>.irTemporary(
   value: IrExpression? = null,
   nameHint: String? = null,
   irType: IrType = value?.type!!, // either value or irType should be supplied at callsite
   isMutable: Boolean = false,
   origin: IrDeclarationOrigin = IrDeclarationOrigin.IR_TEMPORARY_VARIABLE,
-): IrVariable {
+): IrVariable = with(context) {
   val temporary =
-    scope.createTemporaryVariableDeclaration(
+    scope.createTemporaryVariableDeclarationCompat(
       irType,
       nameHint,
       isMutable,
