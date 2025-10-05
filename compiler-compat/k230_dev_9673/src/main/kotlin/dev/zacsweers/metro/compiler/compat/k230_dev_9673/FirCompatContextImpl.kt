@@ -21,7 +21,7 @@ public class FirCompatContextImpl : FirCompatContext {
   override fun FirDeclaration.getContainingClassSymbol(): FirClassLikeSymbol<*>? = symbol.getContainingClassSymbol()
 
   public class Factory : FirCompatContext.Factory {
-    override val kotlinVersion: String = "2.3.0-dev-9673"
+    override val currentVersion: String = "2.3.0-dev-9673"
 
     override fun create(): FirCompatContext = FirCompatContextImpl()
   }
