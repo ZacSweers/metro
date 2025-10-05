@@ -2,16 +2,24 @@ package dev.zacsweers.metro.compiler.compat
 
 import java.io.FileNotFoundException
 import java.util.ServiceLoader
+import org.jetbrains.kotlin.GeneratedDeclarationKey
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
+import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
+import org.jetbrains.kotlin.fir.declarations.FirTypeParameter
+import org.jetbrains.kotlin.fir.extensions.ExperimentalTopLevelDeclarationsGenerationApi
+import org.jetbrains.kotlin.fir.extensions.FirExtension
 import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrar
+import org.jetbrains.kotlin.fir.plugin.SimpleFunctionBuildingContext
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
+import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
+import org.jetbrains.kotlin.name.CallableId
 
 public interface CompatContext {
   public companion object Companion {
@@ -102,6 +110,46 @@ public interface CompatContext {
   /** The containing symbol is resolved using the declaration-site session. */
   // Deleted in Kotlin 2.3.0
   public fun FirDeclaration.getContainingClassSymbol(): FirClassLikeSymbol<*>?
+
+  /**
+   * Creates a top-level function with [callableId] and specified [returnType].
+   *
+   * Type and value parameters can be configured with [config] builder.
+   *
+   * @param containingFileName defines the name for a newly created file with this property. The
+   *   full file path would be `package/of/the/property/containingFileName.kt. If null is passed,
+   *   then `__GENERATED BUILTINS DECLARATIONS__.kt` would be used
+   */
+  // Kotlin 2.3.0 added containingFileName
+  @ExperimentalTopLevelDeclarationsGenerationApi
+  public fun FirExtension.createTopLevelFunction(
+    key: GeneratedDeclarationKey,
+    callableId: CallableId,
+    returnType: ConeKotlinType,
+    containingFileName: String? = null,
+    config: SimpleFunctionBuildingContext.() -> Unit = {},
+  ): FirSimpleFunction
+
+  /**
+   * Creates a top-level function with [callableId] and return type provided by
+   * [returnTypeProvider]. Use this overload when return type references type parameters of the
+   * created function.
+   *
+   * Type and value parameters can be configured with [config] builder.
+   *
+   * @param containingFileName defines the name for a newly created file with this property. The
+   *   full file path would be `package/of/the/property/containingFileName.kt. If null is passed,
+   *   then `__GENERATED BUILTINS DECLARATIONS__.kt` would be used
+   */
+  // Kotlin 2.3.0 added containingFileName
+  @ExperimentalTopLevelDeclarationsGenerationApi
+  public fun FirExtension.createTopLevelFunction(
+    key: GeneratedDeclarationKey,
+    callableId: CallableId,
+    returnTypeProvider: (List<FirTypeParameter>) -> ConeKotlinType,
+    containingFileName: String? = null,
+    config: SimpleFunctionBuildingContext.() -> Unit = {},
+  ): FirSimpleFunction
 
   // Changed to a new KtSourceElementOffsetStrategy overload in Kotlin 2.3.0
   public fun KtSourceElement.fakeElement(
