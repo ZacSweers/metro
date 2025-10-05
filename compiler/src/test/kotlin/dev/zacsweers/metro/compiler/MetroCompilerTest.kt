@@ -126,8 +126,6 @@ abstract class MetroCompilerTest {
                 processor.option(entry.raw.cliOption, enableDaggerRuntimeInterop)
               MetroOption.MAX_IR_ERRORS_COUNT ->
                 processor.option(entry.raw.cliOption, maxIrErrorsCount)
-              MetroOption.FIR_KOTLIN_VERSION ->
-                processor.option(entry.raw.cliOption, firKotlinVersion)
               MetroOption.CUSTOM_PROVIDER -> {
                 if (customProviderTypes.isEmpty()) continue
                 processor.option(entry.raw.cliOption, customProviderTypes.joinToString(":"))

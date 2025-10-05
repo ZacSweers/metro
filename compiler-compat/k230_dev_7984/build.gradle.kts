@@ -17,7 +17,7 @@ kotlin {
 }
 
 dependencies {
-  compileOnly("org.jetbrains.kotlin:kotlin-compiler-embeddable:2.3.0-dev-7984")
+  compileOnly("org.jetbrains.kotlin:kotlin-compiler:2.3.0-dev-7984")
   compileOnly(libs.kotlin.stdlib)
   api(project(":compiler-compat"))
 }

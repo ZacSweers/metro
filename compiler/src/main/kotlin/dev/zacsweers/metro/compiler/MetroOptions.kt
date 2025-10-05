@@ -522,17 +522,6 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
       valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
     )
-  ),
-  FIR_KOTLIN_VERSION(
-    RawMetroOption(
-      name = "fir-kotlin-version",
-      defaultValue = "2.2.20",
-      valueDescription = "Kotlin version string",
-      description = "Specifies the Kotlin compiler version for FIR compatibility layer selection",
-      required = false,
-      allowMultipleOccurrences = false,
-      valueMapper = { it },
-    )
   );
 
   companion object {
@@ -637,7 +626,6 @@ public data class MetroOptions(
     MetroOption.ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE.raw.defaultValue.expectAs(),
   val customOriginAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_ORIGIN.raw.defaultValue.expectAs(),
-  val firKotlinVersion: String = MetroOption.FIR_KOTLIN_VERSION.raw.defaultValue.expectAs(),
 ) {
   internal companion object {
     fun load(configuration: CompilerConfiguration): MetroOptions {
@@ -798,8 +786,6 @@ public data class MetroOptions(
           }
           MetroOption.CUSTOM_ORIGIN ->
             customOriginAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.FIR_KOTLIN_VERSION ->
-            options = options.copy(firKotlinVersion = configuration.getAsString(entry))
         }
       }
 

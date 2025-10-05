@@ -140,13 +140,6 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
       )
 
   /**
-   * Specifies the Kotlin compiler version for FIR compatibility layer selection.
-   * Defaults to the current Kotlin version used by the project.
-   */
-  public val firKotlinVersion: Property<String> =
-    objects.property(String::class.javaObjectType)
-
-  /**
    * Enable/disable suggestion to lift @Inject to class when there is only one constructor. Enabled
    * by default.
    */
