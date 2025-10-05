@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.resolvedArgumentTypeRef
 import dev.zacsweers.metro.compiler.fir.scopeArgument
+import dev.zacsweers.metro.compiler.ir.transformers.HintGenerator
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.scopeHintFunctionName
 import org.jetbrains.kotlin.fir.FirSession
@@ -131,10 +132,12 @@ internal class ContributionHintFirGenerator(session: FirSession, compatContext: 
     return contributionsToScope
       .sortedBy { it.classId.asFqNameString() }
       .map { contributingClass ->
+        val containingFileName = HintGenerator.hintFileName(contributingClass.classId, callableId.callableName)
         createTopLevelFunction(
             Keys.ContributionHint,
             callableId,
             session.builtinTypes.unitType.coneType,
+            containingFileName = containingFileName,
           ) {
             valueParameter(Symbols.Names.contributed, { contributingClass.constructType(it) })
           }

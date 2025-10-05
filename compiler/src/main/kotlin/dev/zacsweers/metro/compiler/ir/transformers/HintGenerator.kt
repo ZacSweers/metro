@@ -35,6 +35,7 @@ import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.fileEntry
+import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
 /**
@@ -85,17 +86,9 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
           annotations += hintAnnotations.map { it.ir }
         }
 
-    val fileNameWithoutExtension =
-      sequence {
-          val classId = sourceClass.classIdOrFail
-          yieldAll(classId.packageFqName.pathSegments())
-          yield(classId.joinSimpleNames(separator = "", camelCase = true).shortClassName)
-          yield(hintName)
-        }
-        .joinToString(separator = "") { it.asString().capitalizeUS() }
-        .decapitalizeUS()
+    val fileName =
+      hintFileName(sourceClass.classIdOrFail, hintName)
 
-    val fileName = "${fileNameWithoutExtension}.kt"
     val firFile = buildFile {
       val metadataSource = sourceClass.metadata as? FirMetadataSource.Class
       if (metadataSource == null) {
@@ -137,5 +130,19 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
     pluginContext.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(function)
     hintFile.dumpToMetroLog(fakeNewPath.name)
     return function
+  }
+
+  companion object {
+    fun hintFileName(sourceClassId: ClassId, hintName: Name): String {
+      val fileNameWithoutExtension =
+        sequence {
+          yieldAll(sourceClassId.packageFqName.pathSegments())
+          yield(sourceClassId.joinSimpleNames(separator = "", camelCase = true).shortClassName)
+          yield(hintName)
+        }
+          .joinToString(separator = "") { it.asString().capitalizeUS() }
+          .decapitalizeUS()
+      return "$fileNameWithoutExtension.kt"
+    }
   }
 }
