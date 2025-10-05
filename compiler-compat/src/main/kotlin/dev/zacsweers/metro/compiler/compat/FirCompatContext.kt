@@ -2,6 +2,8 @@ package dev.zacsweers.metro.compiler.compat
 
 import java.io.FileNotFoundException
 import java.util.ServiceLoader
+import org.jetbrains.kotlin.KtFakeSourceElementKind
+import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrar
@@ -98,6 +100,13 @@ public interface FirCompatContext {
   /** The containing symbol is resolved using the declaration-site session. */
   // Deleted in Kotlin 2.3.0
   public fun FirDeclaration.getContainingClassSymbol(): FirClassLikeSymbol<*>?
+
+  // Changed to a new KtSourceElementOffsetStrategy overload in Kotlin 2.3.0
+  public fun KtSourceElement.fakeElement(
+    newKind: KtFakeSourceElementKind,
+    startOffset: Int = -1,
+    endOffset: Int = -1,
+  ): KtSourceElement
 }
 
 private data class FactoryData(val version: String, val factory: FirCompatContext.Factory)

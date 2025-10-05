@@ -10,6 +10,8 @@ The Kotlin compiler plugin APIs are not stable and can change between versions. 
 
 The Kotlin IDE plugin bundles its own compiler copy, and can be checked at `lib/kotlinc.kotlin-compiler-common.jar/META-INF/compiler.version`.
 
+Note this version may not actually have published artifacts anywhere, so it may require picking the nearest one and specifying the appropriate `minVersion` in its factory.
+
 ## Architecture
 
 ### Core Interface
