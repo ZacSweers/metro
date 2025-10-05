@@ -30,6 +30,7 @@ val daggerInteropClasspath: Configuration by configurations.creating { isTransit
 dependencies {
   testImplementation(project(":compiler"))
 
+  testImplementation(libs.kotlin.reflect)
   testImplementation(libs.kotlin.testJunit5)
   testImplementation(libs.kotlin.compilerTestFramework)
   testImplementation(libs.kotlin.compiler)
