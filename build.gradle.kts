@@ -31,8 +31,16 @@ plugins {
 }
 
 apiValidation {
-  ignoredProjects +=
-    listOf("compiler", "compiler-tests", "k230_dev_7984", "k2220", "compiler-compat")
+  ignoredProjects += buildList {
+    add("compiler")
+    add("compiler-tests")
+    add("compiler-compat")
+    layout.projectDirectory.dir("compiler-compat").asFile.listFiles()!!.forEach {
+      if (it.isDirectory && it.name.startsWith("k")) {
+        add(it.name)
+      }
+    }
+  }
   ignoredPackages +=
     listOf(
       "dev.zacsweers.metro.internal",
