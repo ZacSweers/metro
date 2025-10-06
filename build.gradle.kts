@@ -37,7 +37,7 @@ apiValidation {
   @OptIn(ExperimentalBCVApi::class)
   klib {
     // This is only really possible to run on macOS
-    //    strictValidation = true
+    // strictValidation = true
     enabled = true
   }
 }
