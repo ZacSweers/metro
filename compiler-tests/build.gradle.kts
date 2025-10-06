@@ -91,6 +91,13 @@ tasks.register<JavaExec>("generateTests") {
   classpath = sourceSets.test.get().runtimeClasspath
   mainClass.set("dev.zacsweers.metro.compiler.GenerateTestsKt")
   workingDir = rootDir
+
+  // Larger heap size
+  minHeapSize = "128m"
+  maxHeapSize = "1g"
+
+  // Larger stack size
+  jvmArgs("-Xss1m")
 }
 
 tasks.withType<Test> {
