@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   core:
-    name: "core artifacts (compiler, runtime, gradle plugin) / ${{ matrix.kotlin-compiler }}"
+    name: "core artifacts / ${{ matrix.kotlin-compiler }}"
     runs-on: ubuntu-latest
     strategy:
       matrix:
