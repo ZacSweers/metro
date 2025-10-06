@@ -65,7 +65,7 @@ public interface CompatContext {
           ?: error(
             """
               Unrecognized Kotlin version!
-              
+
               Available factories for: ${factories.joinToString(separator = "\n") { it.minVersion }}
               Detected version(s): ${factories.map { it.currentVersion }.distinct().joinToString(separator = "\n")}
             """
