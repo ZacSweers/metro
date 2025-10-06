@@ -956,6 +956,24 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#improved-cross-version-compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      Improved cross-version compatibility
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#misc" class="md-nav__link">
+    <span class="md-ellipsis">
+      Misc
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#068" class="md-nav__link">
     <span class="md-ellipsis">
       0.6.8
@@ -1376,6 +1394,24 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#improved-cross-version-compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      Improved cross-version compatibility
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#misc" class="md-nav__link">
+    <span class="md-ellipsis">
+      Misc
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#068" class="md-nav__link">
     <span class="md-ellipsis">
       0.6.8
@@ -1729,15 +1765,22 @@
 
 <h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
 <h2 id="unreleased"><strong>Unreleased</strong><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
+<h2 id="improved-cross-version-compatibility">Improved cross-version compatibility<a class="headerlink" href="#improved-cross-version-compatibility" title="Permanent link">&para;</a></h2>
+<p>This release introduces new experimental support for multiple compiler and IDE versions. The primary goal of this is to better support running Metro&rsquo;s FIR extensions across different IntelliJ Kotlin Plugin versions and make IDE support more robust, and general compiler compatibility falls out of that more or less for free.</p>
+<h2 id="misc">Misc<a class="headerlink" href="#misc" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>New</strong>: Report more IR errors up to a maximum. The default is <code>20</code>, but is configurable via the <code>maxIrErrors</code> Gradle DSL option. If you want to restore the previous &ldquo;fail-fast&rdquo; behavior, you can set this value to <code>1</code>.</li>
+<li><strong>New</strong>: Generate specific containing names in Kotlin 2.3.0+ when generating top-level functions for hint gen.</li>
 <li><strong>Behavior change</strong>: Assisted-inject types can only be directly exposed on a graph if qualified.</li>
+<li><strong>Enhancement</strong>: Improve compatibility across 2.2.20 and 2.3.0+ releases. This release <em>should</em> be compatible with both!</li>
 <li><strong>Enhancement</strong>: Add diagnostic for directly injecting unqualified assisted-injected classes rather than using their factories.</li>
 <li><strong>Enhancement</strong>: Add diagnostic mixing <code>Provider</code> and <code>Lazy</code> types for <code>Provider&lt;Lazy&lt;T&gt;&gt;</code> injections.</li>
 <li><strong>Enhancement</strong>: Add diagnostics for custom map keys.</li>
 <li><strong>Enhancement</strong>: Fully allow exposing <code>Provider&lt;Lazy&lt;T&gt;&gt;</code> accessor types.</li>
 <li><strong>Enhancement</strong>: Significantly improve duplicate binding error message rendering.</li>
 <li><strong>Fix</strong>: Avoid obscure <code>UnsupportedOperationException</code> failures when reporting missing bindings.</li>
+<li><strong>Fix</strong>: Only generate assisted factories if <code>@AssistedInject</code> annotations are used on the target class.</li>
+<li><strong>Fix</strong>: Remove <code>PsiElement</code> shading workaround when reporting diagnostics.</li>
 </ul>
 <h2 id="068">0.6.8<a class="headerlink" href="#068" title="Permanent link">&para;</a></h2>
 <p><em>2025-09-26</em></p>
