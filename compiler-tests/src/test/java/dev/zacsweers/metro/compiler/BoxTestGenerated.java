@@ -378,6 +378,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("HardCycleWithReplace.kt")
+    public void testHardCycleWithReplace() {
+      runTest("compiler-tests/src/test/data/box/cycles/HardCycleWithReplace.kt");
+    }
+
+    @Test
     @TestMetadata("LongCycle.kt")
     public void testLongCycle() {
       runTest("compiler-tests/src/test/data/box/cycles/LongCycle.kt");
