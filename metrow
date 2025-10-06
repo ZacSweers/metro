@@ -15,7 +15,6 @@ run_checks() {
     fi
 
     ./gradlew check -x dokkaGeneratePublicationHtml $version_flag
-    ./gradlew -p samples check
 }
 
 case "$1" in
@@ -97,6 +96,9 @@ case "$1" in
        else
            run_checks "$version"
        fi
+
+       # Run samples last
+       ./gradlew -p samples check
        ;;
 
    "clean")
