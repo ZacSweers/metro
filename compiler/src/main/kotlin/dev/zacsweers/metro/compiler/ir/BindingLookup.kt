@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
@@ -183,7 +182,7 @@ internal class BindingLookup(
       val key = contextKey.typeKey
       val irClass = key.type.rawType()
 
-      if (irClass.classId == context.symbols.metroMembersInjector.owner.classId) {
+      if (irClass.classId == context.metroSymbols.metroMembersInjector.owner.classId) {
         // It's a members injector, just look up its bindings and return them
         val targetType = key.type.expectAs<IrSimpleType>().arguments.first().typeOrFail
         val targetClass = targetType.rawType()
@@ -191,7 +190,7 @@ internal class BindingLookup(
         return targetClass.computeMembersInjectorBindings(currentBindings, remapper)
       }
 
-      val classAnnotations = irClass.metroAnnotations(context.symbols.classIds)
+      val classAnnotations = irClass.metroAnnotations(context.metroSymbols.classIds)
 
       if (irClass.isObject) {
         irClass.getSimpleFunction(Symbols.StringNames.MIRROR_FUNCTION)?.owner?.let {

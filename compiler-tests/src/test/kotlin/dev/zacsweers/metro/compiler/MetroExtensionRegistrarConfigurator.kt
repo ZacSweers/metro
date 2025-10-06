@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroFirExtensionRegistrar
 import dev.zacsweers.metro.compiler.interop.Ksp2AdditionalSourceProvider
 import dev.zacsweers.metro.compiler.interop.configureAnvilAnnotations
@@ -83,7 +84,8 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         assistedInjectMigrationSeverity =
           module.directives.singleOrZeroValue(MetroDirectives.ASSISTED_INJECT_MIGRATION_SEVERITY)
             ?: optionDefaults.assistedInjectMigrationSeverity,
-        maxIrErrorsCount = module.directives.singleOrZeroValue(MetroDirectives.MAX_IR_ERRORS_COUNT) ?: 20,
+        maxIrErrorsCount =
+          module.directives.singleOrZeroValue(MetroDirectives.MAX_IR_ERRORS_COUNT) ?: 20,
         enableDaggerAnvilInterop = MetroDirectives.WITH_ANVIL in module.directives,
         customGraphAnnotations =
           buildSet {
@@ -217,7 +219,10 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         // TODO other dagger annotations/types not yet implemented
       )
     val classIds = ClassIds.fromOptions(options)
-    FirExtensionRegistrarAdapter.registerExtension(MetroFirExtensionRegistrar(classIds, options))
+    val compatContext = CompatContext.getInstance()
+    FirExtensionRegistrarAdapter.registerExtension(
+      MetroFirExtensionRegistrar(classIds, options, compatContext)
+    )
     IrGenerationExtension.registerExtension(
       MetroIrGenerationExtension(
         messageCollector = configuration.messageCollector,
@@ -226,6 +231,7 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         // TODO ever support this in tests?
         lookupTracker = null,
         expectActualTracker = ExpectActualTracker.DoNothing,
+        compatContext = compatContext,
       )
     )
   }

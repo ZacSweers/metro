@@ -354,12 +354,12 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
             val computed =
               clazz
                 .declaredCallableMembers(
-                  functionFilter = { it.isAnnotatedWithAny(symbols.injectAnnotations) },
+                  functionFilter = { it.isAnnotatedWithAny(metroSymbols.injectAnnotations) },
                   propertyFilter = {
                     (it.isVar || it.isLateinit) &&
-                      (it.isAnnotatedWithAny(symbols.injectAnnotations) ||
-                        it.setter?.isAnnotatedWithAny(symbols.injectAnnotations) == true ||
-                        it.backingField?.isAnnotatedWithAny(symbols.injectAnnotations) == true)
+                      (it.isAnnotatedWithAny(metroSymbols.injectAnnotations) ||
+                        it.setter?.isAnnotatedWithAny(metroSymbols.injectAnnotations) == true ||
+                        it.backingField?.isAnnotatedWithAny(metroSymbols.injectAnnotations) == true)
                   },
                 )
                 .map { it.ir.memberInjectParameters(nameAllocator, clazz) }

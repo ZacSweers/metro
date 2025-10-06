@@ -150,7 +150,7 @@ internal fun generateMetadataVisibleMirrorFunction(
         if (target is IrConstructor) {
           val sourceClass = factoryClass.parentAsClass
           val scopeAndQualifierAnnotations = buildList {
-            val classMetroAnnotations = sourceClass.metroAnnotations(context.symbols.classIds)
+            val classMetroAnnotations = sourceClass.metroAnnotations(context.metroSymbols.classIds)
             classMetroAnnotations.scope?.ir?.let(::add)
             classMetroAnnotations.qualifier?.ir?.let(::add)
           }
@@ -169,7 +169,7 @@ internal fun generateMetadataVisibleMirrorFunction(
               .mirrorIrConstructorCalls(symbol)
               .filterNot {
                 // Exclude @Provides to avoid reentrant factory gen
-                it.annotationClass.classId in context.symbols.classIds.providesAnnotations
+                it.annotationClass.classId in context.metroSymbols.classIds.providesAnnotations
               }
               .map { it.deepCopyWithSymbols() }
         }

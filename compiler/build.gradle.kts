@@ -61,18 +61,20 @@ wire { kotlin { javaInterop = false } }
  * In order to do this, we replace the default jar task with a shadowJar task that embeds the
  * dependencies from the "embedded" configuration.
  */
-@Suppress("UnstableApiUsage") val embedded = configurations.resolvable("embedded")
+val embedded by configurations.dependencyScope("embedded")
 
-configurations.named("compileOnly").configure { extendsFrom(embedded.get()) }
+val embeddedClasspath by configurations.resolvable("embeddedClasspath") { extendsFrom(embedded) }
 
-configurations.named("testImplementation").configure { extendsFrom(embedded.get()) }
+configurations.named("compileOnly").configure { extendsFrom(embedded) }
+
+configurations.named("testImplementation").configure { extendsFrom(embedded) }
 
 tasks.jar.configure { enabled = false }
 
 val shadowJar =
   tasks.register("shadowJar", ShadowJar::class.java) {
     from(java.sourceSets.main.map { it.output })
-    configurations.add(embedded)
+    configurations.add(embeddedClasspath)
 
     // TODO these are relocated, do we need to/can we exclude these?
     //  exclude("META-INF/wire-runtime.kotlin_module")
@@ -83,6 +85,10 @@ val shadowJar =
       exclude(dependency("org.jetbrains.kotlin:.*"))
       exclude(dependency("dev.drewhamilton.poko:.*"))
     }
+
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    mergeServiceFiles()
+
     relocate("com.squareup.wire", "dev.zacsweers.metro.compiler.shaded.com.squareup.wire")
     relocate("com.squareup.okio", "dev.zacsweers.metro.compiler.shaded.com.squareup.okio")
     relocate("com.jakewharton.picnic", "dev.zacsweers.metro.compiler.shaded.com.jakewharton.picnic")
@@ -124,6 +130,9 @@ dependencies {
 
   add(embedded.name, libs.picnic)
   add(embedded.name, libs.wire.runtime)
+  add(embedded.name, project(":compiler-compat"))
+  add(embedded.name, project(":compiler-compat:k230_dev_7984"))
+  add(embedded.name, project(":compiler-compat:k2220"))
 
   testCompileOnly(libs.poko.annotations)
 
@@ -131,7 +140,9 @@ dependencies {
   testImplementation(project(":interop-dagger"))
   testImplementation(libs.kotlin.reflect)
   testImplementation(libs.kotlin.stdlib)
-  testImplementation(libs.kotlin.compilerEmbeddable)
+  val testCompilerVersion =
+    providers.gradleProperty("metro.testCompilerVersion").orElse(libs.versions.kotlin).get()
+  testRuntimeOnly("org.jetbrains.kotlin:kotlin-compiler:$testCompilerVersion")
   // Cover for https://github.com/tschuchortdev/kotlin-compile-testing/issues/274
   testImplementation(libs.kotlin.aptEmbeddable)
   testImplementation(libs.kct)

@@ -50,7 +50,7 @@ internal class Symbols(
   val pluginContext: IrPluginContext,
   val classIds: dev.zacsweers.metro.compiler.ClassIds,
   val options: MetroOptions,
-) : BuiltinSymbolsBase(pluginContext.irBuiltIns) {
+) {
 
   object StringNames {
     const val ADDITIONAL_SCOPES = "additionalScopes"

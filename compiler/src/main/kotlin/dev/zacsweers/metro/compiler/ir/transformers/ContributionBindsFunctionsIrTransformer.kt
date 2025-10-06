@@ -33,7 +33,6 @@ import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
-import org.jetbrains.kotlin.ir.util.addFakeOverrides
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.copyTo
@@ -79,7 +78,7 @@ internal class ContributionTransformer(private val context: IrMetroContext) :
     }
 
     val isBindingContainer by unsafeLazy {
-      declaration.isAnnotatedWithAny(symbols.classIds.bindingContainerAnnotations)
+      declaration.isAnnotatedWithAny(metroSymbols.classIds.bindingContainerAnnotations)
     }
 
     // First, perform transformations
@@ -89,7 +88,7 @@ internal class ContributionTransformer(private val context: IrMetroContext) :
       val scope = metroContributionAnno.requireScope()
       transformContributionClass(declaration, scope)
       collectContributionDataFromContribution(declaration, data, scope, isBindingContainer)
-    } else if (declaration.isAnnotatedWithAny(context.symbols.classIds.graphLikeAnnotations)) {
+    } else if (declaration.isAnnotatedWithAny(context.metroSymbols.classIds.graphLikeAnnotations)) {
       transformGraphLike(declaration)
     } else if (isBindingContainer) {
       collectContributionDataFromContainer(declaration, data)
@@ -113,9 +112,9 @@ internal class ContributionTransformer(private val context: IrMetroContext) :
 
   private fun collectContributionDataFromContainer(declaration: IrClass, data: IrContributionData) {
     // @BindingContainer handling
-    if (declaration.isAnnotatedWithAny(symbols.classIds.bindingContainerAnnotations)) {
+    if (declaration.isAnnotatedWithAny(metroSymbols.classIds.bindingContainerAnnotations)) {
       for (contributesToAnno in
-        declaration.annotationsIn(symbols.classIds.contributesToAnnotations)) {
+        declaration.annotationsIn(metroSymbols.classIds.contributesToAnnotations)) {
         val scope = contributesToAnno.requireScope()
         data.addBindingContainerContribution(scope, declaration)
       }
@@ -154,7 +153,7 @@ internal class ContributionTransformer(private val context: IrMetroContext) :
 
     // Add fake overrides. This should only add missing ones
     declaration.addFakeOverrides(irTypeSystemContext)
-    if (!declaration.isAnnotatedWithAny(symbols.classIds.graphExtensionAnnotations)) {
+    if (!declaration.isAnnotatedWithAny(metroSymbols.classIds.graphExtensionAnnotations)) {
       // Only DependencyGraph classes have a $$MetroGraph. ContributesGraphExtension will get
       // implemented later in IR
       declaration.requireNestedClass(Symbols.Names.MetroGraph).addFakeOverrides(irTypeSystemContext)
@@ -275,10 +274,10 @@ internal class ContributionTransformer(private val context: IrMetroContext) :
   }
 
   private fun findContributions(contributingSymbol: IrClass): Set<Contribution>? {
-    val contributesToAnnotations = symbols.classIds.contributesToAnnotations
-    val contributesBindingAnnotations = symbols.classIds.contributesBindingAnnotations
-    val contributesIntoSetAnnotations = symbols.classIds.contributesIntoSetAnnotations
-    val contributesIntoMapAnnotations = symbols.classIds.contributesIntoMapAnnotations
+    val contributesToAnnotations = metroSymbols.classIds.contributesToAnnotations
+    val contributesBindingAnnotations = metroSymbols.classIds.contributesBindingAnnotations
+    val contributesIntoSetAnnotations = metroSymbols.classIds.contributesIntoSetAnnotations
+    val contributesIntoMapAnnotations = metroSymbols.classIds.contributesIntoMapAnnotations
     val contributions = mutableSetOf<Contribution>()
     for (annotation in contributingSymbol.annotations) {
       val annotationClassId = annotation.annotationClass.classId ?: continue
@@ -304,7 +303,7 @@ internal class ContributionTransformer(private val context: IrMetroContext) :
               listOf(buildIntoMapAnnotation(), buildBindsAnnotation())
             }
         }
-        in symbols.classIds.customContributesIntoSetAnnotations -> {
+        in metroSymbols.classIds.customContributesIntoSetAnnotations -> {
           contributions +=
             if (contributingSymbol.mapKeyAnnotation() != null) {
               Contribution.ContributesIntoMapBinding(contributingSymbol, annotation) {
@@ -327,14 +326,14 @@ internal class ContributionTransformer(private val context: IrMetroContext) :
   }
 
   private fun IrFunction.buildBindsAnnotation(): IrConstructorCall {
-    return buildAnnotation(symbol, symbols.bindsConstructor)
+    return buildAnnotation(symbol, metroSymbols.bindsConstructor)
   }
 
   private fun IrFunction.buildIntoSetAnnotation(): IrConstructorCall {
-    return buildAnnotation(symbol, symbols.intoSetConstructor)
+    return buildAnnotation(symbol, metroSymbols.intoSetConstructor)
   }
 
   private fun IrFunction.buildIntoMapAnnotation(): IrConstructorCall {
-    return buildAnnotation(symbol, symbols.intoMapConstructor)
+    return buildAnnotation(symbol, metroSymbols.intoMapConstructor)
   }
 }

@@ -127,7 +127,7 @@ internal class DependencyGraphTransformer(
     bindingContainerTransformer.findContainer(declaration)
 
     val dependencyGraphAnno =
-      declaration.annotationsIn(symbols.dependencyGraphAnnotations).singleOrNull()
+      declaration.annotationsIn(metroSymbols.dependencyGraphAnnotations).singleOrNull()
         ?: return super.visitClass(declaration)
 
     tryProcessDependencyGraph(declaration, dependencyGraphAnno)
@@ -324,7 +324,7 @@ internal class DependencyGraphTransformer(
         // Process the child
         processDependencyGraph(
           contributedGraph,
-          contributedGraph.annotationsIn(symbols.dependencyGraphAnnotations).single(),
+          contributedGraph.annotationsIn(metroSymbols.dependencyGraphAnnotations).single(),
           contributedGraph,
           localParentContext,
         )

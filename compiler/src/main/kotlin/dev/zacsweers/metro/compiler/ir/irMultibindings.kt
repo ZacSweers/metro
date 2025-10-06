@@ -50,7 +50,7 @@ internal fun IrTypeKey.transformMultiboundQualifier(
     }
 
   val newQualifier =
-    buildAnnotation(rawSymbol, context.symbols.multibindingElement) {
+    buildAnnotation(rawSymbol, context.metroSymbols.multibindingElement) {
       it.arguments[0] = irString(bindingId)
       it.arguments[1] = irString(elementId)
     }

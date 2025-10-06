@@ -158,7 +158,7 @@ internal class IrGraphGenerator(
                     .suffixIfNot("Provider")
                 )
               },
-              { symbols.metroProvider.typeWith(typeKey.type) },
+              { metroSymbols.metroProvider.typeWith(typeKey.type) },
             )
             .initFinal {
               instanceFactory(typeKey.type, initializer(thisReceiverParameter, typeKey))
@@ -237,7 +237,7 @@ internal class IrGraphGenerator(
           getOrCreateBindingField(
             node.typeKey,
             { fieldNameAllocator.newName("thisGraphInstanceProvider") },
-            { symbols.metroProvider.typeWith(node.typeKey.type) },
+            { metroSymbols.metroProvider.typeWith(node.typeKey.type) },
           )
 
         bindingFieldContext.putProviderField(
@@ -274,11 +274,11 @@ internal class IrGraphGenerator(
             getOrCreateBindingField(
                 binding.typeKey,
                 { fieldNameAllocator.newName(binding.nameHint.decapitalizeUS() + "Provider") },
-                { deferredTypeKey.type.wrapInProvider(symbols.metroProvider) },
+                { deferredTypeKey.type.wrapInProvider(metroSymbols.metroProvider) },
               )
               .withInit(binding.typeKey) { _, _ ->
                 irInvoke(
-                  callee = symbols.metroDelegateFactoryConstructor,
+                  callee = metroSymbols.metroDelegateFactoryConstructor,
                   typeArgs = listOf(deferredTypeKey.type),
                 )
               }
@@ -328,7 +328,7 @@ internal class IrGraphGenerator(
               }
               else -> {
                 suffix = "Provider"
-                symbols.metroProvider.typeWith(key.type)
+                metroSymbols.metroProvider.typeWith(key.type)
               }
             }
 
@@ -354,7 +354,7 @@ internal class IrGraphGenerator(
               .letIf(binding.isScoped() && isProviderType) {
                 // If it's scoped, wrap it in double-check
                 // DoubleCheck.provider(<provider>)
-                it.doubleCheck(this@withInit, symbols, binding.typeKey)
+                it.doubleCheck(this@withInit, metroSymbols, binding.typeKey)
               }
           }
           bindingFieldContext.putProviderField(key, field)
@@ -366,8 +366,8 @@ internal class IrGraphGenerator(
         val binding = bindingGraph.requireBinding(deferredTypeKey)
         initStatements.add { thisReceiver ->
           irInvoke(
-            dispatchReceiver = irGetObject(symbols.metroDelegateFactoryCompanion),
-            callee = symbols.metroDelegateFactorySetDelegate,
+            dispatchReceiver = irGetObject(metroSymbols.metroDelegateFactoryCompanion),
+            callee = metroSymbols.metroDelegateFactorySetDelegate,
             typeArgs = listOf(deferredTypeKey.type),
             // TODO de-dupe?
             args =
@@ -384,7 +384,7 @@ internal class IrGraphGenerator(
                     .letIf(binding.isScoped()) {
                       // If it's scoped, wrap it in double-check
                       // DoubleCheck.provider(<provider>)
-                      it.doubleCheck(this@run, symbols, binding.typeKey)
+                      it.doubleCheck(this@run, metroSymbols, binding.typeKey)
                     }
                 },
               ),

@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.fir.generators
 
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
 import dev.zacsweers.metro.compiler.fir.constructType
@@ -172,8 +173,8 @@ import org.jetbrains.kotlin.name.SpecialNames
  * val appGraph = AppGraph.factory().create(int = 0, analyticsGraph = analyticsGraph)
  * ```
  */
-internal class DependencyGraphFirGenerator(session: FirSession) :
-  FirDeclarationGenerationExtension(session) {
+internal class DependencyGraphFirGenerator(session: FirSession, compatContext: CompatContext) :
+  FirDeclarationGenerationExtension(session), CompatContext by compatContext {
 
   companion object {
     private val PLACEHOLDER_SAM_FUNCTION = "$\$PLACEHOLDER_FOR_SAM".asName()

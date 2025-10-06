@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.BINDING_CONTAINER_ERROR
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
+import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
@@ -17,6 +18,7 @@ import dev.zacsweers.metro.compiler.fir.scopeAnnotations
 import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.isObject
@@ -27,7 +29,6 @@ import org.jetbrains.kotlin.fir.analysis.checkers.classKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirCallableDeclarationChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.directOverriddenSymbolsSafe
-import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.containingClassLookupTag
 import org.jetbrains.kotlin.fir.correspondingProperty
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
@@ -61,11 +62,13 @@ internal object BindingContainerCallableChecker :
     val session = context.session
     val classIds = session.classIds
 
+    val containingClassSymbol by unsafeLazy {
+      with(session.compatContext) { declaration.getContainingClassSymbol() }
+    }
     if (declaration is FirConstructor) {
       val isInBindingContainer =
-        declaration
-          .getContainingClassSymbol()
-          ?.isAnnotatedWithAny(session, classIds.bindingContainerAnnotations) ?: false
+        containingClassSymbol?.isAnnotatedWithAny(session, classIds.bindingContainerAnnotations)
+          ?: false
       if (isInBindingContainer) {
         // Check for Provides annotations on constructor params
         for (param in declaration.valueParameters) {
@@ -148,7 +151,7 @@ internal object BindingContainerCallableChecker :
     }
 
     if (annotations.isProvides) {
-      declaration.symbol.getContainingClassSymbol()?.let { containingClass ->
+      containingClassSymbol?.let { containingClass ->
         if (!containingClass.isAnnotatedWithAny(session, classIds.bindingContainerAnnotations)) {
           if (containingClass.classKind?.isObject == true && !containingClass.isCompanion) {
             // @Provides declarations can't live in non-@BindingContainer objects, this is a common
@@ -355,7 +358,12 @@ internal object BindingContainerCallableChecker :
 
           // Check for lazy-wrapped assisted factories in provides function parameters
           if (
-            validateInjectionSiteType(session, parameter.returnTypeRef, parameter.annotations.qualifierAnnotation(session), parameter.source ?: source)
+            validateInjectionSiteType(
+              session,
+              parameter.returnTypeRef,
+              parameter.annotations.qualifierAnnotation(session),
+              parameter.source ?: source,
+            )
           ) {
             return
           }

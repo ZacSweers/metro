@@ -3,12 +3,13 @@
 package dev.zacsweers.metro.compiler.fir.generators
 
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.FirInjectConstructor
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.copyParameters
-import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
+import dev.zacsweers.metro.compiler.fir.findAssistedInjectConstructors
 import dev.zacsweers.metro.compiler.fir.generateMemberFunction
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.predicates
@@ -44,12 +45,12 @@ import org.jetbrains.kotlin.name.Name
  * Note this is specifically for generating `@AssistedFactory`-annotated declarations, not for
  * generating assisted factory impls.
  */
-internal class AssistedFactoryFirGenerator(session: FirSession) :
-  FirDeclarationGenerationExtension(session) {
+internal class AssistedFactoryFirGenerator(session: FirSession, compatContext: CompatContext) :
+  FirDeclarationGenerationExtension(session), CompatContext by compatContext {
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(
-      session.predicates.allInjectAnnotationsPredicate,
+      session.predicates.assistedAnnotationPredicate,
       session.predicates.assistedAnnotationPredicate,
     )
   }
@@ -126,7 +127,7 @@ internal class AssistedFactoryFirGenerator(session: FirSession) :
     classSymbol: FirClassSymbol<*>,
     context: NestedClassGenerationContext,
   ): Set<Name> {
-    val constructor = classSymbol.findInjectLikeConstructors(session).firstOrNull()
+    val constructor = classSymbol.findAssistedInjectConstructors(session).firstOrNull()
 
     if (constructor != null) {
       // Check if there is already a nested factory. If there is, do nothing.

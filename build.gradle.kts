@@ -31,13 +31,26 @@ plugins {
 }
 
 apiValidation {
-  ignoredProjects += listOf("compiler", "compiler-tests")
+  ignoredProjects += buildList {
+    add("compiler")
+    add("compiler-tests")
+    add("compiler-compat")
+    layout.projectDirectory.dir("compiler-compat").asFile.listFiles()!!.forEach {
+      if (it.isDirectory && it.name.startsWith("k")) {
+        add(it.name)
+      }
+    }
+  }
   ignoredPackages +=
-    listOf("dev.zacsweers.metro.internal", "dev.zacsweers.metro.interop.dagger.internal")
+    listOf(
+      "dev.zacsweers.metro.internal",
+      "dev.zacsweers.metro.compiler.compat",
+      "dev.zacsweers.metro.interop.dagger.internal",
+    )
   @OptIn(ExperimentalBCVApi::class)
   klib {
     // This is only really possible to run on macOS
-    //    strictValidation = true
+    // strictValidation = true
     enabled = true
   }
 }

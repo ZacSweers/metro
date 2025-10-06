@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.ExitProcessingException
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.ir.transformers.ContributionTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.DependencyGraphTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.HintGenerator
@@ -24,6 +25,7 @@ public class MetroIrGenerationExtension(
   private val options: MetroOptions,
   private val lookupTracker: LookupTracker?,
   private val expectActualTracker: ExpectActualTracker,
+  private val compatContext: CompatContext,
 ) : IrGenerationExtension {
 
   override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
@@ -32,6 +34,7 @@ public class MetroIrGenerationExtension(
       IrMetroContext(
         pluginContext,
         messageCollector,
+        compatContext,
         symbols,
         options,
         lookupTracker,

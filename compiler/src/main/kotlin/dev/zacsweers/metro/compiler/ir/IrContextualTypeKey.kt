@@ -7,19 +7,15 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.BaseContextualTypeKey
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
-import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
-import org.jetbrains.kotlin.ir.types.classOrFail
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.types.typeWithArguments
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
-import org.jetbrains.kotlin.ir.util.copyAnnotations
-import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.render
 import org.jetbrains.kotlin.name.StandardClassIds
 
@@ -92,7 +88,7 @@ internal class IrContextualTypeKey(
     ): IrContextualTypeKey {
       val typeToConvert =
         if (wrapInProvider) {
-          type.wrapInProvider(context.symbols.metroProvider)
+          type.wrapInProvider(context.metroSymbols.metroProvider)
         } else {
           type
         }
@@ -171,7 +167,7 @@ internal fun IrType.findProviderSupertype(): IrType? {
   val rawTypeClass = rawTypeOrNull() ?: return null
   // Get the specific provider type it implements
   return rawTypeClass.getAllSuperTypes(excludeSelf = false).firstOrNull {
-    it.rawTypeOrNull()?.classId in context.symbols.providerTypes
+    it.rawTypeOrNull()?.classId in context.metroSymbols.providerTypes
   }
 }
 
@@ -230,7 +226,7 @@ private fun IrSimpleType.asWrappedType(patchMutableCollections: Boolean): Wrappe
   }
 
   // Check if this is a Provider type
-  if (rawClassId in context.symbols.providerTypes) {
+  if (rawClassId in context.metroSymbols.providerTypes) {
     val innerType = arguments[0].typeOrFail
 
     // Recursively analyze the inner type
@@ -240,7 +236,7 @@ private fun IrSimpleType.asWrappedType(patchMutableCollections: Boolean): Wrappe
   }
 
   // Check if this is a Lazy type
-  if (rawClassId in context.symbols.lazyTypes) {
+  if (rawClassId in context.metroSymbols.lazyTypes) {
     val innerType = arguments[0].typeOrFail
 
     // Recursively analyze the inner type

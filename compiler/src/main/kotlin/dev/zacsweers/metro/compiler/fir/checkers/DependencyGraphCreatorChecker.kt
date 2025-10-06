@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.allScopeClassIds
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
+import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.fir.validateApiDeclaration
 import dev.zacsweers.metro.compiler.flatMapToSet
@@ -17,7 +18,6 @@ import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.classKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
-import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.analysis.checkers.toClassLikeSymbol
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
@@ -106,11 +106,14 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
           return
         }
         // Factory must be nested in that class
-        if (it.classId != declaration.getContainingClassSymbol()?.classId) {
+        val containingClassId = with(session.compatContext) {
+          declaration.getContainingClassSymbol()?.classId
+        }
+        if (it.classId != containingClassId) {
           reporter.reportOn(
             targetGraphAnnotation.source ?: declaration.source,
             MetroDiagnostics.GRAPH_CREATORS_ERROR,
-            "@${annotationClassId.relativeClassName.asString()} declarations must be nested within the contributed graph they create but was ${declaration.getContainingClassSymbol()?.classId?.asSingleFqName() ?: "top-level"}.",
+            "@${annotationClassId.relativeClassName.asString()} declarations must be nested within the contributed graph they create but was ${containingClassId?.asSingleFqName() ?: "top-level"}.",
           )
           return
         }

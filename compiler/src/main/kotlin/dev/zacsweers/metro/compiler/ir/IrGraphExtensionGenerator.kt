@@ -25,7 +25,6 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.irAttribute
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.addChild
-import org.jetbrains.kotlin.ir.util.addFakeOverrides
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.copyAnnotationsFrom
@@ -69,22 +68,22 @@ internal class IrGraphExtensionGenerator(
           .overriddenSymbolsSequence()
           .firstOrNull {
             it.owner.parentAsClass.isAnnotatedWithAny(
-              symbols.classIds.graphExtensionFactoryAnnotations
+              metroSymbols.classIds.graphExtensionFactoryAnnotations
             )
           }
           ?.owner ?: contributedAccessor.ir
 
       val parent = sourceSamFunction.parentClassOrNull ?: reportCompilerBug("No parent class found")
       val isFactorySAM =
-        parent.isAnnotatedWithAny(symbols.classIds.graphExtensionFactoryAnnotations)
+        parent.isAnnotatedWithAny(metroSymbols.classIds.graphExtensionFactoryAnnotations)
       if (isFactorySAM) {
         generateImplFromFactory(sourceSamFunction, parentTracer, typeKey)
       } else {
         val returnType = contributedAccessor.ir.returnType.rawType()
         val returnIsGraphExtensionFactory =
-          returnType.isAnnotatedWithAny(symbols.classIds.graphExtensionFactoryAnnotations)
+          returnType.isAnnotatedWithAny(metroSymbols.classIds.graphExtensionFactoryAnnotations)
         val returnIsGraphExtension =
-          returnType.isAnnotatedWithAny(symbols.classIds.graphExtensionAnnotations)
+          returnType.isAnnotatedWithAny(metroSymbols.classIds.graphExtensionAnnotations)
         if (returnIsGraphExtensionFactory) {
           val samFunction =
             returnType.singleAbstractFunction().apply {
@@ -184,7 +183,7 @@ internal class IrGraphExtensionGenerator(
     typeKey: IrTypeKey,
   ): IrClass {
     val graphExtensionAnno =
-      sourceGraph.annotationsIn(symbols.classIds.graphExtensionAnnotations).firstOrNull()
+      sourceGraph.annotationsIn(metroSymbols.classIds.graphExtensionAnnotations).firstOrNull()
     val extensionAnno =
       graphExtensionAnno
         ?: reportCompilerBug("Expected @GraphExtension on ${sourceGraph.kotlinFqName}")
@@ -253,7 +252,7 @@ internal class IrGraphExtensionGenerator(
       // Apply replacements from remaining (non-excluded) binding containers
       contributedBindingContainers.values.forEach { bindingContainer ->
         bindingContainer
-          .annotationsIn(symbols.classIds.allContributesAnnotations)
+          .annotationsIn(metroSymbols.classIds.allContributesAnnotations)
           .flatMap { annotation -> annotation.replacedClasses() }
           .mapNotNull { replacedClass -> replacedClass.classType.rawType().classId }
           .forEach { replacedClassId ->
@@ -295,7 +294,7 @@ internal class IrGraphExtensionGenerator(
 
           // Add a @DependencyGraph(...) annotation
           annotations +=
-            buildAnnotation(symbol, symbols.metroDependencyGraphAnnotationConstructor) { annotation
+            buildAnnotation(symbol, metroSymbols.metroDependencyGraphAnnotationConstructor) { annotation
               ->
               // scope
               sourceScope?.let { annotation.arguments[0] = kClassReference(it.symbol) }
@@ -398,7 +397,7 @@ internal class IrGraphExtensionGenerator(
         .distinctBy { it.classIdOrFail }
         .flatMap { contributingType ->
           contributingType
-            .annotationsIn(symbols.classIds.contributesBindingAnnotations)
+            .annotationsIn(metroSymbols.classIds.contributesBindingAnnotations)
             .mapNotNull { annotation ->
               val scope = annotation.scopeOrNull() ?: return@mapNotNull null
               if (scope !in allScopes) return@mapNotNull null
@@ -507,7 +506,7 @@ internal class IrGraphExtensionGenerator(
 
       val bindingContainerAnno =
         bindingContainerClass
-          .annotationsIn(symbols.classIds.bindingContainerAnnotations)
+          .annotationsIn(metroSymbols.classIds.bindingContainerAnnotations)
           .firstOrNull() ?: continue
       result += bindingContainerClass
 

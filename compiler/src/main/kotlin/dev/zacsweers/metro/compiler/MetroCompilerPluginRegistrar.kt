@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroFirExtensionRegistrar
 import dev.zacsweers.metro.compiler.ir.MetroIrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
@@ -36,7 +37,10 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
       }
 
     if (options.maxIrErrorsCount < 1) {
-      messageCollector.report(CompilerMessageSeverity.ERROR, "maxIrErrorsCount must be greater than zero but was ${options.maxIrErrorsCount}")
+      messageCollector.report(
+        CompilerMessageSeverity.ERROR,
+        "maxIrErrorsCount must be greater than zero but was ${options.maxIrErrorsCount}",
+      )
       return
     }
 
@@ -44,7 +48,10 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
       messageCollector.report(CompilerMessageSeverity.INFO, "Metro options:\n$options")
     }
 
-    FirExtensionRegistrarAdapter.registerExtension(MetroFirExtensionRegistrar(classIds, options))
+    val compatContext = CompatContext.getInstance()
+    FirExtensionRegistrarAdapter.registerExtension(
+      MetroFirExtensionRegistrar(classIds, options, compatContext)
+    )
     val lookupTracker = configuration.get(CommonConfigurationKeys.LOOKUP_TRACKER)
     val expectActualTracker: ExpectActualTracker =
       configuration.get(
@@ -58,6 +65,7 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
         options = options,
         lookupTracker = lookupTracker,
         expectActualTracker = expectActualTracker,
+        compatContext = compatContext,
       )
     )
   }

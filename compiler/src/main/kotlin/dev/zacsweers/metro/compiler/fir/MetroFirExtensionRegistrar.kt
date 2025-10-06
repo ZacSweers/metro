@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.fir
 import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.generators.AssistedFactoryFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.BindingMirrorClassFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.ContributedInterfaceSupertypeGenerator
@@ -32,6 +33,7 @@ import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension
 public class MetroFirExtensionRegistrar(
   private val classIds: ClassIds,
   private val options: MetroOptions,
+  private val compatContext: CompatContext,
 ) : FirExtensionRegistrar() {
   override fun ExtensionRegistrarContext.configurePlugin() {
     +MetroFirBuiltIns.getFactory(classIds, options)
@@ -65,7 +67,7 @@ public class MetroFirExtensionRegistrar(
     if (options.generateContributionHints) {
       +declarationGenerator(
         "FirGen - ContributionHints",
-        ContributionHintFirGenerator.Factory(options)::create,
+        ::ContributionHintFirGenerator,
         true,
       )
     }
@@ -105,7 +107,7 @@ public class MetroFirExtensionRegistrar(
 
   private fun declarationGenerator(
     tag: String,
-    delegate: ((FirSession) -> FirDeclarationGenerationExtension),
+    delegate: ((FirSession, CompatContext) -> FirDeclarationGenerationExtension),
     enableLogging: Boolean = false,
   ): FirDeclarationGenerationExtension.Factory {
     return FirDeclarationGenerationExtension.Factory { session ->
@@ -117,9 +119,9 @@ public class MetroFirExtensionRegistrar(
         }
       val extension =
         if (logger == MetroLogger.NONE) {
-          delegate(session)
+          delegate(session, compatContext)
         } else {
-          LoggingFirDeclarationGenerationExtension(session, logger, delegate(session))
+          LoggingFirDeclarationGenerationExtension(session, logger, delegate(session, compatContext))
         }
       extension.kotlinOnly()
     }

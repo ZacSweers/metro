@@ -17,7 +17,7 @@ internal object AsContributionTransformer {
   fun visitCall(expression: IrCall, metroContext: IrMetroContext): IrExpression? {
     val callee = expression.symbol.owner
     when (callee.symbol) {
-      metroContext.symbols.asContribution -> {
+      metroContext.metroSymbols.asContribution -> {
         return metroContext.createIrBuilder(expression.symbol).run {
           // The ugly Kotlin 2.1.20+ way of getting the receiver
           expression.arguments[

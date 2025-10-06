@@ -11,7 +11,7 @@ import org.jetbrains.kotlin.ir.types.typeWith
 
 context(context: IrMetroContext)
 internal fun IrType.wrapInMembersInjector(): IrType {
-  return wrapIn(context.symbols.metroMembersInjector)
+  return wrapIn(context.metroSymbols.metroMembersInjector)
 }
 
 internal fun IrType.wrapInProvider(providerType: IrType): IrType {

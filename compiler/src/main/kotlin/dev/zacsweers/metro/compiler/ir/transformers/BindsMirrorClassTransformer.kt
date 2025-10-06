@@ -145,7 +145,7 @@ private fun generateMirrorFunction(
       }
 
   val callableMetadata =
-    buildAnnotation(mirrorFunction.symbol, context.symbols.callableMetadataAnnotationConstructor) {
+    buildAnnotation(mirrorFunction.symbol, context.metroSymbols.callableMetadataAnnotationConstructor) {
       with(it) {
         // callableName
         arguments[0] = irString(targetFunction.callableId.callableName.asString())
