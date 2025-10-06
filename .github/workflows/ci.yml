@@ -76,7 +76,7 @@ jobs:
             ${{ runner.os }}-${{ matrix.kotlin-compiler }}-konan-
 
       - name: Check root project
-        run: ./gradlew check --continue --quiet ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+        run: ./gradlew check --continue --quiet '-Dmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
       - name: (Fail-only) Upload reports
         if: failure()
