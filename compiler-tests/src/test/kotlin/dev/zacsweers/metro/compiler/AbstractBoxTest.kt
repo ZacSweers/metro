@@ -17,21 +17,23 @@ import org.jetbrains.kotlin.test.model.BackendInputHandler
 import org.jetbrains.kotlin.test.runners.codegen.AbstractFirLightTreeBlackBoxCodegenTest
 import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
 
+@Suppress("UNCHECKED_CAST")
 private val NoIrCompilationErrorsHandler =
-  try {
-    @Suppress("UNCHECKED_CAST")
-    listOf(
-        // 2.3.0 name
-        "NoIrCompilationErrorsHandler",
-        // 2.2.20 name
-        "NoFir2IrCompilationErrorsHandler",
-      )
-      .firstNotNullOf { Class.forName("org.jetbrains.kotlin.test.backend.handlers.$it") }
-      .kotlin as KClass<BackendInputHandler<IrBackendInput>>
-  } catch (t: Throwable) {
-    System.err.println("Could not find NoIrCompilationErrorsHandler for the current kotlin version")
-    throw t
-  }
+  listOf(
+      // 2.3.0 name
+      "NoIrCompilationErrorsHandler",
+      // 2.2.20 name
+      "NoFir2IrCompilationErrorsHandler",
+    )
+    .firstNotNullOf {
+      try {
+        Class.forName("org.jetbrains.kotlin.test.backend.handlers.$it")
+      } catch (_: ClassNotFoundException) {
+        null
+      }
+    }
+    .kotlin as KClass<BackendInputHandler<IrBackendInput>>?
+    ?: error("Could not find NoIrCompilationErrorsHandler for the current kotlin version")
 
 open class AbstractBoxTest : AbstractFirLightTreeBlackBoxCodegenTest() {
   override fun createKotlinStandardLibrariesPathProvider(): KotlinStandardLibrariesPathProvider {
