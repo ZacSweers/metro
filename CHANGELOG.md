@@ -20,6 +20,7 @@ This release introduces new experimental support for multiple compiler and IDE v
 - **Enhancement**: Fully allow exposing `Provider<Lazy<T>>` accessor types.
 - **Enhancement**: Significantly improve duplicate binding error message rendering.
 - **Fix**: Avoid obscure `UnsupportedOperationException` failures when reporting missing bindings.
+- **Fix**: Only generate assisted factories if `@AssistedInject` annotations are used on the target class.
 
 0.6.8
 -----
