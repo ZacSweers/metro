@@ -2,9 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir
 
-import dev.zacsweers.metro.compiler.error0
-import dev.zacsweers.metro.compiler.error1
-import dev.zacsweers.metro.compiler.error2
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.AGGREGATION_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ASSISTED_FACTORIES_CANNOT_BE_LAZY
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ASSISTED_INJECTION_ERROR
@@ -14,7 +11,6 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.BINDING_CONTAINER_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.BINDS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CANNOT_HAVE_INJECT_IN_MULTIPLE_TARGETS
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CANNOT_HAVE_MULTIPLE_INJECTED_CONSTRUCTORS
-import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDERS_OF_LAZY_MUST_BE_METRO_ONLY
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CREATE_GRAPH_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DAGGER_REUSABLE_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DEPENDENCY_GRAPH_ERROR
@@ -25,7 +21,6 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.GRAPH_CREATORS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.GRAPH_CREATORS_VARARG_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.GRAPH_DEPENDENCY_CYCLE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INJECTED_CLASSES_MUST_BE_VISIBLE
-import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDERS_OF_LAZY_CANNOT_BE_ACCESSORS
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.LOCAL_CLASSES_CANNOT_BE_INJECTED
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MAP_KEY_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MAP_KEY_TYPE_PARAM_ERROR
@@ -43,6 +38,8 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MULTIBINDS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MULTIBINDS_OVERRIDE_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ONLY_CLASSES_CAN_BE_INJECTED
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ONLY_FINAL_AND_OPEN_CLASSES_CAN_BE_INJECTED
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDERS_OF_LAZY_CANNOT_BE_ACCESSORS
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDERS_OF_LAZY_MUST_BE_METRO_ONLY
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDER_OVERRIDES
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_COULD_BE_BINDS
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_ERROR
@@ -51,86 +48,91 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_OR_BINDS_SHOUL
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_PROPERTIES_CANNOT_BE_PRIVATE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUGGEST_CLASS_INJECTION
-import dev.zacsweers.metro.compiler.warning0
-import dev.zacsweers.metro.compiler.warning1
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactoryToRendererMap
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticRenderers.TO_STRING
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticsContainer
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.DECLARATION_RETURN_TYPE
-import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.DECLARATION_SIGNATURE
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.MODALITY_MODIFIER
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.NAME_IDENTIFIER
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.OVERRIDE_MODIFIER
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.PARAMETER_VARARG_MODIFIER
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.TYPE_PARAMETERS_LIST
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.VISIBILITY_MODIFIER
+import org.jetbrains.kotlin.diagnostics.error0
+import org.jetbrains.kotlin.diagnostics.error1
+import org.jetbrains.kotlin.diagnostics.error2
 import org.jetbrains.kotlin.diagnostics.rendering.BaseDiagnosticRendererFactory
 import org.jetbrains.kotlin.diagnostics.rendering.CommonRenderers.STRING
+import org.jetbrains.kotlin.diagnostics.warning0
+import org.jetbrains.kotlin.diagnostics.warning1
+import org.jetbrains.kotlin.psi.KtClass
+import org.jetbrains.kotlin.psi.KtElement
 
 internal object MetroDiagnostics : KtDiagnosticsContainer() {
 
   // Common
-  val FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION by error2<String, String>(NAME_IDENTIFIER)
-  val METRO_DECLARATION_ERROR by error1<String>(NAME_IDENTIFIER)
-  val METRO_DECLARATION_VISIBILITY_ERROR by error2<String, String>(VISIBILITY_MODIFIER)
-  val METRO_TYPE_PARAMETERS_ERROR by error1<String>(TYPE_PARAMETERS_LIST)
+  val FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION by error2<KtClass, String, String>(NAME_IDENTIFIER)
+  val METRO_DECLARATION_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val METRO_DECLARATION_VISIBILITY_ERROR by error2<KtElement, String, String>(VISIBILITY_MODIFIER)
+  val METRO_TYPE_PARAMETERS_ERROR by error1<KtElement, String>(TYPE_PARAMETERS_LIST)
 
   // DependencyGraph factory errors
-  val GRAPH_CREATORS_ERROR by error1<String>(NAME_IDENTIFIER)
-  val GRAPH_CREATORS_VARARG_ERROR by error1<String>(PARAMETER_VARARG_MODIFIER)
+  val GRAPH_CREATORS_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val GRAPH_CREATORS_VARARG_ERROR by error1<KtElement, String>(PARAMETER_VARARG_MODIFIER)
 
   // DependencyGraph errors
-  val DEPENDENCY_GRAPH_ERROR by error1<String>(NAME_IDENTIFIER)
+  val DEPENDENCY_GRAPH_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
 
   // Inject constructor errors
-  val SUGGEST_CLASS_INJECTION by warning0(NAME_IDENTIFIER)
+  val SUGGEST_CLASS_INJECTION by warning0<KtElement>(NAME_IDENTIFIER)
 
   // Inject/assisted constructor errors
-  val CANNOT_HAVE_MULTIPLE_INJECTED_CONSTRUCTORS by error0(NAME_IDENTIFIER)
-  val CANNOT_HAVE_INJECT_IN_MULTIPLE_TARGETS by error0(NAME_IDENTIFIER)
-  val ASSISTED_FACTORIES_CANNOT_BE_LAZY by error2<String, String>(NAME_IDENTIFIER)
-  val ONLY_CLASSES_CAN_BE_INJECTED by error0(NAME_IDENTIFIER)
-  val ONLY_FINAL_AND_OPEN_CLASSES_CAN_BE_INJECTED by error0(MODALITY_MODIFIER)
-  val LOCAL_CLASSES_CANNOT_BE_INJECTED by error0(NAME_IDENTIFIER)
-  val INJECTED_CLASSES_MUST_BE_VISIBLE by error1<String>(VISIBILITY_MODIFIER)
-  val PROVIDERS_OF_LAZY_MUST_BE_METRO_ONLY by error2<String, String>(NAME_IDENTIFIER)
-  val PROVIDERS_OF_LAZY_CANNOT_BE_ACCESSORS by error0(NAME_IDENTIFIER)
+  val CANNOT_HAVE_MULTIPLE_INJECTED_CONSTRUCTORS by error0<KtElement>(NAME_IDENTIFIER)
+  val CANNOT_HAVE_INJECT_IN_MULTIPLE_TARGETS by error0<KtElement>(NAME_IDENTIFIER)
+  val ASSISTED_FACTORIES_CANNOT_BE_LAZY by error2<KtElement, String, String>(NAME_IDENTIFIER)
+  val ONLY_CLASSES_CAN_BE_INJECTED by error0<KtElement>(NAME_IDENTIFIER)
+  val ONLY_FINAL_AND_OPEN_CLASSES_CAN_BE_INJECTED by error0<KtElement>(MODALITY_MODIFIER)
+  val LOCAL_CLASSES_CANNOT_BE_INJECTED by error0<KtElement>(NAME_IDENTIFIER)
+  val INJECTED_CLASSES_MUST_BE_VISIBLE by error1<KtElement, String>(VISIBILITY_MODIFIER)
+  val PROVIDERS_OF_LAZY_MUST_BE_METRO_ONLY by error2<KtElement, String, String>(NAME_IDENTIFIER)
+  val PROVIDERS_OF_LAZY_CANNOT_BE_ACCESSORS by error0<KtElement>(NAME_IDENTIFIER)
 
   // Assisted factory/inject errors
-  val ASSISTED_INJECTION_ERROR by error1<String>(NAME_IDENTIFIER)
-  val ASSISTED_INJECTION_WARNING by warning1<String>(NAME_IDENTIFIER)
+  val ASSISTED_INJECTION_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val ASSISTED_INJECTION_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
 
   // Provides errors
-  val PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_ERROR by error1<String>(VISIBILITY_MODIFIER)
-  val PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_WARNING by warning1<String>(VISIBILITY_MODIFIER)
-  val PROVIDES_PROPERTIES_CANNOT_BE_PRIVATE by error1<String>(VISIBILITY_MODIFIER)
+  val PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_ERROR by error1<KtElement, String>(VISIBILITY_MODIFIER)
+  val PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_WARNING by
+    warning1<KtElement, String>(VISIBILITY_MODIFIER)
+  val PROVIDES_PROPERTIES_CANNOT_BE_PRIVATE by error1<KtElement, String>(VISIBILITY_MODIFIER)
   // TODO make this severity configurable
-  val PROVIDES_COULD_BE_BINDS by warning1<String>(NAME_IDENTIFIER)
-  val PROVIDER_OVERRIDES by error0(MODALITY_MODIFIER)
-  val PROVIDES_ERROR by error1<String>(NAME_IDENTIFIER)
-  val PROVIDES_WARNING by warning1<String>(NAME_IDENTIFIER)
-  val BINDS_ERROR by error1<String>(NAME_IDENTIFIER)
-  val AGGREGATION_ERROR by error1<String>(NAME_IDENTIFIER)
-  val CREATE_GRAPH_ERROR by error1<String>(NAME_IDENTIFIER)
-  val AS_CONTRIBUTION_ERROR by error1<String>(NAME_IDENTIFIER)
-  val MULTIBINDS_ERROR by error1<String>(NAME_IDENTIFIER)
-  val MULTIBINDS_OVERRIDE_ERROR by error1<String>(OVERRIDE_MODIFIER)
-  val MAP_KEY_ERROR by error1<String>(NAME_IDENTIFIER)
-  val MAP_KEY_TYPE_PARAM_ERROR by error1<String>(TYPE_PARAMETERS_LIST)
-  val MEMBERS_INJECT_ERROR by error1<String>(NAME_IDENTIFIER)
-  val MEMBERS_INJECT_STATUS_ERROR by error1<String>(MODALITY_MODIFIER)
-  val MEMBERS_INJECT_WARNING by warning1<String>(NAME_IDENTIFIER)
-  val MEMBERS_INJECT_RETURN_TYPE_WARNING by warning1<String>(DECLARATION_RETURN_TYPE)
-  val MEMBERS_INJECT_TYPE_PARAMETERS_ERROR by error1<String>(TYPE_PARAMETERS_LIST)
-  val DAGGER_REUSABLE_ERROR by error0(NAME_IDENTIFIER)
-  val FUNCTION_INJECT_ERROR by error1<String>(NAME_IDENTIFIER)
-  val FUNCTION_INJECT_TYPE_PARAMETERS_ERROR by error1<String>(TYPE_PARAMETERS_LIST)
-  val BINDING_CONTAINER_ERROR by error1<String>(NAME_IDENTIFIER)
+  val PROVIDES_COULD_BE_BINDS by warning1<KtElement, String>(NAME_IDENTIFIER)
+  val PROVIDER_OVERRIDES by error0<KtElement>(MODALITY_MODIFIER)
+  val PROVIDES_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val PROVIDES_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
+  val BINDS_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val AGGREGATION_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val CREATE_GRAPH_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val AS_CONTRIBUTION_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val MULTIBINDS_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val MULTIBINDS_OVERRIDE_ERROR by error1<KtElement, String>(OVERRIDE_MODIFIER)
+  val MAP_KEY_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val MAP_KEY_TYPE_PARAM_ERROR by error1<KtElement, String>(TYPE_PARAMETERS_LIST)
+  val MEMBERS_INJECT_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val MEMBERS_INJECT_STATUS_ERROR by error1<KtElement, String>(MODALITY_MODIFIER)
+  val MEMBERS_INJECT_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
+  val MEMBERS_INJECT_RETURN_TYPE_WARNING by warning1<KtElement, String>(DECLARATION_RETURN_TYPE)
+  val MEMBERS_INJECT_TYPE_PARAMETERS_ERROR by error1<KtElement, String>(TYPE_PARAMETERS_LIST)
+  val DAGGER_REUSABLE_ERROR by error0<KtElement>(NAME_IDENTIFIER)
+  val FUNCTION_INJECT_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val FUNCTION_INJECT_TYPE_PARAMETERS_ERROR by error1<KtElement, String>(TYPE_PARAMETERS_LIST)
+  val BINDING_CONTAINER_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
 
   // IR errors
-  val GRAPH_DEPENDENCY_CYCLE by error1<String>(NAME_IDENTIFIER)
-  val METRO_ERROR by error1<String>(NAME_IDENTIFIER)
-  val METRO_WARNING by warning1<String>(NAME_IDENTIFIER)
+  val GRAPH_DEPENDENCY_CYCLE by error1<KtElement, String>(NAME_IDENTIFIER)
+  val METRO_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val METRO_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
 
   override fun getRendererFactory(): BaseDiagnosticRendererFactory {
     return FirMetroErrorMessages
@@ -194,7 +196,12 @@ private object FirMetroErrorMessages : BaseDiagnosticRendererFactory() {
           "Only final and open classes be annotated with @Inject or have @Inject-annotated constructors.",
         )
         put(INJECTED_CLASSES_MUST_BE_VISIBLE, "Injected classes must be {0}.", STRING)
-        put(PROVIDERS_OF_LAZY_MUST_BE_METRO_ONLY, "Cannot mix intrinsic types across libraries for Provider<Lazy<T>> types. They must be dev.zacsweers.metro.Provider and kotlin.Lazy but found {0} and {1}.", STRING, STRING)
+        put(
+          PROVIDERS_OF_LAZY_MUST_BE_METRO_ONLY,
+          "Cannot mix intrinsic types across libraries for Provider<Lazy<T>> types. They must be dev.zacsweers.metro.Provider and kotlin.Lazy but found {0} and {1}.",
+          STRING,
+          STRING,
+        )
         put(PROVIDERS_OF_LAZY_CANNOT_BE_ACCESSORS, "Provider<Lazy<T>> accessors are not supported.")
         put(ASSISTED_INJECTION_ERROR, "{0}", STRING)
         put(ASSISTED_INJECTION_WARNING, "{0}", STRING)
