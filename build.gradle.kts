@@ -31,9 +31,14 @@ plugins {
 }
 
 apiValidation {
-  ignoredProjects += listOf("compiler", "compiler-tests")
+  ignoredProjects +=
+    listOf("compiler", "compiler-tests", "k230_dev_7984", "k2220", "compiler-compat")
   ignoredPackages +=
-    listOf("dev.zacsweers.metro.internal", "dev.zacsweers.metro.interop.dagger.internal")
+    listOf(
+      "dev.zacsweers.metro.internal",
+      "dev.zacsweers.metro.compiler.compat",
+      "dev.zacsweers.metro.interop.dagger.internal",
+    )
   @OptIn(ExperimentalBCVApi::class)
   klib {
     // This is only really possible to run on macOS
