@@ -36,8 +36,6 @@ cat > "$MODULE_DIR/build.gradle.kts" << EOF
 // SPDX-License-Identifier: Apache-2.0
 plugins {
   alias(libs.plugins.kotlin.jvm)
-  alias(libs.plugins.dokka)
-  alias(libs.plugins.mavenPublish)
 }
 
 kotlin {
@@ -55,16 +53,6 @@ dependencies {
   compileOnly(libs.kotlin.stdlib)
   api(project(":compiler-compat"))
 }
-EOF
-
-# Generate gradle.properties
-cat > "$MODULE_DIR/gradle.properties" << EOF
-POM_NAME=Metro Compiler Compat ($KOTLIN_VERSION)
-POM_ARTIFACT_ID=compiler-compat-$KOTLIN_VERSION
-POM_PACKAGING=jar
-
-# kotlinc imposes its own
-kotlin.stdlib.default.dependency=false
 EOF
 
 # Generate CompatContextImpl.kt
