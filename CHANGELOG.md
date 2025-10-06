@@ -22,6 +22,7 @@ This release introduces new experimental support for multiple compiler and IDE v
 - **Fix**: Avoid obscure `UnsupportedOperationException` failures when reporting missing bindings.
 - **Fix**: Only generate assisted factories if `@AssistedInject` annotations are used on the target class.
 - **Fix**: Remove `PsiElement` shading workaround when reporting diagnostics.
+- Inline internal `trace` functions to reduce overhead.
 
 0.6.8
 -----

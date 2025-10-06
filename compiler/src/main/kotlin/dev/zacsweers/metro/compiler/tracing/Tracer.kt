@@ -70,7 +70,7 @@ private class SimpleTracer(
     SimpleTracer(tag, description, level + 1, log, onFinished)
 }
 
-internal fun <T> Tracer.traceNested(
+internal inline fun <T> Tracer.traceNested(
   description: String,
   tag: String = this.tag,
   block: (Tracer) -> T,
@@ -79,7 +79,7 @@ internal fun <T> Tracer.traceNested(
   return nested(description, tag).trace(block)
 }
 
-internal fun <T> Tracer.trace(block: (Tracer) -> T): T {
+internal inline fun <T> Tracer.trace(block: (Tracer) -> T): T {
   contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
   start()
   try {
