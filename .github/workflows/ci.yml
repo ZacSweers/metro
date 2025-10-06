@@ -58,9 +58,9 @@ jobs:
             ~/.konan/kotlin-native-prebuilt-mingw*
             ~/.konan/kotlin-native-prebuilt-windows*
             ~/.konan/kotlin-native-prebuilt-linux*
-          key: ${{ runner.os }}-konan-${{ hashFiles('**/*.gradle*') }}
+          key: ${{ runner.os }}-${{ matrix.kotlin-compiler }}-konan-${{ hashFiles('**/*.gradle*') }}
           restore-keys: |
-            ${{ runner.os }}-konan-
+            ${{ runner.os }}-${{ matrix.kotlin-compiler }}-konan-
 
       - name: Check root project
         run: ./gradlew check --continue --quiet ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
