@@ -126,14 +126,11 @@ tasks.withType<Test> {
 }
 
 fun Test.setLibraryProperty(propName: String, jarName: String) {
-  jvmArgumentProviders += CommandLineArgumentProvider {
-    val path =
-      project.configurations.testRuntimeClasspath
-        .get()
-        .files
-        .find { """$jarName-\d.*jar""".toRegex().matches(it.name) }
-        ?.absolutePath ?: return@CommandLineArgumentProvider emptyList()
-    listOf("-D$propName=$path")
-  }
-  //  systemProperty(propName, path)
+  val path =
+    project.configurations.testRuntimeClasspath
+      .get()
+      .files
+      .find { """$jarName-\d.*jar""".toRegex().matches(it.name) }
+      ?.absolutePath ?: return
+  systemProperty(propName, path)
 }
