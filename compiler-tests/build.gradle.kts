@@ -1,9 +1,16 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
+import org.gradle.kotlin.dsl.sourceSets
+
 plugins {
   alias(libs.plugins.kotlin.jvm)
   alias(libs.plugins.buildConfig)
   java
+}
+
+sourceSets {
+  register("generator220")
+  register("generator230")
 }
 
 buildConfig {
@@ -27,14 +34,27 @@ val kiAnvilRuntimeClasspath: Configuration by configurations.creating { isTransi
 val daggerRuntimeClasspath: Configuration by configurations.creating {}
 val daggerInteropClasspath: Configuration by configurations.creating { isTransitive = false }
 
+val testCompilerVersion =
+  providers.gradleProperty("metro.testCompilerVersion").orElse(libs.versions.kotlin).get()
+
+val kotlinVersion =
+  testCompilerVersion.substringBefore('-').split('.').let { (major, minor, patch) ->
+    KotlinVersion(major.toInt(), minor.toInt(), patch.toInt())
+  }
+
 dependencies {
+  // 2.3.0 changed the test gen APIs around into different packages
+  "generator220Implementation"(libs.kotlin.compilerTestFramework)
+  "generator230Implementation"(
+    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.3.0-dev-9673"
+  )
+  val configToUse = if (kotlinVersion >= KotlinVersion(2, 3)) "generator230" else "generator220"
+  testImplementation(sourceSets.named(configToUse).map { it.output })
+
   testImplementation(project(":compiler"))
   testImplementation(project(":compiler-compat"))
 
-  testImplementation(libs.kotlin.reflect)
   testImplementation(libs.kotlin.testJunit5)
-  val testCompilerVersion =
-    providers.gradleProperty("metro.testCompilerVersion").orElse(libs.versions.kotlin).get()
   testImplementation(
     "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$testCompilerVersion"
   )
@@ -106,11 +126,14 @@ tasks.withType<Test> {
 }
 
 fun Test.setLibraryProperty(propName: String, jarName: String) {
-  val path =
-    project.configurations.testRuntimeClasspath
-      .get()
-      .files
-      .find { """$jarName-\d.*jar""".toRegex().matches(it.name) }
-      ?.absolutePath ?: return
-  systemProperty(propName, path)
+  jvmArgumentProviders += CommandLineArgumentProvider {
+    val path =
+      project.configurations.testRuntimeClasspath
+        .get()
+        .files
+        .find { """$jarName-\d.*jar""".toRegex().matches(it.name) }
+        ?.absolutePath ?: return@CommandLineArgumentProvider emptyList()
+    listOf("-D$propName=$path")
+  }
+  //  systemProperty(propName, path)
 }
