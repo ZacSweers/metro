@@ -13,7 +13,8 @@ kotlin {
 }
 
 dependencies {
-  compileOnly("org.jetbrains.kotlin:kotlin-compiler:2.3.0-dev-7984")
+  val kotlinVersion = providers.fileContents(layout.projectDirectory.file("version.txt")).asText.map { it.trim() }
+  compileOnly(kotlinVersion.map { "org.jetbrains.kotlin:kotlin-compiler:$it" })
   compileOnly(libs.kotlin.stdlib)
   api(project(":compiler-compat"))
 }

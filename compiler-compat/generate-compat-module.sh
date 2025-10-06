@@ -30,6 +30,9 @@ MODULE_DIR="compiler-compat/$MODULE_NAME"
 mkdir -p "$MODULE_DIR/src/main/kotlin/dev/zacsweers/metro/compiler/compat/$MODULE_NAME"
 mkdir -p "$MODULE_DIR/src/main/resources/META-INF/services"
 
+# Generate version.txt
+echo "$KOTLIN_VERSION" > "$MODULE_DIR/version.txt"
+
 # Generate build.gradle.kts
 cat > "$MODULE_DIR/build.gradle.kts" << EOF
 // Copyright (C) 2025 Zac Sweers
@@ -47,7 +50,8 @@ kotlin {
 }
 
 dependencies {
-  compileOnly("org.jetbrains.kotlin:kotlin-compiler-embeddable:$KOTLIN_VERSION")
+  val kotlinVersion = providers.fileContents(layout.projectDirectory.file("version.txt")).asText.map { it.trim() }
+  compileOnly(kotlinVersion.map { "org.jetbrains.kotlin:kotlin-compiler:\$it" })
   compileOnly(libs.kotlin.stdlib)
   api(project(":compiler-compat"))
 }
@@ -108,6 +112,7 @@ fi
 echo ""
 echo "✅ Generated module structure:"
 echo "  📁 $MODULE_DIR/"
+echo "  📄 $MODULE_DIR/version.txt"
 echo "  📄 $MODULE_DIR/build.gradle.kts"
 echo "  📄 $MODULE_DIR/gradle.properties"
 echo "  📄 $MODULE_DIR/src/main/kotlin/dev/zacsweers/metro/compiler/compat/$MODULE_NAME/CompatContextImpl.kt"
