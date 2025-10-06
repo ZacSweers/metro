@@ -16,8 +16,11 @@ concurrency:
 
 jobs:
   core:
-    name: "core artifacts (compiler, runtime, gradle plugin)"
+    name: "core artifacts (compiler, runtime, gradle plugin) / ${{ matrix.kotlin-compiler }}"
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        kotlin-compiler: ['2.2.20', '2.3.0-dev-7984']
 
     steps:
       - name: Checkout
