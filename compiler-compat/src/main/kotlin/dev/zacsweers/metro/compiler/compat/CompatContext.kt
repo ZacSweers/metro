@@ -38,7 +38,7 @@ public interface CompatContext {
     public fun getInstance(): CompatContext = _instance
 
     private fun loadFactories(): Sequence<Factory> {
-      return ServiceLoader.load(Factory::class.java).asSequence()
+      return ServiceLoader.load(Factory::class.java, Factory::class.java.classLoader).asSequence()
     }
 
     /**
@@ -61,7 +61,16 @@ public interface CompatContext {
           }
           .filter { (version, factory) -> (testVersion ?: version) >= factory.minVersion }
           .maxByOrNull { (_, factory) -> factory.minVersion }
-          ?.factory ?: error("Unrecognized Kotlin version!")
+          ?.factory
+          ?: error(
+            """
+              Unrecognized Kotlin version!
+              
+              Available factories for: ${factories.joinToString(separator = "\n") { it.minVersion }}
+              Detected version(s): ${factories.map { it.currentVersion }.distinct().joinToString(separator = "\n")}
+            """
+              .trimIndent()
+          )
       return targetFactory
     }
 
@@ -203,7 +212,7 @@ public interface CompatContext {
     isMutable: Boolean = false,
     origin: IrDeclarationOrigin = IrDeclarationOrigin.IR_TEMPORARY_VARIABLE,
     startOffset: Int,
-    endOffset: Int
+    endOffset: Int,
   ): IrVariable
 }
 
