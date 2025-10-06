@@ -9,14 +9,33 @@ set -euo pipefail
 # This script finds all k-prefixed directories in compiler-compat that contain version.txt
 # and generates a JSON matrix object for use in GitHub Actions
 
-echo "🔍 Scanning for compiler-compat modules..."
+# --versions-only flag is for ./metrow check use to only print the versions and exit
+versions_only=false
+if [[ "${1:-}" == "--versions-only" ]]; then
+    versions_only=true
+fi
+
+if [[ "$versions_only" != true ]]; then
+    echo "🔍 Scanning for compiler-compat modules..."
+fi
 
 # Find all k-prefixed directories in compiler-compat that contain version.txt
 modules=$(find compiler-compat -maxdepth 1 -type d -name 'k*' -exec test -f {}/version.txt \; -print | sort)
 
 if [ -z "$modules" ]; then
-    echo "❌ No compiler-compat modules found with version.txt files"
+    if [[ "$versions_only" != true ]]; then
+        echo "❌ No compiler-compat modules found with version.txt files"
+    fi
     exit 1
+fi
+
+if [[ "$versions_only" == true ]]; then
+    # Just output the versions, one per line
+    for module_dir in $modules; do
+        cat "$module_dir/version.txt" | tr -d '\n'
+        echo
+    done
+    exit 0
 fi
 
 echo "📦 Found modules:"
