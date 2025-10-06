@@ -11,16 +11,30 @@ import org.jetbrains.kotlin.diagnostics.Severity
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies
 
 /**
- * The compiler and the IDE use a different version of this class, so use reflection to find the
- * available version.
+ * The compiler and IDE use different PSI classpaths — the compiler’s embeddable distribution
+ * shades IntelliJ packages to `org.jetbrains.kotlin.com.intellij.*`.
+ *
+ * FIR Analysis is expected to always use the shaded PSI classes, but in practice (unfortunately) this depends on
+ * the root project target: JVM projects use the shaded version, while non-JVM projects use the
+ * unshaded one. This mismatch can cause `ClassCastException`s such as:
+ * ```
+ * IllegalArgumentException: class org.jetbrains.kotlin.psi.KtCallExpression
+ * is not a subtype of class org.jetbrains.kotlin.com.intellij.psi.PsiElement
+ * ```
+ *
+ * These exceptions then cause the custom FIR diagnostics to silently fail - aborting all custom analysis.
+ *
+ * Inverting the check ensures we pick the correct PSI supertype after element resolution,
+ * allowing FIR analysis to work consistently across JVM and non-JVM targets.
+ *
+ * Adapted from:
+ * [reference](https://github.com/TadeasKriz/K2PluginBase/blob/main/kotlin-plugin/src/main/kotlin/com/tadeaskriz/example/ExamplePluginErrors.kt#L8)
  */
-// Adapted from
-// https://github.com/TadeasKriz/K2PluginBase/blob/main/kotlin-plugin/src/main/kotlin/com/tadeaskriz/example/ExamplePluginErrors.kt#L8
 internal val psiElementClass by lazy {
   try {
-      Class.forName("org.jetbrains.kotlin.com.intellij.psi.PsiElement")
-    } catch (_: ClassNotFoundException) {
       Class.forName("com.intellij.psi.PsiElement")
+    } catch (_: ClassNotFoundException) {
+      Class.forName("org.jetbrains.kotlin.com.intellij.psi.PsiElement")
     }
     .kotlin
 }
