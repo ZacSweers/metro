@@ -4,13 +4,12 @@ interface A {
 
 @Inject class B(a: A)
 
-@ContributesBinding(Unit::class)
 @Inject
 class RealA(b: Lazy<B>) : A {
   override val isReal: Boolean get() = true
 }
 
-@ContributesBinding(Unit::class, replaces = [RealA::class])
+@ContributesBinding(Unit::class)
 @Inject
 class FakeA(b: B, realA: RealA) : A {
   override val isReal: Boolean get() = false
