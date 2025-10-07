@@ -203,6 +203,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/MixedCycleParams.kt");
     }
 
+    @Test
+    @TestMetadata("MultipleMissingDeps.kt")
+    public void testMultipleMissingDeps() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/MultipleMissingDeps.kt");
+    }
+
     @Nested
     @TestMetadata("compiler-tests/src/test/data/diagnostic/dependencygraph/extensions")
     @TestDataPath("$PROJECT_ROOT")
