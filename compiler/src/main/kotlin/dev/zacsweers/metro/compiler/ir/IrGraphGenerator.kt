@@ -535,9 +535,7 @@ internal class IrGraphGenerator(
       overriddenFunction.ir.apply {
         finalizeFakeOverride(graphClass.thisReceiverOrFail)
         val targetParam = regularParameters[0]
-        val binding =
-          bindingGraph.requireBinding(contextKey)
-            as IrBinding.MembersInjected
+        val binding = bindingGraph.requireBinding(contextKey) as IrBinding.MembersInjected
 
         // We don't get a MembersInjector instance/provider from the graph. Instead, we call
         // all the target inject functions directly
@@ -581,10 +579,7 @@ internal class IrGraphGenerator(
                       // Always drop the first parameter when calling inject, as the first is the
                       // instance param
                       for (parameter in parameters.regularParameters.drop(1)) {
-                        val paramBinding =
-                          bindingGraph.requireBinding(
-                            parameter.contextualTypeKey,
-                          )
+                        val paramBinding = bindingGraph.requireBinding(parameter.contextualTypeKey)
                         add(
                           typeAsProviderArgument(
                             parameter.contextualTypeKey,
