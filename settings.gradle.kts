@@ -35,6 +35,7 @@ include(
   ":compiler-compat",
   ":compiler-compat:k230_dev_7984",
   ":compiler-compat:k2220",
+  ":compiler-compat:k230_Beta1",
   ":compiler-tests",
   ":gradle-plugin",
   ":interop-dagger",
