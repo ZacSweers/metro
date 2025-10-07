@@ -95,7 +95,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             e: ExampleGraph.kt:9:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
                 kotlin.String is requested at
-                    [test.ExampleGraph] test.ExampleGraph#text
+                    [test.ExampleGraph] test.ExampleGraph.text
           """
           .trimIndent()
       )
@@ -124,7 +124,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             e: ExampleGraph.kt:10:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @dev.zacsweers.metro.Named("hello") kotlin.String
 
                 @dev.zacsweers.metro.Named("hello") kotlin.String is requested at
-                    [test.ExampleGraph] test.ExampleGraph#text
+                    [test.ExampleGraph] test.ExampleGraph.text
           """
           .trimIndent()
       )
@@ -153,7 +153,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             e: ExampleGraph.kt:10:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @dev.zacsweers.metro.Named("hello") kotlin.String
 
                 @dev.zacsweers.metro.Named("hello") kotlin.String is requested at
-                    [test.ExampleGraph] test.ExampleGraph#text
+                    [test.ExampleGraph] test.ExampleGraph.text
           """
           .trimIndent()
       )
@@ -181,7 +181,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             e: ExampleGraph.kt:9:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
                 kotlin.String is requested at
-                    [test.ExampleGraph] test.ExampleGraph#text()
+                    [test.ExampleGraph] test.ExampleGraph.text()
           """
           .trimIndent()
       )
@@ -210,7 +210,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             e: ExampleGraph.kt:10:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @dev.zacsweers.metro.Named("hello") kotlin.String
 
                 @dev.zacsweers.metro.Named("hello") kotlin.String is requested at
-                    [test.ExampleGraph] test.ExampleGraph#text()
+                    [test.ExampleGraph] test.ExampleGraph.text()
           """
           .trimIndent()
       )
@@ -243,7 +243,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 kotlin.String is injected at
                     [test.ExampleGraph] test.ExampleClass(…, text)
                 test.ExampleClass is requested at
-                    [test.ExampleGraph] test.ExampleGraph#exampleClass()
+                    [test.ExampleGraph] test.ExampleGraph.exampleClass()
           """
           .trimIndent()
       )
@@ -276,7 +276,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 @dev.zacsweers.metro.Named("hello") kotlin.String is injected at
                     [test.ExampleGraph] test.ExampleClass(…, text)
                 test.ExampleClass is requested at
-                    [test.ExampleGraph] test.ExampleGraph#exampleClass()
+                    [test.ExampleGraph] test.ExampleGraph.exampleClass()
           """
           .trimIndent()
       )
@@ -363,7 +363,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         e: ExampleGraph.kt:8:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph (scopes '@SingleIn(AppScope::class)', '@Singleton') may not reference bindings from different scopes:
             kotlin.Int (scoped to '@SingleIn(UserScope::class)')
             kotlin.Int is requested at
-                [test.ExampleGraph] test.ExampleGraph#intValue
+                [test.ExampleGraph] test.ExampleGraph.intValue
       """
         .trimIndent()
     )
@@ -585,7 +585,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           e: ExampleGraph.kt:7:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph (unscoped) may not reference scoped bindings:
               kotlin.String (scoped to '@SingleIn(AppScope::class)')
               kotlin.String is requested at
-                  [test.ExampleGraph] test.ExampleGraph#value
+                  [test.ExampleGraph] test.ExampleGraph.value
         """
           .trimIndent()
       )
@@ -619,7 +619,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             e: ExampleGraph.kt:10:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.CharSequence
 
                 kotlin.CharSequence is requested at
-                    [test.ExampleGraph] test.ExampleGraph#value2
+                    [test.ExampleGraph] test.ExampleGraph.value2
 
             Similar bindings:
               - String (Subtype). Type: Provided. Source: ExampleGraph.kt:12:3
@@ -739,7 +739,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
           Trace:
               kotlin.Int is injected at
-                  [test.ExampleGraph] test.ExampleGraph#provideInt(…, value)
+                  [test.ExampleGraph] test.ExampleGraph.provideInt(…, value)
         """
           .trimIndent()
       )
@@ -785,13 +785,13 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
             Trace:
                 kotlin.Double is injected at
-                    [test.ExampleGraph] test.ExampleGraph#provideInt(…, double)
+                    [test.ExampleGraph] test.ExampleGraph.provideInt(…, double)
                 kotlin.String is injected at
-                    [test.ExampleGraph] test.ExampleGraph#provideDouble(…, string)
+                    [test.ExampleGraph] test.ExampleGraph.provideDouble(…, string)
                 kotlin.Int is injected at
-                    [test.ExampleGraph] test.ExampleGraph#provideString(…, int)
+                    [test.ExampleGraph] test.ExampleGraph.provideString(…, int)
                 kotlin.Double is injected at
-                    [test.ExampleGraph] test.ExampleGraph#provideInt(…, double)
+                    [test.ExampleGraph] test.ExampleGraph.provideInt(…, double)
                 ...
           """
           .trimIndent()
@@ -2208,7 +2208,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           e: ExampleGraph.kt:8:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
 
               kotlin.Int is requested at
-                  [test.ExampleGraph] test.ExampleGraph#int
+                  [test.ExampleGraph] test.ExampleGraph.int
 
           Similar bindings:
             - @Named("qualified") Int (Different qualifier). Type: Provided. Source: ExampleGraph.kt:10:3
@@ -2239,7 +2239,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           e: ExampleGraph.kt:8:27 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @dev.zacsweers.metro.Named("qualified") kotlin.Int
 
               @dev.zacsweers.metro.Named("qualified") kotlin.Int is requested at
-                  [test.ExampleGraph] test.ExampleGraph#int
+                  [test.ExampleGraph] test.ExampleGraph.int
 
           Similar bindings:
             - Int (Different qualifier). Type: Provided. Source: ExampleGraph.kt:10:3
@@ -2270,7 +2270,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           e: ExampleGraph.kt:8:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
 
               kotlin.Int is requested at
-                  [test.ExampleGraph] test.ExampleGraph#int
+                  [test.ExampleGraph] test.ExampleGraph.int
 
           Similar bindings:
             - Set<Int> (Multibinding). Type: Multibinding.
@@ -2301,7 +2301,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           e: ExampleGraph.kt:8:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
 
               kotlin.Int is requested at
-                  [test.ExampleGraph] test.ExampleGraph#int
+                  [test.ExampleGraph] test.ExampleGraph.int
 
           Similar bindings:
             - Map<String, Int> (Multibinding). Type: Multibinding.
@@ -2332,7 +2332,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           e: ExampleGraph.kt:8:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Number
 
               kotlin.Number is requested at
-                  [test.ExampleGraph] test.ExampleGraph#int
+                  [test.ExampleGraph] test.ExampleGraph.int
 
           Similar bindings:
             - Int (Subtype). Type: Provided. Source: ExampleGraph.kt:10:3
@@ -2363,7 +2363,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           e: ExampleGraph.kt:8:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
 
               kotlin.Int is requested at
-                  [test.ExampleGraph] test.ExampleGraph#int
+                  [test.ExampleGraph] test.ExampleGraph.int
 
           Similar bindings:
             - Number (Supertype). Type: Provided. Source: ExampleGraph.kt:10:3
@@ -2396,7 +2396,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           e: ExampleGraph.kt:8:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
 
               kotlin.Int is requested at
-                  [test.ExampleGraph] test.ExampleGraph#int
+                  [test.ExampleGraph] test.ExampleGraph.int
 
           Similar bindings:
             - @Named("qualified") Int (Different qualifier). Type: Provided. Source: ExampleGraph.kt:11:3
@@ -2849,7 +2849,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           e: Parent1.kt:13:16 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
               kotlin.String is requested at
-                  [test.AppGraph] test.AppGraph#function()
+                  [test.AppGraph] test.AppGraph.function()
 
           Similar bindings:
             - @Named("qualified") String (Different qualifier). Type: Provided. Source: Parent1.kt:15:3
@@ -2883,7 +2883,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           e: Parent1.kt:11:27 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
               kotlin.String is requested at
-                  [test.AppGraph] test.AppGraph#string
+                  [test.AppGraph] test.AppGraph.string
 
           e: Parent1.kt:14:1 [Metro/QualifierOverrideMismatch] Overridden accessor property 'test.AppGraph.$$MetroGraph.string' must have the same qualifier annotations as the overridden accessor property. However, the final accessor property qualifier is 'null' but overridden symbol test.Parent2.string has '@Named("qualified")'.'
         """
@@ -2916,7 +2916,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           e: Parent1.kt:11:27 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
               kotlin.String is requested at
-                  [test.AppGraph] test.AppGraph#string()
+                  [test.AppGraph] test.AppGraph.string()
 
           e: Parent1.kt:14:1 [Metro/QualifierOverrideMismatch] Overridden accessor function 'test.AppGraph.$$MetroGraph.string' must have the same qualifier annotations as the overridden accessor function. However, the final accessor function qualifier is 'null' but overridden symbol test.Parent2.string has '@Named("qualified")'.'
         """
@@ -2954,9 +2954,9 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           e: Thing.kt:18:28 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
               kotlin.String is injected at
-                  [test.AppGraph] test.AppGraph#injectThing()
+                  [test.AppGraph] test.AppGraph.injectThing()
               dev.zacsweers.metro.MembersInjector<test.Thing> is requested at
-                  [test.AppGraph] test.AppGraph#injectThing()
+                  [test.AppGraph] test.AppGraph.injectThing()
         """
           .trimIndent()
       )

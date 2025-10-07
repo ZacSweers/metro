@@ -1700,7 +1700,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     )
   }
 
-  // Regression test for https://github.com/ZacSweers/metro/issues/377#issuecomment-2878782694
+  // Regression test for https://github.com/ZacSweers/metro/issues/377.issuecomment-2878782694
   @Test
   fun `contributed graph should ensure scoping of class-injected types`() {
     compile(

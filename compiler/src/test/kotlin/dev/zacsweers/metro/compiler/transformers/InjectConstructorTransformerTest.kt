@@ -354,7 +354,7 @@ class InjectConstructorTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: MyClass.kt:8:1 Dagger's `@Reusable` is not supported in Metro. See https://zacsweers.github.io/metro/latest/faq#why-doesnt-metro-support-reusable for more information.
+          e: MyClass.kt:8:1 Dagger's `@Reusable` is not supported in Metro. See https://zacsweers.github.io/metro/latest/faq.why-doesnt-metro-support-reusable for more information.
         """
           .trimIndent()
       )
@@ -399,7 +399,7 @@ class InjectConstructorTransformerTest : MetroCompilerTest() {
           e: ExampleGraph.kt:8:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.ExampleClass
 
               test.ExampleClass is requested at
-                  [test.ExampleGraph] test.ExampleGraph#exampleClass
+                  [test.ExampleGraph] test.ExampleGraph.exampleClass
         """
           .trimIndent()
       )

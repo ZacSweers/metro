@@ -333,7 +333,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
 
     result.assertDiagnostics(
       """
-        e: ExampleGraph.kt:9:22 `@Provides` functions may not be extension functions. Use `@Binds` instead for these. See https://zacsweers.github.io/metro/latest/bindings/#binds for more information.
+        e: ExampleGraph.kt:9:22 `@Provides` functions may not be extension functions. Use `@Binds` instead for these. See https://zacsweers.github.io/metro/latest/bindings/.binds for more information.
       """
         .trimIndent()
     )

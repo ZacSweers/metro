@@ -75,7 +75,7 @@ internal interface IrBindingStack :
         return Entry(
           contextKey = contextKey,
           usage = "is requested at",
-          graphContext = "$targetFqName#$accessorString",
+          graphContext = "$targetFqName.$accessorString",
           declaration = declaration,
           isSynthetic = true,
         )
@@ -147,8 +147,8 @@ internal interface IrBindingStack :
                 functionToUse is IrConstructor -> ""
                 treatAsConstructor -> ""
                 functionToUse.isPropertyAccessor ->
-                  "#${(functionToUse.propertyIfAccessor as IrProperty).name.asString()}"
-                else -> "#${functionToUse.name.asString()}"
+                  ".${(functionToUse.propertyIfAccessor as IrProperty).name.asString()}"
+                else -> ".${functionToUse.name.asString()}"
               }
             val end =
               if (param == null) {

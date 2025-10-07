@@ -23,6 +23,7 @@ This release introduces new experimental support for multiple compiler and IDE v
 - **Enhancement**: Don't always generate fields for `MembersInjector` bindings.
 - **Enhancement**: Improve formatting of long cycles in `DependencyCycle` error messages.
 - **Enhancement**: Improve formatting of aliases in `DependencyCycle` error messages. Aliases are now indicated with `~~>` arrows instead of `-->`.
+- **Enhancement**: Improve formatting of member declarations in error messages for better IDE linking (if in the IDE terminal/console output) by using `.` separators instead of `#`.
 - **Fix**: Avoid obscure `UnsupportedOperationException` failures when reporting missing bindings.
 - **Fix**: Only generate assisted factories if `@AssistedInject` annotations are used on the target class.
 - **Fix**: Remove `PsiElement` shading workaround when reporting diagnostics.
