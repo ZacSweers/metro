@@ -307,7 +307,9 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
             if (isContributed) {
               append(contributionSourceDeclaration.expectAs<IrDeclarationParent>().kotlinFqName)
               append(" contributes a binding of ")
-              appendLineWithUnderlinedContent(typeKey.render(short = short, includeQualifier = true))
+              appendLineWithUnderlinedContent(
+                typeKey.render(short = short, includeQualifier = true)
+              )
             } else {
               append(renderDescriptionDiagnostic(short = short, underlineTypeKey = true))
             }
@@ -744,12 +746,13 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
   }
 }
 
+context(builder: StringBuilder)
 private fun IrClass.renderForDiagnostic(
   short: Boolean,
   annotations: MetroAnnotations<IrAnnotation>,
   underlineTypeKey: Boolean,
-): String {
-  return buildString {
+) {
+  with(builder) {
     renderAnnotations(annotations, short, isClass = false)
     append(kind.codeRepresentation)
     append(' ')
@@ -874,11 +877,18 @@ private fun StringBuilder.renderAnnotations(
         }
       }
     }
-  if (annotationStrings.size < 3) {
-    annotationStrings.joinTo(this, " ")
-    append(' ')
-  } else {
-    annotationStrings.joinTo(this, "\n")
-    appendLine()
+  when (annotationStrings.size) {
+    0 -> {
+      // do nothing
+    }
+    1,
+    2 -> {
+      annotationStrings.joinTo(this, " ")
+      append(' ')
+    }
+    else -> {
+      annotationStrings.joinTo(this, "\n")
+      appendLine()
+    }
   }
 }
