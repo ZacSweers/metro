@@ -1778,9 +1778,12 @@
 <li><strong>Enhancement</strong>: Add diagnostics for custom map keys.</li>
 <li><strong>Enhancement</strong>: Fully allow exposing <code>Provider&lt;Lazy&lt;T&gt;&gt;</code> accessor types.</li>
 <li><strong>Enhancement</strong>: Significantly improve duplicate binding error message rendering.</li>
+<li><strong>Enhancement</strong>: Inline internal <code>trace</code> functions to reduce overhead.</li>
+<li><strong>Enhancement</strong>: Don&rsquo;t always generate fields for <code>MembersInjector</code> bindings.</li>
 <li><strong>Fix</strong>: Avoid obscure <code>UnsupportedOperationException</code> failures when reporting missing bindings.</li>
 <li><strong>Fix</strong>: Only generate assisted factories if <code>@AssistedInject</code> annotations are used on the target class.</li>
 <li><strong>Fix</strong>: Remove <code>PsiElement</code> shading workaround when reporting diagnostics.</li>
+<li><strong>Fix</strong>: Treat <code>MembersInjector</code> types as implicitly deferrable in binding graph validation.</li>
 </ul>
 <h2 id="068">0.6.8<a class="headerlink" href="#068" title="Permanent link">&para;</a></h2>
 <p><em>2025-09-26</em></p>
