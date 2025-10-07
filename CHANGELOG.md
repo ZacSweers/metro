@@ -19,10 +19,12 @@ This release introduces new experimental support for multiple compiler and IDE v
 - **Enhancement**: Add diagnostics for custom map keys.
 - **Enhancement**: Fully allow exposing `Provider<Lazy<T>>` accessor types.
 - **Enhancement**: Significantly improve duplicate binding error message rendering.
+- **Enhancement**: Inline internal `trace` functions to reduce overhead.
+- **Enhancement**: Don't always generate fields for `MembersInjector` bindings.
 - **Fix**: Avoid obscure `UnsupportedOperationException` failures when reporting missing bindings.
 - **Fix**: Only generate assisted factories if `@AssistedInject` annotations are used on the target class.
 - **Fix**: Remove `PsiElement` shading workaround when reporting diagnostics.
-- Inline internal `trace` functions to reduce overhead.
+- **Fix**: Treat `MembersInjector` types as implicitly deferrable in binding graph validation.
 
 0.6.8
 -----
