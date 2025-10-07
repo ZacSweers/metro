@@ -69,7 +69,7 @@ public class CompatContextImpl : CompatContext {
   // TODO Implement
 
   public class Factory : CompatContext.Factory {
-    override val kotlinVersion: String = "$KOTLIN_VERSION"
+    override val minVersion: String = "$KOTLIN_VERSION"
 
     override fun create(): CompatContext = CompatContextImpl()
   }
