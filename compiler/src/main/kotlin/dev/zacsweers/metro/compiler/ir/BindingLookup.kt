@@ -92,6 +92,7 @@ internal class BindingLookup(
             parameters = remappedParameters,
             reportableDeclaration = this,
             function = null,
+            // TODO this isn't actually necessarily true?
             isFromInjectorFunction = true,
             targetClassId = classIdOrFail,
           )
