@@ -47,22 +47,35 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         .enableKotlinVersionCompatibilityChecks
         .getOrElse(true)
     if (checkVersions) {
-      val metroVersion = VersionNumber.parse(BASE_KOTLIN_VERSION)
-      val kotlinVersion = VersionNumber.parse(project.getKotlinPluginVersion())
-      if (metroVersion < kotlinVersion) {
-        project.logger.lifecycle(
-          """
-            Metro '$VERSION' is compiled against Kotlin $BASE_KOTLIN_VERSION and this build uses '$kotlinVersion'.
-            If you have any issues, please upgrade Metro (if applicable) or downgrade Kotlin to '$BASE_KOTLIN_VERSION'. See https://zacsweers.github.io/metro/latest/compatibility.
-            You can also disable this warning via `metro.version.check=false` or setting the `metro.enableKotlinVersionCompatibilityChecks` DSL property.
-          """
-            .trimIndent()
-        )
-      } else if (metroVersion > kotlinVersion) {
-        project.logger.lifecycle(
-          "Metro '$VERSION' is too new for Kotlin '$kotlinVersion'. " +
-            "Please upgrade Kotlin to '$BASE_KOTLIN_VERSION'."
-        )
+      val kotlinVersionString = project.getKotlinPluginVersion()
+      val kotlinVersion = VersionNumber.parse(kotlinVersionString)
+      val supportedVersions = SUPPORTED_KOTLIN_VERSIONS.map(VersionNumber::parse)
+      val minSupported = supportedVersions.min()
+      val maxSupported = supportedVersions.max()
+
+      val isSupported = kotlinVersion in minSupported..maxSupported
+      if (!isSupported) {
+        if (kotlinVersion < minSupported) {
+          project.logger.lifecycle(
+            """
+              Metro '$VERSION' requires Kotlin ${SUPPORTED_KOTLIN_VERSIONS.first()} or later, but this build uses '$kotlinVersionString'.
+              Please upgrade Kotlin to at least '${SUPPORTED_KOTLIN_VERSIONS.first()}'.
+              Supported Kotlin versions: ${SUPPORTED_KOTLIN_VERSIONS.first()} - ${SUPPORTED_KOTLIN_VERSIONS.last()}
+              You can also disable this warning via `metro.version.check=false` or setting the `metro.enableKotlinVersionCompatibilityChecks` DSL property.
+            """
+              .trimIndent()
+          )
+        } else {
+          project.logger.lifecycle(
+            """
+              Metro '$VERSION' supports the following Kotlin versions: $SUPPORTED_KOTLIN_VERSIONS
+              This build uses unrecognized version '$kotlinVersionString'.
+              If you have any issues, please upgrade Metro (if applicable) or use a supported Kotlin version. See https://zacsweers.github.io/metro/latest/compatibility.
+              You can also disable this warning via `metro.version.check=false` or setting the `metro.enableKotlinVersionCompatibilityChecks` DSL property.
+            """
+              .trimIndent()
+          )
+        }
       }
     }
 
@@ -149,7 +162,12 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         add(lazyOption("shrink-unused-bindings", extension.shrinkUnusedBindings))
         add(lazyOption("chunk-field-inits", extension.chunkFieldInits))
         add(lazyOption("public-provider-severity", extension.publicProviderSeverity))
-        add(lazyOption("assisted-inject-deprecation-severity", extension.assistedInjectMigrationSeverity))
+        add(
+          lazyOption(
+            "assisted-inject-deprecation-severity",
+            extension.assistedInjectMigrationSeverity,
+          )
+        )
         add(
           lazyOption(
             "warn-on-inject-annotation-placement",

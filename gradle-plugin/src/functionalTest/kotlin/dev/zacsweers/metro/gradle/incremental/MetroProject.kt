@@ -7,10 +7,12 @@ import com.autonomousapps.kit.GradleProject
 import com.autonomousapps.kit.GradleProject.DslKind
 import com.autonomousapps.kit.Source
 import com.autonomousapps.kit.gradle.BuildScript
+import com.autonomousapps.kit.gradle.Plugin
 
 abstract class MetroProject(
   private val debug: Boolean = false,
   private val metroOptions: MetroOptionOverrides = MetroOptionOverrides(),
+  private val kotlinVersion: String? = null,
 ) : AbstractGradleProject() {
   protected abstract fun sources(): List<Source>
 
@@ -26,7 +28,7 @@ abstract class MetroProject(
         .write()
 
   fun BuildScript.Builder.applyMetroDefault() = apply {
-    plugins(GradlePlugins.Kotlin.jvm, GradlePlugins.metro)
+    plugins(GradlePlugins.Kotlin.jvm(kotlinVersion), GradlePlugins.metro)
 
     withKotlin(
       buildString {
