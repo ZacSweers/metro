@@ -956,18 +956,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#improved-cross-version-compatibility" class="md-nav__link">
+  <a href="#069" class="md-nav__link">
     <span class="md-ellipsis">
-      Improved cross-version compatibility
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#misc" class="md-nav__link">
-    <span class="md-ellipsis">
-      Misc
+      0.6.9
     </span>
   </a>
   
@@ -1394,18 +1385,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#improved-cross-version-compatibility" class="md-nav__link">
+  <a href="#069" class="md-nav__link">
     <span class="md-ellipsis">
-      Improved cross-version compatibility
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#misc" class="md-nav__link">
-    <span class="md-ellipsis">
-      Misc
+      0.6.9
     </span>
   </a>
   
@@ -1765,14 +1747,14 @@
 
 <h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
 <h2 id="unreleased"><strong>Unreleased</strong><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
-<h2 id="improved-cross-version-compatibility">Improved cross-version compatibility<a class="headerlink" href="#improved-cross-version-compatibility" title="Permanent link">&para;</a></h2>
-<p>This release introduces new experimental support for multiple compiler and IDE versions. The primary goal of this is to better support running Metro&rsquo;s FIR extensions across different IntelliJ Kotlin Plugin versions and make IDE support more robust, and general compiler compatibility falls out of that more or less for free.</p>
-<h2 id="misc">Misc<a class="headerlink" href="#misc" title="Permanent link">&para;</a></h2>
+<h2 id="069">0.6.9<a class="headerlink" href="#069" title="Permanent link">&para;</a></h2>
+<p><em>2025-10-07</em></p>
+<p>This release introduces new experimental support for multiple compiler and IDE versions. The primary goal of this is to better support running Metro&rsquo;s FIR extensions across different IntelliJ Kotlin Plugin versions and make IDE support more robust, and general compiler compatibility falls out of that more or less for free. This is experimental and only going to target <em>forward</em> compatibility.</p>
 <ul>
 <li><strong>New</strong>: Report more IR errors up to a maximum. The default is <code>20</code>, but is configurable via the <code>maxIrErrors</code> Gradle DSL option. If you want to restore the previous &ldquo;fail-fast&rdquo; behavior, you can set this value to <code>1</code>.</li>
 <li><strong>New</strong>: Generate specific containing names in Kotlin 2.3.0+ when generating top-level functions for hint gen.</li>
 <li><strong>Behavior change</strong>: Assisted-inject types can only be directly exposed on a graph if qualified.</li>
-<li><strong>Behavior change</strong>: Update Gradle plugin to target Kotlin 2.0, which requires Gradle <code>8.11</code> or later.</li>
+<li><strong>Behavior change</strong>: Update the Gradle plugin to target Kotlin 2.0, which requires Gradle <code>8.11</code> or later.</li>
 <li><strong>Enhancement</strong>: Improve compatibility across 2.2.20 and 2.3.0+ releases. This release <em>should</em> be compatible with both!</li>
 <li><strong>Enhancement</strong>: Add diagnostic for directly injecting unqualified assisted-injected classes rather than using their factories.</li>
 <li><strong>Enhancement</strong>: Add diagnostic mixing <code>Provider</code> and <code>Lazy</code> types for <code>Provider&lt;Lazy&lt;T&gt;&gt;</code> injections.</li>
