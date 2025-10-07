@@ -400,6 +400,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     public void testSmokeTest() {
       runTest("compiler-tests/src/test/data/box/cycles/SmokeTest.kt");
     }
+
+    @Test
+    @TestMetadata("SoftCycleWithReplace.kt")
+    public void testSoftCycleWithReplace() {
+      runTest("compiler-tests/src/test/data/box/cycles/SoftCycleWithReplace.kt");
+    }
   }
 
   @Nested
