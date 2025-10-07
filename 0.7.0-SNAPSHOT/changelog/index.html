@@ -1781,10 +1781,14 @@
 <li><strong>Enhancement</strong>: Significantly improve duplicate binding error message rendering.</li>
 <li><strong>Enhancement</strong>: Inline internal <code>trace</code> functions to reduce overhead.</li>
 <li><strong>Enhancement</strong>: Don&rsquo;t always generate fields for <code>MembersInjector</code> bindings.</li>
+<li><strong>Enhancement</strong>: Improve formatting of long cycles in <code>DependencyCycle</code> error messages.</li>
+<li><strong>Enhancement</strong>: Improve formatting of aliases in <code>DependencyCycle</code> error messages. Aliases are now indicated with <code>~~&gt;</code> arrows instead of <code>--&gt;</code>.</li>
+<li><strong>Enhancement</strong>: Improve formatting of member declarations in error messages for better IDE linking (if in the IDE terminal/console output) by using <code>.</code> separators instead of <code>#</code>.</li>
 <li><strong>Fix</strong>: Avoid obscure <code>UnsupportedOperationException</code> failures when reporting missing bindings.</li>
 <li><strong>Fix</strong>: Only generate assisted factories if <code>@AssistedInject</code> annotations are used on the target class.</li>
 <li><strong>Fix</strong>: Remove <code>PsiElement</code> shading workaround when reporting diagnostics.</li>
 <li><strong>Fix</strong>: Treat <code>MembersInjector</code> types as implicitly deferrable in binding graph validation.</li>
+<li><strong>Fix</strong>: Report cycles in form of <code>binding --&gt; dependency</code> rather than the reverse for better readability.</li>
 </ul>
 <h2 id="068">0.6.8<a class="headerlink" href="#068" title="Permanent link">&para;</a></h2>
 <p><em>2025-09-26</em></p>
