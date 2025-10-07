@@ -50,16 +50,16 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
       val metroVersion = VersionNumber.parse(BASE_KOTLIN_VERSION)
       val kotlinVersion = VersionNumber.parse(project.getKotlinPluginVersion())
       if (metroVersion < kotlinVersion) {
-        project.logger.warn(
+        project.logger.lifecycle(
           """
             Metro '$VERSION' is compiled against Kotlin $BASE_KOTLIN_VERSION and this build uses '$kotlinVersion'.
-            If you have any issues, please upgrade Metro (if applicable) or downgrade Kotlin to '$BASE_KOTLIN_VERSION'. See https://zacsweers.github.io/metro/latest/compatibility .
+            If you have any issues, please upgrade Metro (if applicable) or downgrade Kotlin to '$BASE_KOTLIN_VERSION'. See https://zacsweers.github.io/metro/latest/compatibility.
             You can also disable this warning via `metro.version.check=false` or setting the `metro.enableKotlinVersionCompatibilityChecks` DSL property.
           """
             .trimIndent()
         )
       } else if (metroVersion > kotlinVersion) {
-        project.logger.warn(
+        project.logger.lifecycle(
           "Metro '$VERSION' is too new for Kotlin '$kotlinVersion'. " +
             "Please upgrade Kotlin to '$BASE_KOTLIN_VERSION'."
         )
