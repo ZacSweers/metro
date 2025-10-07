@@ -131,8 +131,11 @@ dependencies {
   add(embedded.name, libs.picnic)
   add(embedded.name, libs.wire.runtime)
   add(embedded.name, project(":compiler-compat"))
-  add(embedded.name, project(":compiler-compat:k230_dev_7984"))
-  add(embedded.name, project(":compiler-compat:k2220"))
+  rootProject.isolated.projectDirectory.dir("compiler-compat").asFile.listFiles()!!.forEach {
+    if (it.isDirectory && it.name.startsWith("k")) {
+      add(embedded.name, project(":compiler-compat:${it.name}"))
+    }
+  }
 
   testCompileOnly(libs.poko.annotations)
 

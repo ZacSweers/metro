@@ -33,14 +33,18 @@ rootProject.name = "metro"
 include(
   ":compiler",
   ":compiler-compat",
-  ":compiler-compat:k230_dev_7984",
-  ":compiler-compat:k2220",
-  ":compiler-compat:k230_Beta1",
   ":compiler-tests",
   ":gradle-plugin",
   ":interop-dagger",
-  ":runtime"
+  ":runtime",
 )
+
+// Include compiler-compat versions
+rootProject.projectDir.resolve("compiler-compat").listFiles()!!.forEach {
+  if (it.isDirectory && it.name.startsWith("k")) {
+    include(":compiler-compat:${it.name}")
+  }
+}
 
 val VERSION_NAME: String by extra.properties
 

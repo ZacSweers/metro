@@ -81,34 +81,6 @@ cat > "$MODULE_DIR/src/main/resources/META-INF/services/dev.zacsweers.metro.comp
 dev.zacsweers.metro.compiler.compat.$MODULE_NAME.CompatContextImpl\$Factory
 EOF
 
-# Add to settings.gradle.kts
-echo "📝 Adding module to settings.gradle.kts..."
-SETTINGS_FILE="settings.gradle.kts"
-if [ -f "$SETTINGS_FILE" ]; then
-    # Find the line with ":compiler-compat:k2220" and add our module after it
-    sed -i.bak "/\":compiler-compat:k2220\",/a\\
-  \":compiler-compat:$MODULE_NAME\",
-" "$SETTINGS_FILE"
-    rm "$SETTINGS_FILE.bak"
-    echo "✅ Added ':compiler-compat:$MODULE_NAME' to settings.gradle.kts"
-else
-    echo "⚠️  Could not find settings.gradle.kts, please add ':compiler-compat:$MODULE_NAME' manually"
-fi
-
-# Add to compiler/build.gradle.kts
-echo "📝 Adding dependency to compiler/build.gradle.kts..."
-COMPILER_BUILD_FILE="compiler/build.gradle.kts"
-if [ -f "$COMPILER_BUILD_FILE" ]; then
-    # Find the line with ":compiler-compat:k2220" and add our module after it
-    sed -i.bak "/implementation(project(\":compiler-compat:k2220\"))/a\\
-  implementation(project(\":compiler-compat:$MODULE_NAME\"))
-" "$COMPILER_BUILD_FILE"
-    rm "$COMPILER_BUILD_FILE.bak"
-    echo "✅ Added 'implementation(project(\":compiler-compat:$MODULE_NAME\"))' to compiler/build.gradle.kts"
-else
-    echo "⚠️  Could not find compiler/build.gradle.kts, please add 'implementation(project(\":compiler-compat:$MODULE_NAME\"))' manually"
-fi
-
 echo ""
 echo "✅ Generated module structure:"
 echo "  📁 $MODULE_DIR/"
