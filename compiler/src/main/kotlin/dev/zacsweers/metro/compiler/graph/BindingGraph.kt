@@ -289,8 +289,6 @@ internal open class MutableBindingGraph<
                     roots,
                   )
                 }
-                // Reverse one more time to correct the order
-                .reversed()
             reportCycle(entriesInCycle, stack)
           },
           parentTracer = nestedTracer,
@@ -315,13 +313,14 @@ internal open class MutableBindingGraph<
           "$indent${key.render(short = true)} <--> ${key.render(short = true)} (depends on itself)"
         )
       } else {
+        val singleLine = fullCycle.size < 5
         fullCycle.joinWithDynamicSeparatorTo(this, separator = { prev, _ ->
           buildString {
-            if (fullCycle.size > 3) {
+            if (singleLine) {
+              append(' ')
+            } else {
               append('\n')
               append(indent)
-            } else {
-              append(' ')
             }
             val prevBinding = bindings.getValue(prev.typeKey)
             if (prevBinding.isAlias) {

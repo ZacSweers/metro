@@ -27,6 +27,7 @@ This release introduces new experimental support for multiple compiler and IDE v
 - **Fix**: Only generate assisted factories if `@AssistedInject` annotations are used on the target class.
 - **Fix**: Remove `PsiElement` shading workaround when reporting diagnostics.
 - **Fix**: Treat `MembersInjector` types as implicitly deferrable in binding graph validation.
+- **Fix**: Report cycles in form of `binding --> dependency` rather than the reverse for better readability.
 
 0.6.8
 -----
