@@ -34,6 +34,7 @@ jobs:
     needs: generate-matrix
     strategy:
       matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+      fail-fast: false
 
     steps:
       - name: Checkout
