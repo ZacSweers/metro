@@ -2,11 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
-import dev.zacsweers.metro.compiler.appendLineWithUnderlinedContent
 import dev.zacsweers.metro.compiler.ir.appendBindingStack
 import dev.zacsweers.metro.compiler.ir.appendBindingStackEntries
 import dev.zacsweers.metro.compiler.ir.withEntry
-import dev.zacsweers.metro.compiler.joinToWithDynamicSeparator
+import dev.zacsweers.metro.compiler.joinWithDynamicSeparatorTo
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
@@ -316,12 +315,21 @@ internal open class MutableBindingGraph<
           "$indent${key.render(short = true)} <--> ${key.render(short = true)} (depends on itself)"
         )
       } else {
-        fullCycle.joinToWithDynamicSeparator(this, separator = { prev, next ->
-          val prevBinding = bindings.getValue(prev.typeKey)
-          if (prevBinding.isAlias) {
-            " ~~> "
-          } else {
-            " --> "
+        fullCycle.joinWithDynamicSeparatorTo(this, separator = { prev, _ ->
+          buildString {
+            if (fullCycle.size > 3) {
+              append('\n')
+              append(indent)
+            } else {
+              append(' ')
+            }
+            val prevBinding = bindings.getValue(prev.typeKey)
+            if (prevBinding.isAlias) {
+              append("~~>")
+            } else {
+              append("-->")
+            }
+            append(' ')
           }
         }, prefix = indent) {
           it.contextKey.render(short = true)

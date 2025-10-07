@@ -194,7 +194,7 @@ internal fun StringBuilder.appendLineWithUnderlinedContent(content: String, targ
 /**
  * Copied from [kotlin.collections.joinTo] with the support for dynamically choosing a [separator].
  */
-public fun <T, A : Appendable> Iterable<T>.joinToWithDynamicSeparator(buffer: A, separator: (prev: T, next: T) -> CharSequence, prefix: CharSequence = "", postfix: CharSequence = "", limit: Int = -1, truncated: CharSequence = "...", transform: ((T) -> CharSequence)? = null): A {
+public fun <T, A : Appendable> Iterable<T>.joinWithDynamicSeparatorTo(buffer: A, separator: (prev: T, next: T) -> CharSequence, prefix: CharSequence = "", postfix: CharSequence = "", limit: Int = -1, truncated: CharSequence = "...", transform: ((T) -> CharSequence)? = null): A {
   buffer.append(prefix)
   var count = 0
   var prev: T? = null
