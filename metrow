@@ -126,8 +126,16 @@ case "$1" in
        ./gradlew -p samples kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks --no-build-cache
        ;;
 
+   "gen-compat")
+       if [[ $# -lt 2 ]]; then
+           echo "Usage: metrow gen-compat <kotlin-version>"
+           exit 1
+       fi
+       ./compiler-compat/generate-compat-module.sh "$2"
+       ;;
+
    *)
-       echo "Usage: metrow (publish|check|clean|format|regen)"
+       echo "Usage: metrow (publish|check|clean|format|regen|gen-compat)"
        echo ""
        echo "publish options:"
        echo "  --version <version>  Specify version for publishing"
