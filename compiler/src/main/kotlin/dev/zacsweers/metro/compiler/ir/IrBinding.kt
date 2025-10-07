@@ -157,6 +157,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val dependencies: List<IrContextualTypeKey> = emptyList()
     override val scope: IrAnnotation? = null
     override val parameters: Parameters = Parameters.empty()
+    override val isImplicitlyDeferrable: Boolean = true
 
     override val nameHint: String = type.name.asString()
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey.create(typeKey)
@@ -307,7 +308,9 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
             if (isContributed) {
               append(contributionSourceDeclaration.expectAs<IrDeclarationParent>().kotlinFqName)
               append(" contributes a binding of ")
-              appendLineWithUnderlinedContent(typeKey.render(short = short, includeQualifier = true))
+              appendLineWithUnderlinedContent(
+                typeKey.render(short = short, includeQualifier = true)
+              )
             } else {
               append(renderDescriptionDiagnostic(short = short, underlineTypeKey = true))
             }
@@ -405,6 +408,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val scope: IrAnnotation? = null
     override val parameters: Parameters = Parameters.empty()
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
+    override val isImplicitlyDeferrable: Boolean = true
 
     override fun renderDescriptionDiagnostic(short: Boolean, underlineTypeKey: Boolean): String {
       return "BoundInstance(${typeKey.render(short = short, includeQualifier = true)})"
@@ -421,6 +425,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
 
     override val parameters: Parameters = Parameters.empty()
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
+    override val isImplicitlyDeferrable: Boolean = true
 
     override val reportableDeclaration: IrDeclarationWithName? = null
     override val isTransient: Boolean = true
@@ -628,6 +633,10 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
   ) : IrBinding {
     override val typeKey: IrTypeKey = contextualTypeKey.typeKey
 
+    // MembersInjectors are always implicitly deferrable because they don't participate in
+    // object instantiation
+    override val isImplicitlyDeferrable: Boolean = true
+
     override val dependencies: List<IrContextualTypeKey> =
       parameters.nonDispatchParameters
         // Instance parameters are implicitly assisted in this scenario and marked as such in FIR
@@ -679,6 +688,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val reportableDeclaration: IrDeclarationWithName = accessor
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
     override val parameters: Parameters = Parameters.empty()
+    override val isImplicitlyDeferrable: Boolean = true
 
     // The scope field always returns null for GraphExtension
     // Use shouldBeScoped to check if this binding needs to be scoped
@@ -744,12 +754,13 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
   }
 }
 
+context(builder: StringBuilder)
 private fun IrClass.renderForDiagnostic(
   short: Boolean,
   annotations: MetroAnnotations<IrAnnotation>,
   underlineTypeKey: Boolean,
-): String {
-  return buildString {
+) {
+  with(builder) {
     renderAnnotations(annotations, short, isClass = false)
     append(kind.codeRepresentation)
     append(' ')
@@ -874,11 +885,18 @@ private fun StringBuilder.renderAnnotations(
         }
       }
     }
-  if (annotationStrings.size < 3) {
-    annotationStrings.joinTo(this, " ")
-    append(' ')
-  } else {
-    annotationStrings.joinTo(this, "\n")
-    appendLine()
+  when (annotationStrings.size) {
+    0 -> {
+      // do nothing
+    }
+    1,
+    2 -> {
+      annotationStrings.joinTo(this, " ")
+      append(' ')
+    }
+    else -> {
+      annotationStrings.joinTo(this, "\n")
+      appendLine()
+    }
   }
 }

@@ -256,7 +256,11 @@ internal open class MutableBindingGraph<
           fullAdjacency = fullAdjacency,
           roots = sortedRootKeys,
           isDeferrable = { from, to ->
-            bindings.getValue(from).dependencies.first { it.typeKey == to }.isDeferrable
+            if (bindings.getValue(to).isImplicitlyDeferrable) {
+              true
+            } else {
+              bindings.getValue(from).dependencies.first { it.typeKey == to }.isDeferrable
+            }
           },
           onSortedCycle = onSortedCycle,
           onCycle = { cycle ->
