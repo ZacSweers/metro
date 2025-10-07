@@ -111,9 +111,9 @@ class ICTests : BaseIncrementalCompilationTest() {
           FeatureGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Dependency
 
               test.Dependency is injected at
-                  [test.FeatureGraph] test.FeatureGraph#inject()
+                  [test.FeatureGraph] test.FeatureGraph.inject()
               dev.zacsweers.metro.MembersInjector<test.FeatureScreen> is requested at
-                  [test.FeatureGraph] test.FeatureGraph#inject()
+                  [test.FeatureGraph] test.FeatureGraph.inject()
         """
           .trimIndent()
       )
@@ -178,7 +178,7 @@ class ICTests : BaseIncrementalCompilationTest() {
             kotlin.String is injected at
                 [test.BaseGraph] test.Target(…, string)
             test.Target is requested at
-                [test.BaseGraph] test.BaseGraph#target
+                [test.BaseGraph] test.BaseGraph.target
       """
           .trimIndent()
       )
@@ -248,7 +248,7 @@ class ICTests : BaseIncrementalCompilationTest() {
               kotlin.String is injected at
                   [test.AppGraph.$${'$'}MetroGraph.ChildGraphImpl] test.Target(…, string)
               test.Target is requested at
-                  [test.AppGraph.$${'$'}MetroGraph.ChildGraphImpl] test.ChildGraph#target
+                  [test.AppGraph.$${'$'}MetroGraph.ChildGraphImpl] test.ChildGraph.target
         """
           .trimIndent()
       )
@@ -311,7 +311,7 @@ class ICTests : BaseIncrementalCompilationTest() {
               kotlin.String is injected at
                   [test.AppGraph] test.Target(…, string)
               test.Target is requested at
-                  [test.AppGraph] test.AppGraph#target
+                  [test.AppGraph] test.AppGraph.target
         """
           .trimIndent()
       )
@@ -378,7 +378,7 @@ class ICTests : BaseIncrementalCompilationTest() {
               kotlin.String is injected at
                   [test.AppGraph] test.Target(…, string)
               test.Target is requested at
-                  [test.AppGraph] test.AppGraph#target
+                  [test.AppGraph] test.AppGraph.target
         """
           .trimIndent()
       )
@@ -889,7 +889,7 @@ class ICTests : BaseIncrementalCompilationTest() {
           e: ExampleGraph.kt:7:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
               test.ExampleClass (scoped to '@SingleIn(UnusedScope::class)')
               test.ExampleClass is requested at
-                  [test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl] test.LoggedInGraph#exampleClass
+                  [test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl] test.LoggedInGraph.exampleClass
 
 
           (Hint)
@@ -951,7 +951,7 @@ class ICTests : BaseIncrementalCompilationTest() {
           e: ExampleGraph.kt:7:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
               test.ExampleClass (scoped to '@SingleIn(UnusedScope::class)')
               test.ExampleClass is requested at
-                  [test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl] test.LoggedInGraph#exampleClass
+                  [test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl] test.LoggedInGraph.exampleClass
 
 
           (Hint)
@@ -1172,7 +1172,7 @@ class ICTests : BaseIncrementalCompilationTest() {
           e: LoggedInScope.kt:10:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Foo
 
               test.Foo is requested at
-                  [test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl] test.LoggedInGraph#childDependenc
+                  [test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl] test.LoggedInGraph.childDependenc
         """
           .trimIndent()
       )
@@ -1215,7 +1215,7 @@ class ICTests : BaseIncrementalCompilationTest() {
           e: ExampleGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Foo
 
               test.Foo is requested at
-                  [test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl] test.LoggedInGraph#childDependency
+                  [test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl] test.LoggedInGraph.childDependency
         """
           .trimIndent()
       )

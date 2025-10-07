@@ -205,7 +205,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             test.InterfaceB is injected at
                 [test.AppGraph] test.Target(…, b)
             test.Target is requested at
-                [test.AppGraph] test.AppGraph#target
+                [test.AppGraph] test.AppGraph.target
         """
           .trimIndent()
       )
@@ -297,7 +297,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             test.InterfaceA is injected at
                 [test.AppGraph] test.Target(…, a)
             test.Target is requested at
-                [test.AppGraph] test.AppGraph#target
+                [test.AppGraph] test.AppGraph.target
         """
           .trimIndent()
       )
@@ -451,7 +451,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             test.InterfaceA is injected at
                 [test.AppGraph] test.Target(…, a)
             test.Target is requested at
-                [test.AppGraph] test.AppGraph#target
+                [test.AppGraph] test.AppGraph.target
         """
           .trimIndent()
       )
@@ -722,7 +722,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             test.InterfaceA is injected at
                 [test.AppGraph.$${'$'}MetroGraph.FeatureGraphImpl] test.Target(…, a)
             test.Target is requested at
-                [test.AppGraph.$${'$'}MetroGraph.FeatureGraphImpl] test.FeatureGraph#target
+                [test.AppGraph.$${'$'}MetroGraph.FeatureGraphImpl] test.FeatureGraph.target
         """
           .trimIndent()
       )
@@ -822,7 +822,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             test.InterfaceA is injected at
                 [test.AppGraph] test.Target(…, a)
             test.Target is requested at
-                [test.AppGraph] test.AppGraph#target
+                [test.AppGraph] test.AppGraph.target
         """
           .trimIndent()
       )
@@ -921,7 +921,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             kotlin.String is injected at
                 [test.AppGraph] test.Target(…, string)
             test.Target is requested at
-                [test.AppGraph] test.AppGraph#target
+                [test.AppGraph] test.AppGraph.target
         """
           .trimIndent()
       )
@@ -1037,7 +1037,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             test.InterfaceA is injected at
                 [test.AppGraph] test.Target(…, a)
             test.Target is requested at
-                [test.AppGraph] test.AppGraph#target
+                [test.AppGraph] test.AppGraph.target
         """
           .trimIndent()
       )
@@ -1172,7 +1172,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             test.InterfaceA is injected at
                 [test.AppGraph] test.Target(…, a)
             test.Target is requested at
-                [test.AppGraph] test.AppGraph#target
+                [test.AppGraph] test.AppGraph.target
         """
           .trimIndent()
       )
@@ -1304,7 +1304,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             test.InterfaceB is injected at
                 [test.AppGraph] test.Target(…, b)
             test.Target is requested at
-                [test.AppGraph] test.AppGraph#target
+                [test.AppGraph] test.AppGraph.target
         """
           .trimIndent()
       )
@@ -1421,7 +1421,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             test.InterfaceC is injected at
                 [test.AppGraph] test.Target(…, c)
             test.Target is requested at
-                [test.AppGraph] test.AppGraph#target
+                [test.AppGraph] test.AppGraph.target
         """
           .trimIndent()
       )
@@ -1510,7 +1510,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             kotlin.collections.Set<kotlin.String> is injected at
                 [test.AppGraph] test.Target(…, strings)
             test.Target is requested at
-                [test.AppGraph] test.AppGraph#target
+                [test.AppGraph] test.AppGraph.target
         """
           .trimIndent()
       )
@@ -1565,7 +1565,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             kotlin.collections.Set<kotlin.String> is injected at
                 [test.AppGraph] test.Target(…, strings)
             test.Target is requested at
-                [test.AppGraph] test.AppGraph#target
+                [test.AppGraph] test.AppGraph.target
         """
           .trimIndent()
       )
@@ -1657,7 +1657,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             kotlin.collections.Set<kotlin.String> is injected at
                 [test.AppGraph] test.Target(…, strings)
             test.Target is requested at
-                [test.AppGraph] test.AppGraph#target
+                [test.AppGraph] test.AppGraph.target
         """
           .trimIndent()
       )
