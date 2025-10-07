@@ -254,6 +254,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     val ir = bindsCallable?.function
     override val annotations: MetroAnnotations<IrAnnotation> =
       bindsCallable?.callableMetadata?.annotations ?: MetroAnnotations.none()
+    override val isAlias: Boolean = true
 
     init {
       if (ir != null && !annotations.isBinds) {

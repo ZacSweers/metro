@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.appendLineWithUnderlinedContent
 import dev.zacsweers.metro.compiler.ir.appendBindingStack
 import dev.zacsweers.metro.compiler.ir.appendBindingStackEntries
 import dev.zacsweers.metro.compiler.ir.withEntry
+import dev.zacsweers.metro.compiler.joinToWithDynamicSeparator
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
@@ -315,7 +316,14 @@ internal open class MutableBindingGraph<
           "$indent${key.render(short = true)} <--> ${key.render(short = true)} (depends on itself)"
         )
       } else {
-        fullCycle.joinTo(this, separator = " --> ", prefix = indent) {
+        fullCycle.joinToWithDynamicSeparator(this, separator = { prev, next ->
+          val prevBinding = bindings.getValue(prev.typeKey)
+          if (prevBinding.isAlias) {
+            " ~~> "
+          } else {
+            " --> "
+          }
+        }, prefix = indent) {
           it.contextKey.render(short = true)
         }
       }

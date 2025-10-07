@@ -14,6 +14,12 @@ internal interface BaseBinding<
   val dependencies: List<ContextualTypeKey>
 
   /**
+   * If true, indicates this binding is an alias for another binding. Mostly just for diagnostics.
+   */
+  val isAlias: Boolean
+    get() = false
+
+  /**
    * If true, indicates this binding is purely informational and should not be stored in the graph
    * itself.
    */

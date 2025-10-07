@@ -190,3 +190,33 @@ internal fun StringBuilder.appendLineWithUnderlinedContent(content: String, targ
   repeat(index) { append(' ') }
   repeat(target.length) { append(char) }
 }
+
+/**
+ * Copied from [kotlin.collections.joinTo] with the support for dynamically choosing a [separator].
+ */
+public fun <T, A : Appendable> Iterable<T>.joinToWithDynamicSeparator(buffer: A, separator: (prev: T, next: T) -> CharSequence, prefix: CharSequence = "", postfix: CharSequence = "", limit: Int = -1, truncated: CharSequence = "...", transform: ((T) -> CharSequence)? = null): A {
+  buffer.append(prefix)
+  var count = 0
+  var prev: T? = null
+  for (element in this) {
+    if (++count > 1) {
+      buffer.append(separator(prev!!, element))
+    }
+    prev = element
+    if (limit !in 0..<count) {
+      buffer.appendElement(element, transform)
+    } else break
+  }
+  if (limit in 0..<count) buffer.append(truncated)
+  buffer.append(postfix)
+  return buffer
+}
+
+private fun <T> Appendable.appendElement(element: T, transform: ((T) -> CharSequence)?) {
+  when {
+    transform != null -> append(transform(element))
+    element is CharSequence? -> append(element)
+    element is Char -> append(element)
+    else -> append(element.toString())
+  }
+}
