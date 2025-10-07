@@ -1772,6 +1772,7 @@
 <li><strong>New</strong>: Report more IR errors up to a maximum. The default is <code>20</code>, but is configurable via the <code>maxIrErrors</code> Gradle DSL option. If you want to restore the previous &ldquo;fail-fast&rdquo; behavior, you can set this value to <code>1</code>.</li>
 <li><strong>New</strong>: Generate specific containing names in Kotlin 2.3.0+ when generating top-level functions for hint gen.</li>
 <li><strong>Behavior change</strong>: Assisted-inject types can only be directly exposed on a graph if qualified.</li>
+<li><strong>Behavior change</strong>: Update Gradle plugin to target Kotlin 2.0, which requires Gradle <code>8.11</code> or later.</li>
 <li><strong>Enhancement</strong>: Improve compatibility across 2.2.20 and 2.3.0+ releases. This release <em>should</em> be compatible with both!</li>
 <li><strong>Enhancement</strong>: Add diagnostic for directly injecting unqualified assisted-injected classes rather than using their factories.</li>
 <li><strong>Enhancement</strong>: Add diagnostic mixing <code>Provider</code> and <code>Lazy</code> types for <code>Provider&lt;Lazy&lt;T&gt;&gt;</code> injections.</li>
