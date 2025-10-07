@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   generate-matrix:
-    name: "Generate compiler matrix"
+    name: "⊹ generate compiler matrix"
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.generate.outputs.matrix }}
