@@ -197,6 +197,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/GraphsCannotDirectlyExtendOtherGraphs.kt");
     }
 
+    @Test
+    @TestMetadata("MixedCycleParams.kt")
+    public void testMixedCycleParams() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/MixedCycleParams.kt");
+    }
+
     @Nested
     @TestMetadata("compiler-tests/src/test/data/diagnostic/dependencygraph/extensions")
     @TestDataPath("$PROJECT_ROOT")

@@ -1,3 +1,8 @@
+// RUN_PIPELINE_TILL: FIR2IR
+// RENDER_IR_DIAGNOSTICS_FULL_TEXT
+
+// Regression test for https://github.com/ZacSweers/metro/pull/1121#issuecomment-3374140082
+
 interface A {
   val isReal: Boolean
 }
@@ -16,13 +21,6 @@ class FakeA(b: B, realA: RealA) : A {
 }
 
 @DependencyGraph(Unit::class)
-interface CycleGraph {
+interface <!METRO_ERROR!>CycleGraph<!> {
   val a: A
-}
-
-fun box(): String {
-  val cycleGraph = createGraph<CycleGraph>()
-  assertNotNull(cycleGraph.a)
-  assertFalse(cycleGraph.a.isReal)
-  return "OK"
 }
