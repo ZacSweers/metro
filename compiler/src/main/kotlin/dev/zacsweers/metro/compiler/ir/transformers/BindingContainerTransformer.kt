@@ -41,6 +41,7 @@ import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
+import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.ir.subcomponentsArgument
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toClassReferences
@@ -699,7 +700,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     // Extract IrTypeKey from Factory supertype
     // Qualifier will be populated in ProviderFactory construction
     val factoryType = factoryCls.superTypes.first { it.classOrNull == metroSymbols.metroFactory }
-    val typeKey = IrTypeKey(factoryType.expectAs<IrSimpleType>().arguments.first().typeOrFail)
+    val typeKey = IrTypeKey(factoryType.requireSimpleType().arguments.first().typeOrFail)
     val mirrorFunction = factoryCls.requireSimpleFunction(Symbols.StringNames.MIRROR_FUNCTION).owner
     return ProviderFactory(
       typeKey,

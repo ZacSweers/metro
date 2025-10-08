@@ -4,6 +4,8 @@ Changelog
 **Unreleased**
 --------------
 
+- **Enhancement**: Improve error messages for unexpected `IrErrorType` encounters.
+
 0.6.9
 -----
 

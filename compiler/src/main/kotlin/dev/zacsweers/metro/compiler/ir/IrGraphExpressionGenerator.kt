@@ -765,7 +765,7 @@ private constructor(
       val keyType: IrType = mapTypeArgs[0].typeOrFail
       val rawValueType = mapTypeArgs[1].typeOrFail
       val rawValueTypeMetadata =
-        rawValueType.typeOrFail.asContextualTypeKey(null, hasDefault = false, patchMutableCollections = false)
+        rawValueType.typeOrFail.asContextualTypeKey(null, hasDefault = false, patchMutableCollections = false, declaration = binding.declaration)
 
       // TODO what about Map<String, Provider<Lazy<String>>>?
       //  isDeferrable() but we need to be able to convert back to the middle type
@@ -774,7 +774,7 @@ private constructor(
       // Used to unpack the right provider type
       val originalType = contextualTypeKey.toIrType()
       val originalValueType = valueWrappedType.toIrType()
-      val originalValueContextKey = originalValueType.asContextualTypeKey(null, hasDefault = false, patchMutableCollections = false)
+      val originalValueContextKey = originalValueType.asContextualTypeKey(null, hasDefault = false, patchMutableCollections = false, declaration = binding.declaration)
       val valueProviderSymbols = metroSymbols.providerSymbolsFor(originalValueType)
 
       val valueType: IrType = rawValueTypeMetadata.typeKey.type

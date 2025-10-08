@@ -127,7 +127,7 @@ internal class IrBindingGraph(
 
         annotations.isElementsIntoSet -> {
           val elementType =
-            contextKey.typeKey.type.expectAs<IrSimpleType>().arguments.single().typeOrFail
+            contextKey.typeKey.type.requireSimpleType(declaration).arguments.single().typeOrFail
           val setType = metroContext.irBuiltIns.setClass.typeWith(elementType)
           contextKey.typeKey.copy(type = setType, qualifier = originalQualifier)
         }

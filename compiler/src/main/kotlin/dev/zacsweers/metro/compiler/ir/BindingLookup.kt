@@ -185,7 +185,7 @@ internal class BindingLookup(
 
       if (irClass.classId == context.metroSymbols.metroMembersInjector.owner.classId) {
         // It's a members injector, just look up its bindings and return them
-        val targetType = key.type.expectAs<IrSimpleType>().arguments.first().typeOrFail
+        val targetType = key.type.requireSimpleType().arguments.first().typeOrFail
         val targetClass = targetType.rawType()
         val remapper = targetClass.deepRemapperFor(targetType)
         return targetClass.computeMembersInjectorBindings(currentBindings, remapper)

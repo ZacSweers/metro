@@ -342,7 +342,7 @@ internal class BindingGraphGenerator(
         if (regularGraph != rawType) {
           val keyType =
             regularGraph.typeWith(
-              creatorParam.type.expectAs<IrSimpleType>().arguments.map { it.typeOrFail }
+              creatorParam.type.requireSimpleType(creatorParam.ir).arguments.map { it.typeOrFail }
             )
           val typeKey = IrTypeKey(keyType)
           superTypeToAlias.putIfAbsent(typeKey, paramTypeKey)
@@ -578,7 +578,7 @@ internal class BindingGraphGenerator(
         if (regularGraph != parentNode.sourceGraph) {
           val keyType =
             regularGraph.typeWith(
-              parentNode.typeKey.type.expectAs<IrSimpleType>().arguments.map { it.typeOrFail }
+              parentNode.typeKey.type.requireSimpleType().arguments.map { it.typeOrFail }
             )
           val typeKey = IrTypeKey(keyType)
           superTypeToAlias.putIfAbsent(typeKey, parentKey)

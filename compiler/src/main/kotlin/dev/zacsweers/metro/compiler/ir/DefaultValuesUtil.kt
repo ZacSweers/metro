@@ -67,7 +67,7 @@ internal fun copyParameterDefaultValues(
                 SYNTHETIC_OFFSET,
                 SYNTHETIC_OFFSET,
                 // Unpack the provider type
-                newGet.type.expectAs<IrSimpleType>().arguments[0].typeOrFail,
+                newGet.type.requireSimpleType().arguments[0].typeOrFail,
                 context.metroSymbols.providerInvoke,
               )
               .apply { this.dispatchReceiver = newGet }

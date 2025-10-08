@@ -603,7 +603,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
 
         val bindingId: String =
           if (isMap) {
-            val keyType = typeKey.type.expectAs<IrSimpleType>().arguments[0].typeOrFail
+            val keyType = typeKey.type.requireSimpleType(declaration).arguments[0].typeOrFail
             createMapBindingId(keyType, typeKey)
           } else {
             typeKey.multibindingId

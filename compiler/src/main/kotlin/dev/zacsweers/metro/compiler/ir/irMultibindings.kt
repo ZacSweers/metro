@@ -42,7 +42,7 @@ internal fun IrTypeKey.transformMultiboundQualifier(
       val mapKeyType = mapKeyType(mapKey)
       createMapBindingId(mapKeyType, this)
     } else if (annotations.isElementsIntoSet) {
-      val elementType = type.expectAs<IrSimpleType>().arguments.first().typeOrFail
+      val elementType = type.requireSimpleType().arguments.first().typeOrFail
       val elementTypeKey = copy(type = elementType)
       elementTypeKey.multibindingId
     } else {

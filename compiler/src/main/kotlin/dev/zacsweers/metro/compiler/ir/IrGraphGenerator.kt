@@ -550,7 +550,7 @@ internal class IrGraphGenerator(
 
             // Extract the type from MembersInjector<T>
             val wrappedType =
-              typeKey.copy(typeKey.type.expectAs<IrSimpleType>().arguments[0].typeOrFail)
+              typeKey.copy(typeKey.type.requireSimpleType(targetParam).arguments[0].typeOrFail)
 
             for (type in
               pluginContext

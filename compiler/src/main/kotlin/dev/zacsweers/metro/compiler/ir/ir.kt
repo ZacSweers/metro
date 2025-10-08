@@ -7,8 +7,10 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.Symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ifNotEmpty
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
@@ -1014,7 +1016,7 @@ private fun IrSimpleType.patchMutableCollections(): IrSimpleType {
             "Unexpected multibinds collection type: ${type.render(short = false, includeAnnotations = true)}"
           )
       }
-    fixedType.typeWithArguments(type.expectAs<IrSimpleType>().arguments)
+    fixedType.typeWithArguments(type.requireSimpleType().arguments)
   } else {
     this
   }
@@ -1651,4 +1653,30 @@ internal fun IrDeclarationWithVisibility.isVisibleAsInternal(file: IrFile): Bool
   return module.descriptor.shouldSeeInternalsOf(
     referencedDeclarationPackageFragment.moduleDescriptor
   )
+}
+
+context(context: IrMetroContext)
+internal fun IrType.requireSimpleType(
+  declaration: IrDeclaration? = null
+): IrSimpleType {
+  return requireSimpleType(declaration, context)
+}
+
+internal fun IrType.requireSimpleType(
+  declaration: IrDeclaration? = null,
+  context: IrMetroContext? = null,
+): IrSimpleType {
+  if (this is IrSimpleType) return this
+
+  if (this is IrErrorType) {
+    val message = "Unexpected IR error type. Make sure you don't have any missing dependencies or imports."
+    if (declaration != null && context != null) {
+      context.reportCompat(declaration, MetroDiagnostics.METRO_ERROR, message)
+      exitProcessing()
+    } else {
+      error(message)
+    }
+  } else {
+    reportCompilerBug("Expected $this to be an ${IrSimpleType::class.qualifiedName} but was ${this::class.qualifiedName}")
+  }
 }

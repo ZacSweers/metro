@@ -67,13 +67,13 @@ private constructor(override val type: IrType, override val qualifier: IrAnnotat
 }
 
 internal fun IrTypeKey.requireSetElementType(): IrType {
-  return type.expectAs<IrSimpleType>().arguments[0].typeOrFail
+  return type.requireSimpleType().arguments[0].typeOrFail
 }
 
 internal fun IrTypeKey.requireMapKeyType(): IrType {
-  return type.expectAs<IrSimpleType>().arguments[0].typeOrFail
+  return type.requireSimpleType().arguments[0].typeOrFail
 }
 
 internal fun IrTypeKey.requireMapValueType(): IrType {
-  return type.expectAs<IrSimpleType>().arguments[1].typeOrFail
+  return type.requireSimpleType().arguments[1].typeOrFail
 }
