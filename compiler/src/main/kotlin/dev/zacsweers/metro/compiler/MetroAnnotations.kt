@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.MetroAnnotations.Kind
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.asIrAnnotation
@@ -55,6 +56,7 @@ internal class MetroAnnotations<T>(
   val isIntoMap: Boolean = false,
   val isAssistedFactory: Boolean = false,
   val isComposable: Boolean = false,
+  val isBindsOptionalOf: Boolean = false,
   val multibinds: T? = null,
   val assisted: T? = null,
   val scope: T? = null,
@@ -91,6 +93,7 @@ internal class MetroAnnotations<T>(
     isIntoMap: Boolean = this.isIntoMap,
     isAssistedFactory: Boolean = this.isAssistedFactory,
     isComposable: Boolean = this.isComposable,
+    isBindsOptionalOf: Boolean = this.isBindsOptionalOf,
     multibinds: T? = this.multibinds,
     assisted: T? = this.assisted,
     scope: T? = this.scope,
@@ -109,6 +112,7 @@ internal class MetroAnnotations<T>(
       isIntoMap,
       isAssistedFactory,
       isComposable,
+      isBindsOptionalOf,
       multibinds,
       assisted,
       scope,
@@ -154,6 +158,8 @@ internal class MetroAnnotations<T>(
     Scope,
     Qualifier,
     MapKey,
+    BindsOptionalOf,
+    ;
   }
 
   companion object {
@@ -225,6 +231,7 @@ private fun IrAnnotationContainer.metroAnnotations(
   var isIntoMap = false
   var isAssistedFactory = false
   var isComposable = false
+  var isBindsOptionalOf = false
   var multibinds: IrAnnotation? = null
   var assisted: IrAnnotation? = null
   var scope: IrAnnotation? = null
@@ -282,6 +289,10 @@ private fun IrAnnotationContainer.metroAnnotations(
             isComposable = true
             continue
           }
+          Symbols.DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF if (Kind.BindsOptionalOf in kinds) -> {
+            isBindsOptionalOf = true
+            continue
+          }
         }
       }
 
@@ -336,6 +347,7 @@ private fun IrAnnotationContainer.metroAnnotations(
       isIntoMap = isIntoMap,
       isAssistedFactory = isAssistedFactory,
       isComposable = isComposable,
+      isBindsOptionalOf = isBindsOptionalOf,
       multibinds = multibinds,
       assisted = assisted,
       scope = scope,
@@ -452,6 +464,7 @@ private fun FirBasedSymbol<*>.metroAnnotations(
   var isIntoMap = false
   var isAssistedFactory = false
   var isComposable = false
+  var isBindsOptionalOf = false
   var multibinds: MetroFirAnnotation? = null
   var assisted: MetroFirAnnotation? = null
   var scope: MetroFirAnnotation? = null
@@ -514,6 +527,10 @@ private fun FirBasedSymbol<*>.metroAnnotations(
             isComposable = true
             continue
           }
+          Symbols.DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF if (session.metroFirBuiltIns.options.enableDaggerRuntimeInterop && Kind.BindsOptionalOf in kinds) -> {
+            isBindsOptionalOf = true
+            continue
+          }
         }
       }
 
@@ -571,6 +588,7 @@ private fun FirBasedSymbol<*>.metroAnnotations(
       isIntoMap = isIntoMap,
       isAssistedFactory = isAssistedFactory,
       isComposable = isComposable,
+      isBindsOptionalOf = isBindsOptionalOf,
       multibinds = multibinds,
       assisted = assisted,
       scope = scope,
@@ -638,6 +656,8 @@ internal fun MetroAnnotations<IrAnnotation>.mirrorIrConstructorCalls(
       add(buildAnnotation(symbol, context.metroSymbols.elementsIntoSetConstructor))
     } else if (isIntoMap) {
       add(buildAnnotation(symbol, context.metroSymbols.intoMapConstructor))
+    } else if (isBindsOptionalOf) {
+      add(buildAnnotation(symbol, context.metroSymbols.bindsOptionalConstructor))
     }
     scope?.let { add(it.ir.deepCopyWithSymbols()) }
     qualifier?.let { add(it.ir.deepCopyWithSymbols()) }
