@@ -4,6 +4,7 @@ Changelog
 **Unreleased**
 --------------
 
+- **New**: Add interop for Dagger `@BindsOptionalOf`. Note this is currently only limited to `java.util.Optional`.
 - **Enhancement**: Improve error messages for unexpected `IrErrorType` encounters.
 
 0.6.9
