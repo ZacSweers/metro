@@ -2,6 +2,7 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -13,61 +14,79 @@ import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.name.ClassId
 
-internal class IrOptionalExpressionGenerator(context: IrMetroContext) : IrMetroContext by context {
-  /** Generates an `Optional.empty()` call. */
-  context(scope: IrBuilderWithScope)
-  fun empty(kind: OptionalKind, typeKey: IrTypeKey): IrExpression =
+internal object IrOptionalExpressionGenerator : IrWrappedTypeGenerator {
+  override val key: String = "Optional"
+
+  context(context: IrMetroContext, scope: IrBuilderWithScope)
+  override fun generate(
+    binding: IrBinding.CustomWrapper,
+    instanceExpression: IrExpression?,
+  ): IrExpression =
     with(scope) {
-      val callee: IrFunctionSymbol
-      val typeHint: IrType
-      when (kind) {
-        OptionalKind.JAVA -> {
-          callee = metroSymbols.javaOptionalEmpty
-          typeHint = metroSymbols.javaOptional.typeWith(typeKey.type)
-        }
+      val targetType = binding.typeKey.type
+      val kind = targetType.optionalKind() ?: reportCompilerBug("Optional kind not set on $binding")
+
+      if (instanceExpression == null) {
+        return empty(kind, binding.wrappedType)
       }
-      irInvoke(callee = callee, typeHint = typeHint)
+      return of(kind, binding.wrappedType, instanceExpression)
     }
+
+  /** Generates an `Optional.empty()` call. */
+  context(context: IrMetroContext)
+  fun IrBuilderWithScope.empty(kind: OptionalKind, type: IrType): IrExpression {
+    val callee: IrFunctionSymbol
+    val typeHint: IrType
+    when (kind) {
+      OptionalKind.JAVA -> {
+        callee = context.metroSymbols.javaOptionalEmpty
+        typeHint = context.metroSymbols.javaOptional.typeWith(type)
+      }
+    }
+    return irInvoke(callee = callee, typeHint = typeHint)
+  }
 
   /** Generates an `Optional.of(...)` call around an [instanceExpression]. */
-  context(scope: IrBuilderWithScope)
-  fun of(kind: OptionalKind, typeKey: IrTypeKey, instanceExpression: IrExpression): IrExpression =
-    with(scope) {
-      val callee: IrFunctionSymbol
-      val typeHint: IrType
-      when (kind) {
-        OptionalKind.JAVA -> {
-          callee = metroSymbols.javaOptionalOf
-          typeHint = metroSymbols.javaOptional.typeWith(typeKey.type)
-        }
+  context(context: IrMetroContext)
+  fun IrBuilderWithScope.of(
+    kind: OptionalKind,
+    type: IrType,
+    instanceExpression: IrExpression,
+  ): IrExpression {
+    val callee: IrFunctionSymbol
+    val typeHint: IrType
+    when (kind) {
+      OptionalKind.JAVA -> {
+        callee = context.metroSymbols.javaOptionalOf
+        typeHint = context.metroSymbols.javaOptional.typeWith(type)
       }
-      irInvoke(callee = callee, args = listOf(instanceExpression), typeHint = typeHint)
     }
+    return irInvoke(callee = callee, args = listOf(instanceExpression), typeHint = typeHint)
+  }
 }
 
-context(context: IrMetroContext)
-internal fun IrType.optionalKind(declaration: IrDeclaration?): Pair<OptionalKind, IrType>? {
-  return optionalKind(context, declaration)
-}
-
-internal fun IrType.optionalKind(context: IrMetroContext? = null, declaration: IrDeclaration? = null): Pair<OptionalKind, IrType>? {
+internal fun IrType.optionalKind(): OptionalKind? {
   val classId = rawTypeOrNull()?.classId ?: return null
-  val kind = when (classId) {
+  return when (classId) {
     Symbols.ClassIds.JavaOptional -> OptionalKind.JAVA
     else -> return null
   }
-  val type = when (val typeArg = requireSimpleType(declaration).arguments[0]) {
+}
+
+context(context: IrMetroContext)
+internal fun IrType.optionalType(declaration: IrDeclaration?): IrType? {
+  return when (val typeArg = requireSimpleType(declaration).arguments[0]) {
     is IrStarProjection -> {
       val message = "Optional type argument is star projection"
-      context?.reportCompat(declaration, MetroDiagnostics.METRO_ERROR, message) ?: error(message)
+      declaration?.let { context.reportCompat(it, MetroDiagnostics.METRO_ERROR, message) }
+        ?: error(message)
       return null
     }
     is IrTypeProjection -> typeArg.type
   }
-  return kind to type
 }
 
 internal enum class OptionalKind(val classId: ClassId) {
-  JAVA(Symbols.ClassIds.JavaOptional),
+  JAVA(Symbols.ClassIds.JavaOptional)
   // Other types would go here
 }
