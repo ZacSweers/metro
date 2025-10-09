@@ -647,6 +647,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("MultipleExtensionFactoriesAreValid.kt")
+      public void testMultipleExtensionFactoriesAreValid() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/MultipleExtensionFactoriesAreValid.kt");
+      }
+
+      @Test
       @TestMetadata("OverloadedFactoryFunctions.kt")
       public void testOverloadedFactoryFunctions() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/OverloadedFactoryFunctions.kt");

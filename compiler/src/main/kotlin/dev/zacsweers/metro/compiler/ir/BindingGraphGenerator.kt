@@ -502,7 +502,14 @@ internal class BindingGraphGenerator(
 
     for ((key, accessors) in node.graphExtensions) {
       for (accessor in accessors) {
-        if (accessor.isFactory && accessor.key.typeKey.classId !in node.supertypeClassIds) {
+        val shouldAddBinding =
+          accessor.isFactory &&
+            // It's allowed to specify multiple accessors for the same factory
+            accessor.key.typeKey !in graph &&
+            // Don't add a binding if the graph itself implements the factory
+            accessor.key.typeKey.classId !in node.supertypeClassIds
+
+        if (shouldAddBinding) {
           graph.addBinding(
             accessor.key.typeKey,
             IrBinding.GraphExtensionFactory(
