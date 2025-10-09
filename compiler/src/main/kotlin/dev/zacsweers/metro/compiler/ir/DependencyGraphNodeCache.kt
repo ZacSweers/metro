@@ -110,6 +110,7 @@ internal class DependencyGraphNodeCache(
     private val bindsFunctions = mutableListOf<Pair<MetroSimpleFunction, IrContextualTypeKey>>()
     private val bindsCallables = mutableSetOf<BindsCallable>()
     private val multibindsCallables = mutableSetOf<MultibindsCallable>()
+    private val optionalKeys = mutableSetOf<IrTypeKey>()
     private val scopes = mutableSetOf<IrAnnotation>()
     private val providerFactories = mutableListOf<Pair<IrTypeKey, ProviderFactory>>()
     private val extendedGraphNodes = mutableMapOf<IrTypeKey, DependencyGraphNode>()
@@ -755,6 +756,7 @@ internal class DependencyGraphNodeCache(
         container.bindsMirror?.let { bindsMirror ->
           bindsCallables += bindsMirror.bindsCallables
           multibindsCallables += bindsMirror.multibindsCallables
+          optionalKeys += bindsMirror.optionalKeys
         }
 
         // Record an IC lookup of the container class
@@ -776,6 +778,7 @@ internal class DependencyGraphNodeCache(
           bindsCallables = bindsCallables,
           bindsFunctions = bindsFunctions.map { it.first },
           multibindsCallables = multibindsCallables,
+          optionalKeys = optionalKeys,
           providerFactories = providerFactories,
           accessors = accessors,
           injectors = injectors,
@@ -870,10 +873,11 @@ internal class DependencyGraphNodeCache(
             bindingContainer.bindsMirror?.let { bindsMirror ->
               bindsCallables += bindsMirror.bindsCallables
               multibindsCallables += bindsMirror.multibindsCallables
+              optionalKeys += bindsMirror.optionalKeys
             }
           }
         }
-      } else if (!isGraph) {
+      } else {
         providerFactories +=
           bindingContainerTransformer.factoryClassesFor(metroGraph ?: graphDeclaration)
       }
@@ -890,6 +894,7 @@ internal class DependencyGraphNodeCache(
           accessors = accessors,
           bindsCallables = bindsCallables,
           multibindsCallables = multibindsCallables,
+          optionalKeys = optionalKeys,
           isExternal = true,
           proto = null,
           extendedGraphNodes = extendedGraphNodes,

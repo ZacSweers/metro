@@ -55,6 +55,7 @@ import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.unsafeLazy
+import java.util.EnumSet
 import java.util.Optional
 import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
@@ -75,7 +76,6 @@ import org.jetbrains.kotlin.ir.declarations.IrTypeAlias
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
-import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.typeOrFail
@@ -180,7 +180,8 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     val graphAnnotation =
       declaration.annotationsIn(metroSymbols.classIds.graphLikeAnnotations).firstOrNull()
     val isContributedGraph =
-      (graphAnnotation?.annotationClass?.classId in metroSymbols.classIds.graphExtensionAnnotations) &&
+      (graphAnnotation?.annotationClass?.classId in
+        metroSymbols.classIds.graphExtensionAnnotations) &&
         declaration.isAnnotatedWithAny(metroSymbols.classIds.contributesToAnnotations)
     val isGraph = graphAnnotation != null
     val container =
@@ -737,8 +738,18 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
           for (decl in declaration.declarations) {
             if (decl !is IrSimpleFunction && decl !is IrProperty) continue
 
-            val annotations = decl.metroAnnotations(metroSymbols.classIds)
-            if (annotations.isProvides || annotations.isBinds || annotations.isMultibinds) {
+            val annotations =
+              decl.metroAnnotations(
+                metroSymbols.classIds,
+                kinds =
+                  EnumSet.of(
+                    MetroAnnotations.Kind.Provides,
+                    MetroAnnotations.Kind.Binds,
+                    MetroAnnotations.Kind.Multibinds,
+                    MetroAnnotations.Kind.BindsOptionalOf,
+                  ),
+              )
+            if (annotations.isProvides || annotations.isBinds || annotations.isMultibinds || annotations.isBindsOptionalOf) {
               val isProperty = decl is IrProperty
               val callableId: CallableId
               val typeKey: IrTypeKey
@@ -787,7 +798,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
                     isPropertyAccessor = isProperty,
                   )
               } else {
-                // binds or multibinds
+                // binds or multibinds or bindsOptionalOf
                 val function = metroFunctionOf(function, annotations)
                 bindsCollector += function
               }

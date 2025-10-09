@@ -37,6 +37,7 @@ internal data class DependencyGraphNode(
   val accessors: List<Pair<MetroSimpleFunction, IrContextualTypeKey>>,
   val bindsCallables: Set<BindsCallable>,
   val multibindsCallables: Set<MultibindsCallable>,
+  val optionalKeys: Set<IrTypeKey>,
   /** Binding containers that need a managed instance. */
   val bindingContainers: Set<IrClass>,
   /** Fake overrides of binds functions that need stubbing. */
