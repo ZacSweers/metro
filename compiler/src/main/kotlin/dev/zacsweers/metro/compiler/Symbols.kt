@@ -107,6 +107,7 @@ internal class Symbols(
 
   object FqNames {
     val composeRuntime = FqName("androidx.compose.runtime")
+    val javaUtil = FqName("java.util")
     val kotlinCollectionsPackageFqn = StandardClassIds.BASE_COLLECTIONS_PACKAGE
     val metroHintsPackage = FqName(StringNames.METRO_HINTS_PACKAGE)
     val metroRuntimeInternalPackage = FqName(METRO_RUNTIME_INTERNAL_PACKAGE)
@@ -137,6 +138,7 @@ internal class Symbols(
     val Composable = ClassId(FqNames.composeRuntime, StringNames.COMPOSABLE.asName())
     val GraphFactoryInvokeFunctionMarkerClass =
       ClassId(FqNames.metroRuntimeInternalPackage, "GraphFactoryInvokeFunctionMarker".asName())
+    val JavaOptional = ClassId(FqNames.javaUtil, Names.Optional)
     val Lazy = StandardClassIds.byName("Lazy")
     val MembersInjector = ClassId(FqNames.metroRuntimePackage, Names.membersInjector)
     val MultibindingElement =
@@ -175,6 +177,7 @@ internal class Symbols(
     val MetroGraph = $$$"$$MetroGraph".asName()
     val MetroImpl = StringNames.METRO_IMPL.asName()
     val MetroMembersInjector = $$$"$$MetroMembersInjector".asName()
+    val Optional = "Optional".asName()
     val ProviderClass = "Provider".asName()
     val Provides = StringNames.PROVIDES.asName()
     val additionalScopes = StringNames.ADDITIONAL_SCOPES.asName()
@@ -447,6 +450,13 @@ internal class Symbols(
       .single()
   }
 
+  val bindsOptionalConstructor by lazy {
+    pluginContext
+      .referenceClass(DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF)!!
+      .constructors
+      .single()
+  }
+
   val deprecatedAnnotationConstructor: IrConstructorSymbol by lazy {
     pluginContext.referenceClass(StandardClassIds.Annotations.Deprecated)!!.constructors.first {
       it.owner.isPrimary
@@ -466,6 +476,18 @@ internal class Symbols(
       .filterIsInstance<IrEnumEntry>()
       .single { it.name.toString() == "HIDDEN" }
       .symbol
+  }
+
+  val javaOptional: IrClassSymbol by lazy {
+    pluginContext.referenceClass(ClassIds.JavaOptional)!!
+  }
+
+  val javaOptionalEmpty: IrFunctionSymbol by lazy {
+    javaOptional.requireSimpleFunction("empty")
+  }
+
+  val javaOptionalOf: IrFunctionSymbol by lazy {
+    javaOptional.requireSimpleFunction("of")
   }
 
   val dependencyGraphAnnotations
@@ -919,6 +941,7 @@ internal class Symbols(
       val DAGGER_PROVIDES = ClassId(daggerRuntimePackageFqName, "Provides".asName())
       val DAGGER_BINDS = ClassId(daggerRuntimePackageFqName, "Binds".asName())
       val DAGGER_REUSABLE_CLASS_ID = ClassId(daggerRuntimePackageFqName, "Reusable".asName())
+      val DAGGER_BINDS_OPTIONAL_OF = ClassId(daggerRuntimePackageFqName, "BindsOptionalOf".asName())
       val DAGGER_INTERNAL_PROVIDER_CLASS_ID =
         ClassId(daggerInternalPackageFqName, Names.ProviderClass)
       val DAGGER_MULTIBINDS = ClassId(daggerMultibindsPackageFqName, "Multibinds".asName())
