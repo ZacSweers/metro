@@ -451,6 +451,9 @@ internal fun bindingStackEntryForDependency(
         isMirrorFunction = true,
       )
     }
+    is IrBinding.CustomWrapper -> {
+      Entry.injectedAt(contextKey, callingBinding.declaration, displayTypeKey = targetKey)
+    }
     is IrBinding.Alias -> {
       Entry.injectedAt(
         contextKey,

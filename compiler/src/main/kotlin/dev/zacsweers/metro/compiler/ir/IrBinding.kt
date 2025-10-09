@@ -25,8 +25,6 @@ import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
-import org.jetbrains.kotlin.ir.get
-import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.isUnit
 import org.jetbrains.kotlin.ir.types.typeOrFail
@@ -753,6 +751,49 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
 
     override fun toString() = renderDescriptionDiagnostic(short = true, underlineTypeKey = false)
   }
+
+  /**
+   * A custom wrapping type, such as an [java.util.Optional].
+   *
+   * Some types may natively support absence. To indicate this, set [wrappedContextKey] to indicate
+   * [hasDefault = true][IrContextualTypeKey.hasDefault].
+   *
+   * Wrapper types may not have scopes.
+   */
+  @Poko
+  class CustomWrapper(
+    override val typeKey: IrTypeKey,
+    val wrappedType: IrType,
+    val wrappedContextKey: IrContextualTypeKey,
+    // TODO
+    //  could have multiple, do we want to report?
+    //  this is the mirror function in local decls
+    @Poko.Skip val declaration: IrSimpleFunction,
+    val allowsAbsent: Boolean,
+    val wrapperKey: String,
+  ) : IrBinding {
+    override val dependencies: List<IrContextualTypeKey> = listOf(wrappedContextKey)
+    override val reportableDeclaration: IrDeclarationWithName = declaration
+    override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
+    override val parameters: Parameters = Parameters.empty()
+    override val scope: IrAnnotation? = null
+    override val nameHint: String = "$wrapperKey<${typeKey.type.rawType().name.asString()}>"
+
+    override fun renderDescriptionDiagnostic(short: Boolean, underlineTypeKey: Boolean) =
+      buildString {
+        renderForDiagnostic(
+          declaration = declaration,
+          annotations = MetroAnnotations.none(),
+          short = short,
+          typeKey = typeKey,
+          underlineTypeKey = underlineTypeKey,
+          parameters = Parameters.empty(),
+          isProperty = declaration.isPropertyAccessor,
+        )
+      }
+
+    override fun toString() = renderDescriptionDiagnostic(short = true, underlineTypeKey = false)
+  }
 }
 
 context(builder: StringBuilder)
@@ -878,6 +919,7 @@ private fun StringBuilder.renderAnnotations(
         if (isIntoSet) add("@IntoSet")
         if (isElementsIntoSet) add("@ElementsIntoSet")
         if (isMultibinds) add("@Multibinds")
+        if (isBindsOptionalOf) add("@BindsOptionalOf")
         scope?.let { add(it.render(short = short)) }
         if (isIntoMap) add("@IntoMap")
         mapKeys.forEach { add(it.render(short = short)) }
