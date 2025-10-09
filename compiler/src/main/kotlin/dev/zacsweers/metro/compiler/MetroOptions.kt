@@ -10,6 +10,10 @@ import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.config.CompilerConfigurationKey
 import org.jetbrains.kotlin.name.ClassId
 
+// Borrowed from Dagger
+// https://github.com/google/dagger/blob/b39cf2d0640e4b24338dd290cb1cb2e923d38cb3/dagger-compiler/main/java/dagger/internal/codegen/writing/ComponentImplementation.java#L263
+internal const val DEFAULT_STATEMENTS_PER_INIT_FUN = 25
+
 internal data class RawMetroOption<T : Any>(
   val name: String,
   val defaultValue: T,
@@ -167,6 +171,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       description = "Enable/disable chunking of field initializers in binding graphs.",
       required = false,
       allowMultipleOccurrences = false,
+    )
+  ),
+  STATEMENTS_PER_INIT_FUN(
+    RawMetroOption(
+      name = "statements-per-init-fun",
+      defaultValue = DEFAULT_STATEMENTS_PER_INIT_FUN,
+      valueDescription = "<count>",
+      description = "Maximum number of statements per init method when chunking field initializers. Default is $DEFAULT_STATEMENTS_PER_INIT_FUN, must be > 0.",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it.toInt() },
     )
   ),
   PUBLIC_PROVIDER_SEVERITY(
@@ -550,6 +565,7 @@ public data class MetroOptions(
   val shrinkUnusedBindings: Boolean =
     MetroOption.SHRINK_UNUSED_BINDINGS.raw.defaultValue.expectAs(),
   val chunkFieldInits: Boolean = MetroOption.CHUNK_FIELD_INITS.raw.defaultValue.expectAs(),
+  val statementsPerInitFun: Int = MetroOption.STATEMENTS_PER_INIT_FUN.raw.defaultValue.expectAs(),
   val publicProviderSeverity: DiagnosticSeverity =
     if (transformProvidersToPrivate) {
       DiagnosticSeverity.NONE
@@ -694,6 +710,9 @@ public data class MetroOptions(
 
           MetroOption.CHUNK_FIELD_INITS ->
             options = options.copy(chunkFieldInits = configuration.getAsBoolean(entry))
+
+          MetroOption.STATEMENTS_PER_INIT_FUN ->
+            options = options.copy(statementsPerInitFun = configuration.getAsInt(entry))
 
           MetroOption.PUBLIC_PROVIDER_SEVERITY ->
             options =

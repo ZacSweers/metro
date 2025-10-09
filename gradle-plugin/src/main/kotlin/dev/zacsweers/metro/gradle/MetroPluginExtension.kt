@@ -109,6 +109,13 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
   public val chunkFieldInits: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(true)
 
+  /**
+   * Maximum number of statements per init function when chunking field initializers. Default is 25,
+   * must be > 0.
+   */
+  public val statementsPerInitFun: Property<Int> =
+    objects.property(Int::class.javaObjectType).convention(25)
+
   /** Enable/disable automatic transformation of providers to be private. Enabled by default. */
   public val transformProvidersToPrivate: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(true)

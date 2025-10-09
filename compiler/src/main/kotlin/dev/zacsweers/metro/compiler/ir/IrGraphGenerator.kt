@@ -37,7 +37,6 @@ import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
@@ -55,10 +54,6 @@ import org.jetbrains.kotlin.name.Name
 
 internal typealias FieldInitializer =
   IrBuilderWithScope.(thisReceiver: IrValueParameter, key: IrTypeKey) -> IrExpression
-
-// Borrowed from Dagger
-// https://github.com/google/dagger/blob/b39cf2d0640e4b24338dd290cb1cb2e923d38cb3/dagger-compiler/main/java/dagger/internal/codegen/writing/ComponentImplementation.java#L263
-private const val STATEMENTS_PER_METHOD = 25
 
 internal class IrGraphGenerator(
   metroContext: IrMetroContext,
@@ -394,7 +389,7 @@ internal class IrGraphGenerator(
 
       if (
         options.chunkFieldInits &&
-          fieldInitializers.size + initStatements.size > STATEMENTS_PER_METHOD
+          fieldInitializers.size + initStatements.size > options.statementsPerInitFun
       ) {
         // Larger graph, split statements
         // Chunk our constructor statements and split across multiple init functions
@@ -414,7 +409,7 @@ internal class IrGraphGenerator(
                 add { thisReceiver -> statement(thisReceiver) }
               }
             }
-            .chunked(STATEMENTS_PER_METHOD)
+            .chunked(options.statementsPerInitFun)
 
         val initAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
         val initFunctionsToCall =

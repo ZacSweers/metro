@@ -112,6 +112,8 @@ abstract class MetroCompilerTest {
                 processor.option(entry.raw.cliOption, shrinkUnusedBindings)
               MetroOption.CHUNK_FIELD_INITS ->
                 processor.option(entry.raw.cliOption, chunkFieldInits)
+              MetroOption.STATEMENTS_PER_INIT_FUN ->
+                processor.option(entry.raw.cliOption, statementsPerInitFun)
               MetroOption.PUBLIC_PROVIDER_SEVERITY ->
                 processor.option(entry.raw.cliOption, publicProviderSeverity)
               MetroOption.ASSISTED_INJECT_DEPRECATION_SEVERITY ->

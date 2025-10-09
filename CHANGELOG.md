@@ -6,6 +6,7 @@ Changelog
 
 - **New**: Add interop for Dagger `@BindsOptionalOf`. Note this is currently only limited to `java.util.Optional`.
 - **Enhancement**: Improve error messages for unexpected `IrErrorType` encounters.
+- **Enhancement**: Add configurable `statementsPerInitFun` to option to control the number of statements per init function. Only for advanced/debugging use.
 - **Fix**: Allow `@Includes` types themselves (i.e., not their accessors) to be dependencies in generated graphs.
 - **Fix**: Allow multiple graph extension factory accessors of the same factory type on parent graphs.
 
