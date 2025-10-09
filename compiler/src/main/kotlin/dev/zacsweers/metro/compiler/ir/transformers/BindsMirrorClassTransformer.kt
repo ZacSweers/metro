@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.BindsCallable
+import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
@@ -70,7 +71,7 @@ internal data class BindsMirror(
   /**
    * Interoped optional types from `@BindsOptionalOf`. Only present if Dagger interop is enabled.
    */
-  val optionalKeys: Set<IrTypeKey>,
+  val optionalKeys: Set<BindsOptionalOfCallable>,
 ) {
   fun isEmpty() =
     bindsCallables.isEmpty() && multibindsCallables.isEmpty() && optionalKeys.isEmpty()

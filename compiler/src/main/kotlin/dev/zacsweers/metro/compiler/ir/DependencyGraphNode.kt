@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.IrType
@@ -37,7 +38,7 @@ internal data class DependencyGraphNode(
   val accessors: List<Pair<MetroSimpleFunction, IrContextualTypeKey>>,
   val bindsCallables: Set<BindsCallable>,
   val multibindsCallables: Set<MultibindsCallable>,
-  val optionalKeys: Set<IrTypeKey>,
+  val optionalKeys: Map<IrTypeKey, Set<BindsOptionalOfCallable>>,
   /** Binding containers that need a managed instance. */
   val bindingContainers: Set<IrClass>,
   /** Fake overrides of binds functions that need stubbing. */

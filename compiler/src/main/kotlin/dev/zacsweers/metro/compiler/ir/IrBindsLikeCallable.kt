@@ -37,6 +37,12 @@ internal class MultibindsCallable(
   val typeKey: IrTypeKey,
 ) : BindsLikeCallable
 
+@Poko
+internal class BindsOptionalOfCallable(
+  override val callableMetadata: IrCallableMetadata,
+  val typeKey: IrTypeKey,
+) : BindsLikeCallable
+
 context(context: IrMetroContext)
 internal fun MetroSimpleFunction.toBindsCallable(isInterop: Boolean): BindsCallable {
   return BindsCallable(
@@ -51,5 +57,19 @@ internal fun MetroSimpleFunction.toMultibindsCallable(isInterop: Boolean): Multi
   return MultibindsCallable(
     ir.irCallableMetadata(annotations, isInterop),
     IrContextualTypeKey.from(ir, patchMutableCollections = isInterop).typeKey,
+  )
+}
+
+context(context: IrMetroContext)
+internal fun MetroSimpleFunction.toBindsOptionalOfCallable(): BindsOptionalOfCallable {
+  // Wrap this in a Java Optional
+  // TODO what if we support other optionals?
+  val targetType = IrContextualTypeKey.from(ir, patchMutableCollections = true).typeKey
+  val wrapped = context.metroSymbols.javaOptional.typeWith(targetType.type)
+  val wrappedContextKey = targetType.copy(type = wrapped)
+
+  return BindsOptionalOfCallable(
+    ir.irCallableMetadata(annotations, isInterop = true),
+    wrappedContextKey,
   )
 }

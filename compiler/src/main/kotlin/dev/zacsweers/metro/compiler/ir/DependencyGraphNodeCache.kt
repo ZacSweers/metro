@@ -24,6 +24,7 @@ import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
@@ -110,7 +111,7 @@ internal class DependencyGraphNodeCache(
     private val bindsFunctions = mutableListOf<Pair<MetroSimpleFunction, IrContextualTypeKey>>()
     private val bindsCallables = mutableSetOf<BindsCallable>()
     private val multibindsCallables = mutableSetOf<MultibindsCallable>()
-    private val optionalKeys = mutableSetOf<IrTypeKey>()
+    private val optionalKeys = mutableMapOf<IrTypeKey, MutableSet<BindsOptionalOfCallable>>()
     private val scopes = mutableSetOf<IrAnnotation>()
     private val providerFactories = mutableListOf<Pair<IrTypeKey, ProviderFactory>>()
     private val extendedGraphNodes = mutableMapOf<IrTypeKey, DependencyGraphNode>()
@@ -756,7 +757,9 @@ internal class DependencyGraphNodeCache(
         container.bindsMirror?.let { bindsMirror ->
           bindsCallables += bindsMirror.bindsCallables
           multibindsCallables += bindsMirror.multibindsCallables
-          optionalKeys += bindsMirror.optionalKeys
+          for (callable in bindsMirror.optionalKeys) {
+            optionalKeys.getOrPut(callable.typeKey) { mutableSetOf() } += callable
+          }
         }
 
         // Record an IC lookup of the container class
@@ -873,7 +876,9 @@ internal class DependencyGraphNodeCache(
             bindingContainer.bindsMirror?.let { bindsMirror ->
               bindsCallables += bindsMirror.bindsCallables
               multibindsCallables += bindsMirror.multibindsCallables
-              optionalKeys += bindsMirror.optionalKeys
+              for (callable in bindsMirror.optionalKeys) {
+                optionalKeys.getOrPut(callable.typeKey) { mutableSetOf() } += callable
+              }
             }
           }
         }
