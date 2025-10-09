@@ -935,6 +935,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("BindsOptionalOfInterop.kt")
+      public void testBindsOptionalOfInterop() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/BindsOptionalOfInterop.kt");
+      }
+
+      @Test
       @TestMetadata("DaggerComponentModulesAnnotationInterop.kt")
       public void testDaggerComponentModulesAnnotationInterop() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/DaggerComponentModulesAnnotationInterop.kt");
