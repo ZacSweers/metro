@@ -19,6 +19,11 @@ internal class BindingFieldContext {
   val availableInstanceKeys: Set<IrTypeKey>
     get() = instanceFields.keys
 
+  val availableProviderKeys: Set<IrTypeKey>
+    get() = providerFields.keys
+
+  fun hasKey(key: IrTypeKey): Boolean = key in instanceFields || key in providerFields
+
   fun putInstanceField(key: IrTypeKey, field: IrField) {
     instanceFields[key] = field
   }
@@ -35,5 +40,6 @@ internal class BindingFieldContext {
     return providerFields[key]
   }
 
-  operator fun contains(key: IrTypeKey): Boolean = instanceFields.containsKey(key) || providerFields.containsKey(key)
+  operator fun contains(key: IrTypeKey): Boolean =
+    instanceFields.containsKey(key) || providerFields.containsKey(key)
 }

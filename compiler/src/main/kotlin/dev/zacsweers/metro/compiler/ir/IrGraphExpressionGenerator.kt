@@ -115,16 +115,33 @@ private constructor(
       // provider for it.
       // This is important for cases like DelegateFactory and breaking cycles.
       if (fieldInitKey == null || fieldInitKey != binding.typeKey) {
-        bindingFieldContext.providerField(binding.typeKey)?.let {
-          val providerInstance =
-            irGetField(irGet(thisReceiver), it).let {
-              with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) }
+        if (bindingFieldContext.hasKey(binding.typeKey)) {
+          bindingFieldContext.providerField(binding.typeKey)?.let {
+            val providerInstance =
+              irGetField(irGet(thisReceiver), it).let {
+                with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) }
+              }
+            return if (accessType == AccessType.INSTANCE) {
+              irInvoke(providerInstance, callee = metroSymbols.providerInvoke)
+            } else {
+              providerInstance
             }
-          return if (accessType == AccessType.INSTANCE) {
-            irInvoke(providerInstance, callee = metroSymbols.providerInvoke)
-          } else {
-            providerInstance
           }
+          bindingFieldContext.instanceField(binding.typeKey)?.let {
+            val instance = irGetField(irGet(thisReceiver), it)
+            return if (accessType == AccessType.INSTANCE) {
+              instance
+            } else {
+              with(metroProviderSymbols) {
+                transformMetroProvider(
+                  instanceFactory(binding.typeKey.type, instance),
+                  contextualTypeKey,
+                )
+              }
+            }
+          }
+          // Should never get here
+          reportCompilerBug("Unable to find instance or provider field for ${binding.typeKey}")
         }
       }
 
@@ -152,14 +169,15 @@ private constructor(
           val wrappedInstance =
             if (!isAbsentInGraph) {
               generateBindingCode(
-                delegateBinding,
-                binding.wrappedContextKey,
-                accessType = AccessType.INSTANCE,
-                fieldInitKey = fieldInitKey,
-              ).let {
-                // TODO clean up accessType not always working
-                irInvoke(it, callee = metroSymbols.providerInvoke)
-              }
+                  delegateBinding,
+                  binding.wrappedContextKey,
+                  accessType = AccessType.INSTANCE,
+                  fieldInitKey = fieldInitKey,
+                )
+                .let {
+                  // TODO clean up accessType not always working
+                  irInvoke(it, callee = metroSymbols.providerInvoke)
+                }
             } else if (binding.allowsAbsent) {
               null
             } else {
