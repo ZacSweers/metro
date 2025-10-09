@@ -14,7 +14,6 @@ import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classIdOrFail
@@ -375,13 +374,10 @@ internal class BindingGraphGenerator(
       } else {
         // If it's already in the graph, ensure its allowEmpty is up to date and update its
         // location
-        graph
-          .requireBinding(contextualTypeKey.typeKey)
-          .expectAs<IrBinding.Multibinding>()
-          .let {
-            it.allowEmpty = multibinds.allowEmpty()
-            it.declaration = getter
-          }
+        graph.requireBinding(contextualTypeKey.typeKey).expectAs<IrBinding.Multibinding>().let {
+          it.allowEmpty = multibinds.allowEmpty()
+          it.declaration = getter
+        }
       }
 
       // Record an IC lookup
@@ -408,6 +404,44 @@ internal class BindingGraphGenerator(
         multibindsCallable.callableMetadata.mirrorFunction,
         multibindsCallable.callableMetadata.annotations.multibinds!!,
       )
+    }
+
+    val allOptionalKeys = buildMap {
+      putAll(node.optionalKeys)
+      for ((_, extendedNode) in node.allExtendedNodes) {
+        putAll(extendedNode.optionalKeys)
+      }
+    }
+
+    for ((optionalKey, callables) in allOptionalKeys) {
+      val declaration = callables.first().function
+      val type =
+        optionalKey.type.optionalType(declaration)
+          ?: reportCompilerBug(
+            "Optional type not supported: ${optionalKey.type.rawType().classIdOrFail.asSingleFqName()}"
+          )
+
+      // Construct a valid context key for this case
+      val contextKey =
+        type.asContextualTypeKey(
+          qualifierAnnotation = optionalKey.qualifier,
+          // Optionals have default behavior
+          hasDefault = true,
+          patchMutableCollections = true,
+          declaration = null,
+        )
+
+      val binding =
+        IrBinding.CustomWrapper(
+          typeKey = optionalKey,
+          wrapperKey = IrOptionalExpressionGenerator.key,
+          allowsAbsent = true,
+          declaration = declaration,
+          wrappedType = type,
+          wrappedContextKey = contextKey,
+        )
+
+      graph.addBinding(optionalKey, binding, bindingStack)
     }
 
     // Traverse all parent graph supertypes to create binding aliases as needed
