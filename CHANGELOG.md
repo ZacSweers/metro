@@ -6,6 +6,7 @@ Changelog
 
 - **New**: Add interop for Dagger `@BindsOptionalOf`. Note this is currently only limited to `java.util.Optional`.
 - **Enhancement**: Improve error messages for unexpected `IrErrorType` encounters.
+- **Fix**: Allow `@Includes` types themselves (i.e. not their accessors) to be dependencies in generated graphs.
 
 0.6.9
 -----
