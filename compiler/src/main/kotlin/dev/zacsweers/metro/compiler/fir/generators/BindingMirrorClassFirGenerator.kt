@@ -32,6 +32,7 @@ internal class BindingMirrorClassFirGenerator(session: FirSession, compatContext
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(session.predicates.bindsAnnotationPredicate)
     register(session.predicates.multibindsAnnotationPredicate)
+    register(session.predicates.bindsOptionalOfAnnotationPredicate)
   }
 
   // TODO probably not needed?
@@ -67,7 +68,7 @@ internal class BindingMirrorClassFirGenerator(session: FirSession, compatContext
     val hasBindingMembers =
       classSymbol.declarationSymbols.filterIsInstance<FirCallableSymbol<*>>().any { callable ->
         val annotations = callable.metroAnnotations(session)
-        annotations.isBinds || annotations.isMultibinds
+        annotations.isBinds || annotations.isMultibinds || annotations.isBindsOptionalOf
       }
 
     return if (hasBindingMembers) {
