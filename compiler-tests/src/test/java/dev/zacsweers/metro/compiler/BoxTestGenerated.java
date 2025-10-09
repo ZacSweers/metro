@@ -430,6 +430,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("IncludedTypesCanBeUsedAsOtherDeps.kt")
+    public void testIncludedTypesCanBeUsedAsOtherDeps() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/IncludedTypesCanBeUsedAsOtherDeps.kt");
+    }
+
+    @Test
     @TestMetadata("IncludesDeepInheritedInterfacesWork.kt")
     public void testIncludesDeepInheritedInterfacesWork() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/IncludesDeepInheritedInterfacesWork.kt");
