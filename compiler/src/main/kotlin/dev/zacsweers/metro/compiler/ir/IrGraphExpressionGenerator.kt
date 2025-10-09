@@ -88,6 +88,8 @@ private constructor(
     PROVIDER,
   }
 
+  private val wrappedTypeGenerators = listOf(IrOptionalExpressionGenerator).associateBy { it.key }
+
   context(scope: IrBuilderWithScope)
   fun generateBindingCode(
     binding: IrBinding,
@@ -129,13 +131,45 @@ private constructor(
       return when (binding) {
         is IrBinding.ConstructorInjected -> {
           // Example_Factory.create(...)
-          binding.classFactory.invokeCreateExpression(binding.typeKey) { createFunction, parameters ->
+          binding.classFactory.invokeCreateExpression(binding.typeKey) { createFunction, parameters
+            ->
             generateBindingArguments(
               targetParams = parameters,
               function = createFunction,
               binding = binding,
               fieldInitKey = null,
             )
+          }
+        }
+
+        is IrBinding.CustomWrapper -> {
+          val generator =
+            wrappedTypeGenerators[binding.wrapperKey]
+              ?: reportCompilerBug("No generator found for wrapper key: ${binding.wrapperKey}")
+
+          val delegateBinding = bindingGraph.findBinding(binding.wrappedContextKey.typeKey)
+          val isAbsentInGraph = delegateBinding == null
+          val wrappedInstance =
+            if (!isAbsentInGraph) {
+              generateBindingCode(
+                delegateBinding,
+                binding.wrappedContextKey,
+                accessType = AccessType.INSTANCE,
+                fieldInitKey = fieldInitKey,
+              ).let {
+                // TODO clean up accessType not always working
+                irInvoke(it, callee = metroSymbols.providerInvoke)
+              }
+            } else if (binding.allowsAbsent) {
+              null
+            } else {
+              reportCompilerBug("No delegate binding for wrapped type ${binding.typeKey}!")
+            }
+          val instanceExpression = generator.generate(binding, wrappedInstance)
+
+          return when (accessType) {
+            AccessType.INSTANCE -> instanceExpression
+            AccessType.PROVIDER -> instanceFactory(binding.typeKey.type, instanceExpression)
           }
         }
 
@@ -176,8 +210,7 @@ private constructor(
           // Example9_Factory_Impl.create(example9Provider);
           val factoryImpl = assistedFactoryTransformer.getOrGenerateImplClass(binding.type)
 
-          val targetBinding =
-            bindingGraph.requireBinding(binding.target.typeKey)
+          val targetBinding = bindingGraph.requireBinding(binding.target.typeKey)
           val delegateFactoryProvider = generateBindingCode(targetBinding, accessType = accessType)
 
           with(factoryImpl) { invokeCreate(delegateFactoryProvider) }
@@ -335,9 +368,7 @@ private constructor(
                 // Pass the parent graph instance
                 arguments[0] =
                   generateBindingCode(
-                    bindingGraph.requireBinding(
-                      parameters.regularParameters.single().typeKey,
-                    ),
+                    bindingGraph.requireBinding(parameters.regularParameters.single().typeKey),
                     accessType = AccessType.INSTANCE,
                   )
               }
@@ -515,8 +546,7 @@ private constructor(
           }
             ?: run {
               // Generate binding code for each param
-              val paramBinding =
-                bindingGraph.requireBinding(contextualTypeKey)
+              val paramBinding = bindingGraph.requireBinding(contextualTypeKey)
 
               if (paramBinding is IrBinding.Absent) {
                 // Null argument expressions get treated as absent in the final call
@@ -584,11 +614,7 @@ private constructor(
     val elementType = (binding.typeKey.type as IrSimpleType).arguments.single().typeOrFail
     val (collectionProviders, individualProviders) =
       binding.sourceBindings
-        .map {
-          bindingGraph
-            .requireBinding(it)
-            .expectAs<IrBinding.BindingWithAnnotations>()
-        }
+        .map { bindingGraph.requireBinding(it).expectAs<IrBinding.BindingWithAnnotations>() }
         .partition { it.annotations.isElementsIntoSet }
     // If we have any @ElementsIntoSet, we need to use SetFactory
     return if (collectionProviders.isNotEmpty() || contextualTypeKey.requiresProviderInstance) {
@@ -622,10 +648,7 @@ private constructor(
         1 -> {
           // setOf(<one>)
           callee = metroSymbols.setOfSingleton
-          val provider =
-            binding.sourceBindings.first().let {
-              bindingGraph.requireBinding(it)
-            }
+          val provider = binding.sourceBindings.first().let { bindingGraph.requireBinding(it) }
           args = listOf(generateMultibindingArgument(provider, fieldInitKey))
         }
 
@@ -736,7 +759,8 @@ private constructor(
         irInvoke(
           dispatchReceiver = withCollectionProviders,
           callee = valueProviderSymbols.setFactoryBuilderBuildFunction,
-          typeHint = irBuiltIns.setClass.typeWith(elementType).wrapInProvider(metroSymbols.metroProvider),
+          typeHint =
+            irBuiltIns.setClass.typeWith(elementType).wrapInProvider(metroSymbols.metroProvider),
         )
       return with(valueProviderSymbols) {
         transformToMetroProvider(instance, irBuiltIns.setClass.typeWith(elementType))
@@ -765,7 +789,12 @@ private constructor(
       val keyType: IrType = mapTypeArgs[0].typeOrFail
       val rawValueType = mapTypeArgs[1].typeOrFail
       val rawValueTypeMetadata =
-        rawValueType.typeOrFail.asContextualTypeKey(null, hasDefault = false, patchMutableCollections = false, declaration = binding.declaration)
+        rawValueType.typeOrFail.asContextualTypeKey(
+          null,
+          hasDefault = false,
+          patchMutableCollections = false,
+          declaration = binding.declaration,
+        )
 
       // TODO what about Map<String, Provider<Lazy<String>>>?
       //  isDeferrable() but we need to be able to convert back to the middle type
@@ -774,7 +803,13 @@ private constructor(
       // Used to unpack the right provider type
       val originalType = contextualTypeKey.toIrType()
       val originalValueType = valueWrappedType.toIrType()
-      val originalValueContextKey = originalValueType.asContextualTypeKey(null, hasDefault = false, patchMutableCollections = false, declaration = binding.declaration)
+      val originalValueContextKey =
+        originalValueType.asContextualTypeKey(
+          null,
+          hasDefault = false,
+          patchMutableCollections = false,
+          declaration = binding.declaration,
+        )
       val valueProviderSymbols = metroSymbols.providerSymbolsFor(originalValueType)
 
       val valueType: IrType = rawValueTypeMetadata.typeKey.type
