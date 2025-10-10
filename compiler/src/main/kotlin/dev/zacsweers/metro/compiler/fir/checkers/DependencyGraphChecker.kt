@@ -14,7 +14,6 @@ import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.directCallableSymbols
-import dev.zacsweers.metro.compiler.fir.findAnnotation
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isEffectivelyOpen
@@ -293,7 +292,18 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
         callable is FirPropertySymbol ||
           (callable is FirNamedFunctionSymbol && callable.valueParameterSymbols.isEmpty())
       ) {
-        callable.checkOptionalDepAccessor(annotations, isEffectivelyOpen)
+        val hasBody =
+          when (callable) {
+            is FirPropertySymbol -> callable.getterSymbol?.hasBody == true
+            is FirNamedFunctionSymbol -> callable.hasBody
+            else -> false
+          }
+
+        if (annotations.isOptionalDependency) {
+          callable.checkOptionalDepAccessor(isEffectivelyOpen, hasBody)
+        } else if (hasBody) {
+          continue
+        }
 
         val returnType = callable.resolvedReturnTypeRef.coneType
         if (returnType.isUnit) {
@@ -365,13 +375,16 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
                 "Injector functions cannot be annotated with @OptionalDependency.",
               )
             }
-            parameter.annotationsIn(session, setOf(Symbols.ClassIds.OptionalDependency)).firstOrNull()?.let {
-              reporter.reportOn(
-                it.source ?: parameter.source,
-                MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-                "Injector function parameters cannot be annotated with @OptionalDependency.",
-              )
-            }
+            parameter
+              .annotationsIn(session, setOf(Symbols.ClassIds.OptionalDependency))
+              .firstOrNull()
+              ?.let {
+                reporter.reportOn(
+                  it.source ?: parameter.source,
+                  MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+                  "Injector function parameters cannot be annotated with @OptionalDependency.",
+                )
+              }
           }
           // > 1
           else -> {
@@ -450,10 +463,9 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
 
   context(reporter: DiagnosticReporter, context: CheckerContext)
   private fun FirCallableSymbol<*>.checkOptionalDepAccessor(
-    annotations: MetroAnnotations<*>,
     isEffectivelyOpen: Boolean,
+    hasBody: Boolean,
   ) {
-    if (!annotations.isOptionalDependency) return
     if (!isEffectivelyOpen) {
       reporter.reportOn(
         source,
@@ -463,12 +475,6 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
     }
 
     // Must have a body
-    val hasBody =
-      when (this) {
-        is FirPropertySymbol -> getterSymbol?.hasBody == true
-        is FirNamedFunctionSymbol -> hasBody
-        else -> false
-      }
     if (!hasBody) {
       reporter.reportOn(
         source,
