@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.drewhamilton.poko.Poko
-import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.BaseContextualTypeKey
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
@@ -105,13 +104,14 @@ internal class IrContextualTypeKey(
     }
 
     context(context: IrMetroContext)
-    fun from(parameter: IrValueParameter, type: IrType = parameter.type): IrContextualTypeKey =
-      type.asContextualTypeKey(
+    fun from(parameter: IrValueParameter, type: IrType = parameter.type): IrContextualTypeKey {
+      return type.asContextualTypeKey(
         qualifierAnnotation = with(context) { parameter.qualifierAnnotation() },
-        hasDefault = parameter.defaultValue != null,
+        hasDefault = parameter.hasMetroDefault(),
         patchMutableCollections = false,
         declaration = parameter,
       )
+    }
 
     fun create(
       typeKey: IrTypeKey,

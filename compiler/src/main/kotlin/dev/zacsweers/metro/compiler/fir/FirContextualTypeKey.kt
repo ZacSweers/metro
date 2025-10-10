@@ -89,7 +89,7 @@ internal class FirContextualTypeKey(
           session = session,
           qualifierAnnotation =
             callable.findAnnotation(session, FirBasedSymbol<*>::qualifierAnnotation),
-          hasDefault = callable is FirValueParameterSymbol && callable.hasDefaultValue,
+          hasDefault = callable is FirValueParameterSymbol && callable.hasMetroDefault(session),
         )
     }
   }

@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.ir.NOOP_TYPE_REMAPPER
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.constArgumentOfTypeAt
+import dev.zacsweers.metro.compiler.ir.hasMetroDefault
 import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -209,7 +210,8 @@ internal fun IrValueParameter.toConstructorParameter(
   // type mangling
   val declaredType = remapper.remapType(this@toConstructorParameter.type)
 
-  val contextKey = declaredType.asContextualTypeKey(qualifierAnnotation(), defaultValue != null, patchMutableCollections = false, declaration = this)
+  val contextKey = declaredType.asContextualTypeKey(qualifierAnnotation(),
+    hasMetroDefault(), patchMutableCollections = false, declaration = this)
 
   val assistedAnnotation = annotationsIn(context.metroSymbols.assistedAnnotations).singleOrNull()
 

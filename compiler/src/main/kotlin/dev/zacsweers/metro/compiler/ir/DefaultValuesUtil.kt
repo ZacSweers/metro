@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.OptionalDependencyBehavior
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import org.jetbrains.kotlin.ir.IrElement
@@ -39,6 +40,7 @@ internal fun copyParameterDefaultValues(
   targetGraphParameter: IrValueParameter?,
   wrapInProvider: Boolean = false,
 ) {
+  if (context.options.optionalDependencyBehavior == OptionalDependencyBehavior.DISABLED) return
   if (sourceParameters.isEmpty()) return
   check(sourceParameters.size == targetParameters.size) {
     "Source parameters (${sourceParameters.size}) and target parameters (${targetParameters.size}) must be the same size! Function: ${sourceParameters.first().parent.kotlinFqName}"

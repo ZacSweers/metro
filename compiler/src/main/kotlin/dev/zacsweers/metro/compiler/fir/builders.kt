@@ -128,28 +128,32 @@ internal fun FirExtension.copyParameters(
           symbol = FirValueParameterSymbol()
           containingDeclarationSymbol = functionBuilder.symbol
           parameterInit(original)
-          if (!copyParameterDefaults) {
-            if (originalFir.symbol.hasDefaultValue) {
-              defaultValue = buildFunctionCall {
-                this.coneTypeOrNull = session.builtinTypes.nothingType.coneType
-                this.calleeReference = buildResolvedNamedReference {
-                  this.resolvedSymbol = session.metroFirBuiltIns.errorFunctionSymbol
-                  this.name = session.metroFirBuiltIns.errorFunctionSymbol.name
+          if (originalFir.symbol.hasDefaultValue) {
+            if (originalFir.symbol.hasMetroDefault(session)) {
+              if (!copyParameterDefaults) {
+                defaultValue = buildFunctionCall {
+                  this.coneTypeOrNull = session.builtinTypes.nothingType.coneType
+                  this.calleeReference = buildResolvedNamedReference {
+                    this.resolvedSymbol = session.metroFirBuiltIns.errorFunctionSymbol
+                    this.name = session.metroFirBuiltIns.errorFunctionSymbol.name
+                  }
+                  argumentList =
+                    buildResolvedArgumentList(
+                      buildArgumentList {
+                        this.arguments +=
+                          buildLiteralExpression(
+                            source = null,
+                            kind = ConstantValueKind.String,
+                            value = "Replaced in IR",
+                            setType = true,
+                          )
+                      },
+                      LinkedHashMap(),
+                    )
                 }
-                argumentList =
-                  buildResolvedArgumentList(
-                    buildArgumentList {
-                      this.arguments +=
-                        buildLiteralExpression(
-                          source = null,
-                          kind = ConstantValueKind.String,
-                          value = "Replaced in IR",
-                          setType = true,
-                        )
-                    },
-                    LinkedHashMap(),
-                  )
               }
+            } else {
+              defaultValue = null
             }
           }
         }

@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
+import dev.zacsweers.metro.compiler.ir.hasMetroDefault
 import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
@@ -39,7 +40,6 @@ import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.functions
-import org.jetbrains.kotlin.ir.util.hasDefaultValue
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.parentAsClass
 
@@ -179,8 +179,10 @@ internal fun generateMetadataVisibleMirrorFunction(
         regularParameters.forEach {
           // If it has a default value expression, just replace it with a stub. We don't need it to
           // be functional, we just need it to be indicated
-          if (it.hasDefaultValue()) {
+          if (it.hasMetroDefault()) {
             it.defaultValue = context.createIrBuilder(symbol).run { irExprBody(stubExpression()) }
+          } else {
+            it.defaultValue = null
           }
         }
         // The function's signature already matches the target function's signature, all we need
