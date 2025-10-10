@@ -220,3 +220,21 @@ private fun <T> Appendable.appendElement(element: T, transform: ((T) -> CharSequ
     else -> append(element.toString())
   }
 }
+
+internal fun computeMetroDefault(
+  behavior: OptionalDependencyBehavior,
+  isAnnotatedOptionalDep: () -> Boolean,
+  hasDefaultValue: () -> Boolean
+): Boolean {
+  return if (behavior == OptionalDependencyBehavior.DISABLED) {
+    false
+  } else if (hasDefaultValue()) {
+    if (behavior.requiresAnnotatedParameters) {
+      isAnnotatedOptionalDep()
+    } else {
+      true
+    }
+  } else {
+    false
+  }
+}

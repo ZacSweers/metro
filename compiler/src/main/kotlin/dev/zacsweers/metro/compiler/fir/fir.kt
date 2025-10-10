@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.fir
 
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.computeMetroDefault
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.generators.collectAbstractFunctions
 import dev.zacsweers.metro.compiler.mapToArray
@@ -93,6 +94,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirPropertyAccessorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
@@ -1201,3 +1203,14 @@ internal fun FirClassSymbol<*>.originClassId(
     .firstOrNull()
     ?.originArgument()
     ?.resolveClassId(typeResolver)
+
+
+internal fun FirValueParameterSymbol.hasMetroDefault(
+  session: FirSession,
+): Boolean {
+  return computeMetroDefault(
+    behavior = session.metroFirBuiltIns.options.optionalDependencyBehavior,
+    isAnnotatedOptionalDep = { hasAnnotation(Symbols.ClassIds.OptionalDependency, session) },
+    hasDefaultValue = { this@hasMetroDefault.hasDefaultValue }
+  )
+}

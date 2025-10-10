@@ -7,8 +7,8 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.Symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.computeMetroDefault
 import dev.zacsweers.metro.compiler.exitProcessing
-import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ifNotEmpty
@@ -1679,4 +1679,13 @@ internal fun IrType.requireSimpleType(
   } else {
     reportCompilerBug("Expected $this to be an ${IrSimpleType::class.qualifiedName} but was ${this::class.qualifiedName}")
   }
+}
+
+context(context: IrMetroContext)
+internal fun IrValueParameter.hasMetroDefault(): Boolean {
+  return computeMetroDefault(
+    behavior = context.options.optionalDependencyBehavior,
+    isAnnotatedOptionalDep = { hasAnnotation(Symbols.ClassIds.OptionalDependency) },
+    hasDefaultValue = { defaultValue != null }
+  )
 }
