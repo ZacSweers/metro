@@ -267,6 +267,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       public void testDisabledResultsInMissingBindings() {
         runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/optional/DisabledResultsInMissingBindings.kt");
       }
+
+      @Test
+      @TestMetadata("DisabledResultsInMissingBindingsEvenWithAnnotation.kt")
+      public void testDisabledResultsInMissingBindingsEvenWithAnnotation() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/optional/DisabledResultsInMissingBindingsEvenWithAnnotation.kt");
+      }
     }
   }
 
