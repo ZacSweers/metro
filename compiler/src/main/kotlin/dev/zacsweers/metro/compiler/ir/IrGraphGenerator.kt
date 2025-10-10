@@ -493,7 +493,16 @@ internal class IrGraphGenerator(
 
   private fun DependencyGraphNode.implementOverrides() {
     // Implement abstract getters for accessors
-    accessors.forEach { (function, contextualTypeKey) ->
+    for ((contextualTypeKey, function, isOptionalDep) in accessors) {
+      val binding = bindingGraph.findBinding(contextualTypeKey.typeKey)
+
+      if (isOptionalDep && binding == null)  {
+        continue // Just use its default impl
+      } else if (binding == null) {
+        // Should never happen
+        reportCompilerBug("No binding found for $contextualTypeKey")
+      }
+
       function.ir.apply {
         val declarationToFinalize =
           function.ir.propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
@@ -501,7 +510,6 @@ internal class IrGraphGenerator(
           declarationToFinalize.finalizeFakeOverride(graphClass.thisReceiverOrFail)
         }
         val irFunction = this
-        val binding = bindingGraph.requireBinding(contextualTypeKey)
         body =
           createIrBuilder(symbol).run {
             if (binding is IrBinding.Multibinding) {
@@ -525,7 +533,7 @@ internal class IrGraphGenerator(
     }
 
     // Implement abstract injectors
-    injectors.forEach { (overriddenFunction, contextKey) ->
+    for ((contextKey, overriddenFunction) in injectors) {
       val typeKey = contextKey.typeKey
       overriddenFunction.ir.apply {
         finalizeFakeOverride(graphClass.thisReceiverOrFail)
@@ -548,10 +556,10 @@ internal class IrGraphGenerator(
               typeKey.copy(typeKey.type.requireSimpleType(targetParam).arguments[0].typeOrFail)
 
             for (type in
-              pluginContext
-                .referenceClass(binding.targetClassId)!!
-                .owner
-                .getAllSuperTypes(excludeSelf = false, excludeAny = true)) {
+            pluginContext
+              .referenceClass(binding.targetClassId)!!
+              .owner
+              .getAllSuperTypes(excludeSelf = false, excludeAny = true)) {
               val clazz = type.rawType()
               val generatedInjector =
                 membersInjectorTransformer.getOrGenerateInjector(clazz) ?: continue

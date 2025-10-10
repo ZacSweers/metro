@@ -477,8 +477,8 @@ internal class DependencyGraphTransformer(
         implementCreatorFunctions(node.sourceGraph, node.creator, node.sourceGraph.metroGraphOrFail)
 
         node.accessors
-          .map { it.first.ir }
-          .plus(node.injectors.map { it.first.ir })
+          .map { it.metroFunction.ir }
+          .plus(node.injectors.map { it.metroFunction.ir })
           .plus(node.bindsCallables.map { it.callableMetadata.function })
           .plus(node.graphExtensions.flatMap { it.value }.map { it.accessor.ir })
           .filterNot { it.isExternalParent }

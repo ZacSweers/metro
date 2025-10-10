@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
@@ -340,20 +341,21 @@ internal fun IrStatementsBuilder<*>.irTemporary(
   irType: IrType = value?.type!!, // either value or irType should be supplied at callsite
   isMutable: Boolean = false,
   origin: IrDeclarationOrigin = IrDeclarationOrigin.IR_TEMPORARY_VARIABLE,
-): IrVariable = with(context) {
-  val temporary =
-    scope.createTemporaryVariableDeclarationCompat(
-      irType,
-      nameHint,
-      isMutable,
-      startOffset = startOffset,
-      endOffset = endOffset,
-      origin = origin,
-    )
-  value?.let { temporary.initializer = it }
-  +temporary
-  return temporary
-}
+): IrVariable =
+  with(context) {
+    val temporary =
+      scope.createTemporaryVariableDeclarationCompat(
+        irType,
+        nameHint,
+        isMutable,
+        startOffset = startOffset,
+        endOffset = endOffset,
+        origin = origin,
+      )
+    value?.let { temporary.initializer = it }
+    +temporary
+    return temporary
+  }
 
 /**
  * Computes a hash key for this annotation instance composed of its underlying type and value
@@ -829,7 +831,9 @@ internal fun IrConstructorCall.scopeClassOrNull(): IrClass? {
 
 context(context: IrMetroContext)
 internal fun IrClass.originClassId(): ClassId? {
-  return annotationsIn(context.metroSymbols.classIds.originAnnotations).firstOrNull()?.originOrNull()
+  return annotationsIn(context.metroSymbols.classIds.originAnnotations)
+    .firstOrNull()
+    ?.originOrNull()
 }
 
 internal fun IrConstructorCall.requireOrigin(): ClassId {
@@ -1034,8 +1038,10 @@ internal val IrProperty.allAnnotations: List<IrConstructorCall>
   }
 
 context(context: IrMetroContext)
-internal fun metroAnnotationsOf(ir: IrAnnotationContainer) =
-  ir.metroAnnotations(context.metroSymbols.classIds)
+internal fun metroAnnotationsOf(
+  ir: IrAnnotationContainer,
+  kinds: Set<MetroAnnotations.Kind> = MetroAnnotations.ALL_KINDS,
+) = ir.metroAnnotations(context.metroSymbols.classIds, kinds)
 
 internal fun IrClass.requireSimpleFunction(name: String) =
   getSimpleFunction(name)
@@ -1119,7 +1125,10 @@ context(context: IrMetroContext)
 internal fun IrBuilderWithScope.stubExpression(
   message: String = "Never called"
 ): IrMemberAccessExpression<*> {
-  return irInvoke(callee = context.metroSymbols.stdlibErrorFunction, args = listOf(irString(message)))
+  return irInvoke(
+    callee = context.metroSymbols.stdlibErrorFunction,
+    args = listOf(irString(message)),
+  )
 }
 
 context(context: IrPluginContext)
@@ -1501,7 +1510,9 @@ internal fun IrProperty?.qualifierAnnotation(): IrAnnotation? {
 
 context(context: IrMetroContext)
 internal fun IrAnnotationContainer?.qualifierAnnotation() =
-  annotationsAnnotatedWith(context.metroSymbols.qualifierAnnotations).singleOrNull()?.let(::IrAnnotation)
+  annotationsAnnotatedWith(context.metroSymbols.qualifierAnnotations)
+    .singleOrNull()
+    ?.let(::IrAnnotation)
 
 context(context: IrMetroContext)
 internal fun IrAnnotationContainer?.scopeAnnotations() =
@@ -1514,7 +1525,9 @@ internal fun IrAnnotationContainer.explicitMapKeyAnnotation() =
 
 context(context: IrMetroContext)
 internal fun IrAnnotationContainer.mapKeyAnnotation() =
-  annotationsAnnotatedWith(context.metroSymbols.mapKeyAnnotations).singleOrNull()?.let(::IrAnnotation)
+  annotationsAnnotatedWith(context.metroSymbols.mapKeyAnnotations)
+    .singleOrNull()
+    ?.let(::IrAnnotation)
 
 private fun IrAnnotationContainer?.annotationsAnnotatedWith(
   annotationsToLookFor: Collection<ClassId>
@@ -1656,9 +1669,7 @@ internal fun IrDeclarationWithVisibility.isVisibleAsInternal(file: IrFile): Bool
 }
 
 context(context: IrMetroContext)
-internal fun IrType.requireSimpleType(
-  declaration: IrDeclaration? = null
-): IrSimpleType {
+internal fun IrType.requireSimpleType(declaration: IrDeclaration? = null): IrSimpleType {
   return requireSimpleType(declaration, context)
 }
 
@@ -1669,7 +1680,8 @@ internal fun IrType.requireSimpleType(
   if (this is IrSimpleType) return this
 
   if (this is IrErrorType) {
-    val message = "Unexpected IR error type. Make sure you don't have any missing dependencies or imports."
+    val message =
+      "Unexpected IR error type. Make sure you don't have any missing dependencies or imports."
     if (declaration != null && context != null) {
       context.reportCompat(declaration, MetroDiagnostics.METRO_ERROR, message)
       exitProcessing()
@@ -1677,7 +1689,9 @@ internal fun IrType.requireSimpleType(
       error(message)
     }
   } else {
-    reportCompilerBug("Expected $this to be an ${IrSimpleType::class.qualifiedName} but was ${this::class.qualifiedName}")
+    reportCompilerBug(
+      "Expected $this to be an ${IrSimpleType::class.qualifiedName} but was ${this::class.qualifiedName}"
+    )
   }
 }
 
@@ -1686,6 +1700,6 @@ internal fun IrValueParameter.hasMetroDefault(): Boolean {
   return computeMetroDefault(
     behavior = context.options.optionalDependencyBehavior,
     isAnnotatedOptionalDep = { hasAnnotation(Symbols.ClassIds.OptionalDependency) },
-    hasDefaultValue = { defaultValue != null }
+    hasDefaultValue = { defaultValue != null },
   )
 }

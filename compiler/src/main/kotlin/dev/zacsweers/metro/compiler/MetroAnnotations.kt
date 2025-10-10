@@ -57,6 +57,7 @@ internal class MetroAnnotations<T>(
   val isAssistedFactory: Boolean = false,
   val isComposable: Boolean = false,
   val isBindsOptionalOf: Boolean = false,
+  val isOptionalDependency: Boolean = false,
   val multibinds: T? = null,
   val assisted: T? = null,
   val scope: T? = null,
@@ -94,6 +95,7 @@ internal class MetroAnnotations<T>(
     isAssistedFactory: Boolean = this.isAssistedFactory,
     isComposable: Boolean = this.isComposable,
     isBindsOptionalOf: Boolean = this.isBindsOptionalOf,
+    isOptionalDependency: Boolean = this.isOptionalDependency,
     multibinds: T? = this.multibinds,
     assisted: T? = this.assisted,
     scope: T? = this.scope,
@@ -113,6 +115,7 @@ internal class MetroAnnotations<T>(
       isAssistedFactory,
       isComposable,
       isBindsOptionalOf,
+      isOptionalDependency,
       multibinds,
       assisted,
       scope,
@@ -159,10 +162,13 @@ internal class MetroAnnotations<T>(
     Qualifier,
     MapKey,
     BindsOptionalOf,
+    OptionalDependency,
     ;
   }
 
   companion object {
+    internal val ALL_KINDS = EnumSet.allOf(Kind::class.java)
+
     private val NONE =
       MetroAnnotations<Any>(
         isDependencyGraph = false,
@@ -188,11 +194,9 @@ internal class MetroAnnotations<T>(
   }
 }
 
-private val ALL_KINDS = EnumSet.allOf(Kind::class.java)
-
 private fun kindSetOf(vararg kinds: Kind): Set<Kind> {
   return if (kinds.isEmpty()) {
-    ALL_KINDS
+    MetroAnnotations.ALL_KINDS
   } else if (kinds.size == 1) {
     EnumSet.of(kinds[0])
   } else {
@@ -212,7 +216,7 @@ internal fun IrAnnotationContainer.metroAnnotations(
 
 internal fun IrAnnotationContainer.metroAnnotations(
   ids: ClassIds,
-  kinds: Set<Kind> = ALL_KINDS,
+  kinds: Set<Kind> = MetroAnnotations.ALL_KINDS,
 ): MetroAnnotations<IrAnnotation> = metroAnnotations(ids, null, kinds)
 
 private fun IrAnnotationContainer.metroAnnotations(
@@ -232,6 +236,7 @@ private fun IrAnnotationContainer.metroAnnotations(
   var isAssistedFactory = false
   var isComposable = false
   var isBindsOptionalOf = false
+  var isOptionalDependency = false
   var multibinds: IrAnnotation? = null
   var assisted: IrAnnotation? = null
   var scope: IrAnnotation? = null
@@ -252,6 +257,10 @@ private fun IrAnnotationContainer.metroAnnotations(
           }
           in ids.assistedAnnotations if (Kind.Assisted in kinds) -> {
             assisted = expectNullAndSet("assisted", assisted, annotation.asIrAnnotation())
+            continue
+          }
+          Symbols.ClassIds.OptionalDependency if (Kind.OptionalDependency in kinds) -> {
+            isOptionalDependency = true
             continue
           }
         }
@@ -291,6 +300,10 @@ private fun IrAnnotationContainer.metroAnnotations(
           }
           Symbols.DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF if (Kind.BindsOptionalOf in kinds) -> {
             isBindsOptionalOf = true
+            continue
+          }
+          Symbols.ClassIds.OptionalDependency if (Kind.OptionalDependency in kinds) -> {
+            isOptionalDependency = true
             continue
           }
         }
@@ -348,6 +361,7 @@ private fun IrAnnotationContainer.metroAnnotations(
       isAssistedFactory = isAssistedFactory,
       isComposable = isComposable,
       isBindsOptionalOf = isBindsOptionalOf,
+      isOptionalDependency = isOptionalDependency,
       multibinds = multibinds,
       assisted = assisted,
       scope = scope,
@@ -442,7 +456,7 @@ internal fun FirBasedSymbol<*>.metroAnnotations(
 
 internal fun FirBasedSymbol<*>.metroAnnotations(
   session: FirSession,
-  kinds: Set<Kind> = ALL_KINDS,
+  kinds: Set<Kind> = MetroAnnotations.ALL_KINDS,
 ): MetroAnnotations<MetroFirAnnotation> {
   return metroAnnotations(session, null, kinds)
 }
@@ -465,6 +479,7 @@ private fun FirBasedSymbol<*>.metroAnnotations(
   var isAssistedFactory = false
   var isComposable = false
   var isBindsOptionalOf = false
+  var isOptionalDependency = false
   var multibinds: MetroFirAnnotation? = null
   var assisted: MetroFirAnnotation? = null
   var scope: MetroFirAnnotation? = null
@@ -488,6 +503,10 @@ private fun FirBasedSymbol<*>.metroAnnotations(
           in ids.assistedAnnotations if (Kind.Assisted in kinds) -> {
             assisted =
               expectNullAndSet("assisted", assisted, MetroFirAnnotation(annotation, session))
+            continue
+          }
+          Symbols.ClassIds.OptionalDependency if (Kind.OptionalDependency in kinds) -> {
+            isOptionalDependency = true
             continue
           }
         }
@@ -529,6 +548,10 @@ private fun FirBasedSymbol<*>.metroAnnotations(
           }
           Symbols.DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF if (session.metroFirBuiltIns.options.enableDaggerRuntimeInterop && Kind.BindsOptionalOf in kinds) -> {
             isBindsOptionalOf = true
+            continue
+          }
+          Symbols.ClassIds.OptionalDependency if (Kind.OptionalDependency in kinds) -> {
+            isOptionalDependency = true
             continue
           }
         }
@@ -589,6 +612,7 @@ private fun FirBasedSymbol<*>.metroAnnotations(
       isAssistedFactory = isAssistedFactory,
       isComposable = isComposable,
       isBindsOptionalOf = isBindsOptionalOf,
+      isOptionalDependency = isOptionalDependency,
       multibinds = multibinds,
       assisted = assisted,
       scope = scope,

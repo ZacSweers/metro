@@ -35,7 +35,7 @@ internal data class DependencyGraphNode(
   val providerFactories: List<Pair<IrTypeKey, ProviderFactory>>,
   // Types accessible via this graph (includes inherited)
   // Dagger calls these "provision methods", but that's a bit vague IMO
-  val accessors: List<Pair<MetroSimpleFunction, IrContextualTypeKey>>,
+  val accessors: List<GraphAccessor>,
   val bindsCallables: Set<BindsCallable>,
   val multibindsCallables: Set<MultibindsCallable>,
   val optionalKeys: Map<IrTypeKey, Set<BindsOptionalOfCallable>>,
@@ -44,7 +44,7 @@ internal data class DependencyGraphNode(
   /** Fake overrides of binds functions that need stubbing. */
   val bindsFunctions: List<MetroSimpleFunction>,
   // TypeKey key is the injected type wrapped in MembersInjector
-  val injectors: List<Pair<MetroSimpleFunction, IrContextualTypeKey>>,
+  val injectors: List<InjectorFunction>,
   val isExternal: Boolean,
   val creator: Creator?,
   val extendedGraphNodes: Map<IrTypeKey, DependencyGraphNode>,
@@ -77,7 +77,7 @@ internal data class DependencyGraphNode(
   val originalTypeKey
     get() = contributedGraphTypeKey ?: typeKey
 
-  val publicAccessors by unsafeLazy { accessors.mapToSet { (_, contextKey) -> contextKey.typeKey } }
+  val publicAccessors by unsafeLazy { accessors.mapToSet { it.contextKey.typeKey } }
 
   val reportableSourceGraphDeclaration by unsafeLazy {
     generateSequence(sourceGraph) { it.parentAsClass }
@@ -96,8 +96,8 @@ internal data class DependencyGraphNode(
             bitfield.isSet(index)
           }
         accessors
-          .filter { it.first.ir.name.asString() in multibindingCallableIds }
-          .mapToSet { it.first }
+          .filter { it.metroFunction.ir.name.asString() in multibindingCallableIds }
+          .mapToSet { it.metroFunction }
       }
       .orEmpty()
   }

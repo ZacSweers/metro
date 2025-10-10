@@ -85,6 +85,7 @@ internal class IrContextualTypeKey(
       type: IrType = function.returnType,
       wrapInProvider: Boolean = false,
       patchMutableCollections: Boolean = false,
+      hasDefaultOverride: Boolean = false,
     ): IrContextualTypeKey {
       val typeToConvert =
         if (wrapInProvider) {
@@ -97,7 +98,7 @@ internal class IrContextualTypeKey(
           function.correspondingPropertySymbol?.owner?.qualifierAnnotation()
             ?: function.qualifierAnnotation()
         },
-        false,
+        hasDefaultOverride,
         patchMutableCollections,
         declaration = function,
       )
@@ -158,8 +159,8 @@ internal class IrContextualTypeKey(
     }
 
     /** Left for backward compat */
-    operator fun invoke(typeKey: IrTypeKey): IrContextualTypeKey {
-      return create(typeKey)
+    operator fun invoke(typeKey: IrTypeKey, hasDefault: Boolean = false): IrContextualTypeKey {
+      return create(typeKey, hasDefault = hasDefault)
     }
   }
 }

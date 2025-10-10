@@ -477,12 +477,12 @@ internal class BindingGraphGenerator(
       addAll(
         node.allExtendedNodes.flatMap { (_, extendedNode) ->
           // Pass down @Multibinds declarations in the same way we do for multibinding providers
-          extendedNode.accessors.filter { it.first.annotations.isMultibinds }
+          extendedNode.accessors.filter { it.metroFunction.annotations.isMultibinds }
         }
       )
     }
 
-    for ((getter, contextualTypeKey) in accessorsToAdd) {
+    for ((contextualTypeKey, getter, _) in accessorsToAdd) {
       val multibinds = getter.annotations.multibinds
       val isMultibindingDeclaration = multibinds != null
 
@@ -532,7 +532,7 @@ internal class BindingGraphGenerator(
     // accessors
     for ((depNodeKey, depNode) in node.includedGraphNodes) {
       // Only add accessors for included types
-      for ((getter, contextualTypeKey) in depNode.accessors) {
+      for ((contextualTypeKey, getter, _) in depNode.accessors) {
         // Add a ref to the included graph if not already present
         if (depNodeKey !in graph) {
           graph.addBinding(
@@ -672,7 +672,7 @@ internal class BindingGraphGenerator(
     }
 
     // Add MembersInjector bindings defined on injector functions
-    for ((injector, contextKey) in node.injectors) {
+    for ((contextKey, injector) in node.injectors) {
       val entry = IrBindingStack.Entry.requestedAt(contextKey, injector.ir)
 
       graph.addInjector(contextKey, entry)

@@ -28,15 +28,15 @@ internal fun DependencyGraphNode.toProto(
   var multibindingAccessors = 0
   val accessorNames =
     accessors
-      .sortedBy { it.first.ir.name.asString() }
-      .onEachIndexed { index, (_, contextKey) ->
+      .sortedBy { it.metroFunction.ir.name.asString() }
+      .onEachIndexed { index, (contextKey, _, _) ->
         val isMultibindingAccessor =
           bindingGraph.requireBinding(contextKey) is IrBinding.Multibinding
         if (isMultibindingAccessor) {
           multibindingAccessors = multibindingAccessors or (1 shl index)
         }
       }
-      .map { it.first.ir.name.asString() }
+      .map { it.metroFunction.ir.name.asString() }
 
   return createGraphProto(
     isGraph = true,
