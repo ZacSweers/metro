@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir
 
+import dev.zacsweers.metro.compiler.OptionalDependencyBehavior
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import org.jetbrains.kotlin.KtSourceElement
@@ -32,6 +33,8 @@ internal fun validateInjectionSiteType(
   qualifier: MetroFirAnnotation?,
   source: KtSourceElement?,
   isAccessor: Boolean = false,
+  isOptionalDependency: Boolean = false,
+  hasDefault: Boolean = false,
 ): Boolean {
   val type = typeRef.coneTypeOrNull ?: return true
   val contextKey = type.asFirContextualTypeKey(session, qualifier, false)
@@ -82,6 +85,53 @@ internal fun validateInjectionSiteType(
     }
   }
 
+  if (!isAccessor && (isOptionalDependency || hasDefault)) {
+    fun ensureHasDefault(): Boolean {
+      return if (!hasDefault) {
+        reporter.reportOn(
+          typeRef.source ?: source,
+          MetroDiagnostics.OPTIONAL_DEPENDENCY_ERROR,
+          "@OptionalDependency-annotated parameters must have a default value.",
+        )
+        false
+      } else {
+        true
+      }
+    }
+
+    val behavior = session.metroFirBuiltIns.options.optionalDependencyBehavior
+    when (behavior) {
+      // If it's disabled, this annotation isn't gonna do anything. Error because it's def not gonna
+      // behave the way they expect
+      OptionalDependencyBehavior.DISABLED if isOptionalDependency -> {
+        reporter.reportOn(
+          source,
+          MetroDiagnostics.OPTIONAL_DEPENDENCY_ERROR,
+          "@OptionalDependency is disabled in this project.",
+        )
+      }
+      // If it's the default, the annotation is redundant. Just a warning
+      OptionalDependencyBehavior.REQUIRE_OPTIONAL_DEPENDENCY -> {
+        // Ensure default
+        ensureHasDefault()
+      }
+      OptionalDependencyBehavior.DEFAULT -> {
+        // Ensure there's a default value
+        val hasDefault = ensureHasDefault()
+        if (hasDefault && isOptionalDependency) {
+          reporter.reportOn(
+            source,
+            MetroDiagnostics.OPTIONAL_DEPENDENCY_WARNING,
+            "@OptionalDependency is redundant in this project as the presence of a default value is sufficient.",
+          )
+        }
+      }
+      else -> {
+        // Do nothing
+      }
+    }
+  }
+
   // Future injection site checks can be added here
 
   return false
@@ -118,10 +168,10 @@ private fun checkProviderOfLazy(
   isAccessor: Boolean,
 ) {
   if (isAccessor) {
-//    reporter.reportOn(
-//      typeRef.source ?: source,
-//      MetroDiagnostics.PROVIDERS_OF_LAZY_CANNOT_BE_ACCESSORS,
-//    )
+    //    reporter.reportOn(
+    //      typeRef.source ?: source,
+    //      MetroDiagnostics.PROVIDERS_OF_LAZY_CANNOT_BE_ACCESSORS,
+    //    )
   }
 
   // Check if this is a non-metro provider + kotlin lazy. We only support either all dagger or all

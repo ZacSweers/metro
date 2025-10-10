@@ -10,7 +10,7 @@ interface Base {
   val int: Int
 
   @Provides
-  fun provideInt(@OptionalDependency long: Long? = null): Int = long?.toInt() ?: 3
+  fun provideInt(long: Long? = null): Int = long?.toInt() ?: 3
 }
 
 // MODULE: main(lib)

@@ -11,5 +11,5 @@ interface AppGraph {
   val int: Int
 
   @Provides
-  fun provideInt(<!METRO_ERROR!>@OptionalDependency long: Long? = null<!>): Int = long?.toInt() ?: 3
+  fun provideInt(<!METRO_ERROR!>long: Long? = null<!>): Int = long?.toInt() ?: 3
 }

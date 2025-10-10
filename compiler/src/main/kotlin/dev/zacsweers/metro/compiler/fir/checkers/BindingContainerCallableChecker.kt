@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
+import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
@@ -344,11 +345,12 @@ internal object BindingContainerCallableChecker :
 
       if (declaration is FirSimpleFunction) {
         for (parameter in declaration.valueParameters) {
-          val assistedAnnotation =
-            parameter.annotationsIn(session, classIds.assistedAnnotations).firstOrNull()
+          val annotations = parameter.symbol.metroAnnotations(session, MetroAnnotations.Kind.OptionalDependency, MetroAnnotations.Kind.Assisted, MetroAnnotations.Kind.Qualifier)
+
+          val assistedAnnotation = annotations.assisted
           if (assistedAnnotation != null) {
             reporter.reportOn(
-              assistedAnnotation.source ?: parameter.source ?: source,
+              assistedAnnotation.fir.source ?: parameter.source ?: source,
               MetroDiagnostics.PROVIDES_ERROR,
               "Assisted parameters are not supported for `@Provides` methods. Create a concrete assisted-injected factory class instead.",
             )
@@ -360,8 +362,10 @@ internal object BindingContainerCallableChecker :
             validateInjectionSiteType(
               session,
               parameter.returnTypeRef,
-              parameter.annotations.qualifierAnnotation(session),
+              annotations.qualifier,
               parameter.source ?: source,
+              isOptionalDependency = annotations.isOptionalDependency,
+              hasDefault = parameter.symbol.hasDefaultValue,
             )
           ) {
             return

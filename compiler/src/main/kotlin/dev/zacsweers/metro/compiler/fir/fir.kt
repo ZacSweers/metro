@@ -24,9 +24,11 @@ import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.analysis.checkers.classKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaredMemberScope
 import org.jetbrains.kotlin.fir.analysis.checkers.getAllowedAnnotationTargets
+import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
@@ -43,7 +45,9 @@ import org.jetbrains.kotlin.fir.declarations.primaryConstructorIfAny
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
+import org.jetbrains.kotlin.fir.declarations.utils.isFinal
 import org.jetbrains.kotlin.fir.declarations.utils.isLocal
+import org.jetbrains.kotlin.fir.declarations.utils.isOpen
 import org.jetbrains.kotlin.fir.declarations.utils.modality
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.deserialization.toQualifiedPropertyAccessExpression
@@ -1213,4 +1217,21 @@ internal fun FirValueParameterSymbol.hasMetroDefault(
     isAnnotatedOptionalDep = { hasAnnotation(Symbols.ClassIds.OptionalDependency, session) },
     hasDefaultValue = { this@hasMetroDefault.hasDefaultValue }
   )
+}
+
+internal fun FirCallableSymbol<*>.isEffectivelyOpen(): Boolean {
+  if (visibility == Visibilities.Private) return false
+
+  // If it's in an interface - not private
+  // If it's in an abstract class - open
+  val containingClass = getContainingClassSymbol() ?: return false
+  val containingClassKind = containingClass.classKind ?: return false
+  return when (containingClassKind) {
+    ClassKind.INTERFACE -> true
+    ClassKind.CLASS -> !containingClass.isFinal && (isOpen || isAbstract)
+    ClassKind.ENUM_CLASS,
+    ClassKind.ENUM_ENTRY,
+    ClassKind.ANNOTATION_CLASS,
+    ClassKind.OBJECT -> false
+  }
 }

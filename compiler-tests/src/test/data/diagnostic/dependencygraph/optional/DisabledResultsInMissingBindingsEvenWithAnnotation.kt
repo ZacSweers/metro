@@ -3,7 +3,7 @@
 // OPTIONAL_DEPENDENCY_BEHAVIOR: DISABLED
 
 @Inject
-class Example(<!ANNOTATION_WILL_BE_APPLIED_ALSO_TO_PROPERTY_OR_FIELD!>@OptionalDependency<!> <!METRO_ERROR!>val value: String? = null<!>)
+class Example(<!METRO_ERROR!>val value: String? = null<!>)
 
 @DependencyGraph
 interface AppGraph {
@@ -11,5 +11,5 @@ interface AppGraph {
   val int: Int
 
   @Provides
-  fun provideInt(<!METRO_ERROR!>@OptionalDependency long: Long? = null<!>): Int = long?.toInt() ?: 3
+  fun provideInt(<!METRO_ERROR!>long: Long? = null<!>): Int = long?.toInt() ?: 3
 }

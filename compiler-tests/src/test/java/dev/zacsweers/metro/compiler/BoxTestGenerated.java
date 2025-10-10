@@ -484,6 +484,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("OpenAccessorsInClasses.kt")
+    public void testOpenAccessorsInClasses() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/OpenAccessorsInClasses.kt");
+    }
+
+    @Test
     @TestMetadata("OverrideCompatibleAccessorsFromContributedInterface.kt")
     public void testOverrideCompatibleAccessorsFromContributedInterface() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/OverrideCompatibleAccessorsFromContributedInterface.kt");

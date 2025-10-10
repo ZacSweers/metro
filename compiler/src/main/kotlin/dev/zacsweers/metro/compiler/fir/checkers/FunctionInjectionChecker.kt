@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
+import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FUNCTION_INJECT_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FUNCTION_INJECT_TYPE_PARAMETERS_ERROR
 import dev.zacsweers.metro.compiler.fir.classIds
@@ -65,8 +66,9 @@ internal object FunctionInjectionChecker : FirSimpleFunctionChecker(MppCheckerKi
     }
 
     for (param in declaration.valueParameters) {
-      if (param.isAnnotatedWithAny(session, classIds.assistedAnnotations)) continue
-      validateInjectionSiteType(session, param.returnTypeRef, param.annotations.qualifierAnnotation(session), param.source ?: source)
+      val annotations = param.symbol.metroAnnotations(session, MetroAnnotations.Kind.OptionalDependency, MetroAnnotations.Kind.Assisted, MetroAnnotations.Kind.Qualifier)
+      if (annotations.isAssisted) continue
+      validateInjectionSiteType(session, param.returnTypeRef, annotations.qualifier, param.source ?: source, annotations.isOptionalDependency, param.symbol.hasDefaultValue)
     }
   }
 }

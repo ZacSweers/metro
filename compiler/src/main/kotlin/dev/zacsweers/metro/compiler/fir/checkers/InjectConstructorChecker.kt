@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
+import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.annotationsIn
@@ -11,6 +12,7 @@ import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.validateInjectedClass
 import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
+import dev.zacsweers.metro.compiler.metroAnnotations
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
@@ -66,12 +68,15 @@ internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common
       injectedConstructor?.constructor ?: declaration.primaryConstructorIfAny(session) ?: return
 
     for (parameter in constructorToValidate.valueParameterSymbols) {
-      if (parameter.isAnnotatedWithAny(session, classIds.assistedAnnotations)) continue
+      val annotations = parameter.metroAnnotations(session, MetroAnnotations.Kind.OptionalDependency, MetroAnnotations.Kind.Assisted, MetroAnnotations.Kind.Qualifier)
+      if (annotations.isAssisted) continue
       validateInjectionSiteType(
         session,
         parameter.resolvedReturnTypeRef,
-        parameter.qualifierAnnotation(session),
+        annotations.qualifier,
         parameter.source ?: source,
+        isOptionalDependency = annotations.isOptionalDependency,
+        hasDefault = parameter.hasDefaultValue,
       )
     }
   }

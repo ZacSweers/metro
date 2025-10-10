@@ -1,0 +1,9 @@
+/OptionalDependencyParamRequiresDefaultValue.kt:(220,223): error: @OptionalDependency-annotated parameters must have a default value.
+
+/OptionalDependencyParamRequiresDefaultValue.kt:(277,296): warning: This annotation is currently applied to the value parameter only, but in the future it will also be applied to property.
+- To opt in to applying to both value parameter and property, add '-Xannotation-default-target=param-property' to your compiler arguments.
+- To keep applying to the value parameter only, use the '@param:' annotation target.
+
+See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
+
+/OptionalDependencyParamRequiresDefaultValue.kt:(308,311): error: @OptionalDependency-annotated parameters must have a default value.

@@ -275,6 +275,36 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("OptionalAccessorDiagnostics.kt")
+      public void testOptionalAccessorDiagnostics() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/optional/OptionalAccessorDiagnostics.kt");
+      }
+
+      @Test
+      @TestMetadata("OptionalDependencyErrorIfDisabled.kt")
+      public void testOptionalDependencyErrorIfDisabled() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/optional/OptionalDependencyErrorIfDisabled.kt");
+      }
+
+      @Test
+      @TestMetadata("OptionalDependencyIsNotAllowedOnInjectors.kt")
+      public void testOptionalDependencyIsNotAllowedOnInjectors() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/optional/OptionalDependencyIsNotAllowedOnInjectors.kt");
+      }
+
+      @Test
+      @TestMetadata("OptionalDependencyParamRequiresDefaultValue.kt")
+      public void testOptionalDependencyParamRequiresDefaultValue() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/optional/OptionalDependencyParamRequiresDefaultValue.kt");
+      }
+
+      @Test
+      @TestMetadata("OptionalDependencyParamWarningIfDefault.kt")
+      public void testOptionalDependencyParamWarningIfDefault() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/optional/OptionalDependencyParamWarningIfDefault.kt");
+      }
+
+      @Test
       @TestMetadata("RequiredAnnotationResultsInMissingBindingMultiModule.kt")
       public void testRequiredAnnotationResultsInMissingBindingMultiModule() {
         runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/optional/RequiredAnnotationResultsInMissingBindingMultiModule.kt");

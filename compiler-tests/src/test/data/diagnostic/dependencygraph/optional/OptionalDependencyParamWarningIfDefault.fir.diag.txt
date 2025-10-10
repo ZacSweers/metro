@@ -1,0 +1,9 @@
+/OptionalDependencyParamWarningIfDefault.kt:(152,157): warning: @OptionalDependency is redundant in this project as the presence of a default value is sufficient.
+
+/OptionalDependencyParamWarningIfDefault.kt:(220,239): warning: This annotation is currently applied to the value parameter only, but in the future it will also be applied to property.
+- To opt in to applying to both value parameter and property, add '-Xannotation-default-target=param-property' to your compiler arguments.
+- To keep applying to the value parameter only, use the '@param:' annotation target.
+
+See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
+
+/OptionalDependencyParamWarningIfDefault.kt:(244,249): warning: @OptionalDependency is redundant in this project as the presence of a default value is sufficient.
