@@ -10,6 +10,7 @@ Changelog
 - **Fix**: Allow `@Includes` types themselves (i.e., not their accessors) to be dependencies in generated graphs.
 - **Fix**: Allow multiple graph extension factory accessors of the same factory type on parent graphs.
 - **Fix**: Report all missing `@Provides` body diagnostics rather than returning early.
+- **Fix**: Allow `open` members from abstract graph class superclasses to be accessors.
 
 0.6.9
 -----
