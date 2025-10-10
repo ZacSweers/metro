@@ -953,6 +953,30 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Unreleased">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#optional-dependency-behaviors" class="md-nav__link">
+    <span class="md-ellipsis">
+      Optional Dependency Behaviors
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Other changes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -993,7 +1017,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#other-changes" class="md-nav__link">
+  <a href="#other-changes_1" class="md-nav__link">
     <span class="md-ellipsis">
       Other changes
     </span>
@@ -1104,7 +1128,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#other-changes_1" class="md-nav__link">
+  <a href="#other-changes_2" class="md-nav__link">
     <span class="md-ellipsis">
       Other changes
     </span>
@@ -1382,6 +1406,30 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Unreleased">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#optional-dependency-behaviors" class="md-nav__link">
+    <span class="md-ellipsis">
+      Optional Dependency Behaviors
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Other changes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1422,7 +1470,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#other-changes" class="md-nav__link">
+  <a href="#other-changes_1" class="md-nav__link">
     <span class="md-ellipsis">
       Other changes
     </span>
@@ -1533,7 +1581,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#other-changes_1" class="md-nav__link">
+  <a href="#other-changes_2" class="md-nav__link">
     <span class="md-ellipsis">
       Other changes
     </span>
@@ -1747,12 +1795,30 @@
 
 <h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
 <h2 id="unreleased"><strong>Unreleased</strong><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
+<h3 id="optional-dependency-behaviors">Optional Dependency Behaviors<a class="headerlink" href="#optional-dependency-behaviors" title="Permanent link">&para;</a></h3>
+<p>Graph accessors can now expose optional dependencies, just use <code>@OptionalDependency</code> on the accessor. Note that the accessor <em>must</em> declare a default body that Metro will use if the dependency is absent.</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span>
+<span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nd">@OptionalDependency</span>
+<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">message</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span>
+<span class="w">    </span><span class="k">get</span><span class="p">()</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Absent!&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>There are a couple of optional configuration for Metro&rsquo;s optional dependency support that can be configured via the <code>optionalDependencyBehavior</code> Gradle DSL:</p>
+<ul>
+<li><code>DISABLED</code> - Disallows optional dependencies entirely.</li>
+<li><code>REQUIRE_OPTIONAL_DEPENDENCY</code> - Requires optional dependency <em>parameters</em> to also be annotated with <code>@OptionalDependency</code>. This may be preferable for consistency with accessors and/or explicitness.</li>
+<li><code>DEFAULT</code> - The default behavior as described above — accessors must be annotated with <code>@OptionalDependency</code> with default bodies and parameters just use default value expressions.</li>
+</ul>
+<h3 id="other-changes">Other changes<a class="headerlink" href="#other-changes" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>New</strong>: Add interop for Dagger <code>@BindsOptionalOf</code>. Note this is currently only limited to <code>java.util.Optional</code>.</li>
 <li><strong>Enhancement</strong>: Improve error messages for unexpected <code>IrErrorType</code> encounters.</li>
 <li><strong>Enhancement</strong>: Add configurable <code>statementsPerInitFun</code> to option to control the number of statements per init function. Only for advanced/debugging use.</li>
 <li><strong>Fix</strong>: Allow <code>@Includes</code> types themselves (i.e., not their accessors) to be dependencies in generated graphs.</li>
 <li><strong>Fix</strong>: Allow multiple graph extension factory accessors of the same factory type on parent graphs.</li>
+<li><strong>Fix</strong>: Report all missing <code>@Provides</code> body diagnostics rather than returning early.</li>
+<li><strong>Fix</strong>: Allow <code>open</code> members from abstract graph class superclasses to be accessors.</li>
 </ul>
 <h2 id="069">0.6.9<a class="headerlink" href="#069" title="Permanent link">&para;</a></h2>
 <p><em>2025-10-07</em></p>
@@ -1795,7 +1861,7 @@
   - This will allow providing assisted types directly on the graph.<br />
   - Will simplify some of Metro&rsquo;s internal logic.</p>
 <p>Note that not all internal changes are implemented yet to allow for a migration period. In this release, use of <code>@Inject</code> with <code>@Assisted</code> parameters is a compiler <em>warning</em> and will become an error in the future. This diagnostic is configurable via the <code>assistedInjectMigrationSeverity</code> Gradle DSL option.</p>
-<h3 id="other-changes">Other changes<a class="headerlink" href="#other-changes" title="Permanent link">&para;</a></h3>
+<h3 id="other-changes_1">Other changes<a class="headerlink" href="#other-changes_1" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>New</strong>: Support for interop with externally generated Dagger modules.</li>
 <li><strong>Enhancement</strong>: Always check for available assisted factories when reporting <code>InvalidBinding</code> errors about misused assisted injects.</li>
@@ -1978,7 +2044,7 @@
 <li>Graph extensions may no longer have multiple direct parents.</li>
 </ul>
 <p>To create graph extensions, you now <em>must</em> do so via a parent graph (using one of the above connecting mechanisms).</p>
-<h3 id="other-changes_1">Other changes<a class="headerlink" href="#other-changes_1" title="Permanent link">&para;</a></h3>
+<h3 id="other-changes_2">Other changes<a class="headerlink" href="#other-changes_2" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>Breaking change</strong>: Rename <code>custom-graph</code> compiler option to <code>custom-dependency-graph</code>.</li>
 <li><strong>Breaking change</strong>: Rename <code>custom-dependency-graph-factory</code> compiler option to <code>custom-dependency-graph-factory</code>.</li>

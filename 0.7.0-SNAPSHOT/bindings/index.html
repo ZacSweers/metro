@@ -1309,6 +1309,20 @@
 <span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideMessage</span><span class="p">(</span><span class="n">count</span><span class="p">:</span><span class="w"> </span><span class="kt">Int</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">-</span><span class="m">1</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Count: </span><span class="si">$</span><span class="n">count</span><span class="s">&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
+<p>To expose accessors for optional dependencies, use <code>@OptionalDependency</code> on the accessor. Note that the accessor <em>must</em> declare a default body that Metro will use if the dependency is absent.</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span>
+<span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nd">@OptionalDependency</span>
+<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">message</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span>
+<span class="w">    </span><span class="k">get</span><span class="p">()</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Absent!&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>There are a couple of optional configuration for Metro&rsquo;s optional dependency support that can be configured via the <code>optionalDependencyBehavior</code> Gradle DSL:</p>
+<ul>
+<li><code>DISABLED</code> - Disallows optional dependencies entirely.</li>
+<li><code>REQUIRE_OPTIONAL_DEPENDENCY</code> - Requires optional dependency <em>parameters</em> to also be annotated with <code>@OptionalDependency</code>. This may be preferable for consistency with accessors and/or explicitness.</li>
+<li><code>DEFAULT</code> - The default behavior as described above — accessors must be annotated with <code>@OptionalDependency</code> with default bodies and parameters just use default value expressions.</li>
+</ul>
 <p>Dagger supports a similar feature via <code>@BindsOptionalOf</code>, but requires a separate declaration of this optional dependency to the graph.</p>
 <p>KI supports the same feature.</p>
 <h2 id="nullability">Nullability<a class="headerlink" href="#nullability" title="Permanent link">&para;</a></h2>
