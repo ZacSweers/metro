@@ -246,6 +246,28 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
         runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/leniency/SomeUnusedAndSomeUsed.kt");
       }
     }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/diagnostic/dependencygraph/optional")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Optional {
+      @Test
+      public void testAllFilesPresentInOptional() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/dependencygraph/optional"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      }
+
+      @Test
+      @TestMetadata("DisabledResultsInMissingBindingMultiModule.kt")
+      public void testDisabledResultsInMissingBindingMultiModule() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/optional/DisabledResultsInMissingBindingMultiModule.kt");
+      }
+
+      @Test
+      @TestMetadata("DisabledResultsInMissingBindings.kt")
+      public void testDisabledResultsInMissingBindings() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/optional/DisabledResultsInMissingBindings.kt");
+      }
+    }
   }
 
   @Nested
