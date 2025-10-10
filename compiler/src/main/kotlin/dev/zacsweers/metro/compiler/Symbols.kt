@@ -95,6 +95,7 @@ internal class Symbols(
     const val MIRROR_FUNCTION = "mirrorFunction"
     const val NEW_INSTANCE = "newInstance"
     const val NON_RESTARTABLE_COMPOSABLE = "NonRestartableComposable"
+    const val OPTIONAL_DEPENDENCY = "OptionalDependency"
     const val PROVIDER = "provider"
     const val PROVIDES = "Provides"
     const val CALLABLE_METADATA = "CallableMetadata"
@@ -145,6 +146,7 @@ internal class Symbols(
       ClassId(FqNames.metroRuntimeInternalPackage, "MultibindingElement".asName())
     val NonRestartableComposable =
       ClassId(FqNames.composeRuntime, StringNames.NON_RESTARTABLE_COMPOSABLE.asName())
+    val OptionalDependency = ClassId(FqNames.metroRuntimePackage, StringNames.OPTIONAL_DEPENDENCY.asName())
     val CallableMetadata = ClassId(FqNames.metroRuntimeInternalPackage, CALLABLE_METADATA.asName())
     val Stable = ClassId(FqNames.composeRuntime, StringNames.STABLE.asName())
     val graphExtension = ClassId(FqNames.metroRuntimePackage, "GraphExtension".asName())
