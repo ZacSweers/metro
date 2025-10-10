@@ -9,6 +9,7 @@ Changelog
 - **Enhancement**: Add configurable `statementsPerInitFun` to option to control the number of statements per init function. Only for advanced/debugging use.
 - **Fix**: Allow `@Includes` types themselves (i.e., not their accessors) to be dependencies in generated graphs.
 - **Fix**: Allow multiple graph extension factory accessors of the same factory type on parent graphs.
+- **Fix**: Report all missing `@Provides` body diagnostics rather than returning early.
 
 0.6.9
 -----

@@ -306,7 +306,6 @@ internal object BindingContainerCallableChecker :
           MetroDiagnostics.PROVIDES_ERROR,
           "`@Provides` declarations must have bodies.",
         )
-        return
       }
 
       if (returnType.typeArguments.isEmpty()) {
