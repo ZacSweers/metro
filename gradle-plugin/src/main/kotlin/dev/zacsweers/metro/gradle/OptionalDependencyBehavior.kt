@@ -1,12 +1,12 @@
 package dev.zacsweers.metro.gradle
 
-/** Controls the behavior of optional dependencies on a per-graph basis. */
+/** Controls the behavior of optional dependencies on a per-compilation basis. */
 public enum class OptionalDependencyBehavior {
   /**
    * Disable all optional dependencies. Default values are allowed on parameters but ignored by the
    * compiler.
    */
-  DISABLE,
+  DISABLED,
 
   /**
    * In this mode, the presence of a default value on a parameter alone indicates that dependency is

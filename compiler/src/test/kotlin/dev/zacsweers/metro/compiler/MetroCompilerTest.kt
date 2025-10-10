@@ -263,6 +263,9 @@ abstract class MetroCompilerTest {
               MetroOption.ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE -> {
                 processor.option(entry.raw.cliOption, enableGraphImplClassAsReturnType)
               }
+              MetroOption.OPTIONAL_DEPENDENCY_BEHAVIOR -> {
+                processor.option(entry.raw.cliOption, optionalDependencyBehavior)
+              }
             }
           yield(option)
         }

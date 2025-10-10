@@ -38,6 +38,10 @@ object MetroDirectives : SimpleDirectivesContainer() {
     valueDirective(
       "Maximum number of errors to report before exiting IR processing. Default is 20, must be > 0."
     ) { it.toInt() }
+  val OPTIONAL_DEPENDENCY_BEHAVIOR by
+    enumDirective<OptionalDependencyBehavior>(
+      "Controls the behavior of optional dependencies on a per-compilation basis."
+    )
 
   // Dependency directives.
   val WITH_ANVIL by directive("Add Anvil as dependency and configure custom annotations.")

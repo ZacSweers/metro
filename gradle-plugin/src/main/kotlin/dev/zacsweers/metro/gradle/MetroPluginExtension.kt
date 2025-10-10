@@ -25,8 +25,7 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
   /**
    * Maximum number of IR errors to report before exiting IR processing. Default is 20, must be > 0.
    */
-  public val maxIrErrors: Property<Int> =
-    objects.property(Int::class.javaObjectType).convention(20)
+  public val maxIrErrors: Property<Int> = objects.property(Int::class.javaObjectType).convention(20)
 
   /**
    * If enabled, the Metro compiler plugin will emit _extremely_ noisy debug logging.
@@ -115,6 +114,15 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
    */
   public val statementsPerInitFun: Property<Int> =
     objects.property(Int::class.javaObjectType).convention(25)
+
+  /**
+   * Controls the behavior of optional dependencies on a per-graph basis. Default is
+   * [OptionalDependencyBehavior.DEFAULT] mode.
+   */
+  public val optionalDependencyBehavior: Property<OptionalDependencyBehavior> =
+    objects
+      .property(OptionalDependencyBehavior::class.java)
+      .convention(OptionalDependencyBehavior.DEFAULT)
 
   /** Enable/disable automatic transformation of providers to be private. Enabled by default. */
   public val transformProvidersToPrivate: Property<Boolean> =

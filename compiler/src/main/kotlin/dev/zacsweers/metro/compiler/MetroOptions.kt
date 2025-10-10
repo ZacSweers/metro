@@ -537,6 +537,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
       valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
     )
+  ),
+  OPTIONAL_DEPENDENCY_BEHAVIOR(
+    RawMetroOption(
+      name = "optional-dependency-behavior",
+      defaultValue = OptionalDependencyBehavior.DEFAULT.name,
+      valueDescription = OptionalDependencyBehavior.entries.joinToString("|"),
+      description = "Controls the behavior of optional dependencies",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it },
+    )
   );
 
   companion object {
@@ -574,6 +585,7 @@ public data class MetroOptions(
         DiagnosticSeverity.valueOf(it)
       }
     },
+  val optionalDependencyBehavior: OptionalDependencyBehavior = MetroOption.OPTIONAL_DEPENDENCY_BEHAVIOR.raw.defaultValue.expectAs<String>().let { OptionalDependencyBehavior.valueOf(it) },
   val assistedInjectMigrationSeverity: DiagnosticSeverity =
     MetroOption.ASSISTED_INJECT_DEPRECATION_SEVERITY.raw.defaultValue.expectAs<String>().let {
       DiagnosticSeverity.valueOf(it)
@@ -641,7 +653,7 @@ public data class MetroOptions(
   val enableGraphImplClassAsReturnType: Boolean =
     MetroOption.ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE.raw.defaultValue.expectAs(),
   val customOriginAnnotations: Set<ClassId> =
-    MetroOption.CUSTOM_ORIGIN.raw.defaultValue.expectAs(),
+    MetroOption.CUSTOM_ORIGIN.raw.defaultValue.expectAs()
 ) {
   internal companion object {
     fun load(configuration: CompilerConfiguration): MetroOptions {
@@ -805,6 +817,15 @@ public data class MetroOptions(
           }
           MetroOption.CUSTOM_ORIGIN ->
             customOriginAnnotations.addAll(configuration.getAsSet(entry))
+          MetroOption.OPTIONAL_DEPENDENCY_BEHAVIOR -> {
+            options =
+              options.copy(
+                optionalDependencyBehavior =
+                  configuration.getAsString(entry).let {
+                    OptionalDependencyBehavior.valueOf(it.uppercase(Locale.US))
+                  }
+              )
+          }
         }
       }
 
