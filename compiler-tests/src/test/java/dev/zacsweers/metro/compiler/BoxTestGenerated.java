@@ -727,6 +727,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("OptionalAccessors.kt")
+      public void testOptionalAccessors() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/optional/OptionalAccessors.kt");
+      }
+
+      @Test
       @TestMetadata("RequiredAnnotationWorksWhenPresent.kt")
       public void testRequiredAnnotationWorksWhenPresent() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/optional/RequiredAnnotationWorksWhenPresent.kt");
