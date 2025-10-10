@@ -116,7 +116,7 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     objects.property(Int::class.javaObjectType).convention(25)
 
   /**
-   * Controls the behavior of optional dependencies on a per-graph basis. Default is
+   * Controls the behavior of optional dependencies on a per-compilation basis. Default is
    * [OptionalDependencyBehavior.DEFAULT] mode.
    */
   public val optionalDependencyBehavior: Property<OptionalDependencyBehavior> =
