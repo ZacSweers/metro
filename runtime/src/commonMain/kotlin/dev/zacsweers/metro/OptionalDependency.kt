@@ -29,6 +29,7 @@ package dev.zacsweers.metro
 @MustBeDocumented
 @Target(
   AnnotationTarget.FUNCTION,
+  AnnotationTarget.FIELD,
   AnnotationTarget.PROPERTY,
   AnnotationTarget.PROPERTY_GETTER,
   AnnotationTarget.VALUE_PARAMETER,
