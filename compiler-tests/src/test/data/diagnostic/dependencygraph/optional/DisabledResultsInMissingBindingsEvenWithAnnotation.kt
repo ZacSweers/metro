@@ -8,4 +8,8 @@ class Example(<!ANNOTATION_WILL_BE_APPLIED_ALSO_TO_PROPERTY_OR_FIELD!>@OptionalD
 @DependencyGraph
 interface AppGraph {
   val example: Example
+  val int: Int
+
+  @Provides
+  fun provideInt(<!METRO_ERROR!>@OptionalDependency long: Long? = null<!>): Int = long?.toInt() ?: 3
 }
