@@ -36,4 +36,3 @@ package dev.zacsweers.metro
 )
 @Retention(AnnotationRetention.RUNTIME)
 public annotation class OptionalDependency
-
