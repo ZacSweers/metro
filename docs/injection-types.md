@@ -180,7 +180,7 @@ Like Dagger, option #3 is accomplished via `MembersInjector` interface at runtim
 * Property accessors don’t use `get`/`set` names in `inject{name}()` function names.
 * MembersInjector classes are generated as nested classes, allowing private member access.
     * This includes parent classes’ private members (!!)
-* Optional bindings are not supported for injected member functions currently, but may be possible in the future.
+* optional dependencies are not supported for injected member functions currently, but may be possible in the future.
 
 ## Top-level Function Injection
 

@@ -32,7 +32,7 @@ Metro’s user-facing API is similar to kotlin-inject: focused on simplicity and
 
 * Top-level function injection
 * Providers live in graph interfaces or supertypes
-* Native support for optional bindings via default parameter values
+* Native support for optional dependencies via default parameter values
 * Use of Kotlin’s native `Lazy` type for lazy injections
 
 ## Anvil-esque aggregation

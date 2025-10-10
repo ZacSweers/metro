@@ -149,6 +149,23 @@ interface AppGraph {
 }
 ```
 
+To expose accessors for optional dependencies, use `@OptionalDependency` on the accessor. Note that the accessor _must_ declare a default body that Metro will use if the dependency is absent.
+
+```kotlin
+@DependencyGraph
+interface AppGraph {
+  @OptionalDependency
+  val message: String
+    get() = "Absent!"
+}
+```
+
+There are a couple of optional configuration for Metro's optional dependency support that can be configured via the `optionalDependencyBehavior` Gradle DSL:
+
+- `DISABLED` - Disallows optional dependencies entirely.
+- `REQUIRE_OPTIONAL_DEPENDENCY` - Requires optional dependency _parameters_ to also be annotated with `@OptionalDependency`. This may be preferable for consistency with accessors and/or explicitness.
+- `DEFAULT` - The default behavior as described above — accessors must be annotated with `@OptionalDependency` with default bodies and parameters just use default value expressions.
+
 Dagger supports a similar feature via `@BindsOptionalOf`, but requires a separate declaration of this optional dependency to the graph.
 
 KI supports the same feature.

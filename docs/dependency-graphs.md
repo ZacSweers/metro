@@ -496,7 +496,7 @@ Dependency graph code gen is designed to largely match how Dagger components are
 * Dependencies are traversed from public accessors and `inject()` functions.
 * Metro generates Provider Factory classes for each provider. These should be generated at the same time that the provider is compiled so that their factory classes. This is for two primary purposes:
     * They can be reused to avoid code duplication
-    * Metro can copy default values for provider values over to the generated factory to support optional bindings. Since default values may refer to private references, we must generate these factories as nested classes.
+    * Metro can copy default values for provider values over to the generated factory to support optional dependencies. Since default values may refer to private references, we must generate these factories as nested classes.
 * Metro generates a graph *impl* class that holds all aggregated bindings and manages scoping.
 * Scoped bindings are stored in provider fields backed by `DoubleCheck`.
 * Reused unscoped providers instances are stored in reusable fields.
