@@ -273,6 +273,18 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       public void testDisabledResultsInMissingBindingsEvenWithAnnotation() {
         runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/optional/DisabledResultsInMissingBindingsEvenWithAnnotation.kt");
       }
+
+      @Test
+      @TestMetadata("RequiredAnnotationResultsInMissingBindingMultiModule.kt")
+      public void testRequiredAnnotationResultsInMissingBindingMultiModule() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/optional/RequiredAnnotationResultsInMissingBindingMultiModule.kt");
+      }
+
+      @Test
+      @TestMetadata("RequiredAnnotationResultsInMissingBindings.kt")
+      public void testRequiredAnnotationResultsInMissingBindings() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/optional/RequiredAnnotationResultsInMissingBindings.kt");
+      }
     }
   }
 
