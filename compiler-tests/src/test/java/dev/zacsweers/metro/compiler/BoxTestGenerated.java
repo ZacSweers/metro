@@ -412,6 +412,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("DefaultAccessorBodiesWorkAcrossModules.kt")
+    public void testDefaultAccessorBodiesWorkAcrossModules() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/DefaultAccessorBodiesWorkAcrossModules.kt");
+    }
+
+    @Test
     @TestMetadata("ExposingIncludedGraphsDirectly.kt")
     public void testExposingIncludedGraphsDirectly() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/ExposingIncludedGraphsDirectly.kt");

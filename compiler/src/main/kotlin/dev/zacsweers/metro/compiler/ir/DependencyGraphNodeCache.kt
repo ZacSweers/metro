@@ -24,6 +24,7 @@ import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import java.util.EnumSet
+import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
@@ -402,7 +403,7 @@ internal class DependencyGraphNodeCache(
 
             // Single pass through overridden symbols
             for (overridden in declaration.overriddenSymbolsSequence()) {
-              if (overridden.owner.body != null) {
+              if (overridden.owner.modality == Modality.OPEN || overridden.owner.body != null) {
                 if (!isOptionalDependency) {
                   isOptionalDependency =
                     metroAnnotationsOf(
@@ -592,7 +593,7 @@ internal class DependencyGraphNodeCache(
             // Single pass through overridden symbols
             if (!isGraphExtensionFactory) {
               for (overridden in declaration.overriddenSymbolsSequence()) {
-                if (overridden.owner.getter?.body != null) {
+                if (overridden.owner.getter?.modality == Modality.OPEN || overridden.owner.getter?.body != null) {
                   if (!isOptionalDependency) {
                     isOptionalDependency =
                       metroAnnotationsOf(

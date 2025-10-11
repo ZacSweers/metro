@@ -32,6 +32,7 @@ There are a couple of optional configuration for Metro's optional dependency sup
 - **Fix**: Allow multiple graph extension factory accessors of the same factory type on parent graphs.
 - **Fix**: Report all missing `@Provides` body diagnostics rather than returning early.
 - **Fix**: Allow `open` members from abstract graph class superclasses to be accessors.
+- **Fix**: When detecting default function/property getter bodies in graph accessors, check for `open` modality as well.
 
 0.6.9
 -----
