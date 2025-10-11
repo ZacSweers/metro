@@ -4,17 +4,18 @@ package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.Symbols.DaggerSymbols
+import dev.zacsweers.metro.compiler.fir.FirContextualTypeKey
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.BINDING_CONTAINER_ERROR
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
-import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.compatContext
+import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
-import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
 import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
 import dev.zacsweers.metro.compiler.metroAnnotations
@@ -48,10 +49,12 @@ import org.jetbrains.kotlin.fir.expressions.FirReturnExpression
 import org.jetbrains.kotlin.fir.expressions.FirThisReceiverExpression
 import org.jetbrains.kotlin.fir.propertyIfAccessor
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
+import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.isSubtypeOf
 import org.jetbrains.kotlin.fir.types.renderReadableWithFqNames
+import org.jetbrains.kotlin.fir.types.type
 
 // TODO
 //  What about future Kotlin versions where you can have different get signatures
@@ -109,6 +112,34 @@ internal object BindingContainerCallableChecker :
     }
 
     val annotations = declaration.symbol.metroAnnotations(session)
+
+    if (
+      session.metroFirBuiltIns.options.enableDaggerRuntimeInterop && annotations.isBindsOptionalOf
+    ) {
+      val contextKey = FirContextualTypeKey.from(session, declaration.symbol)
+      if (!contextKey.isCanonical) {
+        reporter.reportOn(
+          declaration.returnTypeRef.source ?: source,
+          MetroDiagnostics.BINDS_OPTIONAL_OF_ERROR,
+          "@BindsOptionalOf declarations should return the target type (and not wrapped in Provider, Lazy, etc.)",
+        )
+      } else {
+        // If it's wrapped in Optional, report a warning because it's probably not what they mean
+        val isOptional =
+          declaration.returnTypeRef.coneTypeOrNull?.classId == Symbols.ClassIds.JavaOptional
+        if (isOptional) {
+          val genericType =
+            declaration.returnTypeRef.coneType.typeArguments.first().type!!.classId!!.shortClassName
+          reporter.reportOn(
+            declaration.returnTypeRef.source ?: source,
+            MetroDiagnostics.BINDS_OPTIONAL_OF_WARNING,
+            "@BindsOptionalOf declarations usually just return the target type directly (i.e. `$genericType`) but this suspiciously returns `Optional<$genericType>`, which would result callers to use `Optional<Optional<$genericType>>`. If this is really what you intend, you can suppress this warning.",
+          )
+        }
+      }
+      return
+    }
+
     if (!annotations.isProvides && !annotations.isBinds) {
       return
     }
@@ -119,7 +150,6 @@ internal object BindingContainerCallableChecker :
         MetroDiagnostics.BINDS_ERROR,
         "@Binds declarations may not have scopes.",
       )
-      return
     }
 
     declaration
@@ -136,7 +166,6 @@ internal object BindingContainerCallableChecker :
         MetroDiagnostics.METRO_TYPE_PARAMETERS_ERROR,
         "`@$type` declarations may not have type parameters.",
       )
-      return
     }
 
     // Ensure declarations are within a class/companion object/interface
@@ -148,7 +177,6 @@ internal object BindingContainerCallableChecker :
           "If you're seeing this, `${declaration.nameOrSpecialName}` is likely defined as a " +
           "top-level method which isn't supported.",
       )
-      return
     }
 
     if (annotations.isProvides) {
@@ -165,7 +193,6 @@ internal object BindingContainerCallableChecker :
                 "`${declaration.nameOrSpecialName}` appears to be defined directly within a " +
                 "(non-companion) object that is not annotated @BindingContainer.",
             )
-            return
           }
         }
       }
@@ -178,7 +205,6 @@ internal object BindingContainerCallableChecker :
         MetroDiagnostics.PROVIDES_ERROR,
         "@Provides properties cannot be var",
       )
-      return
     }
 
     val returnTypeRef = declaration.propertyIfAccessor.returnTypeRef
@@ -188,7 +214,6 @@ internal object BindingContainerCallableChecker :
         MetroDiagnostics.PROVIDES_ERROR,
         "Implicit return types are not allowed for `@Provides` declarations. Specify the return type explicitly.",
       )
-      return
     }
 
     val returnType = returnTypeRef.coneTypeOrNull ?: return
@@ -345,7 +370,13 @@ internal object BindingContainerCallableChecker :
 
       if (declaration is FirSimpleFunction) {
         for (parameter in declaration.valueParameters) {
-          val annotations = parameter.symbol.metroAnnotations(session, MetroAnnotations.Kind.OptionalDependency, MetroAnnotations.Kind.Assisted, MetroAnnotations.Kind.Qualifier)
+          val annotations =
+            parameter.symbol.metroAnnotations(
+              session,
+              MetroAnnotations.Kind.OptionalDependency,
+              MetroAnnotations.Kind.Assisted,
+              MetroAnnotations.Kind.Qualifier,
+            )
 
           val assistedAnnotation = annotations.assisted
           if (assistedAnnotation != null) {

@@ -571,6 +571,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("BindsOptionalOfDiagnostics.kt")
+      public void testBindsOptionalOfDiagnostics() {
+        runTest("compiler-tests/src/test/data/diagnostic/interop/dagger/BindsOptionalOfDiagnostics.kt");
+      }
+
+      @Test
       @TestMetadata("DoNotSuggestMovingInjectAnnotationToClassWhenUsingJavaxOrJakartaInject.kt")
       public void testDoNotSuggestMovingInjectAnnotationToClassWhenUsingJavaxOrJakartaInject() {
         runTest("compiler-tests/src/test/data/diagnostic/interop/dagger/DoNotSuggestMovingInjectAnnotationToClassWhenUsingJavaxOrJakartaInject.kt");

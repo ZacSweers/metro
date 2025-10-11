@@ -1,0 +1,7 @@
+/BindsOptionalOfDiagnostics.kt:(226,242): error: @BindsOptionalOf declarations should return the target type (and not wrapped in Provider, Lazy, etc.)
+
+/BindsOptionalOfDiagnostics.kt:(280,289): error: @BindsOptionalOf declarations should return the target type (and not wrapped in Provider, Lazy, etc.)
+
+/BindsOptionalOfDiagnostics.kt:(338,358): error: @BindsOptionalOf declarations should return the target type (and not wrapped in Provider, Lazy, etc.)
+
+/BindsOptionalOfDiagnostics.kt:(405,422): warning: @BindsOptionalOf declarations usually just return the target type directly (i.e. `Boolean`) but this suspiciously returns `Optional<Boolean>`, which would result callers to use `Optional<Optional<Boolean>>`. If this is really what you intend, you can suppress this warning.
