@@ -19,7 +19,7 @@ public enum class OptionalDependencyBehavior {
   DEFAULT,
 
   /**
-   * In this mode, all optional dependencies must by annotated with `@OptionalDependency` (in both
+   * In this mode, all optional dependencies must be annotated with `@OptionalDependency` (in both
    * graph accessors as well as injected parameters). This can be desirable for consistency with
    * accessors and/or to otherwise make the behavior more explicit.
    */
