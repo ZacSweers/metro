@@ -11,6 +11,7 @@ Changelog
     fun provideTaco(factory: Taco.Factory): Taco = factory.create("spicy")
     ```
 - **New**: Add diagnostic disallowing qualifier annotations directly on `@AssistedInject`-annotated classes.
+- **New**: Add `wasmWasi` targets to Metro's runtime.
 
 0.6.10
 -----
