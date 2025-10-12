@@ -5,6 +5,12 @@ Changelog
 --------------
 
 - **Behavior change**: Remove `assistedInjectMigrationSeverity` DSL. You must now move fully to using `@AssistedInject` annotations for assisted types.
+- **New**: Allow exposing assisted-injected classes on a graph with qualifier annotations via `@Provides` declarations. This means you could, for example, write a provider like so:
+    ```kotlin
+    @Provides @Named("qualified")
+    fun provideTaco(factory: Taco.Factory): Taco = factory.create("spicy")
+    ```
+- **New**: Add diagnostic disallowing qualifier annotations directly on `@AssistedInject`-annotated classes.
 
 0.6.10
 -----

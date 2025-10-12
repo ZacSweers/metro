@@ -186,6 +186,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("AssistedTypesCannotBeDirectlyQualified.kt")
+    public void testAssistedTypesCannotBeDirectlyQualified() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/AssistedTypesCannotBeDirectlyQualified.kt");
+    }
+
+    @Test
     @TestMetadata("AssistedTypesCannotBeProvidedWithoutQualifiers.kt")
     public void testAssistedTypesCannotBeProvidedWithoutQualifiers() {
       runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/AssistedTypesCannotBeProvidedWithoutQualifiers.kt");

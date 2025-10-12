@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.fir.findAssistedInjectConstructors
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
+import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.fir.validateApiDeclaration
 import dev.zacsweers.metro.compiler.mapToSetWithDupes
@@ -55,6 +56,20 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
 
     if (isAssistedFactory) {
       checkAssistedFactory(declaration, source, session, classIds)
+      return
+    }
+
+    val isAssistedInject =
+      declaration.symbol.findAssistedInjectConstructors(session, checkClass = true).isNotEmpty()
+    if (isAssistedInject) {
+      val qualifier = declaration.symbol.qualifierAnnotation(session)
+      if (qualifier != null) {
+        reporter.reportOn(
+          source,
+          ASSISTED_INJECTION_ERROR,
+          "@AssistedInject-annotated classes cannot be annotated with qualifier annotations.",
+        )
+      }
     }
   }
 
