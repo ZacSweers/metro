@@ -1017,6 +1017,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("ComponentDependenciesAreNotMistakenForScopes.kt")
+      public void testComponentDependenciesAreNotMistakenForScopes() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/ComponentDependenciesAreNotMistakenForScopes.kt");
+      }
+
+      @Test
       @TestMetadata("DaggerComponentModulesAnnotationInterop.kt")
       public void testDaggerComponentModulesAnnotationInterop() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/DaggerComponentModulesAnnotationInterop.kt");
