@@ -181,7 +181,7 @@ internal fun FirBasedSymbol<*>.annotationsIn(
 
 /** @see [dev.zacsweers.metro.compiler.ClassIds.allRepeatableContributesAnnotationsContainers] */
 internal fun FirAnnotation.flattenRepeatedAnnotations(): Sequence<FirAnnotation> {
-  return argumentAsOrNull<FirArrayLiteral>(StandardNames.DEFAULT_VALUE_PARAMETER)
+  return argumentAsOrNull<FirArrayLiteral>(StandardNames.DEFAULT_VALUE_PARAMETER, 0)
     ?.arguments
     ?.asSequence()
     ?.filterIsInstance<FirAnnotation>()
@@ -818,18 +818,18 @@ private val FirPropertyAccessExpression.qualifierName: Name?
   get() = (calleeReference as? FirSimpleNamedReference)?.name
 
 internal fun FirAnnotation.originArgument() =
-  classArgument(StandardNames.DEFAULT_VALUE_PARAMETER)
+  classArgument(StandardNames.DEFAULT_VALUE_PARAMETER, index = 0)
 
-internal fun FirAnnotation.scopeArgument() = classArgument(Symbols.Names.scope)
+internal fun FirAnnotation.scopeArgument() = classArgument(Symbols.Names.scope, index = 0)
 
 internal fun FirAnnotation.additionalScopesArgument() =
-  argumentAsOrNull<FirArrayLiteral>(Symbols.Names.additionalScopes)
+  argumentAsOrNull<FirArrayLiteral>(Symbols.Names.additionalScopes, index = 1)
 
 internal fun FirAnnotation.bindingContainersArgument() =
-  argumentAsOrNull<FirArrayLiteral>(Symbols.Names.bindingContainers)
+  argumentAsOrNull<FirArrayLiteral>(Symbols.Names.bindingContainers, index = 4)
 
 internal fun FirAnnotation.includesArgument() =
-  argumentAsOrNull<FirArrayLiteral>(Symbols.Names.includes)
+  argumentAsOrNull<FirArrayLiteral>(Symbols.Names.includes, index = 0)
 
 internal fun FirAnnotation.allScopeClassIds(): Set<ClassId> =
   buildSet {
@@ -839,10 +839,10 @@ internal fun FirAnnotation.allScopeClassIds(): Set<ClassId> =
     .filterNotTo(mutableSetOf()) { it == StandardClassIds.Nothing }
 
 internal fun FirAnnotation.excludesArgument() =
-  argumentAsOrNull<FirArrayLiteral>(Symbols.Names.excludes)
+  argumentAsOrNull<FirArrayLiteral>(Symbols.Names.excludes, index = 2)
 
 internal fun FirAnnotation.replacesArgument() =
-  argumentAsOrNull<FirArrayLiteral>(Symbols.Names.replaces)
+  argumentAsOrNull<FirArrayLiteral>(Symbols.Names.replaces, index = 2)
 
 internal fun FirAnnotation.rankValue(): Long {
   // Although the parameter is defined as an Int, the value we receive here may end up being
@@ -851,9 +851,9 @@ internal fun FirAnnotation.rankValue(): Long {
 }
 
 private fun FirAnnotation.rankArgument() =
-  argumentAsOrNull<FirLiteralExpression>(Symbols.Names.rank)
+  argumentAsOrNull<FirLiteralExpression>(Symbols.Names.rank, index = 5)
 
-internal fun FirAnnotation.bindingArgument() = annotationArgument(Symbols.Names.binding)
+internal fun FirAnnotation.bindingArgument() = annotationArgument(Symbols.Names.binding, index = 1)
 
 internal fun FirAnnotation.resolvedBindingArgument(
   session: FirSession,
@@ -998,18 +998,19 @@ internal fun FirGetClassCall.resolvedArgumentTypeRef(): FirUserTypeRef? {
   }
 }
 
-internal fun FirAnnotation.classArgument(name: Name) =
-  argumentAsOrNull<FirGetClassCall>(name)
+internal fun FirAnnotation.classArgument(name: Name, index: Int) =
+  argumentAsOrNull<FirGetClassCall>(name, index)
 
-internal fun FirAnnotation.annotationArgument(name: Name) =
-  argumentAsOrNull<FirFunctionCall>(name)
+internal fun FirAnnotation.annotationArgument(name: Name, index: Int) =
+  argumentAsOrNull<FirFunctionCall>(name, index)
 
-internal inline fun <reified T> FirAnnotation.argumentAsOrNull(name: Name): T? {
+internal inline fun <reified T> FirAnnotation.argumentAsOrNull(name: Name, index: Int): T? {
   findArgumentByNameSafe(name)?.let {
     return it as? T?
   }
   if (this !is FirAnnotationCall) return null
-  return null
+  // Fall back to the index if necessary
+  return arguments.getOrNull(index) as? T?
 }
 
 /**
