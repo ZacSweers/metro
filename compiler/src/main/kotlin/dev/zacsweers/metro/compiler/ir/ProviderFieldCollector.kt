@@ -27,8 +27,8 @@ internal class ProviderFieldCollector(private val graph: IrBindingGraph) {
           }
           // TODO what about assisted but no assisted params? These also don't become providers
           //  we would need to track a set of assisted targets somewhere
-          is IrBinding.ConstructorInjected -> {
-            return binding.isAssisted
+          is IrBinding.ConstructorInjected if binding.isAssisted -> {
+            return true
           }
           // Multibindings are always created adhoc
           is IrBinding.Multibinding -> {

@@ -343,10 +343,14 @@ interface CycleGraph {
     private /* final field */ val cycleGraphProvider: Provider<CycleGraph> = Companion.invoke<CycleGraph>(value = <this>.#thisGraphInstance)
     private /* final field */ val cProvider: Provider<C> = DelegateFactory<C>()
     private /* final field */ val provideObjectWithCycleProvider: Provider<Any> = DelegateFactory<Any>()
+    private /* final field */ val bProvider: Provider<B> = Companion.create(c = <this>.#cProvider)
+    private /* final field */ val aProvider: Provider<A> = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider)))
     @DependencyGraph
     inner class ChildCycleGraphImpl : ChildCycleGraph {
       private /* final field */ val cProvider: Provider<C> = DelegateFactory<C>()
       private /* final field */ val provideObjectWithCycleProvider: Provider<Any> = DelegateFactory<Any>()
+      private /* final field */ val bProvider: Provider<B> = Companion.create(c = <this>.#cProvider)
+      private /* final field */ val aProvider: Provider<A> = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider)))
       private class FactoryImpl : Factory {
         private /* final field */ val parentInstance: $$MetroGraph = parentInstance
         constructor(parentInstance: $$MetroGraph) /* primary */ {
@@ -365,13 +369,13 @@ interface CycleGraph {
         super/*Any*/()
         /* <init>() */
 
-        Companion.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = Companion.create(aProvider = Companion.create(b = Companion.create(c = <this>.#cProvider), e = Companion.create(d = Companion.create(b = Companion.create(c = <this>.#cProvider)))), aLazy = Companion.create(b = Companion.create(c = <this>.#cProvider), e = Companion.create(d = Companion.create(b = Companion.create(c = <this>.#cProvider)))), aLazyProvider = Companion.create(b = Companion.create(c = <this>.#cProvider), e = Companion.create(d = Companion.create(b = Companion.create(c = <this>.#cProvider))))))
+        Companion.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = Companion.create(aProvider = <this>.#aProvider, aLazy = <this>.#aProvider, aLazyProvider = <this>.#aProvider))
         Companion.setDelegate<Any>(delegateFactory = <this>.#provideObjectWithCycleProvider, delegate = Companion.create(instance = <this>, obj = <this>.#provideObjectWithCycleProvider))
       }
 
       override val a: A
         override get(): A {
-          return Companion.create(b = Companion.create(c = <this>.#cProvider), e = Companion.create(d = Companion.create(b = Companion.create(c = <this>.#cProvider)))).invoke()
+          return <this>.#aProvider.invoke()
         }
 
       override val obj: Any
@@ -385,12 +389,12 @@ interface CycleGraph {
       super/*Any*/()
       /* <init>() */
 
-      Companion.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = Companion.create(aProvider = Companion.create(b = Companion.create(c = <this>.#cProvider), e = Companion.create(d = Companion.create(b = Companion.create(c = <this>.#cProvider)))), aLazy = Companion.create(b = Companion.create(c = <this>.#cProvider), e = Companion.create(d = Companion.create(b = Companion.create(c = <this>.#cProvider)))), aLazyProvider = Companion.create(b = Companion.create(c = <this>.#cProvider), e = Companion.create(d = Companion.create(b = Companion.create(c = <this>.#cProvider))))))
+      Companion.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = Companion.create(aProvider = <this>.#aProvider, aLazy = <this>.#aProvider, aLazyProvider = <this>.#aProvider))
       Companion.setDelegate<Any>(delegateFactory = <this>.#provideObjectWithCycleProvider, delegate = Companion.create(instance = <this>.#thisGraphInstance, obj = <this>.#provideObjectWithCycleProvider))
     }
 
     override fun a(): A {
-      return Companion.create(b = Companion.create(c = <this>.#cProvider), e = Companion.create(d = Companion.create(b = Companion.create(c = <this>.#cProvider)))).invoke()
+      return <this>.#aProvider.invoke()
     }
 
     override fun c(): C {
