@@ -953,7 +953,16 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Unreleased">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0610" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.6.10
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.6.10">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1406,7 +1415,16 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Unreleased">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0610" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.6.10
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.6.10">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1795,6 +1813,8 @@
 
 <h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
 <h2 id="unreleased"><strong>Unreleased</strong><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
+<h2 id="0610">0.6.10<a class="headerlink" href="#0610" title="Permanent link">&para;</a></h2>
+<p><em>2025-10-11</em></p>
 <h3 id="optional-dependency-behaviors">Optional Dependency Behaviors<a class="headerlink" href="#optional-dependency-behaviors" title="Permanent link">&para;</a></h3>
 <p>Graph accessors can now expose optional dependencies, just use <code>@OptionalDependency</code> on the accessor. Note that the accessor <em>must</em> declare a default body that Metro will use if the dependency is absent.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span>
@@ -1823,6 +1843,7 @@
 <li><strong>Fix</strong>: Don&rsquo;t duplicate includes accessor keys across multiple parent context levels.</li>
 <li><strong>Fix</strong>: Fix not respecting ref counting when allocating provider fields for constructor-injected class providers. This should reduce generated graph code size quite a bit.</li>
 </ul>
+<p>Special thanks to <a href="https://github.com/ChristianKatzmann">@ChristianKatzmann</a> for contributing to this release!</p>
 <h2 id="069">0.6.9<a class="headerlink" href="#069" title="Permanent link">&para;</a></h2>
 <p><em>2025-10-07</em></p>
 <p>This release introduces new experimental support for multiple compiler and IDE versions. The primary goal of this is to better support running Metro&rsquo;s FIR extensions across different IntelliJ Kotlin Plugin versions and make IDE support more robust, and general compiler compatibility falls out of that more or less for free. This is experimental and only going to target <em>forward</em> compatibility.</p>
