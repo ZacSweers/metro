@@ -28,6 +28,7 @@ kotlin {
 
   js { browser() }
   @OptIn(ExperimentalWasmDsl::class) wasmJs { browser() }
+  @OptIn(ExperimentalWasmDsl::class) wasmWasi { nodejs() }
 
   configureOrCreateNativePlatforms()
 
@@ -35,8 +36,6 @@ kotlin {
     commonTest {
       dependencies {
         implementation(libs.kotlin.test)
-        // For PlatformUtils use
-        implementation(libs.ktor.client)
       }
     }
   }
