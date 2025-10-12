@@ -103,7 +103,10 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
   ) : IrBinding, BindingWithAnnotations, InjectedClassBinding<ConstructorInjected> {
     override val parameters: Parameters = classFactory.targetFunctionParameters
 
-    val isAssisted by unsafeLazy { parameters.regularParameters.any { it.isAssisted } }
+    val isAssisted by unsafeLazy {
+      // TODO store @AssistedInject instead
+      parameters.regularParameters.any { it.isAssisted }
+    }
 
     override val dependencies: List<IrContextualTypeKey> by unsafeLazy {
       parameters.nonDispatchParameters.filterNot { it.isAssisted }.map { it.contextualTypeKey } +
