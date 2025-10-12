@@ -892,7 +892,7 @@ public data class MetroOptions(
     WARN,
     ERROR;
 
-    public val isEnabled get() = this != NONE
+    public val isEnabled: Boolean get() = this != NONE
   }
 
   public object Properties {

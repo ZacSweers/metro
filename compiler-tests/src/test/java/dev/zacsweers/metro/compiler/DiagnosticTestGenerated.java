@@ -587,6 +587,18 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       public void testDoNotSuggestMovingInjectAnnotationToClassWhenUsingJavaxOrJakartaInject() {
         runTest("compiler-tests/src/test/data/diagnostic/interop/dagger/DoNotSuggestMovingInjectAnnotationToClassWhenUsingJavaxOrJakartaInject.kt");
       }
+
+      @Test
+      @TestMetadata("PositionalAnnotationArgsError.kt")
+      public void testPositionalAnnotationArgsError() {
+        runTest("compiler-tests/src/test/data/diagnostic/interop/dagger/PositionalAnnotationArgsError.kt");
+      }
+
+      @Test
+      @TestMetadata("PositionalAnnotationArgsWarning.kt")
+      public void testPositionalAnnotationArgsWarning() {
+        runTest("compiler-tests/src/test/data/diagnostic/interop/dagger/PositionalAnnotationArgsWarning.kt");
+      }
     }
   }
 

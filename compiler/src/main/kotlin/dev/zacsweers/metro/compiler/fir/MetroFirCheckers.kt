@@ -19,28 +19,17 @@ import dev.zacsweers.metro.compiler.fir.checkers.MergedContributionChecker
 import dev.zacsweers.metro.compiler.fir.checkers.MultibindsChecker
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.DeclarationCheckers
-import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirBasicDeclarationChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirCallableDeclarationChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirSimpleFunctionChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.ExpressionCheckers
+import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirAnnotationChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirFunctionCallChecker
 import org.jetbrains.kotlin.fir.analysis.extensions.FirAdditionalCheckersExtension
 
 internal class MetroFirCheckers(session: FirSession) : FirAdditionalCheckersExtension(session) {
   override val declarationCheckers: DeclarationCheckers =
     object : DeclarationCheckers() {
-      override val basicDeclarationCheckers: Set<FirBasicDeclarationChecker>
-        get() {
-          return if (
-            session.metroFirBuiltIns.options.interopAnnotationsNamedArgSeverity.isEnabled
-          ) {
-            setOf(InteropAnnotationChecker)
-          } else {
-            super.basicDeclarationCheckers
-          }
-        }
-
       override val classCheckers: Set<FirClassChecker>
         get() =
           setOf(
@@ -64,6 +53,17 @@ internal class MetroFirCheckers(session: FirSession) : FirAdditionalCheckersExte
 
   override val expressionCheckers: ExpressionCheckers =
     object : ExpressionCheckers() {
+      override val annotationCheckers: Set<FirAnnotationChecker>
+        get() {
+          return if (
+            session.metroFirBuiltIns.options.interopAnnotationsNamedArgSeverity.isEnabled
+          ) {
+            setOf(InteropAnnotationChecker)
+          } else {
+            super.annotationCheckers
+          }
+        }
+
       override val functionCallCheckers: Set<FirFunctionCallChecker>
         get() = setOf(CreateGraphChecker, AsContributionChecker)
     }
