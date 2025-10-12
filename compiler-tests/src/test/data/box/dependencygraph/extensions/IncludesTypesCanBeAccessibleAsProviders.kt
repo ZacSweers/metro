@@ -16,23 +16,18 @@ interface AGraph {
 
 @GraphExtension
 interface BGraph {
-  val cGraph: CGraph.Factory
+  val bString: String
+
+  @Provides
+  private fun string(valueHolder: ValueHolder): String = valueHolder.aString + "Nested"
 
   @GraphExtension.Factory
   interface Factory : () -> BGraph
 }
 
-@GraphExtension
-interface CGraph {
-  val aString: String
-
-  @GraphExtension.Factory
-  interface Factory : () -> CGraph
-}
-
 fun box(): String {
   val aGraph = createGraphFactory<AGraph.Factory>().create(ValueHolder())
   val bGraph = aGraph.bGraphFactory()
-  assertEquals("Hello", bGraph.cGraph().aString)
+  assertEquals("HelloNested", bGraph.bString)
   return "OK"
 }

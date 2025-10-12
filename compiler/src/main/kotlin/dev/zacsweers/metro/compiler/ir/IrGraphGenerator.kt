@@ -192,6 +192,29 @@ internal class IrGraphGenerator(
             bindingFieldContext.putInstanceField(param.typeKey, graphDepField)
             bindingFieldContext.putInstanceField(graphDep.typeKey, graphDepField)
 
+            // Expose the graph as a provider field
+            // TODO this isn't always actually needed but different than the instance field above
+            //  would be nice if we could determine if this field is unneeded
+            val providerWrapperField =
+              getOrCreateBindingField(
+                param.typeKey,
+                { fieldNameAllocator.newName(graphDepField.name.asString() + "Provider") },
+                { metroSymbols.metroProvider.typeWith(param.typeKey.type) },
+              )
+
+            bindingFieldContext.putProviderField(
+              param.typeKey,
+              providerWrapperField.initFinal {
+                instanceFactory(
+                  param.typeKey.type,
+                  irGetField(irGet(thisReceiverParameter), graphDepField),
+                )
+              },
+            )
+            // Link both the graph typekey and the (possibly-impl type)
+            bindingFieldContext.putProviderField(param.typeKey, providerWrapperField)
+            bindingFieldContext.putProviderField(graphDep.typeKey, providerWrapperField)
+
             if (graphDep.hasExtensions) {
               val depMetroGraph = graphDep.sourceGraph.metroGraphOrFail
               val paramName = depMetroGraph.sourceGraphIfMetroGraph.name
@@ -496,7 +519,7 @@ internal class IrGraphGenerator(
     for ((contextualTypeKey, function, isOptionalDep) in accessors) {
       val binding = bindingGraph.findBinding(contextualTypeKey.typeKey)
 
-      if (isOptionalDep && binding == null)  {
+      if (isOptionalDep && binding == null) {
         continue // Just use its default impl
       } else if (binding == null) {
         // Should never happen
@@ -556,10 +579,10 @@ internal class IrGraphGenerator(
               typeKey.copy(typeKey.type.requireSimpleType(targetParam).arguments[0].typeOrFail)
 
             for (type in
-            pluginContext
-              .referenceClass(binding.targetClassId)!!
-              .owner
-              .getAllSuperTypes(excludeSelf = false, excludeAny = true)) {
+              pluginContext
+                .referenceClass(binding.targetClassId)!!
+                .owner
+                .getAllSuperTypes(excludeSelf = false, excludeAny = true)) {
               val clazz = type.rawType()
               val generatedInjector =
                 membersInjectorTransformer.getOrGenerateInjector(clazz) ?: continue

@@ -641,6 +641,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("IncludesTypesCanBeAccessibleAsProviders.kt")
+      public void testIncludesTypesCanBeAccessibleAsProviders() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/IncludesTypesCanBeAccessibleAsProviders.kt");
+      }
+
+      @Test
       @TestMetadata("ManagedBindingContainerInstancesPlumbDown.kt")
       public void testManagedBindingContainerInstancesPlumbDown() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ManagedBindingContainerInstancesPlumbDown.kt");
