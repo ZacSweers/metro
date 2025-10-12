@@ -428,7 +428,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
               if (scope !in allScopes) return@mapNotNull null
 
               val explicitBindingMissingMetadata =
-                annotation.argumentAsOrNull<FirAnnotation>(Symbols.Names.binding, index = 1)
+                annotation.argumentAsOrNull<FirAnnotation>(Symbols.Names.binding)
 
               if (explicitBindingMissingMetadata != null) {
                 // This is a case where an explicit binding is specified but we receive the argument
