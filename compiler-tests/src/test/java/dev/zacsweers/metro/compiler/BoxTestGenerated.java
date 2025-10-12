@@ -837,6 +837,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("AssistedTypesCanBeProvidedWithQualifiers.kt")
+      public void testAssistedTypesCanBeProvidedWithQualifiers() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedTypesCanBeProvidedWithQualifiers.kt");
+      }
+
+      @Test
       @TestMetadata("BasicAssistedInject.kt")
       public void testBasicAssistedInject() {
         runTest("compiler-tests/src/test/data/box/inject/assisted/BasicAssistedInject.kt");
