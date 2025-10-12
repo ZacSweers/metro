@@ -619,6 +619,7 @@ internal class IrBindingGraph(
     }
   }
 
+  // TODO can this check move to FIR injection sites?
   private fun validateAssistedInjection(
     binding: IrBinding,
     bindings: Map<IrTypeKey, IrBinding>,

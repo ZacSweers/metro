@@ -81,9 +81,6 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
             module.directives.singleOrZeroValue(MetroDirectives.PUBLIC_PROVIDER_SEVERITY)
               ?: optionDefaults.publicProviderSeverity
           },
-        assistedInjectMigrationSeverity =
-          module.directives.singleOrZeroValue(MetroDirectives.ASSISTED_INJECT_MIGRATION_SEVERITY)
-            ?: optionDefaults.assistedInjectMigrationSeverity,
         optionalDependencyBehavior =
           module.directives.singleOrZeroValue(MetroDirectives.OPTIONAL_DEPENDENCY_BEHAVIOR)
             ?: optionDefaults.optionalDependencyBehavior,

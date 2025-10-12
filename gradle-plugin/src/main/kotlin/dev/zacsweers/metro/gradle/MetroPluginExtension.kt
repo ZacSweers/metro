@@ -136,14 +136,6 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     objects.property(DiagnosticSeverity::class.javaObjectType).convention(DiagnosticSeverity.NONE)
 
   /**
-   * Control diagnostic severity reporting of issues with the `@AssistedInject` migration. `NONE` is
-   * the future behavior, `WARN` is the current default. See the kdoc on `AssistedInject` for more
-   * details.
-   */
-  public val assistedInjectMigrationSeverity: Property<DiagnosticSeverity> =
-    objects.property(DiagnosticSeverity::class.javaObjectType).convention(DiagnosticSeverity.NONE)
-
-  /**
    * Enable/disable Kotlin version compatibility checks. Defaults to true or the value of the
    * `metro.version.check` gradle property.
    */

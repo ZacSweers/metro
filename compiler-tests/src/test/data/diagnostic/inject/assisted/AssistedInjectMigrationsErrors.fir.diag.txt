@@ -1,3 +1,0 @@
-/AssistedInjectMigrationsErrors.kt:(121,128): error: Migrate to `@AssistedInject` to for assisted injection. This functionality will no longer work in a future release.
-
-/AssistedInjectMigrationsErrors.kt:(169,177): error: Migrate to `@AssistedInject` to for assisted injection. This functionality will no longer work in a future release.

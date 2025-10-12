@@ -196,18 +196,6 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       valueMapper = { it },
     )
   ),
-  ASSISTED_INJECT_DEPRECATION_SEVERITY(
-    RawMetroOption(
-      name = "assisted-inject-deprecation-severity",
-      defaultValue = MetroOptions.DiagnosticSeverity.WARN.name,
-      valueDescription = "NONE|WARN|ERROR",
-      description =
-        "Control diagnostic severity reporting of issues with the `@AssistedInject` migration. NONE is the future behavior, WARN is the current default.",
-      required = false,
-      allowMultipleOccurrences = false,
-      valueMapper = { it },
-    )
-  ),
   WARN_ON_INJECT_ANNOTATION_PLACEMENT(
     RawMetroOption.boolean(
       name = "warn-on-inject-annotation-placement",
@@ -586,10 +574,6 @@ public data class MetroOptions(
       }
     },
   val optionalDependencyBehavior: OptionalDependencyBehavior = MetroOption.OPTIONAL_DEPENDENCY_BEHAVIOR.raw.defaultValue.expectAs<String>().let { OptionalDependencyBehavior.valueOf(it) },
-  val assistedInjectMigrationSeverity: DiagnosticSeverity =
-    MetroOption.ASSISTED_INJECT_DEPRECATION_SEVERITY.raw.defaultValue.expectAs<String>().let {
-      DiagnosticSeverity.valueOf(it)
-    },
   val warnOnInjectAnnotationPlacement: Boolean =
     MetroOption.WARN_ON_INJECT_ANNOTATION_PLACEMENT.raw.defaultValue.expectAs(),
   val enabledLoggers: Set<MetroLogger.Type> =
@@ -730,15 +714,6 @@ public data class MetroOptions(
             options =
               options.copy(
                 publicProviderSeverity =
-                  configuration.getAsString(entry).let {
-                    DiagnosticSeverity.valueOf(it.uppercase(Locale.US))
-                  }
-              )
-
-          MetroOption.ASSISTED_INJECT_DEPRECATION_SEVERITY ->
-            options =
-              options.copy(
-                assistedInjectMigrationSeverity =
                   configuration.getAsString(entry).let {
                     DiagnosticSeverity.valueOf(it.uppercase(Locale.US))
                   }

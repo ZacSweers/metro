@@ -1493,7 +1493,7 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @Inject
+          @AssistedInject
           class Impl(@Assisted input: String) {
             @ContributesBinding(AppScope::class)
             @AssistedFactory
@@ -2189,7 +2189,7 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @Inject
+          @AssistedInject
           class Impl(@Assisted input: String) {
             @ContributesIntoSet(AppScope::class)
             @AssistedFactory
@@ -2714,7 +2714,7 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @Inject
+          @AssistedInject
           class Impl(@Assisted input: String) {
             @StringKey("Key")
             @ContributesIntoMap(AppScope::class)

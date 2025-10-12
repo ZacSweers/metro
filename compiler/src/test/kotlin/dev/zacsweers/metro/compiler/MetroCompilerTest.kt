@@ -72,9 +72,7 @@ abstract class MetroCompilerTest {
       sources = sourceFiles.asList()
       verbose = false
       jvmTarget = JVM_TARGET
-      // TODO this is needed until/unless we implement JVM reflection support for DefaultImpls
-      //  invocations
-      kotlincArguments += "-Xjvm-default=all"
+      kotlincArguments += "-jvm-default=no-compatibility"
       kotlincArguments += listOf("-Xverify-ir=error", "-Xverify-ir-visibility")
 
       // TODO test enabling IC?
@@ -116,8 +114,6 @@ abstract class MetroCompilerTest {
                 processor.option(entry.raw.cliOption, statementsPerInitFun)
               MetroOption.PUBLIC_PROVIDER_SEVERITY ->
                 processor.option(entry.raw.cliOption, publicProviderSeverity)
-              MetroOption.ASSISTED_INJECT_DEPRECATION_SEVERITY ->
-                processor.option(entry.raw.cliOption, assistedInjectMigrationSeverity)
               MetroOption.WARN_ON_INJECT_ANNOTATION_PLACEMENT ->
                 processor.option(entry.raw.cliOption, warnOnInjectAnnotationPlacement)
               MetroOption.LOGGING -> {

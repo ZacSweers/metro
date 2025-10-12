@@ -4,6 +4,8 @@ Changelog
 **Unreleased**
 --------------
 
+- **Behavior change**: Remove `assistedInjectMigrationSeverity` DSL. You must now move fully to using `@AssistedInject` annotations for assisted types.
+
 0.6.10
 -----
 
