@@ -130,6 +130,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("MultipleRefsGetProviderFields.kt")
+    public void testMultipleRefsGetProviderFields() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/MultipleRefsGetProviderFields.kt");
+    }
+
+    @Test
     @TestMetadata("UnusedInstanceBindingsInUnextendedGraphGetNoProviderFields.kt")
     public void testUnusedInstanceBindingsInUnextendedGraphGetNoProviderFields() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/UnusedInstanceBindingsInUnextendedGraphGetNoProviderFields.kt");
