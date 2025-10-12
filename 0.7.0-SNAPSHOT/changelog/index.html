@@ -1813,6 +1813,14 @@
 
 <h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
 <h2 id="unreleased"><strong>Unreleased</strong><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Behavior change</strong>: Remove <code>assistedInjectMigrationSeverity</code> DSL. You must now move fully to using <code>@AssistedInject</code> annotations for assisted types.</li>
+<li><strong>New</strong>: Allow exposing assisted-injected classes on a graph with qualifier annotations via <code>@Provides</code> declarations. This means you could, for example, write a provider like so:<br />
+    <div class="highlight"><pre><span></span><code><span class="nd">@Provides</span><span class="w"> </span><span class="nd">@Named</span><span class="p">(</span><span class="s">&quot;qualified&quot;</span><span class="p">)</span>
+<span class="kd">fun</span><span class="w"> </span><span class="nf">provideTaco</span><span class="p">(</span><span class="n">factory</span><span class="p">:</span><span class="w"> </span><span class="n">Taco</span><span class="p">.</span><span class="na">Factory</span><span class="p">):</span><span class="w"> </span><span class="n">Taco</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">factory</span><span class="p">.</span><span class="na">create</span><span class="p">(</span><span class="s">&quot;spicy&quot;</span><span class="p">)</span>
+</code></pre></div></li>
+<li><strong>New</strong>: Add diagnostic disallowing qualifier annotations directly on <code>@AssistedInject</code>-annotated classes.</li>
+</ul>
 <h2 id="0610">0.6.10<a class="headerlink" href="#0610" title="Permanent link">&para;</a></h2>
 <p><em>2025-10-11</em></p>
 <h3 id="optional-dependency-behaviors">Optional Dependency Behaviors<a class="headerlink" href="#optional-dependency-behaviors" title="Permanent link">&para;</a></h3>
