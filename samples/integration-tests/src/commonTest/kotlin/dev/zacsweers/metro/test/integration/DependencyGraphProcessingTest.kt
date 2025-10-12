@@ -24,7 +24,6 @@ import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.StringKey
 import dev.zacsweers.metro.createGraph
 import dev.zacsweers.metro.createGraphFactory
-import io.ktor.util.PlatformUtils
 import kotlin.reflect.KClass
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -500,7 +499,7 @@ class DependencyGraphProcessingTest {
     // Ensure we return immutable types
     // TODO on the JVM we get Collections.singleton() but other platforms just us HashSet. Maybe we
     //  should use our own? Or use buildSet
-    if (PlatformUtils.IS_JVM) {
+    if (isJvm()) {
       assertFailsWith<UnsupportedOperationException> { (graph.ints as MutableSet<Int>).clear() }
     }
   }
@@ -749,7 +748,7 @@ class DependencyGraphProcessingTest {
     assertEquals(mapOf(1 to 1, 2 to 2), graph.ints)
     assertEquals(mapOf("1" to 1, "2" to 2), graph.strings)
     // TODO WASM annotation classes don't implement equals correctly
-    if (!PlatformUtils.IS_WASM_JS) {
+    if (!isWasm()) {
       assertEquals(
         mapOf(
           MultibindingGraphWithMultipleOtherMapKeyTypes.WrappedSeasoningKey(Seasoning.SPICY) to 1,
