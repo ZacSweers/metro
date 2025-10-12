@@ -31,7 +31,15 @@ internal class MetroFirCheckers(session: FirSession) : FirAdditionalCheckersExte
   override val declarationCheckers: DeclarationCheckers =
     object : DeclarationCheckers() {
       override val basicDeclarationCheckers: Set<FirBasicDeclarationChecker>
-        get() = setOf(InteropAnnotationChecker)
+        get() {
+          return if (
+            session.metroFirBuiltIns.options.interopAnnotationsNamedArgSeverity.isEnabled
+          ) {
+            setOf(InteropAnnotationChecker)
+          } else {
+            super.basicDeclarationCheckers
+          }
+        }
 
       override val classCheckers: Set<FirClassChecker>
         get() =

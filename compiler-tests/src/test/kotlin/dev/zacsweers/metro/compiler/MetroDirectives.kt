@@ -38,6 +38,10 @@ object MetroDirectives : SimpleDirectivesContainer() {
     enumDirective<OptionalDependencyBehavior>(
       "Controls the behavior of optional dependencies on a per-compilation basis."
     )
+  val INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY by
+    enumDirective<MetroOptions.DiagnosticSeverity>(
+      "Control diagnostic severity reporting of interop annotations using positional arguments instead of named arguments."
+    )
 
   // Dependency directives.
   val WITH_ANVIL by directive("Add Anvil as dependency and configure custom annotations.")

@@ -2,9 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
+import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INTEROP_ANNOTATION_ARGS
-import dev.zacsweers.metro.compiler.fir.classIds
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INTEROP_ANNOTATION_ARGS_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INTEROP_ANNOTATION_ARGS_WARNING
+import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
@@ -34,18 +36,24 @@ internal object InteropAnnotationChecker : FirBasicDeclarationChecker(MppChecker
   context(context: CheckerContext, reporter: DiagnosticReporter)
   override fun check(declaration: FirDeclaration) {
     val session = context.session
-    val allCustomAnnotations = session.classIds.allCustomAnnotations
+    val builtIns = context.session.metroFirBuiltIns
+    val severity = builtIns.options.interopAnnotationsNamedArgSeverity
+    if (severity == MetroOptions.DiagnosticSeverity.NONE) {
+      // Should never happen as we never exec this checker if the severity is NONE
+      return
+    }
+    val allCustomAnnotations = builtIns.classIds.allCustomAnnotations
     if (allCustomAnnotations.isEmpty()) return
 
     if (declaration is FirDanglingModifierList) {
       return
     }
 
-    checkAnnotationContainer(declaration, session, allCustomAnnotations)
+    checkAnnotationContainer(declaration, session, allCustomAnnotations, severity)
 
     if (declaration is FirCallableDeclaration) {
       declaration.receiverParameter?.let {
-        checkAnnotationContainer(it, session, allCustomAnnotations)
+        checkAnnotationContainer(it, session, allCustomAnnotations, severity)
       }
     }
   }
@@ -55,6 +63,7 @@ internal object InteropAnnotationChecker : FirBasicDeclarationChecker(MppChecker
     declaration: FirAnnotationContainer,
     session: FirSession,
     allCustomAnnotations: Set<ClassId>,
+    severity: MetroOptions.DiagnosticSeverity,
   ) {
     for (annotation in declaration.annotations) {
       if (!annotation.isResolved) continue
@@ -64,7 +73,7 @@ internal object InteropAnnotationChecker : FirBasicDeclarationChecker(MppChecker
       if (isMetroRuntimeAnnotation(classId)) continue
 
       // Check if it uses named arguments
-      annotation.checkAnnotationHasNamedArguments(classId)
+      annotation.checkAnnotationHasNamedArguments(classId, severity)
     }
   }
 
@@ -75,13 +84,22 @@ internal object InteropAnnotationChecker : FirBasicDeclarationChecker(MppChecker
   }
 
   context(context: CheckerContext, reporter: DiagnosticReporter)
-  private fun FirAnnotationCall.checkAnnotationHasNamedArguments(annotationClassId: ClassId) {
+  private fun FirAnnotationCall.checkAnnotationHasNamedArguments(
+    annotationClassId: ClassId,
+    severity: MetroOptions.DiagnosticSeverity,
+  ) {
     // Check if any arguments are positional (not in the argumentMapping)
     for (arg in arguments) {
       if (arg !is FirNamedArgumentExpression) {
+        val factory =
+          when (severity) {
+            MetroOptions.DiagnosticSeverity.ERROR -> INTEROP_ANNOTATION_ARGS_ERROR
+            MetroOptions.DiagnosticSeverity.WARN -> INTEROP_ANNOTATION_ARGS_WARNING
+            MetroOptions.DiagnosticSeverity.NONE -> return
+          }
         reporter.reportOn(
           arg.source ?: source,
-          INTEROP_ANNOTATION_ARGS,
+          factory,
           "Interop annotation @${annotationClassId.shortClassName.asString()} should use named arguments instead of positional arguments for better compatibility in Metro.",
         )
       }

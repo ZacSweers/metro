@@ -23,7 +23,8 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.GRAPH_CREATORS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.GRAPH_CREATORS_VARARG_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.GRAPH_DEPENDENCY_CYCLE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INJECTED_CLASSES_MUST_BE_VISIBLE
-import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INTEROP_ANNOTATION_ARGS
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INTEROP_ANNOTATION_ARGS_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INTEROP_ANNOTATION_ARGS_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.LOCAL_CLASSES_CANNOT_BE_INJECTED
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MAP_KEY_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MAP_KEY_TYPE_PARAM_ERROR
@@ -140,7 +141,8 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val OPTIONAL_DEPENDENCY_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
 
   // Interop warnings
-  val INTEROP_ANNOTATION_ARGS by warning1<KtElement, String>(NAME_IDENTIFIER)
+  val INTEROP_ANNOTATION_ARGS_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val INTEROP_ANNOTATION_ARGS_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
 
   // IR errors
   val GRAPH_DEPENDENCY_CYCLE by error1<KtElement, String>(NAME_IDENTIFIER)
@@ -244,7 +246,8 @@ private object FirMetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(BINDING_CONTAINER_ERROR, "{0}", STRING)
         put(OPTIONAL_DEPENDENCY_WARNING, "{0}", STRING)
         put(OPTIONAL_DEPENDENCY_ERROR, "{0}", STRING)
-        put(INTEROP_ANNOTATION_ARGS, "{0}", STRING)
+        put(INTEROP_ANNOTATION_ARGS_ERROR, "{0}", STRING)
+        put(INTEROP_ANNOTATION_ARGS_WARNING, "{0}", STRING)
         put(
           PROVIDER_OVERRIDES,
           "Do not override `@Provides` declarations. Consider using `@ContributesTo.replaces`, `@ContributesBinding.replaces`, and `@DependencyGraph.excludes` instead.",

@@ -172,6 +172,12 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         )
         add(
           lazyOption(
+            "interop-annotations-named-arg-severity",
+            extension.interopAnnotationsNamedArgSeverity,
+          )
+        )
+        add(
+          lazyOption(
             "enable-top-level-function-injection",
             extension.enableTopLevelFunctionInjection,
           )
