@@ -12,12 +12,14 @@ import dev.zacsweers.metro.compiler.fir.checkers.DependencyGraphChecker
 import dev.zacsweers.metro.compiler.fir.checkers.DependencyGraphCreatorChecker
 import dev.zacsweers.metro.compiler.fir.checkers.FunctionInjectionChecker
 import dev.zacsweers.metro.compiler.fir.checkers.InjectConstructorChecker
+import dev.zacsweers.metro.compiler.fir.checkers.InteropAnnotationChecker
 import dev.zacsweers.metro.compiler.fir.checkers.MapKeyChecker
 import dev.zacsweers.metro.compiler.fir.checkers.MembersInjectChecker
 import dev.zacsweers.metro.compiler.fir.checkers.MergedContributionChecker
 import dev.zacsweers.metro.compiler.fir.checkers.MultibindsChecker
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.DeclarationCheckers
+import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirBasicDeclarationChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirCallableDeclarationChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirSimpleFunctionChecker
@@ -28,6 +30,9 @@ import org.jetbrains.kotlin.fir.analysis.extensions.FirAdditionalCheckersExtensi
 internal class MetroFirCheckers(session: FirSession) : FirAdditionalCheckersExtension(session) {
   override val declarationCheckers: DeclarationCheckers =
     object : DeclarationCheckers() {
+      override val basicDeclarationCheckers: Set<FirBasicDeclarationChecker>
+        get() = setOf(InteropAnnotationChecker)
+
       override val classCheckers: Set<FirClassChecker>
         get() =
           setOf(

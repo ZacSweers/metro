@@ -187,4 +187,31 @@ public class ClassIds(
   internal val lazyTypes = setOf(Symbols.ClassIds.Lazy) + customLazyClasses
 
   internal val includes = setOf(Symbols.ClassIds.metroIncludes)
+
+  internal val allCustomAnnotations = buildSet {
+    addAll(customLazyClasses)
+    addAll(customProviderClasses)
+    addAll(customAssistedAnnotations)
+    addAll(customAssistedFactoryAnnotations)
+    addAll(customAssistedInjectAnnotations)
+    addAll(customBindsAnnotations)
+    addAll(customContributesToAnnotations)
+    addAll(customContributesBindingAnnotations)
+    addAll(customContributesIntoSetAnnotations)
+    addAll(customGraphExtensionAnnotations)
+    addAll(customGraphExtensionFactoryAnnotations)
+    addAll(customElementsIntoSetAnnotations)
+    addAll(customGraphAnnotations)
+    addAll(customGraphFactoryAnnotations)
+    addAll(customInjectAnnotations)
+    addAll(customIntoMapAnnotations)
+    addAll(customIntoSetAnnotations)
+    addAll(customMapKeyAnnotations)
+    addAll(customMultibindsAnnotations)
+    addAll(customProvidesAnnotations)
+    addAll(customQualifierAnnotations)
+    addAll(customScopeAnnotations)
+    addAll(customBindingContainerAnnotations)
+    addAll(customOriginAnnotations)
+  }
 }
