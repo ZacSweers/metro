@@ -635,6 +635,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("IncludesAcrossIntermediateUnpacking.kt")
+      public void testIncludesAcrossIntermediateUnpacking() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/IncludesAcrossIntermediateUnpacking.kt");
+      }
+
+      @Test
       @TestMetadata("ManagedBindingContainerInstancesPlumbDown.kt")
       public void testManagedBindingContainerInstancesPlumbDown() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ManagedBindingContainerInstancesPlumbDown.kt");

@@ -33,6 +33,7 @@ There are a couple of optional configuration for Metro's optional dependency sup
 - **Fix**: Report all missing `@Provides` body diagnostics rather than returning early.
 - **Fix**: Allow `open` members from abstract graph class superclasses to be accessors.
 - **Fix**: When detecting default function/property getter bodies in graph accessors, check for `open` modality as well.
+- **Fix**: Don't duplicate includes accessor keys across multiple parent context levels.
 
 0.6.9
 -----

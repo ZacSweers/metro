@@ -227,13 +227,13 @@ internal class DependencyGraphTransformer(
     val bindingGraph =
       parentTracer.traceNested("Build binding graph") {
         BindingGraphGenerator(
-          metroContext,
-          node,
-          injectConstructorTransformer,
-          membersInjectorTransformer,
+            metroContext,
+            node,
+            injectConstructorTransformer,
+            membersInjectorTransformer,
             contributionData,
-          parentContext,
-        )
+            parentContext,
+          )
           .generate()
       }
 
@@ -273,8 +273,9 @@ internal class DependencyGraphTransformer(
         localParentContext.add(parameter.typeKey)
       }
 
-      // Included graph dependencies
-      for (included in node.allIncludedNodes) {
+      // Included graph dependencies. Only include the current level, transitively included ones
+      // will already be in the parent context
+      for (included in node.includedGraphNodes.values) {
         localParentContext.addAll(included.publicAccessors)
       }
 
@@ -453,19 +454,19 @@ internal class DependencyGraphTransformer(
 
       parentTracer.traceNested("Transform metro graph") { tracer ->
         IrGraphGenerator(
-          metroContext = metroContext,
-          dependencyGraphNodesByClass = dependencyGraphNodeCache::get,
-          node = node,
-          graphClass = metroGraph,
-          bindingGraph = bindingGraph,
-          sealResult = result,
-          fieldNameAllocator = fieldNameAllocator,
-          parentTracer = tracer,
-          bindingContainerTransformer = bindingContainerTransformer,
-          membersInjectorTransformer = membersInjectorTransformer,
-          assistedFactoryTransformer = assistedFactoryTransformer,
-          graphExtensionGenerator = graphExtensionGenerator,
-        )
+            metroContext = metroContext,
+            dependencyGraphNodesByClass = dependencyGraphNodeCache::get,
+            node = node,
+            graphClass = metroGraph,
+            bindingGraph = bindingGraph,
+            sealResult = result,
+            fieldNameAllocator = fieldNameAllocator,
+            parentTracer = tracer,
+            bindingContainerTransformer = bindingContainerTransformer,
+            membersInjectorTransformer = membersInjectorTransformer,
+            assistedFactoryTransformer = assistedFactoryTransformer,
+            graphExtensionGenerator = graphExtensionGenerator,
+          )
           .generate()
       }
 
@@ -503,9 +504,9 @@ internal class DependencyGraphTransformer(
         throw e
       }
       throw AssertionError(
-        "Code gen exception while processing ${dependencyGraphDeclaration.classIdOrFail}. ${e.message}",
-        e,
-      )
+          "Code gen exception while processing ${dependencyGraphDeclaration.classIdOrFail}. ${e.message}",
+          e,
+        )
         .apply {
           // Don't fill in the stacktrace here as it's not relevant to the issue
           setStackTrace(emptyArray())
@@ -563,7 +564,7 @@ internal class DependencyGraphTransformer(
 
       if (
         factoryCreator.type.isInterface &&
-        companionObject.implements(factoryCreator.type.classIdOrFail)
+          companionObject.implements(factoryCreator.type.classIdOrFail)
       ) {
         // Implement the interface creator function directly in this companion object
         companionObject.implementFactoryFunction()
