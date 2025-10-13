@@ -39,8 +39,10 @@ internal fun copyParameterDefaultValues(
   targetParameters: List<IrValueParameter>,
   targetGraphParameter: IrValueParameter?,
   wrapInProvider: Boolean = false,
+  // If true, these are all going to be assisted params
+  isTopLevelFunction: Boolean = false,
 ) {
-  if (context.options.optionalDependencyBehavior == OptionalDependencyBehavior.DISABLED) return
+  if (!isTopLevelFunction || context.options.optionalDependencyBehavior == OptionalDependencyBehavior.DISABLED) return
   if (sourceParameters.isEmpty()) return
   check(sourceParameters.size == targetParameters.size) {
     "Source parameters (${sourceParameters.size}) and target parameters (${targetParameters.size}) must be the same size! Function: ${sourceParameters.first().parent.kotlinFqName}"
