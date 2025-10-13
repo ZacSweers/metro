@@ -1,3 +1,4 @@
+// https://github.com/ZacSweers/metro/issues/1176
 abstract class ExtensionScope
 
 abstract class BaseActivity {
