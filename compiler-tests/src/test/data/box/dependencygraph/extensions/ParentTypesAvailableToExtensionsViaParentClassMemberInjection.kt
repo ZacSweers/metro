@@ -1,46 +1,33 @@
 // https://github.com/ZacSweers/metro/issues/1176
-abstract class ExtensionScope
-
 abstract class BaseActivity {
-  @Inject lateinit var appInfo: AppInfo
+  @Inject lateinit var value: String
 }
 
-class Activity: BaseActivity() {
+class Activity : BaseActivity() {
   fun onAttach(appGraph: AppGraph) {
-    val extensionGraph = appGraph.extensionGraphFactory.create()
-    extensionGraph.inject(this)
+    appGraph.extensionGraph.inject(this)
   }
 }
-
-data class AppInfo(val version: String)
 
 @BindingContainer
 class AppInfoModule {
-  @Provides fun provideAppInfo(): AppInfo = AppInfo("1.0")
+  @Provides fun provideString(): String = "Hello"
 }
 
-@DependencyGraph(
-  scope = AppScope::class,
-  bindingContainers = [AppInfoModule::class],
-)
+@DependencyGraph(bindingContainers = [AppInfoModule::class])
 interface AppGraph {
-  val extensionGraphFactory: ExtensionGraph.Factory
+  val extensionGraph: ExtensionGraph
 }
 
-@GraphExtension(ExtensionScope::class)
+@GraphExtension
 interface ExtensionGraph {
   fun inject(activity: Activity)
-
-  @GraphExtension.Factory
-  interface Factory {
-    fun create(): ExtensionGraph
-  }
 }
 
 fun box(): String {
   val appGraph = createGraph<AppGraph>()
   val activity = Activity()
   activity.onAttach(appGraph)
-
+  assertEquals("Hello", activity.value)
   return "OK"
 }
