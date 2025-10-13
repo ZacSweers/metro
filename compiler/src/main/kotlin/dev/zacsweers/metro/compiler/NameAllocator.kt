@@ -166,7 +166,7 @@ private constructor(
   }
 }
 
-private fun toJavaIdentifier(suggestion: String) = buildString {
+internal fun toJavaIdentifier(suggestion: String) = buildString {
   var i = 0
   while (i < suggestion.length) {
     val codePoint = suggestion.codePointAt(i)

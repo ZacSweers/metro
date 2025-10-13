@@ -22,6 +22,7 @@ import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.singleOrError
+import dev.zacsweers.metro.compiler.toJavaIdentifier
 import java.io.File
 import java.util.Objects
 import kotlin.io.path.name
@@ -623,10 +624,16 @@ internal fun assignConstructorParamsToFields(
   return buildMap {
     for (irParameter in constructor.regularParameters) {
       val irField =
-        clazz.addField(irParameter.name, irParameter.type, DescriptorVisibilities.PRIVATE).apply {
-          isFinal = true
-          initializer = context.createIrBuilder(symbol).run { irExprBody(irGet(irParameter)) }
-        }
+        clazz
+          .addField(
+            toJavaIdentifier(irParameter.name.asString()),
+            irParameter.type,
+            DescriptorVisibilities.PRIVATE,
+          )
+          .apply {
+            isFinal = true
+            initializer = context.createIrBuilder(symbol).run { irExprBody(irGet(irParameter)) }
+          }
       put(irParameter, irField)
     }
   }
