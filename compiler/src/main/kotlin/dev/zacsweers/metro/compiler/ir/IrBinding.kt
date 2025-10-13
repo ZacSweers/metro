@@ -234,7 +234,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
           annotations = providerFactory.annotations,
           parameters = providerFactory.parameters,
           isProperty = providerFactory.isPropertyAccessor,
-          underlineTypeKey = true,
+          underlineTypeKey = underlineTypeKey,
         )
       }
 
