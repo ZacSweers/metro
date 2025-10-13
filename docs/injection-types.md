@@ -276,8 +276,7 @@ class AppClass {
 }
 
 // Usage
-val App = createGraph<AppGraph>()
-  .app
+val App = createGraph<AppGraph>().app
 
 // Call it in composition
 setContent {
@@ -286,6 +285,42 @@ setContent {
 ```
 
 Similarly, if the injected function is a `suspend` function, the `suspend` keyword will be ported to the generated `invoke()` function too.
+
+!!! warning "Default parameters"
+    Default parameters are not supported yet for top-level functions due to [KT-81656](https://youtrack.jetbrains.com/issue/KT-81656/).
+
+### Context parameters
+
+Top-level injected functions also support context parameters. Both regular and context parameters may be assisted.
+
+Any assisted context parameters will be carried as context parameters to the generated class's `invoke()` function.
+
+=== "Source"
+
+    ```kotlin
+    @Inject
+    @Composable
+    context(@Assisted sharedTransitionScope: SharedTransitionScope)
+    fun ClockWidget(
+      clock: Clock, // injected
+      @Assisted modifier: Modifier, // assisted inject
+    ) {
+      // ...
+    }
+    ```
+
+=== "Generated"
+
+    ```kotlin
+    @Inject
+    class ClockWidgetClass(private val clock: Provider<Clock>) {
+      @Composable
+      context(sharedTransitionScope: SharedTransitionScope)
+      operator fun invoke(modifier: Modifier) {
+        ClockWidget(clock(), modifier)
+      }
+    }
+    ```
 
 ### Why opt-in?
 
