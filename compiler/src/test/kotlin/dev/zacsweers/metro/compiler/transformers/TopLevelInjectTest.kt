@@ -421,7 +421,7 @@ class TopLevelInjectTest : MetroCompilerTest() {
             @DependencyGraph
             interface ExampleGraph {
               val app: AppClass
-              
+
               @Provides fun provideClock(): Clock = object : Clock {}
               @Provides fun provideUiComponent(): MyUiComponentClass = object : MyUiComponentClass {}
             }
@@ -477,7 +477,7 @@ class TopLevelInjectTest : MetroCompilerTest() {
             @DependencyGraph
             interface ExampleGraph {
               val app: AppClass
-              
+
               @Provides fun provideClock(): Clock = object : Clock {}
               @Provides fun provideUiComponent(): MyUiComponentClass = object : MyUiComponentClass {}
               @Provides fun provideScope(): SharedTransitionScope = object : SharedTransitionScope {}
@@ -535,7 +535,7 @@ class TopLevelInjectTest : MetroCompilerTest() {
             @DependencyGraph
             interface ExampleGraph {
               val app: AppClass
-              
+
               @Provides fun provideClock(): Clock = object : Clock {}
               @Provides fun provideUiComponent(): MyUiComponentClass = object : MyUiComponentClass {}
             }
