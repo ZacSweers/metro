@@ -16,6 +16,7 @@ Changelog
 - **New**: Support context parameters on top-level injected functions. See the [docs](https://zacsweers.github.io/metro/latest/injection-types/#context-parameters) for more information.
 - **Fix**: Don't use interoped annotation arguments at matching indices if their name does not match the requested name.
 - **Fix**: Trace all member injection dependencies from supertypes in graph reachability computation.
+- **Fix**: Use compat `getContainingClassSymbol()` (fixes Kotlin 2.3.0-x compatibility).
 
 0.6.10
 -----
