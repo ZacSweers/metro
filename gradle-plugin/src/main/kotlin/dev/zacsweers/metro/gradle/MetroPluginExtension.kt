@@ -154,6 +154,15 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     objects.property(Boolean::class.javaObjectType).convention(true)
 
   /**
+   * Configures the Metro compiler plugin to warn, error, or do nothing when it encounters interop
+   * annotations using positional arguments instead of named arguments.
+   *
+   * Disabled by default as this can be quite noisy in a codebase that uses a lot of interop.
+   */
+  public val interopAnnotationsNamedArgSeverity: Property<DiagnosticSeverity> =
+    objects.property(DiagnosticSeverity::class.javaObjectType).convention(DiagnosticSeverity.NONE)
+
+  /**
    * If set, the Metro compiler will dump report diagnostics about resolved dependency graphs to the
    * given destination.
    *

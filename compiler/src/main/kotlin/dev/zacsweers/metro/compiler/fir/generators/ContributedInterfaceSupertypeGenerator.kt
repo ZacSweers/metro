@@ -196,7 +196,6 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
     }
     val graphAnnotation = declaration.graphAnnotation() ?: return false
 
-    // TODO in an FIR checker, disallow omitting scope but defining additional scopes
     // Can't check the scope class ID here but we'll check in computeAdditionalSupertypes
     return graphAnnotation.scopeArgument() != null
   }

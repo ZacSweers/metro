@@ -12,6 +12,8 @@ Changelog
     ```
 - **New**: Add diagnostic disallowing qualifier annotations directly on `@AssistedInject`-annotated classes.
 - **New**: Add `wasmWasi` targets to Metro's runtime.
+- **New**: Add diagnostic to report positional arguments use in custom interop annotations. See the [interop docs](https://zacsweers.github.io/metro/latest/interop#diagnostics) for more information. This is disabled by default but can be configured via the `interopAnnotationsNamedArgSeverity` option.
+- **Fix**: Don't use interoped annotation arguments at matching indices if their name does not match the requested name.
 
 0.6.10
 -----

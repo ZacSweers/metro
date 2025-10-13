@@ -132,3 +132,10 @@ This specifically enables two features.
 Note this also automatically adds an extra `interop-dagger` dependency to support this scenario.
 
 Enabling this feature also enables interop with Dagger's `@BindsOptionalOf` annotation.
+
+## Diagnostics
+
+When interoping with annotations that are written in Kotlin and have parameters, it may be unsafe to rely on positional arguments. Metro's own annotations often have the same indices, but not always! If you want to be super safe, you can enable the `interopAnnotationsNamedArgSeverity` to `WARN` or `ERROR` to report diagnostics for positional arguments in any custom annotations that Metro is configured to look at.
+
+!!! note "Why only Kotlin annotations?"
+    This is because the Kotlin compiler doesn't support positional arguments for annotations that are written in Java.

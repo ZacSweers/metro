@@ -207,6 +207,18 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY(
+    RawMetroOption(
+      name = "interop-annotations-named-arg-severity",
+      defaultValue = MetroOptions.DiagnosticSeverity.NONE.name,
+      valueDescription = "NONE|WARN|ERROR",
+      description =
+        "Control diagnostic severity reporting of interop annotations using positional arguments instead of named arguments.",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it },
+    )
+  ),
   LOGGING(
     RawMetroOption(
       name = "logging",
@@ -576,6 +588,10 @@ public data class MetroOptions(
   val optionalDependencyBehavior: OptionalDependencyBehavior = MetroOption.OPTIONAL_DEPENDENCY_BEHAVIOR.raw.defaultValue.expectAs<String>().let { OptionalDependencyBehavior.valueOf(it) },
   val warnOnInjectAnnotationPlacement: Boolean =
     MetroOption.WARN_ON_INJECT_ANNOTATION_PLACEMENT.raw.defaultValue.expectAs(),
+  val interopAnnotationsNamedArgSeverity: DiagnosticSeverity =
+    MetroOption.INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY.raw.defaultValue.expectAs<String>().let {
+      DiagnosticSeverity.valueOf(it)
+    },
   val enabledLoggers: Set<MetroLogger.Type> =
     if (debug) {
       // Debug enables _all_
@@ -723,6 +739,15 @@ public data class MetroOptions(
             options =
               options.copy(warnOnInjectAnnotationPlacement = configuration.getAsBoolean(entry))
 
+          MetroOption.INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY ->
+            options =
+              options.copy(
+                interopAnnotationsNamedArgSeverity =
+                  configuration.getAsString(entry).let {
+                    DiagnosticSeverity.valueOf(it.uppercase(Locale.US))
+                  }
+              )
+
           MetroOption.LOGGING -> {
             enabledLoggers +=
               configuration.get(entry.raw.key)?.expectAs<Set<MetroLogger.Type>>().orEmpty()
@@ -865,7 +890,9 @@ public data class MetroOptions(
   public enum class DiagnosticSeverity {
     NONE,
     WARN,
-    ERROR,
+    ERROR;
+
+    public val isEnabled: Boolean get() = this != NONE
   }
 
   public object Properties {

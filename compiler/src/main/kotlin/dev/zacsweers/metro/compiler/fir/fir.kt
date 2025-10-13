@@ -59,6 +59,7 @@ import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
 import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
+import org.jetbrains.kotlin.fir.expressions.FirNamedArgumentExpression
 import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirResolvedQualifier
 import org.jetbrains.kotlin.fir.expressions.arguments
@@ -109,6 +110,7 @@ import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.FirUserTypeRef
 import org.jetbrains.kotlin.fir.types.builder.buildUserTypeRef
 import org.jetbrains.kotlin.fir.types.classId
+import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.fir.types.constructType
@@ -810,9 +812,10 @@ internal fun FirCallableSymbol<*>.findAnnotation(
 }
 
 context(compatContext: CompatContext)
-internal fun FirBasedSymbol<*>.requireContainingClassSymbol(): FirClassLikeSymbol<*> = with(compatContext) {
-  getContainingClassSymbol() ?: reportCompilerBug("No containing class symbol found for $this")
-}
+internal fun FirBasedSymbol<*>.requireContainingClassSymbol(): FirClassLikeSymbol<*> =
+  with(compatContext) {
+    getContainingClassSymbol() ?: reportCompilerBug("No containing class symbol found for $this")
+  }
 
 private val FirPropertyAccessExpression.qualifierName: Name?
   get() = (calleeReference as? FirSimpleNamedReference)?.name
@@ -1004,13 +1007,106 @@ internal fun FirAnnotation.classArgument(name: Name, index: Int) =
 internal fun FirAnnotation.annotationArgument(name: Name, index: Int) =
   argumentAsOrNull<FirFunctionCall>(name, index)
 
-internal inline fun <reified T> FirAnnotation.argumentAsOrNull(name: Name, index: Int): T? {
-  findArgumentByNameSafe(name)?.let {
-    return it as? T?
+internal inline fun <reified T : Any> FirAnnotation.argumentAsOrNull(name: Name, index: Int): T? {
+  return argumentAsOrNull(T::class.java, name, index)
+}
+
+/**
+ * Retrieves a specific argument from a [FirAnnotation] by its [name] and [index], and casts it to
+ * the specified type [klass] (if it matches). If the argument is not found, is not of the expected
+ * type, or the name does not match, returns null.
+ *
+ * @param klass The expected class type of the argument.
+ * @param name The name of the argument to retrieve.
+ * @param index The position of the argument in the argument list.
+ * @return The casted argument if found, otherwise null.
+ */
+internal fun <T : Any> FirAnnotation.argumentAsOrNull(klass: Class<T>, name: Name, index: Int): T? {
+  argumentMapping.mapping[name]?.let {
+    return if (klass.isInstance(it)) {
+      @Suppress("UNCHECKED_CAST")
+      it as T
+    } else {
+      null
+    }
   }
   if (this !is FirAnnotationCall) return null
+
+  if (arguments.isEmpty()) {
+    // Nothing to do here
+    return null
+  } else if (index == 0 && arguments.size == 1) {
+    val arg0 = arguments[0]
+    return if (arg0 is FirNamedArgumentExpression) {
+      if (arg0.name != name || !klass.isInstance(arg0.expression)) {
+        null
+      } else {
+        @Suppress("UNCHECKED_CAST")
+        arg0.expression as? T
+      }
+    } else if (klass.isInstance(arg0)) {
+      @Suppress("UNCHECKED_CAST")
+      arg0 as T
+    } else {
+      null
+    }
+  }
+
+  val argByIndex = arguments.getOrNull(index)
+
+  // Check if the index is present but under a different name
+  if (argByIndex != null && argumentMapping.mapping.isNotEmpty()) {
+    for ((argName, arg) in argumentMapping.mapping) {
+      if (arg == argByIndex && argName != name) {
+        // Different name than expected, bounce out
+        return null
+      }
+    }
+  }
+
+  val thoroughMapping =
+    argumentMapping.mapping.ifEmpty {
+      // These may not be present but are present in arguments
+      buildMap(arguments.size) {
+        for (arg in arguments) {
+          if (arg !is FirNamedArgumentExpression) continue
+          if (arg.name == name) {
+            return if (klass.isInstance(arg.expression)) {
+              @Suppress("UNCHECKED_CAST")
+              arg.expression as T
+            } else {
+              null
+            }
+          } else if (arg == argByIndex) {
+            // Different name than expected, bounce out
+            return null
+          }
+          put(arg.name, arg)
+        }
+      }
+    }
+
+  if (argByIndex == null) {
+    // Nothing to check here anyway
+    return null
+  }
+
+  // In external declarations, there is no argumentMapping (based on reading kotlinc source)
+  thoroughMapping.entries
+    .find { it.value == argByIndex }
+    ?.let { (associatedName, _) ->
+      if (associatedName != name) {
+        return null
+      }
+    }
+
   // Fall back to the index if necessary
-  return arguments.getOrNull(index) as? T?
+  return if (klass.isInstance(argByIndex)) {
+    @Suppress("UNCHECKED_CAST")
+    argByIndex as T
+  } else {
+    null
+  }
 }
 
 /**
@@ -1208,14 +1304,11 @@ internal fun FirClassSymbol<*>.originClassId(
     ?.originArgument()
     ?.resolveClassId(typeResolver)
 
-
-internal fun FirValueParameterSymbol.hasMetroDefault(
-  session: FirSession,
-): Boolean {
+internal fun FirValueParameterSymbol.hasMetroDefault(session: FirSession): Boolean {
   return computeMetroDefault(
     behavior = session.metroFirBuiltIns.options.optionalDependencyBehavior,
     isAnnotatedOptionalDep = { hasAnnotation(Symbols.ClassIds.OptionalDependency, session) },
-    hasDefaultValue = { this@hasMetroDefault.hasDefaultValue }
+    hasDefaultValue = { this@hasMetroDefault.hasDefaultValue },
   )
 }
 

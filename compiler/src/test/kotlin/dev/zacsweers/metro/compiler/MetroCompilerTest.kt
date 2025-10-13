@@ -116,6 +116,8 @@ abstract class MetroCompilerTest {
                 processor.option(entry.raw.cliOption, publicProviderSeverity)
               MetroOption.WARN_ON_INJECT_ANNOTATION_PLACEMENT ->
                 processor.option(entry.raw.cliOption, warnOnInjectAnnotationPlacement)
+              MetroOption.INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY ->
+                processor.option(entry.raw.cliOption, interopAnnotationsNamedArgSeverity)
               MetroOption.LOGGING -> {
                 if (enabledLoggers.isEmpty()) continue
                 processor.option(entry.raw.cliOption, enabledLoggers.joinToString("|") { it.name })
