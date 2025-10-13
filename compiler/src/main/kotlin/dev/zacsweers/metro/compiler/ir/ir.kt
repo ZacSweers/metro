@@ -289,6 +289,7 @@ internal fun IrBuilderWithScope.irInvoke(
   callee: IrFunctionSymbol,
   typeHint: IrType? = null,
   typeArgs: List<IrType>? = null,
+  contextArgs: List<IrExpression?>? = null,
   args: List<IrExpression?> = emptyList(),
 ): IrMemberAccessExpression<*> {
   assert(callee.isBound) { "Symbol $callee expected to be bound" }
@@ -322,6 +323,7 @@ internal fun IrBuilderWithScope.irInvoke(
 
   var argSize = args.size
   if (finalReceiverExpression != null) argSize++
+  if (!contextArgs.isNullOrEmpty()) argSize += contextArgs.size
   if (extensionReceiver != null) argSize++
   check(callee.owner.parameters.size == argSize) {
     "Expected ${callee.owner.parameters.size} arguments but got ${args.size} for function: ${callee.owner.kotlinFqName}"
@@ -329,6 +331,7 @@ internal fun IrBuilderWithScope.irInvoke(
 
   var index = 0
   finalReceiverExpression?.let { call.arguments[index++] = it }
+  contextArgs?.forEach { call.arguments[index++] = it }
   extensionReceiver?.let { call.arguments[index++] = it }
   args.forEach { call.arguments[index++] = it }
   return call
