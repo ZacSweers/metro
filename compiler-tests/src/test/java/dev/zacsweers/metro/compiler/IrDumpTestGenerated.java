@@ -136,6 +136,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("OptionalBindingsHaveValidFieldNames.kt")
+    public void testOptionalBindingsHaveValidFieldNames() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/OptionalBindingsHaveValidFieldNames.kt");
+    }
+
+    @Test
     @TestMetadata("UnusedInstanceBindingsInUnextendedGraphGetNoProviderFields.kt")
     public void testUnusedInstanceBindingsInUnextendedGraphGetNoProviderFields() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/UnusedInstanceBindingsInUnextendedGraphGetNoProviderFields.kt");
