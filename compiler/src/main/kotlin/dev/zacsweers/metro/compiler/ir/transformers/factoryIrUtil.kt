@@ -41,6 +41,7 @@ import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.isObject
+import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.ir.util.parentAsClass
 
 /**
@@ -68,10 +69,10 @@ internal fun generateStaticCreateFunction(
   return function.apply {
     if (patchCreationParams) {
       val instanceParam = regularParameters.find { it.origin == Origins.InstanceParameter }
-      val valueParamsToPatch = regularParameters.filter { it.origin == Origins.RegularParameter }
+      val valueParamsToPatch = nonDispatchParameters.filter { it.origin == Origins.RegularParameter }
       copyParameterDefaultValues(
         providerFunction = providerFunction,
-        sourceParameters = parameters.regularParameters.filterNot { it.isAssisted }.map { it.ir },
+        sourceParameters = parameters.nonDispatchParameters.filterNot { it.isAssisted }.map { it.ir },
         targetParameters = valueParamsToPatch,
         targetGraphParameter = instanceParam,
         wrapInProvider = true,
@@ -117,7 +118,7 @@ internal fun generateStaticNewInstanceFunction(
 
   return function.apply {
     val instanceParam = regularParameters.find { it.origin == Origins.InstanceParameter }
-    val valueParametersToMap = regularParameters.filter { it.origin == Origins.RegularParameter }
+    val valueParametersToMap = nonDispatchParameters.filter { it.origin == Origins.RegularParameter }
     copyParameterDefaultValues(
       providerFunction = targetFunction,
       sourceParameters = sourceParameters,
