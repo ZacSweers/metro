@@ -3,6 +3,7 @@ public final class dev/zacsweers/metro/gradle/DiagnosticSeverity : java/lang/Enu
 	public static final field NONE Ldev/zacsweers/metro/gradle/DiagnosticSeverity;
 	public static final field WARN Ldev/zacsweers/metro/gradle/DiagnosticSeverity;
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public final fun isEnabled ()Z
 	public static fun valueOf (Ljava/lang/String;)Ldev/zacsweers/metro/gradle/DiagnosticSeverity;
 	public static fun values ()[Ldev/zacsweers/metro/gradle/DiagnosticSeverity;
 }
@@ -36,6 +37,7 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension {
 	public final fun getGenerateContributionHints ()Lorg/gradle/api/provider/Property;
 	public final fun getGenerateJvmContributionHintsInFir ()Lorg/gradle/api/provider/Property;
 	public final fun getInterop ()Ldev/zacsweers/metro/gradle/MetroPluginExtension$InteropHandler;
+	public final fun getInteropAnnotationsNamedArgSeverity ()Lorg/gradle/api/provider/Property;
 	public final fun getMaxIrErrors ()Lorg/gradle/api/provider/Property;
 	public final fun getOptionalDependencyBehavior ()Lorg/gradle/api/provider/Property;
 	public final fun getPublicProviderSeverity ()Lorg/gradle/api/provider/Property;
