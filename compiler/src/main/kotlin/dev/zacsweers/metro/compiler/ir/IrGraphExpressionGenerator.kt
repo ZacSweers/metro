@@ -470,7 +470,6 @@ private constructor(
   ): List<IrExpression?> =
     with(scope) {
       val params = function.parameters()
-      // TODO only value args are supported atm
       var paramsToMap = buildList {
         if (
           binding is IrBinding.Provided &&
@@ -478,6 +477,8 @@ private constructor(
         ) {
           targetParams.dispatchReceiverParameter?.let(::add)
         }
+        addAll(targetParams.contextParameters.filterNot { it.isAssisted })
+        targetParams.extensionReceiverParameter?.let(::add)
         addAll(targetParams.regularParameters.filterNot { it.isAssisted })
       }
 
@@ -534,7 +535,7 @@ private constructor(
         }
       }
 
-      return params.regularParameters.mapIndexed { i, param ->
+      return params.nonDispatchParameters.mapIndexed { i, param ->
         val contextualTypeKey = paramsToMap[i].contextualTypeKey
         val typeKey = contextualTypeKey.typeKey
 
