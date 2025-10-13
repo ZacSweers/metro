@@ -103,7 +103,8 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
   ) : IrBinding, BindingWithAnnotations, InjectedClassBinding<ConstructorInjected> {
     override val parameters: Parameters = classFactory.targetFunctionParameters
 
-    val isAssisted get() = classFactory.isAssistedInject
+    val isAssisted
+      get() = classFactory.isAssistedInject
 
     override val dependencies: List<IrContextualTypeKey> by unsafeLazy {
       parameters.nonDispatchParameters.filterNot { it.isAssisted }.map { it.contextualTypeKey } +
@@ -636,11 +637,12 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     // object instantiation
     override val isImplicitlyDeferrable: Boolean = true
 
-    override val dependencies: List<IrContextualTypeKey> =
+    override val dependencies: List<IrContextualTypeKey> by unsafeLazy {
       parameters.nonDispatchParameters
         // Instance parameters are implicitly assisted in this scenario and marked as such in FIR
         .filterNot { it.isAssisted }
         .map { it.contextualTypeKey }
+    }
 
     override val scope: IrAnnotation? = null
 

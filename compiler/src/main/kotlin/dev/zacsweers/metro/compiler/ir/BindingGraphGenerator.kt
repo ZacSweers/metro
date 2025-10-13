@@ -683,25 +683,29 @@ internal class BindingGraphGenerator(
         // Don't return null on missing because it's legal to inject a class with no member
         // injections
         // TODO warn on this?
-        val generatedInjector = membersInjectorTransformer.getOrGenerateInjector(targetClass)
+        val generatedInjectors =
+          membersInjectorTransformer.getOrGenerateAllInjectorsFor(targetClass)
 
-        val remappedParams =
-          if (targetClass.typeParameters.isEmpty()) {
-              generatedInjector?.mergedParameters(NOOP_TYPE_REMAPPER)
+        val mergedMappedParameters =
+          if (generatedInjectors.isEmpty()) {
+              Parameters.empty()
             } else {
-              // Create a remapper for the target class type parameters
-              val remapper = targetClass.deepRemapperFor(paramType)
-              val params = generatedInjector?.mergedParameters(remapper)
-              params?.ir?.parameters(remapper) ?: params
+              generatedInjectors
+                .map { generatedInjector ->
+                  // Create a remapper for the target class type parameters
+                  val remapper = targetClass.deepRemapperFor(paramType)
+                  val params = generatedInjector.mergedParameters(remapper)
+                  params.ir?.parameters(remapper) ?: params
+                }
+                .reduce { current, next -> current.mergeValueParametersWith(next) }
             }
-            .let { it ?: Parameters.empty() }
             .withCallableId(injector.callableId)
 
         val binding =
           IrBinding.MembersInjected(
             contextKey,
             // Need to look up the injector class and gather all params
-            parameters = remappedParams,
+            parameters = mergedMappedParameters,
             reportableDeclaration = injector.ir,
             function = injector.ir,
             isFromInjectorFunction = true,

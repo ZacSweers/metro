@@ -15,6 +15,7 @@ Changelog
 - **New**: Add diagnostic to report positional arguments use in custom interop annotations. See the [interop docs](https://zacsweers.github.io/metro/latest/interop#diagnostics) for more information. This is disabled by default but can be configured via the `interopAnnotationsNamedArgSeverity` option.
 - **New**: Support context parameters on top-level injected functions. See the [docs](https://zacsweers.github.io/metro/latest/injection-types/#context-parameters) for more information.
 - **Fix**: Don't use interoped annotation arguments at matching indices if their name does not match the requested name.
+- **Fix**: Trace all member injection dependencies from supertypes in graph reachability computation.
 
 0.6.10
 -----
