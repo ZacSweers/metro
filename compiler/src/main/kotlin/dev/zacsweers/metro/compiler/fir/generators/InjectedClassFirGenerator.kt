@@ -35,7 +35,10 @@ import org.jetbrains.kotlin.fir.caches.FirCache
 import org.jetbrains.kotlin.fir.caches.firCachesFactory
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
+import org.jetbrains.kotlin.fir.declarations.FirValueParameter
+import org.jetbrains.kotlin.fir.declarations.builder.buildValueParameterCopy
 import org.jetbrains.kotlin.fir.declarations.hasAnnotation
+import org.jetbrains.kotlin.fir.declarations.origin
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.declarations.utils.isLateInit
@@ -60,12 +63,14 @@ import org.jetbrains.kotlin.fir.plugin.createTopLevelClass
 import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
 import org.jetbrains.kotlin.fir.scopes.impl.toConeType
+import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.fir.types.constructType
@@ -338,7 +343,8 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
         if (classSymbol.hasOrigin(Keys.TopLevelInjectFunctionClass)) {
           val function = functionFor(classSymbol.classId)
           val params =
-            function.valueParameterSymbols
+            function.contextParameterSymbols
+              .plus(function.valueParameterSymbols)
               .filterNot { it.isAnnotatedWithAny(session, session.classIds.assistedAnnotations) }
               .map { MetroFirValueParameter(session, it, wrapInProvider = true) }
           InjectedClass(classSymbol, true, params, false)
@@ -516,7 +522,8 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
     if (context.owner.hasOrigin(Keys.TopLevelInjectFunctionClass)) {
       val function = functionFor(context.owner.classId)
       val nonAssistedParams =
-        function.valueParameterSymbols
+        function.contextParameterSymbols
+          .plus(function.valueParameterSymbols)
           .filterNot { it.isAnnotatedWithAny(session, session.classIds.assistedAnnotations) }
           .map { MetroFirValueParameter(session, it) }
       return createConstructor(
@@ -615,6 +622,22 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
           }
         }
         .apply {
+          // TODO this is ugly but there's no API on SimpleFunctionBuildingContext
+          val contextParams = mutableListOf<FirValueParameter>()
+          for (original in function.contextParameterSymbols) {
+            if (!original.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)) {
+              continue
+            }
+            @OptIn(SymbolInternals::class)
+            contextParams += buildValueParameterCopy(original.fir) {
+              name = original.name
+              origin = Keys.RegularParameter.origin
+              symbol = FirValueParameterSymbol()
+              containingDeclarationSymbol = this@apply.symbol
+            }
+              .apply { replaceAnnotationsSafe(original.annotations) }
+          }
+          replaceContextParameters(contextParams)
           if (function.hasAnnotation(Symbols.ClassIds.Composable, session)) {
             replaceAnnotationsSafe(
               listOf(buildComposableAnnotation(), buildNonRestartableAnnotation())
