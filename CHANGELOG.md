@@ -17,6 +17,7 @@ Changelog
 - **Fix**: Don't use interoped annotation arguments at matching indices if their name does not match the requested name.
 - **Fix**: Use compat `getContainingClassSymbol()` (fixes Kotlin 2.3.0-x compatibility).
 - **Fix**: Better escape field names to be valid in JVM.
+- **Fix**: Don't double-invoke `Optional` binding fields.
 
 0.6.10
 -----
