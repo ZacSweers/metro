@@ -1210,9 +1210,10 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     val thirdBuildResult = buildAndFail(project.rootDir, "compileKotlin")
     assertThat(thirdBuildResult.output.cleanOutputLine())
+      // Omit 'e: ExampleGraph.kt:7:11 ' prefix until 2.3.0+ as we report a more accurate location there
       .contains(
         """
-          e: ExampleGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Foo
+          [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Foo
 
               test.Foo is requested at
                   [test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl] test.LoggedInGraph.childDependency
