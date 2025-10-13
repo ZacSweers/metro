@@ -72,8 +72,8 @@ abstract class MetroCompilerTest {
       sources = sourceFiles.asList()
       verbose = false
       jvmTarget = JVM_TARGET
-      kotlincArguments += "-jvm-default=no-compatibility"
-      kotlincArguments += listOf("-Xverify-ir=error", "-Xverify-ir-visibility")
+      kotlincArguments +=
+        listOf("-jvm-default=no-compatibility", "-Xverify-ir=error", "-Xverify-ir-visibility")
 
       // TODO test enabling IC?
       //  kotlincArguments += "-Xenable-incremental-compilation"
@@ -222,7 +222,10 @@ abstract class MetroCompilerTest {
               }
               MetroOption.CUSTOM_BINDING_CONTAINER -> {
                 if (customBindingContainerAnnotations.isEmpty()) continue
-                processor.option(entry.raw.cliOption, customBindingContainerAnnotations.joinToString(":"))
+                processor.option(
+                  entry.raw.cliOption,
+                  customBindingContainerAnnotations.joinToString(":"),
+                )
               }
               MetroOption.CUSTOM_CONTRIBUTES_INTO_SET -> {
                 if (customContributesIntoSetAnnotations.isEmpty()) continue
@@ -247,10 +250,7 @@ abstract class MetroCompilerTest {
               }
               MetroOption.CUSTOM_ORIGIN -> {
                 if (customOriginAnnotations.isEmpty()) continue
-                processor.option(
-                  entry.raw.cliOption,
-                  customOriginAnnotations.joinToString(":"),
-                )
+                processor.option(entry.raw.cliOption, customOriginAnnotations.joinToString(":"))
               }
               MetroOption.ENABLE_DAGGER_ANVIL_INTEROP -> {
                 processor.option(entry.raw.cliOption, enableDaggerAnvilInterop)
