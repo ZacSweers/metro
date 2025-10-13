@@ -34,31 +34,43 @@ val kiAnvilRuntimeClasspath: Configuration by configurations.creating { isTransi
 val daggerRuntimeClasspath: Configuration by configurations.creating {}
 val daggerInteropClasspath: Configuration by configurations.creating { isTransitive = false }
 
-val testCompilerVersion =
-  providers.gradleProperty("metro.testCompilerVersion").orElse(libs.versions.kotlin).get()
-
-val kotlinVersion =
-  testCompilerVersion.substringBefore('-').split('.').let { (major, minor, patch) ->
-    KotlinVersion(major.toInt(), minor.toInt(), patch.toInt())
-  }
-
 dependencies {
+  val testCompilerVersion =
+    providers.gradleProperty("metro.testCompilerVersion").orElse(libs.versions.kotlin).get()
+
+  val kotlinVersion =
+    testCompilerVersion.substringBefore('-').split('.').let { (major, minor, patch) ->
+      KotlinVersion(major.toInt(), minor.toInt(), patch.toInt())
+    }
+
+  // IntelliJ maven repo doesn't carry compiler test framework versions, so we'll pull from that as
+  // needed for those tests
+  val compilerTestFrameworkVersion: String
+
   // 2.3.0 changed the test gen APIs around into different packages
   "generator220CompileOnly"(libs.kotlin.compilerTestFramework)
   "generator230CompileOnly"(
     "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.3.0-Beta1"
   )
-  val configToUse = if (kotlinVersion >= KotlinVersion(2, 3)) "generator230" else "generator220"
-  testImplementation(sourceSets.named(configToUse).map { it.output })
+  val generatorConfigToUse: String
+
+  if (kotlinVersion >= KotlinVersion(2, 3)) {
+    generatorConfigToUse = "generator230"
+    compilerTestFrameworkVersion = "2.3.0-Beta1"
+  } else {
+    generatorConfigToUse = "generator220"
+    compilerTestFrameworkVersion = libs.versions.kotlin.get()
+  }
+  testImplementation(sourceSets.named(generatorConfigToUse).map { it.output })
+  testImplementation(
+    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$compilerTestFrameworkVersion"
+  )
+  testImplementation("org.jetbrains.kotlin:kotlin-compiler:$testCompilerVersion")
 
   testImplementation(project(":compiler"))
   testImplementation(project(":compiler-compat"))
 
   testImplementation(libs.kotlin.testJunit5)
-  testImplementation(
-    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$testCompilerVersion"
-  )
-  testImplementation("org.jetbrains.kotlin:kotlin-compiler:$testCompilerVersion")
 
   testRuntimeOnly(libs.ksp.symbolProcessing)
   testImplementation(libs.ksp.symbolProcessing.aaEmbeddable)
