@@ -69,6 +69,20 @@ class NameAllocatorTest {
   }
 
   @Test
+  fun characterMappingSubstituteWithCount() {
+    val nameAllocator = NameAllocator(mode = Mode.COUNT)
+    assertThat(nameAllocator.newName("a-b", 1)).isEqualTo("a_b")
+    assertThat(nameAllocator.newName("a-b", 2)).isEqualTo("a_b2")
+  }
+
+  @Test
+  fun angleBracketsAreSubstituted() {
+    val nameAllocator = NameAllocator(mode = Mode.COUNT)
+    assertThat(nameAllocator.newName("a<>b", 1)).isEqualTo("a__b")
+    assertThat(nameAllocator.newName("a<>b", 2)).isEqualTo("a__b2")
+  }
+
+  @Test
   fun characterMappingSubstitute() {
     val nameAllocator = NameAllocator()
     assertThat(nameAllocator.newName("a-b", 1)).isEqualTo("a_b")
