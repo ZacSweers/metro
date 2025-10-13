@@ -1,5 +1,8 @@
 // Copyright (C) 2024 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
+@file:OptIn(ExperimentalWasmDsl::class, ExperimentalKotlinGradlePluginApi::class)
+
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
@@ -27,12 +30,29 @@ kotlin {
   jvm()
 
   js { browser() }
-  @OptIn(ExperimentalWasmDsl::class) wasmJs { browser() }
-  @OptIn(ExperimentalWasmDsl::class) wasmWasi { nodejs() }
+  wasmJs { browser() }
+  wasmWasi { nodejs() }
+
+  applyDefaultHierarchyTemplate {
+    group("commonWasm") {
+      withWasmJs()
+      withWasmWasi()
+    }
+    group("commonJvm") {
+      withAndroidTarget()
+      withJvm()
+    }
+  }
 
   configureOrCreateNativePlatforms()
 
-  sourceSets { commonTest { dependencies { implementation(libs.kotlin.test) } } }
+  sourceSets {
+    commonTest { dependencies { implementation(libs.kotlin.test) } }
+    maybeCreate("commonJvmMain").apply { dependsOn(commonMain.get()) }
+    maybeCreate("commonWasmMain").apply { dependsOn(commonMain.get()) }
+    maybeCreate("commonJvmTest").apply { dependsOn(commonTest.get()) }
+    maybeCreate("commonWasmTest").apply { dependsOn(commonTest.get()) }
+  }
 
   targets.configureEach {
     val target = this
