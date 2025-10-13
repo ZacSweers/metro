@@ -746,6 +746,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#diagnostics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Diagnostics
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1080,6 +1089,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#diagnostics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Diagnostics
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1209,6 +1227,12 @@
 </ol>
 <p>Note this also automatically adds an extra <code>interop-dagger</code> dependency to support this scenario.</p>
 <p>Enabling this feature also enables interop with Dagger&rsquo;s <code>@BindsOptionalOf</code> annotation.</p>
+<h2 id="diagnostics">Diagnostics<a class="headerlink" href="#diagnostics" title="Permanent link">&para;</a></h2>
+<p>When interoping with annotations that are written in Kotlin and have parameters, it may be unsafe to rely on positional arguments. Metro&rsquo;s own annotations often have the same indices, but not always! If you want to be super safe, you can enable the <code>interopAnnotationsNamedArgSeverity</code> to <code>WARN</code> or <code>ERROR</code> to report diagnostics for positional arguments in any custom annotations that Metro is configured to look at.</p>
+<div class="admonition note">
+<p class="admonition-title">Why only Kotlin annotations?</p>
+<p>This is because the Kotlin compiler doesn&rsquo;t support positional arguments for annotations that are written in Java.</p>
+</div>
 
 
 
