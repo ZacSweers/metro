@@ -32,13 +32,7 @@ kotlin {
 
   configureOrCreateNativePlatforms()
 
-  sourceSets {
-    commonTest {
-      dependencies {
-        implementation(libs.kotlin.test)
-      }
-    }
-  }
+  sourceSets { commonTest { dependencies { implementation(libs.kotlin.test) } } }
 
   targets.configureEach {
     val target = this
