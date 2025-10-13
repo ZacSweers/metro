@@ -777,7 +777,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
     override val parameters: Parameters = Parameters.empty()
     override val scope: IrAnnotation? = null
-    override val nameHint: String = "$wrapperKey<${typeKey.type.rawType().name.asString()}>"
+    override val nameHint: String = "$wrapperKey${wrappedType.rawType().name.asString()}"
 
     override fun renderDescriptionDiagnostic(short: Boolean, underlineTypeKey: Boolean) =
       buildString {
