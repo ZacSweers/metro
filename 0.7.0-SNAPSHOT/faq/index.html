@@ -885,6 +885,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#why-doesnt-metro-support-kotlin-inject-style-intomap-bindings" class="md-nav__link">
+    <span class="md-ellipsis">
+      Why doesn&rsquo;t Metro support kotlin-inject-style @IntoMap bindings?
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1078,6 +1087,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#why-doesnt-metro-support-kotlin-inject-style-intomap-bindings" class="md-nav__link">
+    <span class="md-ellipsis">
+      Why doesn&rsquo;t Metro support kotlin-inject-style @IntoMap bindings?
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1135,6 +1153,17 @@
 </ul>
 </li>
 <li>What&rsquo;s the expected behavior if you have a <code>@Reusable</code> type <code>Thing</code> and then request a <code>Lazy&lt;Thing&gt;</code> elsewhere? Currently, Metro <code>DoubleCheck.lazy(...)</code>&rsquo;s whatever binding provides it at the injection site, which would then defeat this. To undo that, Metro would need to introduce some means of indicating &ldquo;what kind&rdquo; of <code>Lazy</code> is needed, which just complicates things for the developer.</li>
+</ul>
+<h3 id="why-doesnt-metro-support-kotlin-inject-style-intomap-bindings"><strong>Why doesn&rsquo;t Metro support kotlin-inject-style <code>@IntoMap</code> bindings?</strong><a class="headerlink" href="#why-doesnt-metro-support-kotlin-inject-style-intomap-bindings" title="Permanent link">&para;</a></h3>
+<div class="admonition tip">
+<p class="admonition-title">Some technical context</p>
+<p>kotlin-inject allows you to provide key/value pairs from an <code>@IntoMap</code> function rather than use <code>@MapKey</code> annotations.</p>
+</div>
+<p>This allows some dynamism with keys but has some downsides. A few different reasons Metro doesn&rsquo;t use this approach</p>
+<ul>
+<li>Duplicate key checking becomes a runtime failure rather than compile-time.</li>
+<li>It breaks the ability to expose <code>Map&lt;Key, Provider&lt;Value&gt;&gt;</code> unless you start manually managing <code>Provider</code> types yourself.</li>
+<li>You allocate and throw away a <code>Pair</code> instance each time it&rsquo;s called.</li>
 </ul>
 
 
