@@ -115,7 +115,7 @@ internal class IrGraphGenerator(
     visibility: DescriptorVisibility = DescriptorVisibilities.PRIVATE,
   ): IrField {
     return bindingGraph.reservedField(key)?.field?.also { addChild(it) }
-      ?: addField(fieldName = name().asName(), fieldType = type(), fieldVisibility = visibility)
+      ?: addField(fieldName = fieldNameAllocator.newName(name()), fieldType = type(), fieldVisibility = visibility)
   }
 
   fun generate() =
@@ -144,14 +144,12 @@ internal class IrGraphGenerator(
           getOrCreateBindingField(
               typeKey,
               {
-                fieldNameAllocator.newName(
                   name
                     .asString()
                     .removePrefix("$$")
                     .decapitalizeUS()
                     .suffixIfNot("Instance")
                     .suffixIfNot("Provider")
-                )
               },
               { metroSymbols.metroProvider.typeWith(typeKey.type) },
             )
@@ -198,7 +196,7 @@ internal class IrGraphGenerator(
             val providerWrapperField =
               getOrCreateBindingField(
                 param.typeKey,
-                { fieldNameAllocator.newName(graphDepField.name.asString() + "Provider") },
+                { graphDepField.name.asString() + "Provider" },
                 { metroSymbols.metroProvider.typeWith(param.typeKey.type) },
               )
 
@@ -254,7 +252,7 @@ internal class IrGraphGenerator(
         val field =
           getOrCreateBindingField(
             node.typeKey,
-            { fieldNameAllocator.newName("thisGraphInstanceProvider") },
+            { "thisGraphInstanceProvider" },
             { metroSymbols.metroProvider.typeWith(node.typeKey.type) },
           )
 
@@ -291,7 +289,7 @@ internal class IrGraphGenerator(
           val field =
             getOrCreateBindingField(
                 binding.typeKey,
-                { fieldNameAllocator.newName(binding.nameHint.decapitalizeUS() + "Provider") },
+                { binding.nameHint.decapitalizeUS() + "Provider" },
                 { deferredTypeKey.type.wrapInProvider(metroSymbols.metroProvider) },
               )
               .withInit(binding.typeKey) { _, _ ->
@@ -354,7 +352,7 @@ internal class IrGraphGenerator(
           val field =
             getOrCreateBindingField(
               binding.typeKey,
-              { fieldNameAllocator.newName(binding.nameHint.decapitalizeUS().suffixIfNot(suffix)) },
+              { binding.nameHint.decapitalizeUS().suffixIfNot(suffix) },
               { fieldType },
             )
 
