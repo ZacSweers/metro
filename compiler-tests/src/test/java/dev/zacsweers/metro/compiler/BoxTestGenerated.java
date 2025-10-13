@@ -695,6 +695,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("ParentTypesAvailableToExtensionsViaParentClassMemberInjection.kt")
+      public void testParentTypesAvailableToExtensionsViaParentClassMemberInjection() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ParentTypesAvailableToExtensionsViaParentClassMemberInjection.kt");
+      }
+
+      @Test
       @TestMetadata("ScopedExtensionsWithoutFactoriesShouldBeCached.kt")
       public void testScopedExtensionsWithoutFactoriesShouldBeCached() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ScopedExtensionsWithoutFactoriesShouldBeCached.kt");
