@@ -72,6 +72,7 @@ internal fun generateStaticCreateFunction(
       val valueParamsToPatch = nonDispatchParameters.filter { it.origin == Origins.RegularParameter }
       copyParameterDefaultValues(
         providerFunction = providerFunction,
+        sourceMetroParameters = parameters,
         sourceParameters = parameters.nonDispatchParameters.filterNot { it.isAssisted }.map { it.ir },
         targetParameters = valueParamsToPatch,
         targetGraphParameter = instanceParam,
@@ -110,6 +111,7 @@ internal fun generateStaticCreateFunction(
 context(context: IrMetroContext)
 internal fun generateStaticNewInstanceFunction(
   parentClass: IrClass,
+  sourceMetroParameters: Parameters,
   sourceParameters: List<IrValueParameter>,
   targetFunction: IrFunction? = null,
   buildBody: IrBuilderWithScope.(IrSimpleFunction) -> IrExpression,
@@ -121,6 +123,7 @@ internal fun generateStaticNewInstanceFunction(
     val valueParametersToMap = nonDispatchParameters.filter { it.origin == Origins.RegularParameter }
     copyParameterDefaultValues(
       providerFunction = targetFunction,
+      sourceMetroParameters = sourceMetroParameters,
       sourceParameters = sourceParameters,
       targetParameters = valueParametersToMap,
       targetGraphParameter = instanceParam,

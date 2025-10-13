@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.OptionalDependencyBehavior
 import dev.zacsweers.metro.compiler.expectAs
+import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.irReturn
@@ -35,14 +36,12 @@ import org.jetbrains.kotlin.ir.visitors.IrTransformer
 context(context: IrMetroContext)
 internal fun copyParameterDefaultValues(
   providerFunction: IrFunction?,
+  sourceMetroParameters: Parameters,
   sourceParameters: List<IrValueParameter>,
   targetParameters: List<IrValueParameter>,
   targetGraphParameter: IrValueParameter?,
   wrapInProvider: Boolean = false,
-  // If true, these are all going to be assisted params
-  isTopLevelFunction: Boolean = false,
 ) {
-  if (!isTopLevelFunction || context.options.optionalDependencyBehavior == OptionalDependencyBehavior.DISABLED) return
   if (sourceParameters.isEmpty()) return
   check(sourceParameters.size == targetParameters.size) {
     "Source parameters (${sourceParameters.size}) and target parameters (${targetParameters.size}) must be the same size! Function: ${sourceParameters.first().parent.kotlinFqName}"
@@ -94,13 +93,16 @@ internal fun copyParameterDefaultValues(
       }
     }
 
+  val isDisabled = context.options.optionalDependencyBehavior == OptionalDependencyBehavior.DISABLED
+
   for ((index, parameter) in sourceParameters.withIndex()) {
+    // If we did get assisted parameters, do copy them over (i.e. top-level function injection)
+    if (isDisabled && sourceMetroParameters[parameter.name]?.isAssisted != true) continue
     val defaultValue = parameter.defaultValue ?: continue
 
     val targetParameter = targetParameters[index]
     val remappingData = RemappingData(parameter.parent, targetParameter.parent)
     if (wrapInProvider) {
-      val targetParam = targetParameter
       val provider =
         IrCallImpl.fromSymbolOwner(
             SYNTHETIC_OFFSET,
@@ -112,7 +114,7 @@ internal fun copyParameterDefaultValues(
             typeArguments[0] = parameter.type
             arguments[0] =
               irLambda(
-                parent = targetParam.parent,
+                parent = targetParameter.parent,
                 valueParameters = emptyList(),
                 returnType = parameter.type,
                 receiverParameter = null,
@@ -124,7 +126,7 @@ internal fun copyParameterDefaultValues(
                 )
               }
           }
-      targetParam.defaultValue =
+      targetParameter.defaultValue =
         defaultValue.deepCopyWithSymbols(initialParent = parameter.parent).apply {
           expression = provider
         }

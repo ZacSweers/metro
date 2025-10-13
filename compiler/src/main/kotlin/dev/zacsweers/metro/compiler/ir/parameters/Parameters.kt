@@ -66,6 +66,12 @@ internal class Parameters(
     }
   }
 
+  val parametersMap by unsafeLazy {
+    allParameters.associateBy { it.name }
+  }
+
+  operator fun get(name: Name): Parameter? = parametersMap[name]
+
   fun withCallableId(callableId: CallableId): Parameters {
     return Parameters(
       callableId,
