@@ -373,7 +373,11 @@ internal class IrGraphGenerator(
                 it.doubleCheck(this@withInit, metroSymbols, binding.typeKey)
               }
           }
-          bindingFieldContext.putProviderField(key, field)
+          if (isProviderType) {
+            bindingFieldContext.putProviderField(key, field)
+          } else {
+            bindingFieldContext.putInstanceField(key, field)
+          }
         }
 
       // Add statements to our constructor's deferred fields _after_ we've added all provider
