@@ -27,7 +27,7 @@ interface AppGraph {
 
     override val optional: Optional<String>
       override get(): Optional<String> {
-        return of<String>(p0 = <this>.#stringProvider.invoke().invoke())
+        return of<String>(p0 = <this>.#stringProvider.invoke())
       }
 
   }
@@ -102,3 +102,4 @@ interface Bindings {
   abstract fun string(): String
 
 }
+

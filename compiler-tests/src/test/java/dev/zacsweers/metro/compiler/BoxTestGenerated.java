@@ -999,6 +999,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("AnotherBindsOptionalPresentTest.kt")
+      public void testAnotherBindsOptionalPresentTest() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/AnotherBindsOptionalPresentTest.kt");
+      }
+
+      @Test
       @TestMetadata("AssistedDaggerFactoryClass.kt")
       public void testAssistedDaggerFactoryClass() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/AssistedDaggerFactoryClass.kt");
