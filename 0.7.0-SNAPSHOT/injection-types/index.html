@@ -662,6 +662,15 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#context-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Context parameters
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#why-opt-in_1" class="md-nav__link">
     <span class="md-ellipsis">
       Why opt-in?
@@ -1256,6 +1265,15 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#context-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Context parameters
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#why-opt-in_1" class="md-nav__link">
     <span class="md-ellipsis">
       Why opt-in?
@@ -1519,8 +1537,7 @@ support is rudimentary at best and currently requires enabling a custom registry
 <span class="p">}</span>
 
 <span class="c1">// Usage</span>
-<span class="kd">val</span><span class="w"> </span><span class="nv">App</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">createGraph</span><span class="o">&lt;</span><span class="n">AppGraph</span><span class="o">&gt;</span><span class="p">()</span>
-<span class="w">  </span><span class="p">.</span><span class="na">app</span>
+<span class="kd">val</span><span class="w"> </span><span class="nv">App</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">createGraph</span><span class="o">&lt;</span><span class="n">AppGraph</span><span class="o">&gt;</span><span class="p">().</span><span class="na">app</span>
 
 <span class="c1">// Call it in composition</span>
 <span class="n">setContent</span><span class="w"> </span><span class="p">{</span>
@@ -1528,6 +1545,40 @@ support is rudimentary at best and currently requires enabling a custom registry
 <span class="p">}</span>
 </code></pre></div>
 <p>Similarly, if the injected function is a <code>suspend</code> function, the <code>suspend</code> keyword will be ported to the generated <code>invoke()</code> function too.</p>
+<div class="admonition warning">
+<p class="admonition-title">Default parameters</p>
+<p>Default parameters are not supported yet for top-level functions due to <a href="https://youtrack.jetbrains.com/issue/KT-81656/">KT-81656</a>.</p>
+</div>
+<h3 id="context-parameters">Context parameters<a class="headerlink" href="#context-parameters" title="Permanent link">&para;</a></h3>
+<p>Top-level injected functions also support context parameters. Both regular and context parameters may be assisted.</p>
+<p>Any assisted context parameters will be carried as context parameters to the generated class&rsquo;s <code>invoke()</code> function.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Source</label><label for="__tabbed_1_2">Generated</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="nd">@Inject</span>
+<span class="nd">@Composable</span>
+<span class="n">context</span><span class="p">(</span><span class="nd">@Assisted</span><span class="w"> </span><span class="n">sharedTransitionScope</span><span class="p">:</span><span class="w"> </span><span class="n">SharedTransitionScope</span><span class="p">)</span>
+<span class="kd">fun</span><span class="w"> </span><span class="nf">ClockWidget</span><span class="p">(</span>
+<span class="w">  </span><span class="n">clock</span><span class="p">:</span><span class="w"> </span><span class="n">Clock</span><span class="p">,</span><span class="w"> </span><span class="c1">// injected</span>
+<span class="w">  </span><span class="nd">@Assisted</span><span class="w"> </span><span class="n">modifier</span><span class="p">:</span><span class="w"> </span><span class="n">Modifier</span><span class="p">,</span><span class="w"> </span><span class="c1">// assisted inject</span>
+<span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="c1">// ...</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="nd">@Inject</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">ClockWidgetClass</span><span class="p">(</span><span class="kd">private</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">clock</span><span class="p">:</span><span class="w"> </span><span class="n">Provider</span><span class="o">&lt;</span><span class="n">Clock</span><span class="o">&gt;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nd">@Composable</span>
+<span class="w">  </span><span class="n">context</span><span class="p">(</span><span class="n">sharedTransitionScope</span><span class="p">:</span><span class="w"> </span><span class="n">SharedTransitionScope</span><span class="p">)</span>
+<span class="w">  </span><span class="kd">operator</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">invoke</span><span class="p">(</span><span class="n">modifier</span><span class="p">:</span><span class="w"> </span><span class="n">Modifier</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">ClockWidget</span><span class="p">(</span><span class="n">clock</span><span class="p">(),</span><span class="w"> </span><span class="n">modifier</span><span class="p">)</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
+</div>
 <h3 id="why-opt-in_1">Why opt-in?<a class="headerlink" href="#why-opt-in_1" title="Permanent link">&para;</a></h3>
 <p>There are two reasons this is behind an opt-in option at the moment.</p>
 <ol>
