@@ -362,6 +362,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     public void testCannotHaveTypeArgs() {
       runTest("compiler-tests/src/test/data/diagnostic/functioninject/CannotHaveTypeArgs.kt");
     }
+
+    @Test
+    @TestMetadata("ContextParamsCannotBeOptional.kt")
+    public void testContextParamsCannotBeOptional() {
+      runTest("compiler-tests/src/test/data/diagnostic/functioninject/ContextParamsCannotBeOptional.kt");
+    }
   }
 
   @Nested
