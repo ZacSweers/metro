@@ -83,7 +83,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: reports-build-${{ matrix.kotlin-compiler }}
+          name: reports-core-${{ matrix.kotlin-compiler }}
           path: |
             **/build/reports/**
 
