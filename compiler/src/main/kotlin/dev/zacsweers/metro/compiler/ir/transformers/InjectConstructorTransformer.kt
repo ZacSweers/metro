@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.generatedClass
 import dev.zacsweers.metro.compiler.ir.ClassFactory
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
+import dev.zacsweers.metro.compiler.ir.contextParameters
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.dispatchReceiverFor
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
@@ -385,8 +386,44 @@ internal class InjectConstructorTransformer(
             val constructorParameterNames =
               constructorParameters.regularParameters.associateBy { it.originalName }
 
+            val contextParameterNames =
+              invokeFunction.contextParameters.associate { it.name to irGet(it) }
+
             val functionParamsByName =
               invokeFunction.regularParameters.associate { it.name to irGet(it) }
+
+            val contextArgs =
+              targetCallable.owner.parameters().contextParameters.map { targetParam ->
+                when (val parameterName = targetParam.originalName) {
+                  in constructorParameterNames -> {
+                    val constructorParam = constructorParameterNames.getValue(parameterName)
+                    val providerInstance =
+                      irGetField(
+                        irGet(functionReceiver),
+                        constructorParametersToFields.getValue(constructorParam),
+                      )
+                    val contextKey = targetParam.contextualTypeKey
+                    typeAsProviderArgument(
+                      contextKey = contextKey,
+                      bindingCode = providerInstance,
+                      isAssisted = false,
+                      isGraphInstance = constructorParam.isGraphInstance,
+                    )
+                  }
+
+                  in functionParamsByName -> {
+                    functionParamsByName.getValue(targetParam.originalName)
+                  }
+
+                  in contextParameterNames -> {
+                    contextParameterNames.getValue(targetParam.originalName)
+                  }
+
+                  else -> {
+                    error("Unmatched top level injected function param: $targetParam")
+                  }
+                }
+              }
 
             val args =
               targetCallable.owner.parameters().regularParameters.map { targetParam ->
@@ -423,6 +460,7 @@ internal class InjectConstructorTransformer(
                 extensionReceiver = null,
                 typeHint = targetCallable.owner.returnType,
                 // TODO type params
+                contextArgs = contextArgs,
                 args = args,
               )
 
