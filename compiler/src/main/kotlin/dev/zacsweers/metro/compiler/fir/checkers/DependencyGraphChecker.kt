@@ -159,7 +159,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
           MetroAnnotations.Kind.Binds,
         )
 
-      val isEffectivelyOpen = callable.isEffectivelyOpen()
+      val isEffectivelyOpen = with(session.compatContext) { callable.isEffectivelyOpen() }
 
       if (!isEffectivelyOpen && !annotations.isOptionalDependency) continue
 
