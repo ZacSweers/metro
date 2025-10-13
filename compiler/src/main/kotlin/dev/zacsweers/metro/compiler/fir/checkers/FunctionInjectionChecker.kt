@@ -35,24 +35,12 @@ internal object FunctionInjectionChecker : FirSimpleFunctionChecker(MppCheckerKi
       )
     }
 
-    // TODO eventually check context receivers too
     declaration.symbol.receiverParameterSymbol?.let { param ->
       reporter.reportOn(
         param.source ?: source,
         FUNCTION_INJECT_ERROR,
         "Injected functions cannot have receiver parameters.",
       )
-    }
-
-    val contextParams = declaration.symbol.contextParameterSymbols
-    if (contextParams.isNotEmpty()) {
-      for (param in contextParams) {
-        reporter.reportOn(
-          param.source ?: source,
-          FUNCTION_INJECT_ERROR,
-          "Injected functions cannot have context parameters.",
-        )
-      }
     }
 
     val scope = declaration.symbol.metroAnnotations(session).scope
