@@ -126,6 +126,8 @@ internal class DependencyGraphNodeCache(
     private val graphContextKey = IrContextualTypeKey.create(graphTypeKey)
     private val bindingContainers = mutableSetOf<BindingContainer>()
     private val managedBindingContainers = mutableSetOf<IrClass>()
+    private val dynamicBindingContainers = mutableSetOf<IrClass>()
+    private val dynamicTypeKeys = mutableMapOf<IrTypeKey, IrBindingContainerCallable>()
 
     private val dependencyGraphAnno =
       cachedDependencyGraphAnno
@@ -236,7 +238,13 @@ internal class DependencyGraphNodeCache(
           checkGraphSelfCycle(graphDeclaration, graphTypeKey, bindingStack)
 
           // Add any included graph provider factories IFF it's a binding container
-          if (nonNullCreator.bindingContainersParameterIndices.isSet(i)) {
+          val isDynamicContainer = parameter.ir.origin == Origins.DynamicContainerParam
+          if (isDynamicContainer) {
+            dynamicBindingContainers += klass
+          }
+          val isRegularContainer = nonNullCreator.bindingContainersParameterIndices.isSet(i)
+          val isContainer = isDynamicContainer || isRegularContainer
+          if (isContainer) {
             // Include the container itself and all its transitively included containers
             val allContainers =
               bindingContainerTransformer.resolveAllBindingContainersCached(setOf(sourceGraph))
@@ -247,7 +255,7 @@ internal class DependencyGraphNodeCache(
                 // Don't mark the parameter class itself as managed since we're taking it as an
                 // input
                 continue
-              } else if (container.canBeManaged) {
+              } else if (!isDynamicContainer && container.canBeManaged) {
                 managedBindingContainers += container.ir
               }
             }
@@ -792,12 +800,31 @@ internal class DependencyGraphNodeCache(
           }
 
       for (container in mergedContainers) {
-        providerFactories += container.providerFactories.values.map { it.typeKey to it }
+        val isDynamicContainer = container.ir in dynamicBindingContainers
+        for ((_, factory) in container.providerFactories) {
+          providerFactories += factory.typeKey to factory
+          if (isDynamicContainer) {
+            dynamicTypeKeys[factory.typeKey] = factory
+          }
+        }
         container.bindsMirror?.let { bindsMirror ->
-          bindsCallables += bindsMirror.bindsCallables
-          multibindsCallables += bindsMirror.multibindsCallables
+          for (callable in bindsMirror.bindsCallables) {
+            bindsCallables += callable
+            if (isDynamicContainer) {
+              dynamicTypeKeys[callable.typeKey] = callable
+            }
+          }
+          for (callable in bindsMirror.multibindsCallables) {
+            multibindsCallables += callable
+            if (isDynamicContainer) {
+              dynamicTypeKeys[callable.typeKey] = callable
+            }
+          }
           for (callable in bindsMirror.optionalKeys) {
-            optionalKeys.getOrPut(callable.typeKey) { mutableSetOf() } += callable
+            optionalKeys.getOrPut(callable.typeKey, ::mutableSetOf) += callable
+            if (isDynamicContainer) {
+              dynamicTypeKeys[callable.typeKey] = callable
+            }
           }
         }
 
@@ -828,6 +855,7 @@ internal class DependencyGraphNodeCache(
           creator = creator,
           extendedGraphNodes = extendedGraphNodes,
           bindingContainers = managedBindingContainers,
+          dynamicTypeKeys = dynamicTypeKeys,
           typeKey = graphTypeKey,
         )
 
@@ -954,6 +982,7 @@ internal class DependencyGraphNodeCache(
           creator = null,
           bindingContainers = emptySet(),
           bindsFunctions = emptyList(),
+          dynamicTypeKeys = emptyMap(),
         )
 
       return dependentNode
