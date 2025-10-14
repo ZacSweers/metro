@@ -13,7 +13,7 @@ public inline fun <reified T : Any> createGraph(): T {
 /**
  * TODO doc
  */
-public inline fun <reified T : Any> Any.createGraph(vararg containers: Any): T {
+public inline fun <reified T : Any> createGraph(vararg containers: Any): T {
   throw UnsupportedOperationException("Implemented by the compiler")
 }
 
@@ -29,6 +29,6 @@ public inline fun <reified T : Any> createGraphFactory(): T {
 /**
  * TODO doc
  */
-public inline fun <reified T : Any> Any.createGraphFactory(vararg containers: Any): T {
+public inline fun <reified T : Any> createGraphFactory(vararg containers: Any): T {
   throw UnsupportedOperationException("Implemented by the compiler")
 }
