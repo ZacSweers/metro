@@ -15,7 +15,7 @@ import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.StandardClassIds
 
-internal sealed interface BindsLikeCallable {
+internal sealed interface BindsLikeCallable : IrBindingContainerDeclaration {
   val callableMetadata: IrCallableMetadata
   val callableId: CallableId
     get() = callableMetadata.callableId
@@ -29,18 +29,20 @@ internal class BindsCallable(
   override val callableMetadata: IrCallableMetadata,
   val source: IrTypeKey,
   val target: IrTypeKey,
-) : BindsLikeCallable
+) : BindsLikeCallable {
+  override val typeKey: IrTypeKey = target
+}
 
 @Poko
 internal class MultibindsCallable(
   override val callableMetadata: IrCallableMetadata,
-  val typeKey: IrTypeKey,
+  override val typeKey: IrTypeKey,
 ) : BindsLikeCallable
 
 @Poko
 internal class BindsOptionalOfCallable(
   override val callableMetadata: IrCallableMetadata,
-  val typeKey: IrTypeKey,
+  override val typeKey: IrTypeKey,
 ) : BindsLikeCallable
 
 context(context: IrMetroContext)
