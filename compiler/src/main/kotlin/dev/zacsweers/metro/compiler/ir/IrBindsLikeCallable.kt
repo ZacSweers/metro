@@ -3,19 +3,12 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.drewhamilton.poko.Poko
-import dev.zacsweers.metro.compiler.expectAs
-import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.types.IrSimpleType
-import org.jetbrains.kotlin.ir.types.classOrFail
-import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
-import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.name.CallableId
-import org.jetbrains.kotlin.name.StandardClassIds
 
-internal sealed interface BindsLikeCallable : IrBindingContainerDeclaration {
+internal sealed interface BindsLikeCallable : IrBindingContainerCallable {
   val callableMetadata: IrCallableMetadata
   val callableId: CallableId
     get() = callableMetadata.callableId

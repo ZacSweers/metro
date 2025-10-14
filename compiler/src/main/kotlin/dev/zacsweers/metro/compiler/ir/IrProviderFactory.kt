@@ -8,7 +8,7 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.name.CallableId
 
-internal sealed interface ProviderFactory : IrMetroFactory, IrBindingContainerDeclaration {
+internal sealed interface ProviderFactory : IrMetroFactory, IrBindingContainerCallable {
   override val typeKey: IrTypeKey
   val callableId: CallableId
   val annotations: MetroAnnotations<IrAnnotation>
