@@ -370,9 +370,7 @@ internal class DependencyGraphNodeCache(
       // Copy inherited scopes onto this graph for faster lookups downstream
       // Note this is only for scopes inherited from supertypes, not from extended parent graphs
       val inheritedScopes = (scopes - declaredScopes).map { it.ir }
-      if (
-        graphDeclaration.origin.isGeneratedGraph
-      ) {
+      if (graphDeclaration.origin.isGeneratedGraph) {
         // If it's a contributed/dynamic graph, just add it directly as these are not visible to
         // metadata
         // anyway
