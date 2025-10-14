@@ -145,20 +145,24 @@ internal class BindingGraphGenerator(
       // Check for duplicates before adding to cache
       // TODO aggregate duplicates and report all
       val existingProvider = bindingLookup.getStaticBinding(targetTypeKey) as? IrBinding.Provided
+      val isDynamic = node.dynamicTypeKeys[providerFactory.typeKey] == providerFactory
+
       if (existingProvider != null && existingProvider != binding) {
         // Check if the existing one is from an inherited graph
         val isExistingInherited = existingProvider.providerFactory in inheritedProviderFactories
         val isCurrentInherited = providerFactory in inheritedProviderFactories
 
-        if (isExistingInherited && !isCurrentInherited) {
+        if (isDynamic || (isExistingInherited && !isCurrentInherited)) {
           // Current graph's binding replaces the inherited one
           bindingLookup.putBinding(binding)
         } else if (!isExistingInherited && isCurrentInherited) {
           // Current graph already has this binding, skip the inherited one
           // Do nothing - keep the existing binding
+          continue
         } else {
           // Both are from the same level (both current or both inherited) - this is an error
           graph.reportDuplicateBinding(typeKey, existingProvider, binding, bindingStack)
+          continue
         }
       } else if (existingProvider == null) {
         // Also check if there's already a provider factory for this key
@@ -168,16 +172,18 @@ internal class BindingGraphGenerator(
           val isAliasInherited = existingAlias.bindsCallable in inheritedBindsCallables
           val isCurrentInherited = providerFactory in inheritedProviderFactories
 
-          if (isAliasInherited && !isCurrentInherited) {
+          if (isDynamic || (isAliasInherited && !isCurrentInherited)) {
             // Current graph's @Binds replaces the inherited @Provides
             bindingLookup.removeAliasBinding(targetTypeKey)
             bindingLookup.putBinding(binding)
           } else if (!isAliasInherited && isCurrentInherited) {
             // Current graph already has @Binds, skip the inherited @Provides
             // Do nothing - keep the existing provider factory
+            continue
           } else {
             // Both are from the same level - this is an error
             graph.reportDuplicateBinding(targetTypeKey, existingAlias, binding, bindingStack)
+            continue
           }
         } else {
           // Add to cache for O(1) lookups
@@ -252,21 +258,25 @@ internal class BindingGraphGenerator(
       // Check for duplicates before adding to cache
       // TODO aggregate duplicates and report all
       val existingBinding = bindingLookup.getStaticBinding(targetTypeKey) as? IrBinding.Alias
+      val isDynamic = node.dynamicTypeKeys[bindsCallable.typeKey] == bindsCallable
+
       if (existingBinding != null && existingBinding.bindsCallable != bindsCallable) {
         // Check if the existing one is from an inherited graph
         val isExistingInherited = existingBinding.bindsCallable in inheritedBindsCallables
         val isCurrentInherited = bindsCallable in inheritedBindsCallables
 
-        if (isExistingInherited && !isCurrentInherited) {
+        if (isDynamic || (isExistingInherited && !isCurrentInherited)) {
           // Current graph's binding replaces the inherited one
           bindingLookup.putBinding(binding)
         } else if (!isExistingInherited && isCurrentInherited) {
           // Current graph already has this binding, skip the inherited one
           // Do nothing - keep the existing binding
+          continue
         } else {
           // Both are from the same level (both current or both inherited) - this is an error
           // TODO Could check if there's a duplicate from provider factories to better message
           graph.reportDuplicateBinding(targetTypeKey, existingBinding, binding, bindingStack)
+          continue
         }
       } else if (existingBinding == null) {
         // Also check if there's already a provider factory for this key
@@ -276,16 +286,18 @@ internal class BindingGraphGenerator(
           val isProviderInherited = existingProvider.providerFactory in inheritedProviderFactories
           val isCurrentInherited = bindsCallable in inheritedBindsCallables
 
-          if (isProviderInherited && !isCurrentInherited) {
+          if (isDynamic || (isProviderInherited && !isCurrentInherited)) {
             // Current graph's @Binds replaces the inherited @Provides
             bindingLookup.removeProvidedBinding(targetTypeKey)
             bindingLookup.putBinding(binding)
           } else if (!isProviderInherited && isCurrentInherited) {
             // Current graph already has @Provides, skip the inherited @Binds
             // Do nothing - keep the existing provider factory
+            continue
           } else {
             // Both are from the same level - this is an error
             graph.reportDuplicateBinding(targetTypeKey, existingProvider, binding, bindingStack)
+            continue
           }
         } else {
           // Add to cache for O(1) lookups
