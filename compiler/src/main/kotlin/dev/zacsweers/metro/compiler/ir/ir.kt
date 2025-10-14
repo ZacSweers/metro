@@ -1705,3 +1705,7 @@ internal fun IrValueParameter.hasMetroDefault(): Boolean {
     hasDefaultValue = { defaultValue != null },
   )
 }
+
+internal fun <T : Any> IrPluginContext.withIrBuilder(symbol: IrSymbol, block: DeclarationIrBuilder.() -> T): T {
+  return createIrBuilder(symbol).run(block)
+}
