@@ -5,7 +5,6 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.METRO_VERSION
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
-import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
@@ -168,7 +167,7 @@ internal class IrGraphGenerator(
           //  together
           val irParam = ctor.regularParameters[i]
 
-          if (isBindsInstance || creator.bindingContainersParameterIndices.isSet(i)) {
+          if (isBindsInstance || creator.bindingContainersParameterIndices.isSet(i) || irParam.origin == Origins.DynamicContainerParam) {
             addBoundInstanceField(param.typeKey, param.name) { _, _ -> irGet(irParam) }
           } else {
             // It's a graph dep. Add all its accessors as available keys and point them at
