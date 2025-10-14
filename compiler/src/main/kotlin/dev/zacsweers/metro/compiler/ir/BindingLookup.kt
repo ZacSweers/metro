@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer.MemberInjectClass
@@ -94,7 +93,14 @@ internal class BindingLookup(
             function = null,
             // TODO this isn't actually necessarily true?
             isFromInjectorFunction = true,
-            targetClassId = classIdOrFail,
+            // Unpack the target class from the type
+            targetClassId =
+              mappedTypeKey.type
+                .requireSimpleType(this)
+                .arguments[0]
+                .typeOrFail
+                .rawType()
+                .classIdOrFail,
           )
       }
     }
@@ -158,7 +164,10 @@ internal class BindingLookup(
       return classBindings
     }
 
-  private fun createParentGraphDependency(key: IrTypeKey, fieldAccess: ParentContext.FieldAccess): IrBinding.GraphDependency {
+  private fun createParentGraphDependency(
+    key: IrTypeKey,
+    fieldAccess: ParentContext.FieldAccess,
+  ): IrBinding.GraphDependency {
     val parentGraph = parentContext!!.currentParentGraph
     val cacheKey = ParentGraphDepKey(parentGraph, key)
     return parentGraphDepCache.getOrPut(cacheKey) {

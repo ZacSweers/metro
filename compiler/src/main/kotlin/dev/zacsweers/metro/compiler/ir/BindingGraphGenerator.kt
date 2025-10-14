@@ -676,6 +676,10 @@ internal class BindingGraphGenerator(
       val entry = IrBindingStack.Entry.requestedAt(contextKey, injector.ir)
 
       graph.addInjector(contextKey, entry)
+      if (contextKey.typeKey in graph) {
+        // Injectors may be requested multiple times, don't double-add a binding
+        continue
+      }
       bindingStack.withEntry(entry) {
         val param = injector.ir.regularParameters.single()
         val paramType = param.type

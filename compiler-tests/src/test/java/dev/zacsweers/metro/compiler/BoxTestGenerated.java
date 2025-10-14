@@ -1180,6 +1180,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     public void testFieldInjectFactory() {
       runTest("compiler-tests/src/test/data/box/member/FieldInjectFactory.kt");
     }
+
+    @Test
+    @TestMetadata("InjectOrderOfParentAndChildDoesNotMatter.kt")
+    public void testInjectOrderOfParentAndChildDoesNotMatter() {
+      runTest("compiler-tests/src/test/data/box/member/InjectOrderOfParentAndChildDoesNotMatter.kt");
+    }
   }
 
   @Nested

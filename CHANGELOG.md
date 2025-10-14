@@ -19,6 +19,8 @@ Changelog
 - **Fix**: Use compat `getContainingClassSymbol()` (fixes Kotlin 2.3.0-x compatibility).
 - **Fix**: Better escape field names to be valid in JVM.
 - **Fix**: Don't double-invoke `Optional` binding fields.
+- **Fix**: Don't report duplicate bindings if injectors for both a parent and child class are present on a graph.
+- **Fix**: Look up correct target class ID for computed member injectors in `BindingLookup`.
 
 0.6.10
 -----
