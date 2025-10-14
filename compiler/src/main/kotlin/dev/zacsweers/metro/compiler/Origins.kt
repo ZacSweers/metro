@@ -47,6 +47,8 @@ internal object Origins {
     IrDeclarationOrigin.GeneratedByPlugin(Keys.BindingMirrorClassDeclaration)
   val GeneratedDynamicGraph: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.GeneratedDynamicGraph)
+  val DynamicContainerParam: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(Keys.DynamicContainerParam)
 }
 
 internal val IrDeclarationOrigin.isGeneratedGraph: Boolean

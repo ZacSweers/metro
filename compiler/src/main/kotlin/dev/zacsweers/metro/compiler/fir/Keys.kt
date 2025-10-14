@@ -120,4 +120,8 @@ internal object Keys {
   data object GeneratedDynamicGraph : GeneratedDeclarationKey() {
     override fun toString() = "GeneratedDynamicGraph"
   }
+
+  data object DynamicContainerParam : GeneratedDeclarationKey() {
+    override fun toString() = "DynamicContainerParam"
+  }
 }
