@@ -7,6 +7,8 @@ interface AppGraph {
 }
 
 class Example {
+  val propGraph = createGraph<AppGraph>(TestIntProvider(4))
+
   fun someTest(value: Int): Int {
     // Graph in a class
     val testGraph = createGraph<AppGraph>(TestIntProvider(value))

@@ -7,6 +7,8 @@ interface AppGraph {
 }
 
 class Example {
+  val propGraph = createGraph<AppGraph>(TestIntProvider(4))
+
   fun someTest(value: Int): Int {
     // Graph in a class
     val testGraph = createGraph<AppGraph>(TestIntProvider(value))
@@ -21,7 +23,7 @@ class TestIntProvider(private val value: Int) {
 
 fun box(): String {
   assertEquals(2, Example().someTest(2))
-
+  assertEquals(4, Example().propGraph.int)
   // top-level function-only
   assertEquals(5, createGraph<AppGraph>(TestIntProvider(5)).int)
   return "OK"

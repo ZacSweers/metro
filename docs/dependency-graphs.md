@@ -485,6 +485,46 @@ interface AppGraph {
 - Binding containers may also be [contributed](aggregation.md#contributing-binding-containers).
 - See [#172](https://github.com/ZacSweers/metro/issues/172) for more details.
 
+## Dynamic Graphs
+
+Dynamic graphs are a powerful feature of the Metro compiler that allow for dynamically replacing
+bindings in a given graph. To use them, you can pass in a vararg set of _binding containers_ to the
+`createGraph()` and `createGraphFactory()` intrinsics.
+
+```kotlin
+@DependencyGraph
+interface AppGraph {
+  val message: String
+  
+  @Provides fun provideMessage(): String = "real"
+}
+
+class AppTest {
+  val testGraph = createGraph<AppGraph>(FakeBindings)
+  
+  @Test
+  fun test() {
+    assertEquals("fake", testGraph.message)
+  }
+
+  @BindingContainer
+  object FakeBindings {
+    @Provides fun provideMessage(): String = "fake"
+  }
+}
+```
+
+The compiler will generate a dynamic graph within the enclosing class or file that is unique to the combination of input [containers] and target type [T].
+
+**Constraints**
+
+- All containers must be instances (or objects) of _binding containers_.
+- All containers must be non-local, canonical classes. i.e., they must be something with a name!
+- This overload may be called in a member function body, top-level function body, or property
+  initializer.
+- The target [T] graph _must_ be annotated with `@DependencyGraph` and must be a
+  valid graph on its own.
+
 ## Implementation Notes
 
 Dependency graph code gen is designed to largely match how Dagger components are generated.
