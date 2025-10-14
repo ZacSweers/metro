@@ -49,6 +49,8 @@ import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import dev.zacsweers.metro.compiler.unsafeLazy
+import org.jetbrains.kotlin.backend.common.IrElementTransformerVoidWithContext
+import org.jetbrains.kotlin.backend.common.ScopeWithIr
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.irBlockBody
@@ -56,6 +58,8 @@ import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
+import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
@@ -71,7 +75,6 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
-import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.name.ClassId
 
 internal class DependencyGraphTransformer(
@@ -79,7 +82,7 @@ internal class DependencyGraphTransformer(
   private val contributionData: IrContributionData,
   private val parentTracer: Tracer,
   hintGenerator: HintGenerator,
-) : IrElementTransformerVoid(), IrMetroContext by context {
+) : IrElementTransformerVoidWithContext(), TransformerContextAccess, IrMetroContext by context {
 
   private val membersInjectorTransformer = MembersInjectorTransformer(context)
   private val injectConstructorTransformer =
@@ -103,19 +106,52 @@ internal class DependencyGraphTransformer(
   private val dependencyGraphNodeCache =
     DependencyGraphNodeCache(this, contributionData, bindingContainerTransformer)
 
+  override val currentFileAccess: IrFile
+    get() = currentFile
+
+  override val currentScriptAccess: ScopeWithIr?
+    get() = currentScript
+
+  override val currentClassAccess: ScopeWithIr?
+    get() = currentClass
+
+  override val currentFunctionAccess: ScopeWithIr?
+    get() = currentFunction
+
+  override val currentPropertyAccess: ScopeWithIr?
+    get() = currentProperty
+
+  override val currentAnonymousInitializerAccess: ScopeWithIr?
+    get() = currentAnonymousInitializer
+
+  override val currentValueParameterAccess: ScopeWithIr?
+    get() = currentValueParameter
+
+  override val currentScopeAccess: ScopeWithIr?
+    get() = currentScope
+
+  override val parentScopeAccess: ScopeWithIr?
+    get() = parentScope
+
+  override val allScopesAccess: MutableList<ScopeWithIr>
+    get() = allScopes
+
+  override val currentDeclarationParentAccess: IrDeclarationParent?
+    get() = currentDeclarationParent
+
   override fun visitCall(expression: IrCall): IrExpression {
     return createGraphTransformer.visitCall(expression)
       ?: AsContributionTransformer.visitCall(expression, metroContext)
       ?: super.visitCall(expression)
   }
 
-  override fun visitClass(declaration: IrClass): IrStatement {
+  override fun visitClassNew(declaration: IrClass): IrStatement {
     val shouldNotProcess =
       declaration.isLocal ||
         declaration.kind == ClassKind.ENUM_CLASS ||
         declaration.kind == ClassKind.ENUM_ENTRY
     if (shouldNotProcess) {
-      return super.visitClass(declaration)
+      return super.visitClassNew(declaration)
     }
 
     log("Reading ${declaration.kotlinFqName}")
@@ -136,13 +172,13 @@ internal class DependencyGraphTransformer(
 
     val dependencyGraphAnno =
       declaration.annotationsIn(metroSymbols.dependencyGraphAnnotations).singleOrNull()
-        ?: return super.visitClass(declaration)
+        ?: return super.visitClassNew(declaration)
 
     tryProcessDependencyGraph(declaration, dependencyGraphAnno)
 
     // TODO dump option to detect unused
 
-    return super.visitClass(declaration)
+    return super.visitClassNew(declaration)
   }
 
   private fun tryProcessDependencyGraph(

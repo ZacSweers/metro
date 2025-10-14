@@ -47,11 +47,12 @@ internal class CreateGraphTransformer(
   private val IrCall.targetGraphType: IrType
     get() = typeArguments[0] ?: reportCompilerBug("Missing type argument for ${symbol.owner.name}")
 
+  context(context: TransformerContextAccess)
   fun visitCall(expression: IrCall): IrExpression? {
     val callee = expression.symbol.owner
     return when (callee.symbol) {
       metroSymbols.metroCreateDynamicGraphFactory -> {
-        handleDynamicGraphCreation(expression, isFactory = true)
+        handleDynamicGraphCreation(expression, isFactory = true, context = context)
       }
       metroSymbols.metroCreateGraphFactory -> {
         // Get the called type
@@ -98,7 +99,7 @@ internal class CreateGraphTransformer(
         }
       }
       metroSymbols.metroCreateDynamicGraph -> {
-        handleDynamicGraphCreation(expression, isFactory = false)
+        handleDynamicGraphCreation(expression, isFactory = false, context = context)
       }
       metroSymbols.metroCreateGraph -> {
         // Get the called type
@@ -135,14 +136,14 @@ internal class CreateGraphTransformer(
     }
   }
 
-  private fun handleDynamicGraphCreation(expression: IrCall, isFactory: Boolean): IrExpression {
+  private fun handleDynamicGraphCreation(expression: IrCall, isFactory: Boolean, context: TransformerContextAccess): IrExpression {
     // Get the target type from type argument
     val targetType = expression.targetGraphType
 
     // Extract container types from vararg
     // The first argument is the vararg parameter
     val varargArg =
-      expression.arguments[1]?.expectAs<IrVararg>()
+      expression.arguments[0]?.expectAs<IrVararg>()
         ?: reportCompilerBug("Expected vararg argument for dynamic graph creation")
 
     // TODO FIR ensure these are valid
@@ -161,8 +162,8 @@ internal class CreateGraphTransformer(
       dynamicGraphGenerator.getOrBuildDynamicGraph(
         targetType = targetType,
         containerTypes = containerTypes,
-        callSite = expression,
         isFactory = isFactory,
+        context = context,
       )
 
     // Replace with constructor call or factory creation

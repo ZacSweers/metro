@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.ir.transformers.DependencyGraphTransformer
+import dev.zacsweers.metro.compiler.ir.transformers.TransformerContextAccess
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.md5base64
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -18,6 +19,7 @@ import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationContainer
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.irAttribute
@@ -47,8 +49,8 @@ internal class IrDynamicGraphGenerator(
   fun getOrBuildDynamicGraph(
     targetType: IrType,
     containerTypes: Set<IrType>,
-    callSite: IrCall,
     isFactory: Boolean,
+    context: TransformerContextAccess,
   ): IrClass {
     val targetClass = targetType.rawType()
 
@@ -71,8 +73,8 @@ internal class IrDynamicGraphGenerator(
       generateDynamicGraph(
         targetType = targetType,
         containerTypeKeys = containerTypeKeys,
-        callSite = callSite,
         isFactory = isFactory,
+        context = context,
       )
     }
   }
@@ -81,8 +83,8 @@ internal class IrDynamicGraphGenerator(
   private fun generateDynamicGraph(
     targetType: IrType,
     containerTypeKeys: Set<IrTypeKey>,
-    callSite: IrCall,
     isFactory: Boolean,
+    context: TransformerContextAccess,
   ): IrClass {
     val targetClass = targetType.rawType()
     val containerClasses = containerTypeKeys.map { it.type.rawType() }
@@ -185,16 +187,9 @@ internal class IrDynamicGraphGenerator(
 
           // Add the generated class as a nested class in the call site's parent class,
           // or as a file-level class if no parent exists
-          // TODO this receiver is weird. Can we get the enclosing type another way?
-          //  IrElementTransformerVoidWithContext
-          val parentClass = callSite.arguments[0]!!.type.rawTypeOrNull()
-          if (parentClass != null) {
-            parentClass.addChild(this)
-          } else {
-            // Add to file level
-            val file = callSite.symbol.owner.file
-            file.addChild(this)
-          }
+          // TODO what if it's in an anonymous class :|
+          val containerToAddTo: IrDeclarationContainer  = context.currentClassAccess?.irElement as? IrClass ?: context.currentFileAccess
+          containerToAddTo.addChild(this)
 
           addFakeOverrides(irTypeSystemContext)
 
