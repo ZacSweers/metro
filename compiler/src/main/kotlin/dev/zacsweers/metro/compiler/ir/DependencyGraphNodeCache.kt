@@ -16,6 +16,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInMembersInjector
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
+import dev.zacsweers.metro.compiler.isGeneratedGraph
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.memoized
@@ -75,7 +76,7 @@ internal class DependencyGraphNodeCache(
     metroGraph: IrClass? = null,
     dependencyGraphAnno: IrConstructorCall? = null,
   ): DependencyGraphNode {
-    if (graphDeclaration.origin != Origins.GeneratedGraphExtension) {
+    if (!graphDeclaration.origin.isGeneratedGraph) {
       val sourceGraph = graphDeclaration.sourceGraphIfMetroGraph
       if (sourceGraph != graphDeclaration) {
         return getOrComputeDependencyGraphNode(
@@ -193,7 +194,7 @@ internal class DependencyGraphNodeCache(
       }
 
       val creator =
-        if (graphDeclaration.origin === Origins.GeneratedGraphExtension) {
+        if (graphDeclaration.origin.isGeneratedGraph) {
           val ctor = graphDeclaration.primaryConstructor!!
           val ctorParams = ctor.parameters()
           populateBindingContainerFields(ctorParams)
@@ -259,7 +260,7 @@ internal class DependencyGraphNodeCache(
               IrBindingStack.Entry.injectedAt(graphContextKey, nonNullCreator.function)
             ) {
               val nodeKey =
-                if (klass.origin == Origins.GeneratedGraphExtension) {
+                if (klass.origin.isGeneratedGraph) {
                   klass
                 } else {
                   sourceGraph
@@ -369,8 +370,11 @@ internal class DependencyGraphNodeCache(
       // Copy inherited scopes onto this graph for faster lookups downstream
       // Note this is only for scopes inherited from supertypes, not from extended parent graphs
       val inheritedScopes = (scopes - declaredScopes).map { it.ir }
-      if (graphDeclaration.origin === Origins.GeneratedGraphExtension) {
-        // If it's a contributed graph, just add it directly as these are not visible to metadata
+      if (
+        graphDeclaration.origin.isGeneratedGraph
+      ) {
+        // If it's a contributed/dynamic graph, just add it directly as these are not visible to
+        // metadata
         // anyway
         graphDeclaration.annotations += inheritedScopes
       } else {

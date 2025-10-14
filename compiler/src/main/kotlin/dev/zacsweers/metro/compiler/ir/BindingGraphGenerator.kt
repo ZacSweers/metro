@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.transformers.InjectConstructorTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
+import dev.zacsweers.metro.compiler.isGraphImpl
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -552,7 +553,7 @@ internal class BindingGraphGenerator(
         val getterToUse =
           if (
             parentName == Symbols.Names.MetroGraph ||
-              parentClass.origin == Origins.GeneratedGraphExtension
+              parentClass.origin.isGraphImpl
           ) {
             // Use the original graph decl so we don't tie this invocation to `$$MetroGraph`
             // specifically
@@ -588,13 +589,7 @@ internal class BindingGraphGenerator(
 
       val parentKeysByClass = mutableMapOf<IrClass, IrTypeKey>()
       for ((parentKey, parentNode) in node.allExtendedNodes) {
-        val parentNodeClass =
-          if (parentNode.sourceGraph.origin == Origins.GeneratedGraphExtension) {
-            // Parent is also a contributed graph, so the class itself is the parent
-            parentNode.sourceGraph
-          } else {
-            parentNode.metroGraph!!
-          }
+        val parentNodeClass = parentNode.sourceGraph.metroGraphOrFail
 
         parentKeysByClass[parentNodeClass] = parentKey
 

@@ -33,7 +33,6 @@ import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
-import org.jetbrains.kotlin.ir.util.parentAsClass
 
 internal class IrBindingGraph(
   private val metroContext: IrMetroContext,
@@ -574,12 +573,7 @@ internal class IrBindingGraph(
       if (node.scopes.isEmpty() || bindingScope !in node.scopes) {
         val isUnscoped = node.scopes.isEmpty()
         // Error if there are mismatched scopes
-        val declarationToReport =
-          if (node.sourceGraph.origin == Origins.GeneratedGraphExtension) {
-            node.sourceGraph.parentAsClass
-          } else {
-            node.sourceGraph
-          }
+        val declarationToReport = node.sourceGraph.sourceGraphIfMetroGraph
         val backTrace = buildRouteToRoot(binding.typeKey, roots, adjacency)
         for (entry in backTrace) {
           stack.push(entry)
