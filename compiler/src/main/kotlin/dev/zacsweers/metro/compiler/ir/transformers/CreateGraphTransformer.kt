@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.withIrBuilder
+import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
@@ -145,8 +146,12 @@ internal class CreateGraphTransformer(
         ?: reportCompilerBug("Expected vararg argument for dynamic graph creation")
 
     // TODO FIR ensure these are valid
+    //  strong type
+    //  not anonymous
+    //  no duplicates
+    //  all containers. No graphs
     val containerTypes =
-      varargArg.elements.map { element ->
+      varargArg.elements.mapToSet { element ->
         // Each element should be an expression whose type is the container type
         element.expectAs<IrExpression>().type
       }
