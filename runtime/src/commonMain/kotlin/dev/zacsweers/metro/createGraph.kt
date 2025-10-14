@@ -11,8 +11,24 @@ public inline fun <reified T : Any> createGraph(): T {
 }
 
 /**
+ * TODO doc
+ */
+public inline fun <reified T : Any> Any.createGraph(vararg containers: Any): T {
+  throw UnsupportedOperationException("Implemented by the compiler")
+}
+
+// TODO install functions
+
+/**
  * Creates a new instance of a [@DependencyGraph.Factory][DependencyGraph.Factory]-annotated class.
  */
 public inline fun <reified T : Any> createGraphFactory(): T {
+  throw UnsupportedOperationException("Implemented by the compiler")
+}
+
+/**
+ * TODO doc
+ */
+public inline fun <reified T : Any> Any.createGraphFactory(vararg containers: Any): T {
   throw UnsupportedOperationException("Implemented by the compiler")
 }

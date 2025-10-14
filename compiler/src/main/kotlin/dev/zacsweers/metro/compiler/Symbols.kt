@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.getAllSuperTypes
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
+import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.ir.BuiltinSymbolsBase
@@ -260,13 +261,25 @@ internal class Symbols(
   val metroCreateGraph: IrSimpleFunctionSymbol by lazy {
     pluginContext
       .referenceFunctions(CallableId(metroRuntime.packageFqName, "createGraph".asName()))
-      .single()
+      .single { it.owner.regularParameters.isEmpty() }
   }
 
   val metroCreateGraphFactory: IrSimpleFunctionSymbol by lazy {
     pluginContext
       .referenceFunctions(CallableId(metroRuntime.packageFqName, "createGraphFactory".asName()))
-      .single()
+      .single { it.owner.regularParameters.isEmpty() }
+  }
+
+  val metroCreateDynamicGraph: IrSimpleFunctionSymbol by lazy {
+    pluginContext
+      .referenceFunctions(CallableId(metroRuntime.packageFqName, "createGraph".asName()))
+      .single { it.owner.regularParameters.isNotEmpty() }
+  }
+
+  val metroCreateDynamicGraphFactory: IrSimpleFunctionSymbol by lazy {
+    pluginContext
+      .referenceFunctions(CallableId(metroRuntime.packageFqName, "createGraphFactory".asName()))
+      .single { it.owner.regularParameters.isNotEmpty() }
   }
 
   private val doubleCheck: IrClassSymbol by lazy {
