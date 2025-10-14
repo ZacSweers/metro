@@ -15,10 +15,12 @@ import dev.zacsweers.metro.compiler.ir.BindingGraphGenerator
 import dev.zacsweers.metro.compiler.ir.DependencyGraphNode
 import dev.zacsweers.metro.compiler.ir.DependencyGraphNodeCache
 import dev.zacsweers.metro.compiler.ir.IrBinding
+import dev.zacsweers.metro.compiler.ir.IrBindingContainerResolver
 import dev.zacsweers.metro.compiler.ir.IrBindingGraph
 import dev.zacsweers.metro.compiler.ir.IrBindingStack
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrContributionData
+import dev.zacsweers.metro.compiler.ir.IrContributionMerger
 import dev.zacsweers.metro.compiler.ir.IrDynamicGraphGenerator
 import dev.zacsweers.metro.compiler.ir.IrGraphExtensionGenerator
 import dev.zacsweers.metro.compiler.ir.IrGraphGenerator
@@ -88,7 +90,10 @@ internal class DependencyGraphTransformer(
   private val contributionHintIrTransformer by unsafeLazy {
     ContributionHintIrTransformer(context, hintGenerator)
   }
-  private val dynamicGraphGenerator = IrDynamicGraphGenerator(this, contributionData)
+  private val bindingContainerResolver = IrBindingContainerResolver(metroSymbols)
+  private val contributionMerger = IrContributionMerger(this, contributionData)
+  private val dynamicGraphGenerator =
+    IrDynamicGraphGenerator(this, bindingContainerResolver, contributionMerger)
   private val createGraphTransformer = CreateGraphTransformer(this, dynamicGraphGenerator)
 
   // Keyed by the source declaration
@@ -241,7 +246,12 @@ internal class DependencyGraphTransformer(
       }
 
     val graphExtensionGenerator =
-      IrGraphExtensionGenerator(metroContext, contributionData, node.sourceGraph.metroGraphOrFail)
+      IrGraphExtensionGenerator(
+        metroContext,
+        contributionMerger,
+        bindingContainerResolver,
+        node.sourceGraph.metroGraphOrFail,
+      )
 
     val fieldNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
 
