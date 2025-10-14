@@ -794,6 +794,10 @@ internal fun IrConstructorCall.excludedClasses(): Set<IrClassReference> {
   return excludesArgument().toClassReferences()
 }
 
+internal fun Set<IrClassReference>.mapToClassIds(): Set<ClassId> {
+  return mapToSet { it.classType.rawType().classIdOrFail }
+}
+
 internal fun IrConstructorCall.additionalScopes(): Set<IrClassReference> {
   return additionalScopesArgument().toClassReferences()
 }
