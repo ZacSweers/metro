@@ -19,6 +19,7 @@ import dev.zacsweers.metro.compiler.ir.IrBindingGraph
 import dev.zacsweers.metro.compiler.ir.IrBindingStack
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrContributionData
+import dev.zacsweers.metro.compiler.ir.IrDynamicGraphGenerator
 import dev.zacsweers.metro.compiler.ir.IrGraphExtensionGenerator
 import dev.zacsweers.metro.compiler.ir.IrGraphGenerator
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -87,6 +88,8 @@ internal class DependencyGraphTransformer(
   private val contributionHintIrTransformer by unsafeLazy {
     ContributionHintIrTransformer(context, hintGenerator)
   }
+  private val dynamicGraphGenerator = IrDynamicGraphGenerator(this, contributionData)
+  private val createGraphTransformer = CreateGraphTransformer(this, dynamicGraphGenerator)
 
   // Keyed by the source declaration
   private val processedMetroDependencyGraphsByClass =
@@ -96,7 +99,7 @@ internal class DependencyGraphTransformer(
     DependencyGraphNodeCache(this, contributionData, bindingContainerTransformer)
 
   override fun visitCall(expression: IrCall): IrExpression {
-    return CreateGraphTransformer.visitCall(expression, metroContext)
+    return createGraphTransformer.visitCall(expression)
       ?: AsContributionTransformer.visitCall(expression, metroContext)
       ?: super.visitCall(expression)
   }
@@ -166,7 +169,7 @@ internal class DependencyGraphTransformer(
     }
   }
 
-  private fun processDependencyGraph(
+  internal fun processDependencyGraph(
     dependencyGraphDeclaration: IrClass,
     dependencyGraphAnno: IrConstructorCall,
     metroGraph: IrClass,
