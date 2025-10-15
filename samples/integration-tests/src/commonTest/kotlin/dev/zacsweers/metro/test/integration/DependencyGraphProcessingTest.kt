@@ -483,8 +483,7 @@ class DependencyGraphProcessingTest {
         override fun create(intValue: Int): T
       }
 
-      @AssistedFactory
-      fun interface Factory : BaseFactory<ExampleClass>, BaseFactory2<ExampleClass>
+      @AssistedFactory fun interface Factory : BaseFactory<ExampleClass>, BaseFactory2<ExampleClass>
     }
   }
 

@@ -40,8 +40,7 @@ class MixedTest {
     }
   }
 
-  @Inject
-  class InjectedClass(val message: String, @Named("qualified") val qualifiedMessage: String)
+  @Inject class InjectedClass(val message: String, @Named("qualified") val qualifiedMessage: String)
 
   @Singleton
   @Inject
