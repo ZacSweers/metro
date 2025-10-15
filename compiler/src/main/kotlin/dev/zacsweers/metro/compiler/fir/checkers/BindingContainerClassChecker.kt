@@ -22,6 +22,7 @@ import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
+import org.jetbrains.kotlin.fir.declarations.FirAnonymousObject
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.constructors
 import org.jetbrains.kotlin.fir.declarations.processAllDeclarations
@@ -36,6 +37,7 @@ import org.jetbrains.kotlin.fir.declarations.utils.modality
 import org.jetbrains.kotlin.fir.declarations.utils.nameOrSpecialName
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
+import org.jetbrains.kotlin.fir.resolve.dfa.cfg.isLocalClassOrAnonymousObject
 import org.jetbrains.kotlin.fir.resolve.getSuperTypes
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
@@ -48,7 +50,6 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
 
   context(context: CheckerContext, reporter: DiagnosticReporter)
   override fun check(declaration: FirClass) {
-    if (declaration.isLocal) return
     val source = declaration.source ?: return
     val session = context.session
     val classIds = session.classIds
@@ -84,6 +85,12 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
         return
       } else if (declaration.isInner) {
         report("Inner classes")
+        return
+      } else if (declaration is FirAnonymousObject) {
+        report("Anonymous objects")
+        return
+      } else if (declaration.isLocal) {
+        report("Local classes")
         return
       }
     }
