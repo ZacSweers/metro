@@ -487,9 +487,7 @@ interface AppGraph {
 
 ## Dynamic Graphs
 
-Dynamic graphs are a powerful feature of the Metro compiler that allow for dynamically replacing
-bindings in a given graph. To use them, you can pass in a vararg set of _binding containers_ to the
-`createDynamicGraph()` and `createDynamicGraphFactory()` intrinsics.
+Dynamic graphs are a powerful feature of the Metro compiler that allow for dynamically replacing bindings in a given graph. To use them, you can pass in a vararg set of _binding containers_ to the `createDynamicGraph()` and `createDynamicGraphFactory()` intrinsics.
 
 ```kotlin
 @DependencyGraph
@@ -526,14 +524,11 @@ The compiler will dynamically generate a hidden graph impl _within the enclosing
 - The target [T] graph _must_ be annotated with `@DependencyGraph` and must be a
   valid graph on its own.
 
-<details>
-  <summary>Implementation Notes</summary>
+??? note "Implementation Notes"
 
-- The bulk of this implementation is in `IrDynamicGraphGenerator`.
-- The generated graph impl is a private nested (static) class of the enclosing class or file.
-- This doesn't swap bindings in a real graph or use a real graph at all, instead tracking available dynamic bindings and preferring them when constructing a graph in `BindingGraphGenerator`.
-
-</details>
+    - The bulk of this implementation is in `IrDynamicGraphGenerator`.
+    - The generated graph impl is a private nested (static) class of the enclosing class or file.
+    - This doesn't swap bindings in a real graph or use a real graph at all, instead tracking available dynamic bindings and preferring them when constructing a graph in `BindingGraphGenerator`.
 
 ## General Implementation Notes
 
