@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.BINDING_CONTAINER_ERROR
 import dev.zacsweers.metro.compiler.fir.annotationsIn
+import dev.zacsweers.metro.compiler.fir.bindingContainerErrorMessage
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.resolvedBindingContainersClassIds
@@ -146,6 +147,16 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
           includedClassCall.source,
           BINDING_CONTAINER_ERROR,
           "Included binding containers must be annotated with @BindingContainer but '${target.classId.asSingleFqName()}' is not.",
+        )
+        continue
+      }
+
+      target.bindingContainerErrorMessage(session, alreadyCheckedAnnotation = true)?.let {
+        bindingContainerErrorMessage ->
+        reporter.reportOn(
+          includedClassCall.source,
+          BINDING_CONTAINER_ERROR,
+          "Invalid binding container argument: $bindingContainerErrorMessage",
         )
         continue
       }
