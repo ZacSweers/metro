@@ -593,6 +593,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("DynamicGraphWithFactory.kt")
+      public void testDynamicGraphWithFactory() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/dynamic/DynamicGraphWithFactory.kt");
+      }
+
+      @Test
       @TestMetadata("GraphsAreCachedByType.kt")
       public void testGraphsAreCachedByType() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/dynamic/GraphsAreCachedByType.kt");
