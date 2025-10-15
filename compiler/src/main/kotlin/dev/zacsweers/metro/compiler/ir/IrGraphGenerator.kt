@@ -115,7 +115,11 @@ internal class IrGraphGenerator(
     visibility: DescriptorVisibility = DescriptorVisibilities.PRIVATE,
   ): IrField {
     return bindingGraph.reservedField(key)?.field?.also { addChild(it) }
-      ?: addField(fieldName = fieldNameAllocator.newName(name()), fieldType = type(), fieldVisibility = visibility)
+      ?: addField(
+        fieldName = fieldNameAllocator.newName(name()),
+        fieldType = type(),
+        fieldVisibility = visibility,
+      )
   }
 
   fun generate() =
@@ -144,12 +148,12 @@ internal class IrGraphGenerator(
           getOrCreateBindingField(
               typeKey,
               {
-                  name
-                    .asString()
-                    .removePrefix("$$")
-                    .decapitalizeUS()
-                    .suffixIfNot("Instance")
-                    .suffixIfNot("Provider")
+                name
+                  .asString()
+                  .removePrefix("$$")
+                  .decapitalizeUS()
+                  .suffixIfNot("Instance")
+                  .suffixIfNot("Provider")
               },
               { metroSymbols.metroProvider.typeWith(typeKey.type) },
             )
@@ -167,7 +171,14 @@ internal class IrGraphGenerator(
           //  together
           val irParam = ctor.regularParameters[i]
 
-          if (isBindsInstance || creator.bindingContainersParameterIndices.isSet(i) || irParam.origin == Origins.DynamicContainerParam) {
+          val isDynamic = irParam.origin == Origins.DynamicContainerParam
+          val isBindingContainer = creator.bindingContainersParameterIndices.isSet(i)
+          if (isBindsInstance || isBindingContainer || isDynamic) {
+
+            if (!isDynamic && param.typeKey in node.dynamicTypeKeys) {
+              // Don't add it if there's a dynamic replacement
+              continue
+            }
             addBoundInstanceField(param.typeKey, param.name) { _, _ -> irGet(irParam) }
           } else {
             // It's a graph dep. Add all its accessors as available keys and point them at
@@ -230,10 +241,14 @@ internal class IrGraphGenerator(
       allBindingContainers
         .sortedBy { it.kotlinFqName.asString() }
         .forEach { clazz ->
-          addBoundInstanceField(IrTypeKey(clazz), clazz.name) { _, _ ->
-            // Can't use primaryConstructor here because it may be a Java dagger Module in interop
-            val noArgConstructor = clazz.constructors.first { it.parameters.isEmpty() }
-            irCallConstructor(noArgConstructor.symbol, emptyList())
+          val typeKey = IrTypeKey(clazz)
+          if (typeKey !in node.dynamicTypeKeys) {
+            // Only add if not replaced with a dynamic instance
+            addBoundInstanceField(IrTypeKey(clazz), clazz.name) { _, _ ->
+              // Can't use primaryConstructor here because it may be a Java dagger Module in interop
+              val noArgConstructor = clazz.constructors.first { it.parameters.isEmpty() }
+              irCallConstructor(noArgConstructor.symbol, emptyList())
+            }
           }
         }
 

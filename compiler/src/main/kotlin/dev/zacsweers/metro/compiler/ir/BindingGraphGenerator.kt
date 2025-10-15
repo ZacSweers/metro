@@ -36,6 +36,13 @@ internal class BindingGraphGenerator(
   private val contributionData: IrContributionData,
   private val parentContext: ParentContext?,
 ) : IrMetroContext by metroContext {
+
+  private val ProviderFactory.isDynamic: Boolean
+    get() = node.dynamicTypeKeys[typeKey] == this
+
+  private val BindsLikeCallable.isDynamic: Boolean
+    get() = node.dynamicTypeKeys[typeKey] == this
+
   fun generate(): IrBindingGraph {
     val bindingLookup =
       BindingLookup(
@@ -145,16 +152,20 @@ internal class BindingGraphGenerator(
       // Check for duplicates before adding to cache
       // TODO aggregate duplicates and report all
       val existingProvider = bindingLookup.getStaticBinding(targetTypeKey) as? IrBinding.Provided
-      val isDynamic = node.dynamicTypeKeys[providerFactory.typeKey] == providerFactory
+      val isDynamic = providerFactory.isDynamic
 
       if (existingProvider != null && existingProvider != binding) {
         // Check if the existing one is from an inherited graph
         val isExistingInherited = existingProvider.providerFactory in inheritedProviderFactories
+        val isExistingDynamic = existingProvider.providerFactory.isDynamic
         val isCurrentInherited = providerFactory in inheritedProviderFactories
 
         if (isDynamic || (isExistingInherited && !isCurrentInherited)) {
           // Current graph's binding replaces the inherited one
           bindingLookup.putBinding(binding)
+        } else if (isExistingDynamic) {
+          // Was already replaced with a dynamic one, don't overwrite it
+          continue
         } else if (!isExistingInherited && isCurrentInherited) {
           // Current graph already has this binding, skip the inherited one
           // Do nothing - keep the existing binding
@@ -170,12 +181,16 @@ internal class BindingGraphGenerator(
         if (existingAlias != null) {
           // Check if the existing provider is from an inherited graph
           val isAliasInherited = existingAlias.bindsCallable in inheritedBindsCallables
+          val isAliasDynamic = existingAlias.bindsCallable?.isDynamic == true
           val isCurrentInherited = providerFactory in inheritedProviderFactories
 
           if (isDynamic || (isAliasInherited && !isCurrentInherited)) {
             // Current graph's @Binds replaces the inherited @Provides
             bindingLookup.removeAliasBinding(targetTypeKey)
             bindingLookup.putBinding(binding)
+          } else if (isAliasDynamic) {
+            // Was already replaced with a dynamic one, don't overwrite it
+            continue
           } else if (!isAliasInherited && isCurrentInherited) {
             // Current graph already has @Binds, skip the inherited @Provides
             // Do nothing - keep the existing provider factory
@@ -258,16 +273,20 @@ internal class BindingGraphGenerator(
       // Check for duplicates before adding to cache
       // TODO aggregate duplicates and report all
       val existingBinding = bindingLookup.getStaticBinding(targetTypeKey) as? IrBinding.Alias
-      val isDynamic = node.dynamicTypeKeys[bindsCallable.typeKey] == bindsCallable
+      val isDynamic = bindsCallable.isDynamic
 
       if (existingBinding != null && existingBinding.bindsCallable != bindsCallable) {
         // Check if the existing one is from an inherited graph
         val isExistingInherited = existingBinding.bindsCallable in inheritedBindsCallables
+        val isExistingDynamic = existingBinding.bindsCallable?.isDynamic == true
         val isCurrentInherited = bindsCallable in inheritedBindsCallables
 
         if (isDynamic || (isExistingInherited && !isCurrentInherited)) {
           // Current graph's binding replaces the inherited one
           bindingLookup.putBinding(binding)
+        } else if (isExistingDynamic) {
+          // Was already replaced with a dynamic one, don't overwrite it
+          continue
         } else if (!isExistingInherited && isCurrentInherited) {
           // Current graph already has this binding, skip the inherited one
           // Do nothing - keep the existing binding
@@ -284,12 +303,16 @@ internal class BindingGraphGenerator(
         if (existingProvider != null) {
           // Check if the existing provider is from an inherited graph
           val isProviderInherited = existingProvider.providerFactory in inheritedProviderFactories
+          val isProviderDynamic = existingProvider.providerFactory.isDynamic
           val isCurrentInherited = bindsCallable in inheritedBindsCallables
 
           if (isDynamic || (isProviderInherited && !isCurrentInherited)) {
             // Current graph's @Binds replaces the inherited @Provides
             bindingLookup.removeProvidedBinding(targetTypeKey)
             bindingLookup.putBinding(binding)
+          } else if (isProviderDynamic) {
+            // Was already replaced with a dynamic one, don't overwrite it
+            continue
           } else if (!isProviderInherited && isCurrentInherited) {
             // Current graph already has @Provides, skip the inherited @Binds
             // Do nothing - keep the existing provider factory
@@ -343,21 +366,30 @@ internal class BindingGraphGenerator(
             ?.isAnnotatedWithAny(metroSymbols.classIds.bindingContainerAnnotations) == true
       if (shouldExposeBinding) {
         val paramTypeKey = creatorParam.typeKey
-        graph.addBinding(
-          paramTypeKey,
-          IrBinding.BoundInstance(creatorParam, creatorParam.ir),
-          bindingStack,
-        )
-        val rawType = creatorParam.type.rawType()
-        // Add the original type too as an alias
-        val regularGraph = rawType.sourceGraphIfMetroGraph
-        if (regularGraph != rawType) {
-          val keyType =
-            regularGraph.typeWith(
-              creatorParam.type.requireSimpleType(creatorParam.ir).arguments.map { it.typeOrFail }
-            )
-          val typeKey = IrTypeKey(keyType)
-          superTypeToAlias.putIfAbsent(typeKey, paramTypeKey)
+
+        // Check if there's a dynamic replacement for this bound instance
+        val hasDynamicReplacement = paramTypeKey in node.dynamicTypeKeys
+        val isDynamic = creatorParam.ir.origin == Origins.DynamicContainerParam
+
+        if (isDynamic || !hasDynamicReplacement) {
+          // Only add the bound instance if there's no dynamic replacement
+          graph.addBinding(
+            paramTypeKey,
+            IrBinding.BoundInstance(creatorParam, creatorParam.ir),
+            bindingStack,
+          )
+
+          val rawType = creatorParam.type.rawType()
+          // Add the original type too as an alias
+          val regularGraph = rawType.sourceGraphIfMetroGraph
+          if (regularGraph != rawType) {
+            val keyType =
+              regularGraph.typeWith(
+                creatorParam.type.requireSimpleType(creatorParam.ir).arguments.map { it.typeOrFail }
+              )
+            val typeKey = IrTypeKey(keyType)
+            superTypeToAlias.putIfAbsent(typeKey, paramTypeKey)
+          }
         }
       }
     }
@@ -368,11 +400,17 @@ internal class BindingGraphGenerator(
     }
     for (it in allManagedBindingContainerInstances) {
       val typeKey = IrTypeKey(it)
-      graph.addBinding(
-        typeKey,
-        IrBinding.BoundInstance(typeKey, it.name.asString(), it),
-        bindingStack,
-      )
+
+      val hasDynamicReplacement = typeKey in node.dynamicTypeKeys
+
+      if (!hasDynamicReplacement) {
+        // Only add the bound instance if there's no dynamic replacement
+        graph.addBinding(
+          typeKey,
+          IrBinding.BoundInstance(typeKey, it.name.asString(), it),
+          bindingStack,
+        )
+      }
     }
 
     fun addOrUpdateMultibinding(
@@ -563,10 +601,7 @@ internal class BindingGraphGenerator(
         val parentClass = irGetter.parentAsClass
         val parentName = parentClass.name
         val getterToUse =
-          if (
-            parentName == Symbols.Names.MetroGraph ||
-              parentClass.origin.isGraphImpl
-          ) {
+          if (parentName == Symbols.Names.MetroGraph || parentClass.origin.isGraphImpl) {
             // Use the original graph decl so we don't tie this invocation to `$$MetroGraph`
             // specifically
             irGetter.overriddenSymbolsSequence().firstOrNull()?.owner
