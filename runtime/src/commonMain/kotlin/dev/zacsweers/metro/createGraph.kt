@@ -45,14 +45,14 @@ public inline fun <reified T : Any> createGraph(): T {
  *
  * **Constraints**
  * - All containers must be instances (or objects) of _binding containers_.
+ * - It's an error to pass no containers.
  * - All containers must be non-local, canonical classes. i.e., they must be something with a name!
  * - This overload may be called in a member function body, top-level function body, or property
  *   initializer.
  * - The target [T] graph _must_ be annotated with [@DependencyGraph][DependencyGraph] and must be a
  *   valid graph on its own.
  */
-@DelicateMetroRetainedApi
-public inline fun <reified T : Any> createGraph(@Suppress("unused") vararg containers: Any): T {
+public inline fun <reified T : Any> createDynamicGraph(@Suppress("unused") vararg containers: Any): T {
   throw UnsupportedOperationException("Implemented by the compiler")
 }
 
@@ -97,14 +97,14 @@ public inline fun <reified T : Any> createGraphFactory(): T {
  *
  * **Constraints**
  * - All containers must be instances (or objects) of _binding containers_.
+ * - It's an error to pass no containers.
  * - All containers must be non-local, canonical classes. i.e., they must be something with a name!
  * - This overload may be called in a member function body, top-level function body, or property
  *   initializer.
  * - The target [T] graph _must_ be annotated with [@DependencyGraph][DependencyGraph] and must be a
  *   valid graph on its own.
  */
-@DelicateMetroRetainedApi
-public inline fun <reified T : Any> createGraphFactory(
+public inline fun <reified T : Any> createDynamicGraphFactory(
   @Suppress("unused") vararg containers: Any
 ): T {
   throw UnsupportedOperationException("Implemented by the compiler")

@@ -7,11 +7,11 @@ interface AppGraph {
 }
 
 class Example {
-  val propGraph = createGraph<AppGraph>(TestIntProvider(4))
+  val propGraph = createDynamicGraph<AppGraph>(TestIntProvider(4))
 
   fun someTest(value: Int): Int {
     // Graph in a class
-    val testGraph = createGraph<AppGraph>(TestIntProvider(value))
+    val testGraph = createDynamicGraph<AppGraph>(TestIntProvider(value))
     return testGraph.int
   }
 }
@@ -23,5 +23,5 @@ class TestIntProvider(private val value: Int) {
 
 // top-level function-only
 fun example() {
-  check(5 == createGraph<AppGraph>(TestIntProvider(5)).int)
+  check(5 == createDynamicGraph<AppGraph>(TestIntProvider(5)).int)
 }

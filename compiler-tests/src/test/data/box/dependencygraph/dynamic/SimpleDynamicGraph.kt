@@ -7,11 +7,11 @@ interface AppGraph {
 }
 
 class Example {
-  val propGraph = createGraph<AppGraph>(TestIntProvider(4))
+  val propGraph = createDynamicGraph<AppGraph>(TestIntProvider(4))
 
   fun someTest(value: Int): Int {
     // Graph in a class
-    val testGraph = createGraph<AppGraph>(TestIntProvider(value))
+    val testGraph = createDynamicGraph<AppGraph>(TestIntProvider(value))
     return testGraph.int
   }
 }
@@ -25,6 +25,6 @@ fun box(): String {
   assertEquals(2, Example().someTest(2))
   assertEquals(4, Example().propGraph.int)
   // top-level function-only
-  assertEquals(5, createGraph<AppGraph>(TestIntProvider(5)).int)
+  assertEquals(5, createDynamicGraph<AppGraph>(TestIntProvider(5)).int)
   return "OK"
 }

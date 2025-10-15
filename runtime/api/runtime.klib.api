@@ -105,10 +105,6 @@ open annotation class dev.zacsweers.metro/ContributesTo : kotlin/Annotation { //
         final fun <get-scope>(): kotlin.reflect/KClass<*> // dev.zacsweers.metro/ContributesTo.scope.<get-scope>|<get-scope>(){}[0]
 }
 
-open annotation class dev.zacsweers.metro/DelicateMetroRetainedApi : kotlin/Annotation { // dev.zacsweers.metro/DelicateMetroRetainedApi|null[0]
-    constructor <init>() // dev.zacsweers.metro/DelicateMetroRetainedApi.<init>|<init>(){}[0]
-}
-
 open annotation class dev.zacsweers.metro/DependencyGraph : kotlin/Annotation { // dev.zacsweers.metro/DependencyGraph|null[0]
     constructor <init>(kotlin.reflect/KClass<*> = ..., kotlin/Array<kotlin.reflect/KClass<*>> = ..., kotlin/Array<kotlin.reflect/KClass<*>> = ..., kotlin/Array<kotlin.reflect/KClass<*>> = ...) // dev.zacsweers.metro/DependencyGraph.<init>|<init>(kotlin.reflect.KClass<*>;kotlin.Array<kotlin.reflect.KClass<*>>;kotlin.Array<kotlin.reflect.KClass<*>>;kotlin.Array<kotlin.reflect.KClass<*>>){}[0]
 
@@ -253,7 +249,7 @@ final inline fun <#A: kotlin/Any?, #B: kotlin/Any?> (dev.zacsweers.metro/Provide
 final inline fun <#A: kotlin/Any?, #B: kotlin/Any?> (dev.zacsweers.metro/Provider<#A>).dev.zacsweers.metro/map(crossinline kotlin/Function1<#A, #B>): dev.zacsweers.metro/Provider<#B> // dev.zacsweers.metro/map|map@dev.zacsweers.metro.Provider<0:0>(kotlin.Function1<0:0,0:1>){0§<kotlin.Any?>;1§<kotlin.Any?>}[0]
 final inline fun <#A: kotlin/Any?> dev.zacsweers.metro/provider(crossinline kotlin/Function0<#A>): dev.zacsweers.metro/Provider<#A> // dev.zacsweers.metro/provider|provider(kotlin.Function0<0:0>){0§<kotlin.Any?>}[0]
 final inline fun <#A: reified kotlin/Any> (kotlin/Any).dev.zacsweers.metro/asContribution(): #A // dev.zacsweers.metro/asContribution|asContribution@kotlin.Any(){0§<kotlin.Any>}[0]
+final inline fun <#A: reified kotlin/Any> dev.zacsweers.metro/createDynamicGraph(kotlin/Array<out kotlin/Any>...): #A // dev.zacsweers.metro/createDynamicGraph|createDynamicGraph(kotlin.Array<out|kotlin.Any>...){0§<kotlin.Any>}[0]
+final inline fun <#A: reified kotlin/Any> dev.zacsweers.metro/createDynamicGraphFactory(kotlin/Array<out kotlin/Any>...): #A // dev.zacsweers.metro/createDynamicGraphFactory|createDynamicGraphFactory(kotlin.Array<out|kotlin.Any>...){0§<kotlin.Any>}[0]
 final inline fun <#A: reified kotlin/Any> dev.zacsweers.metro/createGraph(): #A // dev.zacsweers.metro/createGraph|createGraph(){0§<kotlin.Any>}[0]
-final inline fun <#A: reified kotlin/Any> dev.zacsweers.metro/createGraph(kotlin/Array<out kotlin/Any>...): #A // dev.zacsweers.metro/createGraph|createGraph(kotlin.Array<out|kotlin.Any>...){0§<kotlin.Any>}[0]
 final inline fun <#A: reified kotlin/Any> dev.zacsweers.metro/createGraphFactory(): #A // dev.zacsweers.metro/createGraphFactory|createGraphFactory(){0§<kotlin.Any>}[0]
-final inline fun <#A: reified kotlin/Any> dev.zacsweers.metro/createGraphFactory(kotlin/Array<out kotlin/Any>...): #A // dev.zacsweers.metro/createGraphFactory|createGraphFactory(kotlin.Array<out|kotlin.Any>...){0§<kotlin.Any>}[0]

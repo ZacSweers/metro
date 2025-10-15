@@ -489,7 +489,7 @@ interface AppGraph {
 
 Dynamic graphs are a powerful feature of the Metro compiler that allow for dynamically replacing
 bindings in a given graph. To use them, you can pass in a vararg set of _binding containers_ to the
-`createGraph()` and `createGraphFactory()` intrinsics.
+`createDynamicGraph()` and `createDynamicGraphFactory()` intrinsics.
 
 ```kotlin
 @DependencyGraph
@@ -500,7 +500,7 @@ interface AppGraph {
 }
 
 class AppTest {
-  val testGraph = createGraph<AppGraph>(FakeBindings)
+  val testGraph = createDynamicGraph<AppGraph>(FakeBindings)
   
   @Test
   fun test() {
@@ -519,6 +519,7 @@ The compiler will generate a dynamic graph within the enclosing class or file th
 **Constraints**
 
 - All containers must be instances (or objects) of _binding containers_.
+- It's an error to pass no containers.
 - All containers must be non-local, canonical classes. i.e., they must be something with a name!
 - This overload may be called in a member function body, top-level function body, or property
   initializer.

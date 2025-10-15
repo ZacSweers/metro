@@ -272,13 +272,13 @@ internal class Symbols(
 
   val metroCreateDynamicGraph: IrSimpleFunctionSymbol by lazy {
     pluginContext
-      .referenceFunctions(CallableId(metroRuntime.packageFqName, "createGraph".asName()))
+      .referenceFunctions(CallableId(metroRuntime.packageFqName, "createDynamicGraph".asName()))
       .single { it.owner.regularParameters.isNotEmpty() }
   }
 
   val metroCreateDynamicGraphFactory: IrSimpleFunctionSymbol by lazy {
     pluginContext
-      .referenceFunctions(CallableId(metroRuntime.packageFqName, "createGraphFactory".asName()))
+      .referenceFunctions(CallableId(metroRuntime.packageFqName, "createDynamicGraphFactory".asName()))
       .single { it.owner.regularParameters.isNotEmpty() }
   }
 
