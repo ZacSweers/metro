@@ -514,7 +514,7 @@ class AppTest {
 }
 ```
 
-The compiler will generate a dynamic graph within the enclosing class or file that is unique to the combination of input [containers] and target type [T].
+The compiler will dynamically generate a hidden graph impl _within the enclosing class or file_ that is unique to the combination of input [containers] and target type [T].
 
 **Constraints**
 
@@ -526,7 +526,16 @@ The compiler will generate a dynamic graph within the enclosing class or file th
 - The target [T] graph _must_ be annotated with `@DependencyGraph` and must be a
   valid graph on its own.
 
-## Implementation Notes
+<details>
+  <summary>Implementation Notes</summary>
+
+- The bulk of this implementation is in `IrDynamicGraphGenerator`.
+- The generated graph impl is a private nested (static) class of the enclosing class or file.
+- This doesn't swap bindings in a real graph or use a real graph at all, instead tracking available dynamic bindings and preferring them when constructing a graph in `BindingGraphGenerator`.
+
+</details>
+
+## General Implementation Notes
 
 Dependency graph code gen is designed to largely match how Dagger components are generated.
 
