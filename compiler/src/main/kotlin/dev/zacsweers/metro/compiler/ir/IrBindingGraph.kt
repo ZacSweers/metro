@@ -600,12 +600,24 @@ internal class IrBindingGraph(
           appendBindingStack(stack, short = false)
 
           if (node.sourceGraph.origin == Origins.GeneratedGraphExtension) {
-            appendLine()
-            appendLine()
-            appendLine("(Hint)")
-            append(
-              "${node.sourceGraph.name} is contributed by '${node.sourceGraph.sourceGraphIfMetroGraph.kotlinFqName}' to '${declarationToReport.sourceGraphIfMetroGraph.kotlinFqName}'."
-            )
+            val sourceGraphFqName = node.sourceGraph.sourceGraphIfMetroGraph.kotlinFqName
+            val receivingGraphFqName =
+              // Find the actual parent/receiving graph - it should be in extendedGraphNodes
+              node.extendedGraphNodes.values
+                .firstOrNull()
+                ?.sourceGraph
+                ?.sourceGraphIfMetroGraph
+                ?.kotlinFqName ?: declarationToReport.sourceGraphIfMetroGraph.kotlinFqName
+
+            // Only show the hint if the source and receiving graphs are actually different
+            if (sourceGraphFqName != receivingGraphFqName) {
+              appendLine()
+              appendLine()
+              appendLine("(Hint)")
+              append(
+                "${node.sourceGraph.name} is contributed by '${sourceGraphFqName}' to '${receivingGraphFqName}'."
+              )
+            }
           }
         }
         metroContext.reportCompat(declarationToReport, MetroDiagnostics.METRO_ERROR, message)
@@ -665,10 +677,13 @@ internal class IrBindingGraph(
         val dependentBinding = bindings[dependentKey] ?: continue
         if (dependentBinding !is IrBinding.Assisted) {
           reportInvalidBinding(
-            dependentBinding.parameters.allParameters.find { it.typeKey == binding.typeKey }?.ir?.takeIf {
-              val location = it.locationOrNull() ?: return@takeIf false
-              location.line != 0 || location.column != 0
-            } ?: dependentBinding.reportableDeclaration
+            dependentBinding.parameters.allParameters
+              .find { it.typeKey == binding.typeKey }
+              ?.ir
+              ?.takeIf {
+                val location = it.locationOrNull() ?: return@takeIf false
+                location.line != 0 || location.column != 0
+              } ?: dependentBinding.reportableDeclaration
           )
         }
       }
