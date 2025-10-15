@@ -20,7 +20,6 @@ import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationContainer
-import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.irAttribute
 import org.jetbrains.kotlin.ir.types.IrType
@@ -30,7 +29,6 @@ import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.copyAnnotationsFrom
 import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
-import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
@@ -86,7 +84,13 @@ internal class IrDynamicGraphGenerator(
     isFactory: Boolean,
     context: TransformerContextAccess,
   ): IrClass {
-    val targetClass = targetType.rawType()
+    val rawType = targetType.rawType()
+    // Get factory SAM function if this is a factory
+    val factorySamFunction = if (isFactory) rawType.singleAbstractFunction() else null
+
+    val targetClass = factorySamFunction?.let {
+      factorySamFunction.returnType.rawType()
+    } ?: rawType
     val containerClasses = containerTypeKeys.map { it.type.rawType() }
     val containerClassIds = containerClasses.map { it.classIdOrFail }.toSet()
     val graphName = computeStableName(targetClass.classIdOrFail, containerClassIds)
@@ -111,7 +115,7 @@ internal class IrDynamicGraphGenerator(
           createThisReceiverParameter()
 
           // Extend the target type (graph interface or factory interface)
-          superTypes += targetType
+          superTypes += factorySamFunction?.returnType ?: targetType
 
           // Add discovered contribution supertypes
           contributions?.let { superTypes += it.supertypes }
@@ -155,9 +159,6 @@ internal class IrDynamicGraphGenerator(
               }
               .also { newGraphAnno = it }
 
-          // Get factory SAM function if this is a factory
-          val factorySamFunction = if (isFactory) targetClass.singleAbstractFunction() else null
-
           val ctor =
             addConstructor { isPrimary = true }
               .apply ctor@{
@@ -165,7 +166,7 @@ internal class IrDynamicGraphGenerator(
                 factorySamFunction?.let { samFunction ->
                   for (param in samFunction.regularParameters) {
                     addValueParameter(param.name, param.type).apply {
-                      this@ctor.copyAnnotationsFrom(param)
+                      this.copyAnnotationsFrom(param)
                     }
                   }
                 }
@@ -187,7 +188,6 @@ internal class IrDynamicGraphGenerator(
 
           // Add the generated class as a nested class in the call site's parent class,
           // or as a file-level class if no parent exists
-          // TODO what if it's in an anonymous class :|
           val containerToAddTo: IrDeclarationContainer  = context.currentClassAccess?.irElement as? IrClass ?: context.currentFileAccess
           containerToAddTo.addChild(this)
 
@@ -199,7 +199,7 @@ internal class IrDynamicGraphGenerator(
               generateFactoryImpl(
                 graphImpl = this,
                 graphCtor = ctor,
-                factoryInterface = targetClass,
+                factoryInterface = rawType,
                 containerClasses = containerClasses,
               )
             }
