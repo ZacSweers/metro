@@ -1,3 +1,4 @@
+// RENDER_DIAGNOSTICS_FULL_TEXT
 class SingleEmptyConstructor <!SUGGEST_CLASS_INJECTION!>@Inject<!> constructor()
 
 class SingleNonEmptyConstructor <!SUGGEST_CLASS_INJECTION!>@Inject<!> constructor(int: Int)
