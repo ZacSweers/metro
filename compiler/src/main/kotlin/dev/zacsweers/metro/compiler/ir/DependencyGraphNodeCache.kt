@@ -127,7 +127,7 @@ internal class DependencyGraphNodeCache(
     private val bindingContainers = mutableSetOf<BindingContainer>()
     private val managedBindingContainers = mutableSetOf<IrClass>()
     private val dynamicBindingContainers = mutableSetOf<IrClass>()
-    private val dynamicTypeKeys = mutableMapOf<IrTypeKey, IrBindingContainerCallable>()
+    private val dynamicTypeKeys = mutableMapOf<IrTypeKey, IrBindingContainerCallable?>()
 
     private val dependencyGraphAnno =
       cachedDependencyGraphAnno
@@ -241,6 +241,8 @@ internal class DependencyGraphNodeCache(
           val isDynamicContainer = parameter.ir.origin == Origins.DynamicContainerParam
           if (isDynamicContainer) {
             dynamicBindingContainers += klass
+            // Parameter's dynamism will be checked by its origin
+            dynamicTypeKeys[parameter.typeKey] = null
           }
           val isRegularContainer = nonNullCreator.bindingContainersParameterIndices.isSet(i)
           val isContainer = isDynamicContainer || isRegularContainer

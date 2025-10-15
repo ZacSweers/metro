@@ -41,7 +41,8 @@ internal data class DependencyGraphNode(
   val optionalKeys: Map<IrTypeKey, Set<BindsOptionalOfCallable>>,
   /** Binding containers that need a managed instance. */
   val bindingContainers: Set<IrClass>,
-  val dynamicTypeKeys: Map<IrTypeKey, IrBindingContainerCallable>,
+  // Values may be null for cases like BindingContainer parameter types
+  val dynamicTypeKeys: Map<IrTypeKey, IrBindingContainerCallable?>,
   /** Fake overrides of binds functions that need stubbing. */
   val bindsFunctions: List<MetroSimpleFunction>,
   // TypeKey key is the injected type wrapped in MembersInjector
