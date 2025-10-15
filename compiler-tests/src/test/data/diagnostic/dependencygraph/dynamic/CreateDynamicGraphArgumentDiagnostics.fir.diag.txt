@@ -22,13 +22,21 @@
 
 /CreateDynamicGraphArgumentDiagnostics.kt:(1133,1143): error: `createDynamicGraphFactory` only accepts concrete, non-local binding container types as arguments. 'kotlin.String' is not annotated with a `@BindingContainer` annotation.
 
+/CreateDynamicGraphArgumentDiagnostics.kt:(1224,1241): error: Anonymous objects cannot be annotated with @BindingContainer.
+
 /CreateDynamicGraphArgumentDiagnostics.kt:(1246,1260): error: `createDynamicGraph` only accepts concrete, non-local binding container types as arguments. Anonymous objects cannot be binding containers.
 
+/CreateDynamicGraphArgumentDiagnostics.kt:(1340,1357): error: Anonymous objects cannot be annotated with @BindingContainer.
+
 /CreateDynamicGraphArgumentDiagnostics.kt:(1362,1376): error: `createDynamicGraphFactory` only accepts concrete, non-local binding container types as arguments. Anonymous objects cannot be binding containers.
+
+/CreateDynamicGraphArgumentDiagnostics.kt:(1429,1446): error: Anonymous objects cannot be annotated with @BindingContainer.
 
 /CreateDynamicGraphArgumentDiagnostics.kt:(1510,1527): error: `createDynamicGraph` only accepts concrete, non-local binding container types as arguments. Anonymous objects cannot be binding containers.
 
 /CreateDynamicGraphArgumentDiagnostics.kt:(1590,1607): error: `createDynamicGraphFactory` only accepts concrete, non-local binding container types as arguments. Anonymous objects cannot be binding containers.
+
+/CreateDynamicGraphArgumentDiagnostics.kt:(1621,1638): error: Local classes cannot be annotated with @BindingContainer.
 
 /CreateDynamicGraphArgumentDiagnostics.kt:(1693,1705): error: `createDynamicGraph` only accepts concrete, non-local binding container types as arguments. Local class 'LocalClass' cannot be a binding container.
 

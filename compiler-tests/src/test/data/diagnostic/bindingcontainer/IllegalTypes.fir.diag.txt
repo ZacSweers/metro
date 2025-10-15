@@ -12,4 +12,4 @@
 
 /IllegalTypes.kt:(455,472): error: Anonymous objects cannot be annotated with @BindingContainer.
 
-/IllegalTypes.kt:(518,535): error: Local classes cannot be annotated with @BindingContainer.
+/IllegalTypes.kt:(510,527): error: Local classes cannot be annotated with @BindingContainer.

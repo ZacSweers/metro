@@ -39,26 +39,26 @@ fun failureCases() {
 
   // Anonymous/local classes
   createDynamicGraph<ExampleGraph>(
-    @BindingContainer
+    <!BINDING_CONTAINER_ERROR!>@BindingContainer<!>
     <!CREATE_DYNAMIC_GRAPH_ERROR!>object : Any()<!> {
 
     }
   )
   createDynamicGraphFactory<ExampleGraphWithFactory.Factory>(
-    @BindingContainer
+    <!BINDING_CONTAINER_ERROR!>@BindingContainer<!>
     <!CREATE_DYNAMIC_GRAPH_ERROR!>object : Any()<!> {
 
     }
   ).create()
   val anonymousInstance =
-    @BindingContainer
+    <!BINDING_CONTAINER_ERROR!>@BindingContainer<!>
     object : Any() {
 
     }
   createDynamicGraph<ExampleGraph>(<!CREATE_DYNAMIC_GRAPH_ERROR!>anonymousInstance<!>)
   createDynamicGraphFactory<ExampleGraphWithFactory.Factory>(<!CREATE_DYNAMIC_GRAPH_ERROR!>anonymousInstance<!>).create()
 
-  @BindingContainer
+  <!BINDING_CONTAINER_ERROR!>@BindingContainer<!>
   class LocalClass
   createDynamicGraph<ExampleGraph>(<!CREATE_DYNAMIC_GRAPH_ERROR!>LocalClass()<!>)
   createDynamicGraphFactory<ExampleGraphWithFactory.Factory>(<!CREATE_DYNAMIC_GRAPH_ERROR!>LocalClass()<!>).create()
