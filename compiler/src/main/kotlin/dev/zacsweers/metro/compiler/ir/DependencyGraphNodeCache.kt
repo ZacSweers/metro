@@ -279,6 +279,8 @@ internal class DependencyGraphNodeCache(
           // Still tie to the parameter key because that's what gets the instance binding
           if (parameter.isIncludes) {
             includedGraphNodes[parameter.typeKey] = node
+          } else if (parameter.ir.origin == Origins.DynamicContainerParam) {
+            // Do nothing, it'll be checked separately in IrGraphGen
           } else {
             reportCompilerBug("Unexpected parameter type for graph: $parameter")
           }
@@ -417,9 +419,9 @@ internal class DependencyGraphNodeCache(
                 if (!isOptionalDependency) {
                   isOptionalDependency =
                     metroAnnotationsOf(
-                      overridden.owner,
-                      EnumSet.of(MetroAnnotations.Kind.OptionalDependency),
-                    )
+                        overridden.owner,
+                        EnumSet.of(MetroAnnotations.Kind.OptionalDependency),
+                      )
                       .isOptionalDependency
                 }
                 hasDefaultImplementation = true
@@ -603,7 +605,10 @@ internal class DependencyGraphNodeCache(
             // Single pass through overridden symbols
             if (!isGraphExtensionFactory) {
               for (overridden in declaration.overriddenSymbolsSequence()) {
-                if (overridden.owner.getter?.modality == Modality.OPEN || overridden.owner.getter?.body != null) {
+                if (
+                  overridden.owner.getter?.modality == Modality.OPEN ||
+                    overridden.owner.getter?.body != null
+                ) {
                   if (!isOptionalDependency) {
                     isOptionalDependency =
                       metroAnnotationsOf(
