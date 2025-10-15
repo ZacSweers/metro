@@ -45,4 +45,14 @@ internal object Origins {
     IrDeclarationOrigin.GeneratedByPlugin(Keys.GeneratedGraphExtension)
   val BindingMirrorClassDeclaration: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.BindingMirrorClassDeclaration)
+  val GeneratedDynamicGraph: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(Keys.GeneratedDynamicGraph)
+  val DynamicContainerParam: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(Keys.DynamicContainerParam)
 }
+
+internal val IrDeclarationOrigin.isGeneratedGraph: Boolean
+  get() = this === Origins.GeneratedGraphExtension || this === Origins.GeneratedDynamicGraph
+
+internal val IrDeclarationOrigin.isGraphImpl: Boolean
+  get() = this === Origins.MetroGraphDeclaration || isGeneratedGraph

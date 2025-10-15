@@ -1,0 +1,174 @@
+class Example {
+  val propGraph: AppGraph
+    field = DynamicAppGraphImpl_6fU3C9Y(container0 = TestIntProvider(value = 4))
+    get
+
+  @DependencyGraph
+  private class DynamicAppGraphImpl_6fU3C9Y : AppGraph {
+    private /* final field */ val container0InstanceProvider: Provider<TestIntProvider> = Companion.invoke<TestIntProvider>(value = container0)
+    constructor(container0: TestIntProvider) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val int: Int
+      override get(): Int {
+        return Companion.create(instance = <this>.#container0InstanceProvider.invoke()).invoke()
+      }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+  fun someTest(value: Int): Int {
+    val testGraph: AppGraph = DynamicAppGraphImpl_6fU3C9Y(container0 = TestIntProvider(value = value))
+    return testGraph.<get-int>()
+  }
+
+}
+
+@BindingContainer
+class TestIntProvider {
+  private val value: Int
+    field = value
+    private get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 471, endOffset = 510)
+  class ProvideInt$$MetroFactory : Factory<Int> {
+    private /* final field */ val instance: TestIntProvider = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(instance: TestIntProvider): Factory<Int> {
+        return ProvideInt$$MetroFactory(instance = instance)
+      }
+
+      fun provideInt(instance: TestIntProvider): Int {
+        return instance.provideInt()
+      }
+
+    }
+
+    private constructor(instance: TestIntProvider) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): Int {
+      return Companion.provideInt(instance = <this>.#instance)
+    }
+
+    fun mirrorFunction(): Int {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(value: Int) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+  @Provides
+  private fun provideInt(): Int {
+    return <this>.<get-value>()
+  }
+
+}
+
+@DependencyGraph
+interface AppGraph {
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): AppGraph {
+      return $$MetroGraph()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class $$MetroGraph : AppGraph {
+    private /* final field */ val thisGraphInstance: AppGraph = <this>
+    private /* final field */ val thisGraphInstanceProvider: Provider<AppGraph> = Companion.invoke<AppGraph>(value = <this>.#thisGraphInstance)
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val int: Int
+      override get(): Int {
+        return Companion.create(instance = <this>.#thisGraphInstance).invoke()
+      }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 85, endOffset = 152)
+  class ProvideInt$$MetroFactory : Factory<Int> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(instance: AppGraph): Factory<Int> {
+        return ProvideInt$$MetroFactory(instance = instance)
+      }
+
+      fun provideInt(instance: AppGraph): Int {
+        return instance.provideInt()
+      }
+
+    }
+
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): Int {
+      return Companion.provideInt(instance = <this>.#instance)
+    }
+
+    fun mirrorFunction(): Int {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Provides
+  private fun provideInt(): Int {
+    return 3
+  }
+
+  abstract val int: Int
+    abstract get
+
+}
+
+fun example() {
+  check(value = EQEQ(arg0 = 5, arg1 = DynamicAppGraphImpl_6fU3C9Y(container0 = TestIntProvider(value = 5)).<get-int>()))
+}
+

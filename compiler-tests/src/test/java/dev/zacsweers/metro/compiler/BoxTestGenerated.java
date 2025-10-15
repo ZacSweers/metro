@@ -584,6 +584,52 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Nested
+    @TestMetadata("compiler-tests/src/test/data/box/dependencygraph/dynamic")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Dynamic {
+      @Test
+      public void testAllFilesPresentInDynamic() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/dynamic"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      }
+
+      @Test
+      @TestMetadata("DynamicGraphWithFactory.kt")
+      public void testDynamicGraphWithFactory() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/dynamic/DynamicGraphWithFactory.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphsAreCachedByType.kt")
+      public void testGraphsAreCachedByType() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/dynamic/GraphsAreCachedByType.kt");
+      }
+
+      @Test
+      @TestMetadata("MultiModuleDynamicGraph.kt")
+      public void testMultiModuleDynamicGraph() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/dynamic/MultiModuleDynamicGraph.kt");
+      }
+
+      @Test
+      @TestMetadata("ReplacingBindingContainers.kt")
+      public void testReplacingBindingContainers() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/dynamic/ReplacingBindingContainers.kt");
+      }
+
+      @Test
+      @TestMetadata("ReplacingInstanceKeys.kt")
+      public void testReplacingInstanceKeys() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/dynamic/ReplacingInstanceKeys.kt");
+      }
+
+      @Test
+      @TestMetadata("SimpleDynamicGraph.kt")
+      public void testSimpleDynamicGraph() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/dynamic/SimpleDynamicGraph.kt");
+      }
+    }
+
+    @Nested
     @TestMetadata("compiler-tests/src/test/data/box/dependencygraph/extensions")
     @TestDataPath("$PROJECT_ROOT")
     public class Extensions {

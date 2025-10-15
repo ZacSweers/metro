@@ -57,7 +57,7 @@ kotlin-plugin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.re
 kotlin-plugin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 binaryCompatibilityValidator = { id = "org.jetbrains.kotlinx.binary-compatibility-validator", version = "0.18.1" }
 buildConfig = { id = "com.github.gmazzo.buildconfig", version = "5.7.0" }
-dokka = { id = "org.jetbrains.dokka", version = "2.1.0-Beta" }
+dokka = { id = "org.jetbrains.dokka", version = "2.1.0" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.34.0" }
 poko = { id = "dev.drewhamilton.poko", version.ref = "poko" }

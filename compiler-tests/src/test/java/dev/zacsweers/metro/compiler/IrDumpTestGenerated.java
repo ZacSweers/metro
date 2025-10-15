@@ -158,6 +158,22 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     public void testUnusedScopedConstructorInjectedClassWithConstructorAnnotatedIsDiscovered() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/UnusedScopedConstructorInjectedClassWithConstructorAnnotatedIsDiscovered.kt");
     }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/dump/ir/dependencygraph/dynamic")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Dynamic {
+      @Test
+      public void testAllFilesPresentInDynamic() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph/dynamic"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      }
+
+      @Test
+      @TestMetadata("SimpleDynamicGraph.kt")
+      public void testSimpleDynamicGraph() {
+        runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/dynamic/SimpleDynamicGraph.kt");
+      }
+    }
   }
 
   @Nested

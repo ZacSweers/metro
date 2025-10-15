@@ -33,7 +33,6 @@ import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
-import org.jetbrains.kotlin.ir.util.parentAsClass
 
 internal class IrBindingGraph(
   private val metroContext: IrMetroContext,
@@ -574,12 +573,7 @@ internal class IrBindingGraph(
       if (node.scopes.isEmpty() || bindingScope !in node.scopes) {
         val isUnscoped = node.scopes.isEmpty()
         // Error if there are mismatched scopes
-        val declarationToReport =
-          if (node.sourceGraph.origin == Origins.GeneratedGraphExtension) {
-            node.sourceGraph.parentAsClass
-          } else {
-            node.sourceGraph
-          }
+        val declarationToReport = node.sourceGraph.sourceGraphIfMetroGraph
         val backTrace = buildRouteToRoot(binding.typeKey, roots, adjacency)
         for (entry in backTrace) {
           stack.push(entry)
@@ -606,12 +600,24 @@ internal class IrBindingGraph(
           appendBindingStack(stack, short = false)
 
           if (node.sourceGraph.origin == Origins.GeneratedGraphExtension) {
-            appendLine()
-            appendLine()
-            appendLine("(Hint)")
-            append(
-              "${node.sourceGraph.name} is contributed by '${node.sourceGraph.sourceGraphIfMetroGraph.kotlinFqName}' to '${declarationToReport.sourceGraphIfMetroGraph.kotlinFqName}'."
-            )
+            val sourceGraphFqName = node.sourceGraph.sourceGraphIfMetroGraph.kotlinFqName
+            val receivingGraphFqName =
+              // Find the actual parent/receiving graph - it should be in extendedGraphNodes
+              node.extendedGraphNodes.values
+                .firstOrNull()
+                ?.sourceGraph
+                ?.sourceGraphIfMetroGraph
+                ?.kotlinFqName ?: declarationToReport.sourceGraphIfMetroGraph.kotlinFqName
+
+            // Only show the hint if the source and receiving graphs are actually different
+            if (sourceGraphFqName != receivingGraphFqName) {
+              appendLine()
+              appendLine()
+              appendLine("(Hint)")
+              append(
+                "${node.sourceGraph.name} is contributed by '${sourceGraphFqName}' to '${receivingGraphFqName}'."
+              )
+            }
           }
         }
         metroContext.reportCompat(declarationToReport, MetroDiagnostics.METRO_ERROR, message)
@@ -671,10 +677,13 @@ internal class IrBindingGraph(
         val dependentBinding = bindings[dependentKey] ?: continue
         if (dependentBinding !is IrBinding.Assisted) {
           reportInvalidBinding(
-            dependentBinding.parameters.allParameters.find { it.typeKey == binding.typeKey }?.ir?.takeIf {
-              val location = it.locationOrNull() ?: return@takeIf false
-              location.line != 0 || location.column != 0
-            } ?: dependentBinding.reportableDeclaration
+            dependentBinding.parameters.allParameters
+              .find { it.typeKey == binding.typeKey }
+              ?.ir
+              ?.takeIf {
+                val location = it.locationOrNull() ?: return@takeIf false
+                location.line != 0 || location.column != 0
+              } ?: dependentBinding.reportableDeclaration
           )
         }
       }
