@@ -72,9 +72,6 @@ public abstract interface annotation class dev/zacsweers/metro/ContributesTo$Con
 	public abstract fun value ()[Ldev/zacsweers/metro/ContributesTo;
 }
 
-public abstract interface annotation class dev/zacsweers/metro/DelicateMetroRetainedApi : java/lang/annotation/Annotation {
-}
-
 public abstract interface annotation class dev/zacsweers/metro/DependencyGraph : java/lang/annotation/Annotation {
 	public abstract fun additionalScopes ()[Ljava/lang/Class;
 	public abstract fun bindingContainers ()[Ljava/lang/Class;
