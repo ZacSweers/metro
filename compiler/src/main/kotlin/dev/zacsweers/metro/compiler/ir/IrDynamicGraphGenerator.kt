@@ -33,7 +33,6 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
-// TODO IC?
 internal class IrDynamicGraphGenerator(
   private val dependencyGraphTransformer: DependencyGraphTransformer,
   private val bindingContainerResolver: IrBindingContainerResolver,
