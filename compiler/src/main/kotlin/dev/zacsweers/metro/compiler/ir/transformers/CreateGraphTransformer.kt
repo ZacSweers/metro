@@ -65,7 +65,7 @@ internal class CreateGraphTransformer(
         val factoryImpl = rawType.nestedClasses.find { it.name == Symbols.Names.MetroImpl }
         if (factoryImpl != null) {
           // Replace it with a call directly to the factory creator
-          withIrBuilder(expression.symbol) {
+          return withIrBuilder(expression.symbol) {
             if (factoryImpl.isObject) {
               irGetObject(factoryImpl.symbol)
             } else {
@@ -136,7 +136,11 @@ internal class CreateGraphTransformer(
     }
   }
 
-  private fun handleDynamicGraphCreation(expression: IrCall, isFactory: Boolean, context: TransformerContextAccess): IrExpression {
+  private fun handleDynamicGraphCreation(
+    expression: IrCall,
+    isFactory: Boolean,
+    context: TransformerContextAccess,
+  ): IrExpression {
     // Get the target type from type argument
     val targetType = expression.targetGraphType
 
