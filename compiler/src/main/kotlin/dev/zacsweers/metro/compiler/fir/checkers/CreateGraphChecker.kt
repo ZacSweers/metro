@@ -26,64 +26,59 @@ internal object CreateGraphChecker : FirFunctionCallChecker(MppCheckerKind.Commo
 
     val callee = expression.toResolvedCallableSymbol() ?: return
     val session = context.session
-    when (callee.callableId) {
-      context.session.metroFirBuiltIns.createGraph.callableId -> {
-        // Check that the target is a graph and has no factory
-        val typeArg = expression.typeArguments.singleOrNull() ?: return
-        val rawType =
-          typeArg.toConeTypeProjection().type?.classLikeLookupTagIfAny?.toClassSymbol(session)
-            ?: return
-        if (
-          !rawType.isAnnotatedWithAny(
+    val builtins = session.metroFirBuiltIns
+
+    val targetFunction = builtins.createGraphIntrinsicCallableIds[callee.callableId] ?: return
+
+    // It's a createGraph() intrinsic
+    val typeArg = expression.typeArguments.singleOrNull() ?: return
+    val rawType =
+      typeArg.toConeTypeProjection().type?.classLikeLookupTagIfAny?.toClassSymbol(session) ?: return
+
+    // If it's factory-less
+    if (targetFunction == builtins.createGraph || targetFunction == builtins.createDynamicGraph) {
+      if (
+        !rawType.isAnnotatedWithAny(
+          session,
+          session.metroFirBuiltIns.classIds.dependencyGraphAnnotations,
+        )
+      ) {
+        reporter.reportOn(
+          typeArg.source ?: source,
+          CREATE_GRAPH_ERROR,
+          "`${targetFunction.name}` type argument '${rawType.classId.asFqNameString()}' must be annotated with a `@DependencyGraph` annotation.",
+        )
+      }
+
+      // Check that it doesn't have a factory
+      val creator =
+        rawType.nestedClasses().find {
+          it.isAnnotatedWithAny(
             session,
-            session.metroFirBuiltIns.classIds.dependencyGraphAnnotations,
+            session.metroFirBuiltIns.classIds.dependencyGraphFactoryAnnotations,
           )
-        ) {
-          reporter.reportOn(
-            typeArg.source ?: source,
-            CREATE_GRAPH_ERROR,
-            "`createGraph` type argument '${rawType.classId.asFqNameString()}' must be annotated with a `@DependencyGraph` annotation.",
-          )
-          return
         }
-        // Check that it doesn't have a factory
-        val creator =
-          rawType.nestedClasses().find {
-            it.isAnnotatedWithAny(
-              session,
-              session.metroFirBuiltIns.classIds.dependencyGraphFactoryAnnotations,
-            )
-          }
-        if (creator != null) {
-          reporter.reportOn(
-            typeArg.source ?: source,
-            CREATE_GRAPH_ERROR,
-            "`createGraph` type argument '${rawType.classId.asFqNameString()}' has a factory at '${creator.classId.asFqNameString()}'. Use `createGraphFactory` with that type instead.",
-          )
-          return
-        }
+      if (creator != null) {
+        reporter.reportOn(
+          typeArg.source ?: source,
+          CREATE_GRAPH_ERROR,
+          "`${targetFunction.name}` type argument '${rawType.classId.asFqNameString()}' has a factory at '${creator.classId.asFqNameString()}'. Use `createGraphFactory` with that type instead.",
+        )
       }
-      context.session.metroFirBuiltIns.createGraphFactory.callableId -> {
-        // Check that the target is a graph factory
-        val typeArg = expression.typeArguments.singleOrNull() ?: return
-        val rawType =
-          typeArg.toConeTypeProjection().type?.classLikeLookupTagIfAny?.toClassSymbol(session)
-        if (
-          rawType != null &&
-            !rawType.isAnnotatedWithAny(
-              session,
-              session.metroFirBuiltIns.classIds.dependencyGraphFactoryAnnotations,
-            )
-        ) {
-          reporter.reportOn(
-            typeArg.source ?: source,
-            CREATE_GRAPH_ERROR,
-            "`createGraphFactory` type argument '${rawType.classId.asFqNameString()}' must be annotated with a `@DependencyGraph.Factory` annotation.",
-          )
-          return
-        }
+    } else {
+      // It's a factory type
+      if (
+        !rawType.isAnnotatedWithAny(
+          session,
+          session.metroFirBuiltIns.classIds.dependencyGraphFactoryAnnotations,
+        )
+      ) {
+        reporter.reportOn(
+          typeArg.source ?: source,
+          CREATE_GRAPH_ERROR,
+          "`${targetFunction.name}` type argument '${rawType.classId.asFqNameString()}' must be annotated with a `@DependencyGraph.Factory` annotation.",
+        )
       }
-      else -> return
     }
   }
 }
