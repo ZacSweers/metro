@@ -70,6 +70,8 @@ internal class Symbols(
     const val CREATE_FACTORY_PROVIDER = "createFactoryProvider"
     const val CREATE_GRAPH = "createGraph"
     const val CREATE_GRAPH_FACTORY = "createGraphFactory"
+    const val CREATE_DYNAMIC_GRAPH = "createDynamicGraph"
+    const val CREATE_DYNAMIC_GRAPH_FACTORY = "createDynamicGraphFactory"
     const val ELEMENTS_INTO_SET = "ElementsIntoSet"
     const val ERROR = "error"
     const val EXCLUDES = "excludes"
@@ -194,6 +196,8 @@ internal class Symbols(
     val createFactoryProvider = StringNames.CREATE_FACTORY_PROVIDER.asName()
     val createGraph = StringNames.CREATE_GRAPH.asName()
     val createGraphFactory = StringNames.CREATE_GRAPH_FACTORY.asName()
+    val createDynamicGraph = StringNames.CREATE_DYNAMIC_GRAPH.asName()
+    val createDynamicGraphFactory = StringNames.CREATE_DYNAMIC_GRAPH_FACTORY.asName()
     val delegateFactory = "delegateFactory".asName()
     val error = StringNames.ERROR.asName()
     val excludes = StringNames.EXCLUDES.asName()
@@ -261,25 +265,25 @@ internal class Symbols(
   val metroCreateGraph: IrSimpleFunctionSymbol by lazy {
     pluginContext
       .referenceFunctions(CallableId(metroRuntime.packageFqName, "createGraph".asName()))
-      .single { it.owner.regularParameters.isEmpty() }
+      .first()
   }
 
   val metroCreateGraphFactory: IrSimpleFunctionSymbol by lazy {
     pluginContext
       .referenceFunctions(CallableId(metroRuntime.packageFqName, "createGraphFactory".asName()))
-      .single { it.owner.regularParameters.isEmpty() }
+      .first()
   }
 
   val metroCreateDynamicGraph: IrSimpleFunctionSymbol by lazy {
     pluginContext
       .referenceFunctions(CallableId(metroRuntime.packageFqName, "createDynamicGraph".asName()))
-      .single { it.owner.regularParameters.isNotEmpty() }
+      .first()
   }
 
   val metroCreateDynamicGraphFactory: IrSimpleFunctionSymbol by lazy {
     pluginContext
       .referenceFunctions(CallableId(metroRuntime.packageFqName, "createDynamicGraphFactory".asName()))
-      .single { it.owner.regularParameters.isNotEmpty() }
+      .first()
   }
 
   private val doubleCheck: IrClassSymbol by lazy {
