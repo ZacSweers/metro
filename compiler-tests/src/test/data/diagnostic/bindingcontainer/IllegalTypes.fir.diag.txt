@@ -7,3 +7,5 @@
 /IllegalTypes.kt:(252,269): error: Sealed classes cannot be annotated with @BindingContainer.
 
 /IllegalTypes.kt:(296,313): error: Sealed classes cannot be annotated with @BindingContainer.
+
+/IllegalTypes.kt:(369,386): error: Inner classes cannot be annotated with @BindingContainer.

@@ -46,6 +46,7 @@ import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.declarations.utils.isFinal
+import org.jetbrains.kotlin.fir.declarations.utils.isInner
 import org.jetbrains.kotlin.fir.declarations.utils.isLocal
 import org.jetbrains.kotlin.fir.declarations.utils.isOpen
 import org.jetbrains.kotlin.fir.declarations.utils.modality
@@ -1345,6 +1346,8 @@ internal fun FirClassLikeSymbol<*>.bindingContainerErrorMessage(
     "Anonymous objects cannot be binding containers."
   } else if (isLocal) {
     "Local class '${classId.shortClassName}' cannot be a binding container."
+  } else if (isInner) {
+    "Inner class '${classId.shortClassName}' cannot be a binding container."
   } else if (
     !alreadyCheckedAnnotation &&
       !isAnnotatedWithAny(session, session.metroFirBuiltIns.classIds.bindingContainerAnnotations)

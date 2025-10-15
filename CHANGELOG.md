@@ -22,6 +22,7 @@ Changelog
 - **Fix**: Don't double-invoke `Optional` binding fields.
 - **Fix**: Don't report duplicate bindings if injectors for both a parent and child class are present on a graph.
 - **Fix**: Look up correct target class ID for computed member injectors in `BindingLookup`.
+- **Fix**: Don't allow binding containers to be `inner` classes.
 
 0.6.10
 -----

@@ -29,6 +29,7 @@ import org.jetbrains.kotlin.fir.declarations.toAnnotationClass
 import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.declarations.utils.isEnumClass
+import org.jetbrains.kotlin.fir.declarations.utils.isInner
 import org.jetbrains.kotlin.fir.declarations.utils.isInterface
 import org.jetbrains.kotlin.fir.declarations.utils.isLocal
 import org.jetbrains.kotlin.fir.declarations.utils.modality
@@ -80,6 +81,9 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
         return
       } else if (declaration.modality == Modality.SEALED) {
         report("Sealed classes")
+        return
+      } else if (declaration.isInner) {
+        report("Inner classes")
         return
       }
     }

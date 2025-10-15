@@ -18,3 +18,8 @@ sealed class SealedClass
 
 <!BINDING_CONTAINER_ERROR!>@BindingContainer<!>
 sealed interface SealedInterface
+
+class Containing {
+  <!BINDING_CONTAINER_ERROR!>@BindingContainer<!>
+  inner class InnerClass
+}
