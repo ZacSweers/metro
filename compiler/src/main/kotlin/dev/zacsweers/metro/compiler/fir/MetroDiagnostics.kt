@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.BINDS_OPTIONAL_OF_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.BINDS_OPTIONAL_OF_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CANNOT_HAVE_INJECT_IN_MULTIPLE_TARGETS
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CANNOT_HAVE_MULTIPLE_INJECTED_CONSTRUCTORS
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CREATE_DYNAMIC_GRAPH_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CREATE_GRAPH_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DAGGER_REUSABLE_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DEPENDENCY_GRAPH_ERROR
@@ -122,6 +123,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val BINDS_OPTIONAL_OF_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
   val AGGREGATION_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val CREATE_GRAPH_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val CREATE_DYNAMIC_GRAPH_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val AS_CONTRIBUTION_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val MULTIBINDS_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val MULTIBINDS_OVERRIDE_ERROR by error1<KtElement, String>(OVERRIDE_MODIFIER)
@@ -224,6 +226,7 @@ private object FirMetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(PROVIDES_WARNING, "{0}", STRING)
         put(AGGREGATION_ERROR, "{0}", STRING)
         put(CREATE_GRAPH_ERROR, "{0}", STRING)
+        put(CREATE_DYNAMIC_GRAPH_ERROR, "{0}", STRING)
         put(AS_CONTRIBUTION_ERROR, "{0}", STRING)
         put(MEMBERS_INJECT_ERROR, "{0}", STRING)
         put(MEMBERS_INJECT_STATUS_ERROR, "{0}", STRING)
