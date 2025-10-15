@@ -611,6 +611,18 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("ReplacingBindingContainers.kt")
+      public void testReplacingBindingContainers() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/dynamic/ReplacingBindingContainers.kt");
+      }
+
+      @Test
+      @TestMetadata("ReplacingInstanceKeys.kt")
+      public void testReplacingInstanceKeys() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/dynamic/ReplacingInstanceKeys.kt");
+      }
+
+      @Test
       @TestMetadata("SimpleDynamicGraph.kt")
       public void testSimpleDynamicGraph() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/dynamic/SimpleDynamicGraph.kt");
