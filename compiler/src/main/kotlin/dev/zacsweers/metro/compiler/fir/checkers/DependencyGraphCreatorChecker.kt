@@ -202,7 +202,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
         isIncludes -> {
           val isBindingContainer =
             type.isAnnotatedWithAny(session, classIds.bindingContainerAnnotations)
-          if (!isBindingContainer) {
+          if (isBindingContainer) {
             type.bindingContainerErrorMessage(session, alreadyCheckedAnnotation = true)?.let {
               bindingContainerErrorMessage ->
               reporter.reportOn(
