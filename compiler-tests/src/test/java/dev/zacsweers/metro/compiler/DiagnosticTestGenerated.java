@@ -412,6 +412,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ConflictingProvidesAndClassScopes.kt")
+    public void testConflictingProvidesAndClassScopes() {
+      runTest("compiler-tests/src/test/data/diagnostic/inject/ConflictingProvidesAndClassScopes.kt");
+    }
+
+    @Test
     @TestMetadata("ProvidingAConstructorInjectedTypeHasASpecificWarning.kt")
     public void testProvidingAConstructorInjectedTypeHasASpecificWarning() {
       runTest("compiler-tests/src/test/data/diagnostic/inject/ProvidingAConstructorInjectedTypeHasASpecificWarning.kt");

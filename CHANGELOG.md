@@ -46,6 +46,7 @@ This is particularly useful for tests. See their docs for more information: [Dyn
 - **New**: Add diagnostic to report positional arguments use in custom interop annotations. See the [interop docs](https://zacsweers.github.io/metro/latest/interop#diagnostics) for more information. This is disabled by default but can be configured via the `interopAnnotationsNamedArgSeverity` option.
 - **New**: Support context parameters on top-level injected functions. See the [docs](https://zacsweers.github.io/metro/latest/injection-types/#context-parameters) for more information.
 - **New**: Improve diagnostic checks around binding container arguments to annotations and graph creators.
+- **Enhancement**: Add diagnostic for providing a constructor-injected class with a different scope than the class (if the class has a scope).
 - **Fix**: Don't use interoped annotation arguments at matching indices if their name does not match the requested name.
 - **Fix**: Trace all member injection dependencies from supertypes in graph reachability computation.
 - **Fix**: Use compat `getContainingClassSymbol()` (fixes Kotlin 2.3.0-x compatibility).
@@ -57,6 +58,7 @@ This is particularly useful for tests. See their docs for more information: [Dyn
 - **Fix**: Don't allow binding containers to be local classes.
 - **Fix**: Don't allow binding containers to be anonymous objects.
 - **Fix**: Fix wrong parent graph name in `IncompatiblyScopedBindings` hint.
+- Change the warning key for redundant provides to more specific `REDUNDANT_PROVIDES`.
 
 0.6.10
 -----

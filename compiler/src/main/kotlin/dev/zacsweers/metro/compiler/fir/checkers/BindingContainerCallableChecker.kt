@@ -358,10 +358,15 @@ internal object BindingContainerCallableChecker :
             if (providerScope == classScope) {
               reporter.reportOn(
                 source,
-                MetroDiagnostics.PROVIDES_WARNING,
+                MetroDiagnostics.REDUNDANT_PROVIDES,
                 "Provided type '${classTypeKey.render(short = false, includeQualifier = true)}' is already constructor-injected and does not need to be provided explicitly. Consider removing this `@Provides` declaration.",
               )
-              return
+            } else if (classScope != null) {
+              reporter.reportOn(
+                source,
+                MetroDiagnostics.CONFLICTING_PROVIDES_SCOPE,
+                "Provided type '${classTypeKey.render(short = false, includeQualifier = true)}' is already constructor-injected but declares a different scope. This is likely a bug.",
+              )
             }
           }
         }
