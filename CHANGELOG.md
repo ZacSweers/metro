@@ -25,6 +25,7 @@ Changelog
 - **Fix**: Don't allow binding containers to be `inner` classes.
 - **Fix**: Don't allow binding containers to be local classes.
 - **Fix**: Don't allow binding containers to be anonymous objects.
+- **Fix**: Fix wrong parent graph name in `IncompatiblyScopedBindings` hint.
 
 0.6.10
 -----
