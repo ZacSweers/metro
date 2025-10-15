@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.computeMetroDefault
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.generators.collectAbstractFunctions
+import dev.zacsweers.metro.compiler.isPlatformType
 import dev.zacsweers.metro.compiler.mapToArray
 import dev.zacsweers.metro.compiler.memoized
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -88,6 +89,7 @@ import org.jetbrains.kotlin.fir.scopes.impl.toConeType
 import org.jetbrains.kotlin.fir.scopes.processAllCallables
 import org.jetbrains.kotlin.fir.scopes.processAllClassifiers
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirAnonymousObjectSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirBackingFieldSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
@@ -1311,19 +1313,44 @@ internal fun FirValueParameterSymbol.hasMetroDefault(session: FirSession): Boole
 }
 
 context(compatContext: CompatContext)
-internal fun FirCallableSymbol<*>.isEffectivelyOpen(): Boolean = with(compatContext) {
-  if (visibility == Visibilities.Private) return false
+internal fun FirCallableSymbol<*>.isEffectivelyOpen(): Boolean =
+  with(compatContext) {
+    if (visibility == Visibilities.Private) return false
 
-  // If it's in an interface - not private
-  // If it's in an abstract class - open
-  val containingClass = getContainingClassSymbol() ?: return false
-  val containingClassKind = containingClass.classKind ?: return false
-  return when (containingClassKind) {
-    ClassKind.INTERFACE -> true
-    ClassKind.CLASS -> !containingClass.isFinal && (isOpen || isAbstract)
-    ClassKind.ENUM_CLASS,
-    ClassKind.ENUM_ENTRY,
-    ClassKind.ANNOTATION_CLASS,
-    ClassKind.OBJECT -> false
+    // If it's in an interface - not private
+    // If it's in an abstract class - open
+    val containingClass = getContainingClassSymbol() ?: return false
+    val containingClassKind = containingClass.classKind ?: return false
+    return when (containingClassKind) {
+      ClassKind.INTERFACE -> true
+      ClassKind.CLASS -> !containingClass.isFinal && (isOpen || isAbstract)
+      ClassKind.ENUM_CLASS,
+      ClassKind.ENUM_ENTRY,
+      ClassKind.ANNOTATION_CLASS,
+      ClassKind.OBJECT -> false
+    }
+  }
+
+/**
+ * If this returns null, it's a valid container type. If this returns non-null, the string is the
+ * error message.
+ */
+internal fun FirClassLikeSymbol<*>.bindingContainerErrorMessage(
+  session: FirSession,
+  alreadyCheckedAnnotation: Boolean = false,
+): String? {
+  return if (classId.isPlatformType()) {
+    "Platform type '${classId.asFqNameString()}' is not a binding container."
+  } else if (this is FirAnonymousObjectSymbol) {
+    "Anonymous objects cannot be binding containers."
+  } else if (isLocal) {
+    "Local class '${classId.shortClassName}' cannot be a binding container."
+  } else if (
+    !alreadyCheckedAnnotation &&
+      !isAnnotatedWithAny(session, session.metroFirBuiltIns.classIds.bindingContainerAnnotations)
+  ) {
+    "'${classId.asFqNameString()}' is not annotated with a `@BindingContainer` annotation."
+  } else {
+    null
   }
 }

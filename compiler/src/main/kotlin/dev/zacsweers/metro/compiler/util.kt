@@ -8,6 +8,15 @@ import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
+private val PLATFORM_TYPE_PACKAGES =
+  setOf("android.", "androidx.", "java.", "javax.", "kotlin.", "kotlinx.", "scala.")
+
+internal fun ClassId.isPlatformType(): Boolean {
+  return packageFqName.asString().let { packageName ->
+    PLATFORM_TYPE_PACKAGES.any { packageName.startsWith(it) }
+  }
+}
+
 internal const val LOG_PREFIX = "[METRO]"
 
 internal const val REPORT_METRO_MESSAGE = "This is a bug in the Metro compiler, please report it to https://github.com/zacsweers/metro."
