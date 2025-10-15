@@ -1,4 +1,8 @@
 class Example {
+  val propGraph: AppGraph
+    field = DynamicAppGraphImpl_6fU3C9Y(container0 = TestIntProvider(value = 4))
+    get
+
   @DependencyGraph
   private class DynamicAppGraphImpl_6fU3C9Y : AppGraph {
     private /* final field */ val container0InstanceProvider: Provider<TestIntProvider> = Companion.invoke<TestIntProvider>(value = container0)
@@ -35,7 +39,7 @@ class TestIntProvider {
     private get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 396, endOffset = 435)
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 471, endOffset = 510)
   class ProvideInt$$MetroFactory : Factory<Int> {
     private /* final field */ val instance: TestIntProvider = instance
     companion object Companion {
@@ -167,3 +171,4 @@ interface AppGraph {
 fun example() {
   check(value = EQEQ(arg0 = 5, arg1 = DynamicAppGraphImpl_6fU3C9Y(container0 = TestIntProvider(value = 5)).<get-int>()))
 }
+
