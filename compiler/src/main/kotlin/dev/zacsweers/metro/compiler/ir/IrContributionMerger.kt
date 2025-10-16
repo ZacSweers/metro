@@ -98,21 +98,28 @@ internal class IrContributionMerger(
       }
     }
 
-    // Apply replacements from remaining (non-excluded) binding containers
-    contributedBindingContainers.values.forEach { bindingContainer ->
-      bindingContainer
-        .annotationsIn(metroSymbols.classIds.allContributesAnnotations)
-        .flatMap { annotation -> annotation.replacedClasses() }
-        .mapNotNull { replacedClass -> replacedClass.classType.rawType().classId }
-        .forEach { replacedClassId ->
-          allContributions.remove(replacedClassId)
+    // Process replacements from both regular contributions and binding containers
 
-          // Remove contributions that have @Origin annotation pointing to the replaced class
-          originToContributions[replacedClassId]?.forEach { contributionId ->
-            allContributions.remove(contributionId)
-          }
+    // Add parent classes of regular contributions (e.g., @Contributes* classes)
+    allContributions.values
+      .asSequence()
+      .mapNotNull { contributions -> contributions.firstOrNull()?.rawTypeOrNull()?.parentAsClass }
+      // binding containers
+      .plus(contributedBindingContainers.values)
+      .flatMap { contributingClass ->
+        contributingClass
+          .annotationsIn(metroSymbols.classIds.allContributesAnnotations)
+          .flatMap { annotation -> annotation.replacedClasses() }
+          .mapNotNull { replacedClass -> replacedClass.classType.rawType().classId }
+      }
+      .forEach { replacedClassId ->
+        allContributions.remove(replacedClassId)
+
+        // Remove contributions that have @Origin annotation pointing to the replaced class
+        originToContributions[replacedClassId]?.forEach { contributionId ->
+          allContributions.remove(contributionId)
         }
-    }
+      }
 
     // Process rank-based replacements if Dagger-Anvil interop is enabled
     if (options.enableDaggerAnvilInterop) {
