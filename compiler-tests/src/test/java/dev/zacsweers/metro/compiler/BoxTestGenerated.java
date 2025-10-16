@@ -140,6 +140,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ReplacementsWorkInGraphExtensions.kt")
+    public void testReplacementsWorkInGraphExtensions() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ReplacementsWorkInGraphExtensions.kt");
+    }
+
+    @Test
     @TestMetadata("ScopedContributedBindingCanBeAccessedFromChildWithClassHintsEnabled.kt")
     public void testScopedContributedBindingCanBeAccessedFromChildWithClassHintsEnabled() {
       runTest("compiler-tests/src/test/data/box/aggregation/ScopedContributedBindingCanBeAccessedFromChildWithClassHintsEnabled.kt");
