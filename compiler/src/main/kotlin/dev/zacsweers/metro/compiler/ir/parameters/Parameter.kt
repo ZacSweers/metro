@@ -16,8 +16,8 @@ import dev.zacsweers.metro.compiler.ir.constArgumentOfTypeAt
 import dev.zacsweers.metro.compiler.ir.hasMetroDefault
 import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.ir.regularParameters
-import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.memoize
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrParameterKind

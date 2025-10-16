@@ -14,8 +14,8 @@ import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.isWordPrefixRegex
-import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.memoize
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import java.util.TreeSet
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent

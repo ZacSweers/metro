@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
-import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import java.util.Objects
@@ -14,7 +13,6 @@ import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
-import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeOrFail

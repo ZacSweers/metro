@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.cli.common.messages.AnalyzerWithCompilerReport
-import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.diagnostics.InternalDiagnosticFactoryMethod

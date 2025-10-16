@@ -501,7 +501,8 @@ internal class DependencyGraphNodeCache(
             val isInjector = !isGraphExtension && isInjectorCandidate
 
             if (isInjector && !declaration.returnType.isUnit()) {
-              // TODO move to FIR?
+              // FIR checks this in explicit graphs but need to account for inherited functions from
+              // supertypes
               reportCompat(
                 sequenceOf(declaration, graphDeclaration.sourceGraphIfMetroGraph),
                 MetroDiagnostics.METRO_ERROR,

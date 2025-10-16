@@ -7,8 +7,8 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer.MemberInjectClass
 import dev.zacsweers.metro.compiler.mapToSet
-import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.memoize
+import dev.zacsweers.metro.compiler.metroAnnotations
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.typeOrFail

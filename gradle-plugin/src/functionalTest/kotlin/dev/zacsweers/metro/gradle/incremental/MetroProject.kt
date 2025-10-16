@@ -7,7 +7,6 @@ import com.autonomousapps.kit.GradleProject
 import com.autonomousapps.kit.GradleProject.DslKind
 import com.autonomousapps.kit.Source
 import com.autonomousapps.kit.gradle.BuildScript
-import com.autonomousapps.kit.gradle.Plugin
 
 abstract class MetroProject(
   private val debug: Boolean = false,

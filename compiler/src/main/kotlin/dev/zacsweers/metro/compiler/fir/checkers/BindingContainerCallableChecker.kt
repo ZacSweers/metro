@@ -18,9 +18,9 @@ import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
 import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
+import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.reportCompilerBug
-import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.isObject

@@ -8,8 +8,8 @@ import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
 import dev.zacsweers.metro.compiler.fir.buildFullSubstitutionMap
 import dev.zacsweers.metro.compiler.fir.buildSimpleValueParameter
 import dev.zacsweers.metro.compiler.fir.classIds
-import dev.zacsweers.metro.compiler.fir.copyParameters
 import dev.zacsweers.metro.compiler.fir.compatContext
+import dev.zacsweers.metro.compiler.fir.copyParameters
 import dev.zacsweers.metro.compiler.fir.generateMemberFunction
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.wrapInProviderIfNecessary

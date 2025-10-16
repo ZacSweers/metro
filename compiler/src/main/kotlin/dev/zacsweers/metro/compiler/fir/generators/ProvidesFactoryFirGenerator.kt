@@ -19,9 +19,9 @@ import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.metro.compiler.isWordPrefixRegex
 import dev.zacsweers.metro.compiler.mapNotNullToSet
+import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.reportCompilerBug
-import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.builtins.functions.FunctionTypeKind
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.isObject

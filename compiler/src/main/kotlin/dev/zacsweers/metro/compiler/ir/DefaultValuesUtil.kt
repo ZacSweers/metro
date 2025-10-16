@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.OptionalDependencyBehavior
-import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import org.jetbrains.kotlin.ir.IrElement
@@ -17,7 +16,6 @@ import org.jetbrains.kotlin.ir.expressions.IrGetValue
 import org.jetbrains.kotlin.ir.expressions.impl.IrCallImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrGetValueImpl
 import org.jetbrains.kotlin.ir.expressions.impl.fromSymbolOwner
-import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols

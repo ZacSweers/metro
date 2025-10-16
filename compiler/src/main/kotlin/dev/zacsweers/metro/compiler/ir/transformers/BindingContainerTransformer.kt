@@ -50,11 +50,11 @@ import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.isWordPrefixRegex
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.mapToSet
+import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.reportCompilerBug
-import dev.zacsweers.metro.compiler.memoize
 import java.util.EnumSet
 import java.util.Optional
 import kotlin.jvm.optionals.getOrNull

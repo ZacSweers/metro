@@ -8,9 +8,9 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.isGraphImpl
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.mapToSet
+import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.reportCompilerBug
-import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrFunction

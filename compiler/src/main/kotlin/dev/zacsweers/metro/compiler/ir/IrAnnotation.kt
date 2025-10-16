@@ -3,8 +3,8 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.appendIterableWith
-import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.memoize
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrConst

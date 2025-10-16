@@ -24,16 +24,15 @@ import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.metro.compiler.fir.wrapInProviderIfNecessary
 import dev.zacsweers.metro.compiler.mapToArray
+import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.newName
 import dev.zacsweers.metro.compiler.reportCompilerBug
-import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.caches.FirCache
 import org.jetbrains.kotlin.fir.caches.firCachesFactory
-import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.declarations.builder.buildValueParameterCopy

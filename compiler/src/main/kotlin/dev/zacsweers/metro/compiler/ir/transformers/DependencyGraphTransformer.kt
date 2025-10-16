@@ -45,10 +45,10 @@ import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.transformMultiboundQualifier
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
+import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
-import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.backend.common.IrElementTransformerVoidWithContext
 import org.jetbrains.kotlin.backend.common.ScopeWithIr
 import org.jetbrains.kotlin.descriptors.ClassKind
