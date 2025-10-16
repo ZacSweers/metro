@@ -127,8 +127,6 @@ tasks.withType<Test> {
 
   workingDir = rootDir
 
-  systemProperty("metro.messaging.useShortCompilerSourceLocations", "true")
-
   useJUnitPlatform()
 
   setLibraryProperty("kotlin.minimal.stdlib.path", "kotlin-stdlib")

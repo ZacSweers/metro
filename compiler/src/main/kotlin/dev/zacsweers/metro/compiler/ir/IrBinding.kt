@@ -63,7 +63,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     // First check if we have the contributing file and line number
     val binding = this
     val locationString =
-      reportableDeclaration?.locationOrNull()?.render()
+      reportableDeclaration?.locationOrNull()?.render(short)
         // Or the fully-qualified contributing class name
         // TODO is this right
         ?: parameters.allParameters.firstOrNull()?.typeKey?.render(short = short)
@@ -302,7 +302,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
           val (contributionSourceDeclaration, isContributed) = declarationData
 
           val location =
-            contributionSourceDeclaration.locationOrNull()?.render()
+            contributionSourceDeclaration.locationOrNull()?.render(short)
               ?: "<unknown location, likely a separate compilation>"
           val description = buildString {
             if (isContributed) {

@@ -60,7 +60,7 @@ internal class IrBindingGraph(
         onError(message, stack)
         exitProcessing()
       },
-      findSimilarBindings = { key -> findSimilarBindings(key).mapValues { it.value.toString() } },
+      findSimilarBindings = { key -> findSimilarBindings(key).mapValues { it.value.render(short = true) } },
     )
 
   // TODO hoist accessors up and visit in seal?
@@ -788,7 +788,7 @@ internal class IrBindingGraph(
     }
 
     binding.reportableDeclaration?.locationOrNull()?.let { location ->
-      appendLine("└─ Location: ${location.render()}")
+      appendLine("└─ Location: ${location.render(short)}")
     }
   }
 
@@ -797,9 +797,9 @@ internal class IrBindingGraph(
     val binding: IrBinding?,
     val description: String,
   ) {
-    override fun toString(): String {
+    fun render(short: Boolean): String {
       return buildString {
-        append(typeKey.render(short = true))
+        append(typeKey.render(short = short))
         append(" (")
         append(description)
         append(")")
@@ -807,7 +807,7 @@ internal class IrBindingGraph(
           append(". Type: ")
           append(binding.javaClass.simpleName)
           append('.')
-          binding.reportableDeclaration?.locationOrNull()?.render()?.let {
+          binding.reportableDeclaration?.locationOrNull()?.render(short)?.let {
             append(" Source: ")
             append(it)
           }
