@@ -18,6 +18,25 @@ internal class IrContributionMerger(
   metroContext: IrMetroContext,
   private val contributionData: IrContributionData,
 ) : IrMetroContext by metroContext {
+
+  // Cache for scope-based contributions (before exclusions/replacements)
+  private val scopeContributionsCache = mutableMapOf<Set<ClassId>, ScopedContributions>()
+
+  // Cache for fully processed contributions (after exclusions/replacements)
+  private val mergedContributionsCache = mutableMapOf<ContributionsCacheKey, IrContributions>()
+
+  private data class ScopedContributions(
+    val allContributions: Map<ClassId, List<IrType>>,
+    val bindingContainers: Map<ClassId, IrClass>,
+    val originToContributions: Map<ClassId, Set<ClassId>>,
+  )
+
+  private data class ContributionsCacheKey(
+    val primaryScope: ClassId,
+    val allScopes: Set<ClassId>,
+    val excluded: Set<ClassId>,
+  )
+
   fun computeContributions(graphLikeAnnotation: IrConstructorCall): IrContributions? {
     val sourceScope = graphLikeAnnotation.scopeClassOrNull()
     val scope = sourceScope?.classId
@@ -42,7 +61,6 @@ internal class IrContributionMerger(
     }
   }
 
-  // TODO stick a cache in front of both scopes lookup then excludes
   fun computeContributions(
     primaryScope: ClassId,
     allScopes: Set<ClassId>,
@@ -50,38 +68,49 @@ internal class IrContributionMerger(
   ): IrContributions? {
     if (allScopes.isEmpty()) return null
 
-    val contributedSupertypes = mutableSetOf<IrType>()
-    val contributedBindingContainers = mutableMapOf<ClassId, IrClass>()
-    // Get all contributions and binding containers
-    val allContributions =
-      allScopes
-        .flatMap { contributionData.getContributions(it) }
-        .groupByTo(mutableMapOf()) {
-          // For Metro contributions, we need to check the parent class ID
-          // This is always the $$MetroContribution, the contribution's parent is the actual class
-          it.rawType().classIdOrFail.parentClassId!!
-        }
+    // Layer 2: Check if we have a fully processed result cached
+    val cacheKey = ContributionsCacheKey(primaryScope, allScopes, excluded)
+    mergedContributionsCache[cacheKey]?.let { return it }
 
-    contributedBindingContainers.putAll(
-      allScopes
-        .flatMap { contributionData.getBindingContainerContributions(it) }
-        .associateByTo(mutableMapOf()) { it.classIdOrFail }
-    )
+    // Layer 1: Get or compute scoped contributions (before exclusions/replacements)
+    val scopedContributions = scopeContributionsCache.getOrPut(allScopes) {
+      // Get all contributions and binding containers
+      val allContributions =
+        allScopes
+          .flatMap { contributionData.getContributions(it) }
+          .groupByTo(mutableMapOf()) {
+            // For Metro contributions, we need to check the parent class ID
+            // This is always the $$MetroContribution, the contribution's parent is the actual class
+            it.rawType().classIdOrFail.parentClassId!!
+          }
 
-    // TODO do we exclude directly contributed ones or also include transitives?
+      val bindingContainers =
+        allScopes
+          .flatMap { contributionData.getBindingContainerContributions(it) }
+          .associateByTo(mutableMapOf()) { it.classIdOrFail }
 
-    // Build a cache of origin class -> contribution classes mappings upfront
-    // This maps from an origin class to all contributions that have an @Origin pointing to it
-    val originToContributions = mutableMapOf<ClassId, MutableSet<ClassId>>()
-    for ((contributionClassId, contributions) in allContributions) {
-      // Get the actual contribution class (nested $$MetroContribution)
-      val contributionClass = contributions.firstOrNull()?.rawTypeOrNull()
-      if (contributionClass != null) {
-        contributionClass.originClassId()?.let { originClassId ->
-          originToContributions.getOrPut(originClassId) { mutableSetOf() }.add(contributionClassId)
+      // Build a cache of origin class -> contribution classes mappings upfront
+      // This maps from an origin class to all contributions that have an @Origin pointing to it
+      val originToContributions = mutableMapOf<ClassId, MutableSet<ClassId>>()
+      for ((contributionClassId, contributions) in allContributions) {
+        // Get the actual contribution class (nested $$MetroContribution)
+        val contributionClass = contributions.firstOrNull()?.rawTypeOrNull()
+        if (contributionClass != null) {
+          contributionClass.originClassId()?.let { originClassId ->
+            originToContributions.getOrPut(originClassId) { mutableSetOf() }.add(contributionClassId)
+          }
         }
       }
+
+      ScopedContributions(allContributions, bindingContainers, originToContributions)
     }
+
+    // Make mutable copies for processing exclusions and replacements
+    val allContributions = scopedContributions.allContributions.toMutableMap()
+    val contributedBindingContainers = scopedContributions.bindingContainers.toMutableMap()
+    val originToContributions = scopedContributions.originToContributions
+
+    // TODO do we exclude directly contributed ones or also include transitives?
 
     // Process excludes
     for (excludedClassId in excluded) {
@@ -129,14 +158,17 @@ internal class IrContributionMerger(
       }
     }
 
-    contributedSupertypes += allContributions.values.flatten()
+    // Build and cache the result
+    val result =
+      IrContributions(
+        primaryScope,
+        allScopes,
+        allContributions.values.flatten().toSortedSet(compareBy { it.rawType().classIdOrFail.toString() }),
+        contributedBindingContainers.toSortedMap(compareBy { it.toString() }),
+      )
 
-    return IrContributions(
-      primaryScope,
-      allScopes,
-      contributedSupertypes.toSortedSet(compareBy { it.rawType().classIdOrFail.toString() }),
-      contributedBindingContainers.toSortedMap(compareBy { it.toString() }),
-    )
+    mergedContributionsCache[cacheKey] = result
+    return result
   }
 
   /**
