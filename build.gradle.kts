@@ -70,7 +70,12 @@ spotless { predeclareDeps() }
 configure<SpotlessExtensionPredeclare> {
   kotlin { ktfmt(ktfmtVersion).googleStyle().configure { it.setRemoveUnusedImports(true) } }
   kotlinGradle { ktfmt(ktfmtVersion).googleStyle().configure { it.setRemoveUnusedImports(true) } }
-  java { googleJavaFormat(libs.versions.gjf.get()).reorderImports(true).reflowLongStrings(true) }
+  java {
+    googleJavaFormat(libs.versions.gjf.get())
+      .reorderImports(true)
+      .reflowLongStrings(true)
+      .reorderImports(true)
+  }
 }
 
 // Configure spotless in subprojects
