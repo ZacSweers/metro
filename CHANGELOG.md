@@ -61,6 +61,7 @@ This is particularly useful for tests. See their docs for more information: [Dyn
 - **Fix**: Fix wrong parent graph name in `IncompatiblyScopedBindings` hint.
 - **Fix**: Fix replacements for regular contributed types not getting processed in graph extensions.
 - **Fix**: Don't re-process contribution merging for generated graph extension impls during graph node creation.
+- **Fix**: Don't reserve provider fields for custom wrapper types like interoped `Optional` types, avoiding accidental eager initialization in cycles.
 - Change the warning key for redundant provides to more specific `REDUNDANT_PROVIDES`.
 
 0.6.10
