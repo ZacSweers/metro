@@ -20,7 +20,6 @@ import org.jetbrains.kotlin.test.services.TestServices
 import org.jetbrains.kotlin.test.services.getOrCreateTempDirectory
 import org.jetbrains.kotlin.test.services.isJavaFile
 import org.jetbrains.kotlin.test.services.isKtFile
-import org.jetbrains.kotlin.test.services.sourceFileProvider
 
 class Ksp2AdditionalSourceProvider(testServices: TestServices) :
   AdditionalSourceProvider(testServices) {
@@ -50,7 +49,11 @@ class Ksp2AdditionalSourceProvider(testServices: TestServices) :
 
       val path = directory.resolve(testFile.relativePath)
       path.parentFile.mkdirs()
-      path.writeText(testServices.sourceFileProvider.getContentOfSourceFile(testFile))
+      // TODO this escapes other preprocessors but
+      //  testServices.sourceFileProvider.getContentOfSourceFile calls testServices.moduleStructure
+      //  before it's available in 2.3.x
+      path.writeText(testFile.originalContent)
+      // path.writeText(testServices.sourceFileProvider.getContentOfSourceFile(testFile))
     }
 
     // Setup KSP output directories
