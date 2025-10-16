@@ -89,6 +89,7 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
             ?: optionDefaults.interopAnnotationsNamedArgSeverity,
         maxIrErrorsCount =
           module.directives.singleOrZeroValue(MetroDirectives.MAX_IR_ERRORS_COUNT) ?: 20,
+        contributesAsInject = MetroDirectives.CONTRIBUTES_AS_INJECT in module.directives,
         enableDaggerAnvilInterop = MetroDirectives.WITH_ANVIL in module.directives,
         customGraphAnnotations =
           buildSet {
