@@ -966,6 +966,15 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#implicit-inject-behavior-on-most-contributes-annotated-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      Implicit @Inject behavior on (most) @Contributes*-annotated types
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#other-changes" class="md-nav__link">
     <span class="md-ellipsis">
       Other Changes
@@ -1452,6 +1461,15 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#implicit-inject-behavior-on-most-contributes-annotated-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      Implicit @Inject behavior on (most) @Contributes*-annotated types
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#other-changes" class="md-nav__link">
     <span class="md-ellipsis">
       Other Changes
@@ -1862,7 +1880,7 @@
 <h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
 <h2 id="unreleased"><strong>Unreleased</strong><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
 <h3 id="dynamic-graphs">Dynamic Graphs<a class="headerlink" href="#dynamic-graphs" title="Permanent link">&para;</a></h3>
-<p>Dynamic graphs are a powerful new feature of the Metro compiler that allow for dynamically replacing bindings in a given graph. To use them, you can pass in a vararg set of <em>binding containers</em> to the <code>createDynamicGraph()</code> and <code>createDynamicGraphFactory()</code> intrinsics.</p>
+<p>Dynamic graphs are a powerful new feature of the Metro compiler that allows for dynamically replacing bindings in a given graph. To use them, you can pass in a vararg set of <em>binding containers</em> to the <code>createDynamicGraph()</code> and <code>createDynamicGraphFactory()</code> intrinsics.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">message</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span>
@@ -1886,6 +1904,14 @@
 </code></pre></div>
 <p>This is particularly useful for tests. See their docs for more information: <a href="https://zacsweers.github.io/metro/latest/dependency-graphs/#dynamic-graphs">Dynamic Graphs</a>.</p>
 <p>This API is experimental and may change in the future, please report any issues you encounter!</p>
+<h3 id="implicit-inject-behavior-on-most-contributes-annotated-types">Implicit <code>@Inject</code> behavior on (most) <code>@Contributes*</code>-annotated types<a class="headerlink" href="#implicit-inject-behavior-on-most-contributes-annotated-types" title="Permanent link">&para;</a></h3>
+<p>Up to this point, Metro has always required you to use <code>@Inject</code> on most <code>@Contributes*</code> annotated types. However, this can feel a bit repetitive and tedious. In this release, there is a new <code>contributesAsInject</code> option that can be enabled that will treat all <code>@Contributes*</code> annotated types as <code>@Inject</code> by default. You can still use <code>@Inject</code> on classes to be explicit, and if you have multiple constructors you must still use <code>@Inject</code> on the constructor you want to be used.</p>
+<p><em>The only exception to this is <code>@ContributesTo</code>, which isn&rsquo;t applicable to injected types.</em></p>
+<p>This is disabled by default to start but will likely become the default in a future release.</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@ContributesBinding</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="c1">// @Inject // &lt;-- now implicit!</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">TacoImpl</span><span class="p">(...)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">Taco</span>
+</code></pre></div>
 <h3 id="other-changes">Other Changes<a class="headerlink" href="#other-changes" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>Behavior change</strong>: Remove <code>assistedInjectMigrationSeverity</code> DSL. You must now move fully to using <code>@AssistedInject</code> annotations for assisted types.</li>
@@ -1898,6 +1924,7 @@
 <li><strong>New</strong>: Add diagnostic to report positional arguments use in custom interop annotations. See the <a href="https://zacsweers.github.io/metro/latest/interop#diagnostics">interop docs</a> for more information. This is disabled by default but can be configured via the <code>interopAnnotationsNamedArgSeverity</code> option.</li>
 <li><strong>New</strong>: Support context parameters on top-level injected functions. See the <a href="https://zacsweers.github.io/metro/latest/injection-types/#context-parameters">docs</a> for more information.</li>
 <li><strong>New</strong>: Improve diagnostic checks around binding container arguments to annotations and graph creators.</li>
+<li><strong>New</strong>: Add a diagnostic to warn on suspicious injection of unqualified object classes.</li>
 <li><strong>Enhancement</strong>: Add diagnostic for providing a constructor-injected class with a different scope than the class (if the class has a scope).</li>
 <li><strong>Enhancement</strong>: Allow replacing/excluding binding containers by <code>@Origin</code> annotations.</li>
 <li><strong>Fix</strong>: Don&rsquo;t use interoped annotation arguments at matching indices if their name does not match the requested name.</li>

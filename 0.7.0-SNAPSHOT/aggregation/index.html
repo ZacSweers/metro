@@ -666,6 +666,21 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="@ContributesBinding">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#implicitly-injected-contributesbinding-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      Implicitly-injected @ContributesBinding types
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1120,6 +1135,21 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="@ContributesBinding">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#implicitly-injected-contributesbinding-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      Implicitly-injected @ContributesBinding types
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1300,6 +1330,14 @@
 <p class="admonition-title">Tip</p>
 <p>Contributions may be <code>object</code> classes. In this event, Metro will automatically provide the object instance in its binding.</p>
 </div>
+<h3 id="implicitly-injected-contributesbinding-types">Implicitly-injected <code>@ContributesBinding</code> types<a class="headerlink" href="#implicitly-injected-contributesbinding-types" title="Permanent link">&para;</a></h3>
+<p>Up to version <code>0.7.0</code>, Metro has always required you to use <code>@Inject</code> on most <code>@Contributes*</code> annotated types. However, this can feel a bit repetitive and tedious. Starting in <code>0.7.0</code>, there is a new <code>contributesAsInject</code> Gradle DSL option that can be enabled that will treat all <code>@Contributes*</code> annotated types as <code>@Inject</code> by default. You can still use <code>@Inject</code> on classes to be explicit, and if you have multiple constructors you must still use <code>@Inject</code> on the constructor you want to be used.</p>
+<p><em>The only exception to this is <code>@ContributesTo</code>, which isn&rsquo;t applicable to injected types.</em></p>
+<p>This is disabled by default to start but will likely become the default in a future release.</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@ContributesBinding</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="c1">// @Inject // &lt;-- now implicit!</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">TacoImpl</span><span class="p">(...)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">Taco</span>
+</code></pre></div>
 <h2 id="contributesintosetcontributesintomap">@ContributesIntoSet/@ContributesIntoMap<a class="headerlink" href="#contributesintosetcontributesintomap" title="Permanent link">&para;</a></h2>
 <p>To contribute into a multibinding, use the <code>@ContributesIntoSet</code> or <code>@ContributesIntoMap</code> annotations as needed.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@ContributesIntoSet</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
@@ -1360,6 +1398,7 @@
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
+<p>Like <code>@ContributesBinding</code>, enabling the <code>contributesAsInject</code> Gradle DSL option will treat all <code>@ContributesIntoSet</code>/<code>@ContributesIntoMap</code>-annotated types as <code>@Inject</code> by default.</p>
 <h2 id="contributing-binding-containers">Contributing Binding Containers<a class="headerlink" href="#contributing-binding-containers" title="Permanent link">&para;</a></h2>
 <p>Binding containers (see <a href="../dependency-graphs/#binding-containers">Binding Containers</a>) can also be contributed to scopes via <code>@ContributesTo</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@ContributesTo</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
