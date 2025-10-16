@@ -70,7 +70,6 @@ internal class BindingGraphGenerator(
         contributionData = contributionData,
       )
 
-    // Add explicit bindings from @Provides methods
     val bindingStack =
       IrBindingStack(
         node.sourceGraph,
