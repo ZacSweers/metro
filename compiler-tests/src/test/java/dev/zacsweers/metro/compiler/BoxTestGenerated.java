@@ -1189,6 +1189,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("OptionalInACycle.kt")
+      public void testOptionalInACycle() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/OptionalInACycle.kt");
+      }
+
+      @Test
       @TestMetadata("QualifiedDaggerFactoryClassCanBeLoaded.kt")
       public void testQualifiedDaggerFactoryClassCanBeLoaded() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/QualifiedDaggerFactoryClassCanBeLoaded.kt");
