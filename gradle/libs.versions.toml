@@ -21,10 +21,10 @@ atomicfu = "0.29.0"
 autoService = "1.1.1"
 circuit = "0.30.0"
 classgraph = "4.8.184"
-compose-jb = "1.9.0"
+compose-jb = "1.9.1"
 dagger = "2.57.2"
-gjf = "1.29.0"
-jdk = "23"
+gjf = "1.30.0"
+jdk = "24"
 junit5 = "6.0.0"
 jvmTarget = "11"
 kct = "0.10.1"
@@ -34,10 +34,10 @@ kotlinInject-anvil = "0.1.6"
 kotlinx-coroutines = "1.10.2"
 kotlinx-serialization = "1.9.0"
 ksp = "2.2.20-2.0.4"
-ktfmt = "0.58"
+ktfmt = "0.59"
 ktor = "3.3.1"
 okhttp = "5.2.1"
-okio = "3.16.1"
+okio = "3.16.2"
 pluginId = "dev.zacsweers.metro.compiler"
 poko = "0.20.0"
 wire = "5.4.0"
@@ -57,7 +57,7 @@ kotlin-plugin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.re
 kotlin-plugin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 binaryCompatibilityValidator = { id = "org.jetbrains.kotlinx.binary-compatibility-validator", version = "0.18.1" }
 buildConfig = { id = "com.github.gmazzo.buildconfig", version = "5.7.0" }
-dokka = { id = "org.jetbrains.dokka", version = "2.1.0-Beta" }
+dokka = { id = "org.jetbrains.dokka", version = "2.1.0" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.34.0" }
 poko = { id = "dev.drewhamilton.poko", version.ref = "poko" }
@@ -98,7 +98,7 @@ circuit-codegenAnnotations = { module = "com.slack.circuit:circuit-codegen-annot
 
 compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose-jb" }
 compose-materialIcons = { module = "org.jetbrains.compose.material:material-icons-core", version = "1.7.3" }
-compose-material3 = { module = "org.jetbrains.compose.material3:material3", version = "1.9.0-beta06" }
+compose-material3 = { module = "org.jetbrains.compose.material3:material3", version = "1.9.0" }
 compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "compose-jb" }
 compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "compose-jb" }
 

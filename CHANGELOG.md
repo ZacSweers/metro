@@ -4,6 +4,37 @@ Changelog
 **Unreleased**
 --------------
 
+### Dynamic Graphs
+
+Dynamic graphs are a powerful new feature of the Metro compiler that allow for dynamically replacing bindings in a given graph. To use them, you can pass in a vararg set of _binding containers_ to the `createDynamicGraph()` and `createDynamicGraphFactory()` intrinsics.
+
+```kotlin
+@DependencyGraph
+interface AppGraph {
+  val message: String
+
+  @Provides fun provideMessage(): String = "real"
+}
+
+class AppTest {
+  val testGraph = createDynamicGraph<AppGraph>(FakeBindings)
+
+  @Test
+  fun test() {
+    assertEquals("fake", testGraph.message)
+  }
+
+  @BindingContainer
+  object FakeBindings {
+    @Provides fun provideMessage(): String = "fake"
+  }
+}
+```
+
+This is particularly useful for tests. See their docs for more information: [Dynamic Graphs](https://zacsweers.github.io/metro/latest/dependency-graphs/#dynamic-graphs).
+
+### Other Changes
+
 - **Behavior change**: Remove `assistedInjectMigrationSeverity` DSL. You must now move fully to using `@AssistedInject` annotations for assisted types.
 - **New**: Allow exposing assisted-injected classes on a graph with qualifier annotations via `@Provides` declarations. This means you could, for example, write a provider like so:
     ```kotlin
@@ -14,8 +45,24 @@ Changelog
 - **New**: Add `wasmWasi` targets to Metro's runtime.
 - **New**: Add diagnostic to report positional arguments use in custom interop annotations. See the [interop docs](https://zacsweers.github.io/metro/latest/interop#diagnostics) for more information. This is disabled by default but can be configured via the `interopAnnotationsNamedArgSeverity` option.
 - **New**: Support context parameters on top-level injected functions. See the [docs](https://zacsweers.github.io/metro/latest/injection-types/#context-parameters) for more information.
+- **New**: Improve diagnostic checks around binding container arguments to annotations and graph creators.
+- **Enhancement**: Add diagnostic for providing a constructor-injected class with a different scope than the class (if the class has a scope).
+- **Enhancement**: Allow replacing/excluding binding containers by `@Origin` annotations.
 - **Fix**: Don't use interoped annotation arguments at matching indices if their name does not match the requested name.
+- **Fix**: Trace all member injection dependencies from supertypes in graph reachability computation.
 - **Fix**: Use compat `getContainingClassSymbol()` (fixes Kotlin 2.3.0-x compatibility).
+- **Fix**: Better escape field names to be valid in JVM.
+- **Fix**: Don't double-invoke `Optional` binding fields.
+- **Fix**: Don't report duplicate bindings if injectors for both a parent and child class are present on a graph.
+- **Fix**: Look up correct target class ID for computed member injectors in `BindingLookup`.
+- **Fix**: Don't allow binding containers to be `inner` classes.
+- **Fix**: Don't allow binding containers to be local classes.
+- **Fix**: Don't allow binding containers to be anonymous objects.
+- **Fix**: Fix wrong parent graph name in `IncompatiblyScopedBindings` hint.
+- **Fix**: Fix replacements for regular contributed types not getting processed in graph extensions.
+- **Fix**: Don't re-process contribution merging for generated graph extension impls during graph node creation.
+- **Fix**: Don't reserve provider fields for custom wrapper types like interoped `Optional` types, avoiding accidental eager initialization in cycles.
+- Change the warning key for redundant provides to more specific `REDUNDANT_PROVIDES`.
 
 0.6.10
 -----

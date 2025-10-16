@@ -175,12 +175,12 @@ class ProfileInjector(
 
 Like Dagger, option #3 is accomplished via `MembersInjector` interface at runtime and in code gen. This should be reserved for advanced use cases.
 
-### Implementation notes
+??? note "Implementation Notes"
 
-* Property accessors don’t use `get`/`set` names in `inject{name}()` function names.
-* MembersInjector classes are generated as nested classes, allowing private member access.
-    * This includes parent classes’ private members (!!)
-* optional dependencies are not supported for injected member functions currently, but may be possible in the future.
+    * Property accessors don’t use `get`/`set` names in `inject{name}()` function names.
+    * MembersInjector classes are generated as nested classes, allowing private member access.
+        * This includes parent classes’ private members (!!)
+    * optional dependencies are not supported for injected member functions currently, but may be possible in the future.
 
 ## Top-level Function Injection
 
@@ -339,7 +339,7 @@ metro {
 }
 ```
 
-### Implementation notes
+??? note "Implementation Notes"
 
-- This is fairly different from kotlin-inject’s typealias approach. This is necessary because Metro doesn’t use higher order function types or typealiases as qualifiers.
-- Since the compose-compiler's IR transformer may run _before_ Metro's, we check for this during implementation body generation and look up the transformed target composable function as needed.
+    - This is fairly different from kotlin-inject’s typealias approach. This is necessary because Metro doesn’t use higher order function types or typealiases as qualifiers.
+    - Since the compose-compiler's IR transformer may run _before_ Metro's, we check for this during implementation body generation and look up the transformed target composable function as needed.

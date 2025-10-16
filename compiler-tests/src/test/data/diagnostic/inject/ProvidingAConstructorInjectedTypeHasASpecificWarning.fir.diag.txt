@@ -1,0 +1,1 @@
+/ProvidingAConstructorInjectedTypeHasASpecificWarning.kt:(412,415): warning: Provided type 'Bar' is already constructor-injected and does not need to be provided explicitly. Consider removing this `@Provides` declaration.

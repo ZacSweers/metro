@@ -45,7 +45,7 @@ internal object IrOptionalExpressionGenerator : IrWrappedTypeGenerator {
         typeHint = context.metroSymbols.javaOptional.typeWith(type)
       }
     }
-    return irInvoke(callee = callee, typeHint = typeHint)
+    return irInvoke(callee = callee, typeArgs = listOf(type), typeHint = typeHint)
   }
 
   /** Generates an `Optional.of(...)` call around an [instanceExpression]. */
@@ -63,7 +63,7 @@ internal object IrOptionalExpressionGenerator : IrWrappedTypeGenerator {
         typeHint = context.metroSymbols.javaOptional.typeWith(type)
       }
     }
-    return irInvoke(callee = callee, args = listOf(instanceExpression), typeHint = typeHint)
+    return irInvoke(callee = callee, args = listOf(instanceExpression), typeArgs = listOf(type), typeHint = typeHint)
   }
 }
 

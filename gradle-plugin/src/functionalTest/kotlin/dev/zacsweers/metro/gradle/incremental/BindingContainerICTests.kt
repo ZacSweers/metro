@@ -615,16 +615,12 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
                 withBuildScript {
                   sources = sources()
                   applyMetroDefault()
-                  dependencies(
-                    Dependency.implementation(":lib"),
-                  )
+                  dependencies(Dependency.implementation(":lib"))
                 }
               }
               .withSubproject("lib") {
                 sources.add(bindingContainer)
-                withBuildScript {
-                  applyMetroDefault()
-                }
+                withBuildScript { applyMetroDefault() }
               }
               .write()
 
@@ -1731,6 +1727,218 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
         If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
         """
           .trimIndent()
+      )
+  }
+
+  @Test
+  fun dynamicGraphWithScopeChangeInDynamicBindingContainer() {
+    val fixture =
+      object : MetroProject() {
+        override fun sources() = listOf(appGraph, testBindingContainer, target, testClass)
+
+        private val appGraph =
+          source(
+            """
+            @DependencyGraph(AppScope::class)
+            interface AppGraph {
+              val target: Target
+
+              @Provides
+              fun provideString(): String = "default"
+            }
+            """
+              .trimIndent()
+          )
+
+        val testBindingContainer =
+          source(
+            """
+            @BindingContainer
+            class TestBindingContainer {
+              @Provides
+              fun provideString(): String = "test"
+            }
+            """
+              .trimIndent()
+          )
+
+        private val target =
+          source(
+            """
+            @Inject
+            class Target(val string: String)
+            """
+              .trimIndent()
+          )
+
+        private val testClass =
+          source(
+            """
+            class AppTest {
+              val testGraph = createDynamicGraph<AppGraph>(TestBindingContainer())
+            }
+            """
+              .trimIndent()
+          )
+      }
+
+    val project = fixture.gradleProject
+
+    // First build should succeed with unscoped provider
+    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    // Add scope to the provider in the binding container
+    project.modify(
+      fixture.testBindingContainer,
+      """
+      @BindingContainer
+      class TestBindingContainer {
+        @SingleIn(AppScope::class)
+        @Provides
+        fun provideString(): String = "test"
+      }
+      """
+        .trimIndent(),
+    )
+
+    // Second build should succeed with scoped provider
+    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    // Remove scope from the provider
+    project.modify(
+      fixture.testBindingContainer,
+      """
+      @BindingContainer
+      class TestBindingContainer {
+        @Provides
+        fun provideString(): String = "test"
+      }
+      """
+        .trimIndent(),
+    )
+
+    // Third build should succeed with unscoped provider again
+    val thirdBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(thirdBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+  }
+
+  @Test
+  fun dynamicGraphWithChangingArguments() {
+    val fixture =
+      object : MetroProject() {
+        override fun sources() =
+          listOf(appGraph, bindingContainerA, bindingContainerB, target, testClass)
+
+        private val appGraph =
+          source(
+            """
+            @DependencyGraph
+            interface AppGraph {
+              val target: Target
+
+              @Provides
+              fun provideString(): String = "default"
+            }
+            """
+              .trimIndent()
+          )
+
+        private val bindingContainerA =
+          source(
+            """
+            @BindingContainer
+            class BindingContainerA {
+              @Provides
+              fun provideString(): String = "A"
+            }
+            """
+              .trimIndent()
+          )
+
+        private val bindingContainerB =
+          source(
+            """
+            @BindingContainer
+            class BindingContainerB {
+              @Provides
+              fun provideString(): String = "B"
+
+              @Provides
+              fun provideInt(): Int = 42
+            }
+            """
+              .trimIndent()
+          )
+
+        private val target =
+          source(
+            """
+            @Inject
+            class Target(val string: String)
+            """
+              .trimIndent()
+          )
+
+        val testClass =
+          source(
+            """
+            class AppTest {
+              val testGraph = createDynamicGraph<AppGraph>(BindingContainerA())
+            }
+            """
+              .trimIndent()
+          )
+      }
+
+    val project = fixture.gradleProject
+
+    // First build should succeed with BindingContainerA
+    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    // Change to use BindingContainerB
+    project.modify(
+      fixture.testClass,
+      """
+      class AppTest {
+        val testGraph = createDynamicGraph<AppGraph>(BindingContainerB())
+      }
+      """
+        .trimIndent(),
+    )
+
+    // Second build should succeed with BindingContainerB
+    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    // Change to use both containers (should fail due to duplicate String binding)
+    project.modify(
+      fixture.testClass,
+      """
+      class AppTest {
+        val testGraph = createDynamicGraph<AppGraph>(BindingContainerA(), BindingContainerB())
+      }
+      """
+        .trimIndent(),
+    )
+
+    // Third build should fail - duplicate String binding
+    val thirdBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    assertThat(thirdBuildResult.output)
+      .contains(
+        """
+        AppTest.kt:6:7 [Metro/DuplicateBinding] Multiple bindings found for kotlin.String
+
+          test.AppGraph
+            fun provideString(): kotlin.String
+                                 ~~~~~~~~~~~~~
+          test.BindingContainerA
+            fun provideString(): kotlin.String
+                                 ~~~~~~~~~~~~~
+        """
+        .trimIndent()
       )
   }
 }

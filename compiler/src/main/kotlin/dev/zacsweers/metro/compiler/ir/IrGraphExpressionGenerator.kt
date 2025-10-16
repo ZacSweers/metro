@@ -148,15 +148,25 @@ private constructor(
       return when (binding) {
         is IrBinding.ConstructorInjected -> {
           // Example_Factory.create(...)
-          binding.classFactory.invokeCreateExpression(binding.typeKey) { createFunction, parameters
-            ->
-            generateBindingArguments(
-              targetParams = parameters,
-              function = createFunction,
-              binding = binding,
-              fieldInitKey = null,
+          binding.classFactory
+            .invokeCreateExpression(binding.typeKey) { createFunction, parameters ->
+              generateBindingArguments(
+                targetParams = parameters,
+                function = createFunction,
+                binding = binding,
+                fieldInitKey = null,
+              )
+            }
+            .transformAccessIfNeeded(
+              accessType,
+              // Assisted inject types don't implement Provider
+              if (binding.classFactory.isAssistedInject) {
+                AccessType.INSTANCE
+              } else {
+                AccessType.PROVIDER
+              },
+              binding.typeKey.type,
             )
-          }
         }
 
         is IrBinding.CustomWrapper -> {
@@ -169,30 +179,24 @@ private constructor(
           val wrappedInstance =
             if (!isAbsentInGraph) {
               generateBindingCode(
-                  delegateBinding,
-                  binding.wrappedContextKey,
-                  accessType = AccessType.INSTANCE,
-                  fieldInitKey = fieldInitKey,
-                )
-                .let {
-                  // TODO clean up accessType not always working
-                  irInvoke(it, callee = metroSymbols.providerInvoke)
-                }
+                delegateBinding,
+                binding.wrappedContextKey,
+                accessType = AccessType.INSTANCE,
+                fieldInitKey = fieldInitKey,
+              )
             } else if (binding.allowsAbsent) {
               null
             } else {
               reportCompilerBug("No delegate binding for wrapped type ${binding.typeKey}!")
             }
-          val instanceExpression = generator.generate(binding, wrappedInstance)
-
-          return when (accessType) {
-            AccessType.INSTANCE -> instanceExpression
-            AccessType.PROVIDER -> instanceFactory(binding.typeKey.type, instanceExpression)
-          }
+          generator
+            .generate(binding, wrappedInstance)
+            .transformAccessIfNeeded(accessType, AccessType.INSTANCE, binding.typeKey.type)
         }
 
         is IrBinding.ObjectClass -> {
-          instanceFactory(binding.typeKey.type, irGetObject(binding.type.symbol))
+          irGetObject(binding.type.symbol)
+            .transformAccessIfNeeded(accessType, AccessType.INSTANCE, binding.typeKey.type)
         }
 
         is IrBinding.Alias -> {
@@ -214,14 +218,16 @@ private constructor(
               )
 
           // Invoke its factory's create() function
-          providerFactory.invokeCreateExpression(binding.typeKey) { createFunction, params ->
-            generateBindingArguments(
-              targetParams = params,
-              function = createFunction,
-              binding = binding,
-              fieldInitKey = fieldInitKey,
-            )
-          }
+          providerFactory
+            .invokeCreateExpression(binding.typeKey) { createFunction, params ->
+              generateBindingArguments(
+                targetParams = params,
+                function = createFunction,
+                binding = binding,
+                fieldInitKey = fieldInitKey,
+              )
+            }
+            .transformAccessIfNeeded(accessType, AccessType.PROVIDER, binding.typeKey.type)
         }
 
         is IrBinding.Assisted -> {
@@ -229,13 +235,26 @@ private constructor(
           val factoryImpl = assistedFactoryTransformer.getOrGenerateImplClass(binding.type)
 
           val targetBinding = bindingGraph.requireBinding(binding.target.typeKey)
-          val delegateFactoryProvider = generateBindingCode(targetBinding, accessType = accessType)
+          // Assisted-inject factories don't implement Provider
+          val delegateFactoryProvider =
+            generateBindingCode(targetBinding, accessType = AccessType.INSTANCE)
 
           with(factoryImpl) { invokeCreate(delegateFactoryProvider) }
+            .transformAccessIfNeeded(accessType, AccessType.PROVIDER, targetBinding.typeKey.type)
         }
 
         is IrBinding.Multibinding -> {
           generateMultibindingExpression(binding, contextualTypeKey, fieldInitKey)
+            .transformAccessIfNeeded(
+              requested = accessType,
+              actual =
+                if (contextualTypeKey.requiresProviderInstance) {
+                  AccessType.PROVIDER
+                } else {
+                  AccessType.INSTANCE
+                },
+              type = binding.typeKey.type,
+            )
         }
 
         is IrBinding.MembersInjected -> {
@@ -251,9 +270,13 @@ private constructor(
                 callee = metroSymbols.metroMembersInjectorsNoOp,
                 typeArgs = listOf(injectedType),
               )
-            instanceFactory(noopInjector.type, noopInjector).let {
-              with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) }
-            }
+            val noopProvider =
+              noopInjector.transformAccessIfNeeded(
+                requested = AccessType.PROVIDER,
+                actual = AccessType.INSTANCE,
+                type = injectedType,
+              )
+            with(metroProviderSymbols) { transformMetroProvider(noopProvider, contextualTypeKey) }
           } else {
             val injectorCreatorClass =
               if (injectorClass.isObject) injectorClass else injectorClass.companionObject()!!
@@ -266,11 +289,11 @@ private constructor(
                 binding = binding,
                 fieldInitKey = fieldInitKey,
               )
-            instanceFactory(
-                injectedType,
-                // InjectableClass_MembersInjector.create(stringValueProvider,
-                // exampleComponentProvider)
-                irInvoke(
+
+            // InjectableClass_MembersInjector.create(stringValueProvider,
+            // exampleComponentProvider)
+            val provider =
+              irInvoke(
                   dispatchReceiver =
                     if (injectorCreatorClass.isObject) {
                       irGetObject(injectorCreatorClass.symbol)
@@ -281,9 +304,14 @@ private constructor(
                     },
                   callee = createFunction,
                   args = args,
-                ),
-              )
-              .let { with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) } }
+                )
+                .transformAccessIfNeeded(
+                  requested = AccessType.PROVIDER,
+                  actual = AccessType.INSTANCE,
+                  type = injectedType,
+                )
+
+            with(metroProviderSymbols) { transformMetroProvider(provider, contextualTypeKey) }
           }
         }
 
@@ -334,28 +362,19 @@ private constructor(
           }
 
           val ctor = extensionImpl.primaryConstructor!!
-          val instanceExpression =
-            irCallConstructor(ctor.symbol, node.sourceGraph.typeParameters.map { it.defaultType })
-              .apply {
-                // If this function has parameters, they're factory instance params and need to be
-                // passed on
-                val functionParams = binding.accessor.regularParameters
+          irCallConstructor(ctor.symbol, node.sourceGraph.typeParameters.map { it.defaultType })
+            .apply {
+              // If this function has parameters, they're factory instance params and need to be
+              // passed on
+              val functionParams = binding.accessor.regularParameters
 
-                // First param (dispatch receiver) is always the parent graph
-                arguments[0] = irGet(thisReceiver)
-                for (i in 0 until functionParams.size) {
-                  arguments[i + 1] = irGet(functionParams[i])
-                }
+              // First param (dispatch receiver) is always the parent graph
+              arguments[0] = irGet(thisReceiver)
+              for (i in 0 until functionParams.size) {
+                arguments[i + 1] = irGet(functionParams[i])
               }
-          when (accessType) {
-            AccessType.INSTANCE -> {
-              // Already not a provider
-              instanceExpression
             }
-            AccessType.PROVIDER -> {
-              instanceFactory(binding.typeKey.type, instanceExpression)
-            }
-          }
+            .transformAccessIfNeeded(accessType, AccessType.INSTANCE, binding.typeKey.type)
         }
 
         is IrBinding.GraphExtensionFactory -> {
@@ -377,30 +396,19 @@ private constructor(
 
           val constructor = factoryImpl.primaryConstructor!!
           val parameters = constructor.parameters()
-          val factoryInstance =
-            irCallConstructor(
-                constructor.symbol,
-                binding.accessor.typeParameters.map { it.defaultType },
-              )
-              .apply {
-                // Pass the parent graph instance
-                arguments[0] =
-                  generateBindingCode(
-                    bindingGraph.requireBinding(parameters.regularParameters.single().typeKey),
-                    accessType = AccessType.INSTANCE,
-                  )
-              }
-
-          when (accessType) {
-            AccessType.INSTANCE -> {
-              // Factories are not providers, return directly
-              factoryInstance
+          irCallConstructor(
+              constructor.symbol,
+              binding.accessor.typeParameters.map { it.defaultType },
+            )
+            .apply {
+              // Pass the parent graph instance
+              arguments[0] =
+                generateBindingCode(
+                  bindingGraph.requireBinding(parameters.regularParameters.single().typeKey),
+                  accessType = AccessType.INSTANCE,
+                )
             }
-            AccessType.PROVIDER -> {
-              // Wrap in an instance factory
-              instanceFactory(binding.typeKey.type, factoryInstance)
-            }
-          }
+            .transformAccessIfNeeded(accessType, AccessType.INSTANCE, binding.typeKey.type)
         }
 
         is IrBinding.GraphDependency -> {
@@ -447,12 +455,13 @@ private constructor(
                   +irReturn(returnExpression)
                 }
               irInvoke(
-                dispatchReceiver = null,
-                callee = metroSymbols.metroProviderFunction,
-                typeHint = binding.typeKey.type.wrapInProvider(metroSymbols.metroProvider),
-                typeArgs = listOf(binding.typeKey.type),
-                args = listOf(lambda),
-              )
+                  dispatchReceiver = null,
+                  callee = metroSymbols.metroProviderFunction,
+                  typeHint = binding.typeKey.type.wrapInProvider(metroSymbols.metroProvider),
+                  typeArgs = listOf(binding.typeKey.type),
+                  args = listOf(lambda),
+                )
+                .transformAccessIfNeeded(accessType, AccessType.PROVIDER, binding.typeKey.type)
             }
           } else {
             reportCompilerBug("Unknown graph dependency type")
@@ -984,4 +993,36 @@ private constructor(
         isGraphInstance = false,
       )
     }
+
+  // TODO move transformMetroProvider into this too
+  context(scope: IrBuilderWithScope)
+  private fun IrExpression.transformAccessIfNeeded(
+    requested: AccessType,
+    actual: AccessType,
+    type: IrType,
+  ): IrExpression {
+    return when (requested) {
+      actual -> this
+      AccessType.PROVIDER -> {
+        // actual is an instance, wrap it
+        wrapInInstanceFactory(type)
+      }
+      AccessType.INSTANCE -> {
+        // actual is a provider but we want instance
+        unwrapProvider(type)
+      }
+    }
+  }
+
+  context(scope: IrBuilderWithScope)
+  private fun IrExpression.wrapInInstanceFactory(type: IrType): IrExpression {
+    return with(scope) { instanceFactory(type, this@wrapInInstanceFactory) }
+  }
+
+  context(scope: IrBuilderWithScope)
+  private fun IrExpression.unwrapProvider(type: IrType): IrExpression {
+    return with(scope) {
+      irInvoke(this@unwrapProvider, callee = metroSymbols.providerInvoke, typeHint = type)
+    }
+  }
 }

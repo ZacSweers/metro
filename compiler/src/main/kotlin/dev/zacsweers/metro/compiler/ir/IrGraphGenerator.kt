@@ -5,7 +5,6 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.METRO_VERSION
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
-import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
@@ -13,6 +12,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
+import dev.zacsweers.metro.compiler.isGeneratedGraph
 import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -115,7 +115,11 @@ internal class IrGraphGenerator(
     visibility: DescriptorVisibility = DescriptorVisibilities.PRIVATE,
   ): IrField {
     return bindingGraph.reservedField(key)?.field?.also { addChild(it) }
-      ?: addField(fieldName = name().asName(), fieldType = type(), fieldVisibility = visibility)
+      ?: addField(
+        fieldName = fieldNameAllocator.newName(name()),
+        fieldType = type(),
+        fieldVisibility = visibility,
+      )
   }
 
   fun generate() =
@@ -144,14 +148,12 @@ internal class IrGraphGenerator(
           getOrCreateBindingField(
               typeKey,
               {
-                fieldNameAllocator.newName(
-                  name
-                    .asString()
-                    .removePrefix("$$")
-                    .decapitalizeUS()
-                    .suffixIfNot("Instance")
-                    .suffixIfNot("Provider")
-                )
+                name
+                  .asString()
+                  .removePrefix("$$")
+                  .decapitalizeUS()
+                  .suffixIfNot("Instance")
+                  .suffixIfNot("Provider")
               },
               { metroSymbols.metroProvider.typeWith(typeKey.type) },
             )
@@ -169,7 +171,14 @@ internal class IrGraphGenerator(
           //  together
           val irParam = ctor.regularParameters[i]
 
-          if (isBindsInstance || creator.bindingContainersParameterIndices.isSet(i)) {
+          val isDynamic = irParam.origin == Origins.DynamicContainerParam
+          val isBindingContainer = creator.bindingContainersParameterIndices.isSet(i)
+          if (isBindsInstance || isBindingContainer || isDynamic) {
+
+            if (!isDynamic && param.typeKey in node.dynamicTypeKeys) {
+              // Don't add it if there's a dynamic replacement
+              continue
+            }
             addBoundInstanceField(param.typeKey, param.name) { _, _ -> irGet(irParam) }
           } else {
             // It's a graph dep. Add all its accessors as available keys and point them at
@@ -198,7 +207,7 @@ internal class IrGraphGenerator(
             val providerWrapperField =
               getOrCreateBindingField(
                 param.typeKey,
-                { fieldNameAllocator.newName(graphDepField.name.asString() + "Provider") },
+                { graphDepField.name.asString() + "Provider" },
                 { metroSymbols.metroProvider.typeWith(param.typeKey.type) },
               )
 
@@ -232,10 +241,14 @@ internal class IrGraphGenerator(
       allBindingContainers
         .sortedBy { it.kotlinFqName.asString() }
         .forEach { clazz ->
-          addBoundInstanceField(IrTypeKey(clazz), clazz.name) { _, _ ->
-            // Can't use primaryConstructor here because it may be a Java dagger Module in interop
-            val noArgConstructor = clazz.constructors.first { it.parameters.isEmpty() }
-            irCallConstructor(noArgConstructor.symbol, emptyList())
+          val typeKey = IrTypeKey(clazz)
+          if (typeKey !in node.dynamicTypeKeys) {
+            // Only add if not replaced with a dynamic instance
+            addBoundInstanceField(IrTypeKey(clazz), clazz.name) { _, _ ->
+              // Can't use primaryConstructor here because it may be a Java dagger Module in interop
+              val noArgConstructor = clazz.constructors.first { it.parameters.isEmpty() }
+              irCallConstructor(noArgConstructor.symbol, emptyList())
+            }
           }
         }
 
@@ -254,7 +267,7 @@ internal class IrGraphGenerator(
         val field =
           getOrCreateBindingField(
             node.typeKey,
-            { fieldNameAllocator.newName("thisGraphInstanceProvider") },
+            { "thisGraphInstanceProvider" },
             { metroSymbols.metroProvider.typeWith(node.typeKey.type) },
           )
 
@@ -291,7 +304,7 @@ internal class IrGraphGenerator(
           val field =
             getOrCreateBindingField(
                 binding.typeKey,
-                { fieldNameAllocator.newName(binding.nameHint.decapitalizeUS() + "Provider") },
+                { binding.nameHint.decapitalizeUS() + "Provider" },
                 { deferredTypeKey.type.wrapInProvider(metroSymbols.metroProvider) },
               )
               .withInit(binding.typeKey) { _, _ ->
@@ -354,7 +367,7 @@ internal class IrGraphGenerator(
           val field =
             getOrCreateBindingField(
               binding.typeKey,
-              { fieldNameAllocator.newName(binding.nameHint.decapitalizeUS().suffixIfNot(suffix)) },
+              { binding.nameHint.decapitalizeUS().suffixIfNot(suffix) },
               { fieldType },
             )
 
@@ -375,7 +388,11 @@ internal class IrGraphGenerator(
                 it.doubleCheck(this@withInit, metroSymbols, binding.typeKey)
               }
           }
-          bindingFieldContext.putProviderField(key, field)
+          if (isProviderType) {
+            bindingFieldContext.putProviderField(key, field)
+          } else {
+            bindingFieldContext.putInstanceField(key, field)
+          }
         }
 
       // Add statements to our constructor's deferred fields _after_ we've added all provider
@@ -481,7 +498,7 @@ internal class IrGraphGenerator(
 
       parentTracer.traceNested("Implement overrides") { node.implementOverrides() }
 
-      if (graphClass.origin != Origins.GeneratedGraphExtension) {
+      if (!graphClass.origin.isGeneratedGraph) {
         parentTracer.traceNested("Generate Metro metadata") {
           // Finally, generate metadata
           val graphProto = node.toProto(bindingGraph = bindingGraph)

@@ -222,6 +222,22 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Nested
+    @TestMetadata("compiler-tests/src/test/data/diagnostic/dependencygraph/dynamic")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Dynamic {
+      @Test
+      public void testAllFilesPresentInDynamic() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/dependencygraph/dynamic"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      }
+
+      @Test
+      @TestMetadata("CreateDynamicGraphArgumentDiagnostics.kt")
+      public void testCreateDynamicGraphArgumentDiagnostics() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/dynamic/CreateDynamicGraphArgumentDiagnostics.kt");
+      }
+    }
+
+    @Nested
     @TestMetadata("compiler-tests/src/test/data/diagnostic/dependencygraph/extensions")
     @TestDataPath("$PROJECT_ROOT")
     public class Extensions {
@@ -393,6 +409,18 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("CannotMixProviderOfLazyTypes.kt")
     public void testCannotMixProviderOfLazyTypes() {
       runTest("compiler-tests/src/test/data/diagnostic/inject/CannotMixProviderOfLazyTypes.kt");
+    }
+
+    @Test
+    @TestMetadata("ConflictingProvidesAndClassScopes.kt")
+    public void testConflictingProvidesAndClassScopes() {
+      runTest("compiler-tests/src/test/data/diagnostic/inject/ConflictingProvidesAndClassScopes.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidingAConstructorInjectedTypeHasASpecificWarning.kt")
+    public void testProvidingAConstructorInjectedTypeHasASpecificWarning() {
+      runTest("compiler-tests/src/test/data/diagnostic/inject/ProvidingAConstructorInjectedTypeHasASpecificWarning.kt");
     }
 
     @Test

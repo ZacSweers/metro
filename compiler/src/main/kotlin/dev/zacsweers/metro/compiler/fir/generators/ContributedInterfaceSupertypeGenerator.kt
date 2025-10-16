@@ -291,6 +291,8 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
     // This maps from an origin class to all contributions that have @Origin pointing to it
     // TODO make this lazily computed?
     val originToContributions = mutableMapOf<ClassId, MutableSet<ClassId>>()
+
+    // Check regular contributions (classes with nested $$MetroContribution)
     for ((parentClassId, _) in contributions) {
       val parentSymbol = parentClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()
       if (parentSymbol != null) {
@@ -298,6 +300,20 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
 
         parentSymbol.originClassId(session, localTypeResolver)?.let { originClassId ->
           originToContributions.getOrPut(originClassId) { mutableSetOf() }.add(parentClassId)
+        }
+      }
+    }
+
+    // Also check binding containers (e.g., @ContributesTo classes)
+    for ((containerClassId, isBindingContainer) in contributionMappingsByClassId) {
+      if (isBindingContainer) {
+        val containerSymbol = containerClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()
+        if (containerSymbol != null) {
+          val localTypeResolver = typeResolverFor(containerSymbol) ?: continue
+
+          containerSymbol.originClassId(session, localTypeResolver)?.let { originClassId ->
+            originToContributions.getOrPut(originClassId) { mutableSetOf() }.add(containerClassId)
+          }
         }
       }
     }

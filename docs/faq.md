@@ -51,3 +51,10 @@ This allows some dynamism with keys but has some downsides. A few different reas
 - Duplicate key checking becomes a runtime failure rather than compile-time.
 - It breaks the ability to expose `Map<Key, Provider<Value>>` unless you start manually managing `Provider` types yourself.
 - You allocate and throw away a `Pair` instance each time it's called.
+
+### How can I replicate Hilt's `@HiltAndroidTest`?
+
+!!! tip "Some technical context"
+    Hilt's `@HiltAndroidTest` and associated rule allow tests to "replace" bindings in a target graph even if it's compiled in another project.
+
+Metro supports dynamic replacements via a similar feature called [dynamic graphs](https://zacsweers.github.io/metro/latest/dependency-graphs/#dynamic-graphs).

@@ -13,6 +13,8 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.BINDS_OPTIONAL_OF_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.BINDS_OPTIONAL_OF_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CANNOT_HAVE_INJECT_IN_MULTIPLE_TARGETS
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CANNOT_HAVE_MULTIPLE_INJECTED_CONSTRUCTORS
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CONFLICTING_PROVIDES_SCOPE
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CREATE_DYNAMIC_GRAPH_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CREATE_GRAPH_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DAGGER_REUSABLE_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DEPENDENCY_GRAPH_ERROR
@@ -53,6 +55,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_OR_BINDS_SHOUL
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_PROPERTIES_CANNOT_BE_PRIVATE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_WARNING
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.REDUNDANT_PROVIDES
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUGGEST_CLASS_INJECTION
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactoryToRendererMap
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticRenderers.TO_STRING
@@ -117,11 +120,14 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val PROVIDER_OVERRIDES by error0<KtElement>(MODALITY_MODIFIER)
   val PROVIDES_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val PROVIDES_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
+  val REDUNDANT_PROVIDES by warning1<KtElement, String>(NAME_IDENTIFIER)
+  val CONFLICTING_PROVIDES_SCOPE by warning1<KtElement, String>(NAME_IDENTIFIER)
   val BINDS_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val BINDS_OPTIONAL_OF_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val BINDS_OPTIONAL_OF_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
   val AGGREGATION_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val CREATE_GRAPH_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val CREATE_DYNAMIC_GRAPH_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val AS_CONTRIBUTION_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val MULTIBINDS_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val MULTIBINDS_OVERRIDE_ERROR by error1<KtElement, String>(OVERRIDE_MODIFIER)
@@ -222,8 +228,11 @@ private object FirMetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(ASSISTED_INJECTION_WARNING, "{0}", STRING)
         put(PROVIDES_ERROR, "{0}", STRING)
         put(PROVIDES_WARNING, "{0}", STRING)
+        put(REDUNDANT_PROVIDES, "{0}", STRING)
+        put(CONFLICTING_PROVIDES_SCOPE, "{0}", STRING)
         put(AGGREGATION_ERROR, "{0}", STRING)
         put(CREATE_GRAPH_ERROR, "{0}", STRING)
+        put(CREATE_DYNAMIC_GRAPH_ERROR, "{0}", STRING)
         put(AS_CONTRIBUTION_ERROR, "{0}", STRING)
         put(MEMBERS_INJECT_ERROR, "{0}", STRING)
         put(MEMBERS_INJECT_STATUS_ERROR, "{0}", STRING)

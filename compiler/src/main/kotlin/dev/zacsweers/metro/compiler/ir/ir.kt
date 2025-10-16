@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.MetroOptions
-import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.Symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.compat.CompatContext
@@ -17,11 +16,13 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInLazy
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
+import dev.zacsweers.metro.compiler.isGraphImpl
 import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.singleOrError
+import dev.zacsweers.metro.compiler.toJavaIdentifier
 import java.io.File
 import java.util.Objects
 import kotlin.io.path.name
@@ -623,10 +624,16 @@ internal fun assignConstructorParamsToFields(
   return buildMap {
     for (irParameter in constructor.regularParameters) {
       val irField =
-        clazz.addField(irParameter.name, irParameter.type, DescriptorVisibilities.PRIVATE).apply {
-          isFinal = true
-          initializer = context.createIrBuilder(symbol).run { irExprBody(irGet(irParameter)) }
-        }
+        clazz
+          .addField(
+            toJavaIdentifier(irParameter.name.asString()),
+            irParameter.type,
+            DescriptorVisibilities.PRIVATE,
+          )
+          .apply {
+            isFinal = true
+            initializer = context.createIrBuilder(symbol).run { irExprBody(irGet(irParameter)) }
+          }
       put(irParameter, irField)
     }
   }
@@ -785,6 +792,10 @@ internal fun IrConstructorCall.additionalScopesArgument() =
 
 internal fun IrConstructorCall.excludedClasses(): Set<IrClassReference> {
   return excludesArgument().toClassReferences()
+}
+
+internal fun Set<IrClassReference>.mapToClassIds(): Set<ClassId> {
+  return mapToSet { it.classType.rawType().classIdOrFail }
 }
 
 internal fun IrConstructorCall.additionalScopes(): Set<IrClassReference> {
@@ -1149,19 +1160,11 @@ internal val IrClass.metroGraphOrFail: IrClass
   get() = metroGraphOrNull ?: reportCompilerBug("No generated MetroGraph found: $classId")
 
 internal val IrClass.metroGraphOrNull: IrClass?
-  get() =
-    when (origin) {
-      Origins.MetroGraphDeclaration,
-      Origins.GeneratedGraphExtension -> this
-      else -> nestedClassOrNull(Symbols.Names.MetroGraph)
-    }
+  get() = if (origin.isGraphImpl) this else nestedClassOrNull(Symbols.Names.MetroGraph)
 
 internal val IrClass.sourceGraphIfMetroGraph: IrClass
   get() {
-    val isGeneratedGraph =
-      origin == Origins.MetroGraphDeclaration ||
-        origin == Origins.GeneratedGraphExtension ||
-        name == Symbols.Names.MetroGraph
+    val isGeneratedGraph = name == Symbols.Names.MetroGraph || origin.isGraphImpl
     return if (isGeneratedGraph) {
       superTypes.firstOrNull()?.rawTypeOrNull()
         ?: reportCompilerBug("No super type found for $kotlinFqName")
@@ -1705,4 +1708,8 @@ internal fun IrValueParameter.hasMetroDefault(): Boolean {
     isAnnotatedOptionalDep = { hasAnnotation(Symbols.ClassIds.OptionalDependency) },
     hasDefaultValue = { defaultValue != null },
   )
+}
+
+internal fun <T : Any> IrPluginContext.withIrBuilder(symbol: IrSymbol, block: DeclarationIrBuilder.() -> T): T {
+  return createIrBuilder(symbol).run(block)
 }

@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.getAllSuperTypes
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
+import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.ir.BuiltinSymbolsBase
@@ -69,6 +70,8 @@ internal class Symbols(
     const val CREATE_FACTORY_PROVIDER = "createFactoryProvider"
     const val CREATE_GRAPH = "createGraph"
     const val CREATE_GRAPH_FACTORY = "createGraphFactory"
+    const val CREATE_DYNAMIC_GRAPH = "createDynamicGraph"
+    const val CREATE_DYNAMIC_GRAPH_FACTORY = "createDynamicGraphFactory"
     const val ELEMENTS_INTO_SET = "ElementsIntoSet"
     const val ERROR = "error"
     const val EXCLUDES = "excludes"
@@ -193,6 +196,8 @@ internal class Symbols(
     val createFactoryProvider = StringNames.CREATE_FACTORY_PROVIDER.asName()
     val createGraph = StringNames.CREATE_GRAPH.asName()
     val createGraphFactory = StringNames.CREATE_GRAPH_FACTORY.asName()
+    val createDynamicGraph = StringNames.CREATE_DYNAMIC_GRAPH.asName()
+    val createDynamicGraphFactory = StringNames.CREATE_DYNAMIC_GRAPH_FACTORY.asName()
     val delegateFactory = "delegateFactory".asName()
     val error = StringNames.ERROR.asName()
     val excludes = StringNames.EXCLUDES.asName()
@@ -260,13 +265,25 @@ internal class Symbols(
   val metroCreateGraph: IrSimpleFunctionSymbol by lazy {
     pluginContext
       .referenceFunctions(CallableId(metroRuntime.packageFqName, "createGraph".asName()))
-      .single()
+      .first()
   }
 
   val metroCreateGraphFactory: IrSimpleFunctionSymbol by lazy {
     pluginContext
       .referenceFunctions(CallableId(metroRuntime.packageFqName, "createGraphFactory".asName()))
-      .single()
+      .first()
+  }
+
+  val metroCreateDynamicGraph: IrSimpleFunctionSymbol by lazy {
+    pluginContext
+      .referenceFunctions(CallableId(metroRuntime.packageFqName, "createDynamicGraph".asName()))
+      .first()
+  }
+
+  val metroCreateDynamicGraphFactory: IrSimpleFunctionSymbol by lazy {
+    pluginContext
+      .referenceFunctions(CallableId(metroRuntime.packageFqName, "createDynamicGraphFactory".asName()))
+      .first()
   }
 
   private val doubleCheck: IrClassSymbol by lazy {
