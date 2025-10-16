@@ -13,6 +13,14 @@ sourceSets {
   register("generator230")
 }
 
+val testCompilerVersion =
+  providers.gradleProperty("metro.testCompilerVersion").orElse(libs.versions.kotlin).get()
+
+val kotlinVersion =
+  testCompilerVersion.substringBefore('-').split('.').let { (major, minor, patch) ->
+    KotlinVersion(major.toInt(), minor.toInt(), patch.toInt())
+  }
+
 buildConfig {
   generateAtSync = true
   packageName("dev.zacsweers.metro.compiler.test")
@@ -24,6 +32,11 @@ buildConfig {
   }
   sourceSets.named("test") {
     buildConfigField("String", "JVM_TARGET", libs.versions.jvmTarget.map { "\"$it\"" })
+    buildConfigField(
+      "kotlin.KotlinVersion",
+      "COMPILER_VERSION",
+      "KotlinVersion(${kotlinVersion.major}, ${kotlinVersion.minor}, ${kotlinVersion.patch})",
+    )
   }
 }
 
@@ -35,14 +48,6 @@ val daggerRuntimeClasspath: Configuration by configurations.creating {}
 val daggerInteropClasspath: Configuration by configurations.creating { isTransitive = false }
 
 dependencies {
-  val testCompilerVersion =
-    providers.gradleProperty("metro.testCompilerVersion").orElse(libs.versions.kotlin).get()
-
-  val kotlinVersion =
-    testCompilerVersion.substringBefore('-').split('.').let { (major, minor, patch) ->
-      KotlinVersion(major.toInt(), minor.toInt(), patch.toInt())
-    }
-
   // IntelliJ maven repo doesn't carry compiler test framework versions, so we'll pull from that as
   // needed for those tests
   val compilerTestFrameworkVersion: String
