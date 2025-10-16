@@ -235,6 +235,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       public void testCreateDynamicGraphArgumentDiagnostics() {
         runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/dynamic/CreateDynamicGraphArgumentDiagnostics.kt");
       }
+
+      @Test
+      @TestMetadata("CreateDynamicGraphCannotBeInLocalClasses.kt")
+      public void testCreateDynamicGraphCannotBeInLocalClasses() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/dynamic/CreateDynamicGraphCannotBeInLocalClasses.kt");
+      }
     }
 
     @Nested

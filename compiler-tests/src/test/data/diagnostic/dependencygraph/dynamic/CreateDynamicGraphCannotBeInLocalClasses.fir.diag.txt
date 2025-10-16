@@ -1,0 +1,3 @@
+/CreateDynamicGraphCannotBeInLocalClasses.kt:(389,442): error: `createDynamicGraphFactory` can only be called from a top-level function or concrete class (non-anonymous, non-local). Containing class 'Local' is a local class.
+
+/CreateDynamicGraphCannotBeInLocalClasses.kt:(522,575): error: `createDynamicGraphFactory` can only be called from a top-level function or concrete class (non-anonymous, non-local). This call is inside an anonymous object.

@@ -150,11 +150,6 @@ internal class CreateGraphTransformer(
       expression.arguments[0]?.expectAs<IrVararg>()
         ?: reportCompilerBug("Expected vararg argument for dynamic graph creation")
 
-    // TODO FIR ensure these are valid
-    //  strong type
-    //  not anonymous
-    //  no duplicates
-    //  all containers. No graphs
     val containerTypes =
       varargArg.elements.mapToSet { element ->
         // Each element should be an expression whose type is the container type
