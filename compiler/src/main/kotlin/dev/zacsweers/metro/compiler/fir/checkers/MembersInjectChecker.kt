@@ -10,7 +10,7 @@ import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isDependencyGraph
 import dev.zacsweers.metro.compiler.fir.isGraphFactory
 import dev.zacsweers.metro.compiler.metroAnnotations
-import dev.zacsweers.metro.compiler.unsafeLazy
+import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
@@ -43,7 +43,7 @@ internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
     if (declaration.symbol.isAnnotatedWithAny(session, session.classIds.assistedFactoryAnnotations))
       return
 
-    val isConstructorInjected by unsafeLazy {
+    val isConstructorInjected by memoize {
       declaration.symbol.findInjectLikeConstructors(session, checkClass = true).firstOrNull() != null
     }
 

@@ -10,7 +10,7 @@ import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.reportCompilerBug
-import dev.zacsweers.metro.compiler.unsafeLazy
+import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrFunction
@@ -56,18 +56,18 @@ internal data class DependencyGraphNode(
   var proto: DependencyGraphProto? = null,
 ) {
   // For quick lookups
-  val supertypeClassIds: Set<ClassId> by unsafeLazy {
+  val supertypeClassIds: Set<ClassId> by memoize {
     supertypes.mapNotNullToSet { it.classOrNull?.owner?.classId }
   }
 
   val hasExtensions = graphExtensions.isNotEmpty()
 
-  val metroGraph by unsafeLazy { sourceGraph.metroGraphOrNull }
+  val metroGraph by memoize { sourceGraph.metroGraphOrNull }
 
-  val metroGraphOrFail by unsafeLazy { metroGraph ?: reportCompilerBug("No generated MetroGraph found: ${sourceGraph.kotlinFqName}") }
+  val metroGraphOrFail by memoize { metroGraph ?: reportCompilerBug("No generated MetroGraph found: ${sourceGraph.kotlinFqName}") }
 
   /** [IrTypeKey] of the contributed graph extension, if any. */
-  val contributedGraphTypeKey: IrTypeKey? by unsafeLazy {
+  val contributedGraphTypeKey: IrTypeKey? by memoize {
     if (sourceGraph.origin == Origins.GeneratedGraphExtension) {
       IrTypeKey(sourceGraph.superTypes.first())
     } else {
@@ -79,9 +79,9 @@ internal data class DependencyGraphNode(
   val originalTypeKey
     get() = contributedGraphTypeKey ?: typeKey
 
-  val publicAccessors by unsafeLazy { accessors.mapToSet { it.contextKey.typeKey } }
+  val publicAccessors by memoize { accessors.mapToSet { it.contextKey.typeKey } }
 
-  val reportableSourceGraphDeclaration by unsafeLazy {
+  val reportableSourceGraphDeclaration by memoize {
     generateSequence(sourceGraph) { it.parentAsClass }
       .firstOrNull { !it.origin.isGraphImpl && it.fileOrNull != null }
       ?: reportCompilerBug(
@@ -89,7 +89,7 @@ internal data class DependencyGraphNode(
       )
   }
 
-  val multibindingAccessors by unsafeLazy {
+  val multibindingAccessors by memoize {
     proto
       ?.let {
         val bitfield = BitField(it.multibinding_accessor_indices)
@@ -116,7 +116,7 @@ internal data class DependencyGraphNode(
     abstract val parameters: Parameters
     abstract val bindingContainersParameterIndices: BitField
 
-    val typeKey by unsafeLazy { IrTypeKey(type.typeWith()) }
+    val typeKey by memoize { IrTypeKey(type.typeWith()) }
 
     data class Constructor(
       override val type: IrClass,

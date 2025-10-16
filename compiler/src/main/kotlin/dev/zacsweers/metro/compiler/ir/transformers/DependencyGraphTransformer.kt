@@ -48,7 +48,7 @@ import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
-import dev.zacsweers.metro.compiler.unsafeLazy
+import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.backend.common.IrElementTransformerVoidWithContext
 import org.jetbrains.kotlin.backend.common.ScopeWithIr
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -90,7 +90,7 @@ internal class DependencyGraphTransformer(
   private val assistedFactoryTransformer =
     AssistedFactoryTransformer(context, injectConstructorTransformer)
   private val bindingContainerTransformer = BindingContainerTransformer(context)
-  private val contributionHintIrTransformer by unsafeLazy {
+  private val contributionHintIrTransformer by memoize {
     ContributionHintIrTransformer(context, hintGenerator)
   }
   private val bindingContainerResolver = IrBindingContainerResolver(metroSymbols)

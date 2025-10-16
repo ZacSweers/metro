@@ -8,7 +8,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer.MemberInjectClass
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.metroAnnotations
-import dev.zacsweers.metro.compiler.unsafeLazy
+import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.typeOrFail
@@ -68,7 +68,7 @@ internal class BindingLookup(
   }
 
   fun addLazyParentKey(typeKey: IrTypeKey, bindingFactory: () -> IrBinding) {
-    lazyParentKeys[typeKey] = unsafeLazy(bindingFactory)
+    lazyParentKeys[typeKey] = memoize(bindingFactory)
   }
 
   context(context: IrMetroContext)
@@ -212,8 +212,8 @@ internal class BindingLookup(
       }
 
       val bindings = mutableSetOf<IrBinding>()
-      val remapper by unsafeLazy { irClass.deepRemapperFor(key.type) }
-      val membersInjectBindings = unsafeLazy {
+      val remapper by memoize { irClass.deepRemapperFor(key.type) }
+      val membersInjectBindings = memoize {
         irClass.computeMembersInjectorBindings(currentBindings, remapper).also { bindings += it }
       }
 

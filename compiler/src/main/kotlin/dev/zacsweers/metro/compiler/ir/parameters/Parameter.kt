@@ -17,7 +17,7 @@ import dev.zacsweers.metro.compiler.ir.hasMetroDefault
 import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.reportCompilerBug
-import dev.zacsweers.metro.compiler.unsafeLazy
+import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrParameterKind
@@ -64,7 +64,7 @@ private constructor(
   val ir: IrValueParameter
     get() = _ir ?: reportCompilerBug("Parameter $name has no backing IR value parameter!")
 
-  private val cachedToString by unsafeLazy {
+  private val cachedToString by memoize {
     buildString {
       contextualTypeKey.typeKey.qualifier?.let {
         append(it)

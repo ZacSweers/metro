@@ -5,7 +5,7 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
-import dev.zacsweers.metro.compiler.unsafeLazy
+import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.name.CallableId
@@ -71,7 +71,7 @@ internal sealed interface ProviderFactory : IrMetroFactory, IrBindingContainerCa
         factoryClass = clazz,
         typeKey = typeKey,
         callableMetadata = callableMetadata,
-        parametersLazy = unsafeLazy { callableMetadata.function.parameters() },
+        parametersLazy = memoize { callableMetadata.function.parameters() },
       )
     }
   }

@@ -11,7 +11,7 @@ import dev.zacsweers.metro.compiler.graph.BaseBindingStack
 import dev.zacsweers.metro.compiler.graph.BaseTypeKey
 import dev.zacsweers.metro.compiler.ir.IrBindingStack.Entry
 import dev.zacsweers.metro.compiler.reportCompilerBug
-import dev.zacsweers.metro.compiler.unsafeLazy
+import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.withoutLineBreaks
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
@@ -320,7 +320,7 @@ internal fun Appendable.appendBindingStackEntries(
 
 internal class IrBindingStackImpl(override val graph: IrClass, private val logger: MetroLogger) :
   IrBindingStack {
-  override val graphFqName: FqName by unsafeLazy { graph.kotlinFqName }
+  override val graphFqName: FqName by memoize { graph.kotlinFqName }
 
   // TODO can we use one structure?
   // TODO can we use scattermap's IntIntMap? Store the typekey hash to its index

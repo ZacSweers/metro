@@ -15,7 +15,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.isWordPrefixRegex
 import dev.zacsweers.metro.compiler.reportCompilerBug
-import dev.zacsweers.metro.compiler.unsafeLazy
+import dev.zacsweers.metro.compiler.memoize
 import java.util.TreeSet
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
@@ -106,7 +106,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     val isAssisted
       get() = classFactory.isAssistedInject
 
-    override val dependencies: List<IrContextualTypeKey> by unsafeLazy {
+    override val dependencies: List<IrContextualTypeKey> by memoize {
       parameters.nonDispatchParameters.filterNot { it.isAssisted }.map { it.contextualTypeKey } +
         injectedMembers
     }
@@ -191,7 +191,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val contextualTypeKey: IrContextualTypeKey,
     override val parameters: Parameters,
   ) : StaticBinding {
-    override val dependencies: List<IrContextualTypeKey> by unsafeLazy {
+    override val dependencies: List<IrContextualTypeKey> by memoize {
       parameters.allParameters.map { it.contextualTypeKey }
     }
 
@@ -510,7 +510,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     val sourceBindings: MutableSet<IrTypeKey> = TreeSet(),
   ) : IrBinding {
     override val scope: IrAnnotation? = null
-    override val dependencies by unsafeLazy { sourceBindings.map { IrContextualTypeKey(it) } }
+    override val dependencies by memoize { sourceBindings.map { IrContextualTypeKey(it) } }
     override val parameters: Parameters = Parameters.empty()
 
     override val nameHint: String
@@ -637,7 +637,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     // object instantiation
     override val isImplicitlyDeferrable: Boolean = true
 
-    override val dependencies: List<IrContextualTypeKey> by unsafeLazy {
+    override val dependencies: List<IrContextualTypeKey> by memoize {
       parameters.nonDispatchParameters
         // Instance parameters are implicitly assisted in this scenario and marked as such in FIR
         .filterNot { it.isAssisted }

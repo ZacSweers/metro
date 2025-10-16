@@ -3,9 +3,8 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.drewhamilton.poko.Poko
-import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.BaseTypeKey
-import dev.zacsweers.metro.compiler.unsafeLazy
+import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
@@ -20,9 +19,9 @@ internal class IrTypeKey
 private constructor(override val type: IrType, override val qualifier: IrAnnotation?) :
   BaseTypeKey<IrType, IrAnnotation, IrTypeKey> {
 
-  private val cachedRender by unsafeLazy { render(short = false, includeQualifier = true) }
+  private val cachedRender by memoize { render(short = false, includeQualifier = true) }
 
-  val classId by unsafeLazy { type.rawTypeOrNull()?.classId }
+  val classId by memoize { type.rawTypeOrNull()?.classId }
 
   val hasTypeArgs: Boolean
     get() = type is IrSimpleType && type.arguments.isNotEmpty()

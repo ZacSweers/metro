@@ -27,7 +27,7 @@ import dev.zacsweers.metro.compiler.mapToArray
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.newName
 import dev.zacsweers.metro.compiler.reportCompilerBug
-import dev.zacsweers.metro.compiler.unsafeLazy
+import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
@@ -178,7 +178,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
       constructorParameters.forEach { parameterNameAllocator.newName(it.name.asString()) }
     }
 
-    val assistedParameters: List<MetroFirValueParameter> by unsafeLazy {
+    val assistedParameters: List<MetroFirValueParameter> by memoize {
       constructorParameters.filter { it.isAssisted }
     }
 

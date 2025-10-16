@@ -11,7 +11,7 @@ import dev.zacsweers.metro.compiler.ir.NOOP_TYPE_REMAPPER
 import dev.zacsweers.metro.compiler.ir.contextParameters
 import dev.zacsweers.metro.compiler.ir.extensionReceiverParameterCompat
 import dev.zacsweers.metro.compiler.ir.regularParameters
-import dev.zacsweers.metro.compiler.unsafeLazy
+import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrParameterKind
@@ -48,7 +48,7 @@ internal class Parameters(
       }
     }
 
-  val nonDispatchParameters: List<Parameter> by unsafeLazy {
+  val nonDispatchParameters: List<Parameter> by memoize {
     buildList {
       extensionReceiverParameter?.let(::add)
       addAll(contextParameters)
@@ -59,14 +59,14 @@ internal class Parameters(
   val extensionOrFirstParameter: Parameter?
     get() = nonDispatchParameters.firstOrNull()
 
-  val allParameters: List<Parameter> by unsafeLazy {
+  val allParameters: List<Parameter> by memoize {
     buildList {
       dispatchReceiverParameter?.let(::add)
       addAll(nonDispatchParameters)
     }
   }
 
-  val parametersMap by unsafeLazy {
+  val parametersMap by memoize {
     allParameters.associateBy { it.name }
   }
 
@@ -102,7 +102,7 @@ internal class Parameters(
     )
   }
 
-  private val cachedToString by unsafeLazy {
+  private val cachedToString by memoize {
     buildString {
       if (ir is IrConstructor || regularParameters.firstOrNull()?.isMember == true) {
         append("@Inject ")

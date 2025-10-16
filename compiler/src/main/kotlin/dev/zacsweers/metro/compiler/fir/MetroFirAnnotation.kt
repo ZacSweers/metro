@@ -4,7 +4,7 @@ package dev.zacsweers.metro.compiler.fir
 
 import dev.zacsweers.metro.compiler.appendIterableWith
 import dev.zacsweers.metro.compiler.md5base64
-import dev.zacsweers.metro.compiler.unsafeLazy
+import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.expressions.FirExpression
@@ -23,8 +23,8 @@ internal class MetroFirAnnotation(
   session: FirSession,
   typeResolver: TypeResolveService? = null,
 ) {
-  private val cachedHashKey by unsafeLazy { fir.computeAnnotationHash(session, typeResolver) }
-  private val cachedToString by unsafeLazy {
+  private val cachedHashKey by memoize { fir.computeAnnotationHash(session, typeResolver) }
+  private val cachedToString by memoize {
     buildString { renderAsAnnotation(fir, simple = false) }
   }
 

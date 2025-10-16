@@ -14,7 +14,7 @@ import dev.zacsweers.metro.compiler.fir.mapKeyAnnotation
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.resolvedBindingArgument
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
-import dev.zacsweers.metro.compiler.unsafeLazy
+import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.isObject
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
@@ -67,7 +67,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
       if (classId in classIds.allContributesAnnotations) {
         val scope = annotation.resolvedScopeClassId() ?: continue
         val replaces = emptySet<ClassId>() // TODO implement
-        val checkIntoSet by unsafeLazy {
+        val checkIntoSet by memoize {
           checkBindingContribution(
             session,
             ContributionKind.CONTRIBUTES_INTO_SET,
@@ -82,7 +82,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
             Contribution.ContributesIntoSet(declaration, annotation, scope, replaces, bindingType)
           }
         }
-        val checkIntoMap by unsafeLazy {
+        val checkIntoMap by memoize {
           checkBindingContribution(
             session,
             ContributionKind.CONTRIBUTES_INTO_MAP,
