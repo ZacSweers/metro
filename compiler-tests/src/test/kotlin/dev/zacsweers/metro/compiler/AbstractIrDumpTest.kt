@@ -37,7 +37,7 @@ open class AbstractIrDumpTest : AbstractFirLightTreeJvmIrTextTest() {
         +DUMP_KT_IR
       }
 
-      useMetaTestConfigurators(::MetroTestConfigurator, ::MetroTestDataPathHandler)
+      useMetaTestConfigurators(::MetroTestConfigurator)
     }
   }
 }
