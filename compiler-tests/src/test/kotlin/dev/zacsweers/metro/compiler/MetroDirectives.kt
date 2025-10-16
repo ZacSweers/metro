@@ -45,6 +45,10 @@ object MetroDirectives : SimpleDirectivesContainer() {
     enumDirective<MetroOptions.DiagnosticSeverity>(
       "Control diagnostic severity reporting of interop annotations using positional arguments instead of named arguments."
     )
+  val CONTRIBUTES_AS_INJECT by
+    directive(
+      "If enabled, treats `@Contributes*` annotations (except ContributesTo) as implicit `@Inject` annotations."
+    )
 
   // Dependency directives.
   val WITH_ANVIL by directive("Add Anvil as dependency and configure custom annotations.")

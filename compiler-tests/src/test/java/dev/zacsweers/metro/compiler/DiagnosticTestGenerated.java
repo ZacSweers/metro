@@ -418,6 +418,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("InjectingAPlainObjectIsSus.kt")
+    public void testInjectingAPlainObjectIsSus() {
+      runTest("compiler-tests/src/test/data/diagnostic/inject/InjectingAPlainObjectIsSus.kt");
+    }
+
+    @Test
     @TestMetadata("ProvidingAConstructorInjectedTypeHasASpecificWarning.kt")
     public void testProvidingAConstructorInjectedTypeHasASpecificWarning() {
       runTest("compiler-tests/src/test/data/diagnostic/inject/ProvidingAConstructorInjectedTypeHasASpecificWarning.kt");

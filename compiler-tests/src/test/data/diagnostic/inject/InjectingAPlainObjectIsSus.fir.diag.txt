@@ -1,0 +1,1 @@
+/InjectingAPlainObjectIsSus.kt:(108,119): warning: Suspicious injection of an unqualified object type 'ObjectClass'. This is probably unnecessary or unintentional.

@@ -182,6 +182,7 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
             extension.enableTopLevelFunctionInjection,
           )
         )
+        add(lazyOption("contributes-as-inject", extension.contributesAsInject))
         reportsDir.orNull
           ?.let { FilesSubpluginOption("reports-destination", listOf(it.asFile)) }
           ?.let(::add)

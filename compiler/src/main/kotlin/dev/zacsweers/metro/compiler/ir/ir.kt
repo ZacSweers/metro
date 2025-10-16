@@ -37,6 +37,7 @@ import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
+import org.jetbrains.kotlin.descriptors.isObject
 import org.jetbrains.kotlin.fir.lazy.Fir2IrLazyClass
 import org.jetbrains.kotlin.ir.IrBuiltIns
 import org.jetbrains.kotlin.ir.IrElement
@@ -1553,9 +1554,14 @@ private fun List<IrConstructorCall>?.annotationsAnnotatedWith(
 
 context(context: IrMetroContext)
 internal fun IrClass.findInjectableConstructor(onlyUsePrimaryConstructor: Boolean): IrConstructor? {
+  if (kind.isObject) return null // No constructor for this one but can be annotated with Contributes*
   return findInjectableConstructor(
     onlyUsePrimaryConstructor,
-    context.metroSymbols.classIds.allInjectAnnotations,
+    if (onlyUsePrimaryConstructor) {
+      context.metroSymbols.classIds.allInjectAnnotations
+    } else {
+      context.metroSymbols.classIds.injectLikeAnnotations
+    },
   )
 }
 

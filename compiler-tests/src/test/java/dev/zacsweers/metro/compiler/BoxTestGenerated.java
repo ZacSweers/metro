@@ -430,6 +430,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ContributesCanBeInject.kt")
+    public void testContributesCanBeInject() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/ContributesCanBeInject.kt");
+    }
+
+    @Test
     @TestMetadata("DefaultAccessorBodiesWorkAcrossModules.kt")
     public void testDefaultAccessorBodiesWorkAcrossModules() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/DefaultAccessorBodiesWorkAcrossModules.kt");

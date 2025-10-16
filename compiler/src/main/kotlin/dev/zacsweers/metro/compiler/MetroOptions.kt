@@ -548,6 +548,16 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
       valueMapper = { it },
     )
+  ),
+  CONTRIBUTES_AS_INJECT(
+    RawMetroOption.boolean(
+      name = "contributes-as-inject",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description = "If enabled, treats `@Contributes*` annotations (except ContributesTo) as implicit `@Inject` annotations",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
   );
 
   companion object {
@@ -653,7 +663,9 @@ public data class MetroOptions(
   val enableGraphImplClassAsReturnType: Boolean =
     MetroOption.ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE.raw.defaultValue.expectAs(),
   val customOriginAnnotations: Set<ClassId> =
-    MetroOption.CUSTOM_ORIGIN.raw.defaultValue.expectAs()
+    MetroOption.CUSTOM_ORIGIN.raw.defaultValue.expectAs(),
+  val contributesAsInject: Boolean =
+    MetroOption.CONTRIBUTES_AS_INJECT.raw.defaultValue.expectAs()
 ) {
   internal companion object {
     fun load(configuration: CompilerConfiguration): MetroOptions {
@@ -825,6 +837,9 @@ public data class MetroOptions(
                     OptionalDependencyBehavior.valueOf(it.uppercase(Locale.US))
                   }
               )
+          }
+          MetroOption.CONTRIBUTES_AS_INJECT -> {
+            options = options.copy(contributesAsInject = configuration.getAsBoolean(entry))
           }
         }
       }

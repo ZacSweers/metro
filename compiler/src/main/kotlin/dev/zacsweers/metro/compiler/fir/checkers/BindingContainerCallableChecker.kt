@@ -20,7 +20,7 @@ import dev.zacsweers.metro.compiler.fir.scopeAnnotations
 import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.reportCompilerBug
-import dev.zacsweers.metro.compiler.unsafeLazy
+import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.isObject
@@ -66,7 +66,7 @@ internal object BindingContainerCallableChecker :
     val session = context.session
     val classIds = session.classIds
 
-    val containingClassSymbol by unsafeLazy {
+    val containingClassSymbol by memoize {
       with(session.compatContext) { declaration.getContainingClassSymbol() }
     }
     if (declaration is FirConstructor) {

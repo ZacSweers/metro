@@ -209,14 +209,14 @@ internal fun List<FirAnnotation>.isAnnotatedWithAny(
 
 internal inline fun FirMemberDeclaration.checkVisibility(
   allowProtected: Boolean = false,
-  onError: (source: KtSourceElement?, allowedVisibilities: String) -> Nothing,
+  onError: (source: KtSourceElement?, allowedVisibilities: String) -> Unit,
 ) {
   visibility.checkVisibility(source, allowProtected, onError)
 }
 
 internal inline fun FirCallableSymbol<*>.checkVisibility(
   allowProtected: Boolean = false,
-  onError: (source: KtSourceElement?, allowedVisibilities: String) -> Nothing,
+  onError: (source: KtSourceElement?, allowedVisibilities: String) -> Unit,
 ) {
   visibility.checkVisibility(source, allowProtected, onError)
 }
@@ -224,7 +224,7 @@ internal inline fun FirCallableSymbol<*>.checkVisibility(
 internal inline fun Visibility.checkVisibility(
   source: KtSourceElement?,
   allowProtected: Boolean = false,
-  onError: (source: KtSourceElement?, allowedVisibilities: String) -> Nothing,
+  onError: (source: KtSourceElement?, allowedVisibilities: String) -> Unit,
 ) {
   // TODO what about expect/actual/protected
   when (this) {
@@ -441,7 +441,14 @@ internal fun FirClassSymbol<*>.findInjectLikeConstructors(
 ): List<FirInjectConstructor> =
   findInjectConstructorsImpl(
     session = session,
-    annotationClassIds = session.metroFirBuiltIns.classIds.allInjectAnnotations,
+    annotationClassIds =
+      if (checkClass) {
+        // When checking classes, use inject-like annotations (@Inject and @Contributes*)
+        session.metroFirBuiltIns.classIds.injectLikeAnnotations
+      } else {
+        // When not checking classes (constructor-only), use only @Inject
+        session.metroFirBuiltIns.classIds.allInjectAnnotations
+      },
     checkClass = checkClass,
   )
 
@@ -479,14 +486,14 @@ internal data class FirInjectConstructor(
   val ctorCount: Int,
 )
 
-internal inline fun FirClass.validateInjectedClass(
+internal fun FirClass.validateInjectedClass(
   context: CheckerContext,
   reporter: DiagnosticReporter,
-  onError: () -> Nothing,
+  classInjectAnnotations: List<FirAnnotation>,
 ) {
   if (isLocal) {
     reporter.reportOn(source, MetroDiagnostics.LOCAL_CLASSES_CANNOT_BE_INJECTED, context)
-    onError()
+    return
   }
 
   when (classKind) {
@@ -503,13 +510,16 @@ internal inline fun FirClass.validateInjectedClass(
             MetroDiagnostics.ONLY_FINAL_AND_OPEN_CLASSES_CAN_BE_INJECTED,
             context,
           )
-          onError()
         }
       }
     }
+    // This is fine for @Contributes* injection cases but errors
+    ClassKind.OBJECT if (classInjectAnnotations.isEmpty()) -> {
+      // If we hit here, it's because the class has a `@Contributes*` annotation implying its
+      // injectability but no regular `@Inject` annotations. So, report nothing
+    }
     else -> {
       reporter.reportOn(source, MetroDiagnostics.ONLY_CLASSES_CAN_BE_INJECTED, context)
-      onError()
     }
   }
 
@@ -520,7 +530,6 @@ internal inline fun FirClass.validateInjectedClass(
       allowedVisibilities,
       context,
     )
-    onError()
   }
 }
 

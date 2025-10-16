@@ -264,6 +264,9 @@ abstract class MetroCompilerTest {
               MetroOption.OPTIONAL_DEPENDENCY_BEHAVIOR -> {
                 processor.option(entry.raw.cliOption, optionalDependencyBehavior)
               }
+              MetroOption.CONTRIBUTES_AS_INJECT -> {
+                processor.option(entry.raw.cliOption, contributesAsInject)
+              }
             }
           yield(option)
         }

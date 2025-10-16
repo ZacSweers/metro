@@ -2,12 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
-import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.Symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
-import dev.zacsweers.metro.compiler.unsafeLazy
+import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -26,7 +25,6 @@ import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.remapTypes
 import org.jetbrains.kotlin.ir.util.simpleFunctions
-import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.Name
 
 internal sealed interface IrMetroFactory {
@@ -111,12 +109,12 @@ internal sealed interface ClassFactory : IrMetroFactory {
     override val function: IrSimpleFunction = targetFunctionParameters.ir!! as IrSimpleFunction
     override val isDaggerFactory: Boolean = false
 
-    override val isAssistedInject: Boolean by unsafeLazy {
+    override val isAssistedInject: Boolean by memoize {
       // Check if the factory has the @AssistedMarker annotation
       factoryClass.hasAnnotation(Symbols.ClassIds.metroAssistedMarker)
     }
 
-    override val invokeFunctionSymbol: IrFunctionSymbol by unsafeLazy {
+    override val invokeFunctionSymbol: IrFunctionSymbol by memoize {
       factoryClass.requireSimpleFunction(Symbols.StringNames.INVOKE)
     }
 
@@ -140,7 +138,7 @@ internal sealed interface ClassFactory : IrMetroFactory {
     override val createFunctionNames: Set<Name> = setOf(
       Symbols.Names.create, Symbols.Names.createFactoryProvider
     )
-    override val isAssistedInject: Boolean by unsafeLazy {
+    override val isAssistedInject: Boolean by memoize {
       // Check if the constructor has an @AssistedInject annotation
       function.hasAnnotation(DaggerSymbols.ClassIds.DAGGER_ASSISTED_INJECT)
     }

@@ -54,7 +54,7 @@ import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.reportCompilerBug
-import dev.zacsweers.metro.compiler.unsafeLazy
+import dev.zacsweers.metro.compiler.memoize
 import java.util.EnumSet
 import java.util.Optional
 import kotlin.jvm.optionals.getOrNull
@@ -519,7 +519,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     // omit the `get-` prefix for property names starting with the *word* `is`, like `isProperty`,
     // but not for names which just start with those letters, like `issues`.
     // TODO still necessary in IR?
-    private val useGetPrefix by unsafeLazy {
+    private val useGetPrefix by memoize {
       isPropertyAccessor && !isWordPrefixRegex.matches(name.asString())
     }
 
@@ -895,7 +895,7 @@ internal class BindingContainer(
    * Simple classes with a public, no-arg constructor can be managed directly by the consuming
    * graph.
    */
-  val canBeManaged by unsafeLazy { ir.kind == ClassKind.CLASS && ir.modality != Modality.ABSTRACT }
+  val canBeManaged by memoize { ir.kind == ClassKind.CLASS && ir.modality != Modality.ABSTRACT }
 
   fun isEmpty() =
     includes.isEmpty() && providerFactories.isEmpty() && (bindsMirror?.isEmpty() ?: true)

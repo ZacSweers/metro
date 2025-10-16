@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.OptionalDependencyBehavior
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import org.jetbrains.kotlin.KtSourceElement
+import org.jetbrains.kotlin.descriptors.isObject
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.FirSession
@@ -48,40 +49,50 @@ internal fun validateInjectionSiteType(
   // Check if we're directly injecting a qualifier type
   if (qualifier == null) {
     val clazz = type.classLikeLookupTagIfAny?.toClassSymbol(session) ?: return false
-    val isAssistedInject =
-      clazz.findAssistedInjectConstructors(session, checkClass = true).isNotEmpty()
-    if (isAssistedInject) {
-      @OptIn(DirectDeclarationsAccess::class)
-      val nestedFactory =
-        clazz.nestedClasses().find {
-          it.isAnnotatedWithAny(session, session.classIds.assistedFactoryAnnotations)
-        }
-          ?: session.firProvider
-            .getFirClassifierContainerFile(clazz.classId)
-            .declarations
-            .filterIsInstance<FirClass>()
-            .find { it.isAnnotatedWithAny(session, session.classIds.assistedFactoryAnnotations) }
-            ?.symbol
 
-      val message = buildString {
-        val fqName = clazz.classId.asFqNameString()
-        append(
-          "[Metro/InvalidBinding] '$fqName' uses assisted injection and cannot be injected directly into 'test.ExampleGraph.exampleClass'. You must inject a corresponding @AssistedFactory type or provide a qualified instance on the graph instead."
-        )
-        if (nestedFactory != null) {
-          appendLine()
-          appendLine()
-          appendLine("(Hint)")
-          appendLine(
-            "It looks like the @AssistedFactory for '$fqName' may be '${nestedFactory.classId.asFqNameString()}'."
-          )
-        }
-      }
+    if (clazz.classKind.isObject) {
+      // Injecting a plain object doesn't really make sense when it's a singleton
       reporter.reportOn(
         typeRef.source ?: source,
-        MetroDiagnostics.ASSISTED_INJECTION_ERROR,
-        message,
+        MetroDiagnostics.SUSPICIOUS_OBJECT_INJECTION_WARNING,
+        "Suspicious injection of an unqualified object type '${clazz.classId.asFqNameString()}'. This is probably unnecessary or unintentional.",
       )
+    } else {
+      val isAssistedInject =
+        clazz.findAssistedInjectConstructors(session, checkClass = true).isNotEmpty()
+      if (isAssistedInject) {
+        @OptIn(DirectDeclarationsAccess::class)
+        val nestedFactory =
+          clazz.nestedClasses().find {
+            it.isAnnotatedWithAny(session, session.classIds.assistedFactoryAnnotations)
+          }
+            ?: session.firProvider
+              .getFirClassifierContainerFile(clazz.classId)
+              .declarations
+              .filterIsInstance<FirClass>()
+              .find { it.isAnnotatedWithAny(session, session.classIds.assistedFactoryAnnotations) }
+              ?.symbol
+
+        val message = buildString {
+          val fqName = clazz.classId.asFqNameString()
+          append(
+            "[Metro/InvalidBinding] '$fqName' uses assisted injection and cannot be injected directly into 'test.ExampleGraph.exampleClass'. You must inject a corresponding @AssistedFactory type or provide a qualified instance on the graph instead."
+          )
+          if (nestedFactory != null) {
+            appendLine()
+            appendLine()
+            appendLine("(Hint)")
+            appendLine(
+              "It looks like the @AssistedFactory for '$fqName' may be '${nestedFactory.classId.asFqNameString()}'."
+            )
+          }
+        }
+        reporter.reportOn(
+          typeRef.source ?: source,
+          MetroDiagnostics.ASSISTED_INJECTION_ERROR,
+          message,
+        )
+      }
     }
   }
 

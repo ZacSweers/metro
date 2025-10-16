@@ -6,7 +6,7 @@ Changelog
 
 ### Dynamic Graphs
 
-Dynamic graphs are a powerful new feature of the Metro compiler that allow for dynamically replacing bindings in a given graph. To use them, you can pass in a vararg set of _binding containers_ to the `createDynamicGraph()` and `createDynamicGraphFactory()` intrinsics.
+Dynamic graphs are a powerful new feature of the Metro compiler that allows for dynamically replacing bindings in a given graph. To use them, you can pass in a vararg set of _binding containers_ to the `createDynamicGraph()` and `createDynamicGraphFactory()` intrinsics.
 
 ```kotlin
 @DependencyGraph
@@ -33,6 +33,22 @@ class AppTest {
 
 This is particularly useful for tests. See their docs for more information: [Dynamic Graphs](https://zacsweers.github.io/metro/latest/dependency-graphs/#dynamic-graphs).
 
+This API is experimental and may change in the future, please report any issues you encounter!
+
+### Implicit `@Inject` behavior on (most) `@Contributes*`-annotated types
+
+Up to this point, Metro has always required you to use `@Inject` on most `@Contributes*` annotated types. However, this can feel a bit repetitive and tedious. In this release, there is a new `contributesAsInject` option that can be enabled that will treat all `@Contributes*` annotated types as `@Inject` by default. You can still use `@Inject` on classes to be explicit, and if you have multiple constructors you must still use `@Inject` on the constructor you want to be used.
+
+_The only exception to this is `@ContributesTo`, which isn't applicable to injected types._
+
+This is disabled by default to start but will likely become the default in a future release.
+
+```kotlin
+@ContributesBinding(AppScope::class)
+// @Inject // <-- now implicit!
+class TacoImpl(...) : Taco
+```
+
 ### Other Changes
 
 - **Behavior change**: Remove `assistedInjectMigrationSeverity` DSL. You must now move fully to using `@AssistedInject` annotations for assisted types.
@@ -46,6 +62,7 @@ This is particularly useful for tests. See their docs for more information: [Dyn
 - **New**: Add diagnostic to report positional arguments use in custom interop annotations. See the [interop docs](https://zacsweers.github.io/metro/latest/interop#diagnostics) for more information. This is disabled by default but can be configured via the `interopAnnotationsNamedArgSeverity` option.
 - **New**: Support context parameters on top-level injected functions. See the [docs](https://zacsweers.github.io/metro/latest/injection-types/#context-parameters) for more information.
 - **New**: Improve diagnostic checks around binding container arguments to annotations and graph creators.
+- **New**: Add a diagnostic to warn on suspicious injection of unqualified object classes.
 - **Enhancement**: Add diagnostic for providing a constructor-injected class with a different scope than the class (if the class has a scope).
 - **Enhancement**: Allow replacing/excluding binding containers by `@Origin` annotations.
 - **Fix**: Don't use interoped annotation arguments at matching indices if their name does not match the requested name.

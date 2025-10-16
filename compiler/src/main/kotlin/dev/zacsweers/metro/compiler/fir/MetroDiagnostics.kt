@@ -57,6 +57,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_PROPERTIES_CAN
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.REDUNDANT_PROVIDES
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUGGEST_CLASS_INJECTION
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_OBJECT_INJECTION_WARNING
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactoryToRendererMap
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticRenderers.TO_STRING
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticsContainer
@@ -84,6 +85,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val METRO_DECLARATION_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val METRO_DECLARATION_VISIBILITY_ERROR by error2<KtElement, String, String>(VISIBILITY_MODIFIER)
   val METRO_TYPE_PARAMETERS_ERROR by error1<KtElement, String>(TYPE_PARAMETERS_LIST)
+  val SUSPICIOUS_OBJECT_INJECTION_WARNING by warning1<KtElement, String>(TYPE_PARAMETERS_LIST)
 
   // DependencyGraph factory errors
   val GRAPH_CREATORS_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
@@ -178,6 +180,7 @@ private object FirMetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(METRO_DECLARATION_ERROR, "{0}", TO_STRING)
         put(METRO_DECLARATION_VISIBILITY_ERROR, "{0} must be {1}.", TO_STRING, STRING)
         put(METRO_TYPE_PARAMETERS_ERROR, "{0}", STRING)
+        put(SUSPICIOUS_OBJECT_INJECTION_WARNING, "{0}", STRING)
 
         // DependencyGraph creator errors
         put(GRAPH_CREATORS_ERROR, "{0}", STRING)

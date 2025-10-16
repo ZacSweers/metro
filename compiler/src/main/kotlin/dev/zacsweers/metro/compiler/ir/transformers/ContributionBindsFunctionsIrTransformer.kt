@@ -22,7 +22,7 @@ import dev.zacsweers.metro.compiler.ir.requireNestedClass
 import dev.zacsweers.metro.compiler.ir.requireScope
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.joinSimpleNames
-import dev.zacsweers.metro.compiler.unsafeLazy
+import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrStatement
@@ -77,7 +77,7 @@ internal class ContributionTransformer(private val context: IrMetroContext) :
       return super.visitClass(declaration, data)
     }
 
-    val isBindingContainer by unsafeLazy {
+    val isBindingContainer by memoize {
       declaration.isAnnotatedWithAny(metroSymbols.classIds.bindingContainerAnnotations)
     }
 

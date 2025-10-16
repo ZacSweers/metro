@@ -3,7 +3,7 @@
 package dev.zacsweers.metro.compiler.fir
 
 import dev.drewhamilton.poko.Poko
-import dev.zacsweers.metro.compiler.unsafeLazy
+import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.descriptors.annotations.AnnotationUseSiteTarget
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
@@ -22,7 +22,7 @@ import org.jetbrains.kotlin.fir.types.coneType
 @Poko
 internal class FirTypeKey(val type: ConeKotlinType, val qualifier: MetroFirAnnotation? = null) :
   Comparable<FirTypeKey> {
-  private val cachedToString by unsafeLazy { render(short = false, includeQualifier = true) }
+  private val cachedToString by memoize { render(short = false, includeQualifier = true) }
 
   override fun toString(): String = cachedToString
 

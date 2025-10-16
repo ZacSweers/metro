@@ -21,7 +21,7 @@ import dev.zacsweers.metro.compiler.isWordPrefixRegex
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.reportCompilerBug
-import dev.zacsweers.metro.compiler.unsafeLazy
+import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.builtins.functions.FunctionTypeKind
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.isObject
@@ -346,7 +346,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
   ) {
     val callableId = CallableId(owner.classId, symbol.name)
     val name = symbol.name
-    val shouldGenerateObject by unsafeLazy {
+    val shouldGenerateObject by memoize {
       instanceReceiver == null && (isProperty || valueParameters.isEmpty())
     }
     private val isProperty
@@ -355,9 +355,9 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
     val returnType
       get() = symbol.resolvedReturnType
 
-    val useGetPrefix by unsafeLazy { isProperty && !isWordPrefixRegex.matches(name.asString()) }
+    val useGetPrefix by memoize { isProperty && !isWordPrefixRegex.matches(name.asString()) }
 
-    val bytecodeName: Name by unsafeLazy {
+    val bytecodeName: Name by memoize {
       buildString {
           when {
             useGetPrefix -> {
