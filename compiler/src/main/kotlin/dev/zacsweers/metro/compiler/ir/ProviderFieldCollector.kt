@@ -15,25 +15,21 @@ internal class ProviderFieldCollector(private val graph: IrBindingGraph) {
     val needsField: Boolean
       get() {
         // Scoped, graph, and members injector bindings always need provider fields
-        if (binding.isScoped()) {
-          return true
-        }
+        if (binding.isScoped()) return true
 
         when (binding) {
           is IrBinding.GraphDependency,
           // Assisted types always need to be a single field to ensure use of the same provider
-          is IrBinding.Assisted -> {
-            return true
-          }
+          is IrBinding.Assisted -> return true
           // TODO what about assisted but no assisted params? These also don't become providers
           //  we would need to track a set of assisted targets somewhere
-          is IrBinding.ConstructorInjected if binding.isAssisted -> {
-            return true
-          }
+          is IrBinding.ConstructorInjected if binding.isAssisted -> return true
           // Multibindings are always created adhoc
-          is IrBinding.Multibinding -> {
-            return false
-          }
+          is IrBinding.Multibinding -> return false
+          // Custom wrappers are always created adhoc since
+          // they are usually simple factories like `Optional.of`
+          // and can't be scoped
+          is IrBinding.CustomWrapper -> return false
           else -> {
             // Do nothing
           }
