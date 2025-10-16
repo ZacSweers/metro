@@ -70,53 +70,59 @@ internal class IrContributionMerger(
 
     // Layer 2: Check if we have a fully processed result cached
     val cacheKey = ContributionsCacheKey(primaryScope, allScopes, excluded)
-    mergedContributionsCache[cacheKey]?.let { return it }
-
-    // Layer 1: Get or compute scoped contributions (before exclusions/replacements)
-    val scopedContributions = scopeContributionsCache.getOrPut(allScopes) {
-      // Get all contributions and binding containers
-      val allContributions =
-        allScopes
-          .flatMap { contributionData.getContributions(it) }
-          .groupByTo(mutableMapOf()) {
-            // For Metro contributions, we need to check the parent class ID
-            // This is always the $$MetroContribution, the contribution's parent is the actual class
-            it.rawType().classIdOrFail.parentClassId!!
-          }
-
-      val bindingContainers =
-        allScopes
-          .flatMap { contributionData.getBindingContainerContributions(it) }
-          .associateByTo(mutableMapOf()) { it.classIdOrFail }
-
-      // Build a cache of origin class -> contribution classes mappings upfront
-      // This maps from an origin class to all contributions that have an @Origin pointing to it
-      val originToContributions = mutableMapOf<ClassId, MutableSet<ClassId>>()
-
-      // Check regular contributions (with nested $$MetroContribution classes)
-      for ((contributionClassId, contributions) in allContributions) {
-        // Get the actual contribution class (nested $$MetroContribution)
-        val contributionClass = contributions.firstOrNull()?.rawTypeOrNull()
-        if (contributionClass != null) {
-          contributionClass.originClassId()?.let { originClassId ->
-            originToContributions.getOrPut(originClassId) { mutableSetOf() }.add(contributionClassId)
-          }
-        }
-      }
-
-      // Also check binding containers (e.g., @ContributesTo classes)
-      for ((containerClassId, containerClass) in bindingContainers) {
-        containerClass.originClassId()?.let { originClassId ->
-          originToContributions.getOrPut(originClassId) { mutableSetOf() }.add(containerClassId)
-        }
-      }
-
-      ScopedContributions(allContributions, bindingContainers, originToContributions)
+    mergedContributionsCache[cacheKey]?.let {
+      return it
     }
 
+    // Layer 1: Get or compute scoped contributions (before exclusions/replacements)
+    val scopedContributions =
+      scopeContributionsCache.getOrPut(allScopes) {
+        // Get all contributions and binding containers
+        val allContributions =
+          allScopes
+            .flatMap { contributionData.getContributions(it) }
+            .groupByTo(mutableMapOf()) {
+              // For Metro contributions, we need to check the parent class ID
+              // This is always the $$MetroContribution, the contribution's parent is the actual
+              // class
+              it.rawType().classIdOrFail.parentClassId!!
+            }
+
+        val bindingContainers =
+          allScopes
+            .flatMap { contributionData.getBindingContainerContributions(it) }
+            .associateByTo(mutableMapOf()) { it.classIdOrFail }
+
+        // Build a cache of origin class -> contribution classes mappings upfront
+        // This maps from an origin class to all contributions that have an @Origin pointing to it
+        val originToContributions = mutableMapOf<ClassId, MutableSet<ClassId>>()
+
+        // Check regular contributions (with nested $$MetroContribution classes)
+        for ((contributionClassId, contributions) in allContributions) {
+          // Get the actual contribution class (nested $$MetroContribution)
+          val contributionClass = contributions.firstOrNull()?.rawTypeOrNull()
+          if (contributionClass != null) {
+            contributionClass.originClassId()?.let { originClassId ->
+              originToContributions
+                .getOrPut(originClassId) { mutableSetOf() }
+                .add(contributionClassId)
+            }
+          }
+        }
+
+        // Also check binding containers (e.g., @ContributesTo classes)
+        for ((containerClassId, containerClass) in bindingContainers) {
+          containerClass.originClassId()?.let { originClassId ->
+            originToContributions.getOrPut(originClassId) { mutableSetOf() }.add(containerClassId)
+          }
+        }
+
+        ScopedContributions(allContributions, bindingContainers, originToContributions)
+      }
+
     // Make mutable copies for processing exclusions and replacements
-    val allContributions = scopedContributions.allContributions.toMutableMap()
-    val contributedBindingContainers = scopedContributions.bindingContainers.toMutableMap()
+    val mutableAllContributions = scopedContributions.allContributions.toMutableMap()
+    val mutableContributedBindingContainers = scopedContributions.bindingContainers.toMutableMap()
     val originToContributions = scopedContributions.originToContributions
 
     // TODO do we exclude directly contributed ones or also include transitives?
@@ -124,28 +130,28 @@ internal class IrContributionMerger(
     // Process excludes
     for (excludedClassId in excluded) {
       // Remove excluded binding containers - they won't contribute their bindings
-      contributedBindingContainers.remove(excludedClassId)
+      mutableContributedBindingContainers.remove(excludedClassId)
 
       // Remove contributions from excluded classes that have nested $$MetroContribution classes
       // (binding containers don't have these, so this only affects @ContributesBinding etc.)
-      allContributions.remove(excludedClassId)
+      mutableAllContributions.remove(excludedClassId)
 
       // Remove contributions that have @Origin annotation pointing to the excluded class
       originToContributions[excludedClassId]?.forEach { contributionId ->
-        allContributions.remove(contributionId)
-        contributedBindingContainers.remove(contributionId)
+        mutableAllContributions.remove(contributionId)
+        mutableContributedBindingContainers.remove(contributionId)
       }
     }
 
     // Process replacements from both regular contributions and binding containers
 
-    // Add parent classes of regular contributions (e.g., @Contributes* classes)
-    allContributions.values
-      .toList() // Defensive copy as we are modifying the original after this
+    // Read the original copies as we are modifying the mutable copy after this
+    scopedContributions.allContributions.values
       .asSequence()
+      // Add parent classes of regular contributions (e.g., @Contributes* classes)
       .mapNotNull { contributions -> contributions.firstOrNull()?.rawTypeOrNull()?.parentAsClass }
       // binding containers
-      .plus(contributedBindingContainers.values)
+      .plus(scopedContributions.bindingContainers.values)
       .flatMap { contributingClass ->
         contributingClass
           .annotationsIn(metroSymbols.classIds.allContributesAnnotations)
@@ -153,21 +159,21 @@ internal class IrContributionMerger(
           .mapNotNull { replacedClass -> replacedClass.classType.rawType().classId }
       }
       .forEach { replacedClassId ->
-        allContributions.remove(replacedClassId)
-        contributedBindingContainers.remove(replacedClassId)
+        mutableAllContributions.remove(replacedClassId)
+        mutableContributedBindingContainers.remove(replacedClassId)
 
         // Remove contributions that have @Origin annotation pointing to the replaced class
         originToContributions[replacedClassId]?.forEach { contributionId ->
-          allContributions.remove(contributionId)
-          contributedBindingContainers.remove(contributionId)
+          mutableAllContributions.remove(contributionId)
+          mutableContributedBindingContainers.remove(contributionId)
         }
       }
 
     // Process rank-based replacements if Dagger-Anvil interop is enabled
     if (options.enableDaggerAnvilInterop) {
-      val rankReplacements = processRankBasedReplacements(allScopes, allContributions)
+      val rankReplacements = processRankBasedReplacements(allScopes, mutableAllContributions)
       for (replacedClassId in rankReplacements) {
-        allContributions.remove(replacedClassId)
+        mutableAllContributions.remove(replacedClassId)
       }
     }
 
@@ -176,8 +182,10 @@ internal class IrContributionMerger(
       IrContributions(
         primaryScope,
         allScopes,
-        allContributions.values.flatten().toSortedSet(compareBy { it.rawType().classIdOrFail.toString() }),
-        contributedBindingContainers.toSortedMap(compareBy { it.toString() }),
+        mutableAllContributions.values
+          .flatten()
+          .toSortedSet(compareBy { it.rawType().classIdOrFail.toString() }),
+        mutableContributedBindingContainers.toSortedMap(compareBy { it.toString() }),
       )
 
     mergedContributionsCache[cacheKey] = result
