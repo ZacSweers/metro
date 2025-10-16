@@ -3,7 +3,7 @@
 package dev.zacsweers.metro.compiler.fir
 
 import dev.drewhamilton.poko.Poko
-import dev.zacsweers.metro.compiler.memoize
+import dev.zacsweers.metro.compiler.graph.BaseTypeKey
 import org.jetbrains.kotlin.descriptors.annotations.AnnotationUseSiteTarget
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
@@ -18,20 +18,18 @@ import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.coneType
 
-// TODO cache these?
 @Poko
-internal class FirTypeKey(val type: ConeKotlinType, val qualifier: MetroFirAnnotation? = null) :
-  Comparable<FirTypeKey> {
-  private val cachedToString by memoize { render(short = false, includeQualifier = true) }
+internal class FirTypeKey(override val type: ConeKotlinType, override val qualifier: MetroFirAnnotation? = null) :
+  BaseTypeKey<ConeKotlinType, MetroFirAnnotation, FirTypeKey>() {
 
-  override fun toString(): String = cachedToString
-
-  override fun compareTo(other: FirTypeKey): Int {
-    if (this == other) return 0
-    return toString().compareTo(other.toString())
+  override fun copy(
+    type: ConeKotlinType,
+    qualifier: MetroFirAnnotation?
+  ): FirTypeKey {
+    return FirTypeKey(type, qualifier)
   }
 
-  fun render(short: Boolean, includeQualifier: Boolean = true): String = buildString {
+  override fun render(short: Boolean, includeQualifier: Boolean): String = buildString {
     if (includeQualifier) {
       qualifier?.let {
         append(it.simpleString())

@@ -16,9 +16,7 @@ import org.jetbrains.kotlin.ir.util.defaultType
 @Poko
 internal class IrTypeKey
 private constructor(override val type: IrType, override val qualifier: IrAnnotation?) :
-  BaseTypeKey<IrType, IrAnnotation, IrTypeKey> {
-
-  private val cachedRender by memoize { render(short = false, includeQualifier = true) }
+  BaseTypeKey<IrType, IrAnnotation, IrTypeKey>() {
 
   val classId by memoize { type.rawTypeOrNull()?.classId }
 
@@ -32,13 +30,6 @@ private constructor(override val type: IrType, override val qualifier: IrAnnotat
 
   override fun copy(type: IrType, qualifier: IrAnnotation?): IrTypeKey {
     return IrTypeKey(type, qualifier)
-  }
-
-  override fun toString(): String = cachedRender
-
-  override fun compareTo(other: IrTypeKey): Int {
-    if (this == other) return 0
-    return cachedRender.compareTo(other.cachedRender)
   }
 
   override fun render(short: Boolean, includeQualifier: Boolean): String = buildString {
