@@ -31,6 +31,7 @@ public class ClassIds(
   customScopeAnnotations: Set<ClassId> = emptySet(),
   customBindingContainerAnnotations: Set<ClassId> = emptySet(),
   customOriginAnnotations: Set<ClassId> = emptySet(),
+  private val contributesAsInject: Boolean = false,
 ) {
   public companion object {
     public fun fromOptions(options: MetroOptions): ClassIds =
@@ -59,6 +60,7 @@ public class ClassIds(
         customScopeAnnotations = options.customScopeAnnotations,
         customBindingContainerAnnotations = options.customBindingContainerAnnotations,
         customOriginAnnotations = options.customOriginAnnotations,
+        contributesAsInject = options.contributesAsInject,
       )
   }
 
@@ -152,7 +154,10 @@ public class ClassIds(
   internal val graphExtensionAnnotations =
     setOf(Symbols.ClassIds.graphExtension, contributesGraphExtensionAnnotation) + customGraphExtensionAnnotations
   internal val graphExtensionFactoryAnnotations =
-    setOf(Symbols.ClassIds.graphExtensionFactory, contributesGraphExtensionFactoryAnnotation) + customGraphExtensionFactoryAnnotations
+    setOf(
+      Symbols.ClassIds.graphExtensionFactory,
+      contributesGraphExtensionFactoryAnnotation
+    ) + customGraphExtensionFactoryAnnotations
   internal val allGraphExtensionAndFactoryAnnotations =
     graphExtensionAnnotations +
       graphExtensionFactoryAnnotations
@@ -182,6 +187,27 @@ public class ClassIds(
     dependencyGraphAnnotations + graphExtensionAnnotations
   internal val graphFactoryLikeAnnotations =
     dependencyGraphFactoryAnnotations + graphExtensionFactoryAnnotations
+
+  /**
+   * Class-level annotations that act like @Inject for code gen purposes.
+   * This includes @Inject and all @Contributes* annotations (ContributesBinding,
+   * ContributesIntoSet, ContributesIntoMap) since they implicitly make a class injectable.
+   *
+   * Notes:
+   * - `ContributesTo` is excluded since it's interface-only and doesn't make a class injectable.
+   * - This should NOT be used for constructor/function/member injection sites.
+   * - The inclusion of @Contributes* annotations can be controlled by the `contributesAsInject` option.
+   */
+  internal val injectLikeAnnotations =
+    if (contributesAsInject) {
+      injectAnnotations +
+        assistedInjectAnnotations +
+        contributesBindingAnnotations +
+        contributesIntoSetAnnotations +
+        contributesIntoMapAnnotations
+    } else {
+      injectAnnotations + assistedInjectAnnotations
+    }
 
   internal val providerTypes = setOf(Symbols.ClassIds.metroProvider) + customProviderClasses
   internal val lazyTypes = setOf(Symbols.ClassIds.Lazy) + customLazyClasses

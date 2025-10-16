@@ -163,6 +163,14 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     objects.property(DiagnosticSeverity::class.javaObjectType).convention(DiagnosticSeverity.NONE)
 
   /**
+   * If enabled, treats `@Contributes*` annotations (except ContributesTo) as implicit `@Inject` annotations.
+   *
+   * Disabled by default.
+   */
+  public val contributesAsInject: Property<Boolean> =
+    objects.property(Boolean::class.javaObjectType).convention(false)
+
+  /**
    * If set, the Metro compiler will dump report diagnostics about resolved dependency graphs to the
    * given destination.
    *
