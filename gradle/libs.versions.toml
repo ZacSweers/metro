@@ -39,7 +39,7 @@ ktor = "3.3.1"
 okhttp = "5.2.1"
 okio = "3.16.2"
 pluginId = "dev.zacsweers.metro.compiler"
-poko = "0.20.0"
+poko = "0.20.1"
 wire = "5.4.0"
 
 [plugins]
