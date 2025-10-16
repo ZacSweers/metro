@@ -92,6 +92,8 @@ internal class IrContributionMerger(
       // Build a cache of origin class -> contribution classes mappings upfront
       // This maps from an origin class to all contributions that have an @Origin pointing to it
       val originToContributions = mutableMapOf<ClassId, MutableSet<ClassId>>()
+
+      // Check regular contributions (with nested $$MetroContribution classes)
       for ((contributionClassId, contributions) in allContributions) {
         // Get the actual contribution class (nested $$MetroContribution)
         val contributionClass = contributions.firstOrNull()?.rawTypeOrNull()
@@ -99,6 +101,13 @@ internal class IrContributionMerger(
           contributionClass.originClassId()?.let { originClassId ->
             originToContributions.getOrPut(originClassId) { mutableSetOf() }.add(contributionClassId)
           }
+        }
+      }
+
+      // Also check binding containers (e.g., @ContributesTo classes)
+      for ((containerClassId, containerClass) in bindingContainers) {
+        containerClass.originClassId()?.let { originClassId ->
+          originToContributions.getOrPut(originClassId) { mutableSetOf() }.add(containerClassId)
         }
       }
 
@@ -124,6 +133,7 @@ internal class IrContributionMerger(
       // Remove contributions that have @Origin annotation pointing to the excluded class
       originToContributions[excludedClassId]?.forEach { contributionId ->
         allContributions.remove(contributionId)
+        contributedBindingContainers.remove(contributionId)
       }
     }
 
@@ -131,6 +141,7 @@ internal class IrContributionMerger(
 
     // Add parent classes of regular contributions (e.g., @Contributes* classes)
     allContributions.values
+      .toList() // Defensive copy as we are modifying the original after this
       .asSequence()
       .mapNotNull { contributions -> contributions.firstOrNull()?.rawTypeOrNull()?.parentAsClass }
       // binding containers
@@ -143,10 +154,12 @@ internal class IrContributionMerger(
       }
       .forEach { replacedClassId ->
         allContributions.remove(replacedClassId)
+        contributedBindingContainers.remove(replacedClassId)
 
         // Remove contributions that have @Origin annotation pointing to the replaced class
         originToContributions[replacedClassId]?.forEach { contributionId ->
           allContributions.remove(contributionId)
+          contributedBindingContainers.remove(contributionId)
         }
       }
 

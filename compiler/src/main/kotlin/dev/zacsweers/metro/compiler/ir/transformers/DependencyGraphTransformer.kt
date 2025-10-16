@@ -104,7 +104,7 @@ internal class DependencyGraphTransformer(
     mutableMapOf<ClassId, IrBindingGraph.BindingGraphResult?>()
 
   private val dependencyGraphNodeCache =
-    DependencyGraphNodeCache(this, contributionData, bindingContainerTransformer)
+    DependencyGraphNodeCache(this, bindingContainerTransformer, contributionMerger)
 
   override val currentFileAccess: IrFile
     get() = currentFile

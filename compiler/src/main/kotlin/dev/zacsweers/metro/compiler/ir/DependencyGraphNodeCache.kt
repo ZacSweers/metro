@@ -10,7 +10,6 @@ import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
-import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInMembersInjector
@@ -58,8 +57,8 @@ import org.jetbrains.kotlin.name.ClassId
 
 internal class DependencyGraphNodeCache(
   metroContext: IrMetroContext,
-  private val contributionData: IrContributionData,
   private val bindingContainerTransformer: BindingContainerTransformer,
+  private val contributionMerger: IrContributionMerger,
 ) : IrMetroContext by metroContext {
 
   // Keyed by the source declaration
@@ -136,7 +135,6 @@ internal class DependencyGraphNodeCache(
     private val isGraph = dependencyGraphAnno != null
     private val supertypes =
       (metroGraph ?: graphDeclaration).getAllSuperTypes(excludeSelf = false).memoized()
-    private val contributionData = nodeCache.contributionData
 
     private var hasGraphExtensions = false
 
@@ -752,6 +750,10 @@ internal class DependencyGraphNodeCache(
         extendedGraphNodes[node.typeKey] = node
       }
 
+      // First, add explicitly declared binding containers from the annotation
+      // (for both regular and generated graphs)
+      // We compute transitives twice (heavily cached) as we want to process merging for all
+      // transitively included containers
       bindingContainers +=
         dependencyGraphAnno
           ?.bindingContainerClasses(includeModulesArg = options.enableDaggerRuntimeInterop)
@@ -766,47 +768,51 @@ internal class DependencyGraphNodeCache(
             }
           }
 
-      val excludes =
-        dependencyGraphAnno?.excludedClasses().orEmpty().mapNotNullToSet {
-          it.classType.rawTypeOrNull()?.classId
-        }
-
-      for (scope in aggregationScopes) {
-        bindingContainers +=
-          contributionData
-            .getBindingContainerContributions(scope)
-            .mapNotNull { bindingContainerTransformer.findContainer(it) }
-            .filterNot { it.ir.classId in excludes }
-            .onEach { container ->
-              // Annotation-included containers may need to be managed directly
-              if (container.canBeManaged) {
-                managedBindingContainers += container.ir
-              }
-            }
-      }
-
-      // TODO this doesn't cover replaced class bindings/other types
-      val replaced =
-        bindingContainers.flatMapToSet { container ->
-          container.ir
-            .annotationsIn(metroSymbols.classIds.contributesToAnnotations)
-            .firstOrNull { it.scopeOrNull() in aggregationScopes }
-            ?.replacedClasses()
-            ?.mapNotNullToSet { replacedClass -> replacedClass.classType.rawTypeOrNull()?.classId }
-            .orEmpty()
-        }
-
-      val mergedContainers =
-        bindingContainers
-          .filterNot { it.ir.classId in replaced }
-          .mapToSet { it.ir }
-          .let { rootContainers ->
-            // Now that we've filtered out the removed and excluded containers, we can pull in the
-            // transitively included ones
-            bindingContainerTransformer.resolveAllBindingContainersCached(rootContainers)
+      // For regular graphs (not generated extensions/dynamic), aggregate binding containers
+      // from scopes using IrContributionMerger to handle merging. This can't be done in FIR
+      // since we can't modify the annotation there
+      if (!graphDeclaration.origin.isGeneratedGraph && aggregationScopes.isNotEmpty()) {
+        val excludes =
+          dependencyGraphAnno?.excludedClasses().orEmpty().mapNotNullToSet {
+            it.classType.rawTypeOrNull()?.classId
           }
 
-      for (container in mergedContainers) {
+        // TODO it kinda sucks that we compute this in both FIR and IR? Maybe we can do this in FIR
+        //  and generate a hint/holder annotation on the $$MetroGraph
+        nodeCache.contributionMerger
+          .computeContributions(
+            primaryScope = aggregationScopes.first(),
+            allScopes = aggregationScopes,
+            excluded = excludes,
+          )
+          ?.bindingContainers
+          ?.values
+          ?.let { containers ->
+            // Add binding containers from merged contributions (already filtered)
+            bindingContainers +=
+              containers
+                .mapNotNull { bindingContainerTransformer.findContainer(it) }
+                .onEach { container ->
+                  linkDeclarationsInCompilation(graphDeclaration, container.ir)
+                  // Annotation-included containers may need to be managed directly
+                  if (container.canBeManaged) {
+                    managedBindingContainers += container.ir
+                  }
+                }
+          }
+      } else {
+        // For generated graphs (extensions/dynamic), just resolve transitive containers
+        // (no replacement filtering needed since already processed by IrContributionMerger when
+        // they were generated)
+      }
+
+      // Resolve transitive binding containers
+      val allMergedContainers =
+        bindingContainers
+          .mapToSet { it.ir }
+          .let { bindingContainerTransformer.resolveAllBindingContainersCached(it) }
+
+      for (container in allMergedContainers) {
         val isDynamicContainer = container.ir in dynamicBindingContainers
         for ((_, factory) in container.providerFactories) {
           providerFactories += factory.typeKey to factory
@@ -840,7 +846,7 @@ internal class DependencyGraphNodeCache(
       }
 
       writeDiagnostic("bindingContainers-${parentTracer.tag}.txt") {
-        mergedContainers.joinToString("\n") { it.ir.classId.toString() }
+        allMergedContainers.joinToString("\n") { it.ir.classId.toString() }
       }
 
       val dependencyGraphNode =
@@ -868,7 +874,6 @@ internal class DependencyGraphNodeCache(
 
       // Check after creating a node for access to recursive allDependencies
       val overlapErrors = mutableSetOf<String>()
-      val seenAncestorScopes = mutableMapOf<IrAnnotation, DependencyGraphNode>()
       for (depNode in dependencyGraphNode.allExtendedNodes.values) {
         // If any intersect, report an error to onError with the intersecting types (including
         // which parent it is coming from)
