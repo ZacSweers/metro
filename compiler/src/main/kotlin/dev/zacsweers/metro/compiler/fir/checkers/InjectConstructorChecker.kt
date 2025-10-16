@@ -8,8 +8,6 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.findInjectConstructor
-import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
-import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.validateInjectedClass
 import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
 import dev.zacsweers.metro.compiler.metroAnnotations
@@ -30,9 +28,11 @@ internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common
     val session = context.session
     val classIds = session.classIds
 
-    val classInjectAnnotation =
-      declaration.annotationsIn(session, classIds.allInjectAnnotations).toList()
+    // Check for class-level inject-like annotations (@Inject or @Contributes*)
+    val classInjectLikeAnnotations =
+      declaration.annotationsIn(session, classIds.injectLikeAnnotations).toList()
 
+    // Check for constructor-level @Inject annotations (only @Inject, not @Contributes*)
     val injectedConstructor =
       declaration.symbol.findInjectConstructor(
         session,
@@ -42,7 +42,7 @@ internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common
         return
       }
 
-    val isInjected = classInjectAnnotation.isNotEmpty() || injectedConstructor != null
+    val isInjected = classInjectLikeAnnotations.isNotEmpty() || injectedConstructor != null
     if (!isInjected) return
 
     declaration
@@ -52,17 +52,18 @@ internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common
         return
       }
 
-    if (classInjectAnnotation.isNotEmpty() && injectedConstructor != null) {
+    // Only error if there's an actual @Inject annotation on the class (not @Contributes*)
+    // @Contributes* annotations are allowed to coexist with constructor @Inject
+    val classInjectAnnotations =
+      declaration.annotationsIn(session, classIds.allInjectAnnotations).toList()
+    if (injectedConstructor != null && classInjectAnnotations.isNotEmpty()) {
       reporter.reportOn(
         injectedConstructor.annotation.source,
         MetroDiagnostics.CANNOT_HAVE_INJECT_IN_MULTIPLE_TARGETS,
       )
-      return
     }
 
-    declaration.validateInjectedClass(context, reporter) {
-      return
-    }
+    declaration.validateInjectedClass(context, reporter, classInjectAnnotations)
 
     val constructorToValidate =
       injectedConstructor?.constructor ?: declaration.primaryConstructorIfAny(session) ?: return

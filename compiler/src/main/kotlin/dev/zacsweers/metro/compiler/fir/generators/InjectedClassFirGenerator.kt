@@ -85,7 +85,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
   FirDeclarationGenerationExtension(session), CompatContext by compatContext {
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
-    register(session.predicates.allInjectAnnotationsPredicate)
+    register(session.predicates.injectLikeAnnotationsPredicate)
     register(session.predicates.assistedAnnotationPredicate)
   }
 
@@ -310,7 +310,6 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
     }
   }
 
-  @OptIn(DirectDeclarationsAccess::class)
   override fun getNestedClassifiersNames(
     classSymbol: FirClassSymbol<*>,
     context: NestedClassGenerationContext,
