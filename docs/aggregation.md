@@ -134,6 +134,20 @@ class CacheImpl(...) : Cache, AnotherType
 !!! tip
     Contributions may be `object` classes. In this event, Metro will automatically provide the object instance in its binding.
 
+### Implicitly-injected `@ContributesBinding` types
+
+Up to version `0.7.0`, Metro has always required you to use `@Inject` on most `@Contributes*` annotated types. However, this can feel a bit repetitive and tedious. Starting in `0.7.0`, there is a new `contributesAsInject` Gradle DSL option that can be enabled that will treat all `@Contributes*` annotated types as `@Inject` by default. You can still use `@Inject` on classes to be explicit, and if you have multiple constructors you must still use `@Inject` on the constructor you want to be used.
+
+_The only exception to this is `@ContributesTo`, which isn't applicable to injected types._
+
+This is disabled by default to start but will likely become the default in a future release.
+
+```kotlin
+@ContributesBinding(AppScope::class)
+// @Inject // <-- now implicit!
+class TacoImpl(...) : Taco
+```
+
 ## @ContributesIntoSet/@ContributesIntoMap
 
 To contribute into a multibinding, use the `@ContributesIntoSet` or `@ContributesIntoMap` annotations as needed.
@@ -205,6 +219,8 @@ class CompositeCacheAlternate(private val caches: Map<String, Provider<Cache>>) 
   }
 }
 ```
+
+Like `@ContributesBinding`, enabling the `contributesAsInject` Gradle DSL option will treat all `@ContributesIntoSet`/`@ContributesIntoMap`-annotated types as `@Inject` by default.
 
 ## Contributing Binding Containers
 
