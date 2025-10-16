@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.fir
 
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.graph.BaseTypeKey
+import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.descriptors.annotations.AnnotationUseSiteTarget
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
@@ -16,11 +17,14 @@ import org.jetbrains.kotlin.fir.resolve.substitution.ConeSubstitutor
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirTypeRef
+import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
 
 @Poko
 internal class FirTypeKey(override val type: ConeKotlinType, override val qualifier: MetroFirAnnotation? = null) :
   BaseTypeKey<ConeKotlinType, MetroFirAnnotation, FirTypeKey>() {
+
+  override val classId by memoize { type.classId!! }
 
   override fun copy(
     type: ConeKotlinType,

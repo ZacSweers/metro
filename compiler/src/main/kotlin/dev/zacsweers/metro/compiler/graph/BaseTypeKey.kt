@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.graph
 
 import dev.zacsweers.metro.compiler.memoize
 import kotlin.getValue
+import org.jetbrains.kotlin.name.ClassId
 
 internal abstract class BaseTypeKey<
   Type,
@@ -13,6 +14,7 @@ internal abstract class BaseTypeKey<
 
   abstract val type: Type
   abstract val qualifier: Qualifier?
+  abstract val classId: ClassId
 
   private val cachedToString by memoize { render(short = false, includeQualifier = true) }
 

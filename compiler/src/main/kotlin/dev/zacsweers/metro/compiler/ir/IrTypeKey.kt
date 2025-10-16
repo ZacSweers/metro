@@ -18,7 +18,7 @@ internal class IrTypeKey
 private constructor(override val type: IrType, override val qualifier: IrAnnotation?) :
   BaseTypeKey<IrType, IrAnnotation, IrTypeKey>() {
 
-  val classId by memoize { type.rawTypeOrNull()?.classId }
+  override val classId by memoize { type.rawTypeOrNull()?.classId }
 
   val hasTypeArgs: Boolean
     get() = type is IrSimpleType && type.arguments.isNotEmpty()
