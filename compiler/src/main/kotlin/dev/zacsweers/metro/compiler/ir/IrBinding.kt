@@ -514,8 +514,20 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val dependencies by memoize { sourceBindings.map { IrContextualTypeKey(it) } }
     override val parameters: Parameters = Parameters.empty()
 
-    override val nameHint: String
-      get() = "${typeKey.type.rawType().name}Multibinding"
+    override val nameHint: String by memoize {
+      buildString {
+        if (isMap) {
+          append("mapOf")
+          val (k, v) = typeKey.type.requireSimpleType(declaration).arguments
+          append(k.render(short = true).capitalizeUS())
+          append("To")
+          append(v.render(short = true).capitalizeUS())
+        } else {
+          append("setOf")
+          append(typeKey.type.requireSimpleType(declaration).arguments[0].render(short = true).capitalizeUS())
+        }
+      }
+    }
 
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
 

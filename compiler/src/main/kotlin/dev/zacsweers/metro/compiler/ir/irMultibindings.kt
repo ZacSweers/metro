@@ -88,7 +88,7 @@ internal val IrTypeKey.multibindingId: String
   get() = render(short = false, includeQualifier = true)
 
 internal fun createMapBindingId(mapKey: IrType, elementTypeKey: IrTypeKey): String {
-  return "${mapKey.render()}_${elementTypeKey.multibindingId}"
+  return "${mapKey.render(short = false)}_${elementTypeKey.multibindingId}"
 }
 
 context(context: IrMetroContext)

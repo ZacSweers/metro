@@ -146,7 +146,7 @@ interface ExampleGraph : $$MetroContributionToAppScope {
         private get(): Task Companion.create(instance = <this>).invoke()
       private val provide4: Task
         private get(): Task Companion.create(instance = <this>).invoke()
-      private val setMultibinding: Set<Task>
+      private val setOfTask: Set<Task>
         private get(): Set<Task> buildSet<Task>(capacity = 4, builderAction = local fun MutableSet<Task>.<anonymous>() {
           $receiver.add(element = Companion.invoke<Task>(value = <this>.<get-provide4>()).invoke())
           $receiver.add(element = Companion.invoke<Task>(value = <this>.<get-provide3>()).invoke())
@@ -156,7 +156,7 @@ interface ExampleGraph : $$MetroContributionToAppScope {
 )
       override val tasksFromParent: Set<Task>
         override get(): Set<Task> {
-          return <this>.<get-setMultibinding>()
+          return <this>.<get-setOfTask>()
         }
 
     }
@@ -189,7 +189,7 @@ interface ExampleGraph : $$MetroContributionToAppScope {
       private get(): Task Companion.create(instance = <this>.#thisGraphInstance).invoke()
     private val provide4: Task
       private get(): Task Companion.create(instance = <this>.#thisGraphInstance).invoke()
-    private val setMultibinding: Set<Task>
+    private val setOfTask: Set<Task>
       private get(): Set<Task> buildSet<Task>(capacity = 4, builderAction = local fun MutableSet<Task>.<anonymous>() {
         $receiver.add(element = Companion.invoke<Task>(value = <this>.<get-provide4>()).invoke())
         $receiver.add(element = Companion.invoke<Task>(value = <this>.<get-provide3>()).invoke())
@@ -199,7 +199,7 @@ interface ExampleGraph : $$MetroContributionToAppScope {
 )
     override val tasks: Set<Task>
       override get(): Set<Task> {
-        return <this>.<get-setMultibinding>()
+        return <this>.<get-setOfTask>()
       }
 
   }

@@ -130,6 +130,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("LazyPropertiesHaveDeterministicOrder.kt")
+    public void testLazyPropertiesHaveDeterministicOrder() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/LazyPropertiesHaveDeterministicOrder.kt");
+    }
+
+    @Test
     @TestMetadata("MultipleRefsGetProviderFields.kt")
     public void testMultipleRefsGetProviderFields() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/MultipleRefsGetProviderFields.kt");
