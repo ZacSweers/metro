@@ -17,16 +17,18 @@ import dev.zacsweers.metro.compiler.tracing.Tracer
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
+import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
-import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irInt
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.builders.parent
 import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
@@ -47,38 +49,41 @@ private constructor(
   context: IrMetroContext,
   private val node: DependencyGraphNode,
   private val thisReceiver: IrValueParameter,
-  private val bindingFieldContext: BindingFieldContext,
+  private val bindingPropertyContext: BindingPropertyContext,
   private val bindingGraph: IrBindingGraph,
   private val bindingContainerTransformer: BindingContainerTransformer,
   private val membersInjectorTransformer: MembersInjectorTransformer,
   private val assistedFactoryTransformer: AssistedFactoryTransformer,
   private val graphExtensionGenerator: IrGraphExtensionGenerator,
   private val parentTracer: Tracer,
+  private val getOrCreateLazyProperty: (IrBinding, IrContextualTypeKey, IrBuilderWithScope.(IrGraphExpressionGenerator) -> IrExpressionBody) -> IrProperty,
 ) : IrMetroContext by context {
 
   class Factory(
     private val context: IrMetroContext,
     private val node: DependencyGraphNode,
-    private val bindingFieldContext: BindingFieldContext,
+    private val bindingPropertyContext: BindingPropertyContext,
     private val bindingGraph: IrBindingGraph,
     private val bindingContainerTransformer: BindingContainerTransformer,
     private val membersInjectorTransformer: MembersInjectorTransformer,
     private val assistedFactoryTransformer: AssistedFactoryTransformer,
     private val graphExtensionGenerator: IrGraphExtensionGenerator,
     private val parentTracer: Tracer,
+    private val getOrCreateLazyProperty: (IrBinding, IrContextualTypeKey, IrBuilderWithScope.(IrGraphExpressionGenerator) -> IrExpressionBody) -> IrProperty,
   ) {
     fun create(thisReceiver: IrValueParameter): IrGraphExpressionGenerator {
       return IrGraphExpressionGenerator(
         context = context,
         node = node,
         thisReceiver = thisReceiver,
-        bindingFieldContext = bindingFieldContext,
+        bindingPropertyContext = bindingPropertyContext,
         bindingGraph = bindingGraph,
         bindingContainerTransformer = bindingContainerTransformer,
         membersInjectorTransformer = membersInjectorTransformer,
         assistedFactoryTransformer = assistedFactoryTransformer,
         graphExtensionGenerator = graphExtensionGenerator,
         parentTracer = parentTracer,
+        getOrCreateLazyProperty = getOrCreateLazyProperty,
       )
     }
   }
@@ -115,10 +120,10 @@ private constructor(
       // provider for it.
       // This is important for cases like DelegateFactory and breaking cycles.
       if (fieldInitKey == null || fieldInitKey != binding.typeKey) {
-        if (bindingFieldContext.hasKey(binding.typeKey)) {
-          bindingFieldContext.providerField(binding.typeKey)?.let {
+        if (bindingPropertyContext.hasKey(binding.typeKey)) {
+          bindingPropertyContext.providerProperty(binding.typeKey)?.let {
             val providerInstance =
-              irGetField(irGet(thisReceiver), it).let {
+              irGetProperty(irGet(thisReceiver), it).let {
                 with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) }
               }
             return if (accessType == AccessType.INSTANCE) {
@@ -127,8 +132,8 @@ private constructor(
               providerInstance
             }
           }
-          bindingFieldContext.instanceField(binding.typeKey)?.let {
-            val instance = irGetField(irGet(thisReceiver), it)
+          bindingPropertyContext.instanceProperty(binding.typeKey)?.let {
+            val instance = irGetProperty(irGet(thisReceiver), it)
             return if (accessType == AccessType.INSTANCE) {
               instance
             } else {
@@ -244,17 +249,14 @@ private constructor(
         }
 
         is IrBinding.Multibinding -> {
-          generateMultibindingExpression(binding, contextualTypeKey, fieldInitKey)
-            .transformAccessIfNeeded(
-              requested = accessType,
-              actual =
-                if (contextualTypeKey.requiresProviderInstance) {
-                  AccessType.PROVIDER
-                } else {
-                  AccessType.INSTANCE
-                },
-              type = binding.typeKey.type,
-            )
+          generateMultibindingExpression(binding, contextualTypeKey, accessType, fieldInitKey)
+            .let {
+              if (accessType == AccessType.INSTANCE) {
+                it
+              } else {
+                with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) }
+              }
+            }
         }
 
         is IrBinding.MembersInjected -> {
@@ -329,9 +331,9 @@ private constructor(
               }
               AccessType.PROVIDER -> {
                 // We need the provider
-                irGetField(
+                irGetProperty(
                   irGet(binding.classReceiverParameter),
-                  binding.providerFieldAccess!!.field,
+                  binding.providerPropertyAccess!!.property,
                 )
               }
             }
@@ -413,21 +415,21 @@ private constructor(
 
         is IrBinding.GraphDependency -> {
           val ownerKey = binding.ownerKey
-          if (binding.fieldAccess != null) {
-            // Just get the field
-            irGetField(irGet(binding.fieldAccess.receiverParameter), binding.fieldAccess.field)
+          if (binding.propertyAccess != null) {
+            // Just get the property
+            irGetProperty(irGet(binding.propertyAccess.receiverParameter), binding.propertyAccess.property)
           } else if (binding.getter != null) {
             val graphInstanceField =
-              bindingFieldContext.instanceField(ownerKey)
+              bindingPropertyContext.instanceProperty(ownerKey)
                 ?: reportCompilerBug(
-                  "No matching included type instance found for type $ownerKey while processing ${node.typeKey}. Available instance fields ${bindingFieldContext.availableInstanceKeys}"
+                  "No matching included type instance found for type $ownerKey while processing ${node.typeKey}. Available instance fields ${bindingPropertyContext.availableInstanceKeys}"
                 )
 
             val getterContextKey = IrContextualTypeKey.from(binding.getter)
 
             val invokeGetter =
               irInvoke(
-                dispatchReceiver = irGetField(irGet(thisReceiver), graphInstanceField),
+                dispatchReceiver = irGetProperty(irGet(thisReceiver), graphInstanceField),
                 callee = binding.getter.symbol,
                 typeHint = binding.typeKey.type,
               )
@@ -560,17 +562,17 @@ private constructor(
         // TODO consolidate this logic with generateBindingCode
         if (accessType == AccessType.INSTANCE) {
           // IFF the parameter can take a direct instance, try our instance fields
-          bindingFieldContext.instanceField(typeKey)?.let { instanceField ->
-            return@mapIndexed irGetField(irGet(thisReceiver), instanceField).let {
+          bindingPropertyContext.instanceProperty(typeKey)?.let { instanceField ->
+            return@mapIndexed irGetProperty(irGet(thisReceiver), instanceField).let {
               with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) }
             }
           }
         }
 
         val providerInstance =
-          bindingFieldContext.providerField(typeKey)?.let { field ->
+          bindingPropertyContext.providerProperty(typeKey)?.let { field ->
             // If it's in provider fields, invoke that field
-            irGetField(irGet(thisReceiver), field)
+            irGetProperty(irGet(thisReceiver), field)
           }
             ?: run {
               // Generate binding code for each param
@@ -623,19 +625,39 @@ private constructor(
   private fun generateMultibindingExpression(
     binding: IrBinding.Multibinding,
     contextualTypeKey: IrContextualTypeKey,
+    accessType: AccessType,
     fieldInitKey: IrTypeKey?,
   ): IrExpression {
     return if (binding.isSet) {
-      generateSetMultibindingExpression(binding, contextualTypeKey, fieldInitKey)
+      generateSetMultibindingExpression(binding, accessType, contextualTypeKey, fieldInitKey)
     } else {
       // It's a map
-      generateMapMultibindingExpression(binding, contextualTypeKey, fieldInitKey)
+      generateMapMultibindingExpression(binding, contextualTypeKey, accessType, fieldInitKey)
     }
   }
 
   context(scope: IrBuilderWithScope)
   private fun generateSetMultibindingExpression(
     binding: IrBinding.Multibinding,
+    accessType: AccessType,
+    contextualTypeKey: IrContextualTypeKey,
+    fieldInitKey: IrTypeKey?,
+  ): IrExpression =
+    with(scope) {
+      // Use lazy property to cache the multibinding
+      val property =
+        getOrCreateLazyProperty(binding, contextualTypeKey) { expressionGenerator ->
+          irExprBody(expressionGenerator.buildSetMultibindingExpression(binding, accessType, contextualTypeKey, fieldInitKey))
+        }
+
+      // Return the property access, which will be the provider
+      return irGetProperty(irGet(thisReceiver), property)
+    }
+
+  context(scope: IrBuilderWithScope)
+  private fun buildSetMultibindingExpression(
+    binding: IrBinding.Multibinding,
+    accessType: AccessType,
     contextualTypeKey: IrContextualTypeKey,
     fieldInitKey: IrTypeKey?,
   ): IrExpression {
@@ -644,8 +666,11 @@ private constructor(
       binding.sourceBindings
         .map { bindingGraph.requireBinding(it).expectAs<IrBinding.BindingWithAnnotations>() }
         .partition { it.annotations.isElementsIntoSet }
+
+    val actualAccessType: AccessType
     // If we have any @ElementsIntoSet, we need to use SetFactory
-    return if (collectionProviders.isNotEmpty() || contextualTypeKey.requiresProviderInstance) {
+    val instance = if (collectionProviders.isNotEmpty() || accessType == AccessType.PROVIDER) {
+      actualAccessType = AccessType.PROVIDER
       generateSetFactoryExpression(
         elementType,
         collectionProviders,
@@ -653,8 +678,14 @@ private constructor(
         fieldInitKey,
       )
     } else {
+      actualAccessType = AccessType.INSTANCE
       generateSetBuilderExpression(binding, elementType, fieldInitKey)
     }
+    return instance.transformAccessIfNeeded(
+      requested = accessType,
+      actual = actualAccessType,
+      type = contextualTypeKey.toIrType(),
+    )
   }
 
   context(scope: IrBuilderWithScope)
@@ -799,8 +830,28 @@ private constructor(
   private fun generateMapMultibindingExpression(
     binding: IrBinding.Multibinding,
     contextualTypeKey: IrContextualTypeKey,
+    accessType: AccessType,
     fieldInitKey: IrTypeKey?,
   ): IrExpression =
+    with(scope) {
+      // Use lazy property to cache the multibinding and handle different access patterns
+      val property =
+        getOrCreateLazyProperty(binding, contextualTypeKey) { expressionGenerator ->
+          irExprBody(expressionGenerator.generateMapMultibindingExpressionImpl(binding, contextualTypeKey, accessType, fieldInitKey))
+        }
+
+      // Return the property access, which will be the provider
+      return irGetProperty(irGet(thisReceiver), property)
+    }
+
+  context(scope: IrBuilderWithScope)
+  private fun generateMapMultibindingExpressionImpl(
+    binding: IrBinding.Multibinding,
+    contextualTypeKey: IrContextualTypeKey,
+    accessType: AccessType,
+    fieldInitKey: IrTypeKey?,
+  ): IrExpression =
+    // TODO if accessType is INSTANCE, some day add a mapBuilder generator
     with(scope) {
       // MapFactory.<Integer, Integer>builder(2)
       //   .put(1, FileSystemModule_Companion_ProvideMapInt1Factory.create())
@@ -829,7 +880,6 @@ private constructor(
       val useProviderFactory: Boolean = valueWrappedType is WrappedType.Provider
 
       // Used to unpack the right provider type
-      val originalType = contextualTypeKey.toIrType()
       val originalValueType = valueWrappedType.toIrType()
       val originalValueContextKey =
         originalValueType.asContextualTypeKey(
@@ -855,13 +905,17 @@ private constructor(
           )
           .wrapInProvider(metroSymbols.metroProvider)
 
-      if (size == 0) {
-        // If it's empty then short-circuit here
-        return if (useProviderFactory) {
+      val instance = if (size == 0) {
+        // TODO if it's empty and access is INSTANCE, just return emptyMap()
+        if (useProviderFactory) {
           // MapProviderFactory.empty()
           val emptyCallee = valueProviderSymbols.mapProviderFactoryEmptyFunction
           if (emptyCallee != null) {
-            irInvoke(callee = emptyCallee, typeHint = mapProviderType)
+            irInvoke(
+              callee = emptyCallee,
+              typeHint = mapProviderType,
+              typeArgs = listOf(keyType, rawValueType),
+            )
           } else {
             // Call builder().build()
             // build()
@@ -882,100 +936,108 @@ private constructor(
           irInvoke(
             callee = valueProviderSymbols.mapFactoryEmptyFunction,
             typeHint = mapProviderType,
+            typeArgs = listOf(keyType, rawValueType),
           )
         }
-      }
-
-      val builderFunction =
-        if (useProviderFactory) {
-          valueProviderSymbols.mapProviderFactoryBuilderFunction
-        } else {
-          valueProviderSymbols.mapFactoryBuilderFunction
-        }
-      val builderType =
-        if (useProviderFactory) {
-          valueProviderSymbols.mapProviderFactoryBuilder
-        } else {
-          valueProviderSymbols.mapFactoryBuilder
-        }
-
-      // MapFactory.<Integer, Integer>builder(2)
-      // MapProviderFactory.<Integer, Integer>builder(2)
-      val builder: IrExpression =
-        irInvoke(
-          callee = builderFunction,
-          typeArgs = listOf(keyType, valueType),
-          typeHint = builderType.typeWith(keyType, valueType),
-          args = listOf(irInt(size)),
-        )
-
-      val putFunction =
-        if (useProviderFactory) {
-          valueProviderSymbols.mapProviderFactoryBuilderPutFunction
-        } else {
-          valueProviderSymbols.mapFactoryBuilderPutFunction
-        }
-      val putAllFunction =
-        if (useProviderFactory) {
-          valueProviderSymbols.mapProviderFactoryBuilderPutAllFunction
-        } else {
-          valueProviderSymbols.mapFactoryBuilderPutAllFunction
-        }
-
-      val withProviders =
-        binding.sourceBindings
-          .map { bindingGraph.requireBinding(it) }
-          .fold(builder) { receiver, sourceBinding ->
-            val providerTypeMetadata = sourceBinding.contextualTypeKey
-
-            val isMap = providerTypeMetadata.typeKey.type.rawType().symbol == irBuiltIns.mapClass
-
-            val putter =
-              if (isMap) {
-                // use putAllFunction
-                // .putAll(1, FileSystemModule_Companion_ProvideMapInt1Factory.create())
-                // TODO is this only for inheriting in GraphExtensions?
-                TODO("putAll isn't yet supported")
-              } else {
-                // .put(1, FileSystemModule_Companion_ProvideMapInt1Factory.create())
-                putFunction
-              }
-            irInvoke(
-              dispatchReceiver = receiver,
-              callee = putter,
-              typeHint = builder.type,
-              args =
-                listOf(
-                  generateMapKeyLiteral(sourceBinding),
-                  generateBindingCode(
-                      sourceBinding,
-                      accessType = AccessType.PROVIDER,
-                      fieldInitKey = fieldInitKey,
-                    )
-                    .let {
-                      with(valueProviderSymbols) {
-                        transformMetroProvider(it, originalValueContextKey)
-                      }
-                    },
-                ),
-            )
+      } else {
+        // Multiple elements
+        val builderFunction =
+          if (useProviderFactory) {
+            valueProviderSymbols.mapProviderFactoryBuilderFunction
+          } else {
+            valueProviderSymbols.mapFactoryBuilderFunction
+          }
+        val builderType =
+          if (useProviderFactory) {
+            valueProviderSymbols.mapProviderFactoryBuilder
+          } else {
+            valueProviderSymbols.mapFactoryBuilder
           }
 
-      // .build()
-      val buildFunction =
-        if (useProviderFactory) {
-          valueProviderSymbols.mapProviderFactoryBuilderBuildFunction
-        } else {
-          valueProviderSymbols.mapFactoryBuilderBuildFunction
-        }
+        // MapFactory.<Integer, Integer>builder(2)
+        // MapProviderFactory.<Integer, Integer>builder(2)
+        val builder: IrExpression =
+          irInvoke(
+            callee = builderFunction,
+            typeArgs = listOf(keyType, valueType),
+            typeHint = builderType.typeWith(keyType, valueType),
+            args = listOf(irInt(size)),
+          )
 
-      val instance =
-        irInvoke(
-          dispatchReceiver = withProviders,
-          callee = buildFunction,
-          typeHint = mapProviderType,
-        )
-      return with(valueProviderSymbols) { transformToMetroProvider(instance, originalType) }
+        val putFunction =
+          if (useProviderFactory) {
+            valueProviderSymbols.mapProviderFactoryBuilderPutFunction
+          } else {
+            valueProviderSymbols.mapFactoryBuilderPutFunction
+          }
+        val putAllFunction =
+          if (useProviderFactory) {
+            valueProviderSymbols.mapProviderFactoryBuilderPutAllFunction
+          } else {
+            valueProviderSymbols.mapFactoryBuilderPutAllFunction
+          }
+
+        val withProviders =
+          binding.sourceBindings
+            .map { bindingGraph.requireBinding(it) }
+            .fold(builder) { receiver, sourceBinding ->
+              val providerTypeMetadata = sourceBinding.contextualTypeKey
+
+              val isMap = providerTypeMetadata.typeKey.type.rawType().symbol == irBuiltIns.mapClass
+
+              val putter =
+                if (isMap) {
+                  // use putAllFunction
+                  // .putAll(1, FileSystemModule_Companion_ProvideMapInt1Factory.create())
+                  // TODO is this only for inheriting in GraphExtensions?
+                  TODO("putAll isn't yet supported")
+                } else {
+                  // .put(1, FileSystemModule_Companion_ProvideMapInt1Factory.create())
+                  putFunction
+                }
+              irInvoke(
+                dispatchReceiver = receiver,
+                callee = putter,
+                typeHint = builder.type,
+                args =
+                  listOf(
+                    generateMapKeyLiteral(sourceBinding),
+                    generateBindingCode(
+                        sourceBinding,
+                        accessType = AccessType.PROVIDER,
+                        fieldInitKey = fieldInitKey,
+                      )
+                      .let {
+                        with(valueProviderSymbols) {
+                          transformMetroProvider(it, originalValueContextKey)
+                        }
+                      },
+                  ),
+              )
+            }
+
+        // .build()
+        val buildFunction =
+          if (useProviderFactory) {
+            valueProviderSymbols.mapProviderFactoryBuilderBuildFunction
+          } else {
+            valueProviderSymbols.mapFactoryBuilderBuildFunction
+          }
+
+          irInvoke(
+            dispatchReceiver = withProviders,
+            callee = buildFunction,
+            typeHint = mapProviderType,
+          )
+      }
+
+      val providerInstance = with(valueProviderSymbols) { transformToMetroProvider(instance, mapProviderType) }
+
+      return providerInstance.transformAccessIfNeeded(
+        requested = accessType,
+        actual = AccessType.PROVIDER,
+        type = contextualTypeKey.toIrType(),
+      )
     }
 
   context(scope: IrBuilderWithScope)
