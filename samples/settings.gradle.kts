@@ -45,7 +45,12 @@ include(
   ":weather-app",
 )
 
-includeBuild("..")
+includeBuild("..") {
+//  dependencySubstitution {
+//    substitute(module("dev.zacsweers.metro:metrox-android"))
+//      .using(project(":metrox:android"))
+//  }
+}
 
 develocity {
   buildScan {

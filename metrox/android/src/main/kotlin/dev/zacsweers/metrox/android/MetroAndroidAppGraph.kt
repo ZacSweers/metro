@@ -6,13 +6,10 @@ import android.app.Activity
 import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.ContentProvider
-import dev.zacsweers.metro.AppScope
-import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.Multibinds
 import dev.zacsweers.metro.Provider
 import kotlin.reflect.KClass
 
-@DependencyGraph(AppScope::class, isExtendable = true)
 interface MetroAndroidAppGraph {
   /**
    * A multibinding map of Activity classes to their providers accessible for
