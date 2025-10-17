@@ -53,9 +53,15 @@ interface AppGraph {
     }
 
     private val bindDouble: Double
-      private get(): Double Companion.create(instance = <this>.#thisGraphInstance, int = <this>.#provideIntProvider).invoke()
+      private get(): Double {
+        return Companion.create(instance = <this>.#thisGraphInstance, int = <this>.#provideIntProvider).invoke()
+      }
+
     private val bindLong: Long
-      private get(): Long Companion.create(instance = <this>.#thisGraphInstance, int = <this>.#provideIntProvider).invoke()
+      private get(): Long {
+        return Companion.create(instance = <this>.#thisGraphInstance, int = <this>.#provideIntProvider).invoke()
+      }
+
     override val doubleSet: Set<Double>
       override get(): Set<Double> {
         return <this>.<get-setOfDouble>()
@@ -72,11 +78,20 @@ interface AppGraph {
       }
 
     private val setOfDouble: Set<Double>
-      private get(): Set<Double> setOf<Double>(element = Companion.invoke<Double>(value = <this>.<get-bindDouble>()).invoke())
+      private get(): Set<Double> {
+        return setOf<Double>(element = Companion.invoke<Double>(value = <this>.<get-bindDouble>()).invoke())
+      }
+
     private val setOfInt: Set<Int>
-      private get(): Set<Int> setOf<Int>(element = <this>.#provideIntProvider.invoke())
+      private get(): Set<Int> {
+        return setOf<Int>(element = <this>.#provideIntProvider.invoke())
+      }
+
     private val setOfLong: Set<Long>
-      private get(): Set<Long> setOf<Long>(element = Companion.invoke<Long>(value = <this>.<get-bindLong>()).invoke())
+      private get(): Set<Long> {
+        return setOf<Long>(element = Companion.invoke<Long>(value = <this>.<get-bindLong>()).invoke())
+      }
+
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)

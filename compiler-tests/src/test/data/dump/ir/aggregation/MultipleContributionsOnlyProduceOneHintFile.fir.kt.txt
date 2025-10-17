@@ -154,9 +154,15 @@ interface ExampleGraph : $$MetroContributionToAppScope {
       }
 
     private val setOfBase2: Set<Base2>
-      private get(): Set<Base2> setOf<Base2>(element = <this>.#base1ImplProvider.invoke())
+      private get(): Set<Base2> {
+        return setOf<Base2>(element = <this>.#base1ImplProvider.invoke())
+      }
+
     private val setOfBase3: Set<Base3>
-      private get(): Set<Base3> setOf<Base3>(element = <this>.#base1ImplProvider.invoke())
+      private get(): Set<Base3> {
+        return setOf<Base3>(element = <this>.#base1ImplProvider.invoke())
+      }
+
   }
 
   abstract val cacheHolders: Set<Base2>

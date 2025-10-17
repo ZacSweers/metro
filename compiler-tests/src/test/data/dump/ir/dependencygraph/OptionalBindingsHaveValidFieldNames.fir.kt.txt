@@ -37,7 +37,10 @@ interface AppGraph {
       }
 
     private val optionalString: Optional<String>
-      private get(): Optional<String> of<String>(p0 = <this>.#stringProvider.invoke())
+      private get(): Optional<String> {
+        return of<String>(p0 = <this>.#stringProvider.invoke())
+      }
+
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
