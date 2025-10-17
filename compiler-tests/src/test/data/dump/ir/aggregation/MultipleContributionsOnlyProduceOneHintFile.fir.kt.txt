@@ -154,9 +154,9 @@ interface ExampleGraph : $$MetroContributionToAppScope {
       }
 
     private val setMultibinding: Set<Base3>
-      get(): Set<Base3> setOf<Base3>(element = <this>.#base1ImplProvider.invoke())
+      private get(): Set<Base3> setOf<Base3>(element = <this>.#base1ImplProvider.invoke())
     private val setMultibinding2: Set<Base2>
-      get(): Set<Base2> setOf<Base2>(element = <this>.#base1ImplProvider.invoke())
+      private get(): Set<Base2> setOf<Base2>(element = <this>.#base1ImplProvider.invoke())
   }
 
   abstract val cacheHolders: Set<Base2>

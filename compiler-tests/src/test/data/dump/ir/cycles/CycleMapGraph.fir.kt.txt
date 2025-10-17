@@ -158,9 +158,9 @@ interface CycleMapGraph {
     }
 
     private val mapMultibinding: Provider<Map<String, Provider<X>>>
-      get(): Provider<Map<String, Provider<X>>> Companion.builder<String, X>(size = 1).put(key = "X", providerOfValue = Companion.create(y = <this>.#yProvider)).build()
+      private get(): Provider<Map<String, Provider<X>>> Companion.builder<String, X>(size = 1).put(key = "X", providerOfValue = Companion.create(y = <this>.#yProvider)).build()
     private val mapMultibinding2: Provider<Map<String, Provider<Y>>>
-      get(): Provider<Map<String, Provider<Y>>> Companion.builder<String, Y>(size = 1).put(key = "Y", providerOfValue = <this>.#yProvider).build()
+      private get(): Provider<Map<String, Provider<Y>>> Companion.builder<String, Y>(size = 1).put(key = "Y", providerOfValue = <this>.#yProvider).build()
     @Binds
     @IntoMap
     @StringKey(value = "X")
