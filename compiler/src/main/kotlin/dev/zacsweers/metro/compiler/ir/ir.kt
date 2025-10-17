@@ -1554,7 +1554,10 @@ private fun List<IrConstructorCall>?.annotationsAnnotatedWith(
 
 context(context: IrMetroContext)
 internal fun IrClass.findInjectableConstructor(onlyUsePrimaryConstructor: Boolean): IrConstructor? {
-  if (kind.isObject) return null // No constructor for this one but can be annotated with Contributes*
+  if (kind.isObject) {
+    // No constructor for this one but can be annotated with Contributes*
+    return null
+  }
   return findInjectableConstructor(
     onlyUsePrimaryConstructor,
     if (onlyUsePrimaryConstructor) {
@@ -1716,6 +1719,25 @@ internal fun IrValueParameter.hasMetroDefault(): Boolean {
   )
 }
 
-internal fun <T : Any> IrPluginContext.withIrBuilder(symbol: IrSymbol, block: DeclarationIrBuilder.() -> T): T {
+internal fun <T : Any> IrPluginContext.withIrBuilder(
+  symbol: IrSymbol,
+  block: DeclarationIrBuilder.() -> T,
+): T {
   return createIrBuilder(symbol).run(block)
+}
+
+internal val IrProperty.reportableDeclaration: IrDeclarationParent?
+  get() = backingField ?: getter
+
+internal fun IrBuilderWithScope.irGetProperty(
+  receiver: IrExpression,
+  property: IrProperty,
+): IrExpression {
+  property.backingField?.let {
+    return irGetField(receiver, it)
+  }
+  property.getter?.let {
+    return irInvoke(dispatchReceiver = receiver, callee = it.symbol)
+  }
+  reportCompilerBug("No backing field or getter for property ${property.dumpKotlinLike()}")
 }
