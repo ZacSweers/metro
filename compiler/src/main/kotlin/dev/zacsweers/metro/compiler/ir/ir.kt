@@ -30,7 +30,6 @@ import org.jetbrains.kotlin.DeprecatedForRemovalCompilerApi
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.ir.createExtensionReceiver
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
-import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.backend.jvm.ir.isWithFlexibleNullability
 import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
@@ -1741,3 +1740,5 @@ internal fun IrBuilderWithScope.irGetProperty(
   }
   reportCompilerBug("No backing field or getter for property ${property.dumpKotlinLike()}")
 }
+
+internal val IrConstructorCall.annotationClass: IrClass get() = symbol.owner.parentAsClass

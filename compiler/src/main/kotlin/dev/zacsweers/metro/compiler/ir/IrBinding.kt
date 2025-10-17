@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.graph.BaseBinding
 import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
+import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.isWordPrefixRegex
@@ -945,3 +946,9 @@ private fun StringBuilder.renderAnnotations(
     }
   }
 }
+
+internal val IrBinding.isIntoMultibinding: Boolean
+  get() {
+    return typeKey.qualifier?.ir?.annotationClass?.classId ==
+      Symbols.ClassIds.MultibindingElement
+  }

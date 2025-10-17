@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.drewhamilton.poko.Poko
+import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.graph.BaseContextualTypeKey
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
@@ -17,6 +18,7 @@ import org.jetbrains.kotlin.ir.types.typeWithArguments
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.render
+import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.StandardClassIds
 
 /** A class that represents a type with contextual information. */
@@ -31,6 +33,14 @@ internal class IrContextualTypeKey(
 
   override fun withTypeKey(typeKey: IrTypeKey, rawType: IrType?): IrContextualTypeKey {
     return IrContextualTypeKey(typeKey, wrappedType, hasDefault, rawType)
+  }
+
+  fun wrapInProvider(providerType: ClassId = Symbols.ClassIds.metroProvider): IrContextualTypeKey {
+    return if (wrappedType is WrappedType.Provider) {
+      this
+    } else {
+      IrContextualTypeKey(typeKey, WrappedType.Provider(wrappedType, providerType), hasDefault, rawType)
+    }
   }
 
   override fun render(short: Boolean, includeQualifier: Boolean): String = buildString {

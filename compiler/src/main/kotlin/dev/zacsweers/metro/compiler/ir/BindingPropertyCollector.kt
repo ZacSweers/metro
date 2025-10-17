@@ -2,10 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
-import dev.zacsweers.metro.compiler.Symbols
-import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
-import org.jetbrains.kotlin.ir.util.classId
-
 private const val INITIAL_VALUE = 512
 
 /** Computes the set of bindings that must end up in properties. */
@@ -35,10 +31,7 @@ internal class BindingPropertyCollector(private val graph: IrBindingGraph) {
           }
         }
 
-        if (
-          binding.typeKey.qualifier?.ir?.annotationClass?.classId ==
-            Symbols.ClassIds.MultibindingElement
-        ) {
+        if (binding.isIntoMultibinding) {
           return PropertyType.GETTER
         }
 
