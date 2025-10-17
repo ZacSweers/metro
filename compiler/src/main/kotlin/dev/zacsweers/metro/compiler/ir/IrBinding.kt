@@ -397,7 +397,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val nameHint: String,
     override val reportableDeclaration: IrDeclarationWithName?,
     val classReceiverParameter: IrValueParameter? = null,
-    val providerFieldAccess: ParentContext.FieldAccess? = null,
+    val providerPropertyAccess: ParentContext.PropertyAccess? = null,
   ) : IrBinding {
     constructor(
       parameter: Parameter,
@@ -443,9 +443,9 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     @Poko.Skip val graph: IrClass,
     @Poko.Skip val getter: IrSimpleFunction? = null,
     override val typeKey: IrTypeKey,
-    @Poko.Skip val fieldAccess: ParentContext.FieldAccess? = null,
+    @Poko.Skip val propertyAccess: ParentContext.PropertyAccess? = null,
     val callableId: CallableId =
-      fieldAccess?.field?.callableId
+      propertyAccess?.property?.callableId
         ?: getter?.callableId
         ?: reportCompilerBug("One of getter or fieldAccess must be present"),
   ) : IrBinding {
@@ -453,8 +453,8 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val scope: IrAnnotation? = null
     override val nameHint: String = buildString {
       append(graph.name)
-      if (fieldAccess != null) {
-        append(fieldAccess.field.name)
+      if (propertyAccess != null) {
+        append(propertyAccess.property.name)
       } else {
         val property = getter!!.correspondingPropertySymbol
         if (property != null) {
@@ -472,13 +472,13 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
 
     override val reportableDeclaration: IrDeclarationWithName?
-      get() = fieldAccess?.field ?: getter?.propertyIfAccessor?.expectAs<IrDeclarationWithName>()
+      get() = propertyAccess?.property ?: getter?.propertyIfAccessor?.expectAs<IrDeclarationWithName>()
 
     override fun renderDescriptionDiagnostic(short: Boolean, underlineTypeKey: Boolean): String {
       // TODO render parent?
       return buildString {
         renderForDiagnostic(
-          declaration = fieldAccess?.field ?: getter!!,
+          declaration = propertyAccess?.property?.reportableDeclaration ?: getter!!,
           short = short,
           typeKey = typeKey,
           annotations = MetroAnnotations.none(),
