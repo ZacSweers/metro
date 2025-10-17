@@ -134,6 +134,20 @@ class CacheImpl(...) : Cache, AnotherType
 !!! tip
     Contributions may be `object` classes. In this event, Metro will automatically provide the object instance in its binding.
 
+### Implicitly-injected `@ContributesBinding` types
+
+Up to version `0.7.0`, Metro has always required you to use `@Inject` on most `@Contributes*` annotated types. However, this can feel a bit repetitive and tedious. Starting in `0.7.0`, there is a new `contributesAsInject` Gradle DSL option that can be enabled that will treat all `@Contributes*` annotated types as `@Inject` by default. You can still use `@Inject` on classes to be explicit, and if you have multiple constructors you must still use `@Inject` on the constructor you want to be used.
+
+_The only exception to this is `@ContributesTo`, which isn't applicable to injected types._
+
+This is disabled by default to start but will likely become the default in a future release.
+
+```kotlin
+@ContributesBinding(AppScope::class)
+// @Inject // <-- now implicit!
+class TacoImpl(...) : Taco
+```
+
 ## @ContributesIntoSet/@ContributesIntoMap
 
 To contribute into a multibinding, use the `@ContributesIntoSet` or `@ContributesIntoMap` annotations as needed.
@@ -165,6 +179,48 @@ class CacheImpl(...) : Cache
 ```
 
 This annotation is also repeatable and can be used to contribute to multiple scopes, multiple bound types, and multiple map keys.
+
+You can use `@IntoMap`/`@IntoSet` to provide into the same container:
+
+```kotlin
+// Method 1: applying @ContributesIntoMap to bind directly from the implementation class
+@ContributesIntoMap(AppScope::class)
+@StringKey("remote")
+@Inject
+class RemoteCache(...) : Cache
+
+// Method 2: Declare the class, then provide @IntoMap binding separately via a BindingContainer
+class LocalCache(...) : Cache
+
+@BindingContainer
+@ContributesTo(AppScope::class)
+object CacheBindingContainer {
+  @Provides
+  @IntoMap
+  @StringKey("local")
+  fun cache(): Cache = LocalCache(...)
+}
+
+// Accessing the resultant map, containing both implementations:
+@Inject
+class CompositeCache(private val caches: Map<String, Cache>) {
+  val local: Cache = caches["local"]
+  val remote: Cache = caches["remote"]
+}
+
+// Alternatively, specify Provider in the map type to lazily-initialize the implementations
+@Inject
+class CompositeCacheAlternate(private val caches: Map<String, Provider<Cache>>) {
+  val local: Cache = caches["local"]()
+  val remote: Provider<Cache> = caches["remote"]
+  
+  fun someTimeLater() {
+    remote().doSomethingWithCache()
+  }
+}
+```
+
+Like `@ContributesBinding`, enabling the `contributesAsInject` Gradle DSL option will treat all `@ContributesIntoSet`/`@ContributesIntoMap`-annotated types as `@Inject` by default.
 
 ## Contributing Binding Containers
 
@@ -203,6 +259,24 @@ object FakeNetworkBindings {
 }
 ```
 
+### Replacing Contributed Bindings
+
+Binding containers can replace other contributed bindings, too:
+
+```kotlin
+// In production
+@ContributesBinding(AppScope::class)
+@Inject
+class HttpClientImpl : HttpClient
+
+// In tests
+@ContributesTo(AppScope::class, replaces = [HttpClientImpl::class])
+@BindingContainer
+object FakeNetworkBindings {
+  @Provides fun provideFakeHttpClient(): HttpClient = FakeHttpClient()
+}
+```
+
 ### Excluding Contributed Binding Containers
 
 Graphs can exclude specific contributed binding containers:
@@ -219,15 +293,6 @@ interface TestAppGraph {
   // NetworkBindings will not be included
 }
 ```
-
-!!! info
-    Currently, contributed binding containers cannot replace non-contributed-container types (i.e. `@ContributesBinding` classes) yet.
-
-## `@ContributesGraphExtension`
-
-`@ContributesGraphExtension` is a specialized type of graph that is _contributed_ to some parent scope. Its generation is deferred until the parent graph interface is merged.
-
-See [Dependency Graphs](dependency-graphs.md#contributed-graph-extensions) for motivation and documentation.
 
 ## Implementation notes
 

@@ -10,11 +10,11 @@ import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.graph.BaseBindingStack
 import dev.zacsweers.metro.compiler.graph.BaseTypeKey
 import dev.zacsweers.metro.compiler.ir.IrBindingStack.Entry
-import dev.zacsweers.metro.compiler.unsafeLazy
+import dev.zacsweers.metro.compiler.memoize
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.withoutLineBreaks
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
-import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrProperty
@@ -37,7 +37,7 @@ internal interface IrBindingStack :
     override val contextKey: IrContextualTypeKey,
     override val usage: String?,
     override val graphContext: String?,
-    val declaration: IrDeclaration?,
+    val declaration: IrDeclarationWithName?,
     override val displayTypeKey: IrTypeKey = contextKey.typeKey,
     /**
      * Indicates this entry is informational only and not an actual functional binding that should
@@ -75,7 +75,7 @@ internal interface IrBindingStack :
         return Entry(
           contextKey = contextKey,
           usage = "is requested at",
-          graphContext = "$targetFqName#$accessorString",
+          graphContext = "$targetFqName.$accessorString",
           declaration = declaration,
           isSynthetic = true,
         )
@@ -116,7 +116,7 @@ internal interface IrBindingStack :
         contextKey: IrContextualTypeKey,
         function: IrFunction?,
         param: IrValueParameter? = null,
-        declaration: IrDeclaration? = param,
+        declaration: IrDeclarationWithName? = param,
         displayTypeKey: IrTypeKey = contextKey.typeKey,
         isSynthetic: Boolean = false,
         isMirrorFunction: Boolean = false,
@@ -147,10 +147,17 @@ internal interface IrBindingStack :
                 functionToUse is IrConstructor -> ""
                 treatAsConstructor -> ""
                 functionToUse.isPropertyAccessor ->
-                  "#${(functionToUse.propertyIfAccessor as IrProperty).name.asString()}"
-                else -> "#${functionToUse.name.asString()}"
+                  ".${(functionToUse.propertyIfAccessor as IrProperty).name.asString()}"
+                else -> ".${functionToUse.name.asString()}"
               }
-            val end = if (param == null) "()" else "(…, ${param.name.asString()})"
+            val end =
+              if (param == null) {
+                "()"
+              } else if (functionToUse.isPropertyAccessor) {
+                ": $displayTypeKey"
+              } else {
+                "(…, ${param.name.asString()})"
+              }
             "$targetFqName$middle$end"
           }
         return Entry(
@@ -202,6 +209,31 @@ internal interface IrBindingStack :
           usage = "is provided at",
           graphContext = context,
           declaration = function,
+        )
+      }
+
+      /*
+      test.LoggedInGraph extends test.AppGraph
+            [test.AppGraph] createLoggedInGraph(...): LoggedInGraph
+       */
+      fun generatedExtensionAt(
+        graphExtensionKey: IrContextualTypeKey,
+        parent: String,
+        declaration: IrFunction? = null,
+      ): Entry {
+        val targetFqName = graphExtensionKey.typeKey.type.rawType().kotlinFqName
+        val context =
+          when (val declarationToUse = declaration?.propertyIfAccessor) {
+            is IrProperty -> "$targetFqName.${declarationToUse.name}"
+            is IrFunction -> "$targetFqName.${declarationToUse.name}(…)"
+            else -> null
+          }
+        return Entry(
+          contextKey = graphExtensionKey,
+          usage = "extends $parent",
+          graphContext = context,
+          declaration = declaration,
+          isSynthetic = false,
         )
       }
     }
@@ -288,7 +320,7 @@ internal fun Appendable.appendBindingStackEntries(
 
 internal class IrBindingStackImpl(override val graph: IrClass, private val logger: MetroLogger) :
   IrBindingStack {
-  override val graphFqName: FqName by unsafeLazy { graph.kotlinFqName }
+  override val graphFqName: FqName by memoize { graph.kotlinFqName }
 
   // TODO can we use one structure?
   // TODO can we use scattermap's IntIntMap? Store the typekey hash to its index
@@ -326,7 +358,7 @@ internal class IrBindingStackImpl(override val graph: IrClass, private val logge
 
   override fun pop() {
     logger.unindent()
-    val removed = stack.removeFirstOrNull() ?: error("Binding stack is empty!")
+    val removed = stack.removeFirstOrNull() ?: reportCompilerBug("Binding stack is empty!")
     entrySet.remove(removed.typeKey)
   }
 
@@ -419,6 +451,9 @@ internal fun bindingStackEntryForDependency(
         isMirrorFunction = true,
       )
     }
+    is IrBinding.CustomWrapper -> {
+      Entry.injectedAt(contextKey, callingBinding.declaration, displayTypeKey = targetKey)
+    }
     is IrBinding.Alias -> {
       Entry.injectedAt(
         contextKey,
@@ -450,6 +485,20 @@ internal fun bindingStackEntryForDependency(
     is IrBinding.GraphDependency -> {
       Entry.injectedAt(contextKey, callingBinding.getter, displayTypeKey = targetKey)
     }
-    is IrBinding.Absent -> error("Should never happen")
+    is IrBinding.GraphExtension -> {
+      Entry.generatedExtensionAt(
+        contextKey,
+        parent = callingBinding.parent.kotlinFqName.asString(),
+        callingBinding.accessor,
+      )
+    }
+    is IrBinding.GraphExtensionFactory -> {
+      Entry.generatedExtensionAt(
+        contextKey,
+        parent = callingBinding.parent.kotlinFqName.asString(),
+        callingBinding.accessor,
+      )
+    }
+    is IrBinding.Absent -> reportCompilerBug("Should never happen")
   }
 }

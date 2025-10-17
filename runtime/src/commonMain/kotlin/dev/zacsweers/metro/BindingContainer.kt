@@ -42,7 +42,7 @@ import kotlin.reflect.KClass
  *   @Provides abstract fun RealHttpClient.bind: HttpClient
  * }
  *
- * @DependencyGraph(includes = [NetworkBindings::class])
+ * @DependencyGraph(bindingContainers = [NetworkBindings::class])
  * interface AppGraph
  * ```
  *

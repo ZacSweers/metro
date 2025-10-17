@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.test.integration
 
-import dev.zacsweers.metro.ContributesGraphExtension
+import dev.zacsweers.metro.ContributesTo
 import dev.zacsweers.metro.DependencyGraph
+import dev.zacsweers.metro.GraphExtension
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.asContribution
 import dev.zacsweers.metro.createGraph
@@ -25,17 +26,18 @@ class ContributesGraphExtensionTest {
 
     abstract class SimpleLoggedInScope
 
-    @ContributesGraphExtension(SimpleLoggedInScope::class)
+    @GraphExtension(SimpleLoggedInScope::class)
     interface LoggedInGraph {
       val int: Int
 
-      @ContributesGraphExtension.Factory(SimpleApp::class)
+      @ContributesTo(SimpleApp::class)
+      @GraphExtension.Factory
       interface Factory {
         fun createLoggedInGraph(): LoggedInGraph
       }
     }
 
-    @DependencyGraph(scope = SimpleApp::class, isExtendable = true)
+    @DependencyGraph(scope = SimpleApp::class)
     interface ExampleGraph {
       @Provides fun provideInt(): Int = 0
     }

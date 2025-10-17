@@ -1,1 +1,0 @@
-/module_main_GraphsCannotDirectlyExtendOtherGraphs.kt:(101,112): error: Graph class 'ChildGraph' may not directly extend graph class 'ParentGraph'. Use @Extends instead.

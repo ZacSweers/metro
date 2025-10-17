@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.fir.generators
 
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
 import dev.zacsweers.metro.compiler.fir.constructType
@@ -20,6 +21,7 @@ import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.metro.compiler.fir.requireContainingClassSymbol
 import dev.zacsweers.metro.compiler.mapToArray
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
@@ -171,8 +173,8 @@ import org.jetbrains.kotlin.name.SpecialNames
  * val appGraph = AppGraph.factory().create(int = 0, analyticsGraph = analyticsGraph)
  * ```
  */
-internal class DependencyGraphFirGenerator(session: FirSession) :
-  FirDeclarationGenerationExtension(session) {
+internal class DependencyGraphFirGenerator(session: FirSession, compatContext: CompatContext) :
+  FirDeclarationGenerationExtension(session), CompatContext by compatContext {
 
   companion object {
     private val PLACEHOLDER_SAM_FUNCTION = "$\$PLACEHOLDER_FOR_SAM".asName()
@@ -283,7 +285,7 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
      * In either case, we'll just generate a constructor and a PLACEHOLDER_SAM_FUNCTION. The
      * placeholder is important because not everything about a creator is resolvable at
      * this point, but we can use this marker later to indicate we expect generateFunctions()
-     * to generate the correct functions .
+     * to generate the correct functions.
      */
     val isGraphCompanion =
       classSymbol.isCompanion &&
@@ -474,7 +476,7 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
       // Graph factory $$Impl class, just generate the SAM function
       log("Generating factory impl into ${owner.classId}")
       val graphClass = owner.requireContainingClassSymbol().requireContainingClassSymbol()
-      val graphObject = graphObject(graphClass)!!
+      val graphObject = graphObject(graphClass) ?: reportCompilerBug("No graph object found for $graphClass")
       val creator =
         graphObject.findCreator(session, "generateFunctions ${context.owner.classId}", ::log)!!
       val samFunction = creator.classSymbol.findSamFunction(session)

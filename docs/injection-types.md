@@ -19,10 +19,10 @@ Constructor-injected classes can be instantiated+managed entirely by Metro and e
 
 ## Assisted Injection
 
-For types that require dynamic dependencies at instantiation, assisted injection can be used to supply these inputs. In this case - an injected constructor (or class with one constructor) must be annotated with `@Inject`, assisted parameters annotated with `@Assisted`, and a factory interface or abstract class with one single abstract function that accepts these assisted parameters and returns the target class.
+For types that require dynamic dependencies at instantiation, assisted injection can be used to supply these inputs. In this case - an injected constructor (or class with one constructor) must be annotated with `@AssistedInject`, assisted parameters annotated with `@Assisted`, and a factory interface or abstract class with one single abstract function that accepts these assisted parameters and returns the target class.
 
 ```kotlin
-@Inject
+@AssistedInject
 class HttpClient(
   @Assisted val timeout: Duration,
   val cache: Cache
@@ -46,7 +46,7 @@ class ApiClient(httpClientFactory: HttpClient.Factory) {
 Like Dagger, the `@Assisted` parameters can take optional `value` keys to disambiguate matching types.
 
 ```kotlin
-@Inject
+@AssistedInject
 class HttpClient(
   @Assisted("connect") val connectTimeout: Duration,
   @Assisted("request") val requestTimeout: Duration,
@@ -68,7 +68,7 @@ Metro supports automatic generation of assisted factories via opt-in compiler op
 Metro will automatically generate a default factory as a nested class within the injected type.
 
 ```kotlin
-@Inject
+@AssistedInject
 class HttpClient(
   @Assisted timeoutDuration: Duration,
   cache: Cache,
@@ -175,12 +175,12 @@ class ProfileInjector(
 
 Like Dagger, option #3 is accomplished via `MembersInjector` interface at runtime and in code gen. This should be reserved for advanced use cases.
 
-### Implementation notes
+??? note "Implementation Notes"
 
-* Property accessors don’t use `get`/`set` names in `inject{name}()` function names.
-* MembersInjector classes are generated as nested classes, allowing private member access.
-    * This includes parent classes’ private members (!!)
-* Optional bindings are not supported for injected member functions currently, but may be possible in the future.
+    * Property accessors don’t use `get`/`set` names in `inject{name}()` function names.
+    * MembersInjector classes are generated as nested classes, allowing private member access.
+        * This includes parent classes’ private members (!!)
+    * optional dependencies are not supported for injected member functions currently, but may be possible in the future.
 
 ## Top-level Function Injection
 
@@ -276,8 +276,7 @@ class AppClass {
 }
 
 // Usage
-val App = createGraph<AppGraph>()
-  .app
+val App = createGraph<AppGraph>().app
 
 // Call it in composition
 setContent {
@@ -286,6 +285,42 @@ setContent {
 ```
 
 Similarly, if the injected function is a `suspend` function, the `suspend` keyword will be ported to the generated `invoke()` function too.
+
+!!! warning "Default parameters"
+    Default parameters are not supported yet for top-level functions due to [KT-81656](https://youtrack.jetbrains.com/issue/KT-81656/).
+
+### Context parameters
+
+Top-level injected functions also support context parameters. Both regular and context parameters may be assisted.
+
+Any assisted context parameters will be carried as context parameters to the generated class's `invoke()` function.
+
+=== "Source"
+
+    ```kotlin
+    @Inject
+    @Composable
+    context(@Assisted sharedTransitionScope: SharedTransitionScope)
+    fun ClockWidget(
+      clock: Clock, // injected
+      @Assisted modifier: Modifier, // assisted inject
+    ) {
+      // ...
+    }
+    ```
+
+=== "Generated"
+
+    ```kotlin
+    @Inject
+    class ClockWidgetClass(private val clock: Provider<Clock>) {
+      @Composable
+      context(sharedTransitionScope: SharedTransitionScope)
+      operator fun invoke(modifier: Modifier) {
+        ClockWidget(clock(), modifier)
+      }
+    }
+    ```
 
 ### Why opt-in?
 
@@ -304,7 +339,7 @@ metro {
 }
 ```
 
-### Implementation notes
+??? note "Implementation Notes"
 
-- This is fairly different from kotlin-inject’s typealias approach. This is necessary because Metro doesn’t use higher order function types or typealiases as qualifiers.
-- Since the compose-compiler's IR transformer may run _before_ Metro's, we check for this during implementation body generation and look up the transformed target composable function as needed.
+    - This is fairly different from kotlin-inject’s typealias approach. This is necessary because Metro doesn’t use higher order function types or typealiases as qualifiers.
+    - Since the compose-compiler's IR transformer may run _before_ Metro's, we check for this during implementation body generation and look up the transformed target composable function as needed.

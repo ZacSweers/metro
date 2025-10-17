@@ -4,9 +4,6 @@ package dev.zacsweers.metro.sample.androidviewmodel.components
 
 import android.app.Activity
 import android.app.Application
-import android.app.Service
-import android.content.BroadcastReceiver
-import android.content.ContentProvider
 import android.content.Intent
 import androidx.annotation.Keep
 import androidx.core.app.AppComponentFactory
@@ -47,21 +44,6 @@ class MetroAppComponentFactory : AppComponentFactory() {
     activityProviders = (app as MetroApp).appGraph.activityProviders
     return app
   }
-
-  override fun instantiateReceiverCompat(
-    cl: ClassLoader,
-    className: String,
-    intent: Intent?,
-  ): BroadcastReceiver = TODO("Not currently used")
-
-  override fun instantiateServiceCompat(
-    cl: ClassLoader,
-    className: String,
-    intent: Intent?,
-  ): Service = TODO("Not currently used")
-
-  override fun instantiateProviderCompat(cl: ClassLoader, className: String): ContentProvider =
-    TODO("Not currently used")
 
   // AppComponentFactory can be created multiple times
   companion object {

@@ -31,7 +31,7 @@ abstract class BaseIncrementalCompilationTest {
     }
   }
 
-  class GraphReports(reportsDir: File, val name: String) {
+  class GraphReports(val reportsDir: File, val name: String) {
     val keysPopulated: Set<String> by lazy {
       reportsDir.resolve("keys-populated-$name.txt").readLines().toSet()
     }

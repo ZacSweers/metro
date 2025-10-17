@@ -5,12 +5,13 @@ package dev.zacsweers.metro.compiler.ir.transformers
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
-import dev.zacsweers.metro.compiler.expectAsOrNull
+import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.annotationsIn
+import dev.zacsweers.metro.compiler.ir.bindingTypeOrNull
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.findAnnotations
 import dev.zacsweers.metro.compiler.ir.getAllSuperTypes
-import dev.zacsweers.metro.compiler.ir.getConstBooleanArgumentOrNull
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.mapKeyAnnotation
@@ -21,7 +22,7 @@ import dev.zacsweers.metro.compiler.ir.requireNestedClass
 import dev.zacsweers.metro.compiler.ir.requireScope
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.joinSimpleNames
-import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
+import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrStatement
@@ -30,30 +31,27 @@ import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
-import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
-import org.jetbrains.kotlin.ir.util.addFakeOverrides
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
-import org.jetbrains.kotlin.ir.util.getValueArgument
+import org.jetbrains.kotlin.ir.util.isLocal
 import org.jetbrains.kotlin.ir.util.parentAsClass
-import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
+import org.jetbrains.kotlin.ir.visitors.IrTransformer
 import org.jetbrains.kotlin.name.ClassId
 
 /**
- * A transformer that does two things:
+ * A transformer that does three things:
  * 1. Generates `@Binds` properties into FIR-generated `$$MetroContribution` interfaces.
  * 2. Transforms extenders of these generated interfaces _in this compilation_ to add new fake
  *    overrides of them.
+ * 3. Collects contribution data while transforming for use by the dependency graph.
  */
-// TODO can we inline this into DependencyGraphTransformer for single-pass?
-internal class ContributionBindsFunctionsIrTransformer(private val context: IrMetroContext) :
-  IrElementTransformerVoid(), IrMetroContext by context {
+internal class ContributionTransformer(private val context: IrMetroContext) :
+  IrTransformer<IrContributionData>(), IrMetroContext by context {
 
   private val transformedContributions = mutableSetOf<ClassId>()
 
@@ -72,28 +70,61 @@ internal class ContributionBindsFunctionsIrTransformer(private val context: IrMe
    */
   private val contributionsByClass = mutableMapOf<ClassId, Map<ClassId, Set<Contribution>>>()
 
-  override fun visitClass(declaration: IrClass): IrStatement {
-    if (declaration.origin == Origins.MetroContributionClassDeclaration) {
-      transformContributionClass(
-        declaration,
-        declaration.findAnnotations(Symbols.ClassIds.metroContribution).first(),
-      )
-    } else if (declaration.isAnnotatedWithAny(context.symbols.classIds.graphLikeAnnotations)) {
-      transformGraphLike(declaration)
+  override fun visitClass(declaration: IrClass, data: IrContributionData): IrStatement {
+    // TODO others?
+    val shouldSkip = declaration.isLocal
+    if (shouldSkip) {
+      return super.visitClass(declaration, data)
     }
 
-    return super.visitClass(declaration)
+    val isBindingContainer by memoize {
+      declaration.isAnnotatedWithAny(metroSymbols.classIds.bindingContainerAnnotations)
+    }
+
+    // First, perform transformations
+    if (declaration.origin == Origins.MetroContributionClassDeclaration) {
+      val metroContributionAnno =
+        declaration.findAnnotations(Symbols.ClassIds.metroContribution).first()
+      val scope = metroContributionAnno.requireScope()
+      transformContributionClass(declaration, scope)
+      collectContributionDataFromContribution(declaration, data, scope, isBindingContainer)
+    } else if (declaration.isAnnotatedWithAny(context.metroSymbols.classIds.graphLikeAnnotations)) {
+      transformGraphLike(declaration)
+    } else if (isBindingContainer) {
+      collectContributionDataFromContainer(declaration, data)
+    }
+
+    return super.visitClass(declaration, data)
   }
 
-  private fun transformContributionClass(
+  private fun collectContributionDataFromContribution(
     declaration: IrClass,
-    contributionAnnotation: IrConstructorCall,
+    data: IrContributionData,
+    scope: ClassId,
+    isBindingContainer: Boolean,
   ) {
+    if (isBindingContainer) {
+      data.addBindingContainerContribution(scope, declaration)
+    } else {
+      data.addContribution(scope, declaration.defaultType)
+    }
+  }
+
+  private fun collectContributionDataFromContainer(declaration: IrClass, data: IrContributionData) {
+    // @BindingContainer handling
+    if (declaration.isAnnotatedWithAny(metroSymbols.classIds.bindingContainerAnnotations)) {
+      for (contributesToAnno in
+        declaration.annotationsIn(metroSymbols.classIds.contributesToAnnotations)) {
+        val scope = contributesToAnno.requireScope()
+        data.addBindingContainerContribution(scope, declaration)
+      }
+    }
+  }
+
+  private fun transformContributionClass(declaration: IrClass, scope: ClassId) {
     val classId = declaration.classIdOrFail
     if (classId !in transformedContributions) {
       val contributor = declaration.parentAsClass
-      // TODO If ContributesTo, return emptySet()?
-      val scope = contributionAnnotation.requireScope()
       val contributions = getOrFindContributions(contributor, scope).orEmpty()
       val bindsFunctions = mutableSetOf<IrSimpleFunction>()
       for (contribution in contributions) {
@@ -116,12 +147,13 @@ internal class ContributionBindsFunctionsIrTransformer(private val context: IrMe
       .forEach {
         val contributionMarker =
           it.findAnnotations(Symbols.ClassIds.metroContribution).singleOrNull() ?: return@forEach
-        transformContributionClass(it, contributionMarker)
+        val scope = contributionMarker.requireScope()
+        transformContributionClass(it, scope)
       }
 
     // Add fake overrides. This should only add missing ones
     declaration.addFakeOverrides(irTypeSystemContext)
-    if (!declaration.isAnnotatedWithAny(symbols.classIds.contributesGraphExtensionAnnotations)) {
+    if (!declaration.isAnnotatedWithAny(metroSymbols.classIds.graphExtensionAnnotations)) {
       // Only DependencyGraph classes have a $$MetroGraph. ContributesGraphExtension will get
       // implemented later in IR
       declaration.requireNestedClass(Symbols.Names.MetroGraph).addFakeOverrides(irTypeSystemContext)
@@ -186,7 +218,9 @@ internal class ContributionBindsFunctionsIrTransformer(private val context: IrMe
                 //  bound type?
               }
               qualifier?.let { annotations += it.ir.deepCopyWithSymbols() }
-              mapKey?.let { annotations += it.ir.deepCopyWithSymbols() }
+              if (this@BindingContribution is ContributesIntoMapBinding) {
+                mapKey?.let { annotations += it.ir.deepCopyWithSymbols() }
+              }
               pluginContext.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(this)
             }
         }
@@ -240,10 +274,10 @@ internal class ContributionBindsFunctionsIrTransformer(private val context: IrMe
   }
 
   private fun findContributions(contributingSymbol: IrClass): Set<Contribution>? {
-    val contributesToAnnotations = symbols.classIds.contributesToLikeAnnotations
-    val contributesBindingAnnotations = symbols.classIds.contributesBindingAnnotations
-    val contributesIntoSetAnnotations = symbols.classIds.contributesIntoSetAnnotations
-    val contributesIntoMapAnnotations = symbols.classIds.contributesIntoMapAnnotations
+    val contributesToAnnotations = metroSymbols.classIds.contributesToAnnotations
+    val contributesBindingAnnotations = metroSymbols.classIds.contributesBindingAnnotations
+    val contributesIntoSetAnnotations = metroSymbols.classIds.contributesIntoSetAnnotations
+    val contributesIntoMapAnnotations = metroSymbols.classIds.contributesIntoMapAnnotations
     val contributions = mutableSetOf<Contribution>()
     for (annotation in contributingSymbol.annotations) {
       val annotationClassId = annotation.annotationClass.classId ?: continue
@@ -269,7 +303,7 @@ internal class ContributionBindsFunctionsIrTransformer(private val context: IrMe
               listOf(buildIntoMapAnnotation(), buildBindsAnnotation())
             }
         }
-        in symbols.classIds.customContributesIntoSetAnnotations -> {
+        in metroSymbols.classIds.customContributesIntoSetAnnotations -> {
           contributions +=
             if (contributingSymbol.mapKeyAnnotation() != null) {
               Contribution.ContributesIntoMapBinding(contributingSymbol, annotation) {
@@ -292,37 +326,14 @@ internal class ContributionBindsFunctionsIrTransformer(private val context: IrMe
   }
 
   private fun IrFunction.buildBindsAnnotation(): IrConstructorCall {
-    return buildAnnotation(symbol, symbols.bindsConstructor)
+    return buildAnnotation(symbol, metroSymbols.bindsConstructor)
   }
 
   private fun IrFunction.buildIntoSetAnnotation(): IrConstructorCall {
-    return buildAnnotation(symbol, symbols.intoSetConstructor)
+    return buildAnnotation(symbol, metroSymbols.intoSetConstructor)
   }
 
   private fun IrFunction.buildIntoMapAnnotation(): IrConstructorCall {
-    return buildAnnotation(symbol, symbols.intoMapConstructor)
+    return buildAnnotation(symbol, metroSymbols.intoMapConstructor)
   }
-}
-
-// Also check ignoreQualifier for interop after entering interop block to prevent unnecessary
-// checks for non-interop
-context(context: IrPluginContext)
-private fun IrConstructorCall.bindingTypeOrNull(): Pair<IrType?, Boolean> {
-  // Return a binding defined using Metro's API
-  getValueArgument(Symbols.Names.binding)?.expectAsOrNull<IrConstructorCall>()?.let { bindingType ->
-    // bindingType is actually an annotation
-    return bindingType.typeArguments.getOrNull(0)?.takeUnless {
-      it == context.irBuiltIns.nothingType
-    } to false
-  }
-  // Return a boundType defined using anvil KClass
-  return anvilKClassBoundTypeArgument() to anvilIgnoreQualifier()
-}
-
-private fun IrConstructorCall.anvilKClassBoundTypeArgument(): IrType? {
-  return getValueArgument(Symbols.Names.boundType)?.expectAsOrNull<IrClassReference>()?.classType
-}
-
-private fun IrConstructorCall.anvilIgnoreQualifier(): Boolean {
-  return getConstBooleanArgumentOrNull(Symbols.Names.ignoreQualifier) ?: false
 }

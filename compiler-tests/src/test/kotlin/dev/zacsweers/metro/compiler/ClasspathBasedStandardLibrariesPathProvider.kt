@@ -5,7 +5,6 @@ package dev.zacsweers.metro.compiler
 import java.io.File
 import java.io.File.pathSeparator
 import java.io.File.separator
-import kotlin.text.get
 import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
 
 object ClasspathBasedStandardLibrariesPathProvider : KotlinStandardLibrariesPathProvider() {
@@ -62,4 +61,6 @@ object ClasspathBasedStandardLibrariesPathProvider : KotlinStandardLibrariesPath
   override fun scriptingPluginFilesForTests(): Collection<File> {
     TODO("KT-67573")
   }
+
+  override fun commonStdlibForTests(): File = getFile("kotlin-common-stdlib")
 }

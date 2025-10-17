@@ -3,6 +3,7 @@ public final class dev/zacsweers/metro/gradle/DiagnosticSeverity : java/lang/Enu
 	public static final field NONE Ldev/zacsweers/metro/gradle/DiagnosticSeverity;
 	public static final field WARN Ldev/zacsweers/metro/gradle/DiagnosticSeverity;
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public final fun isEnabled ()Z
 	public static fun valueOf (Ljava/lang/String;)Ldev/zacsweers/metro/gradle/DiagnosticSeverity;
 	public static fun values ()[Ldev/zacsweers/metro/gradle/DiagnosticSeverity;
 }
@@ -24,18 +25,26 @@ public final class dev/zacsweers/metro/gradle/MetroGradleSubplugin : org/jetbrai
 public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension {
 	public fun <init> (Lorg/gradle/api/file/ProjectLayout;Lorg/gradle/api/model/ObjectFactory;Lorg/gradle/api/provider/ProviderFactory;)V
 	public final fun getChunkFieldInits ()Lorg/gradle/api/provider/Property;
+	public final fun getContributesAsInject ()Lorg/gradle/api/provider/Property;
 	public final fun getDebug ()Lorg/gradle/api/provider/Property;
+	public final fun getEnableFullBindingGraphValidation ()Lorg/gradle/api/provider/Property;
+	public final fun getEnableGraphImplClassAsReturnType ()Lorg/gradle/api/provider/Property;
 	public final fun getEnableKotlinVersionCompatibilityChecks ()Lorg/gradle/api/provider/Property;
 	public final fun getEnableScopedInjectClassHints ()Lorg/gradle/api/provider/Property;
+	public final fun getEnableStrictValidation ()Lorg/gradle/api/provider/Property;
 	public final fun getEnableTopLevelFunctionInjection ()Lorg/gradle/api/provider/Property;
 	public final fun getEnabled ()Lorg/gradle/api/provider/Property;
 	public final fun getGenerateAssistedFactories ()Lorg/gradle/api/provider/Property;
 	public final fun getGenerateContributionHints ()Lorg/gradle/api/provider/Property;
 	public final fun getGenerateJvmContributionHintsInFir ()Lorg/gradle/api/provider/Property;
 	public final fun getInterop ()Ldev/zacsweers/metro/gradle/MetroPluginExtension$InteropHandler;
+	public final fun getInteropAnnotationsNamedArgSeverity ()Lorg/gradle/api/provider/Property;
+	public final fun getMaxIrErrors ()Lorg/gradle/api/provider/Property;
+	public final fun getOptionalDependencyBehavior ()Lorg/gradle/api/provider/Property;
 	public final fun getPublicProviderSeverity ()Lorg/gradle/api/provider/Property;
 	public final fun getReportsDestination ()Lorg/gradle/api/file/DirectoryProperty;
 	public final fun getShrinkUnusedBindings ()Lorg/gradle/api/provider/Property;
+	public final fun getStatementsPerInitFun ()Lorg/gradle/api/provider/Property;
 	public final fun getTransformProvidersToPrivate ()Lorg/gradle/api/provider/Property;
 	public final fun getWarnOnInjectAnnotationPlacement ()Lorg/gradle/api/provider/Property;
 	public final fun interop (Lorg/gradle/api/Action;)V
@@ -53,17 +62,20 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension$InteropHan
 	public final fun getContributesGraphExtensionFactory ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getContributesIntoSet ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getContributesTo ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getDependencyGraph ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getDependencyGraphFactory ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getElementsIntoSet ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getEnableDaggerAnvilInterop ()Lorg/gradle/api/provider/Property;
 	public abstract fun getEnableDaggerRuntimeInterop ()Lorg/gradle/api/provider/Property;
-	public final fun getGraph ()Lorg/gradle/api/provider/SetProperty;
-	public final fun getGraphFactory ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getGraphExtension ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getGraphExtensionFactory ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getInject ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getIntoMap ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getIntoSet ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getLazy ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getMapKey ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getMultibinds ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getOrigin ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getProvider ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getProvides ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getQualifier ()Lorg/gradle/api/provider/SetProperty;
@@ -79,5 +91,14 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension$InteropHan
 	public final fun includeJakarta ()V
 	public final fun includeJavax ()V
 	public final fun includeKotlinInject ()V
+}
+
+public final class dev/zacsweers/metro/gradle/OptionalDependencyBehavior : java/lang/Enum {
+	public static final field DEFAULT Ldev/zacsweers/metro/gradle/OptionalDependencyBehavior;
+	public static final field DISABLED Ldev/zacsweers/metro/gradle/OptionalDependencyBehavior;
+	public static final field REQUIRE_OPTIONAL_DEPENDENCY Ldev/zacsweers/metro/gradle/OptionalDependencyBehavior;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/zacsweers/metro/gradle/OptionalDependencyBehavior;
+	public static fun values ()[Ldev/zacsweers/metro/gradle/OptionalDependencyBehavior;
 }
 

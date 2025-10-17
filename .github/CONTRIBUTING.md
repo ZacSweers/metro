@@ -6,6 +6,8 @@ Metro welcomes contributions! Small contributions like documentation improvement
 
 Local development with Metro is fairly straightforward. You should be able to clone the repo and open it in IntelliJ as a standard Gradle project.
 
+Note: This project uses a specific JDK (see the `jdk` version in `libs.versions.toml`). If you don't have that JDK installed, you can likely change it to whatever JDK suits your needs as long as it's compatible with the `jvmTarget` version defined in `libs.versions.toml`.
+
 There are a few primary subprojects to consider.
 
 1. `:compiler` — Metro's compiler plugin implementation lives. This includes compiler-supported interop features too.

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
-import dev.zacsweers.metro.compiler.fir.FirMetroErrors.AS_CONTRIBUTION_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.AS_CONTRIBUTION_ERROR
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
@@ -36,7 +36,7 @@ internal object AsContributionChecker : FirFunctionCallChecker(MppCheckerKind.Co
           if (
             rawType.isAnnotatedWithAny(
               session,
-              session.metroFirBuiltIns.classIds.graphLikeAnnotations,
+              session.metroFirBuiltIns.classIds.dependencyGraphAnnotations,
             )
           ) {
             resolvedType
@@ -48,7 +48,7 @@ internal object AsContributionChecker : FirFunctionCallChecker(MppCheckerKind.Co
           reporter.reportOn(
             expression.extensionReceiver?.source ?: source,
             AS_CONTRIBUTION_ERROR,
-            "`asContribution` receiver must be annotated with a `@DependencyGraph` or `@ContributesGraphExtension` annotation.",
+            "`asContribution` receiver must be annotated with a `@DependencyGraph` annotation.",
           )
           return
         }

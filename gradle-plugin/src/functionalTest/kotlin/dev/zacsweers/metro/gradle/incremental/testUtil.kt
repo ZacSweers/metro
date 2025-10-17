@@ -2,10 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.gradle.incremental
 
+import com.autonomousapps.kit.GradleBuilder.build
 import com.autonomousapps.kit.GradleProject
 import com.autonomousapps.kit.Source
 import com.autonomousapps.kit.Source.Companion.kotlin
 import com.autonomousapps.kit.SourceType
+import com.autonomousapps.kit.truth.BuildResultSubject
+import com.autonomousapps.kit.truth.TestKitTruth.Companion.assertThat
+import java.io.File
 import java.net.URLClassLoader
 import java.util.Locale
 import kotlin.io.path.absolute
@@ -88,4 +92,9 @@ fun Source.copy(@Language("Kotlin") newContent: String): Source {
     }
     else -> error("Unsupported source: $sourceType")
   }
+}
+
+fun buildAndAssertThat(projectDir: File, args: String, body: BuildResultSubject.() -> Unit) {
+  val result = build(projectDir, *args.split(' ').toTypedArray())
+  assertThat(result).body()
 }

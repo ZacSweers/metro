@@ -17,11 +17,13 @@ class C(val aProvider: Provider<A>) {
 
 @Inject class E(val d: D)
 
-@DependencyGraph(isExtendable = true)
+@DependencyGraph
 interface CycleGraph {
   fun a(): A
 
   fun c(): C
+
+  fun childCycleGraph(): ChildCycleGraph.Factory
 
   @Provides
   private fun provideObjectWithCycle(obj: Provider<Any>): Any {
@@ -29,15 +31,15 @@ interface CycleGraph {
   }
 }
 
-@DependencyGraph
+@GraphExtension
 interface ChildCycleGraph {
   val a: A
 
   val obj: Any
 
-  @DependencyGraph.Factory
+  @GraphExtension.Factory
   fun interface Factory {
-    fun create(@Extends cycleGraph: CycleGraph): ChildCycleGraph
+    fun create(): ChildCycleGraph
   }
 }
 
@@ -58,7 +60,7 @@ fun box(): String {
 
   // graphExtensionIndirectionCycle
   val parent = createGraph<CycleGraph>()
-  val childCycleGraph = createGraphFactory<ChildCycleGraph.Factory>().create(parent)
+  val childCycleGraph = parent.childCycleGraph().create()
   val childA = childCycleGraph.a
   assertNotNull(childA.b.c.aProvider())
   assertNotNull(childA.e.d.b.c.aProvider())

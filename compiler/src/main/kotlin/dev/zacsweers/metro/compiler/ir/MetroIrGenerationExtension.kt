@@ -6,7 +6,8 @@ import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.ExitProcessingException
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.ir.transformers.ContributionBindsFunctionsIrTransformer
+import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.ir.transformers.ContributionTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.DependencyGraphTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.HintGenerator
 import dev.zacsweers.metro.compiler.tracing.trace
@@ -24,6 +25,7 @@ public class MetroIrGenerationExtension(
   private val options: MetroOptions,
   private val lookupTracker: LookupTracker?,
   private val expectActualTracker: ExpectActualTracker,
+  private val compatContext: CompatContext,
 ) : IrGenerationExtension {
 
   override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
@@ -32,6 +34,7 @@ public class MetroIrGenerationExtension(
       IrMetroContext(
         pluginContext,
         messageCollector,
+        compatContext,
         symbols,
         options,
         lookupTracker,
@@ -46,15 +49,13 @@ public class MetroIrGenerationExtension(
     try {
       tracer(moduleFragment.name.asString().removePrefix("<").removeSuffix(">"), "Metro compiler")
         .trace { tracer ->
-          // First - collect all the contributions in this round
+          // Create contribution data container
           val contributionData = IrContributionData(context)
-          tracer.traceNested("Collecting contributions") {
-            moduleFragment.accept(IrContributionVisitor(context), contributionData)
-          }
 
-          // First part 2 - transform $$MetroContribution interfaces to add their binds functions
-          tracer.traceNested("Transforming Metro contributions") {
-            moduleFragment.transform(ContributionBindsFunctionsIrTransformer(context), null)
+          // First - transform $$MetroContribution interfaces and collect contribution data in a
+          // single pass
+          tracer.traceNested("Transform contributions") {
+            moduleFragment.transform(ContributionTransformer(context), contributionData)
           }
 
           // Second - transform the dependency graphs

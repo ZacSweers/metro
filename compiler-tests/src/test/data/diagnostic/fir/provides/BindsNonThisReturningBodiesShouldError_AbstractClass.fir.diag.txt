@@ -1,3 +1,0 @@
-/BindsNonThisReturningBodiesShouldError_AbstractClass.kt:(112,131): error: `@Binds` declarations with bodies should just return `this`. See https://zacsweers.github.io/metro/bindings/#binds for more information.
-
-/BindsNonThisReturningBodiesShouldError_AbstractClass.kt:(188,201): error: `@Binds` declarations with bodies should just return `this`. See https://zacsweers.github.io/metro/bindings/#binds for more information.

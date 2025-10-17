@@ -1,3 +1,0 @@
-/BindsNonThisReturningBodiesShouldError_Interface.kt:(107,126): error: `@Binds` declarations with bodies should just return `this`. See https://zacsweers.github.io/metro/bindings/#binds for more information.
-
-/BindsNonThisReturningBodiesShouldError_Interface.kt:(183,196): error: `@Binds` declarations with bodies should just return `this`. See https://zacsweers.github.io/metro/bindings/#binds for more information.

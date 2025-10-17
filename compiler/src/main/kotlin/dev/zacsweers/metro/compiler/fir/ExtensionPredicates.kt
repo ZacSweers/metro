@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.fir
 
 import dev.zacsweers.metro.compiler.ClassIds
+import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asFqNames
 import org.jetbrains.kotlin.fir.extensions.predicate.DeclarationPredicate
 import org.jetbrains.kotlin.fir.extensions.predicate.LookupPredicate.BuilderContext.annotated
@@ -26,16 +27,11 @@ internal class ExtensionPredicates(private val classIds: ClassIds) {
 
   internal val bindingContainerPredicate =
     annotated(classIds.bindingContainerAnnotations.asFqNames())
+  internal val originPredicate =
+    annotated(classIds.originAnnotations.asFqNames())
   internal val dependencyGraphPredicate = annotated(classIds.dependencyGraphAnnotations.asFqNames())
-  internal val contributesGraphExtensionPredicate =
-    annotated(classIds.contributesGraphExtensionAnnotations.asFqNames())
-
-  /** Includes both `@DependencyGraph` and `@ContributesGraphExtension` */
-  internal val aggregatingAnnotationsPredicate =
-    annotated(
-      (classIds.dependencyGraphAnnotations + classIds.contributesGraphExtensionAnnotations)
-        .asFqNames()
-    )
+  internal val graphExtensionFactoryPredicate =
+    annotated(classIds.graphExtensionFactoryAnnotations.asFqNames())
 
   internal val dependencyGraphAndFactoryPredicate =
     annotated(
@@ -52,10 +48,9 @@ internal class ExtensionPredicates(private val classIds: ClassIds) {
 
   internal val injectAnnotationPredicate = annotated(classIds.injectAnnotations.asFqNames())
 
-  internal val assistedAnnotationPredicate = annotated(classIds.assistedAnnotations.asFqNames())
+  internal val injectLikeAnnotationsPredicate = annotated(classIds.injectLikeAnnotations.asFqNames())
 
-  internal val injectAndAssistedAnnotationPredicate =
-    annotated((classIds.injectAnnotations + classIds.assistedAnnotations).asFqNames())
+  internal val assistedAnnotationPredicate = annotated(classIds.assistedAnnotations.asFqNames())
 
   internal val assistedFactoryAnnotationPredicate =
     annotated(classIds.assistedFactoryAnnotations.asFqNames())
@@ -63,4 +58,6 @@ internal class ExtensionPredicates(private val classIds: ClassIds) {
   internal val bindsAnnotationPredicate = annotated(classIds.bindsAnnotations.asFqNames())
 
   internal val multibindsAnnotationPredicate = annotated(classIds.multibindsAnnotations.asFqNames())
+
+  internal val bindsOptionalOfAnnotationPredicate = annotated(Symbols.DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF.asSingleFqName())
 }

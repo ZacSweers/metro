@@ -16,8 +16,8 @@ public class ClassIds(
   customContributesToAnnotations: Set<ClassId> = emptySet(),
   customContributesBindingAnnotations: Set<ClassId> = emptySet(),
   internal val customContributesIntoSetAnnotations: Set<ClassId> = emptySet(),
-  customContributesGraphExtensionAnnotations: Set<ClassId> = emptySet(),
-  customContributesGraphExtensionFactoryAnnotations: Set<ClassId> = emptySet(),
+  customGraphExtensionAnnotations: Set<ClassId> = emptySet(),
+  customGraphExtensionFactoryAnnotations: Set<ClassId> = emptySet(),
   customElementsIntoSetAnnotations: Set<ClassId> = emptySet(),
   customGraphAnnotations: Set<ClassId> = emptySet(),
   customGraphFactoryAnnotations: Set<ClassId> = emptySet(),
@@ -30,6 +30,8 @@ public class ClassIds(
   customQualifierAnnotations: Set<ClassId> = emptySet(),
   customScopeAnnotations: Set<ClassId> = emptySet(),
   customBindingContainerAnnotations: Set<ClassId> = emptySet(),
+  customOriginAnnotations: Set<ClassId> = emptySet(),
+  private val contributesAsInject: Boolean = false,
 ) {
   public companion object {
     public fun fromOptions(options: MetroOptions): ClassIds =
@@ -43,10 +45,8 @@ public class ClassIds(
         customContributesToAnnotations = options.customContributesToAnnotations,
         customContributesBindingAnnotations = options.customContributesBindingAnnotations,
         customContributesIntoSetAnnotations = options.customContributesIntoSetAnnotations,
-        customContributesGraphExtensionAnnotations =
-          options.customContributesGraphExtensionAnnotations,
-        customContributesGraphExtensionFactoryAnnotations =
-          options.customContributesGraphExtensionFactoryAnnotations,
+        customGraphExtensionAnnotations = options.customGraphExtensionAnnotations,
+        customGraphExtensionFactoryAnnotations = options.customGraphExtensionFactoryAnnotations,
         customElementsIntoSetAnnotations = options.customElementsIntoSetAnnotations,
         customGraphAnnotations = options.customGraphAnnotations,
         customGraphFactoryAnnotations = options.customGraphFactoryAnnotations,
@@ -59,6 +59,8 @@ public class ClassIds(
         customQualifierAnnotations = options.customQualifierAnnotations,
         customScopeAnnotations = options.customScopeAnnotations,
         customBindingContainerAnnotations = options.customBindingContainerAnnotations,
+        customOriginAnnotations = options.customOriginAnnotations,
+        contributesAsInject = options.contributesAsInject,
       )
   }
 
@@ -80,6 +82,9 @@ public class ClassIds(
       customGraphFactoryAnnotations
 
   // Assisted inject
+  internal val assistedInjectAnnotations =
+    setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("AssistedInject")) +
+      customAssistedInjectAnnotations
   private val metroAssisted = Symbols.FqNames.metroRuntimePackage.classIdOf("Assisted")
   internal val assistedAnnotations = setOf(metroAssisted) + customAssistedAnnotations
   internal val metroAssistedFactory =
@@ -89,8 +94,9 @@ public class ClassIds(
 
   internal val injectAnnotations =
     setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("Inject")) +
-      customInjectAnnotations +
-      customAssistedInjectAnnotations
+      customInjectAnnotations
+
+  internal val allInjectAnnotations = injectAnnotations + assistedInjectAnnotations
 
   internal val qualifierAnnotations =
     setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("Qualifier")) + customQualifierAnnotations
@@ -99,6 +105,9 @@ public class ClassIds(
   internal val bindingContainerAnnotations =
     setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("BindingContainer")) +
       customBindingContainerAnnotations
+
+  internal val originAnnotations =
+    setOf(Symbols.ClassIds.metroOrigin) + customOriginAnnotations
 
   internal val bindsAnnotations =
     setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("Binds")) + customBindsAnnotations
@@ -127,6 +136,8 @@ public class ClassIds(
     Symbols.FqNames.metroRuntimePackage.classIdOf("ContributesIntoSet")
   private val contributesIntoMapAnnotation =
     Symbols.FqNames.metroRuntimePackage.classIdOf("ContributesIntoMap")
+
+  // TODO deprecated, remove these eventually
   private val contributesGraphExtensionAnnotation =
     Symbols.FqNames.metroRuntimePackage.classIdOf("ContributesGraphExtension")
   private val contributesGraphExtensionFactoryAnnotation =
@@ -140,29 +151,93 @@ public class ClassIds(
     setOf(contributesIntoSetAnnotation) + customElementsIntoSetAnnotations
   internal val contributesIntoMapAnnotations =
     setOf(contributesIntoMapAnnotation) + customIntoMapAnnotations
-  internal val contributesGraphExtensionAnnotations =
-    setOf(contributesGraphExtensionAnnotation) + customContributesGraphExtensionAnnotations
-  internal val contributesGraphExtensionFactoryAnnotations =
-    setOf(contributesGraphExtensionFactoryAnnotation) +
-      customContributesGraphExtensionFactoryAnnotations
-  internal val contributesToLikeAnnotations =
-    contributesToAnnotations + contributesGraphExtensionFactoryAnnotations
+  internal val graphExtensionAnnotations =
+    setOf(Symbols.ClassIds.graphExtension, contributesGraphExtensionAnnotation) + customGraphExtensionAnnotations
+  internal val graphExtensionFactoryAnnotations =
+    setOf(
+      Symbols.ClassIds.graphExtensionFactory,
+      contributesGraphExtensionFactoryAnnotation
+    ) + customGraphExtensionFactoryAnnotations
+  internal val allGraphExtensionAndFactoryAnnotations =
+    graphExtensionAnnotations +
+      graphExtensionFactoryAnnotations
+
   internal val allContributesAnnotations =
     contributesToAnnotations +
       contributesBindingAnnotations +
       contributesIntoSetAnnotations +
       contributesIntoMapAnnotations +
-      customContributesIntoSetAnnotations +
-      contributesGraphExtensionFactoryAnnotations
+      customContributesIntoSetAnnotations
+
+  /**
+   * Repeatable annotations in compiled sources behave interestingly. They get an implicit
+   * `Container` nested class that has an array value of the repeated annotations. For example:
+   * `ContributesBinding.Container`
+   *
+   * Note that not all of these may actually be repeatable, but this doesn't need to resolve it for
+   * sure and is just a general catch-all.
+   */
+  internal val allRepeatableContributesAnnotationsContainers =
+    allContributesAnnotations.mapToSet { it.createNestedClassId(Symbols.Names.Container) }
+
+  internal val allContributesAnnotationsWithContainers =
+    allContributesAnnotations + allRepeatableContributesAnnotationsContainers
 
   internal val graphLikeAnnotations =
-    dependencyGraphAnnotations + contributesGraphExtensionAnnotations
+    dependencyGraphAnnotations + graphExtensionAnnotations
   internal val graphFactoryLikeAnnotations =
-    dependencyGraphFactoryAnnotations + contributesGraphExtensionFactoryAnnotations
+    dependencyGraphFactoryAnnotations + graphExtensionFactoryAnnotations
+
+  /**
+   * Class-level annotations that act like @Inject for code gen purposes.
+   * This includes @Inject and all @Contributes* annotations (ContributesBinding,
+   * ContributesIntoSet, ContributesIntoMap) since they implicitly make a class injectable.
+   *
+   * Notes:
+   * - `ContributesTo` is excluded since it's interface-only and doesn't make a class injectable.
+   * - This should NOT be used for constructor/function/member injection sites.
+   * - The inclusion of @Contributes* annotations can be controlled by the `contributesAsInject` option.
+   */
+  internal val injectLikeAnnotations =
+    if (contributesAsInject) {
+      injectAnnotations +
+        assistedInjectAnnotations +
+        contributesBindingAnnotations +
+        contributesIntoSetAnnotations +
+        contributesIntoMapAnnotations
+    } else {
+      injectAnnotations + assistedInjectAnnotations
+    }
 
   internal val providerTypes = setOf(Symbols.ClassIds.metroProvider) + customProviderClasses
   internal val lazyTypes = setOf(Symbols.ClassIds.Lazy) + customLazyClasses
 
   internal val includes = setOf(Symbols.ClassIds.metroIncludes)
-  internal val extends = setOf(Symbols.ClassIds.metroExtends)
+
+  internal val allCustomAnnotations = buildSet {
+    addAll(customLazyClasses)
+    addAll(customProviderClasses)
+    addAll(customAssistedAnnotations)
+    addAll(customAssistedFactoryAnnotations)
+    addAll(customAssistedInjectAnnotations)
+    addAll(customBindsAnnotations)
+    addAll(customContributesToAnnotations)
+    addAll(customContributesBindingAnnotations)
+    addAll(customContributesIntoSetAnnotations)
+    addAll(customGraphExtensionAnnotations)
+    addAll(customGraphExtensionFactoryAnnotations)
+    addAll(customElementsIntoSetAnnotations)
+    addAll(customGraphAnnotations)
+    addAll(customGraphFactoryAnnotations)
+    addAll(customInjectAnnotations)
+    addAll(customIntoMapAnnotations)
+    addAll(customIntoSetAnnotations)
+    addAll(customMapKeyAnnotations)
+    addAll(customMultibindsAnnotations)
+    addAll(customProvidesAnnotations)
+    addAll(customQualifierAnnotations)
+    addAll(customScopeAnnotations)
+    addAll(customBindingContainerAnnotations)
+    addAll(customOriginAnnotations)
+  }
 }

@@ -1,0 +1,31 @@
+name: Feature Request
+description: Submit a feature request
+labels: [ "enhancement" ]
+assignees: [ ]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please follow the instructions below.
+
+        For more involved or vaguely defined feature requests, consider using the [Ideas feature of the repo's Discussions section](https://github.com/ZacSweers/metro/discussions/new?category=ideas) instead of creating an issue.
+
+        Provide a brief summary of the request in the title above.
+        
+        When submitting, please use conventional **markdown formatting** and **syntax highlighting** for readability.
+        
+        Issues with code blocks that do not use syntax highlighting are less likely to be prioritized.
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Describe the high level request.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives/workarounds
+      description: What else have you tried (if applicable)?
+    validations:
+      required: false

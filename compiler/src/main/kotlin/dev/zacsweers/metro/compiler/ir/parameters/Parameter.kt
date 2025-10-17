@@ -13,9 +13,11 @@ import dev.zacsweers.metro.compiler.ir.NOOP_TYPE_REMAPPER
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.constArgumentOfTypeAt
+import dev.zacsweers.metro.compiler.ir.hasMetroDefault
 import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.ir.regularParameters
-import dev.zacsweers.metro.compiler.unsafeLazy
+import dev.zacsweers.metro.compiler.memoize
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrParameterKind
@@ -47,7 +49,6 @@ private constructor(
   val isGraphInstance: Boolean,
   val isBindsInstance: Boolean,
   val isIncludes: Boolean,
-  val isExtends: Boolean,
   val isMember: Boolean,
   ir: IrValueParameter?,
 ) : Comparable<Parameter> {
@@ -61,9 +62,9 @@ private constructor(
   // TODO just make this nullable
   private val _ir = ir
   val ir: IrValueParameter
-    get() = _ir ?: error("Parameter $name has no backing IR value parameter!")
+    get() = _ir ?: reportCompilerBug("Parameter $name has no backing IR value parameter!")
 
-  private val cachedToString by unsafeLazy {
+  private val cachedToString by memoize {
     buildString {
       contextualTypeKey.typeKey.qualifier?.let {
         append(it)
@@ -90,7 +91,6 @@ private constructor(
     isGraphInstance: Boolean = this.isGraphInstance,
     isBindsInstance: Boolean = this.isBindsInstance,
     isIncludes: Boolean = this.isIncludes,
-    isExtends: Boolean = this.isExtends,
     isMember: Boolean = this.isMember,
     ir: IrValueParameter? = this._ir,
   ) =
@@ -105,7 +105,6 @@ private constructor(
       isGraphInstance = isGraphInstance,
       isBindsInstance = isBindsInstance,
       isIncludes = isIncludes,
-      isExtends = isExtends,
       isMember = isMember,
       ir = ir,
     )
@@ -147,7 +146,6 @@ private constructor(
       isGraphInstance: Boolean,
       isBindsInstance: Boolean,
       isIncludes: Boolean,
-      isExtends: Boolean,
       assistedIdentifier: String,
       assistedParameterKey: AssistedParameterKey =
         AssistedParameterKey(contextualTypeKey.typeKey, assistedIdentifier),
@@ -161,7 +159,6 @@ private constructor(
         isGraphInstance = isGraphInstance,
         isBindsInstance = isBindsInstance,
         isIncludes = isIncludes,
-        isExtends = isExtends,
         assistedIdentifier = assistedIdentifier,
         assistedParameterKey = assistedParameterKey,
         ir = ir,
@@ -189,7 +186,6 @@ private constructor(
         isBindsInstance = false,
         isGraphInstance = false,
         isIncludes = false,
-        isExtends = false,
         isMember = true,
       )
     }
@@ -201,7 +197,7 @@ internal fun List<IrValueParameter>.mapToConstructorParameters(
   remapper: TypeRemapper = NOOP_TYPE_REMAPPER
 ): List<Parameter> {
   return map { valueParameter ->
-    valueParameter.toConstructorParameter(IrParameterKind.Regular, remapper)
+    valueParameter.toConstructorParameter(valueParameter.kind, remapper)
   }
 }
 
@@ -214,25 +210,28 @@ internal fun IrValueParameter.toConstructorParameter(
   // type mangling
   val declaredType = remapper.remapType(this@toConstructorParameter.type)
 
-  val contextKey = declaredType.asContextualTypeKey(qualifierAnnotation(), defaultValue != null)
+  val contextKey =
+    declaredType.asContextualTypeKey(
+      qualifierAnnotation(),
+      hasMetroDefault(),
+      patchMutableCollections = false,
+      declaration = this,
+    )
 
-  val assistedAnnotation = annotationsIn(context.symbols.assistedAnnotations).singleOrNull()
+  val assistedAnnotation = annotationsIn(context.metroSymbols.assistedAnnotations).singleOrNull()
 
   var isProvides = false
   var isIncludes = false
-  var isExtends = false
   for (annotation in annotations) {
     val classId = annotation.symbol.owner.parentAsClass.classId
     when (classId) {
-      in context.symbols.classIds.providesAnnotations -> {
+      in context.metroSymbols.classIds.providesAnnotations -> {
         isProvides = true
       }
-      in context.symbols.classIds.includes -> {
+      in context.metroSymbols.classIds.includes -> {
         isIncludes = true
       }
-      in context.symbols.classIds.extends -> {
-        isExtends = true
-      }
+
       else -> continue
     }
   }
@@ -247,7 +246,6 @@ internal fun IrValueParameter.toConstructorParameter(
     assistedIdentifier = assistedIdentifier,
     isGraphInstance = false,
     isBindsInstance = isProvides,
-    isExtends = isExtends,
     isIncludes = isIncludes,
     ir = this,
   )
@@ -274,7 +272,7 @@ internal fun IrProperty.toMemberInjectParameter(
   typeParameterRemapper: ((IrType) -> IrType)? = null,
 ): Parameter {
   val propertyType =
-    getter?.returnType ?: backingField?.type ?: error("No getter or backing field!")
+    getter?.returnType ?: backingField?.type ?: reportCompilerBug("No getter or backing field!")
 
   val setterParam = setter?.regularParameters?.singleOrNull()
 
@@ -292,7 +290,12 @@ internal fun IrProperty.toMemberInjectParameter(
       getter?.body ?: backingField?.initializer
     }
   val contextKey =
-    declaredType.asContextualTypeKey(with(context) { qualifierAnnotation() }, defaultValue != null)
+    declaredType.asContextualTypeKey(
+      with(context) { qualifierAnnotation() },
+      defaultValue != null,
+      patchMutableCollections = false,
+      declaration = this,
+    )
 
   return Parameter.member(
     kind = kind,
@@ -316,7 +319,12 @@ internal fun IrValueParameter.toMemberInjectParameter(
       ?: this@toMemberInjectParameter.type
 
   val contextKey =
-    declaredType.asContextualTypeKey(with(context) { qualifierAnnotation() }, defaultValue != null)
+    declaredType.asContextualTypeKey(
+      with(context) { qualifierAnnotation() },
+      defaultValue != null,
+      patchMutableCollections = false,
+      declaration = this,
+    )
 
   return Parameter.member(
     kind = kind,

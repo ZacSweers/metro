@@ -2,6 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.Symbols
+import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
+import org.jetbrains.kotlin.ir.util.classId
+
 private const val INITIAL_VALUE = 512
 
 /** Computes the set of bindings that must end up in provider fields. */
@@ -11,23 +15,36 @@ internal class ProviderFieldCollector(private val graph: IrBindingGraph) {
     val needsField: Boolean
       get() {
         // Scoped, graph, and members injector bindings always need provider fields
-        if (binding.scope != null) return true
-        if (binding is IrBinding.GraphDependency) return true
-        if (binding is IrBinding.MembersInjected && !binding.isFromInjectorFunction) return true
-        // Multibindings are always created adhoc
-        if (binding is IrBinding.Multibinding) return false
-        // Assisted types always need to be a single field to ensure use of the same provider
-        if (binding is IrBinding.Assisted) return true
-        // TODO what about assisted but no assisted params? These also don't become providers
-        //  we would need to track a set of assisted targets somewhere
-        if (binding is IrBinding.ConstructorInjected && binding.isAssisted) return true
+        if (binding.isScoped()) return true
+
+        when (binding) {
+          is IrBinding.GraphDependency,
+          // Assisted types always need to be a single field to ensure use of the same provider
+          is IrBinding.Assisted -> return true
+          // TODO what about assisted but no assisted params? These also don't become providers
+          //  we would need to track a set of assisted targets somewhere
+          is IrBinding.ConstructorInjected if binding.isAssisted -> return true
+          // Multibindings are always created adhoc
+          is IrBinding.Multibinding -> return false
+          // Custom wrappers are always created adhoc since
+          // they are usually simple factories like `Optional.of`
+          // and can't be scoped
+          is IrBinding.CustomWrapper -> return false
+          else -> {
+            // Do nothing
+          }
+        }
+
+        if (
+          binding.typeKey.qualifier?.ir?.annotationClass?.classId ==
+            Symbols.ClassIds.MultibindingElement
+        ) {
+          return true
+        }
 
         // If it's unscoped but used more than once and not into a multibinding,
         // we can generate a reusable field
-        if (refCount < 2) return false
-        val isMultibindingProvider =
-          (binding is IrBinding.BindingWithAnnotations) && binding.annotations.isIntoMultibinding
-        return !isMultibindingProvider
+        return refCount >= 2
       }
 
     /** @return true if we've referenced this binding before. */
@@ -61,7 +78,7 @@ internal class ProviderFieldCollector(private val graph: IrBindingGraph) {
   }
 
   private fun IrContextualTypeKey.mark(): Boolean {
-    val binding = graph.requireBinding(this, IrBindingStack.empty())
+    val binding = graph.requireBinding(this)
     return binding.mark()
   }
 

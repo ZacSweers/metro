@@ -12,10 +12,7 @@ See @README.md, @docs, and @.github/CONTRIBUTING.md for project overview.
 - `./metrow check` - Runs _all_ validation and tests in the project (tests, linting, API validation). This is expensive.
 
 ### Code Quality
-- `./gradlew spotlessCheck` - Check code formatting
-- `./gradlew spotlessApply` - Apply code formatting fixes
-- `./gradlew apiCheck` - Validate public API compatibility
-- `./gradlew lint` - Run lint checks
+Don't bother running code formatting, I'll handle that in commits.
 
 ### Documentation
 - `./gradlew dokkaHtml` - Generate API documentation
@@ -60,6 +57,8 @@ Metro is a compile-time dependency injection framework implemented as a Kotlin c
 - Diagnostic tests (`data/diagnostic/`) - Error reporting and validation
 - Dump tests (`data/dump/`) - FIR/IR tree inspection and verification
 
+To create a new test, add a source file under the appropriate directory and then run `./gradlew :compiler-tests:generateTests` to regenerate tests. This will then add a generated junit test that can be run via the standard `./gradlew :compiler-tests:test` task.
+
 **samples/** - Real-world integration examples
 - `weather-app/` - Basic multiplatform usage
 - `android-app/` - Android-specific integration
@@ -102,3 +101,6 @@ Metro is a compile-time dependency injection framework implemented as a Kotlin c
 - FIR is for analysis/validation, IR is for code generation - don't mix concerns
 - Always run API validation (`apiCheck`) when changing public APIs
 - Use existing test infrastructure patterns rather than creating new test types
+- Don't run gradle commands with unnecessary flags like `--info`, `--no-daemon`, etc.
+- Don't cd into a module directory and run gradle commands - use `./gradlew` instead from the directory that wrapper is in.
+- Do not run tests automatically, prompt first.

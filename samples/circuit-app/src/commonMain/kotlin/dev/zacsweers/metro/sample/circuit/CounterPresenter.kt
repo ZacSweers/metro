@@ -13,8 +13,8 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 
 @CircuitInject(CounterScreen::class, AppScope::class)
-class CounterPresenter @Inject constructor(private val screen: CounterScreen) :
-  Presenter<CounterState> {
+@Inject
+class CounterPresenter : Presenter<CounterState> {
   @Composable
   override fun present(): CounterState {
     var count by remember { mutableStateOf(0) }

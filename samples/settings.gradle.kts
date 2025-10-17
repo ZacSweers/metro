@@ -6,6 +6,10 @@ pluginManagement {
     google()
     gradlePluginPortal()
   }
+  plugins {
+    id("com.gradle.develocity") version "4.2.2"
+    id("com.android.settings") version "8.12.3"
+  }
 }
 
 dependencyResolutionManagement {
@@ -16,7 +20,10 @@ dependencyResolutionManagement {
   }
 }
 
-plugins { id("com.android.settings") version "8.10.1" }
+plugins {
+  id("com.gradle.develocity")
+  id("com.android.settings")
+}
 
 android {
   compileSdk = 36
@@ -36,12 +43,21 @@ include(
   ":interop:dependencies-dagger",
   ":interop:dependencies-kotlinInject",
   ":weather-app",
-  ":multi-module-test:common",
-  ":multi-module-test:parent-graph",
-  ":multi-module-test:child-graph",
-  ":multi-module-test:contributor",
-  ":multi-module-test:aggregator",
-  ":multi-module-test:app",
 )
 
 includeBuild("..")
+
+develocity {
+  buildScan {
+    termsOfUseUrl = "https://gradle.com/terms-of-service"
+    termsOfUseAgree = "yes"
+
+    tag(if (System.getenv("CI").isNullOrBlank()) "Local" else "CI")
+
+    obfuscation {
+      username { "Redacted" }
+      hostname { "Redacted" }
+      ipAddresses { addresses -> addresses.map { "0.0.0.0" } }
+    }
+  }
+}

@@ -11,6 +11,7 @@ import com.autonomousapps.kit.gradle.BuildScript
 abstract class MetroProject(
   private val debug: Boolean = false,
   private val metroOptions: MetroOptionOverrides = MetroOptionOverrides(),
+  private val kotlinVersion: String? = null,
 ) : AbstractGradleProject() {
   protected abstract fun sources(): List<Source>
 
@@ -26,7 +27,7 @@ abstract class MetroProject(
         .write()
 
   fun BuildScript.Builder.applyMetroDefault() = apply {
-    plugins(GradlePlugins.Kotlin.jvm, GradlePlugins.metro)
+    plugins(GradlePlugins.Kotlin.jvm(kotlinVersion), GradlePlugins.metro)
 
     withKotlin(
       buildString {
@@ -41,12 +42,11 @@ abstract class MetroProject(
           """
             .trimIndent()
         )
-        val metroOptions =
-          metroOptions.enableScopedInjectClassHints
-            ?.let { "enableScopedInjectClassHints.set($it)" }
-            .orEmpty()
-        if (metroOptions.isNotBlank()) {
-          appendLine("  $metroOptions")
+        val metroOptions = buildList {
+          metroOptions.enableFullBindingGraphValidation?.let { add("enableFullBindingGraphValidation.set($it)") }
+        }
+        if (metroOptions.isNotEmpty()) {
+          metroOptions.joinTo(this, separator = "\n", prefix = "  ")
         }
         appendLine("}")
       }

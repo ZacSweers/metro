@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.OptionalDependencyBehavior
+import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.irReturn
@@ -14,6 +16,7 @@ import org.jetbrains.kotlin.ir.expressions.IrGetValue
 import org.jetbrains.kotlin.ir.expressions.impl.IrCallImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrGetValueImpl
 import org.jetbrains.kotlin.ir.expressions.impl.fromSymbolOwner
+import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -31,6 +34,7 @@ import org.jetbrains.kotlin.ir.visitors.IrTransformer
 context(context: IrMetroContext)
 internal fun copyParameterDefaultValues(
   providerFunction: IrFunction?,
+  sourceMetroParameters: Parameters,
   sourceParameters: List<IrValueParameter>,
   targetParameters: List<IrValueParameter>,
   targetGraphParameter: IrValueParameter?,
@@ -63,8 +67,9 @@ internal fun copyParameterDefaultValues(
             IrCallImpl.fromSymbolOwner(
                 SYNTHETIC_OFFSET,
                 SYNTHETIC_OFFSET,
-                newGet.type,
-                context.symbols.providerInvoke,
+                // Unpack the provider type
+                newGet.type.requireSimpleType().arguments[0].typeOrFail,
+                context.metroSymbols.providerInvoke,
               )
               .apply { this.dispatchReceiver = newGet }
           } else {
@@ -86,25 +91,28 @@ internal fun copyParameterDefaultValues(
       }
     }
 
+  val isDisabled = context.options.optionalDependencyBehavior == OptionalDependencyBehavior.DISABLED
+
   for ((index, parameter) in sourceParameters.withIndex()) {
+    // If we did get assisted parameters, do copy them over (i.e. top-level function injection)
+    if (isDisabled && sourceMetroParameters[parameter.name]?.isAssisted != true) continue
     val defaultValue = parameter.defaultValue ?: continue
 
     val targetParameter = targetParameters[index]
     val remappingData = RemappingData(parameter.parent, targetParameter.parent)
     if (wrapInProvider) {
-      val targetParam = targetParameter
       val provider =
         IrCallImpl.fromSymbolOwner(
             SYNTHETIC_OFFSET,
             SYNTHETIC_OFFSET,
-            parameter.type.wrapInProvider(context.symbols.metroProvider),
-            context.symbols.metroProviderFunction,
+            parameter.type.wrapInProvider(context.metroSymbols.metroProvider),
+            context.metroSymbols.metroProviderFunction,
           )
           .apply {
             typeArguments[0] = parameter.type
             arguments[0] =
               irLambda(
-                parent = targetParam.parent,
+                parent = targetParameter.parent,
                 valueParameters = emptyList(),
                 returnType = parameter.type,
                 receiverParameter = null,
@@ -116,7 +124,7 @@ internal fun copyParameterDefaultValues(
                 )
               }
           }
-      targetParam.defaultValue =
+      targetParameter.defaultValue =
         defaultValue.deepCopyWithSymbols(initialParent = parameter.parent).apply {
           expression = provider
         }

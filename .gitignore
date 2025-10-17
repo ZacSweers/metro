@@ -20,3 +20,4 @@ docs/api/
 site/
 temp-clone/
 /benchmark/
+.cache/

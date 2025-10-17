@@ -116,13 +116,13 @@ interface CycleMapGraph {
     @Binds
     @IntoMap
     @StringKey(value = "X")
-    @CallableMetadata(callableName = "<get-x>", isPropertyAccessor = true, startOffset = 263, endOffset = 305)
+    @CallableMetadata(callableName = "<get-x>", propertyName = "x", startOffset = 295, endOffset = 305)
     abstract fun X.x3540965534_intomap(): X
 
     @Binds
     @IntoMap
     @StringKey(value = "Y")
-    @CallableMetadata(callableName = "<get-y>", isPropertyAccessor = true, startOffset = 309, endOffset = 351)
+    @CallableMetadata(callableName = "<get-y>", propertyName = "y", startOffset = 341, endOffset = 351)
     abstract fun Y.y3540965535_intomap(): Y
 
   }

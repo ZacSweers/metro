@@ -13,10 +13,6 @@ internal object Origins {
     IrDeclarationOrigin.GeneratedByPlugin(Keys.ReceiverParameter)
   val RegularParameter: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.RegularParameter)
-  val AssistedFactoryImplClassDeclaration: IrDeclarationOrigin =
-    IrDeclarationOrigin.GeneratedByPlugin(Keys.AssistedFactoryImplClassDeclaration)
-  val AssistedFactoryImplCreatorFunctionDeclaration: IrDeclarationOrigin =
-    IrDeclarationOrigin.GeneratedByPlugin(Keys.AssistedFactoryImplCreatorFunctionDeclaration)
   val MetroGraphCreatorsObjectInvokeDeclaration: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.MetroGraphCreatorsObjectInvokeDeclaration)
   val MetroGraphDeclaration: IrDeclarationOrigin =
@@ -43,12 +39,20 @@ internal object Origins {
     IrDeclarationOrigin.GeneratedByPlugin(Keys.ProviderFactoryClassDeclaration)
   val TopLevelInjectFunctionClassFunction: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.TopLevelInjectFunctionClassFunction)
-  val ProviderFieldAccessor: IrDeclarationOrigin =
-    IrDeclarationOrigin.GeneratedByPlugin(Keys.ProviderFieldAccessor)
-  val InstanceFieldAccessor: IrDeclarationOrigin =
-    IrDeclarationOrigin.GeneratedByPlugin(Keys.InstanceFieldAccessor)
-  val ContributedGraph: IrDeclarationOrigin =
-    IrDeclarationOrigin.GeneratedByPlugin(Keys.ContributedGraph)
+  val ExtendableGraphAccessor: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(Keys.ExtendableGraphAccessor)
+  val GeneratedGraphExtension: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(Keys.GeneratedGraphExtension)
   val BindingMirrorClassDeclaration: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.BindingMirrorClassDeclaration)
+  val GeneratedDynamicGraph: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(Keys.GeneratedDynamicGraph)
+  val DynamicContainerParam: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(Keys.DynamicContainerParam)
 }
+
+internal val IrDeclarationOrigin.isGeneratedGraph: Boolean
+  get() = this === Origins.GeneratedGraphExtension || this === Origins.GeneratedDynamicGraph
+
+internal val IrDeclarationOrigin.isGraphImpl: Boolean
+  get() = this === Origins.MetroGraphDeclaration || isGeneratedGraph

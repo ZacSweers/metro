@@ -4,7 +4,7 @@ fun interface FunInterface {
 }
 
 class ExampleClass
-@Inject
+@AssistedInject
 constructor(@Assisted private val lambdaParam: FunInterface = FunInterface {}) {
   @AssistedFactory
   interface Factory {

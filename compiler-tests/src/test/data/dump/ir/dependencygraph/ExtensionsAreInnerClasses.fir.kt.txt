@@ -1,0 +1,113 @@
+@DependencyGraph
+interface AppGraph : Factory {
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): AppGraph {
+      return $$MetroGraph()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class $$MetroGraph : AppGraph {
+    private /* final field */ val thisGraphInstance: AppGraph = <this>
+    private /* final field */ val appGraphProvider: Provider<AppGraph> = Companion.invoke<AppGraph>(value = <this>.#thisGraphInstance)
+    @DependencyGraph
+    inner class LoggedInGraphImpl : LoggedInGraph {
+      private /* final field */ val idInstanceProvider: Provider<String> = Companion.invoke<String>(value = id)
+      constructor(@Provides id: String) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      override val count: Int
+        override get(): Int {
+          return Companion.create(instance = <this>).invoke()
+        }
+
+      override val id: String
+        override get(): String {
+          return <this>.#idInstanceProvider.invoke()
+        }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override fun createLoggedInGraph(@Provides id: String): LoggedInGraph {
+      return <this>.LoggedInGraphImpl(id = id)
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideCount", propertyName = "", startOffset = 290, endOffset = 327)
+  class ProvideCount$$MetroFactory : Factory<Int> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(instance: AppGraph): Factory<Int> {
+        return ProvideCount$$MetroFactory(instance = instance)
+      }
+
+      fun provideCount(instance: AppGraph): Int {
+        return instance.provideCount()
+      }
+
+    }
+
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): Int {
+      return Companion.provideCount(instance = <this>.#instance)
+    }
+
+    fun mirrorFunction(): Int {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Provides
+  private fun provideCount(): Int {
+    return 3
+  }
+
+}
+
+@GraphExtension
+interface LoggedInGraph {
+  @Factory
+  interface Factory {
+    abstract fun createLoggedInGraph(@Provides id: String): LoggedInGraph
+
+  }
+
+  abstract val count: Int
+    abstract get
+
+  abstract val id: String
+    abstract get
+
+}
+

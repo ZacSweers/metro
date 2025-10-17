@@ -4,7 +4,7 @@ package dev.zacsweers.metro.compiler.fir
 
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
-import dev.zacsweers.metro.compiler.unsafeLazy
+import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
@@ -28,10 +28,10 @@ internal interface MetroFirValueParameter {
       object : MetroFirValueParameter {
         override val symbol = symbol
         override val name = name
-        override val memberInjectorFunctionName: Name by unsafeLazy {
+        override val memberInjectorFunctionName: Name by memoize {
           "inject${memberKey.capitalizeUS().asString()}".asName()
         }
-        override val isAssisted: Boolean by unsafeLazy {
+        override val isAssisted: Boolean by memoize {
           symbol.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)
         }
 
@@ -39,7 +39,7 @@ internal interface MetroFirValueParameter {
          * Must be lazy because we may create this sooner than the [FirResolvePhase.TYPES] resolve
          * phase.
          */
-        private val contextKeyLazy = unsafeLazy {
+        private val contextKeyLazy = memoize {
           FirContextualTypeKey.from(session, symbol, wrapInProvider = wrapInProvider)
         }
         override val contextKey

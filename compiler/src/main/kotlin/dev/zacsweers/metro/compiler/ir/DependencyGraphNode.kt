@@ -5,39 +5,48 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.BitField
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
+import dev.zacsweers.metro.compiler.isGraphImpl
+import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.mapToSet
+import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
-import dev.zacsweers.metro.compiler.unsafeLazy
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.name.ClassId
 
 // Represents an object graph's structure and relationships
 internal data class DependencyGraphNode(
   val sourceGraph: IrClass,
   val supertypes: List<IrType>,
-  val isExtendable: Boolean,
   val includedGraphNodes: Map<IrTypeKey, DependencyGraphNode>,
-  val contributedGraphs: Map<IrTypeKey, MetroSimpleFunction>,
+  val graphExtensions: Map<IrTypeKey, List<GraphExtensionAccessor>>,
   val scopes: Set<IrAnnotation>,
+  val aggregationScopes: Set<ClassId>,
   val providerFactories: List<Pair<IrTypeKey, ProviderFactory>>,
   // Types accessible via this graph (includes inherited)
   // Dagger calls these "provision methods", but that's a bit vague IMO
-  val accessors: List<Pair<MetroSimpleFunction, IrContextualTypeKey>>,
+  val accessors: List<GraphAccessor>,
   val bindsCallables: Set<BindsCallable>,
   val multibindsCallables: Set<MultibindsCallable>,
+  val optionalKeys: Map<IrTypeKey, Set<BindsOptionalOfCallable>>,
   /** Binding containers that need a managed instance. */
   val bindingContainers: Set<IrClass>,
+  // Values may be null for cases like BindingContainer parameter types
+  val dynamicTypeKeys: Map<IrTypeKey, IrBindingContainerCallable?>,
   /** Fake overrides of binds functions that need stubbing. */
   val bindsFunctions: List<MetroSimpleFunction>,
   // TypeKey key is the injected type wrapped in MembersInjector
-  val injectors: List<Pair<MetroSimpleFunction, IrContextualTypeKey>>,
+  val injectors: List<InjectorFunction>,
   val isExternal: Boolean,
   val creator: Creator?,
   val extendedGraphNodes: Map<IrTypeKey, DependencyGraphNode>,
@@ -46,18 +55,41 @@ internal data class DependencyGraphNode(
   //  maybe we track these protos separately somewhere?
   var proto: DependencyGraphProto? = null,
 ) {
+  // For quick lookups
+  val supertypeClassIds: Set<ClassId> by memoize {
+    supertypes.mapNotNullToSet { it.classOrNull?.owner?.classId }
+  }
 
-  val publicAccessors by unsafeLazy { accessors.mapToSet { (_, contextKey) -> contextKey.typeKey } }
+  val hasExtensions = graphExtensions.isNotEmpty()
 
-  val reportableSourceGraphDeclaration by unsafeLazy {
+  val metroGraph by memoize { sourceGraph.metroGraphOrNull }
+
+  val metroGraphOrFail by memoize { metroGraph ?: reportCompilerBug("No generated MetroGraph found: ${sourceGraph.kotlinFqName}") }
+
+  /** [IrTypeKey] of the contributed graph extension, if any. */
+  val contributedGraphTypeKey: IrTypeKey? by memoize {
+    if (sourceGraph.origin == Origins.GeneratedGraphExtension) {
+      IrTypeKey(sourceGraph.superTypes.first())
+    } else {
+      null
+    }
+  }
+
+  /** [contributedGraphTypeKey] if not null, otherwise [typeKey]. */
+  val originalTypeKey
+    get() = contributedGraphTypeKey ?: typeKey
+
+  val publicAccessors by memoize { accessors.mapToSet { it.contextKey.typeKey } }
+
+  val reportableSourceGraphDeclaration by memoize {
     generateSequence(sourceGraph) { it.parentAsClass }
-      .firstOrNull { it.origin != Origins.ContributedGraph && it.fileOrNull != null }
-      ?: error(
+      .firstOrNull { !it.origin.isGraphImpl && it.fileOrNull != null }
+      ?: reportCompilerBug(
         "Could not find a reportable source graph declaration for ${sourceGraph.kotlinFqName}"
       )
   }
 
-  val multibindingAccessors by unsafeLazy {
+  val multibindingAccessors by memoize {
     proto
       ?.let {
         val bitfield = BitField(it.multibinding_accessor_indices)
@@ -66,8 +98,8 @@ internal data class DependencyGraphNode(
             bitfield.isSet(index)
           }
         accessors
-          .filter { it.first.ir.name.asString() in multibindingCallableIds }
-          .mapToSet { it.first }
+          .filter { it.metroFunction.ir.name.asString() in multibindingCallableIds }
+          .mapToSet { it.metroFunction }
       }
       .orEmpty()
   }
@@ -78,23 +110,27 @@ internal data class DependencyGraphNode(
 
   override fun toString(): String = typeKey.render(short = true)
 
-  sealed interface Creator {
-    val function: IrFunction
-    val parameters: Parameters
-    val bindingContainersParameterIndices: BitField
+  sealed class Creator {
+    abstract val type: IrClass
+    abstract val function: IrFunction
+    abstract val parameters: Parameters
+    abstract val bindingContainersParameterIndices: BitField
+
+    val typeKey by memoize { IrTypeKey(type.typeWith()) }
 
     data class Constructor(
+      override val type: IrClass,
       override val function: IrConstructor,
       override val parameters: Parameters,
       override val bindingContainersParameterIndices: BitField,
-    ) : Creator
+    ) : Creator()
 
     data class Factory(
-      val type: IrClass,
+      override val type: IrClass,
       override val function: IrSimpleFunction,
       override val parameters: Parameters,
       override val bindingContainersParameterIndices: BitField,
-    ) : Creator
+    ) : Creator()
   }
 }
 
@@ -123,3 +159,10 @@ private fun DependencyGraphNode.recurseParents(
     value.recurseParents(builder)
   }
 }
+
+internal data class GraphExtensionAccessor(
+  val accessor: MetroSimpleFunction,
+  val key: IrContextualTypeKey,
+  val isFactory: Boolean,
+  val isFactorySAM: Boolean,
+)

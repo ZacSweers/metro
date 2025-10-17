@@ -40,3 +40,21 @@ A few different reasons Metro doesn't have it
     - Do you want to limit instances? Just scope it
     - Do you not care about limiting instances? Don't scope it
 - What's the expected behavior if you have a `@Reusable` type `Thing` and then request a `Lazy<Thing>` elsewhere? Currently, Metro `DoubleCheck.lazy(...)`'s whatever binding provides it at the injection site, which would then defeat this. To undo that, Metro would need to introduce some means of indicating "what kind" of `Lazy` is needed, which just complicates things for the developer.
+
+### **Why doesn't Metro support kotlin-inject-style `@IntoMap` bindings?**
+
+!!! tip "Some technical context"
+    kotlin-inject allows you to provide key/value pairs from an `@IntoMap` function rather than use `@MapKey` annotations.
+
+This allows some dynamism with keys but has some downsides. A few different reasons Metro doesn't use this approach
+
+- Duplicate key checking becomes a runtime failure rather than compile-time.
+- It breaks the ability to expose `Map<Key, Provider<Value>>` unless you start manually managing `Provider` types yourself.
+- You allocate and throw away a `Pair` instance each time it's called.
+
+### How can I replicate Hilt's `@HiltAndroidTest`?
+
+!!! tip "Some technical context"
+    Hilt's `@HiltAndroidTest` and associated rule allow tests to "replace" bindings in a target graph even if it's compiled in another project.
+
+Metro supports dynamic replacements via a similar feature called [dynamic graphs](https://zacsweers.github.io/metro/latest/dependency-graphs/#dynamic-graphs).

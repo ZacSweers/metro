@@ -1,0 +1,9 @@
+/ExtensionAccessorsCannotHaveParameters.kt:(294,300): error: Graph extension accessors may not have parameters. Use `@GraphExtension.Factory` instead.
+
+/ExtensionAccessorsCannotHaveParameters.kt:(308,314): error: Graph extension accessors may not have parameters. Use `@GraphExtension.Factory` instead.
+
+/ExtensionAccessorsCannotHaveParameters.kt:(343,349): error: Graph extension accessors may not have extension receivers. Use `@GraphExtension.Factory` instead.
+
+/ExtensionAccessorsCannotHaveParameters.kt:(391,408): error: The feature "context parameters" is experimental and should be enabled explicitly. This can be done by supplying the compiler argument '-Xcontext-parameters', but note that no stability guarantees are provided.
+
+/ExtensionAccessorsCannotHaveParameters.kt:(399,402): error: Graph extension accessors may not have context parameters.

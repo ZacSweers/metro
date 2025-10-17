@@ -8,6 +8,7 @@ import com.tschuchort.compiletesting.JvmCompilationResult
 import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.PluginOption
 import com.tschuchort.compiletesting.SourceFile
+import com.tschuchort.compiletesting.SourceFile.Companion.java
 import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
 import com.tschuchort.compiletesting.addPreviousResultToClasspath
 import java.nio.file.Path
@@ -71,9 +72,7 @@ abstract class MetroCompilerTest {
       sources = sourceFiles.asList()
       verbose = false
       jvmTarget = JVM_TARGET
-      // TODO this is needed until/unless we implement JVM reflection support for DefaultImpls
-      //  invocations
-      kotlincArguments += "-Xjvm-default=all"
+      kotlincArguments += "-jvm-default=no-compatibility"
       kotlincArguments += listOf("-Xverify-ir=error", "-Xverify-ir-visibility")
 
       // TODO test enabling IC?
@@ -111,16 +110,22 @@ abstract class MetroCompilerTest {
                 processor.option(entry.raw.cliOption, shrinkUnusedBindings)
               MetroOption.CHUNK_FIELD_INITS ->
                 processor.option(entry.raw.cliOption, chunkFieldInits)
+              MetroOption.STATEMENTS_PER_INIT_FUN ->
+                processor.option(entry.raw.cliOption, statementsPerInitFun)
               MetroOption.PUBLIC_PROVIDER_SEVERITY ->
                 processor.option(entry.raw.cliOption, publicProviderSeverity)
               MetroOption.WARN_ON_INJECT_ANNOTATION_PLACEMENT ->
                 processor.option(entry.raw.cliOption, warnOnInjectAnnotationPlacement)
+              MetroOption.INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY ->
+                processor.option(entry.raw.cliOption, interopAnnotationsNamedArgSeverity)
               MetroOption.LOGGING -> {
                 if (enabledLoggers.isEmpty()) continue
                 processor.option(entry.raw.cliOption, enabledLoggers.joinToString("|") { it.name })
               }
               MetroOption.ENABLE_DAGGER_RUNTIME_INTEROP ->
                 processor.option(entry.raw.cliOption, enableDaggerRuntimeInterop)
+              MetroOption.MAX_IR_ERRORS_COUNT ->
+                processor.option(entry.raw.cliOption, maxIrErrorsCount)
               MetroOption.CUSTOM_PROVIDER -> {
                 if (customProviderTypes.isEmpty()) continue
                 processor.option(entry.raw.cliOption, customProviderTypes.joinToString(":"))
@@ -172,11 +177,11 @@ abstract class MetroCompilerTest {
                   customElementsIntoSetAnnotations.joinToString(":"),
                 )
               }
-              MetroOption.CUSTOM_GRAPH -> {
+              MetroOption.CUSTOM_DEPENDENCY_GRAPH -> {
                 if (customGraphAnnotations.isEmpty()) continue
                 processor.option(entry.raw.cliOption, customGraphAnnotations.joinToString(":"))
               }
-              MetroOption.CUSTOM_GRAPH_FACTORY -> {
+              MetroOption.CUSTOM_DEPENDENCY_GRAPH_FACTORY -> {
                 if (customGraphFactoryAnnotations.isEmpty()) continue
                 processor.option(
                   entry.raw.cliOption,
@@ -216,8 +221,8 @@ abstract class MetroCompilerTest {
                 processor.option(entry.raw.cliOption, customScopeAnnotations.joinToString(":"))
               }
               MetroOption.CUSTOM_BINDING_CONTAINER -> {
-                if (customBindsAnnotations.isEmpty()) continue
-                processor.option(entry.raw.cliOption, customBindsAnnotations.joinToString(":"))
+                if (customBindingContainerAnnotations.isEmpty()) continue
+                processor.option(entry.raw.cliOption, customBindingContainerAnnotations.joinToString(":"))
               }
               MetroOption.CUSTOM_CONTRIBUTES_INTO_SET -> {
                 if (customContributesIntoSetAnnotations.isEmpty()) continue
@@ -226,25 +231,41 @@ abstract class MetroCompilerTest {
                   customContributesIntoSetAnnotations.joinToString(":"),
                 )
               }
-              MetroOption.CUSTOM_CONTRIBUTES_GRAPH_EXTENSION -> {
-                if (customContributesGraphExtensionAnnotations.isEmpty()) continue
+              MetroOption.CUSTOM_GRAPH_EXTENSION -> {
+                if (customGraphExtensionAnnotations.isEmpty()) continue
                 processor.option(
                   entry.raw.cliOption,
-                  customContributesGraphExtensionAnnotations.joinToString(":"),
+                  customGraphExtensionAnnotations.joinToString(":"),
                 )
               }
-              MetroOption.CUSTOM_CONTRIBUTES_GRAPH_EXTENSION_FACTORY -> {
-                if (customContributesGraphExtensionFactoryAnnotations.isEmpty()) continue
+              MetroOption.CUSTOM_GRAPH_EXTENSION_FACTORY -> {
+                if (customGraphExtensionFactoryAnnotations.isEmpty()) continue
                 processor.option(
                   entry.raw.cliOption,
-                  customContributesGraphExtensionFactoryAnnotations.joinToString(":"),
+                  customGraphExtensionFactoryAnnotations.joinToString(":"),
+                )
+              }
+              MetroOption.CUSTOM_ORIGIN -> {
+                if (customOriginAnnotations.isEmpty()) continue
+                processor.option(
+                  entry.raw.cliOption,
+                  customOriginAnnotations.joinToString(":"),
                 )
               }
               MetroOption.ENABLE_DAGGER_ANVIL_INTEROP -> {
                 processor.option(entry.raw.cliOption, enableDaggerAnvilInterop)
               }
-              MetroOption.ENABLE_SCOPED_INJECT_CLASS_HINTS -> {
-                processor.option(entry.raw.cliOption, enableScopedInjectClassHints)
+              MetroOption.ENABLE_FULL_BINDING_GRAPH_VALIDATION -> {
+                processor.option(entry.raw.cliOption, enableFullBindingGraphValidation)
+              }
+              MetroOption.ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE -> {
+                processor.option(entry.raw.cliOption, enableGraphImplClassAsReturnType)
+              }
+              MetroOption.OPTIONAL_DEPENDENCY_BEHAVIOR -> {
+                processor.option(entry.raw.cliOption, optionalDependencyBehavior)
+              }
+              MetroOption.CONTRIBUTES_AS_INJECT -> {
+                processor.option(entry.raw.cliOption, contributesAsInject)
               }
             }
           yield(option)
@@ -281,6 +302,39 @@ abstract class MetroCompilerTest {
         // Imports
         for (import in (defaultImports + extraImports)) {
           appendLine("import $import")
+        }
+
+        appendLine()
+        appendLine()
+        appendLine(source)
+      },
+    )
+  }
+
+  /**
+   * Returns a [SourceFile] representation of this [source]. This includes common imports from
+   * Metro.
+   */
+  protected fun sourceJava(
+    @Language("java") source: String,
+    fileNameWithoutExtension: String? = null,
+    packageName: String = "test",
+    vararg extraImports: String,
+  ): SourceFile {
+    val fileName =
+      fileNameWithoutExtension
+        ?: CLASS_NAME_REGEX.find(source)?.groups?.get("name")?.value
+        ?: FUNCTION_NAME_REGEX.find(source)?.groups?.get("name")?.value?.capitalizeUS()
+        ?: "source"
+    return java(
+      "${fileName}.java",
+      buildString {
+        // Package statement
+        appendLine("package $packageName;")
+
+        // Imports
+        for (import in (defaultImports + extraImports)) {
+          appendLine("import $import;")
         }
 
         appendLine()

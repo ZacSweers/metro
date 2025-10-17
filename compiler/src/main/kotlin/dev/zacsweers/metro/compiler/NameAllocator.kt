@@ -124,11 +124,19 @@ private constructor(
    * [NameAllocator.get].
    */
   fun newName(suggestion: String, tag: Any = Uuid.random().toString()): String {
-    var result = buildString { append(toJavaIdentifier(suggestion)) }
-    var count = 1
-    while (!allocatedNames.add(result)) {
-      count++
-      result = result.suffix(suggestion, count)
+    val cleanedSuggestion = toJavaIdentifier(suggestion)
+    val result = buildString {
+      append(cleanedSuggestion)
+      var count = 1
+      while (!allocatedNames.add(toString())) {
+        when (mode) {
+          Mode.UNDERSCORE -> append('_')
+          Mode.COUNT -> {
+            deleteRange(cleanedSuggestion.length, length)
+            append(++count)
+          }
+        }
+      }
     }
 
     val replaced = tagToName.put(tag, result)
@@ -139,12 +147,6 @@ private constructor(
 
     return result
   }
-
-  private fun String.suffix(name: String, count: Int) =
-    when (mode) {
-      Mode.UNDERSCORE -> "${this}_"
-      Mode.COUNT -> "$name$count"
-    }
 
   /** Retrieve a name created with [NameAllocator.newName]. */
   operator fun get(tag: Any): String = requireNotNull(tagToName[tag]) { "unknown tag: $tag" }
@@ -166,7 +168,7 @@ private constructor(
   }
 }
 
-private fun toJavaIdentifier(suggestion: String) = buildString {
+internal fun toJavaIdentifier(suggestion: String) = buildString {
   var i = 0
   while (i < suggestion.length) {
     val codePoint = suggestion.codePointAt(i)

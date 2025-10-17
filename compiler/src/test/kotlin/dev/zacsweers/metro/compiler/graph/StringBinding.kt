@@ -10,19 +10,24 @@ internal class StringBinding(
   override val dependencies: List<StringContextualTypeKey> = emptyList(),
 ) : BaseBinding<String, StringTypeKey, StringContextualTypeKey> {
 
-  override fun renderLocationDiagnostic(): String {
-    return contextualTypeKey.typeKey.render(short = true)
+  override fun renderLocationDiagnostic(short: Boolean): LocationDiagnostic {
+    return LocationDiagnostic(
+      contextualTypeKey.typeKey.render(short = true),
+      null,
+    )
   }
 
-  override fun toString(): String {
+  override fun renderDescriptionDiagnostic(short: Boolean, underlineTypeKey: Boolean): String {
     return buildString {
-      append(contextualTypeKey.render(short = true))
+      append(contextualTypeKey.render(short = short))
       if (dependencies.isNotEmpty()) {
         append(" -> ")
         append(dependencies.joinToString(", ") { it.render(short = true) })
       }
     }
   }
+
+  override fun toString() = renderDescriptionDiagnostic(short = true, underlineTypeKey = false)
 
   companion object {
     operator fun invoke(

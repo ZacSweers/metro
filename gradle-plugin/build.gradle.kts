@@ -1,5 +1,6 @@
 // Copyright (C) 2024 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
+import java.util.Locale
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
@@ -24,6 +25,18 @@ buildConfig {
   buildConfigField("String", "VERSION", providers.gradleProperty("VERSION_NAME").map { "\"$it\"" })
   buildConfigField("String", "PLUGIN_ID", libs.versions.pluginId.map { "\"$it\"" })
   buildConfigField("String", "BASE_KOTLIN_VERSION", libs.versions.kotlin.map { "\"$it\"" })
+
+  // Collect all supported Kotlin versions from compiler-compat modules
+  val compilerCompatDir = rootProject.isolated.projectDirectory.dir("compiler-compat").asFile
+  val supportedVersions =
+    fileTree(compilerCompatDir) { include("k*/version.txt") }
+      .elements
+      .map { files -> files.map { it.asFile.readText().trim().lowercase(Locale.US) }.sorted() }
+  buildConfigField(
+    "List<String>",
+    "SUPPORTED_KOTLIN_VERSIONS",
+    supportedVersions.map { versions -> "listOf(${versions.joinToString { "\"$it\"" }})" },
+  )
 }
 
 tasks.withType<KotlinCompile>().configureEach {
@@ -32,14 +45,14 @@ tasks.withType<KotlinCompile>().configureEach {
 
     // Lower version for Gradle compat
     progressiveMode.set(false)
-    @Suppress("DEPRECATION") languageVersion.set(KotlinVersion.KOTLIN_1_9)
-    @Suppress("DEPRECATION") apiVersion.set(KotlinVersion.KOTLIN_1_9)
+    @Suppress("DEPRECATION") languageVersion.set(KotlinVersion.KOTLIN_2_0)
+    @Suppress("DEPRECATION") apiVersion.set(KotlinVersion.KOTLIN_2_0)
   }
 }
 
 gradlePlugin {
-  plugins {
-    create("metroPlugin") {
+  this.plugins {
+    register("metroPlugin") {
       id = "dev.zacsweers.metro"
       implementationClass = "dev.zacsweers.metro.gradle.MetroGradleSubplugin"
     }
@@ -62,11 +75,14 @@ dependencies {
   functionalTestRuntimeOnly(project(":runtime"))
 }
 
+val testCompilerVersion =
+  providers.gradleProperty("metro.testCompilerVersion").orElse(libs.versions.kotlin).get()
+
 tasks.withType<Test>().configureEach {
   maxParallelForks = Runtime.getRuntime().availableProcessors() * 2
   jvmArgs(
     "-Dcom.autonomousapps.plugin-under-test.version=${providers.gradleProperty("VERSION_NAME").get()}",
-    "-Ddev.zacsweers.metro.gradle.test.kotlin-version=${libs.versions.kotlin.get()}",
+    "-Ddev.zacsweers.metro.gradle.test.kotlin-version=$testCompilerVersion",
   )
 }
 

@@ -8,13 +8,13 @@ import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
 import dev.zacsweers.metro.compiler.fir.buildFullSubstitutionMap
 import dev.zacsweers.metro.compiler.fir.buildSimpleValueParameter
 import dev.zacsweers.metro.compiler.fir.classIds
+import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.copyParameters
 import dev.zacsweers.metro.compiler.fir.generateMemberFunction
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.wrapInProviderIfNecessary
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
-import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.containingClassForStaticMemberAttr
 import org.jetbrains.kotlin.fir.declarations.FirConstructor
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
@@ -39,7 +39,6 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
-import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.Name
@@ -49,7 +48,7 @@ internal fun FirExtension.buildFactoryConstructor(
   instanceReceiver: ConeClassLikeType?,
   extensionReceiver: ConeClassLikeType?,
   valueParameters: List<MetroFirValueParameter>,
-): FirConstructor {
+): FirConstructor = with(session.compatContext) {
   val owner = context.owner
 
   // Get the target class to build substitution map
@@ -128,7 +127,7 @@ internal fun FirExtension.buildFactoryCreateFunction(
   instanceReceiver: ConeClassLikeType?,
   extensionReceiver: ConeClassLikeType?,
   valueParameters: List<MetroFirValueParameter>,
-): FirNamedFunctionSymbol {
+): FirNamedFunctionSymbol = with(session.compatContext) {
   return generateMemberFunction(
       owner = context.owner,
       returnTypeProvider = returnTypeProvider,
@@ -137,15 +136,16 @@ internal fun FirExtension.buildFactoryCreateFunction(
     ) {
       val thisFunctionSymbol = symbol
 
+      val containingClassSymbol = context.owner.getContainingClassSymbol()!!
       val ownerToCopyTypeParametersFrom: FirClassSymbol<*> =
-        if (context.owner.isCompanion) {
-          // companion -> class factory -> original class
-          context.owner.getContainingClassSymbol()!!.getContainingClassSymbol()!!
-        } else {
-          // object factory -> original class
-          context.owner.getContainingClassSymbol()!!
-        }
-          as FirClassSymbol<*>
+          if (context.owner.isCompanion) {
+            // companion -> class factory -> original class
+            containingClassSymbol.getContainingClassSymbol()!!
+          } else {
+            // object factory -> original class
+            containingClassSymbol
+          }
+            as FirClassSymbol<*>
 
       // Copy type parameters from the target class
       val classTypeArgsToReplace = mutableMapOf<FirTypeParameterSymbol, ConeKotlinType>()
@@ -214,7 +214,7 @@ internal fun FirExtension.buildNewInstanceFunction(
   instanceReceiver: ConeClassLikeType?,
   extensionReceiver: ConeClassLikeType?,
   valueParameters: List<MetroFirValueParameter>,
-): FirNamedFunctionSymbol {
+): FirNamedFunctionSymbol = with(session.compatContext) {
   return generateMemberFunction(
       context.owner,
       returnType.toFirResolvedTypeRef(),
@@ -223,14 +223,17 @@ internal fun FirExtension.buildNewInstanceFunction(
     ) {
       val thisFunctionSymbol = symbol
 
-      val ownerToCopyTypeParametersFrom =
+      val containingClassSymbol = context.owner.getContainingClassSymbol()!!
+    val ownerToCopyTypeParametersFrom: FirClassSymbol<*> =
         if (context.owner.isCompanion) {
           // companion -> class factory -> original class
-          context.owner.getContainingClassSymbol()!!.getContainingClassSymbol()!!
+          containingClassSymbol.getContainingClassSymbol()!!
         } else {
           // object factory -> original class
-          context.owner.getContainingClassSymbol()!!
+          containingClassSymbol
         }
+          as FirClassSymbol<*>
+
       val classTypeArgsToReplace = mutableMapOf<FirTypeParameterSymbol, ConeKotlinType>()
       for (typeParameter in ownerToCopyTypeParametersFrom.typeParameterSymbols) {
         typeParameters +=

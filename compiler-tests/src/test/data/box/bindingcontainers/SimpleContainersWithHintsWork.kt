@@ -1,6 +1,6 @@
 // https://github.com/ZacSweers/metro/issues/733
 @SingleIn(AppScope::class)
-@DependencyGraph(AppScope::class, isExtendable = true)
+@DependencyGraph(AppScope::class)
 interface AppGraph {
   val text: String
 }

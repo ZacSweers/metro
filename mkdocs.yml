@@ -1,10 +1,17 @@
-# pip3 install mkdocs mkdocs-material
+# For local development/live edit:
+# python3 -m venv .venv (required only once)
+# source .venv/bin/activate
+# pip install -r .github/workflows/mkdocs-requirements.txt
+# ./scripts/copy_docs_files.sh
 # mkdocs serve
-# mkdocs gh-deploy
+#
+# ℹ️ NOTE: Deployment is done via `mike` for versioned site using GitHub Actions
+#          For manual deployment, use `./scripts/deploy_metro_docs_site.sh`
 
 site_name: Metro
 repo_name: Metro
 repo_url: https://github.com/ZacSweers/metro
+site_url: https://zacsweers.github.io/metro/
 site_description: "A multiplatform dependency injection framework for Kotlin"
 site_author: Zac Sweers
 remote_branch: gh-pages
@@ -14,7 +21,7 @@ copyright: 'Copyright &copy; 2025 Zac Sweers'
 theme:
   name: 'material'
   favicon: site-assets/img/favicon.ico
-#  logo: images/metro_logo.png
+  logo: site-assets/img/metro-icon.svg
   palette:
     - media: '(prefers-color-scheme: light)'
       scheme: default
@@ -40,8 +47,23 @@ theme:
   # - https://squidfunk.github.io/mkdocs-material/customization/
   custom_dir: 'docs/site-assets/overrides'
 
+plugins:
+  # Social plugin for delightful card previews on social media
+  # https://squidfunk.github.io/mkdocs-material/plugins/social/
+  - social
+  - search
+  # Versioned Metro docs site for each release
+  # https://github.com/jimporter/mike
+  - mike
+  # https://github.com/sondregronas/mkdocs-callouts
+  - callouts
+
 #extra_css:
 #  - 'css/app.css'
+
+extra:
+  version:
+    provider: mike
 
 markdown_extensions:
   - smarty
@@ -59,12 +81,14 @@ markdown_extensions:
   - pymdownx.smartsymbols
   - pymdownx.superfences
   - pymdownx.emoji
+  - pymdownx.details
   - pymdownx.tabbed:
       alternate_style: true
   - tables
   - admonition
   - attr_list
   - md_in_html
+  - nl2br
 
 nav:
   - 'Introduction': index.md
@@ -90,7 +114,7 @@ nav:
   - 'Adoption Strategies': adoption.md
   - 'FAQ': faq.md
   - 'Samples': samples.md
-  - 'API': api/0.x/index.html
+  - 'API': api/index.html
   - 'Discussions ⏏': https://github.com/ZacSweers/metro/discussions
   - 'Change Log': changelog.md
   - 'Contributing': contributing.md

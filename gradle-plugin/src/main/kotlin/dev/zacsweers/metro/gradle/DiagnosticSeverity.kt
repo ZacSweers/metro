@@ -10,5 +10,7 @@ public enum class DiagnosticSeverity {
   WARN,
 
   /** Emits a compiler error if encountered and fails compilation. */
-  ERROR,
+  ERROR;
+
+  public val isEnabled: Boolean get() = this != DiagnosticSeverity.NONE
 }

@@ -2,15 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
-import dev.zacsweers.metro.compiler.fir.FirMetroErrors
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.directCallableSymbols
-import dev.zacsweers.metro.compiler.fir.findInjectConstructors
+import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isDependencyGraph
 import dev.zacsweers.metro.compiler.fir.isGraphFactory
+import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.metroAnnotations
-import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
@@ -43,8 +43,8 @@ internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
     if (declaration.symbol.isAnnotatedWithAny(session, session.classIds.assistedFactoryAnnotations))
       return
 
-    val isConstructorInjected by unsafeLazy {
-      declaration.symbol.findInjectConstructors(session, checkClass = true).firstOrNull() != null
+    val isConstructorInjected by memoize {
+      declaration.symbol.findInjectLikeConstructors(session, checkClass = true).firstOrNull() != null
     }
 
     val isInClass = declaration.classKind == ClassKind.CLASS
@@ -57,21 +57,21 @@ internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
       if (!isInClass) {
         reporter.reportOn(
           callable.source,
-          FirMetroErrors.MEMBERS_INJECT_ERROR,
+          MetroDiagnostics.MEMBERS_INJECT_ERROR,
           "Only regular classes can have member injections but containing class was ${declaration.classKind}.",
         )
         continue
       } else if (callable.isAbstract) {
         reporter.reportOn(
           callable.resolvedStatus.source ?: callable.source,
-          FirMetroErrors.MEMBERS_INJECT_STATUS_ERROR,
+          MetroDiagnostics.MEMBERS_INJECT_STATUS_ERROR,
           "Injected members cannot be abstract.",
         )
         continue
       } else if (callable is FirPropertySymbol && callable.fromPrimaryConstructor) {
         reporter.reportOn(
           callable.source,
-          FirMetroErrors.MEMBERS_INJECT_STATUS_ERROR,
+          MetroDiagnostics.MEMBERS_INJECT_STATUS_ERROR,
           "Constructor property parameters should not be annotated with `@Inject`. Annotate the constructor or class instead.",
         )
         continue
@@ -84,7 +84,7 @@ internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
       ) {
         reporter.reportOn(
           callable.source,
-          FirMetroErrors.MEMBERS_INJECT_WARNING,
+          MetroDiagnostics.MEMBERS_INJECT_WARNING,
           "Non-null injected member property in constructor-injected class should usually be moved to the inject constructor. If this has a default value, use Metro's default values support.",
         )
       }
@@ -92,13 +92,13 @@ internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
       if (callable.isSuspend) {
         reporter.reportOn(
           callable.source,
-          FirMetroErrors.MEMBERS_INJECT_ERROR,
+          MetroDiagnostics.MEMBERS_INJECT_ERROR,
           "Injected functions cannot be suspend functions.",
         )
       } else if (annotations.isComposable) {
         reporter.reportOn(
           callable.source,
-          FirMetroErrors.MEMBERS_INJECT_ERROR,
+          MetroDiagnostics.MEMBERS_INJECT_ERROR,
           "Injected members cannot be composable functions.",
         )
       }
@@ -107,7 +107,7 @@ internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
         if (!callable.resolvedReturnType.isUnit) {
           reporter.reportOn(
             callable.resolvedReturnTypeRef.source,
-            FirMetroErrors.MEMBERS_INJECT_RETURN_TYPE_WARNING,
+            MetroDiagnostics.MEMBERS_INJECT_RETURN_TYPE_WARNING,
             "Return types for injected member functions will always be ignored.",
           )
         }
@@ -115,7 +115,7 @@ internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
         if (callable.typeParameterSymbols.isNotEmpty()) {
           reporter.reportOn(
             callable.source,
-            FirMetroErrors.MEMBERS_INJECT_TYPE_PARAMETERS_ERROR,
+            MetroDiagnostics.MEMBERS_INJECT_TYPE_PARAMETERS_ERROR,
             "Injected member functions cannot have type parameters.",
           )
         }

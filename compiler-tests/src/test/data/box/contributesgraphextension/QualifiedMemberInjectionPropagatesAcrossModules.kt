@@ -1,10 +1,10 @@
 // Regression test for https://github.com/ZacSweers/metro/issues/531
 // MODULE: lib
-@ContributesGraphExtension(Unit::class)
+@GraphExtension(Unit::class)
 interface LoggedInGraph {
   fun inject(member: LoggedInScreen)
 
-  @ContributesGraphExtension.Factory(scope = AppScope::class)
+  @GraphExtension.Factory @ContributesTo(scope = AppScope::class)
   interface Factory {
     fun createLoggedInGraph(): LoggedInGraph
   }
@@ -16,7 +16,7 @@ class LoggedInScreen {
 }
 
 // MODULE: main(lib)
-@DependencyGraph(AppScope::class, isExtendable = true)
+@DependencyGraph(AppScope::class)
 interface AppGraph {
   @DependencyGraph.Factory
   interface Factory {

@@ -1,4 +1,4 @@
-# Copyright (C) 2021 Zac Sweers
+# Copyright (C) 2024 Zac Sweers
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,33 +13,35 @@
 # limitations under the License.
 
 [versions]
-agp = "8.10.1"
+agp = "8.12.3"
+androidx-lifecycle = "2.9.4"
 androidx-lint-gradle = "1.0.0-alpha05"
 annotation = "1.9.1"
 anvil = "0.4.1"
 atomicfu = "0.29.0"
 autoService = "1.1.1"
-circuit = "0.29.1"
-classgraph = "4.8.181"
-compose-jb = "1.8.2"
-dagger = "2.57"
-gjf = "1.28.0"
-jdk = "23"
-junit5 = "5.13.4"
+circuit = "0.30.0"
+classgraph = "4.8.184"
+compose-jb = "1.9.1"
+dagger = "2.57.2"
+gjf = "1.30.0"
+jdk = "24"
+junit5 = "6.0.0"
 jvmTarget = "11"
-kct = "0.8.0"
-kotlin = "2.2.0"
+kct = "0.10.1"
+kotlin = "2.2.20"
 kotlinInject = "0.8.0"
 kotlinInject-anvil = "0.1.6"
 kotlinx-coroutines = "1.10.2"
 kotlinx-serialization = "1.9.0"
-ksp = "2.2.0-2.0.2"
-ktfmt = "0.56"
-ktor = "3.2.2"
-okhttp = "5.1.0"
-okio = "3.15.0"
+ksp = "2.2.20-2.0.4"
+ktfmt = "0.59"
+ktor = "3.3.1"
+okhttp = "5.2.1"
+okio = "3.16.2"
 pluginId = "dev.zacsweers.metro.compiler"
-wire = "5.3.5"
+poko = "0.20.1"
+wire = "5.4.0"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -55,30 +57,30 @@ kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
 kotlin-plugin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-plugin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 binaryCompatibilityValidator = { id = "org.jetbrains.kotlinx.binary-compatibility-validator", version = "0.18.1" }
-buildConfig = { id = "com.github.gmazzo.buildconfig", version = "5.6.7" }
-dokka = { id = "org.jetbrains.dokka", version = "2.0.0" }
+buildConfig = { id = "com.github.gmazzo.buildconfig", version = "5.7.0" }
+dokka = { id = "org.jetbrains.dokka", version = "2.1.0" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.34.0" }
-poko = { id = "dev.drewhamilton.poko", version = "0.19.3" }
-shadow = { id = "com.gradleup.shadow", version = "9.0.0-rc1" }
-spotless = { id = "com.diffplug.spotless", version = "7.2.1" }
-testkit = { id = "com.autonomousapps.testkit", version = "0.13" }
+poko = { id = "dev.drewhamilton.poko", version.ref = "poko" }
+shadow = { id = "com.gradleup.shadow", version = "9.2.2" }
+spotless = { id = "com.diffplug.spotless", version = "8.0.0" }
+testkit = { id = "com.autonomousapps.testkit", version = "0.16" }
 wire = { id = "com.squareup.wire", version.ref = "wire" }
 
 [libraries]
-androidx-activity = "androidx.activity:activity-compose:1.10.1"
+androidx-activity = "androidx.activity:activity-compose:1.11.0"
 androidx-annotation = { module = "androidx.annotation:annotation", version.ref = "annotation" }
 androidx-appcompat = "androidx.appcompat:appcompat:1.7.1"
-androidx-compose-material3 = "androidx.compose.material3:material3:1.3.2"
-androidx-compose-materialNavigation = "androidx.compose.material:material-navigation:1.8.3"
-androidx-core = "androidx.core:core-ktx:1.16.0"
-androidx-fragment = "androidx.fragment:fragment-ktx:1.8.8"
-androidx-lifecycle-runtime-compose = "androidx.lifecycle:lifecycle-runtime-compose:2.9.2"
-androidx-lint-gradle = {  module = "androidx.lint:lint-gradle", version.ref = "androidx-lint-gradle" }
-androidx-material3 = "com.google.android.material:material:1.12.0"
-androidx-navigationCompose = "androidx.navigation:navigation-compose:2.9.2"
-androidx-viewmodel = "androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.2"
-androidx-work = "androidx.work:work-runtime:2.10.2"
+androidx-compose-material3 = "androidx.compose.material3:material3:1.4.0"
+androidx-compose-materialNavigation = "androidx.compose.material:material-navigation:1.9.3"
+androidx-core = "androidx.core:core-ktx:1.17.0"
+androidx-fragment = "androidx.fragment:fragment-ktx:1.8.9"
+androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
+androidx-lint-gradle = { module = "androidx.lint:lint-gradle", version.ref = "androidx-lint-gradle" }
+androidx-material3 = "com.google.android.material:material:1.13.0"
+androidx-navigationCompose = "androidx.navigation:navigation-compose:2.9.5"
+androidx-viewmodel = { module = "androidx.lifecycle:lifecycle-viewmodel", version.ref = "androidx-lifecycle" }
+androidx-work = "androidx.work:work-runtime:2.10.5"
 
 anvil-annotations = { module = "dev.zacsweers.anvil:annotations", version.ref = "anvil" }
 anvil-annotations-optional = { module = "dev.zacsweers.anvil:annotations-optional", version.ref = "anvil" }
@@ -98,7 +100,7 @@ circuit-codegenAnnotations = { module = "com.slack.circuit:circuit-codegen-annot
 
 compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose-jb" }
 compose-materialIcons = { module = "org.jetbrains.compose.material:material-icons-core", version = "1.7.3" }
-compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "compose-jb" }
+compose-material3 = { module = "org.jetbrains.compose.material3:material3", version = "1.9.0" }
 compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "compose-jb" }
 compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "compose-jb" }
 
@@ -151,6 +153,8 @@ okio-fakefilesystem = { module = "com.squareup.okio:okio-fakefilesystem", versio
 
 picnic = "com.jakewharton.picnic:picnic:0.7.0"
 
+poko-annotations = { module = "dev.drewhamilton.poko:poko-annotations", version.ref = "poko" }
+
 slf4jNop = "org.slf4j:slf4j-nop:2.0.17"
 
 junit = { module = "junit:junit", version = "4.13.2" }
@@ -161,9 +165,9 @@ ksp-symbolProcessing = { module = "com.google.devtools.ksp:symbol-processing", v
 ksp-symbolProcessing-api = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }
 ksp-symbolProcessing-commonDeps = { module = "com.google.devtools.ksp:symbol-processing-common-deps", version.ref = "ksp" }
 ksp-symbolProcessing-aaEmbeddable = { module = "com.google.devtools.ksp:symbol-processing-aa-embeddable", version.ref = "ksp" }
-testkit-support = { module =  "com.autonomousapps:gradle-testkit-support", version = "0.18"}
+testkit-support = { module =  "com.autonomousapps:gradle-testkit-support", version = "0.20"}
 testkit-truth = { module =  "com.autonomousapps:gradle-testkit-truth", version = "1.6.1"}
-truth = { module = "com.google.truth:truth", version = "1.4.4" }
+truth = { module = "com.google.truth:truth", version = "1.4.5" }
 kct = { module = "dev.zacsweers.kctfork:core", version.ref = "kct" }
 kct-ksp = { module = "dev.zacsweers.kctfork:ksp", version.ref = "kct" }
 

@@ -2,10 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
-import dev.zacsweers.metro.compiler.fir.FirMetroErrors.FUNCTION_INJECT_ERROR
-import dev.zacsweers.metro.compiler.fir.FirMetroErrors.FUNCTION_INJECT_TYPE_PARAMETERS_ERROR
+import dev.zacsweers.metro.compiler.MetroAnnotations
+import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FUNCTION_INJECT_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FUNCTION_INJECT_TYPE_PARAMETERS_ERROR
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
 import dev.zacsweers.metro.compiler.metroAnnotations
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
@@ -13,6 +16,7 @@ import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirSimpleFunctionChecker
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
+import org.jetbrains.kotlin.fir.declarations.hasAnnotation
 
 internal object FunctionInjectionChecker : FirSimpleFunctionChecker(MppCheckerKind.Common) {
   context(context: CheckerContext, reporter: DiagnosticReporter)
@@ -32,7 +36,6 @@ internal object FunctionInjectionChecker : FirSimpleFunctionChecker(MppCheckerKi
       )
     }
 
-    // TODO eventually check context receivers too
     declaration.symbol.receiverParameterSymbol?.let { param ->
       reporter.reportOn(
         param.source ?: source,
@@ -41,13 +44,12 @@ internal object FunctionInjectionChecker : FirSimpleFunctionChecker(MppCheckerKi
       )
     }
 
-    val contextParams = declaration.symbol.contextParameterSymbols
-    if (contextParams.isNotEmpty()) {
-      for (param in contextParams) {
+    for (contextParam in declaration.symbol.contextParameterSymbols) {
+      if (contextParam.hasAnnotation(Symbols.ClassIds.OptionalDependency, session)) {
         reporter.reportOn(
-          param.source ?: source,
+          contextParam.source ?: source,
           FUNCTION_INJECT_ERROR,
-          "Injected functions cannot have context parameters.",
+          "Context parameters cannot be annotated @OptionalDependency.",
         )
       }
     }
@@ -59,6 +61,25 @@ internal object FunctionInjectionChecker : FirSimpleFunctionChecker(MppCheckerKi
         scope.fir.source ?: source,
         FUNCTION_INJECT_ERROR,
         "Injected functions are stateless and should not be scoped.",
+      )
+    }
+
+    for (param in declaration.valueParameters) {
+      val annotations =
+        param.symbol.metroAnnotations(
+          session,
+          MetroAnnotations.Kind.OptionalDependency,
+          MetroAnnotations.Kind.Assisted,
+          MetroAnnotations.Kind.Qualifier,
+        )
+      if (annotations.isAssisted) continue
+      validateInjectionSiteType(
+        session,
+        param.returnTypeRef,
+        annotations.qualifier,
+        param.source ?: source,
+        annotations.isOptionalDependency,
+        param.symbol.hasDefaultValue,
       )
     }
   }

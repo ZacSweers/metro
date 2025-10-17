@@ -1,0 +1,2 @@
+/AssistedFactoryMustTargetAssistedInjectTypesWithMatchingParameters.kt:(83,95): error: Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:
+  Missing from factory: kotlin.Int

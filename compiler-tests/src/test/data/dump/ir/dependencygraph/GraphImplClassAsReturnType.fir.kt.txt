@@ -1,0 +1,69 @@
+// FILE: GraphImplClassAsReturnType.kt
+
+@DependencyGraph(scope = AppScope::class)
+interface AppGraph : $$MetroContributionToAppScope {
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): AppGraph {
+      return $$MetroGraph()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class $$MetroGraph : AppGraph {
+    private /* final field */ val thisGraphInstance: AppGraph = <this>
+    private /* final field */ val appGraphProvider: Provider<AppGraph> = Companion.invoke<AppGraph>(value = <this>.#thisGraphInstance)
+    @DependencyGraph(scope = String::class)
+    inner class ChildGraphImpl : ChildGraph {
+      constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override fun create(): ChildGraphImpl {
+      return <this>.ChildGraphImpl()
+    }
+
+  }
+
+}
+
+@GraphExtension(scope = String::class)
+interface ChildGraph {
+  @Factory
+  @ContributesTo(scope = AppScope::class)
+  fun interface Factory {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @MetroContribution(scope = AppScope::class)
+    interface $$MetroContributionToAppScope : Factory {
+    }
+
+    abstract fun create(): ChildGraph
+
+  }
+
+}
+
+// FILE: childGraphFactoryAppScope.kt
+package metro.hints
+
+fun AppScope(contributed: Factory) {
+  return error(message = "Never called")
+}
+

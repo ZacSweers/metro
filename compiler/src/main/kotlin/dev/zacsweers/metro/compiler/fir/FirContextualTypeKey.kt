@@ -35,6 +35,8 @@ internal class FirContextualTypeKey(
   val isLazyWrappedInProvider: Boolean
     get() = wrappedType is WrappedType.Provider && wrappedType.innerType is WrappedType.Lazy
 
+  val isCanonical: Boolean get() = wrappedType is WrappedType.Canonical
+
   fun originalType(session: FirSession): ConeKotlinType {
     return when (val wt = wrappedType) {
       is WrappedType.Canonical -> wt.type
@@ -89,7 +91,7 @@ internal class FirContextualTypeKey(
           session = session,
           qualifierAnnotation =
             callable.findAnnotation(session, FirBasedSymbol<*>::qualifierAnnotation),
-          hasDefault = callable is FirValueParameterSymbol && callable.hasDefaultValue,
+          hasDefault = callable is FirValueParameterSymbol && callable.hasMetroDefault(session),
         )
     }
   }

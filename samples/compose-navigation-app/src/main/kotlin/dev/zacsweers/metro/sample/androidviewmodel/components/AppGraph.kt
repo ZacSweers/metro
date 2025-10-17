@@ -11,12 +11,13 @@ import dev.zacsweers.metro.Multibinds
 import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.SingleIn
+import dev.zacsweers.metro.sample.androidviewmodel.viewmodel.ViewModelGraph
 import kotlin.concurrent.atomics.AtomicInt
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.reflect.KClass
 
-@DependencyGraph(AppScope::class, isExtendable = true)
-interface AppGraph {
+@DependencyGraph(AppScope::class)
+interface AppGraph : ViewModelGraph.Factory {
   /**
    * A multibinding map of activity classes to their providers accessible for
    * [MetroAppComponentFactory].

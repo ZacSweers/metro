@@ -8,9 +8,9 @@ import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.exitProcessing
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
-import dev.zacsweers.metro.compiler.ir.MetroIrErrors
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.declaredCallableMembers
@@ -31,6 +31,7 @@ import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
@@ -39,6 +40,7 @@ import dev.zacsweers.metro.compiler.memoized
 import dev.zacsweers.metro.compiler.newName
 import dev.zacsweers.metro.compiler.proto.InjectedClassProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irGet
@@ -120,7 +122,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
 
   private fun requireInjector(declaration: IrClass): MemberInjectClass {
     return getOrGenerateInjector(declaration)
-      ?: error("No members injector found for ${declaration.kotlinFqName}.")
+      ?: reportCompilerBug("No members injector found for ${declaration.kotlinFqName}.")
   }
 
   fun getOrGenerateAllInjectorsFor(declaration: IrClass): List<MemberInjectClass> {
@@ -150,10 +152,8 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
         // If not external, double check its origin
         if (isMetroImpl && !isExternal) {
           if (it.origin != Origins.MembersInjectorClassDeclaration) {
-            diagnosticReporter
-              .at(declaration)
-              .report(
-                MetroIrErrors.METRO_ERROR,
+            reportCompat(declaration,
+              MetroDiagnostics.METRO_ERROR,
                 "Found a Metro members injector declaration in ${declaration.kotlinFqName} but with an unexpected origin ${it.origin}",
               )
             exitProcessing()
@@ -354,12 +354,12 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
             val computed =
               clazz
                 .declaredCallableMembers(
-                  functionFilter = { it.isAnnotatedWithAny(symbols.injectAnnotations) },
+                  functionFilter = { it.isAnnotatedWithAny(metroSymbols.injectAnnotations) },
                   propertyFilter = {
                     (it.isVar || it.isLateinit) &&
-                      (it.isAnnotatedWithAny(symbols.injectAnnotations) ||
-                        it.setter?.isAnnotatedWithAny(symbols.injectAnnotations) == true ||
-                        it.backingField?.isAnnotatedWithAny(symbols.injectAnnotations) == true)
+                      (it.isAnnotatedWithAny(metroSymbols.injectAnnotations) ||
+                        it.setter?.isAnnotatedWithAny(metroSymbols.injectAnnotations) == true ||
+                        it.backingField?.isAnnotatedWithAny(metroSymbols.injectAnnotations) == true)
                   },
                 )
                 .map { it.ir.memberInjectParameters(nameAllocator, clazz) }

@@ -4,13 +4,14 @@ package dev.zacsweers.metro.compiler.ir.parameters
 
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.compareTo
+import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.NOOP_TYPE_REMAPPER
 import dev.zacsweers.metro.compiler.ir.contextParameters
 import dev.zacsweers.metro.compiler.ir.extensionReceiverParameterCompat
 import dev.zacsweers.metro.compiler.ir.regularParameters
-import dev.zacsweers.metro.compiler.unsafeLazy
+import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrParameterKind
@@ -47,9 +48,10 @@ internal class Parameters(
       }
     }
 
-  val nonDispatchParameters: List<Parameter> by unsafeLazy {
+  val nonDispatchParameters: List<Parameter> by memoize {
     buildList {
       extensionReceiverParameter?.let(::add)
+      addAll(contextParameters)
       addAll(regularParameters)
     }
   }
@@ -57,12 +59,18 @@ internal class Parameters(
   val extensionOrFirstParameter: Parameter?
     get() = nonDispatchParameters.firstOrNull()
 
-  val allParameters: List<Parameter> by unsafeLazy {
+  val allParameters: List<Parameter> by memoize {
     buildList {
       dispatchReceiverParameter?.let(::add)
       addAll(nonDispatchParameters)
     }
   }
+
+  val parametersMap by memoize {
+    allParameters.associateBy { it.name }
+  }
+
+  operator fun get(name: Name): Parameter? = parametersMap[name]
 
   fun withCallableId(callableId: CallableId): Parameters {
     return Parameters(
@@ -75,7 +83,26 @@ internal class Parameters(
     )
   }
 
-  private val cachedToString by unsafeLazy {
+  fun overlayQualifiers(qualifiers: List<IrAnnotation?>): Parameters {
+    return Parameters(
+      callableId = callableId,
+      dispatchReceiverParameter = dispatchReceiverParameter,
+      extensionReceiverParameter = extensionReceiverParameter,
+      regularParameters = regularParameters.mapIndexed { i, param ->
+        val qualifier = qualifiers[i] ?: return@mapIndexed param
+        param.copy(
+          contextualTypeKey =
+            param.contextualTypeKey.withTypeKey(
+              param.contextualTypeKey.typeKey.copy(qualifier = qualifier)
+            )
+        )
+      },
+      contextParameters = contextParameters,
+      ir = ir,
+    )
+  }
+
+  private val cachedToString by memoize {
     buildString {
       if (ir is IrConstructor || regularParameters.firstOrNull()?.isMember == true) {
         append("@Inject ")

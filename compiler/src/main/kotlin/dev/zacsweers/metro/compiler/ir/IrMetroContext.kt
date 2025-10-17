@@ -6,6 +6,8 @@ import dev.zacsweers.metro.compiler.LOG_PREFIX
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.tracer
 import java.io.File
@@ -34,12 +36,12 @@ import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.parentDeclarationsWithSelf
 import org.jetbrains.kotlin.name.ClassId
 
-internal interface IrMetroContext : IrPluginContext {
+internal interface IrMetroContext : IrPluginContext, CompatContext {
   val metroContext
     get() = this
 
   val pluginContext: IrPluginContext
-  override val symbols: Symbols
+  val metroSymbols: Symbols
   val options: MetroOptions
   val debug: Boolean
     get() = options.debug
@@ -61,17 +63,22 @@ internal interface IrMetroContext : IrPluginContext {
 
   val typeRemapperCache: MutableMap<Pair<ClassId, IrType>, TypeRemapper>
 
+  fun onErrorReported()
+
   fun log(message: String) {
+    @Suppress("DEPRECATION")
     messageCollector.report(CompilerMessageSeverity.LOGGING, "$LOG_PREFIX $message")
     logFile?.appendText("$message\n")
   }
 
   fun logTrace(message: String) {
+    @Suppress("DEPRECATION")
     messageCollector.report(CompilerMessageSeverity.LOGGING, "$LOG_PREFIX $message")
     traceLogFile?.appendText("$message\n")
   }
 
   fun logVerbose(message: String) {
+    @Suppress("DEPRECATION")
     messageCollector.report(CompilerMessageSeverity.STRONG_WARNING, "$LOG_PREFIX $message")
   }
 
@@ -123,12 +130,14 @@ internal interface IrMetroContext : IrPluginContext {
     operator fun invoke(
       pluginContext: IrPluginContext,
       messageCollector: MessageCollector,
+      compatContext: CompatContext,
       symbols: Symbols,
       options: MetroOptions,
       lookupTracker: LookupTracker?,
       expectActualTracker: ExpectActualTracker,
-    ): IrMetroContext =
-      SimpleIrMetroContext(
+    ): IrMetroContext {
+      return SimpleIrMetroContext(
+        compatContext,
         pluginContext,
         messageCollector,
         symbols,
@@ -136,15 +145,31 @@ internal interface IrMetroContext : IrPluginContext {
         lookupTracker,
         expectActualTracker,
       )
+    }
 
     private class SimpleIrMetroContext(
+      compatContext: CompatContext,
       override val pluginContext: IrPluginContext,
+      @Suppress("DEPRECATION")
+      @Deprecated(
+        "Consider using diagnosticReporter instead. See https://youtrack.jetbrains.com/issue/KT-78277 for more details"
+      )
       override val messageCollector: MessageCollector,
-      override val symbols: Symbols,
+      override val metroSymbols: Symbols,
       override val options: MetroOptions,
       lookupTracker: LookupTracker?,
       expectActualTracker: ExpectActualTracker,
-    ) : IrMetroContext, IrPluginContext by pluginContext {
+    ) : IrMetroContext, IrPluginContext by pluginContext, CompatContext by compatContext {
+      private var reportedErrors = 0
+
+      override fun onErrorReported() {
+        reportedErrors++
+        if (reportedErrors >= options.maxIrErrorsCount) {
+          // Exit processing as we've reached the max
+          exitProcessing()
+        }
+      }
+
       override val lookupTracker: LookupTracker? =
         lookupTracker?.let {
           if (options.reportsDestination != null) {

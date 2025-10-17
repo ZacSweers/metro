@@ -1,11 +1,9 @@
 // Copyright (C) 2024 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 import com.diffplug.gradle.spotless.SpotlessExtension
+import com.diffplug.gradle.spotless.SpotlessExtensionPredeclare
 import com.vanniktech.maven.publish.MavenPublishBaseExtension
-import kotlin.apply
 import kotlinx.validation.ExperimentalBCVApi
-import org.gradle.kotlin.dsl.assign
-import org.gradle.kotlin.dsl.withType
 import org.jetbrains.dokka.gradle.DokkaExtension
 import org.jetbrains.dokka.gradle.engine.parameters.VisibilityModifier
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
@@ -35,25 +33,54 @@ plugins {
 }
 
 apiValidation {
-  ignoredProjects += listOf("compiler", "compiler-tests")
-  ignoredPackages += listOf("dev.zacsweers.metro.internal")
+  ignoredProjects += buildList {
+    add("compiler")
+    add("compiler-tests")
+    add("compiler-compat")
+    layout.projectDirectory.dir("compiler-compat").asFile.listFiles()!!.forEach {
+      if (it.isDirectory && it.name.startsWith("k")) {
+        add(it.name)
+      }
+    }
+  }
+  ignoredPackages +=
+    listOf(
+      "dev.zacsweers.metro.internal",
+      "dev.zacsweers.metro.compiler.compat",
+      "dev.zacsweers.metro.interop.dagger.internal",
+    )
   @OptIn(ExperimentalBCVApi::class)
   klib {
     // This is only really possible to run on macOS
-    //    strictValidation = true
+    // strictValidation = true
     enabled = true
   }
 }
 
 dokka {
   dokkaPublications.html {
-    outputDirectory.set(rootDir.resolve("docs/api/0.x"))
+    // NOTE: This path must be in sync with `mkdocs.yml`'s API nav config path
+    outputDirectory.set(rootDir.resolve("docs/api"))
     includes.from(project.layout.projectDirectory.file("README.md"))
   }
 }
 
 val ktfmtVersion = libs.versions.ktfmt.get()
 
+spotless { predeclareDeps() }
+
+configure<SpotlessExtensionPredeclare> {
+  kotlin { ktfmt(ktfmtVersion).googleStyle().configure { it.setRemoveUnusedImports(true) } }
+  kotlinGradle { ktfmt(ktfmtVersion).googleStyle().configure { it.setRemoveUnusedImports(true) } }
+  java {
+    googleJavaFormat(libs.versions.gjf.get())
+      .reorderImports(true)
+      .reflowLongStrings(true)
+      .reorderImports(true)
+  }
+}
+
+// Configure spotless in subprojects
 allprojects {
   apply(plugin = "com.diffplug.spotless")
   configure<SpotlessExtension> {
@@ -65,7 +92,6 @@ allprojects {
     }
     java {
       target("src/**/*.java")
-      googleJavaFormat(libs.versions.gjf.get()).reorderImports(true).reflowLongStrings(true)
       trimTrailingWhitespace()
       endWithNewline()
       targetExclude("**/spotless.java")
@@ -74,7 +100,6 @@ allprojects {
     }
     kotlin {
       target("src/**/*.kt")
-      ktfmt(ktfmtVersion).googleStyle().configure { it.setRemoveUnusedImports(true) }
       trimTrailingWhitespace()
       endWithNewline()
       targetExclude("**/spotless.kt")
@@ -82,7 +107,6 @@ allprojects {
     }
     kotlinGradle {
       target("*.kts")
-      ktfmt(ktfmtVersion).googleStyle().configure { it.setRemoveUnusedImports(true) }
       trimTrailingWhitespace()
       endWithNewline()
       licenseHeaderFile(
@@ -183,6 +207,11 @@ subprojects {
       dokkaSourceSets.configureEach {
         skipDeprecated.set(true)
         documentedVisibilities.add(VisibilityModifier.Public)
+        reportUndocumented.set(true)
+        perPackageOption {
+          matchingRegex.set(".*\\.internal.*")
+          suppress.set(true)
+        }
         sourceLink {
           localDirectory.set(layout.projectDirectory.dir("src"))
           val relPath = rootProject.projectDir.toPath().relativize(projectDir.toPath())

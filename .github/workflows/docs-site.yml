@@ -1,0 +1,216 @@
+# Generates and deploys static site to GitHub Pages
+# https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages
+# Reference workflow: https://github.com/actions/starter-workflows/blob/main/pages/jekyll-gh-pages.yml
+name: Metro Docs Site
+
+on:
+  push:
+    branches: ["main"]
+    tags:
+      - '*.*.*' # Matches semantic versioning tags
+
+  # PR trigger for docs dry run when requirements change
+  pull_request:
+    paths:
+      - '.github/workflows/mkdocs-requirements.txt'
+
+  # Allows manual deployements (if needed)
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow pushing to `gh-pages` branch
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+# Only allow one docs deployment at a time per type, prioritize tagged releases
+concurrency:
+  group: ${{ startsWith(github.ref, 'refs/tags/') && 'pages-release' || 'pages-dev' }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  # Metro docs site build job
+  docs-site:
+    runs-on: ubuntu-latest
+    if: github.repository == 'zacsweers/metro' && github.event_name != 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+
+      - name: Configure JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version-file: .github/workflows/.java-version
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+        with:
+          # Only save Gradle User Home state for builds on the 'main' branch.
+          # Builds on other branches will only read existing entries from the cache.
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+          # Don't reuse cache entries from any other Job.
+          gradle-home-cache-strict-match: true
+
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+
+      - name: Generate API docs
+        # NOTE: The `dokkaPublications.html` task is pre-configured to generate HTML in `/docs/api`.
+        run: ./scripts/generate_docs_dokka.sh
+        env:
+          GRADLE_OPTS: -Xmx4g # Dokka can be memory intensive, so we increase the heap size
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Install MkDocs dependencies
+        run: |
+          pip install --requirement .github/workflows/mkdocs-requirements.txt
+
+      - name: Copy documentation files
+        run: ./scripts/copy_docs_files.sh
+
+      - name: Extract Metro version from gradle.properties
+        id: version
+        run: |
+          METRO_VERSION=$(grep "VERSION_NAME=" gradle.properties | cut -d'=' -f2)
+          echo "METRO_VERSION=$METRO_VERSION" >> $GITHUB_OUTPUT
+          echo "Extracted version: $METRO_VERSION"
+
+      - name: Validate version format
+        run: |
+          VERSION="${{ steps.version.outputs.METRO_VERSION }}"
+          
+          # Check if version is empty
+          if [[ -z "$VERSION" ]]; then
+            echo "ERROR: VERSION_NAME is empty in gradle.properties"
+            exit 1
+          fi
+          
+          # Check if version matches x.y.z or x.y.z-SNAPSHOT pattern
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-SNAPSHOT)?$ ]]; then
+            echo "ERROR: VERSION_NAME '$VERSION' does not match expected format:"
+            echo "   Expected: x.y.z or x.y.z-SNAPSHOT (e.g., 1.2.3 or 1.2.3-SNAPSHOT)"
+            echo "   Actual: $VERSION"
+            exit 1
+          fi
+          
+          echo "Version format is valid: $VERSION"
+
+      - name: Configure Git for Mike
+        run: |
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch gh-pages branch
+        run: |
+          # Fetch the gh-pages branch to ensure we have the latest state
+          git fetch origin gh-pages:gh-pages || echo "gh-pages branch doesn't exist yet (first deployment)"
+
+      - name: Show current mike versions
+        run: |
+          echo "Current mike versions available:"
+          mike list || echo "No docs site versions found (likely first deployment)"
+
+      - name: Validate mkdocs build
+        run: |
+          echo "Building docs for validation..."
+          mkdocs build --site-dir /tmp/docs-site-validation
+          
+          echo "Validating directory URL structure..."
+          # Check that use_directory_urls: true is working correctly
+          # This setting converts installation.md -> installation/index.html
+          # enabling clean URLs like /installation/ instead of /installation.html
+          if [ -f "/tmp/docs-site-validation/installation/index.html" ]; then
+            echo "✔ Directory URLs are working correctly (installation/index.html exists)"
+          else
+            echo "✖ Directory URLs validation failed - installation/index.html not found"
+            echo "This suggests use_directory_urls: true is not working properly"
+            exit 1
+          fi
+          
+          echo "Cleaning up validation directory..."
+          rm -rf /tmp/docs-site-validation
+          echo "Docs validation completed successfully"
+
+      - name: Re-sync gh-pages branch before deployment
+        run: |
+          # Safely update local gh-pages to match remote state to avoid push conflicts
+          git fetch origin gh-pages
+          git update-ref refs/heads/gh-pages origin/gh-pages
+
+      - name: Deploy SNAPSHOT Docs with mike
+        if: ${{ success() && contains(steps.version.outputs.METRO_VERSION, 'SNAPSHOT') }}
+        run: mike deploy --update-aliases --push ${{ steps.version.outputs.METRO_VERSION }} snapshot
+
+      - name: Deploy Release Docs with mike
+        if: ${{ success() && !contains(steps.version.outputs.METRO_VERSION, 'SNAPSHOT') }}
+        run: |
+          mike deploy --update-aliases --push ${{ steps.version.outputs.METRO_VERSION }} latest
+
+      - name: Delete old doc versions
+        run: |
+          git fetch origin gh-pages --depth=1
+          ./scripts/delete_old_version_docs.sh
+
+  # Docs dry run job for PRs that change requirements.txt
+  docs-dry-run:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+
+      - name: Configure JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version-file: .github/workflows/.java-version
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-read-only: true
+          gradle-home-cache-strict-match: true
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+
+      - name: Generate API docs
+        run: ./scripts/generate_docs_dokka.sh
+        env:
+          GRADLE_OPTS: -Xmx4g # Dokka can be memory intensive, so we increase the heap size
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Install MkDocs dependencies
+        run: |
+          pip install --requirement .github/workflows/mkdocs-requirements.txt
+
+      - name: Copy documentation files
+        run: ./scripts/copy_docs_files.sh
+
+      - name: Build docs (dry run)
+        run: |
+          echo "Building docs as a dry run to verify requirements and other configs are working..."
+          # Build to a temporary directory for validation without side effects
+          mkdocs build --strict --site-dir /tmp/docs-site-validation
+          
+          echo "Validating directory URL structure..."
+          # Verify that use_directory_urls: true configuration is effective
+          # This creates installation/index.html from installation.md, enabling
+          # clean URLs (/installation/) instead of file URLs (/installation.html)
+          if [ -f "/tmp/docs-site-validation/installation/index.html" ]; then
+            echo "✔ Directory URLs are working correctly (installation/index.html exists)"
+          else
+            echo "✖ Directory URLs validation failed - installation/index.html not found"
+            exit 1
+          fi
+          
+          echo "Cleaning up validation directory..."
+          rm -rf /tmp/docs-site-validation
+          echo "✔ Docs build and validation completed successfully!"

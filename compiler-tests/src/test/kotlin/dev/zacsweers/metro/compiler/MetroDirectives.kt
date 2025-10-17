@@ -18,14 +18,38 @@ object MetroDirectives : SimpleDirectivesContainer() {
     enumDirective<MetroOptions.DiagnosticSeverity>(
       "Control diagnostic severity reporting of public providers."
     )
-  val ENABLE_SCOPED_INJECT_CLASS_HINTS by directive("Enable scoped inject class hints.")
   val SHRINK_UNUSED_BINDINGS by
     valueDirective("Enable/disable shrinking of unused bindings.") { it.toBoolean() }
   val CHUNK_FIELD_INITS by
     valueDirective("Enable/disable chunking of field initializers.") { it.toBoolean() }
+  val ENABLE_FULL_BINDING_GRAPH_VALIDATION by
+    directive(
+      "Enable/disable full binding graph validation of binds and provides declarations even if they are unused."
+    )
+  val ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE by
+    directive(
+      "If true changes the return type of generated Graph Factories from the declared interface type to the generated Metro graph type. This is helpful for Dagger/Anvil interop."
+    )
+  val MAX_IR_ERRORS_COUNT by
+    valueDirective(
+      "Maximum number of errors to report before exiting IR processing. Default is 20, must be > 0."
+    ) { it.toInt() }
+  val OPTIONAL_DEPENDENCY_BEHAVIOR by
+    enumDirective<OptionalDependencyBehavior>(
+      "Controls the behavior of optional dependencies on a per-compilation basis."
+    )
+  val INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY by
+    enumDirective<MetroOptions.DiagnosticSeverity>(
+      "Control diagnostic severity reporting of interop annotations using positional arguments instead of named arguments."
+    )
+  val CONTRIBUTES_AS_INJECT by
+    directive(
+      "If enabled, treats `@Contributes*` annotations (except ContributesTo) as implicit `@Inject` annotations."
+    )
 
   // Dependency directives.
   val WITH_ANVIL by directive("Add Anvil as dependency and configure custom annotations.")
+  val WITH_KI_ANVIL by directive("Add kotlin-inject-nnvil as dependency and configure custom annotations.")
   val WITH_DAGGER by directive("Add Dagger as dependency and configure custom annotations.")
   val ENABLE_DAGGER_INTEROP by
     directive("Enable Dagger interop. This implicitly applies WITH_DAGGER directive as well.")

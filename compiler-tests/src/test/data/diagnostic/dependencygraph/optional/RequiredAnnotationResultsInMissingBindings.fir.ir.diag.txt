@@ -1,0 +1,14 @@
+/RequiredAnnotationResultsInMissingBindings.kt:(177,202): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String?
+
+    kotlin.String? is injected at
+        [AppGraph] Example(…, value)
+    Example is requested at
+        [AppGraph] AppGraph.example
+
+
+/RequiredAnnotationResultsInMissingBindings.kt:(311,329): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Long?
+
+    kotlin.Long? is injected at
+        [AppGraph] AppGraph.provideInt(…, long)
+    kotlin.Int is requested at
+        [AppGraph] AppGraph.int

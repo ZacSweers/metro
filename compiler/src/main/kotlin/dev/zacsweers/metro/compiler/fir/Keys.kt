@@ -21,18 +21,6 @@ internal object Keys {
     override fun toString() = "RegularParameter"
   }
 
-  data object AssistedFactoryImplClassDeclaration : GeneratedDeclarationKey() {
-    override fun toString() = "AssistedFactoryImplClassDeclaration"
-  }
-
-  data object AssistedFactoryImplCompanionDeclaration : GeneratedDeclarationKey() {
-    override fun toString() = "AssistedFactoryImplCompanionDeclaration"
-  }
-
-  data object AssistedFactoryImplCreatorFunctionDeclaration : GeneratedDeclarationKey() {
-    override fun toString() = "AssistedFactoryImplCreatorFunctionDeclaration"
-  }
-
   data object InjectConstructorFactoryClassDeclaration : GeneratedDeclarationKey() {
     override fun toString() = "InjectConstructorFactoryClassDeclaration"
   }
@@ -113,16 +101,12 @@ internal object Keys {
     override fun toString() = "TopLevelInjectFunctionClassFunction"
   }
 
-  data object ProviderFieldAccessor : GeneratedDeclarationKey() {
-    override fun toString() = "ProviderFieldAccessor"
+  data object ExtendableGraphAccessor : GeneratedDeclarationKey() {
+    override fun toString() = "ExtendableGraphAccessor"
   }
 
-  data object InstanceFieldAccessor : GeneratedDeclarationKey() {
-    override fun toString() = "InstanceFieldAccessor"
-  }
-
-  data object ContributedGraph : GeneratedDeclarationKey() {
-    override fun toString() = "ContributedGraph"
+  data object GeneratedGraphExtension : GeneratedDeclarationKey() {
+    override fun toString() = "GeneratedGraphExtension"
   }
 
   data object ContributionHint : GeneratedDeclarationKey() {
@@ -131,5 +115,13 @@ internal object Keys {
 
   data object BindingMirrorClassDeclaration : GeneratedDeclarationKey() {
     override fun toString() = "BindingMirrorClassDeclaration"
+  }
+
+  data object GeneratedDynamicGraph : GeneratedDeclarationKey() {
+    override fun toString() = "GeneratedDynamicGraph"
+  }
+
+  data object DynamicContainerParam : GeneratedDeclarationKey() {
+    override fun toString() = "DynamicContainerParam"
   }
 }

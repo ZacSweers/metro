@@ -1,4 +1,4 @@
-@Inject
+@AssistedInject
 class Example<T>(@Assisted val inputT: T, val graphT: T) {
   @AssistedFactory
   fun interface Factory<T> {
@@ -11,7 +11,7 @@ class Example<T>(@Assisted val inputT: T, val graphT: T) {
   }
 }
 
-@Inject
+@AssistedInject
 class ExampleWithDifferent<T, R>(@Assisted val inputT: T, val graphT: R) {
   @AssistedFactory
   fun interface Factory<T, R> {

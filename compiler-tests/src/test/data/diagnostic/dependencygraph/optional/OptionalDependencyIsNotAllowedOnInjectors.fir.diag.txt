@@ -1,0 +1,3 @@
+/OptionalDependencyIsNotAllowedOnInjectors.kt:(128,134): error: Injector functions cannot be annotated with @OptionalDependency.
+
+/OptionalDependencyIsNotAllowedOnInjectors.kt:(135,154): error: Injector function parameters cannot be annotated with @OptionalDependency.

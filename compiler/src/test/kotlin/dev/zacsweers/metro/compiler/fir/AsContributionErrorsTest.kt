@@ -177,135 +177,10 @@ class AsContributionErrorsTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-            e: graphs.kt:11:3 `asContribution` receiver must be annotated with a `@DependencyGraph` or `@ContributesGraphExtension` annotation.
-            e: graphs.kt:12:21 `asContribution` receiver must be annotated with a `@DependencyGraph` or `@ContributesGraphExtension` annotation.
-            e: graphs.kt:13:44 `asContribution` receiver must be annotated with a `@DependencyGraph` or `@ContributesGraphExtension` annotation.
+            e: graphs.kt:11:3 `asContribution` receiver must be annotated with a `@DependencyGraph` annotation.
+            e: graphs.kt:12:21 `asContribution` receiver must be annotated with a `@DependencyGraph` annotation.
+            e: graphs.kt:13:44 `asContribution` receiver must be annotated with a `@DependencyGraph` annotation.
           """
-          .trimIndent()
-      )
-    }
-  }
-
-  @Test
-  fun `receiver must be a graph - contributed graph - happy path`() {
-    compile(
-      source(
-        fileNameWithoutExtension = "graphs",
-        source =
-          """
-            @ContributesTo(AppScope::class)
-            interface ContributedInterface
-            @ContributesGraphExtension(AppScope::class)
-            interface AppGraph {
-              @ContributesGraphExtension.Factory(Unit::class)
-              interface Factory {
-                fun createAppGraph(): AppGraph
-              }
-            }
-
-            fun example(appGraph: AppGraph) {
-              appGraph.asContribution<ContributedInterface>()
-              val contributed = appGraph.asContribution<ContributedInterface>()
-              val contributed2: ContributedInterface = appGraph.asContribution()
-            }
-          """
-            .trimIndent(),
-      )
-    )
-  }
-
-  @Test
-  fun `receiver must be a graph - contributed graph - happy path - indirect`() {
-    compile(
-      source(
-        fileNameWithoutExtension = "graphs",
-        source =
-          """
-            interface Base
-            @ContributesTo(AppScope::class)
-            interface ContributedInterface : Base
-            @ContributesGraphExtension(AppScope::class)
-            interface AppGraph {
-              @ContributesGraphExtension.Factory(Unit::class)
-              interface Factory {
-                fun createAppGraph(): AppGraph
-              }
-            }
-
-            fun example(appGraph: AppGraph) {
-              appGraph.asContribution<Base>()
-              val contributed = appGraph.asContribution<Base>()
-              val contributed2: Base = appGraph.asContribution()
-            }
-          """
-            .trimIndent(),
-      )
-    )
-  }
-
-  @Test
-  fun `receiver must be a graph - contributed graph - happy path - generic`() {
-    compile(
-      source(
-        fileNameWithoutExtension = "graphs",
-        source =
-          """
-            interface Base<T>
-            @ContributesTo(AppScope::class)
-            interface ContributedInterface : Base<String>
-            @ContributesGraphExtension(AppScope::class)
-            interface AppGraph {
-              @ContributesGraphExtension.Factory(Unit::class)
-              interface Factory {
-                fun createAppGraph(): AppGraph
-              }
-            }
-
-            fun example(appGraph: AppGraph) {
-              appGraph.asContribution<Base<String>>()
-              val contributed = appGraph.asContribution<Base<String>>()
-              val contributed2: Base<String> = appGraph.asContribution()
-            }
-          """
-            .trimIndent(),
-      )
-    )
-  }
-
-  @Test
-  fun `receiver must be a graph - contributed graph - error - generic`() {
-    compile(
-      source(
-        fileNameWithoutExtension = "graphs",
-        source =
-          """
-            interface Base<T>
-            @ContributesTo(AppScope::class)
-            interface ContributedInterface : Base<String>
-            @ContributesGraphExtension(AppScope::class)
-            interface AppGraph {
-              @ContributesGraphExtension.Factory(Unit::class)
-              interface Factory {
-                fun createAppGraph(): AppGraph
-              }
-            }
-
-            fun example(appGraph: AppGraph) {
-              appGraph.asContribution<Base<Int>>()
-              val contributed = appGraph.asContribution<Base<Int>>()
-              val contributed2: Base<Int> = appGraph.asContribution()
-            }
-          """
-            .trimIndent(),
-      ),
-      expectedExitCode = ExitCode.COMPILATION_ERROR,
-    ) {
-      assertDiagnostics(
-        """
-          e: graphs.kt:18:27 `asContribution` type argument 'test.Base' is not a merged supertype of test.AppGraph.
-          e: graphs.kt:19:45 `asContribution` type argument 'test.Base' is not a merged supertype of test.AppGraph.
-          e: graphs.kt:20:42 `asContribution` type argument 'test.Base' is not a merged supertype of test.AppGraph.
-        """
           .trimIndent()
       )
     }
@@ -318,15 +193,15 @@ class AsContributionErrorsTest : MetroCompilerTest() {
         fileNameWithoutExtension = "main",
         source =
           """
-            @ContributesGraphExtension(Unit::class)
+            @GraphExtension(Unit::class)
             interface UnitGraph {
-              @ContributesGraphExtension.Factory(AppScope::class)
+              @GraphExtension.Factory @ContributesTo(AppScope::class)
               interface Factory {
                 fun createUnitGraph(): UnitGraph
               }
             }
 
-            @DependencyGraph(AppScope::class, isExtendable = true)
+            @DependencyGraph(AppScope::class)
             interface ExampleGraph
 
             fun main(exampleGraph: ExampleGraph): UnitGraph.Factory {

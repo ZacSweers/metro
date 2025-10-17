@@ -28,8 +28,14 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
 
   override fun getCompilerPluginId(): String = PLUGIN_ID
 
-  override fun getPluginArtifact(): SubpluginArtifact =
-    SubpluginArtifact(groupId = "dev.zacsweers.metro", artifactId = "compiler", version = VERSION)
+  override fun getPluginArtifact(): SubpluginArtifact {
+    val version = System.getProperty("metro.compilerVersionOverride", VERSION)
+    return SubpluginArtifact(
+      groupId = "dev.zacsweers.metro",
+      artifactId = "compiler",
+      version = version,
+    )
+  }
 
   override fun isApplicable(kotlinCompilation: KotlinCompilation<*>): Boolean {
     val project = kotlinCompilation.target.project
@@ -41,18 +47,35 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         .enableKotlinVersionCompatibilityChecks
         .getOrElse(true)
     if (checkVersions) {
-      val metroVersion = VersionNumber.parse(BASE_KOTLIN_VERSION)
-      val kotlinVersion = VersionNumber.parse(project.getKotlinPluginVersion())
-      if (metroVersion < kotlinVersion) {
-        project.logger.warn(
-          "Metro '$VERSION' is too old for Kotlin '$kotlinVersion'. " +
-            "Please upgrade Metro or downgrade Kotlin to '$BASE_KOTLIN_VERSION'."
-        )
-      } else if (metroVersion > kotlinVersion) {
-        project.logger.warn(
-          "Metro '$VERSION' is too new for Kotlin '$kotlinVersion'. " +
-            "Please upgrade Kotlin to '$BASE_KOTLIN_VERSION'."
-        )
+      val kotlinVersionString = project.getKotlinPluginVersion()
+      val kotlinVersion = VersionNumber.parse(kotlinVersionString)
+      val supportedVersions = SUPPORTED_KOTLIN_VERSIONS.map(VersionNumber::parse)
+      val minSupported = supportedVersions.min()
+      val maxSupported = supportedVersions.max()
+
+      val isSupported = kotlinVersion in minSupported..maxSupported
+      if (!isSupported) {
+        if (kotlinVersion < minSupported) {
+          project.logger.lifecycle(
+            """
+              Metro '$VERSION' requires Kotlin ${SUPPORTED_KOTLIN_VERSIONS.first()} or later, but this build uses '$kotlinVersionString'.
+              Please upgrade Kotlin to at least '${SUPPORTED_KOTLIN_VERSIONS.first()}'.
+              Supported Kotlin versions: ${SUPPORTED_KOTLIN_VERSIONS.first()} - ${SUPPORTED_KOTLIN_VERSIONS.last()}
+              You can also disable this warning via `metro.version.check=false` or setting the `metro.enableKotlinVersionCompatibilityChecks` DSL property.
+            """
+              .trimIndent()
+          )
+        } else {
+          project.logger.lifecycle(
+            """
+              Metro '$VERSION' supports the following Kotlin versions: $SUPPORTED_KOTLIN_VERSIONS
+              This build uses unrecognized version '$kotlinVersionString'.
+              If you have any issues, please upgrade Metro (if applicable) or use a supported Kotlin version. See https://zacsweers.github.io/metro/latest/compatibility.
+              You can also disable this warning via `metro.version.check=false` or setting the `metro.enableKotlinVersionCompatibilityChecks` DSL property.
+            """
+              .trimIndent()
+          )
+        }
       }
     }
 
@@ -107,6 +130,7 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
     return project.provider {
       buildList {
         add(lazyOption("enabled", extension.enabled))
+        add(lazyOption("max-ir-errors-count", extension.maxIrErrors))
         add(lazyOption("debug", extension.debug))
         add(lazyOption("generate-assisted-factories", extension.generateAssistedFactories))
         add(
@@ -121,10 +145,24 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
             extension.generateJvmContributionHintsInFir,
           )
         )
-        add(lazyOption("enable-scoped-inject-class-hints", extension.enableScopedInjectClassHints))
+        @Suppress("DEPRECATION")
+        add(
+          lazyOption(
+            "enable-full-binding-graph-validation",
+            extension.enableFullBindingGraphValidation.orElse(extension.enableStrictValidation),
+          )
+        )
+        add(
+          lazyOption(
+            "enable-graph-impl-class-as-return-type",
+            extension.enableGraphImplClassAsReturnType.orElse(false),
+          )
+        )
         add(lazyOption("transform-providers-to-private", extension.transformProvidersToPrivate))
         add(lazyOption("shrink-unused-bindings", extension.shrinkUnusedBindings))
         add(lazyOption("chunk-field-inits", extension.chunkFieldInits))
+        add(lazyOption("statements-per-init-fun", extension.statementsPerInitFun))
+        add(lazyOption("optional-dependency-behavior", extension.optionalDependencyBehavior))
         add(lazyOption("public-provider-severity", extension.publicProviderSeverity))
         add(
           lazyOption(
@@ -134,10 +172,17 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         )
         add(
           lazyOption(
+            "interop-annotations-named-arg-severity",
+            extension.interopAnnotationsNamedArgSeverity,
+          )
+        )
+        add(
+          lazyOption(
             "enable-top-level-function-injection",
             extension.enableTopLevelFunctionInjection,
           )
         )
+        add(lazyOption("contributes-as-inject", extension.contributesAsInject))
         reportsDir.orNull
           ?.let { FilesSubpluginOption("reports-destination", listOf(it.asFile)) }
           ?.let(::add)
@@ -153,126 +198,128 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
 
         with(extension.interop) {
           provider
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-provider", value = it.joinToString(":")) }
             ?.let(::add)
           lazy
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-lazy", value = it.joinToString(":")) }
             ?.let(::add)
           assisted
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-assisted", value = it.joinToString(":")) }
             ?.let(::add)
           assistedFactory
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-assisted-factory", value = it.joinToString(":")) }
             ?.let(::add)
           assistedInject
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-assisted-inject", value = it.joinToString(":")) }
             ?.let(::add)
           binds
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-binds", value = it.joinToString(":")) }
             ?.let(::add)
           contributesTo
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-contributes-to", value = it.joinToString(":")) }
             ?.let(::add)
           contributesBinding
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-contributes-binding", value = it.joinToString(":")) }
             ?.let(::add)
           contributesIntoSet
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-contributes-into-set", value = it.joinToString(":")) }
             ?.let(::add)
-          contributesGraphExtension
-            .getOrElse(emptySet())
+          graphExtension
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
-            ?.let {
-              SubpluginOption("custom-contributes-graph-extension", value = it.joinToString(":"))
-            }
+            ?.let { SubpluginOption("custom-graph-extension", value = it.joinToString(":")) }
             ?.let(::add)
-          contributesGraphExtensionFactory
-            .getOrElse(emptySet())
+          graphExtensionFactory
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let {
-              SubpluginOption(
-                "custom-contributes-graph-extension-factory",
-                value = it.joinToString(":"),
-              )
+              SubpluginOption("custom-graph-extension-factory", value = it.joinToString(":"))
             }
             ?.let(::add)
           elementsIntoSet
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-elements-into-set", value = it.joinToString(":")) }
             ?.let(::add)
-          graph
-            .getOrElse(emptySet())
+          dependencyGraph
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
-            ?.let { SubpluginOption("custom-graph", value = it.joinToString(":")) }
+            ?.let { SubpluginOption("custom-dependency-graph", value = it.joinToString(":")) }
             ?.let(::add)
-          graphFactory
-            .getOrElse(emptySet())
+          dependencyGraphFactory
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
-            ?.let { SubpluginOption("custom-graph-factory", value = it.joinToString(":")) }
+            ?.let {
+              SubpluginOption("custom-dependency-graph-factory", value = it.joinToString(":"))
+            }
             ?.let(::add)
           inject
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-inject", value = it.joinToString(":")) }
             ?.let(::add)
           intoMap
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-into-map", value = it.joinToString(":")) }
             ?.let(::add)
           intoSet
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-into-set", value = it.joinToString(":")) }
             ?.let(::add)
           mapKey
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-map-key", value = it.joinToString(":")) }
             ?.let(::add)
           multibinds
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-multibinds", value = it.joinToString(":")) }
             ?.let(::add)
           provides
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-provides", value = it.joinToString(":")) }
             ?.let(::add)
           qualifier
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-qualifier", value = it.joinToString(":")) }
             ?.let(::add)
           scope
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-scope", value = it.joinToString(":")) }
             ?.let(::add)
           bindingContainer
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-binding-container", value = it.joinToString(":")) }
+            ?.let(::add)
+          origin
+            .getOrElse(mutableSetOf())
+            .takeUnless { it.isEmpty() }
+            ?.let { SubpluginOption("custom-origin", value = it.joinToString(":")) }
             ?.let(::add)
           add(
             SubpluginOption(
@@ -288,6 +335,10 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
 
 @JvmName("booleanPluginOptionOf")
 private fun lazyOption(key: String, value: Provider<Boolean>): SubpluginOption =
+  lazyOption(key, value.map { it.toString() })
+
+@JvmName("intPluginOptionOf")
+private fun lazyOption(key: String, value: Provider<Int>): SubpluginOption =
   lazyOption(key, value.map { it.toString() })
 
 @JvmName("enumPluginOptionOf")

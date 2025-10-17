@@ -10,13 +10,19 @@ import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.captureStandardOut
 import dev.zacsweers.metro.compiler.createGraphViaFactory
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
+import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.generatedMetroGraphClass
 import dev.zacsweers.metro.compiler.getInstanceMethod
 import dev.zacsweers.metro.compiler.invokeInstanceMethod
 import dev.zacsweers.metro.compiler.invokeSuspendInstanceFunction
+import kotlin.reflect.KClass
+import kotlin.reflect.full.contextParameters
+import kotlin.reflect.full.valueParameters
+import kotlin.reflect.jvm.kotlinFunction
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
+@OptIn(ExperimentalContextParameters::class)
 class TopLevelInjectTest : MetroCompilerTest() {
 
   override val metroOptions: MetroOptions
@@ -380,6 +386,185 @@ class TopLevelInjectTest : MetroCompilerTest() {
     val method = app.getInstanceMethod("invoke")
     assertThat(method.annotations.map { it.annotationClass.qualifiedName })
       .contains("androidx.compose.runtime.Composable")
+  }
+
+  @Test
+  fun `context parameters`() {
+    val result =
+      compile(
+        sourceFiles =
+          arrayOf(
+            COMPOSE_ANNOTATIONS,
+            source(
+              """
+            import androidx.compose.runtime.Composable
+
+            interface Modifier {
+              companion object : Modifier
+            }
+
+            interface SharedTransitionScope
+            interface Clock
+            interface MyUiComponentClass
+
+            @Inject
+            @Composable
+            context(
+              _: MyUiComponentClass,
+            )
+            fun App(
+              clock: Clock,
+            ) {
+              // ...
+            }
+
+            @DependencyGraph
+            interface ExampleGraph {
+              val app: AppClass
+
+              @Provides fun provideClock(): Clock = object : Clock {}
+              @Provides fun provideUiComponent(): MyUiComponentClass = object : MyUiComponentClass {}
+            }
+          """
+                .trimIndent()
+            ),
+          ),
+        compilationBlock = {
+          this.kotlincArguments += "-Xcontext-parameters"
+        },
+      )
+
+    val graph = result.ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+
+    val app = graph.callProperty<Any>("app")
+    val method = app.getInstanceMethod("invoke")
+    assertThat(method.annotations.map { it.annotationClass.qualifiedName })
+      .contains("androidx.compose.runtime.Composable")
+    assertThat(method.parameterCount).isEqualTo(0)
+  }
+
+  @Test
+  fun `context parameters - multiple unused`() {
+    val result =
+      compile(
+        sourceFiles =
+          arrayOf(
+            COMPOSE_ANNOTATIONS,
+            source(
+              """
+            import androidx.compose.runtime.Composable
+
+            interface Modifier {
+              companion object : Modifier
+            }
+
+            interface SharedTransitionScope
+            interface Clock
+            interface MyUiComponentClass
+
+            @Inject
+            @Composable
+            context(
+              _: SharedTransitionScope,
+              _: MyUiComponentClass,
+            )
+            fun App(
+              clock: Clock,
+            ) {
+              // ...
+            }
+
+            @DependencyGraph
+            interface ExampleGraph {
+              val app: AppClass
+
+              @Provides fun provideClock(): Clock = object : Clock {}
+              @Provides fun provideUiComponent(): MyUiComponentClass = object : MyUiComponentClass {}
+              @Provides fun provideScope(): SharedTransitionScope = object : SharedTransitionScope {}
+            }
+          """
+                .trimIndent()
+            ),
+          ),
+        compilationBlock = {
+          this.kotlincArguments += "-Xcontext-parameters"
+        },
+      )
+
+    val graph = result.ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+
+    val app = graph.callProperty<Any>("app")
+    val method = app.getInstanceMethod("invoke")
+    assertThat(method.annotations.map { it.annotationClass.qualifiedName })
+      .contains("androidx.compose.runtime.Composable")
+    assertThat(method.parameterCount).isEqualTo(0)
+  }
+
+  @Test
+  fun `context parameters with some assisted`() {
+    val result =
+      compile(
+        sourceFiles =
+          arrayOf(
+            COMPOSE_ANNOTATIONS,
+            source(
+              """
+            import androidx.compose.runtime.Composable
+
+            interface Modifier {
+              companion object : Modifier
+            }
+
+            interface SharedTransitionScope
+            interface Clock
+            interface MyUiComponentClass
+
+            @Inject
+            @Composable
+            context(
+              @Assisted sharedTransitionScope: SharedTransitionScope,
+              _: MyUiComponentClass,
+            )
+            fun App(
+              clock: Clock,
+              @Assisted modifier: Modifier = Modifier,
+            ) {
+              // ...
+            }
+
+            @DependencyGraph
+            interface ExampleGraph {
+              val app: AppClass
+
+              @Provides fun provideClock(): Clock = object : Clock {}
+              @Provides fun provideUiComponent(): MyUiComponentClass = object : MyUiComponentClass {}
+            }
+          """
+                .trimIndent()
+            ),
+          ),
+        compilationBlock = {
+          this.kotlincArguments += "-Xcontext-parameters"
+        },
+      )
+
+    val graph = result.ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+
+    val app = graph.callProperty<Any>("app")
+    val method = app.getInstanceMethod("invoke")
+    assertThat(method.annotations.map { it.annotationClass.qualifiedName })
+      .contains("androidx.compose.runtime.Composable")
+    // Assert assisted params
+    assertThat(method.parameterCount).isEqualTo(2)
+    assertThat(method.parameterTypes[0].canonicalName).isEqualTo("test.SharedTransitionScope")
+    assertThat(method.parameterTypes[1].canonicalName).isEqualTo("test.Modifier")
+    // Assert context params
+    val kFunction = method.kotlinFunction!!
+    assertThat(kFunction.contextParameters).hasSize(1)
+    assertThat(kFunction.contextParameters[0].type.classifier!!.expectAs<KClass<*>>().qualifiedName).isEqualTo("test.SharedTransitionScope")
+
+    // Ensure we carry over parameter default
+//    assertThat(kFunction.valueParameters[0].isOptional).isTrue()
   }
 
   @Test

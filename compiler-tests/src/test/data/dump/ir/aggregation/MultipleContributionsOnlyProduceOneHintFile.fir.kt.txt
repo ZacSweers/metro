@@ -57,16 +57,16 @@ class Base1Impl : Base1, Base2, Base3 {
 
       @Binds
       @IntoSet
-      @CallableMetadata(callableName = "bindIntoSetAsBase2", isPropertyAccessor = false, startOffset = -1, endOffset = -1)
+      @CallableMetadata(callableName = "bindIntoSetAsBase2", propertyName = "", startOffset = -1, endOffset = -1)
       abstract fun bindIntoSetAsBase2_intoset(instance: Base1Impl): Base2
 
       @Binds
       @IntoSet
-      @CallableMetadata(callableName = "bindIntoSetAsBase3", isPropertyAccessor = false, startOffset = -1, endOffset = -1)
+      @CallableMetadata(callableName = "bindIntoSetAsBase3", propertyName = "", startOffset = -1, endOffset = -1)
       abstract fun bindIntoSetAsBase3_intoset(instance: Base1Impl): Base3
 
       @Binds
-      @CallableMetadata(callableName = "bindsAsBase1", isPropertyAccessor = false, startOffset = -1, endOffset = -1)
+      @CallableMetadata(callableName = "bindsAsBase1", propertyName = "", startOffset = -1, endOffset = -1)
       abstract fun bindsAsBase1(instance: Base1Impl): Base1
 
     }

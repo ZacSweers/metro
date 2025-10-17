@@ -8,13 +8,13 @@ import androidx.work.WorkerParameters
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
+import dev.zacsweers.metro.AssistedInject
 import dev.zacsweers.metro.ContributesIntoMap
-import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.binding
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.delay
 
-@Inject
+@AssistedInject
 class SampleWorker(context: Context, @Assisted params: WorkerParameters) :
   CoroutineWorker(context, params) {
   override suspend fun doWork(): Result {

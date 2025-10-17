@@ -460,8 +460,10 @@ class TopologicalSortTest {
 
     // All vertices should be present
     // When all edges are deferrable, removing them leaves no edges
-    // So we expect natural (alphabetical) order
-    assertEquals(listOf("A", "B", "C"), result.sortedKeys)
+    // Ready = {A,C}. We prefer deferred nodes first -> A.
+    // Ready = {C} → C; this unlocks B -> B.
+    // So it goes A (deferred), C (first that depends on A), B (remainer)
+    assertEquals(listOf("A", "C", "B"), result.sortedKeys)
   }
 
   @Test

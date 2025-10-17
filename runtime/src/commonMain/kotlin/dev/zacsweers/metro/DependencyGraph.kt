@@ -92,52 +92,11 @@ import kotlin.reflect.KClass
  * }
  * ```
  *
- * ## Graph Extensions
- *
- * Dependency graphs can be marked as extendable to allow child graphs to extend them. These are
- * similar in functionality to Dagger’s Subcomponents but are detached in nature like in
- * kotlin-inject.
- *
- * A graph must opt itself into extension in via marking [isExtendable] to true, which will make the
- * Metro compiler generate extra metadata for downstream child graphs.
- *
- * Then, a child graph can add an [@Extends][Extends]-annotated parameter to its creator to extend
- * that graph.
- *
- * ```kotlin
- * @DependencyGraph(isExtendable = true)
- * interface AppGraph {
- *   @Provides fun provideHttpClient(): HttpClient { ... }
- * }
- *
- * @DependencyGraph
- * interface UserGraph {
- *   @DependencyGraph.Factory
- *   fun interface Factory {
- *     fun create(@Extends appGraph: AppGraph): UserGraph
- *   }
- * }
- * ```
- *
- * Child graphs then contain a superset of bindings they can inject, including both their bindings
- * and their parents'. Graph extensions can be chained as well.
- *
- * Child graphs also implicitly inherit their parents’ scopes.
- *
- * ### Hoisting unused scoped class injections in parent graphs
- *
- * In some cases, there are scoped bindings that are unused in the parent graph but _are_ used in
- * child graphs. Due to the detached nature of graph extensions, these bindings by default end up
- * scoped to the child. To enforce that these bindings are scoped and held by the parent, Metro
- * generates hints for these classes and discovers them during graph processing by default. You can
- * disable this via the `enableScopedInjectClassHints` property in the Gradle DSL.
- *
- * Note that this must be enabled in the compilation of the scoped class itself.
- *
+ * @property scope The scope this dependency graph aggregates.
+ * @property additionalScopes Additional scopes this dependency graph aggregates. [scope] must be
+ *   defined if this is defined, as this property is purely for convenience.
  * @property excludes Optional list of excluded contributing classes (requires a [scope] to be
  *   defined).
- * @property isExtendable If enabled, marks this graph as available for extension and generates
- *   extra metadata about this graph's available bindings for child graphs to read.
  * @property bindingContainers Optional list of included binding containers. See the doc on
  *   [BindingContainer] for more details.
  */
@@ -146,13 +105,11 @@ public annotation class DependencyGraph(
   val scope: KClass<*> = Nothing::class,
   val additionalScopes: Array<KClass<*>> = [],
   val excludes: Array<KClass<*>> = [],
-  val isExtendable: Boolean = false,
   val bindingContainers: Array<KClass<*>> = [],
 ) {
   /**
    * Graph factories can be declared as a single nested declaration within the target graph to
-   * create instances with bound instances (via [Provides]), graph dependencies (via [Includes]), or
-   * parent graphs to extend (via [Extends]).
+   * create instances with bound instances (via [Provides]) or graph dependencies (via [Includes]).
    *
    * ```
    * @DependencyGraph
@@ -226,7 +183,7 @@ public annotation class DependencyGraph(
    * ## Using generated declarations directly
    *
    * If you
-   * [enable third party FIR plugins in the IDE](https://zacsweers.github.io/metro/installation/#ide-support),
+   * [enable third party FIR plugins in the IDE](https://zacsweers.github.io/metro/latest/installation/#ide-support),
    * these will be visible and directly linkable. However, your mileage may vary and it's
    * recommended to stick with the graph creator intrinsics for now until the IDE support is
    * improved.

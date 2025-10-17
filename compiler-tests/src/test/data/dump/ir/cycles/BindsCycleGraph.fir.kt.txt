@@ -59,7 +59,7 @@ interface BindsCycleGraph {
     }
 
     @Binds
-    @CallableMetadata(callableName = "foo", isPropertyAccessor = false, startOffset = 307, endOffset = 336)
+    @CallableMetadata(callableName = "foo", propertyName = "", startOffset = 314, endOffset = 336)
     abstract fun foo(bar: Bar): Foo
 
   }

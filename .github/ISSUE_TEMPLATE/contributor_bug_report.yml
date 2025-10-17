@@ -1,0 +1,57 @@
+name: Bug Report
+description: Report a bug
+labels: [ "bug" ]
+assignees: [ ]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please follow the instructions below.
+
+        If you have a usage or debugging question, please use the [Q&A feature of the repo's Discussions section](https://github.com/ZacSweers/metro/discussions/new?category=q-a) instead of creating an issue.
+
+        IDE ABI issues are not currently accepted. This is unfortunately not unexpected until there is a more stable compiler plugin API.
+
+        Provide a brief summary of the issue in the title above
+        
+        When submitting, PLEASE USE CONVENTIONAL **MARKDOWN FORMATTING** AND **SYNTAX HIGHLIGHTING** for readability.
+        
+        Issues with code blocks that do not use syntax highlighting are less likely to be prioritized.
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Describe the high level issue (what crashed, what behavior you encountered, etc).
+    validations:
+      required: true
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Self-contained Reproducer
+      description: |
+        Provide a [minimal, self-contained example](https://en.wikipedia.org/wiki/Minimal_reproducible_example) that reproduces the issue.
+        
+        Ideally, fork this repo and create a test case in integration or compiler unit tests that reproduces this and then link that here.
+        
+        A minimally reproducible project is also good, either as a link or attached here.
+        
+        If you cannot supply a repro case, it may be difficult or impossible to help. In this event, be as detailed as you can.
+        
+        Please include any relevant stack traces as you can (formatted as code blocks).
+    validations:
+      required: true
+  - type: input
+    id: metro-version
+    attributes:
+      label: Metro version
+      description: What version of Metro are you using? (e.g. `0.1.0`)
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: |
+        Include as many relevant details about the environment as you can. Which platform, is it a compiler or runtime bug, etc.
+    validations:
+      required: false

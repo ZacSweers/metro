@@ -32,7 +32,7 @@ Graphs are relatively cheap and should be used freely.
 
 ## Inputs
 
-Runtime inputs can be provided via a `@DependencyGraph.Factory` interface that returns the target graph. These parameters must be annotated with exactly one of `@Provides`, `@Includes`, or `@Extends`.
+Runtime inputs can be provided via a `@DependencyGraph.Factory` interface that returns the target graph. These parameters must be annotated with either `@Provides` or `@Includes`.
 
 ### Provides
 
@@ -102,10 +102,6 @@ interface AppGraph {
 
 [Binding Containers](#binding-containers) are a special type of `@Includes` type, see more in its section below.
 
-### Extends
-
-`@Extends`-annotated parameters are for extending parent graphs. See _Graph Extensions_ at the bottom of this doc for more information.
-
 ### Creating factories
 
 Graph factories can be created with the `createGraphFactory()` intrinsic.
@@ -138,39 +134,123 @@ interface AppGraph
 
 ## Graph Extensions
 
-Dependency graphs can be marked as _extendable_ to allow child graphs to extend them. These are similar in functionality to Dagger's `Subcomponents` but are detached in nature like in kotlin-inject.
+Dependency graphs can be extended via _graph extensions_. As the name implies, graph extensions _extend_ a parent graph they are declared for and contain a superset of bindings that includes both the parent graph(s) as well as their own. These are similar in functionality to Dagger's _Subcomponents_.
 
-A graph must opt itself into extension in via `@DependencyGraph(..., isExtendable = true)`, which will make the Metro compiler generate extra metadata for downstream child graphs.
+Graph extensions must be either an interface or an abstract class and are annotated with `@GraphExtension`. They are created via `@GraphExtension.Factory` types.
 
-Then, a child graph can add an `@Extends`-annotated parameter to its creator to extend that graph.
+Metro's compiler plugin will build, validate, and implement this graph at compile-time _when the parent graph is generated_. This means that graph extensions are not available until the parent graph is generated.
+
+Graph extensions can be chained and implicitly inherit their parents' scopes.
+
+### Creating Graph Extensions
+
+You cannot create a graph extension independent of its parent graph, you may only access it via accessor on the parent graph. You can declare this in multiple ways:
+
+* Declare an accessor on the parent graph directly.
 
 ```kotlin
-@DependencyGraph(isExtendable = true)
-interface AppGraph {
-  @Provides fun provideHttpClient(): HttpClient { ... }
-}
+@GraphExtension
+interface LoggedInGraph
 
 @DependencyGraph
-interface UserGraph {
-  @DependencyGraph.Factory
-  fun interface Factory {
-    fun create(@Extends appGraph: AppGraph): UserGraph
-  }
+interface AppGraph {
+  val loggedInGraph: LoggedInGraph
 }
 ```
 
-Child graphs then contain a _superset_ of bindings they can inject, including both their bindings and their parents'. Graph extensions can be chained as well.
+* (If the extension has a creator) declare the creator on the parent graph directly.
 
-Child graphs also implicitly inherit their parents' _scopes_.
+```kotlin
+@GraphExtension
+interface LoggedInGraph {
+  @GraphExtension.Factory
+  interface Factory {
+    fun createLoggedInGraph(): LoggedInGraph
+  }
+}
 
-!!! tip "Hoisting unused scoped class injections in parent graphs"
-    In some cases, there are scoped bindings that are unused in the parent graph but _are_ used in child graphs. Due to the detached nature of graph extensions, these bindings by default end up scoped to the child. To enforce that these bindings are scoped and held by the parent, Metro generates hints for these classes and discovers them during graph processing by default. You can disable this via the `enableScopedInjectClassHints` property in the Gradle DSL.
-    
-    See https://github.com/ZacSweers/metro/issues/377 for more details.
+@DependencyGraph
+interface AppGraph {
+  val loggedInGraphFactory: LoggedInGraph.Factory
+}
+```
+
+* (If the extension has a creator) make the parent graph implement the creator.
+
+```kotlin
+@GraphExtension
+interface LoggedInGraph {
+  @GraphExtension.Factory
+  interface Factory {
+    fun createLoggedInGraph(): LoggedInGraph
+  }
+}
+
+@DependencyGraph
+interface AppGraph : LoggedInGraph.Factory
+```
+
+* Contribute the factory to the parent graph via [@ContributesTo](#contributed-graph-extensions). More on this below.
+
+```kotlin
+@GraphExtension(LoggedInScope::class)
+interface LoggedInGraph {
+  @ContributesTo(AppScope::class)
+  @GraphExtension.Factory
+  interface Factory {
+    fun createLoggedInGraph(): LoggedInGraph
+  }
+}
+
+@DependencyGraph(AppScope::class)
+interface AppGraph
+```
+
+### Scoping
+
+_See [Scopes](scopes.md) for more details on scopes!_
+
+Like [DependencyGraph](#scoping), graph extensions may declare a `scope` (and optionally `additionalScopes` if there are more). Each of these declared scopes act as an implicit `@SingleIn` representation of that scope. For example:
+
+```kotlin
+@GraphExtension(AppScope::class)
+interface AppGraph
+```
+
+Is functionally equivalent to writing the below.
+
+```kotlin
+@SingleIn(AppScope::class)
+@GraphExtension(AppScope::class)
+interface AppGraph
+```
+
+### Providers
+
+Like [DependencyGraph](#dependency-graphs), graph extensions may declare providers via `@Provides` and `@Binds` to provide dependencies into the graph.
+
+_Creators_ can provide instance dependencies and other graphs as dependencies.
+
+```kotlin
+@GraphExtension
+interface AppGraph {
+  val httpClient: HttpClient
+
+  @Provides fun provideHttpClient(): HttpClient = HttpClient()
+}
+```
+
+### Creators
+
+See [DependencyGraph](#inputs)'s section on creators.
+
+### Aggregation
+
+See [DependencyGraph](#scoping)'s section on aggregation.
 
 ### Contributed Graph Extensions
 
-`@ContributesGraphExtension` is a specialized type of graph that is _contributed_ to some parent scope. Its generation is deferred until the parent graph interface is merged.
+Graph extensions may be _contributed_ to a parent graph and its contribution merging will be deferred until the parent graph is generated.
 
 #### The Problem
 
@@ -189,17 +269,18 @@ If `:login` defines its own graph directly with `@DependencyGraph`, it won't see
 
 #### The Solution
 
-Instead, `:login` can use `@ContributesGraphExtension(LoggedInScope::class)` + an associated `@ContributesGraphExtension.Factory(AppScope::class)` to say: "I want to contribute a new graph extension _to_ a future `AppScope` parent graph."
+Instead, `:login` can use `@GraphExtension(LoggedInScope::class)` + `@ContributesTo` on its associated factory to say: "I want to contribute a new graph extension _to_ a future `AppScope` parent graph."
 
 The graph extension will then be generated in `:app`, which already depends on both `:login` and `:user-data`. Now `UserRepository` can be injected in `LoggedInGraph`.
 
 ```kotlin
-@ContributesGraphExtension(LoggedInScope::class)
+@GraphExtension(LoggedInScope::class)
 interface LoggedInGraph {
 
   val userRepository: UserRepository
 
-  @ContributesGraphExtension.Factory(AppScope::class)
+  @ContributesTo(AppScope::class)
+  @GraphExtension.Factory
   interface Factory {
     fun createLoggedInGraph(): LoggedInGraph
   }
@@ -209,24 +290,26 @@ interface LoggedInGraph {
 In the `:app` module:
 
 ```
-@DependencyGraph(AppScope::class, isExtendable = true)
+@DependencyGraph(AppScope::class)
 interface AppGraph
 ```
 
-The generated code will modify `AppGraph` to implement `LoggedInGraph.Factory` and implement `createLoggedInGraph()` using a generated final `$$ContributedLoggedInGraph` class that includes all contributed bindings, including `UserRepository` from `:user-data`.
+The generated code will modify `AppGraph` to implement `LoggedInGraph.Factory` and implement `createLoggedInGraph()` using a generated final `LoggedInGraphImpl` class that includes all contributed bindings, including `UserRepository` from `:user-data`.
 
 ```kotlin
-interface AppGraph 
-  // modifications generated during compile-time
-  : LoggedInGraph.Factory {
+interface AppGraph
+// modifications generated during compile-time
+  interface AppGraph : LoggedInGraph.Factory {
+  
   override fun createLoggedInGraph(): LoggedInGraph {
-    return $$ContributedLoggedInGraph(this)
+    return LoggedInGraphImpl(this)
   }
 
   // Generated in IR
-  @DependencyGraph(LoggedInScope::class)
-  class LoggedInGraph$$MetroGraph(appGraph: AppGraph) : LoggedInGraph {
-    // ...
+  class $$MetroGraph : AppGraph {
+    class LoggedInGraphImpl(appGraph: $$MetroGraph) : LoggedInGraph {
+      // ...
+    }
   }
 }
 ```
@@ -246,7 +329,8 @@ val loggedInGraph = appGraph.createLoggedInGraph()
 You can pass arguments to the graph via the factory:
 
 ```kotlin
-@ContributesGraphExtension.Factory(AppScope::class)
+@ContributesTo(AppScope::class)
+@GraphExtension.Factory
 interface Factory {
   fun create(@Provides userId: String): LoggedInGraph
 }
@@ -257,8 +341,8 @@ This maps to:
 ```kotlin
 // Generated in IR
 @DependencyGraph(LoggedInScope::class)
-class $$ContributedLoggedInGraph(
-  @Extends parent: AppGraph,
+class LoggedInGraphImpl(
+  parent: AppGraph,
   @Provides userId: String
 ): LoggedInGraph {
   // ...
@@ -270,14 +354,14 @@ In `AppGraph`, the generated factory method looks like:
 ```kotlin
 // Generated in IR
 override fun create(userId: String): LoggedInGraph {
-  return LoggedInGraph$$MetroGraph(this, userId)
+  return LoggedInGraphImpl(this, userId)
 }
 ```
 
 !!! warning
     Abstract factory classes cannot be used as graph contributions.
 
-Contributed graphs may also be chained, but note that `@ContributesGraphExtension.isExtendable` must be true to do so!
+Contributed graphs may also be chained.
 
 ## Binding Containers
 
@@ -401,7 +485,52 @@ interface AppGraph {
 - Binding containers may also be [contributed](aggregation.md#contributing-binding-containers).
 - See [#172](https://github.com/ZacSweers/metro/issues/172) for more details.
 
-## Implementation Notes
+## Dynamic Graphs
+
+Dynamic graphs are a powerful feature of the Metro compiler that allow for dynamically replacing bindings in a given graph. To use them, you can pass in a vararg set of _binding containers_ to the `createDynamicGraph()` and `createDynamicGraphFactory()` intrinsics.
+
+```kotlin
+@DependencyGraph
+interface AppGraph {
+  val message: String
+  
+  @Provides fun provideMessage(): String = "real"
+}
+
+class AppTest {
+  val testGraph = createDynamicGraph<AppGraph>(FakeBindings)
+  
+  @Test
+  fun test() {
+    assertEquals("fake", testGraph.message)
+  }
+
+  @BindingContainer
+  object FakeBindings {
+    @Provides fun provideMessage(): String = "fake"
+  }
+}
+```
+
+The compiler will dynamically generate a hidden graph impl _within the enclosing class or file_ that is unique to the combination of input [containers] and target type [T].
+
+**Constraints**
+
+- All containers must be instances (or objects) of _binding containers_.
+- It's an error to pass no containers.
+- All containers must be non-local, canonical classes. i.e., they must be something with a name!
+- This overload may be called in a member function body, top-level function body, or property
+  initializer.
+- The target [T] graph _must_ be annotated with `@DependencyGraph` and must be a
+  valid graph on its own.
+
+??? note "Implementation Notes"
+
+    - The bulk of this implementation is in `IrDynamicGraphGenerator`.
+    - The generated graph impl is a private nested (static) class of the enclosing class or file.
+    - This doesn't swap bindings in a real graph or use a real graph at all, instead tracking available dynamic bindings and preferring them when constructing a graph in `BindingGraphGenerator`.
+
+## General Implementation Notes
 
 Dependency graph code gen is designed to largely match how Dagger components are generated.
 
@@ -412,7 +541,7 @@ Dependency graph code gen is designed to largely match how Dagger components are
 * Dependencies are traversed from public accessors and `inject()` functions.
 * Metro generates Provider Factory classes for each provider. These should be generated at the same time that the provider is compiled so that their factory classes. This is for two primary purposes:
     * They can be reused to avoid code duplication
-    * Metro can copy default values for provider values over to the generated factory to support optional bindings. Since default values may refer to private references, we must generate these factories as nested classes.
+    * Metro can copy default values for provider values over to the generated factory to support optional dependencies. Since default values may refer to private references, we must generate these factories as nested classes.
 * Metro generates a graph *impl* class that holds all aggregated bindings and manages scoping.
 * Scoped bindings are stored in provider fields backed by `DoubleCheck`.
 * Reused unscoped providers instances are stored in reusable fields.

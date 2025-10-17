@@ -5,11 +5,12 @@ package dev.zacsweers.metro.compiler.ir.transformers
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.generatedClass
 import dev.zacsweers.metro.compiler.ir.ClassFactory
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
-import dev.zacsweers.metro.compiler.ir.MetroIrErrors
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
+import dev.zacsweers.metro.compiler.ir.contextParameters
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.dispatchReceiverFor
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
@@ -18,15 +19,18 @@ import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.irTemporary
 import dev.zacsweers.metro.compiler.ir.isExternalParent
+import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import java.util.Optional
 import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -101,12 +105,11 @@ internal class InjectConstructorTransformer(
         // If not external, double check its origin
         if (isMetroFactory && !isExternal) {
           if (it.origin != Origins.InjectConstructorFactoryClassDeclaration) {
-            diagnosticReporter
-              .at(declaration)
-              .report(
-                MetroIrErrors.METRO_ERROR,
-                "Found a Metro factory declaration in ${declaration.kotlinFqName} but with an unexpected origin ${it.origin}",
-              )
+            reportCompat(
+              declaration,
+              MetroDiagnostics.METRO_ERROR,
+              "Found a Metro factory declaration in ${declaration.kotlinFqName} but with an unexpected origin ${it.origin}",
+            )
             return null
           }
         }
@@ -139,19 +142,18 @@ internal class InjectConstructorTransformer(
           generatedFactories[injectedClassId] = Optional.empty()
           return null
         }
-        diagnosticReporter
-          .at(declaration)
-          .report(
-            MetroIrErrors.METRO_ERROR,
-            "Could not find generated factory for '${declaration.kotlinFqName}' in upstream module where it's defined. Run the Metro compiler over that module too.",
-          )
+        reportCompat(
+          declaration,
+          MetroDiagnostics.METRO_ERROR,
+          "Could not find generated factory for '${declaration.kotlinFqName}' in upstream module where it's defined. Run the Metro compiler over that module too, or Dagger if you're using its interop for Java files.",
+        )
         return null
       } else if (doNotErrorOnMissing) {
         // Store a null here because it's absent
         generatedFactories[injectedClassId] = Optional.empty()
         return null
       } else {
-        error(
+        reportCompilerBug(
           "No expected factory class generated for '${declaration.kotlinFqName}'. Report this bug with a repro case at https://github.com/zacsweers/metro/issues/new"
         )
       }
@@ -239,7 +241,11 @@ internal class InjectConstructorTransformer(
     // Generate a metadata-visible function that matches the signature of the target constructor
     // This is used in downstream compilations to read the constructor's signature
     val mirrorFunction =
-      generateMetadataVisibleMirrorFunction(factoryClass = factoryCls, target = targetConstructor)
+      generateMetadataVisibleMirrorFunction(
+        factoryClass = factoryCls,
+        target = targetConstructor,
+        metroAnnotationsOf(targetConstructor),
+      )
 
     factoryCls.dumpToMetroLog()
 
@@ -292,7 +298,7 @@ internal class InjectConstructorTransformer(
                 functionParamsByName.getValue(targetParam.originalName)
               }
 
-              else -> error("Unmatched top level injected function param: $targetParam")
+              else -> reportCompilerBug("Unmatched top level injected function param: $targetParam")
             }
           }
 
@@ -371,17 +377,68 @@ internal class InjectConstructorTransformer(
             .symbol
       }
 
-      // TODO
-      //  copy default values
       invokeFunction.apply {
         val functionReceiver = dispatchReceiverParameter!!
         body =
           pluginContext.createIrBuilder(symbol).run {
+            val sourceParameters = targetCallable.owner.parameters()
+            if (invokeFunction.origin == Origins.TopLevelInjectFunctionClassFunction) {
+              // If this is a top-level function, we need to patch up the parameters
+              // TODO this crashes kotlinc when it generates $default functions :(
+              //  https://youtrack.jetbrains.com/issue/KT-81656/
+              //  copyParameterDefaultValues(
+              //    providerFunction = null,
+              //    sourceMetroParameters = sourceParameters,
+              //    sourceParameters = sourceParameters.nonDispatchParameters.filter {
+              //     it.isAssisted }.map { it.ir },
+              //    targetParameters = invokeFunction.nonDispatchParameters,
+              //    targetGraphParameter = null,
+              //    wrapInProvider = false,
+              //    isTopLevelFunction = true,
+              //  )
+            }
+
             val constructorParameterNames =
               constructorParameters.regularParameters.associateBy { it.originalName }
 
+            val contextParameterNames =
+              invokeFunction.contextParameters.associate { it.name to irGet(it) }
+
             val functionParamsByName =
               invokeFunction.regularParameters.associate { it.name to irGet(it) }
+
+            val contextArgs =
+              sourceParameters.contextParameters.map { targetParam ->
+                when (val parameterName = targetParam.originalName) {
+                  in constructorParameterNames -> {
+                    val constructorParam = constructorParameterNames.getValue(parameterName)
+                    val providerInstance =
+                      irGetField(
+                        irGet(functionReceiver),
+                        constructorParametersToFields.getValue(constructorParam),
+                      )
+                    val contextKey = targetParam.contextualTypeKey
+                    typeAsProviderArgument(
+                      contextKey = contextKey,
+                      bindingCode = providerInstance,
+                      isAssisted = false,
+                      isGraphInstance = constructorParam.isGraphInstance,
+                    )
+                  }
+
+                  in functionParamsByName -> {
+                    functionParamsByName.getValue(targetParam.originalName)
+                  }
+
+                  in contextParameterNames -> {
+                    contextParameterNames.getValue(targetParam.originalName)
+                  }
+
+                  else -> {
+                    error("Unmatched top level injected function param: $targetParam")
+                  }
+                }
+              }
 
             val args =
               targetCallable.owner.parameters().regularParameters.map { targetParam ->
@@ -406,7 +463,8 @@ internal class InjectConstructorTransformer(
                     functionParamsByName.getValue(targetParam.originalName)
                   }
 
-                  else -> error("Unmatched top level injected function param: $targetParam")
+                  else ->
+                    reportCompilerBug("Unmatched top level injected function param: $targetParam")
                 }
               }
 
@@ -417,6 +475,7 @@ internal class InjectConstructorTransformer(
                 extensionReceiver = null,
                 typeHint = targetCallable.owner.returnType,
                 // TODO type params
+                contextArgs = contextArgs,
                 args = args,
               )
 
@@ -463,17 +522,22 @@ internal class InjectConstructorTransformer(
     val newInstanceFunction =
       generateStaticNewInstanceFunction(
         parentClass = classToGenerateCreatorsIn,
+        sourceMetroParameters = constructorParameters,
         sourceParameters = constructorParameters.regularParameters.map { it.ir },
       ) { function ->
-        irCallConstructor(targetConstructor, emptyList()).apply {
-          // The function may have a dispatch receiver so we need to offset
-          val functionParameters = function.nonDispatchParameters
-          val indexOffset = if (function.dispatchReceiverParameter == null) 0 else 1
-          for (index in constructorParameters.allParameters.indices) {
-            val parameter = functionParameters[index]
-            arguments[parameter.indexInParameters - indexOffset] = irGet(parameter)
+        irCallConstructor(
+            callee = targetConstructor,
+            typeArguments = function.typeParameters.map { it.defaultType },
+          )
+          .apply {
+            // The function may have a dispatch receiver so we need to offset
+            val functionParameters = function.nonDispatchParameters
+            val indexOffset = if (function.dispatchReceiverParameter == null) 0 else 1
+            for (index in constructorParameters.allParameters.indices) {
+              val parameter = functionParameters[index]
+              arguments[parameter.indexInParameters - indexOffset] = irGet(parameter)
+            }
           }
-        }
       }
     return newInstanceFunction
   }

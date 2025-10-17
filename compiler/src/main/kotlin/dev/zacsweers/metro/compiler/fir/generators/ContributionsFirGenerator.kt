@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.fir.generators
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.Keys
@@ -20,6 +21,7 @@ import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.resolvedClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
 import dev.zacsweers.metro.compiler.joinSimpleNamesAndTruncate
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.fir.FirSession
@@ -49,8 +51,12 @@ import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
 
 // TODO a bunch of this could probably be cleaned up now that the functions are generated in IR
-internal class ContributionsFirGenerator(session: FirSession) :
-  FirDeclarationGenerationExtension(session) {
+/**
+ * Generates `@MetroContribution`-annotated nested contribution classes for
+ * `@Contributes*`-annotated classes.
+ */
+internal class ContributionsFirGenerator(session: FirSession, compatContext: CompatContext) :
+  FirDeclarationGenerationExtension(session), CompatContext by compatContext {
 
   // For each contributing class, track its nested contribution classes and their scope arguments
   private val contributingClassToScopedContributions:
@@ -82,7 +88,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
                   .joinToString(separator = "") { it.identifier.decapitalizeUS() }
               }
                 ?: scopeArgument.scopeName(session)
-                ?: error("Could not get scope name for ${scopeArgument.render()}")
+                ?: reportCompilerBug("Could not get scope name for ${scopeArgument.render()}")
             val nestedContributionName =
               (Symbols.StringNames.METRO_CONTRIBUTION_NAME_PREFIX + "To" + suffix.capitalizeUS())
                 .asName()
@@ -95,6 +101,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(session.predicates.contributesAnnotationPredicate)
+    register(session.predicates.bindingContainerPredicate)
   }
 
   sealed interface Contribution {
@@ -139,7 +146,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
   }
 
   private fun findContributions(contributingSymbol: FirClassSymbol<*>): Set<Contribution>? {
-    val contributesToAnnotations = session.classIds.contributesToLikeAnnotations
+    val contributesToAnnotations = session.classIds.contributesToAnnotations
     val contributesBindingAnnotations = session.classIds.contributesBindingAnnotations
     val contributesIntoSetAnnotations = session.classIds.contributesIntoSetAnnotations
     val contributesIntoMapAnnotations = session.classIds.contributesIntoMapAnnotations
@@ -225,7 +232,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
           .parentsWithSelf(session)
           .drop(1)
           .firstOrNull { it is FirClassSymbol }
-          ?.isAnnotatedWithAny(session, session.classIds.contributesToLikeAnnotations) ?: false
+          ?.isAnnotatedWithAny(session, session.classIds.contributesToAnnotations) ?: false
       return if (!isContributesTo) {
         setOf(Symbols.Names.BindsMirrorClass)
       } else {
@@ -289,7 +296,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
               buildAnnotationArgumentMapping {
                 val originalScopeArg =
                   contributingClassToScopedContributions.getValueIfComputed(owner)?.get(name)
-                    ?: error("Could not find a contribution scope for ${owner.classId}.$name")
+                    ?: reportCompilerBug("Could not find a contribution scope for ${owner.classId}.$name")
                 this.mapping[Symbols.Names.scope] = originalScopeArg
               }
             )

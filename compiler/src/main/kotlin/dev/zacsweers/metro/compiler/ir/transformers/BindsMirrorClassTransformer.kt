@@ -6,7 +6,9 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.expectAs
+import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.BindsCallable
+import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.MultibindsCallable
@@ -14,15 +16,12 @@ import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
 import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
-import dev.zacsweers.metro.compiler.ir.toBindsCallable
-import dev.zacsweers.metro.compiler.ir.toMultibindsCallable
 import dev.zacsweers.metro.compiler.mirrorIrConstructorCalls
 import java.util.Optional
 import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
-import org.jetbrains.kotlin.ir.builders.irBoolean
 import org.jetbrains.kotlin.ir.builders.irInt
 import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -31,7 +30,6 @@ import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.copyParametersFrom
-import org.jetbrains.kotlin.ir.util.isPropertyAccessor
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
@@ -69,33 +67,37 @@ internal data class BindsMirror(
   val bindsCallables: Set<BindsCallable>,
   /** Set of multibinds callables by their [BindsCallable]. */
   val multibindsCallables: Set<MultibindsCallable>,
+  /**
+   * Interoped optional types from `@BindsOptionalOf`. Only present if Dagger interop is enabled.
+   */
+  val optionalKeys: Set<BindsOptionalOfCallable>,
 ) {
-  fun isEmpty() = bindsCallables.isEmpty() && multibindsCallables.isEmpty()
+  fun isEmpty() =
+    bindsCallables.isEmpty() && multibindsCallables.isEmpty() && optionalKeys.isEmpty()
 }
 
 context(context: IrMetroContext)
 private fun transformBindingMirrorClass(parentClass: IrClass, mirrorClass: IrClass): BindsMirror {
   val isExternal = mirrorClass.isExternalParent
-  // Find all @Binds and @Multibinds declarations in the parent class
-  val bindsCallables = mutableSetOf<BindsCallable>()
-  val multibindsCallables = mutableSetOf<MultibindsCallable>()
+  val collector = BindsMirrorCollector(isInterop = false)
 
   fun processFunction(declaration: IrSimpleFunction) {
     if (!declaration.isFakeOverride) {
       val metroFunction = metroFunctionOf(declaration)
-      if (metroFunction.annotations.isBinds || metroFunction.annotations.isMultibinds) {
+      if (
+        metroFunction.annotations.isBinds ||
+          metroFunction.annotations.isMultibinds ||
+          metroFunction.annotations.isBindsOptionalOf
+      ) {
         // TODO we round-trip generating -> reading back. Should we optimize that path?
         val function =
           if (isExternal) metroFunction else generateMirrorFunction(mirrorClass, metroFunction)
-        if (metroFunction.annotations.isBinds) {
-          bindsCallables += function.toBindsCallable()
-        } else {
-          multibindsCallables += function.toMultibindsCallable()
-        }
+        collector += function
       }
     }
   }
 
+  // Find all @Binds and @Multibinds declarations in the parent class
   // If external, just read the mirror class directly. If current round, transform the parent and
   // generate its mirrors
   val classToProcess = if (isExternal) mirrorClass else parentClass
@@ -109,8 +111,7 @@ private fun transformBindingMirrorClass(parentClass: IrClass, mirrorClass: IrCla
     }
   }
 
-  val bindsMirror = BindsMirror(mirrorClass, bindsCallables, multibindsCallables)
-  return bindsMirror
+  return collector.buildMirror(mirrorClass)
 }
 
 context(context: IrMetroContext)
@@ -127,6 +128,10 @@ private fun generateMirrorFunction(
         annotations.qualifier?.hashCode()?.toUInt()?.let(::append)
         annotations.mapKeys.firstOrNull()?.hashCode()?.toUInt()?.let(::append)
         annotations.multibinds?.hashCode()?.toUInt()?.let(::append)
+
+        if (annotations.isBindsOptionalOf) {
+          append("_opt")
+        }
 
         if (annotations.isIntoSet) {
           append("_intoset")
@@ -154,19 +159,26 @@ private fun generateMirrorFunction(
       }
 
   val callableMetadata =
-    buildAnnotation(mirrorFunction.symbol, context.symbols.callableMetadataAnnotationConstructor) {
+    buildAnnotation(
+      mirrorFunction.symbol,
+      context.metroSymbols.callableMetadataAnnotationConstructor,
+    ) {
       with(it) {
         // callableName
         arguments[0] = irString(targetFunction.callableId.callableName.asString())
-        // isPropertyAccessor
-        arguments[1] = irBoolean(targetFunction.ir.isPropertyAccessor)
+        // propertyName
+        arguments[1] =
+          irString(
+            targetFunction.ir.propertyIfAccessor.expectAsOrNull<IrProperty>()?.name?.asString()
+              ?: ""
+          )
 
         // TODO these locations are bogus in generated binding functions. Report origin class
         //  instead somewhere?
         // startOffset
-        arguments[2] = irInt(targetFunction.ir.startOffset)
+        arguments[2] = irInt(targetFunction.ir.propertyIfAccessor.startOffset)
         // endOffset
-        arguments[3] = irInt(targetFunction.ir.endOffset)
+        arguments[3] = irInt(targetFunction.ir.propertyIfAccessor.endOffset)
       }
     }
 

@@ -3,9 +3,9 @@
 package dev.zacsweers.metro.compiler;
 
 import com.intellij.testFramework.TestDataPath;
-import org.jetbrains.kotlin.test.util.KtTestUtil;
 import org.jetbrains.kotlin.test.TargetBackend;
 import org.jetbrains.kotlin.test.TestMetadata;
+import org.jetbrains.kotlin.test.util.KtTestUtil;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -106,9 +106,21 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("ExtensionsAreInnerClasses.kt")
+    public void testExtensionsAreInnerClasses() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/ExtensionsAreInnerClasses.kt");
+    }
+
+    @Test
     @TestMetadata("GraphAccessors.kt")
     public void testGraphAccessors() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/GraphAccessors.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphImplClassAsReturnType.kt")
+    public void testGraphImplClassAsReturnType() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/GraphImplClassAsReturnType.kt");
     }
 
     @Test
@@ -118,21 +130,21 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
-    @TestMetadata("UnusedInstanceBindingsInExtendedGraphGetProviderFields.kt")
-    public void testUnusedInstanceBindingsInExtendedGraphGetProviderFields() {
-      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/UnusedInstanceBindingsInExtendedGraphGetProviderFields.kt");
+    @TestMetadata("MultipleRefsGetProviderFields.kt")
+    public void testMultipleRefsGetProviderFields() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/MultipleRefsGetProviderFields.kt");
+    }
+
+    @Test
+    @TestMetadata("OptionalBindingsHaveValidFieldNames.kt")
+    public void testOptionalBindingsHaveValidFieldNames() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/OptionalBindingsHaveValidFieldNames.kt");
     }
 
     @Test
     @TestMetadata("UnusedInstanceBindingsInUnextendedGraphGetNoProviderFields.kt")
     public void testUnusedInstanceBindingsInUnextendedGraphGetNoProviderFields() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/UnusedInstanceBindingsInUnextendedGraphGetNoProviderFields.kt");
-    }
-
-    @Test
-    @TestMetadata("UnusedScopedBindingsInExtendedGraphGetProviderFields.kt")
-    public void testUnusedScopedBindingsInExtendedGraphGetProviderFields() {
-      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/UnusedScopedBindingsInExtendedGraphGetProviderFields.kt");
     }
 
     @Test
@@ -145,6 +157,22 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     @TestMetadata("UnusedScopedConstructorInjectedClassWithConstructorAnnotatedIsDiscovered.kt")
     public void testUnusedScopedConstructorInjectedClassWithConstructorAnnotatedIsDiscovered() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/UnusedScopedConstructorInjectedClassWithConstructorAnnotatedIsDiscovered.kt");
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/dump/ir/dependencygraph/dynamic")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Dynamic {
+      @Test
+      public void testAllFilesPresentInDynamic() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph/dynamic"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      }
+
+      @Test
+      @TestMetadata("SimpleDynamicGraph.kt")
+      public void testSimpleDynamicGraph() {
+        runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/dynamic/SimpleDynamicGraph.kt");
+      }
     }
   }
 

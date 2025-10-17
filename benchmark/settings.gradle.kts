@@ -7,6 +7,7 @@ pluginManagement {
     gradlePluginPortal()
     mavenLocal() // For local testing
   }
+  plugins { id("com.gradle.develocity") version "4.2.2" }
 }
 
 dependencyResolutionManagement {
@@ -27,6 +28,8 @@ dependencyResolutionManagement {
   }
 }
 
+plugins { id("com.gradle.develocity") }
+
 rootProject.name = "metro-benchmark"
 
 // Only include the parent build if METRO_VERSION is not set
@@ -43,5 +46,20 @@ if (generatedProjects.exists()) {
   for (p in generatedProjects.readLines()) {
     if (p.isBlank()) continue
     include(p)
+  }
+}
+
+develocity {
+  buildScan {
+    termsOfUseUrl = "https://gradle.com/terms-of-service"
+    termsOfUseAgree = "yes"
+
+    tag(if (System.getenv("CI").isNullOrBlank()) "Local" else "CI")
+
+    obfuscation {
+      username { "Redacted" }
+      hostname { "Redacted" }
+      ipAddresses { addresses -> addresses.map { "0.0.0.0" } }
+    }
   }
 }

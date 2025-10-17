@@ -16,6 +16,7 @@
 
 package dev.zacsweers.metro.compiler.graph
 
+import dev.zacsweers.metro.compiler.filterToSet
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import java.util.PriorityQueue
@@ -164,14 +165,16 @@ internal data class TopoSortResult<T>(
  * @param onCycle called with the offending cycle if no deferrable edge
  * @param roots optional set of source roots for computing reachability. If null, all keys will be
  *   kept.
+ * @param onSortedCycle optional callback reporting (sorted) cycles.
  */
 internal fun <V : Comparable<V>> topologicalSort(
   fullAdjacency: SortedMap<V, SortedSet<V>>,
   isDeferrable: (from: V, to: V) -> Boolean,
-  onCycle: (List<V>) -> Nothing,
+  onCycle: (List<V>) -> Unit,
   roots: SortedSet<V>? = null,
   parentTracer: Tracer = Tracer.NONE,
   isImplicitlyDeferrable: (V) -> Boolean = { false },
+  onSortedCycle: (List<V>) -> Unit = {},
 ): TopoSortResult<V> {
   val deferredTypes = mutableSetOf<V>()
 
@@ -236,7 +239,10 @@ internal fun <V : Comparable<V>> topologicalSort(
           component.vertices
         } else {
           // Multiple vertices in a cycle - sort them respecting non-deferrable dependencies
-          sortVerticesInSCC(component.vertices, reachableKeys, isDeferrable)
+          val deferredInScc = component.vertices.filterToSet { it in deferredTypes }
+          sortVerticesInSCC(component.vertices, reachableKeys, isDeferrable, deferredInScc).also {
+            onSortedCycle(it)
+          }
         }
       }
     }
@@ -311,8 +317,22 @@ private fun <V : Comparable<V>> findMinimalDeferralSet(
     }
   }
 
-  // If no single candidate works, fall back to all candidates
-  return potentialCandidates
+  // If no single candidate works, try all candidates together
+  val wouldBreakAllCycles =
+    wouldBreakAllCycles(
+      potentialCandidates,
+      vertices,
+      fullAdjacency,
+      componentOf,
+      componentId,
+      isDeferrable,
+    )
+  if (wouldBreakAllCycles) {
+    return potentialCandidates
+  }
+
+  // No combination of deferrable edges can break the cycle
+  return emptySet()
 }
 
 /** Checks if deferring the given set of nodes breaks all cycles in the SCC. */
@@ -324,7 +344,7 @@ private fun <V> wouldBreakAllCycles(
   componentId: Int,
   isDeferrable: (V, V) -> Boolean,
 ): Boolean {
-  // Build a reduced adjacency list without deferrable edges involving deferred nodes
+  // Build a reduced adjacency list without edges involving deferred nodes
   val reducedAdjacency = mutableMapOf<V, MutableSet<V>>()
 
   for (from in vertices) {
@@ -332,14 +352,17 @@ private fun <V> wouldBreakAllCycles(
     for (to in fullAdjacency[from].orEmpty()) {
       // stays inside SCC
       if (componentOf[to] == componentId) {
-        // Skip deferrable edges where either source or target is deferred
-        if (isDeferrable(from, to) && (from in deferredNodes || to in deferredNodes)) continue
+        /**
+         * Skip deferrable edges where the source is deferred This matches what [sortVerticesInSCC]
+         * will do
+         */
+        if (isDeferrable(from, to) && from in deferredNodes) continue
         targets.add(to)
       }
     }
-    if (targets.isNotEmpty()) {
-      reducedAdjacency[from] = targets
-    }
+    // Always add the node to the adjacency, even if it has no targets
+    // This ensures all vertices are checked for cycles
+    reducedAdjacency[from] = targets
   }
 
   // Check if the reduced graph is acyclic
@@ -388,27 +411,72 @@ private fun <V : Comparable<V>> sortVerticesInSCC(
   vertices: List<V>,
   fullAdjacency: SortedMap<V, SortedSet<V>>,
   isDeferrable: (V, V) -> Boolean,
+  deferredInScc: Set<V>,
 ): List<V> {
-  if (vertices.size == 1) return vertices
+  if (vertices.size <= 1) return vertices
+  val inScc = vertices.toSet()
 
-  val vertexSet = vertices.toSet()
-
-  // Try to topologically sort using only non-deferrable edges
-  return try {
-    vertices.topologicalSort(
-      sourceToTarget = { v ->
-        fullAdjacency[v].orEmpty().filter { dep -> dep in vertexSet && !isDeferrable(v, dep) }
-      },
-      onCycle = {
-        // If there's still a cycle with non-deferrable edges,
-        // fall back to natural sorting for determinism
-        throw IllegalStateException("Hard cycle")
-      },
-    )
-  } catch (_: IllegalStateException) {
-    // Hard cycle - sort naturally for determinism
-    vertices.sorted()
+  // An edge is "soft" inside this SCC only if it's deferrable and the source is deferred
+  fun isSoftEdge(from: V, to: V): Boolean {
+    return isDeferrable(from, to) && from in deferredInScc
   }
+
+  // v -> hard prereqs (non-soft edges)
+  val hardDeps = mutableMapOf<V, MutableSet<V>>()
+  // prereq -> dependents (via hard edges)
+  val revHard = mutableMapOf<V, MutableSet<V>>()
+
+  for (v in vertices) {
+    for (dep in fullAdjacency[v].orEmpty()) {
+      if (dep !in inScc) continue
+      if (isSoftEdge(v, dep)) {
+        // ignore only these edges when ordering
+        continue
+      }
+      hardDeps.getOrPut(v, ::mutableSetOf).add(dep)
+      revHard.getOrPut(dep, ::mutableSetOf).add(v)
+    }
+  }
+
+  val hardIn = vertices.associateWithTo(mutableMapOf()) { hardDeps[it]?.size ?: 0 }
+
+  // Sort ready by:
+  // 1 - nodes that are in deferredInScc (i.e., emit DelegateFactory before its users)
+  // 2 - more hard dependents (unlocks more)
+  // 3 - natural order for determinism
+  val ready =
+    PriorityQueue<V> { a, b ->
+      val aDef = a in deferredInScc
+      val bDef = b in deferredInScc
+      if (aDef != bDef) return@PriorityQueue if (aDef) -1 else 1
+
+      val aFanOut = revHard[a]?.size ?: 0
+      val bFanOut = revHard[b]?.size ?: 0
+      if (aFanOut != bFanOut) return@PriorityQueue bFanOut - aFanOut
+
+      a.compareTo(b)
+    }
+
+  // Seed with nodes that have no hard deps
+  vertices.filterTo(ready) { hardIn.getValue(it) == 0 }
+
+  val result = ArrayDeque<V>(vertices.size)
+  while (ready.isNotEmpty()) {
+    val v = ready.remove()
+    result += v
+    for (depender in revHard[v].orEmpty()) {
+      val degree = hardIn.getValue(depender) - 1
+      hardIn[depender] = degree
+      if (degree == 0) {
+        ready += depender
+      }
+    }
+  }
+
+  check(result.size == vertices.size) {
+    "Hard cycle remained inside SCC after removing selected soft edges"
+  }
+  return result
 }
 
 internal data class Component<V>(val id: Int, val vertices: MutableList<V> = mutableListOf())

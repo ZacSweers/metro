@@ -27,10 +27,10 @@ package dev.zacsweers.metro
  *
  * ```
  * @DependencyGraph interface MyGraph {
- *   @Multibinds aSet(): Set<Foo>
- *   @Multibinds @MyQualifier aQualifiedSet(): Set<Foo>
- *   @Multibinds aMap(): Map<String, Foo>
- *   @Multibinds @MyQualifier aQualifiedMap(): Map<String, Foo>
+ *   @Multibinds(allowEmpty = true) fun aSet(): Set<Foo>
+ *   @Multibinds(allowEmpty = true) @MyQualifier val aQualifiedSet: Set<Foo>
+ *   @Multibinds(allowEmpty = true) fun aMap(): Map<String, Foo>
+ *   @Multibinds(allowEmpty = true) @MyQualifier val aQualifiedMap: Map<String, Foo>
  *
  *   @Provides
  *   fun usesMultibindings(set: Set<Foo>, @MyQualifier map: Map<String, Foo>): Any {

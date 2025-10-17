@@ -1,0 +1,3 @@
+/GraphFactoriesMayNotHaveVarargs.kt:(174,180): error: DependencyGraph.Factory abstract function parameters may not be vararg.
+
+/GraphFactoriesMayNotHaveVarargs.kt:(323,329): error: GraphExtension.Factory abstract function parameters may not be vararg.

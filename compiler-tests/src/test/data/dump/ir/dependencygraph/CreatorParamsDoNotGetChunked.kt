@@ -1,4 +1,3 @@
-// CHUNK_FIELD_INITS: true
 // https://github.com/ZacSweers/metro/issues/721
 class ProvidedExample
 

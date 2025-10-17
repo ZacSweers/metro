@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroFirExtensionRegistrar
 import dev.zacsweers.metro.compiler.interop.Ksp2AdditionalSourceProvider
 import dev.zacsweers.metro.compiler.interop.configureAnvilAnnotations
@@ -51,6 +52,8 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         MetroDirectives.ENABLE_DAGGER_INTEROP in module.directives ||
         MetroDirectives.ENABLE_DAGGER_KSP in module.directives
 
+    val optionDefaults = MetroOptions()
+
     val options =
       MetroOptions(
         enableDaggerRuntimeInterop = MetroDirectives.enableDaggerRuntimeInterop(module.directives),
@@ -59,12 +62,16 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         transformProvidersToPrivate = transformProvidersToPrivate,
         enableTopLevelFunctionInjection =
           MetroDirectives.ENABLE_TOP_LEVEL_FUNCTION_INJECTION in module.directives,
-        enableScopedInjectClassHints =
-          MetroDirectives.ENABLE_SCOPED_INJECT_CLASS_HINTS in module.directives,
         shrinkUnusedBindings =
-          module.directives.singleOrZeroValue(MetroDirectives.SHRINK_UNUSED_BINDINGS) ?: true,
+          module.directives.singleOrZeroValue(MetroDirectives.SHRINK_UNUSED_BINDINGS)
+            ?: optionDefaults.shrinkUnusedBindings,
         chunkFieldInits =
-          module.directives.singleOrZeroValue(MetroDirectives.CHUNK_FIELD_INITS) ?: false,
+          module.directives.singleOrZeroValue(MetroDirectives.CHUNK_FIELD_INITS)
+            ?: optionDefaults.chunkFieldInits,
+        enableFullBindingGraphValidation =
+          MetroDirectives.ENABLE_FULL_BINDING_GRAPH_VALIDATION in module.directives,
+        enableGraphImplClassAsReturnType =
+          MetroDirectives.ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE in module.directives,
         generateJvmContributionHintsInFir =
           MetroDirectives.GENERATE_JVM_CONTRIBUTION_HINTS_IN_FIR in module.directives,
         publicProviderSeverity =
@@ -72,8 +79,18 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
             MetroOptions.DiagnosticSeverity.NONE
           } else {
             module.directives.singleOrZeroValue(MetroDirectives.PUBLIC_PROVIDER_SEVERITY)
-              ?: MetroOptions.DiagnosticSeverity.NONE
+              ?: optionDefaults.publicProviderSeverity
           },
+        optionalDependencyBehavior =
+          module.directives.singleOrZeroValue(MetroDirectives.OPTIONAL_DEPENDENCY_BEHAVIOR)
+            ?: optionDefaults.optionalDependencyBehavior,
+        interopAnnotationsNamedArgSeverity =
+          module.directives.singleOrZeroValue(MetroDirectives.INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY)
+            ?: optionDefaults.interopAnnotationsNamedArgSeverity,
+        maxIrErrorsCount =
+          module.directives.singleOrZeroValue(MetroDirectives.MAX_IR_ERRORS_COUNT) ?: 20,
+        contributesAsInject = MetroDirectives.CONTRIBUTES_AS_INJECT in module.directives,
+        enableDaggerAnvilInterop = MetroDirectives.WITH_ANVIL in module.directives,
         customGraphAnnotations =
           buildSet {
             if (MetroDirectives.WITH_ANVIL in module.directives) {
@@ -128,18 +145,19 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
               add(ClassId.fromString("com/squareup/anvil/annotations/ContributesMultibinding"))
             }
           },
-        customContributesGraphExtensionAnnotations =
+        customGraphExtensionAnnotations =
           buildSet {
+            if (MetroDirectives.ENABLE_DAGGER_INTEROP in module.directives) {
+              add(ClassId.fromString("dagger/Subcomponent"))
+            }
             if (MetroDirectives.WITH_ANVIL in module.directives) {
               add(ClassId.fromString("com/squareup/anvil/annotations/ContributesSubcomponent"))
             }
           },
-        customContributesGraphExtensionFactoryAnnotations =
+        customGraphExtensionFactoryAnnotations =
           buildSet {
-            if (MetroDirectives.WITH_ANVIL in module.directives) {
-              add(
-                ClassId.fromString("com/squareup/anvil/annotations/ContributesSubcomponent.Factory")
-              )
+            if (MetroDirectives.ENABLE_DAGGER_INTEROP in module.directives) {
+              add(ClassId.fromString("dagger/Subcomponent.Factory"))
             }
           },
         customInjectAnnotations =
@@ -147,6 +165,13 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
             if (addDaggerAnnotations) {
               add(ClassId.fromString("javax/inject/Inject"))
               add(ClassId.fromString("jakarta/inject/Inject"))
+            }
+          },
+        customQualifierAnnotations =
+          buildSet {
+            if (addDaggerAnnotations) {
+              add(ClassId.fromString("javax/inject/Qualifier"))
+              add(ClassId.fromString("jakarta/inject/Qualifier"))
             }
           },
         customProviderTypes =
@@ -187,10 +212,21 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
               add(ClassId.fromString("dagger/multibindings/Multibinds"))
             }
           },
+        customOriginAnnotations =
+          buildSet {
+            if (MetroDirectives.WITH_KI_ANVIL in module.directives) {
+              add(
+                ClassId.fromString("software/amazon/lastmile/kotlin/inject/anvil/internal/Origin")
+              )
+            }
+          },
         // TODO other dagger annotations/types not yet implemented
       )
     val classIds = ClassIds.fromOptions(options)
-    FirExtensionRegistrarAdapter.registerExtension(MetroFirExtensionRegistrar(classIds, options))
+    val compatContext = CompatContext.getInstance()
+    FirExtensionRegistrarAdapter.registerExtension(
+      MetroFirExtensionRegistrar(classIds, options, compatContext)
+    )
     IrGenerationExtension.registerExtension(
       MetroIrGenerationExtension(
         messageCollector = configuration.messageCollector,
@@ -199,6 +235,7 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         // TODO ever support this in tests?
         lookupTracker = null,
         expectActualTracker = ExpectActualTracker.DoNothing,
+        compatContext = compatContext,
       )
     )
   }
