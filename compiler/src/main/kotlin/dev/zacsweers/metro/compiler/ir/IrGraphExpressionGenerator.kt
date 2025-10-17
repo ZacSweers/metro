@@ -17,7 +17,6 @@ import dev.zacsweers.metro.compiler.tracing.Tracer
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
-import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irInt
@@ -27,8 +26,8 @@ import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
+import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
@@ -56,7 +55,7 @@ private constructor(
   private val assistedFactoryTransformer: AssistedFactoryTransformer,
   private val graphExtensionGenerator: IrGraphExtensionGenerator,
   private val parentTracer: Tracer,
-  private val getOrCreateLazyProperty: (IrBinding, IrContextualTypeKey, IrBuilderWithScope.(IrGraphExpressionGenerator) -> IrExpressionBody) -> IrProperty,
+  private val getterPropertyFor: (IrBinding, IrContextualTypeKey, IrBuilderWithScope.(IrGraphExpressionGenerator) -> IrBody) -> IrProperty,
 ) : IrMetroContext by context {
 
   class Factory(
@@ -69,7 +68,7 @@ private constructor(
     private val assistedFactoryTransformer: AssistedFactoryTransformer,
     private val graphExtensionGenerator: IrGraphExtensionGenerator,
     private val parentTracer: Tracer,
-    private val getOrCreateLazyProperty: (IrBinding, IrContextualTypeKey, IrBuilderWithScope.(IrGraphExpressionGenerator) -> IrExpressionBody) -> IrProperty,
+    private val getterPropertyFor: (IrBinding, IrContextualTypeKey, IrBuilderWithScope.(IrGraphExpressionGenerator) -> IrBody) -> IrProperty,
   ) {
     fun create(thisReceiver: IrValueParameter): IrGraphExpressionGenerator {
       return IrGraphExpressionGenerator(
@@ -83,7 +82,7 @@ private constructor(
         assistedFactoryTransformer = assistedFactoryTransformer,
         graphExtensionGenerator = graphExtensionGenerator,
         parentTracer = parentTracer,
-        getOrCreateLazyProperty = getOrCreateLazyProperty,
+        getterPropertyFor = getterPropertyFor,
       )
     }
   }
@@ -646,8 +645,8 @@ private constructor(
     with(scope) {
       // Use lazy property to cache the multibinding
       val property =
-        getOrCreateLazyProperty(binding, contextualTypeKey) { expressionGenerator ->
-          irExprBody(expressionGenerator.buildSetMultibindingExpression(binding, accessType, contextualTypeKey, fieldInitKey))
+        getterPropertyFor(binding, contextualTypeKey) { expressionGenerator ->
+          irExprBodySafe(scope.scope.scopeOwnerSymbol, expressionGenerator.buildSetMultibindingExpression(binding, accessType, contextualTypeKey, fieldInitKey))
         }
 
       // Return the property access, which will be the provider
@@ -836,8 +835,8 @@ private constructor(
     with(scope) {
       // Use lazy property to cache the multibinding and handle different access patterns
       val property =
-        getOrCreateLazyProperty(binding, contextualTypeKey) { expressionGenerator ->
-          irExprBody(expressionGenerator.generateMapMultibindingExpressionImpl(binding, contextualTypeKey, accessType, fieldInitKey))
+        getterPropertyFor(binding, contextualTypeKey) { expressionGenerator ->
+          irExprBodySafe(scope.scope.scopeOwnerSymbol, expressionGenerator.generateMapMultibindingExpressionImpl(binding, contextualTypeKey, accessType, fieldInitKey))
         }
 
       // Return the property access, which will be the provider

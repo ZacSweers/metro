@@ -39,8 +39,8 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
+import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
@@ -104,7 +104,7 @@ internal class IrGraphGenerator(
       assistedFactoryTransformer = assistedFactoryTransformer,
       graphExtensionGenerator = graphExtensionGenerator,
       parentTracer = parentTracer,
-      getOrCreateLazyProperty = ::getOrCreateLazyProperty,
+      getterPropertyFor = ::getOrCreateLazyProperty,
     )
 
   fun IrProperty.withInit(typeKey: IrTypeKey, init: PropertyInitializer): IrProperty = apply {
@@ -162,7 +162,7 @@ internal class IrGraphGenerator(
   fun getOrCreateLazyProperty(
     binding: IrBinding,
     contextualTypeKey: IrContextualTypeKey,
-    bodyGenerator: IrBuilderWithScope.(IrGraphExpressionGenerator) -> IrExpressionBody,
+    bodyGenerator: IrBuilderWithScope.(IrGraphExpressionGenerator) -> IrBody,
   ): IrProperty {
     return lazyProperties.getOrPut(contextualTypeKey) {
       // Create the property but don't add it to the graph yet
