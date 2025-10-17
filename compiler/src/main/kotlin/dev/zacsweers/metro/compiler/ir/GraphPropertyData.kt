@@ -13,21 +13,23 @@ internal enum class PropertyType {
   GETTER,
 }
 
+/**
+ * Implementation note: sometimes these properties may be "mutable" because they are set in chunked
+ * inits, but we always mark them as `val` anyway because the IR code gen will just set the field
+ * directly in those cases.
+ */
 internal fun IrProperty.ensureInitialized(
   propertyType: PropertyType,
   type: () -> IrType = { graphPropertyData!!.type },
 ): IrProperty = apply {
   if (backingField == null && getter == null) {
     when (propertyType) {
-      PropertyType.FIELD ->
-        addBackingField {
-          this.type = type()
-        }
+      PropertyType.FIELD -> addBackingField { this.type = type() }
       PropertyType.GETTER ->
         addGetter {
-          this.returnType = type()
-          this.visibility = this@ensureInitialized.visibility
-        }
+            this.returnType = type()
+            this.visibility = this@ensureInitialized.visibility
+          }
           .apply {
             setDispatchReceiver(
               this@ensureInitialized.parentAsClass.thisReceiverOrFail.copyTo(this)
