@@ -4,6 +4,8 @@ Changelog
 **Unreleased**
 --------------
 
+- Improve code generation around multibinding collection builders and contributors, using more lazy getters in graph code gen.
+
 0.7.0
 ------
 
