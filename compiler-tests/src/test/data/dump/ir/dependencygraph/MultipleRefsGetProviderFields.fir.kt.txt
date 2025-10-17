@@ -56,9 +56,15 @@ interface AppGraph {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class $$MetroGraph : AppGraph {
-    private /* final field */ val thisGraphInstance: AppGraph = <this>
-    private /* final field */ val thisGraphInstanceProvider: Provider<AppGraph> = Companion.invoke<AppGraph>(value = <this>.#thisGraphInstance)
-    private /* final field */ val intHolderProvider: Provider<IntHolder> = $$MetroFactory.create()
+    private val thisGraphInstance: AppGraph
+      field = <this>
+
+    private val thisGraphInstanceProvider: Provider<AppGraph>
+      field = Companion.invoke<AppGraph>(value = <this>.#thisGraphInstance)
+
+    private val intHolderProvider: Provider<IntHolder>
+      field = $$MetroFactory.create()
+
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */

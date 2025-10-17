@@ -112,7 +112,9 @@ interface ExampleGraph : $$MetroContributionToAppScope {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class $$MetroGraph : ExampleGraph {
-    private /* final field */ val base1ImplProvider: Provider<Base1Impl> = Companion.provider<Provider<Base1Impl>, Base1Impl>(delegate = $$MetroFactory.create())
+    private val base1ImplProvider: Provider<Base1Impl>
+      field = Companion.provider<Provider<Base1Impl>, Base1Impl>(delegate = $$MetroFactory.create())
+
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -138,7 +140,7 @@ interface ExampleGraph : $$MetroContributionToAppScope {
 
     override val cacheHolders: Set<Base2>
       override get(): Set<Base2> {
-        return setOf<Base2>(element = <this>.#base1ImplProvider.invoke())
+        return <this>.<get-setMultibinding2>()
       }
 
     override val composerPrefs: Base1
@@ -148,9 +150,13 @@ interface ExampleGraph : $$MetroContributionToAppScope {
 
     override val prewarms: Set<Base3>
       override get(): Set<Base3> {
-        return setOf<Base3>(element = <this>.#base1ImplProvider.invoke())
+        return <this>.<get-setMultibinding>()
       }
 
+    private val setMultibinding: Set<Base3>
+      get(): Set<Base3> setOf<Base3>(element = <this>.#base1ImplProvider.invoke())
+    private val setMultibinding2: Set<Base2>
+      get(): Set<Base2> setOf<Base2>(element = <this>.#base1ImplProvider.invoke())
   }
 
   abstract val cacheHolders: Set<Base2>

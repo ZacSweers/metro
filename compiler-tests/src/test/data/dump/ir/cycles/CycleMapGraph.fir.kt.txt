@@ -143,18 +143,24 @@ interface CycleMapGraph {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class $$MetroGraph : CycleMapGraph {
-    private /* final field */ val yProvider: Provider<Y> = DelegateFactory<Y>()
+    private val yProvider: Provider<Y>
+      field = DelegateFactory<Y>()
+
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 
-      Companion.setDelegate<Y>(delegateFactory = <this>.#yProvider, delegate = Companion.create(mapOfProvidersOfX = Companion.builder<String, X>(size = 1).put(key = "X", providerOfValue = Companion.create(y = <this>.#yProvider)).build(), mapOfProvidersOfY = Companion.builder<String, Y>(size = 1).put(key = "Y", providerOfValue = <this>.#yProvider).build()))
+      Companion.setDelegate<Y>(delegateFactory = <this>.#yProvider, delegate = Companion.create(mapOfProvidersOfX = <this>.<get-mapMultibinding>(), mapOfProvidersOfY = <this>.<get-mapMultibinding2>()))
     }
 
     override fun y(): Y {
       return <this>.#yProvider.invoke()
     }
 
+    private val mapMultibinding: Provider<Map<String, Provider<X>>>
+      get(): Provider<Map<String, Provider<X>>> Companion.builder<String, X>(size = 1).put(key = "X", providerOfValue = Companion.create(y = <this>.#yProvider)).build()
+    private val mapMultibinding2: Provider<Map<String, Provider<Y>>>
+      get(): Provider<Map<String, Provider<Y>>> Companion.builder<String, Y>(size = 1).put(key = "Y", providerOfValue = <this>.#yProvider).build()
     @Binds
     @IntoMap
     @StringKey(value = "X")
