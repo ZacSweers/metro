@@ -261,7 +261,6 @@ internal class IrDynamicGraphGenerator(
     samFunction.body =
       createIrBuilder(samFunction.symbol).run {
         irExprBodySafe(
-          samFunction.symbol,
           irCallConstructor(graphCtor.symbol, emptyList()).apply {
             // First, pass SAM parameters
             samFunction.regularParameters.forEachIndexed { index, param ->

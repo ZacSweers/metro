@@ -150,7 +150,6 @@ internal class IrGraphExtensionGenerator(
     samFunction.body =
       createIrBuilder(samFunction.symbol).run {
         irExprBodySafe(
-          samFunction.symbol,
           irCallConstructor(ctor.symbol, emptyList()).apply {
             // Firstc arg is always the graph instance
             arguments[0] =

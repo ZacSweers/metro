@@ -601,7 +601,6 @@ internal class DependencyGraphTransformer(
           body =
             pluginContext.createIrBuilder(symbol).run {
               irExprBodySafe(
-                symbol,
                 irCallConstructorWithSameParameters(
                   source = createFunction,
                   constructor = metroGraph.primaryConstructor!!.symbol,
@@ -634,7 +633,6 @@ internal class DependencyGraphTransformer(
               body =
                 pluginContext.createIrBuilder(symbol).run {
                   irExprBodySafe(
-                    symbol,
                     irCallConstructor(factoryImpl.primaryConstructor!!.symbol, emptyList()),
                   )
                 }
@@ -652,7 +650,6 @@ internal class DependencyGraphTransformer(
           body =
             pluginContext.createIrBuilder(symbol).run {
               irExprBodySafe(
-                symbol,
                 irCallConstructor(metroGraph.primaryConstructor!!.symbol, emptyList()),
               )
             }

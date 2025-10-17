@@ -646,7 +646,7 @@ private constructor(
       // Use lazy property to cache the multibinding
       val property =
         getterPropertyFor(binding, contextualTypeKey) { expressionGenerator ->
-          irExprBodySafe(scope.scope.scopeOwnerSymbol, expressionGenerator.buildSetMultibindingExpression(binding, accessType, contextualTypeKey, fieldInitKey))
+          irExprBodySafe(expressionGenerator.buildSetMultibindingExpression(binding, accessType, contextualTypeKey, fieldInitKey))
         }
 
       // Return the property access, which will be the provider
@@ -836,7 +836,7 @@ private constructor(
       // Use lazy property to cache the multibinding and handle different access patterns
       val property =
         getterPropertyFor(binding, contextualTypeKey) { expressionGenerator ->
-          irExprBodySafe(scope.scope.scopeOwnerSymbol, expressionGenerator.generateMapMultibindingExpressionImpl(binding, contextualTypeKey, accessType, fieldInitKey))
+          irExprBodySafe(expressionGenerator.generateMapMultibindingExpressionImpl(binding, contextualTypeKey, accessType, fieldInitKey))
         }
 
       // Return the property access, which will be the provider

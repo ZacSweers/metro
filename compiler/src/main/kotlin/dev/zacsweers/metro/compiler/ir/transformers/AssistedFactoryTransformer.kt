@@ -342,7 +342,6 @@ internal class AssistedFactoryTransformer(
             }
 
           irExprBodySafe(
-            symbol,
             irInvoke(
               dispatchReceiver =
                 irGetField(irGet(dispatchReceiverParameter!!), delegateFactoryField),
@@ -359,7 +358,6 @@ internal class AssistedFactoryTransformer(
       body =
         pluginContext.createIrBuilder(symbol).run {
           irExprBodySafe(
-            symbol,
             instanceFactory(
               declaration.typeWith(),
               irInvoke(callee = ctor.symbol, args = listOf(irGet(factoryParam))),

@@ -115,7 +115,7 @@ internal class IrGraphGenerator(
     } else {
       getter!!.apply {
         this.body =
-          createIrBuilder(symbol).run { irExprBody(init(dispatchReceiverParameter!!, typeKey)) }
+          createIrBuilder(symbol).run { irExprBodySafe(init(dispatchReceiverParameter!!, typeKey)) }
       }
     }
   }
@@ -126,7 +126,7 @@ internal class IrGraphGenerator(
       initializer = createIrBuilder(symbol).run { irExprBody(body()) }
       return@apply
     }
-    getter?.apply { this.body = createIrBuilder(symbol).run { irExprBody(body()) } }
+    getter?.apply { this.body = createIrBuilder(symbol).run { irExprBodySafe(body()) } }
   }
 
   /**
@@ -650,7 +650,6 @@ internal class IrGraphGenerator(
               //  groupBy { typekey }?
             }
             irExprBodySafe(
-              symbol,
               typeAsProviderArgument(
                 contextualTypeKey,
                 expressionGeneratorFactory
@@ -784,7 +783,6 @@ internal class IrGraphGenerator(
             body =
               createIrBuilder(symbol).run {
                 irExprBodySafe(
-                  symbol,
                   expressionGeneratorFactory
                     .create(irFunction.dispatchReceiverParameter!!)
                     .generateBindingCode(binding = binding, contextualTypeKey = contextKey),

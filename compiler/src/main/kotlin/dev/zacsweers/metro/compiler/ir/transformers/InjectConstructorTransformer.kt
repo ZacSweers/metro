@@ -479,7 +479,7 @@ internal class InjectConstructorTransformer(
                 args = args,
               )
 
-            irExprBodySafe(symbol, invokeExpression)
+            irExprBodySafe(invokeExpression)
           }
       }
 

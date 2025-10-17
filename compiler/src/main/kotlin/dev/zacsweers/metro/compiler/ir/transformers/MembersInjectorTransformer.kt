@@ -275,7 +275,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
                   args = regularParameters.drop(1).map { irGet(it) },
                 )
               }
-            irExprBodySafe(symbol, bodyExpression)
+            irExprBodySafe(bodyExpression)
           }
       }
     }

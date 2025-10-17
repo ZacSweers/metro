@@ -83,7 +83,6 @@ internal fun generateStaticCreateFunction(
     body =
       context.createIrBuilder(symbol).run {
         irExprBodySafe(
-          symbol,
           if (targetClass.isObject) {
             irGetObject(targetClass.symbol)
           } else {
@@ -129,7 +128,7 @@ internal fun generateStaticNewInstanceFunction(
       targetGraphParameter = instanceParam,
     )
 
-    body = context.createIrBuilder(symbol).run { irExprBodySafe(symbol, buildBody(this@apply)) }
+    body = context.createIrBuilder(symbol).run { irExprBodySafe(buildBody(this@apply)) }
   }
 }
 
@@ -191,7 +190,7 @@ internal fun generateMetadataVisibleMirrorFunction(
         }
         // The function's signature already matches the target function's signature, all we need
         // this for
-        body = context.createIrBuilder(symbol).run { irExprBodySafe(symbol, stubExpression()) }
+        body = context.createIrBuilder(symbol).run { irExprBodySafe(stubExpression()) }
       }
   context.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(function)
   return function

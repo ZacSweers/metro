@@ -893,7 +893,7 @@ internal val IrDeclarationParent.isExternalParent: Boolean
  * serializable in IR and cannot be used in some places like function bodies. This replicates that
  * ease of use.
  */
-internal fun IrBuilderWithScope.irExprBodySafe(symbol: IrSymbol, expression: IrExpression) =
+internal fun IrBuilderWithScope.irExprBodySafe(expression: IrExpression, symbol: IrSymbol = scope.scopeOwnerSymbol) =
   context.createIrBuilder(symbol).irBlockBody { +irReturn(expression) }
 
 context(context: IrPluginContext)
@@ -1141,7 +1141,7 @@ private fun <S> IrOverridableDeclaration<S>.overriddenSymbolsSequence(
 
 context(context: IrMetroContext)
 internal fun IrFunction.stubExpressionBody(message: String = "Never called"): IrBlockBody {
-  return context.createIrBuilder(symbol).run { irExprBodySafe(symbol, stubExpression(message)) }
+  return context.createIrBuilder(symbol).run { irExprBodySafe(stubExpression(message)) }
 }
 
 context(context: IrMetroContext)

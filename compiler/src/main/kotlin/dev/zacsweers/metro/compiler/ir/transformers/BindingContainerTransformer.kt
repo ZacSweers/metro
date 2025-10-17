@@ -337,7 +337,6 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     invokeFunction.owner.body =
       pluginContext.createIrBuilder(invokeFunction).run {
         irExprBodySafe(
-          invokeFunction,
           irInvoke(
             dispatchReceiver = dispatchReceiverFor(bytecodeFunction),
             callee = bytecodeFunction.symbol,
