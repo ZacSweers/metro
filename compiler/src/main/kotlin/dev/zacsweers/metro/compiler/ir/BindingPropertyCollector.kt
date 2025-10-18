@@ -22,10 +22,6 @@ internal class BindingPropertyCollector(private val graph: IrBindingGraph) {
           is IrBinding.ConstructorInjected if binding.isAssisted -> return PropertyType.FIELD
           // Multibindings are always created adhoc, but we create their properties lazily
           is IrBinding.Multibinding -> return null
-          // Custom wrappers are always created adhoc since
-          // they are usually simple factories like `Optional.of`
-          // and can't be scoped
-          is IrBinding.CustomWrapper -> return PropertyType.GETTER
           else -> {
             // Do nothing
           }
