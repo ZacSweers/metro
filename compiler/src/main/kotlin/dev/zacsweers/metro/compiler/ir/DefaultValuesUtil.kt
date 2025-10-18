@@ -39,6 +39,7 @@ internal fun copyParameterDefaultValues(
   targetParameters: List<IrValueParameter>,
   targetGraphParameter: IrValueParameter?,
   wrapInProvider: Boolean = false,
+  isTopLevelFunction: Boolean = false,
 ) {
   if (sourceParameters.isEmpty()) return
   check(sourceParameters.size == targetParameters.size) {
@@ -53,6 +54,18 @@ internal fun copyParameterDefaultValues(
 
   val transformer =
     object : IrTransformer<RemappingData>() {
+      override fun visitExpression(
+        expression: IrExpression,
+        data: RemappingData
+      ): IrExpression {
+        if (isTopLevelFunction) {
+          // https://youtrack.jetbrains.com/issue/KT-81656
+          expression.startOffset = SYNTHETIC_OFFSET
+          expression.endOffset = SYNTHETIC_OFFSET
+        }
+        return super.visitExpression(expression, data)
+      }
+
       override fun visitGetValue(expression: IrGetValue, data: RemappingData): IrExpression {
         // Check if the expression is the instance receiver
         if (expression.symbol == providerFunction?.dispatchReceiverParameter?.symbol) {

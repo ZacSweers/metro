@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.ir.ClassFactory
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.contextParameters
+import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.dispatchReceiverFor
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
@@ -383,19 +384,17 @@ internal class InjectConstructorTransformer(
           pluginContext.createIrBuilder(symbol).run {
             val sourceParameters = targetCallable.owner.parameters()
             if (invokeFunction.origin == Origins.TopLevelInjectFunctionClassFunction) {
-              // If this is a top-level function, we need to patch up the parameters
-              // TODO this crashes kotlinc when it generates $default functions :(
-              //  https://youtrack.jetbrains.com/issue/KT-81656/
-              //  copyParameterDefaultValues(
-              //    providerFunction = null,
-              //    sourceMetroParameters = sourceParameters,
-              //    sourceParameters = sourceParameters.nonDispatchParameters.filter {
-              //     it.isAssisted }.map { it.ir },
-              //    targetParameters = invokeFunction.nonDispatchParameters,
-              //    targetGraphParameter = null,
-              //    wrapInProvider = false,
-              //    isTopLevelFunction = true,
-              //  )
+                // If this is a top-level function, we need to patch up the parameters
+                copyParameterDefaultValues(
+                  providerFunction = null,
+                  sourceMetroParameters = sourceParameters,
+                  sourceParameters = sourceParameters.nonDispatchParameters.filter {
+                   it.isAssisted }.map { it.ir },
+                  targetParameters = invokeFunction.nonDispatchParameters,
+                  targetGraphParameter = null,
+                  wrapInProvider = false,
+                  isTopLevelFunction = true,
+                )
             }
 
             val constructorParameterNames =

@@ -286,9 +286,6 @@ setContent {
 
 Similarly, if the injected function is a `suspend` function, the `suspend` keyword will be ported to the generated `invoke()` function too.
 
-!!! warning "Default parameters"
-    Default parameters are not supported yet for top-level functions due to [KT-81656](https://youtrack.jetbrains.com/issue/KT-81656/).
-
 ### Context parameters
 
 Top-level injected functions also support context parameters. Both regular and context parameters may be assisted.
