@@ -1899,6 +1899,7 @@
 <h2 id="unreleased"><strong>Unreleased</strong><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Enhancement</strong>: Improve code generation around multibinding collection builders and contributors, using more lazy getters in graph code gen.</li>
+<li><strong>Fix</strong>: Compute <code>Optional</code> instance lazily when requested as a <code>Provider&lt;Optional&lt;T&gt;&gt;</code> and the underlying optional is not empty. Only applies to <code>@BindsOptionalOf</code> interop.</li>
 <li><strong>Fix</strong>: Interleave <code>setDelegate()</code> calls in correct order within initializer statements to ensure cycles with intermediate initialization don&rsquo;t crash. Sorry, word soup I know.</li>
 <li><strong>Fix</strong>: Don&rsquo;t generate duplicate <code>init()</code> functions when chunking initializers if graphs already have an explicit <code>init()</code> function.</li>
 </ul>
