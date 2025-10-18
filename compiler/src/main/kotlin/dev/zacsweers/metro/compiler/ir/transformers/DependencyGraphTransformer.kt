@@ -515,7 +515,7 @@ internal class DependencyGraphTransformer(
             graphClass = metroGraph,
             bindingGraph = bindingGraph,
             sealResult = result,
-            fieldNameAllocator = propertyNameAllocator,
+            propertyNameAllocator = propertyNameAllocator,
             parentTracer = tracer,
             bindingContainerTransformer = bindingContainerTransformer,
             membersInjectorTransformer = membersInjectorTransformer,
