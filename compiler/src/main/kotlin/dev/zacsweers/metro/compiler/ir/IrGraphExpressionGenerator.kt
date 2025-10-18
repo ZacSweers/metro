@@ -914,53 +914,59 @@ private constructor(
 
       val instance =
         if (size == 0) {
-          // TODO if it's empty and access is INSTANCE, just return emptyMap()
-          if (useProviderFactory) {
-            // MapProviderFactory.empty()
-            val emptyCallee = valueProviderSymbols.mapProviderFactoryEmptyFunction
-            if (emptyCallee != null) {
-              irInvoke(
-                callee = emptyCallee,
-                typeHint = mapProviderType,
-                typeArgs = listOf(keyType, rawValueType),
-              )
-            } else {
-              // Call builder().build()
-              // build()
-              irInvoke(
-                callee = valueProviderSymbols.mapProviderFactoryBuilderBuildFunction,
-                typeHint = mapProviderType,
-                // builder()
-                dispatchReceiver =
-                  irInvoke(
-                    callee = valueProviderSymbols.mapProviderFactoryBuilderFunction,
-                    typeHint = mapProviderType,
-                    args = listOf(irInt(0)),
-                  ),
-              )
-            }
-          } else {
-            // MapFactory.empty()
+          if (accessType == AccessType.INSTANCE) {
+          // Just return emptyMap() for instance access
+          return irInvoke(
+            callee = metroSymbols.emptyMap,
+            typeHint = irBuiltIns.mapClass.typeWith(keyType, rawValueType),
+            typeArgs = listOf(keyType, rawValueType),
+          )
+        } else if (useProviderFactory) {
+          // MapProviderFactory.empty()
+          val emptyCallee = valueProviderSymbols.mapProviderFactoryEmptyFunction
+          if (emptyCallee != null) {
             irInvoke(
-              callee = valueProviderSymbols.mapFactoryEmptyFunction,
+              callee = emptyCallee,
               typeHint = mapProviderType,
               typeArgs = listOf(keyType, rawValueType),
             )
+          } else {
+            // Call builder().build()
+            // build()
+            irInvoke(
+              callee = valueProviderSymbols.mapProviderFactoryBuilderBuildFunction,
+              typeHint = mapProviderType,
+              // builder()
+              dispatchReceiver =
+                irInvoke(
+                  callee = valueProviderSymbols.mapProviderFactoryBuilderFunction,
+                  typeHint = mapProviderType,
+                  args = listOf(irInt(0)),
+                ),
+            )
           }
         } else {
-          // Multiple elements
-          val builderFunction =
-            if (useProviderFactory) {
-              valueProviderSymbols.mapProviderFactoryBuilderFunction
-            } else {
-              valueProviderSymbols.mapFactoryBuilderFunction
-            }
-          val builderType =
-            if (useProviderFactory) {
-              valueProviderSymbols.mapProviderFactoryBuilder
-            } else {
-              valueProviderSymbols.mapFactoryBuilder
-            }
+          // MapFactory.empty()
+          irInvoke(
+            callee = valueProviderSymbols.mapFactoryEmptyFunction,
+            typeHint = mapProviderType,
+            typeArgs = listOf(keyType, rawValueType),
+          )
+        }
+      } else {
+        // Multiple elements
+        val builderFunction =
+          if (useProviderFactory) {
+            valueProviderSymbols.mapProviderFactoryBuilderFunction
+          } else {
+            valueProviderSymbols.mapFactoryBuilderFunction
+          }
+        val builderType =
+          if (useProviderFactory) {
+            valueProviderSymbols.mapProviderFactoryBuilder
+          } else {
+            valueProviderSymbols.mapFactoryBuilder
+          }
 
           // MapFactory.<Integer, Integer>builder(2)
           // MapProviderFactory.<Integer, Integer>builder(2)

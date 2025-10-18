@@ -414,6 +414,12 @@ internal class Symbols(
       .first()
   }
 
+  val emptyMap by lazy {
+    pluginContext
+      .referenceFunctions(CallableId(stdlibCollections.packageFqName, "emptyMap".asName()))
+      .first()
+  }
+
   val setOfSingleton by lazy {
     pluginContext
       .referenceFunctions(CallableId(stdlibCollections.packageFqName, "setOf".asName()))
