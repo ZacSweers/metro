@@ -1,14 +1,18 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-package dev.zacsweers.metro.sample.androidviewmodel.components
+package dev.zacsweers.metrox.android
 
 import android.app.Activity
 import android.app.Application
+import android.app.Service
+import android.content.BroadcastReceiver
+import android.content.ContentProvider
 import android.content.Intent
+import android.os.Build
 import androidx.annotation.Keep
+import androidx.annotation.RequiresApi
 import androidx.core.app.AppComponentFactory
 import dev.zacsweers.metro.Provider
-import dev.zacsweers.metro.sample.androidviewmodel.MetroApp
 import kotlin.reflect.KClass
 
 /**
@@ -17,6 +21,7 @@ import kotlin.reflect.KClass
  * If you have minSdk < 28, you can fall back to using member injection on Activities or (better)
  * use an architecture that abstracts the Android framework components away.
  */
+@RequiresApi(Build.VERSION_CODES.P)
 @Keep
 class MetroAppComponentFactory : AppComponentFactory() {
 
@@ -35,18 +40,41 @@ class MetroAppComponentFactory : AppComponentFactory() {
     className: String,
     intent: Intent?,
   ): Activity {
-    return getInstance(cl, className, activityProviders)
+    return getInstance(cl, className, metroAndroidAppGraph.activityProviders)
       ?: super.instantiateActivityCompat(cl, className, intent)
   }
 
   override fun instantiateApplicationCompat(cl: ClassLoader, className: String): Application {
     val app = super.instantiateApplicationCompat(cl, className)
-    activityProviders = (app as MetroApp).appGraph.activityProviders
+    metroAndroidAppGraph = (app as MetroApplication).appGraph
     return app
+  }
+
+  override fun instantiateProviderCompat(cl: ClassLoader, className: String): ContentProvider {
+    return getInstance(cl, className, metroAndroidAppGraph.providerProviders)
+      ?: super.instantiateProviderCompat(cl, className)
+  }
+
+  override fun instantiateReceiverCompat(
+    cl: ClassLoader,
+    className: String,
+    intent: Intent?,
+  ): BroadcastReceiver {
+    return getInstance(cl, className, metroAndroidAppGraph.receiverProviders)
+      ?: super.instantiateReceiverCompat(cl, className, intent)
+  }
+
+  override fun instantiateServiceCompat(
+    cl: ClassLoader,
+    className: String,
+    intent: Intent?,
+  ): Service {
+    return getInstance(cl, className, metroAndroidAppGraph.serviceProviders)
+      ?: super.instantiateServiceCompat(cl, className, intent)
   }
 
   // AppComponentFactory can be created multiple times
   companion object {
-    private lateinit var activityProviders: Map<KClass<out Activity>, Provider<Activity>>
+    private lateinit var metroAndroidAppGraph: MetroAndroidAppGraph
   }
 }

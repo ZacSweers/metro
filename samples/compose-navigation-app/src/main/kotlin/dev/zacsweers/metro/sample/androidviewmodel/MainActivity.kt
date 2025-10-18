@@ -23,7 +23,7 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.binding
-import dev.zacsweers.metro.sample.androidviewmodel.components.ActivityKey
+import dev.zacsweers.metrox.android.ActivityKey
 import dev.zacsweers.metro.sample.androidviewmodel.viewmodel.metroViewModel
 import kotlinx.serialization.Serializable
 

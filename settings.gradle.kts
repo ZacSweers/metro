@@ -37,6 +37,7 @@ include(
   ":gradle-plugin",
   ":interop-dagger",
   ":runtime",
+  ":metrox:android",
 )
 
 // Include compiler-compat versions
