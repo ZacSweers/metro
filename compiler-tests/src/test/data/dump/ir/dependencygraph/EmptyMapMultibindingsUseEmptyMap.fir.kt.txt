@@ -1,0 +1,57 @@
+@DependencyGraph
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  abstract class $$BindsMirror {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Multibinds(allowEmpty = true)
+    @CallableMetadata(callableName = "<get-ints>", propertyName = "ints", startOffset = 135, endOffset = 161)
+    abstract fun ints4205200196(): Map<String, Int>
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): AppGraph {
+      return $$MetroGraph()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class $$MetroGraph : AppGraph {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Multibinds(allowEmpty = true)
+    override val ints: Map<String, Int>
+      override get(): Map<String, Int> {
+        return <this>.<get-mapOfStringToInt>()
+      }
+
+    private val mapOfStringToInt: Map<String, Int>
+      private get(): Map<String, Int> {
+        return emptyMap<String, Int>()
+      }
+
+  }
+
+  @Multibinds(allowEmpty = true)
+  abstract val ints: Map<String, Int>
+    abstract get
+
+}
+

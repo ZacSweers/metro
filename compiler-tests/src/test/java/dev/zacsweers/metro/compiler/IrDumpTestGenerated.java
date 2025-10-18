@@ -106,6 +106,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("EmptyMapMultibindingsUseEmptyMap.kt")
+    public void testEmptyMapMultibindingsUseEmptyMap() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/EmptyMapMultibindingsUseEmptyMap.kt");
+    }
+
+    @Test
     @TestMetadata("ExtensionsAreInnerClasses.kt")
     public void testExtensionsAreInnerClasses() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/ExtensionsAreInnerClasses.kt");
