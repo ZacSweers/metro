@@ -5,6 +5,7 @@ Changelog
 --------------
 
 - **Enhancement**: Improve code generation around multibinding collection builders and contributors, using more lazy getters in graph code gen.
+- **Fix**: Interleave `setDelegate()` calls in correct order within initializer statements to ensure cycles with intermediate initialization don't crash. Sorry, word soup I know.
 - **Fix**: Don't generate duplicate `init()` functions when chunking initializers if graphs already have an explicit `init()` function.
 
 0.7.0
