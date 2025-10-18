@@ -33,11 +33,6 @@ interface AppGraph {
 
     override val optional: Optional<String>
       override get(): Optional<String> {
-        return <this>.<get-optionalString>()
-      }
-
-    private val optionalString: Optional<String>
-      private get(): Optional<String> {
         return of<String>(p0 = <this>.#stringProvider.invoke())
       }
 
