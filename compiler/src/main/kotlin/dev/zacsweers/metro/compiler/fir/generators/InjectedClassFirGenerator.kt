@@ -167,161 +167,160 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
   private val membersInjectorClassIdsToInjectedClass = mutableMapOf<ClassId, InjectedClass>()
   private val membersInjectorClassIdsToSymbols = mutableMapOf<ClassId, FirClassLikeSymbol<*>>()
 
+  class InjectedClass(
+    val classSymbol: FirClassSymbol<*>,
+    var isConstructorInjected: Boolean,
+    val constructorParameters: List<MetroFirValueParameter>,
+    val isAssistedInject: Boolean,
+    platform: Platform,
+  ) {
+    private val parameterNameAllocator = NameAllocator(platform = platform)
+    private val memberNameAllocator = NameAllocator(
+        mode = NameAllocator.Mode.COUNT,
+        platform = platform,
+    )
+    private var declaredInjectedMembersPopulated = false
+    private var ancestorInjectedMembersPopulated = false
 
-    class InjectedClass(
-        val classSymbol: FirClassSymbol<*>,
-        var isConstructorInjected: Boolean,
-        val constructorParameters: List<MetroFirValueParameter>,
-        val isAssistedInject: Boolean,
-        platform: Platform,
-    ) {
-        private val parameterNameAllocator = NameAllocator(platform = platform)
-        private val memberNameAllocator = NameAllocator(
-            mode = NameAllocator.Mode.COUNT,
-            platform = platform,
-        )
-        private var declaredInjectedMembersPopulated = false
-        private var ancestorInjectedMembersPopulated = false
-
-        init {
-            // preallocate constructor param names
-            constructorParameters.forEach { parameterNameAllocator.newName(it.name.asString()) }
-        }
-
-        val assistedParameters: List<MetroFirValueParameter> by memoize {
-            constructorParameters.filter { it.isAssisted }
-        }
-
-        val isAssisted
-            get() = assistedParameters.isNotEmpty()
-
-        val injectedMembersParamsByMemberKey = LinkedHashMap<Name, List<MetroFirValueParameter>>()
-        val injectedMembersParameters: List<MetroFirValueParameter>
-            get() = injectedMembersParamsByMemberKey.values.flatten()
-
-        // TODO dedupe keys?
-        val allParameters: List<MetroFirValueParameter>
-            get() = buildList {
-                addAll(constructorParameters)
-                addAll(injectedMembersParameters)
-            }
-
-        override fun toString(): String {
-            return buildString {
-                append(classSymbol.classId)
-                if (isConstructorInjected) {
-                    append(" (constructor)")
-                    if (constructorParameters.isNotEmpty()) {
-                        append(" constructorParams=")
-                        append(constructorParameters)
-                    }
-                }
-                if (injectedMembersParamsByMemberKey.isNotEmpty()) {
-                    append(" injectedMembers=")
-                    append(injectedMembersParamsByMemberKey.keys)
-                }
-            }
-        }
-
-        fun populateDeclaredMemberInjections(
-            session: FirSession
-        ): Map<Name, List<MetroFirValueParameter>> {
-            if (declaredInjectedMembersPopulated) return injectedMembersParamsByMemberKey
-            val declared = memberInjections(session, includeSelf = true, includeAncestors = false)
-            injectedMembersParamsByMemberKey.putAll(declared)
-            declaredInjectedMembersPopulated = true
-            return declared
-        }
-
-        fun populateAncestorMemberInjections(session: FirSession) {
-            if (ancestorInjectedMembersPopulated) return
-            val declared = injectedMembersParamsByMemberKey.toMap()
-            injectedMembersParamsByMemberKey.clear()
-            // Put ancestors first
-            injectedMembersParamsByMemberKey.putAll(
-                memberInjections(session, includeSelf = false, includeAncestors = true)
-            )
-            injectedMembersParamsByMemberKey.putAll(declared)
-            ancestorInjectedMembersPopulated = true
-        }
-
-        private fun memberInjections(
-            session: FirSession,
-            includeSelf: Boolean,
-            includeAncestors: Boolean,
-        ): Map<Name, List<MetroFirValueParameter>> {
-            val members = LinkedHashMap<Name, List<MetroFirValueParameter>>()
-            classSymbol
-                .callableDeclarations(
-                    session,
-                    includeSelf = includeSelf,
-                    includeAncestors = includeAncestors,
-                )
-                .filter { callable ->
-                    if (callable is FirPropertySymbol) {
-                        if (!(callable.isVar || callable.isLateInit)) {
-                            return@filter false
-                        }
-                    }
-                    if (callable.isAnnotatedInject(session)) {
-                        true
-                    } else if (callable is FirPropertySymbol) {
-                        callable.backingFieldSymbol?.isAnnotatedInject(session) == true ||
-                                callable.setterSymbol?.isAnnotatedInject(session) == true
-                    } else {
-                        false
-                    }
-                }
-                .forEach { injectedMember ->
-                    when (injectedMember) {
-                        is FirPropertySymbol -> {
-                            val propertyName = injectedMember.name
-                            val setterSymbol = injectedMember.setterSymbol
-                            val fieldSymbol = injectedMember.backingFieldSymbol
-                            val param =
-                                if (setterSymbol != null) {
-                                    val setterParam = setterSymbol.valueParameterSymbols.single()
-                                    MetroFirValueParameter(
-                                        session = session,
-                                        symbol = setterParam,
-                                        name = parameterNameAllocator.newName(propertyName),
-                                        memberKey = memberNameAllocator.newName(propertyName),
-                                    )
-                                } else if (fieldSymbol != null) {
-                                    MetroFirValueParameter(
-                                        session = session,
-                                        symbol = fieldSymbol,
-                                        name = parameterNameAllocator.newName(propertyName),
-                                        memberKey = memberNameAllocator.newName(propertyName),
-                                    )
-                                } else {
-                                    return@forEach
-                                }
-                            members[param.memberInjectorFunctionName] = listOf(param)
-                        }
-                        is FirNamedFunctionSymbol -> {
-                            val functionName = injectedMember.name
-                            val memberKey = memberNameAllocator.newName(functionName)
-                            val params =
-                                injectedMember.valueParameterSymbols.map {
-                                    MetroFirValueParameter(
-                                        session = session,
-                                        symbol = it,
-                                        name = parameterNameAllocator.newName(it.name),
-                                        memberKey = memberKey,
-                                    )
-                                }
-                            // Guaranteed at least one param if we're generating here
-                            members[params[0].memberInjectorFunctionName] = params
-                        }
-                    }
-                }
-            return members
-        }
+    init {
+      // preallocate constructor param names
+      constructorParameters.forEach { parameterNameAllocator.newName(it.name.asString()) }
     }
 
+    val assistedParameters: List<MetroFirValueParameter> by memoize {
+      constructorParameters.filter { it.isAssisted }
+    }
 
-    override fun getNestedClassifiersNames(
+    val isAssisted
+      get() = assistedParameters.isNotEmpty()
+
+    val injectedMembersParamsByMemberKey = LinkedHashMap<Name, List<MetroFirValueParameter>>()
+    val injectedMembersParameters: List<MetroFirValueParameter>
+      get() = injectedMembersParamsByMemberKey.values.flatten()
+
+    // TODO dedupe keys?
+    val allParameters: List<MetroFirValueParameter>
+      get() = buildList {
+        addAll(constructorParameters)
+        addAll(injectedMembersParameters)
+      }
+
+    override fun toString(): String {
+      return buildString {
+        append(classSymbol.classId)
+        if (isConstructorInjected) {
+          append(" (constructor)")
+          if (constructorParameters.isNotEmpty()) {
+            append(" constructorParams=")
+            append(constructorParameters)
+          }
+        }
+        if (injectedMembersParamsByMemberKey.isNotEmpty()) {
+          append(" injectedMembers=")
+          append(injectedMembersParamsByMemberKey.keys)
+        }
+      }
+    }
+
+    fun populateDeclaredMemberInjections(
+      session: FirSession
+    ): Map<Name, List<MetroFirValueParameter>> {
+      if (declaredInjectedMembersPopulated) return injectedMembersParamsByMemberKey
+        val declared = memberInjections(session, includeSelf = true, includeAncestors = false)
+        injectedMembersParamsByMemberKey.putAll(declared)
+        declaredInjectedMembersPopulated = true
+        return declared
+    }
+
+    fun populateAncestorMemberInjections(session: FirSession) {
+      if (ancestorInjectedMembersPopulated) return
+      val declared = injectedMembersParamsByMemberKey.toMap()
+        injectedMembersParamsByMemberKey.clear()
+        // Put ancestors first
+        injectedMembersParamsByMemberKey.putAll(
+          memberInjections(session, includeSelf = false, includeAncestors = true)
+        )
+        injectedMembersParamsByMemberKey.putAll(declared)
+        ancestorInjectedMembersPopulated = true
+    }
+
+    private fun memberInjections(
+      session: FirSession,
+      includeSelf: Boolean,
+      includeAncestors: Boolean,
+    ): Map<Name, List<MetroFirValueParameter>> {
+      val members = LinkedHashMap<Name, List<MetroFirValueParameter>>()
+      classSymbol
+        .callableDeclarations(
+          session,
+          includeSelf = includeSelf,
+          includeAncestors = includeAncestors,
+        )
+        .filter { callable ->
+          if (callable is FirPropertySymbol) {
+            if (!(callable.isVar || callable.isLateInit)) {
+              return@filter false
+            }
+          }
+          if (callable.isAnnotatedInject(session)) {
+            true
+          } else if (callable is FirPropertySymbol) {
+            callable.backingFieldSymbol?.isAnnotatedInject(session) == true ||
+              callable.setterSymbol?.isAnnotatedInject(session) == true
+          } else {
+            false
+          }
+        }
+        .forEach { injectedMember ->
+          when (injectedMember) {
+            is FirPropertySymbol -> {
+              val propertyName = injectedMember.name
+              val setterSymbol = injectedMember.setterSymbol
+              val fieldSymbol = injectedMember.backingFieldSymbol
+              val param =
+                if (setterSymbol != null) {
+                  val setterParam = setterSymbol.valueParameterSymbols.single()
+                    MetroFirValueParameter(
+                      session = session,
+                      symbol = setterParam,
+                      name = parameterNameAllocator.newName(propertyName),
+                      memberKey = memberNameAllocator.newName(propertyName),
+                    )
+                } else if (fieldSymbol != null) {
+                  MetroFirValueParameter(
+                    session = session,
+                    symbol = fieldSymbol,
+                    name = parameterNameAllocator.newName(propertyName),
+                    memberKey = memberNameAllocator.newName(propertyName),
+                  )
+                } else {
+                  return@forEach
+                }
+              members[param.memberInjectorFunctionName] = listOf(param)
+            }
+            is FirNamedFunctionSymbol -> {
+              val functionName = injectedMember.name
+              val memberKey = memberNameAllocator.newName(functionName)
+              val params =
+                injectedMember.valueParameterSymbols.map {
+                  MetroFirValueParameter(
+                    session = session,
+                    symbol = it,
+                    name = parameterNameAllocator.newName(it.name),
+                    memberKey = memberKey,
+                  )
+                }
+              // Guaranteed at least one param if we're generating here
+              members[params[0].memberInjectorFunctionName] = params
+            }
+          }
+        }
+      return members
+    }
+  }
+
+
+  override fun getNestedClassifiersNames(
     classSymbol: FirClassSymbol<*>,
     context: NestedClassGenerationContext,
   ): Set<Name> {
