@@ -354,7 +354,7 @@ class TopologicalSortTest {
 
     assertEquals(setOf("a", "b", "c"), result.reachableKeys)
     // b is deferred due to the cycle
-    assertEquals(listOf("b"), result.deferredTypes)
+    assertEquals(setOf("b"), result.deferredTypes)
     assertTrue(result.sortedKeys.containsAll(listOf("a", "b", "c")))
   }
 
@@ -429,7 +429,7 @@ class TopologicalSortTest {
       )
 
     // Service2 should be deferred
-    assertEquals(listOf("Service2"), result.deferredTypes)
+    assertEquals(setOf("Service2"), result.deferredTypes)
 
     assertEquals(
       listOf("CommonUtil", "SharedService", "Service2", "Service1", "Service3", "Client"),
@@ -487,7 +487,7 @@ class TopologicalSortTest {
     assertEquals(listOf("A", "B"), result.sortedKeys)
 
     // A should be deferred since it has the deferrable edge
-    assertEquals(listOf("A"), result.deferredTypes)
+    assertEquals(setOf("A"), result.deferredTypes)
   }
 
   @Test
@@ -551,7 +551,7 @@ class TopologicalSortTest {
     assertEquals(listOf("X", "W", "Z", "Y"), result.sortedKeys)
 
     // X should be deferred
-    assertEquals(listOf("X"), result.deferredTypes)
+    assertEquals(setOf("X"), result.deferredTypes)
   }
 
   @Test

@@ -118,14 +118,19 @@ internal fun <TypeKey : Comparable<TypeKey>, Binding> buildFullAdjacency(
 
 /**
  * @param sortedKeys Topologically sorted list of keys.
- * @param deferredTypes Vertices that sit inside breakable cycles.
  * @param reachableKeys Vertices that were deemed reachable by any input roots.
+ * @param deferredInitOrder Mapping of deferred typekeys to the keys they should be initialized after.
+ *   This enables proper ordering of `DelegateFactory.setDelegate()` calls.
+ * @property deferredTypes Vertices that sit inside breakable cycles.
  */
 internal data class TopoSortResult<T>(
   val sortedKeys: List<T>,
-  val deferredTypes: List<T>,
   val reachableKeys: Set<T>,
-)
+  val deferredInitOrder: Map<T, T?>,
+) {
+  val deferredTypes: Set<T>
+    get() = deferredInitOrder.keys
+}
 
 /**
  * Returns the vertices in a valid topological order. Every edge in [fullAdjacency] is respected;
@@ -230,6 +235,7 @@ internal fun <V : Comparable<V>> topologicalSort(
       topologicallySortComponentDag(componentDag, components.size)
     }
 
+  // Expand each component back to its original vertices
   val sortedKeys =
     parentTracer.traceNested("Expand components") {
       componentOrder.flatMap { id ->
@@ -246,12 +252,27 @@ internal fun <V : Comparable<V>> topologicalSort(
         }
       }
     }
-  return TopoSortResult(
-    // Expand each component back to its original vertices
-    sortedKeys,
-    deferredTypes.toList(),
-    reachableKeys.keys,
-  )
+
+  // Compute deferred initialization order: for each deferred type, find the latest
+  // (highest index) non-deferred dependency it should be initialized after
+  val deferredInitOrder =
+    parentTracer.traceNested("Compute deferred init order") {
+      if (deferredTypes.isEmpty()) return@traceNested emptyMap()
+
+      val sortedIndexByKey = sortedKeys.withIndex().associate { it.value to it.index }
+
+      deferredTypes.associateWith { deferredKey ->
+        // Find all non-deferred dependencies of this deferred key
+        reachableKeys[deferredKey]
+          .orEmpty()
+          .asSequence()
+          .filterNot { it in deferredTypes }
+          // Find the one with the highest index (appears latest in sorted order)
+          .maxByOrNull { sortedIndexByKey.getValue(it) }
+      }
+    }
+
+  return TopoSortResult(sortedKeys, reachableKeys.keys, deferredInitOrder)
 }
 
 /** Finds the minimal set of nodes that need to be deferred to break all cycles in the SCC. */
