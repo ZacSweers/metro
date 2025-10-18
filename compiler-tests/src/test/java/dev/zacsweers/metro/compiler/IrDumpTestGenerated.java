@@ -180,6 +180,22 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
         runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/dynamic/SimpleDynamicGraph.kt");
       }
     }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/dump/ir/dependencygraph/interop")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Interop {
+      @Test
+      public void testAllFilesPresentInInterop() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph/interop"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      }
+
+      @Test
+      @TestMetadata("BindsOptionalOfUsesLazyProviders.kt")
+      public void testBindsOptionalOfUsesLazyProviders() {
+        runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/interop/BindsOptionalOfUsesLazyProviders.kt");
+      }
+    }
   }
 
   @Nested
