@@ -52,8 +52,7 @@ interface LoggedInGraph {
 }
 
 fun box(): String {
-  // TODO not yet ready until we fix delegate factory ordering
-//  val graph = createGraph<AppGraph>().loggedInGraph
-//  assertEquals(2, graph.multibindingsReference.multibindings.size)
+  val graph = createGraph<AppGraph>().loggedInGraph
+  assertEquals(2, graph.multibindingsReference.multibindings.size)
   return "OK"
 }
