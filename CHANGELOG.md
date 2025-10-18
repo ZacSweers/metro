@@ -4,7 +4,8 @@ Changelog
 **Unreleased**
 --------------
 
-- Improve code generation around multibinding collection builders and contributors, using more lazy getters in graph code gen.
+- **Enhancement**: Improve code generation around multibinding collection builders and contributors, using more lazy getters in graph code gen.
+- **Fix**: Don't generate duplicate `init()` functions when chunking initializers if graphs already have an explicit `init()` function.
 
 0.7.0
 ------
