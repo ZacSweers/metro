@@ -616,6 +616,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
                 //  .withArguments(it.mapToArray(FirTypeParameterRef::toConeType))
               },
               key = Keys.RegularParameter,
+              hasDefaultValue = param.hasDefaultValue,
             )
           }
         }
