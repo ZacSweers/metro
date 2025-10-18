@@ -80,10 +80,11 @@ val testCompilerVersion =
 
 tasks.withType<Test>().configureEach {
   maxParallelForks = Runtime.getRuntime().availableProcessors() * 2
-  jvmArgs(
-    "-Dcom.autonomousapps.plugin-under-test.version=${providers.gradleProperty("VERSION_NAME").get()}",
-    "-Ddev.zacsweers.metro.gradle.test.kotlin-version=$testCompilerVersion",
+  systemProperty(
+    "com.autonomousapps.plugin-under-test.version",
+    providers.gradleProperty("VERSION_NAME").get(),
   )
+  systemProperty("dev.zacsweers.metro.gradle.test.kotlin-version", testCompilerVersion)
 }
 
 tasks

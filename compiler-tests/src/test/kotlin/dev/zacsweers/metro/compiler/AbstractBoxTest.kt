@@ -48,6 +48,8 @@ open class AbstractBoxTest : AbstractFirLightTreeBlackBoxCodegenTest() {
 
       useSourcePreprocessor(::KotlinTestImportPreprocessor)
 
+      useMetaTestConfigurators(::MetroTestConfigurator)
+
       defaultDirectives {
         JVM_TARGET.with(JvmTarget.JVM_11)
         +FULL_JDK
