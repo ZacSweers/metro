@@ -13,10 +13,8 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.getAllSuperTypes
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
-import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
-import org.jetbrains.kotlin.backend.common.ir.BuiltinSymbolsBase
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrEnumEntry
@@ -170,6 +168,15 @@ internal class Symbols(
     val metroProvider = ClassId(FqNames.metroRuntimePackage, Names.ProviderClass)
     val metroProvides = ClassId(FqNames.metroRuntimePackage, StringNames.PROVIDES.asName())
     val metroSingleIn = ClassId(FqNames.metroRuntimePackage, StringNames.SINGLE_IN.asName())
+    val metroInstanceFactory = ClassId(FqNames.metroRuntimeInternalPackage, "InstanceFactory".asName())
+
+    val commonMetroProviders by lazy {
+      setOf(
+        metroProvider,
+        metroFactory,
+        metroInstanceFactory
+      )
+    }
   }
 
   object Names {
@@ -306,7 +313,7 @@ internal class Symbols(
 
   private val instanceFactory: IrClassSymbol by lazy {
     pluginContext.referenceClass(
-      ClassId(metroRuntimeInternal.packageFqName, "InstanceFactory".asName())
+      ClassIds.metroInstanceFactory
     )!!
   }
   val instanceFactoryCompanionObject by lazy { instanceFactory.owner.companionObject()!!.symbol }
@@ -438,6 +445,18 @@ internal class Symbols(
     pluginContext.irBuiltIns.mutableSetClass.owner.declarations
       .filterIsInstance<IrSimpleFunction>()
       .single { it.name.asString() == "add" }
+  }
+
+  val buildMapWithCapacity by lazy {
+    pluginContext
+      .referenceFunctions(CallableId(stdlibCollections.packageFqName, "buildMap".asName()))
+      .first { it.owner.hasShape(regularParameters = 2) }
+  }
+
+  val mutableMapPut by lazy {
+    pluginContext.irBuiltIns.mutableMapClass.owner.declarations
+      .filterIsInstance<IrSimpleFunction>()
+      .single { it.name.asString() == "put" }
   }
 
   val intoMapConstructor by lazy {
