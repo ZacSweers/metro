@@ -15,23 +15,23 @@ class TracingTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @DependencyGraph(AppScope::class)
-            interface ExampleGraph {
+        @DependencyGraph(AppScope::class)
+        interface ExampleGraph {
 
-              fun exampleClass(): ExampleClass
+          fun exampleClass(): ExampleClass
 
-              @DependencyGraph.Factory
-              fun interface Factory {
-                fun create(@Provides text: String): ExampleGraph
-              }
-            }
+          @DependencyGraph.Factory
+          fun interface Factory {
+            fun create(@Provides text: String): ExampleGraph
+          }
+        }
 
-            @SingleIn(AppScope::class)
-            @Inject
-            class ExampleClass(private val text: String) : Callable<String> {
-              override fun call(): String = text
-            }
-          """
+        @SingleIn(AppScope::class)
+        @Inject
+        class ExampleClass(private val text: String) : Callable<String> {
+          override fun call(): String = text
+        }
+        """
           .trimIndent()
       ),
       options = metroOptions.copy(reportsDestination = reportsDir),
@@ -68,7 +68,7 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,[ExampleGraph] Transform dependency graph
           main,Core transformers
           main,Metro compiler
-        """
+          """
             .trimIndent()
         )
 
@@ -77,60 +77,60 @@ class TracingTest : MetroCompilerTest() {
       assertThat(cleanedLog.trim())
         .isEqualTo(
           """
-            [main] ▶ Metro compiler
-              ▶ Transform contributions
-              ◀ Transform contributions (xx ms)
-              ▶ Core transformers
-                ▶ [ExampleGraph] Transform dependency graph
-                  ▶ Build DependencyGraphNode
-                  ◀ Build DependencyGraphNode (xx ms)
-                  ▶ Implement creator functions
-                  ◀ Implement creator functions (xx ms)
-                  ▶ Build binding graph
-                  ◀ Build binding graph (xx ms)
-                  ▶ Validate binding graph
-                    ▶ Validate graph
-                      ▶ seal graph
-                        ▶ Populate bindings
-                        ◀ Populate bindings (xx ms)
-                        ▶ Build adjacency list
-                        ◀ Build adjacency list (xx ms)
-                        ▶ Sort and validate
-                          ▶ Topo sort
-                            ▶ Compute SCCs
-                            ◀ Compute SCCs (xx ms)
-                            ▶ Check for cycles
-                            ◀ Check for cycles (xx ms)
-                            ▶ Build component DAG
-                            ◀ Build component DAG (xx ms)
-                            ▶ Topo sort component DAG
-                            ◀ Topo sort component DAG (xx ms)
-                            ▶ Expand components
-                            ◀ Expand components (xx ms)
-                            ▶ Compute deferred init order
-                            ◀ Compute deferred init order (xx ms)
-                          ◀ Topo sort (xx ms)
-                        ◀ Sort and validate (xx ms)
-                        ▶ Compute binding indices
-                        ◀ Compute binding indices (xx ms)
-                      ◀ seal graph (xx ms)
-                      ▶ check empty multibindings
-                      ◀ check empty multibindings (xx ms)
-                      ▶ check for absent bindings
-                      ◀ check for absent bindings (xx ms)
-                    ◀ Validate graph (xx ms)
-                  ◀ Validate binding graph (xx ms)
-                  ▶ Transform metro graph
-                    ▶ Collect bindings
-                    ◀ Collect bindings (xx ms)
-                    ▶ Implement overrides
-                    ◀ Implement overrides (xx ms)
-                    ▶ Generate Metro metadata
-                    ◀ Generate Metro metadata (xx ms)
-                  ◀ Transform metro graph (xx ms)
-                ◀ [ExampleGraph] Transform dependency graph (xx ms)
-              ◀ Core transformers (xx ms)
-            [main] ◀ Metro compiler (xx ms)
+          [main] ▶ Metro compiler
+            ▶ Transform contributions
+            ◀ Transform contributions (xx ms)
+            ▶ Core transformers
+              ▶ [ExampleGraph] Transform dependency graph
+                ▶ Build DependencyGraphNode
+                ◀ Build DependencyGraphNode (xx ms)
+                ▶ Implement creator functions
+                ◀ Implement creator functions (xx ms)
+                ▶ Build binding graph
+                ◀ Build binding graph (xx ms)
+                ▶ Validate binding graph
+                  ▶ Validate graph
+                    ▶ seal graph
+                      ▶ Populate bindings
+                      ◀ Populate bindings (xx ms)
+                      ▶ Build adjacency list
+                      ◀ Build adjacency list (xx ms)
+                      ▶ Sort and validate
+                        ▶ Topo sort
+                          ▶ Compute SCCs
+                          ◀ Compute SCCs (xx ms)
+                          ▶ Check for cycles
+                          ◀ Check for cycles (xx ms)
+                          ▶ Build component DAG
+                          ◀ Build component DAG (xx ms)
+                          ▶ Topo sort component DAG
+                          ◀ Topo sort component DAG (xx ms)
+                          ▶ Expand components
+                          ◀ Expand components (xx ms)
+                          ▶ Compute deferred init order
+                          ◀ Compute deferred init order (xx ms)
+                        ◀ Topo sort (xx ms)
+                      ◀ Sort and validate (xx ms)
+                      ▶ Compute binding indices
+                      ◀ Compute binding indices (xx ms)
+                    ◀ seal graph (xx ms)
+                    ▶ check empty multibindings
+                    ◀ check empty multibindings (xx ms)
+                    ▶ check for absent bindings
+                    ◀ check for absent bindings (xx ms)
+                  ◀ Validate graph (xx ms)
+                ◀ Validate binding graph (xx ms)
+                ▶ Transform metro graph
+                  ▶ Collect bindings
+                  ◀ Collect bindings (xx ms)
+                  ▶ Implement overrides
+                  ◀ Implement overrides (xx ms)
+                  ▶ Generate Metro metadata
+                  ◀ Generate Metro metadata (xx ms)
+                ◀ Transform metro graph (xx ms)
+              ◀ [ExampleGraph] Transform dependency graph (xx ms)
+            ◀ Core transformers (xx ms)
+          [main] ◀ Metro compiler (xx ms)
           """
             .trimIndent()
         )
@@ -143,30 +143,30 @@ class TracingTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @DependencyGraph(AppScope::class)
-            interface ExampleGraph : ChildGraph.Factory {
-              @DependencyGraph.Factory
-              fun interface Factory {
-                fun create(@Provides text: String): ExampleGraph
-              }
-            }
+        @DependencyGraph(AppScope::class)
+        interface ExampleGraph : ChildGraph.Factory {
+          @DependencyGraph.Factory
+          fun interface Factory {
+            fun create(@Provides text: String): ExampleGraph
+          }
+        }
 
-            @GraphExtension(Unit::class)
-            interface ChildGraph {
+        @GraphExtension(Unit::class)
+        interface ChildGraph {
 
-              fun exampleClass(): ExampleClass
+          fun exampleClass(): ExampleClass
 
-              @GraphExtension.Factory
-              fun interface Factory {
-                fun create(): ChildGraph
-              }
-            }
+          @GraphExtension.Factory
+          fun interface Factory {
+            fun create(): ChildGraph
+          }
+        }
 
-            @Inject
-            class ExampleClass(private val text: String) : Callable<String> {
-              override fun call(): String = text
-            }
-          """
+        @Inject
+        class ExampleClass(private val text: String) : Callable<String> {
+          override fun call(): String = text
+        }
+        """
           .trimIndent()
       ),
       options = metroOptions.copy(reportsDestination = reportsDir),
@@ -227,7 +227,7 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,[ExampleGraph] Transform dependency graph
           main,Core transformers
           main,Metro compiler
-        """
+          """
             .trimIndent()
         )
 
@@ -236,108 +236,108 @@ class TracingTest : MetroCompilerTest() {
       assertThat(cleanedLog.trim())
         .isEqualTo(
           """
-            [main] ▶ Metro compiler
-              ▶ Transform contributions
-              ◀ Transform contributions (xx ms)
-              ▶ Core transformers
-                ▶ [ExampleGraph] Transform dependency graph
-                  ▶ Build DependencyGraphNode
-                  ◀ Build DependencyGraphNode (xx ms)
-                  ▶ Implement creator functions
-                  ◀ Implement creator functions (xx ms)
-                  ▶ Build binding graph
-                  ◀ Build binding graph (xx ms)
-                  ▶ Generate graph extension ChildGraph
-                  ◀ Generate graph extension ChildGraph (xx ms)
-                ▶ [ChildGraphImpl] Transform dependency graph
-                  ▶ Build DependencyGraphNode
-                  ◀ Build DependencyGraphNode (xx ms)
-                  ▶ Implement creator functions
-                  ◀ Implement creator functions (xx ms)
-                  ▶ Build binding graph
-                  ◀ Build binding graph (xx ms)
-                  ▶ Validate binding graph
-                    ▶ Validate graph
-                      ▶ seal graph
-                        ▶ Populate bindings
-                        ◀ Populate bindings (xx ms)
-                        ▶ Build adjacency list
-                        ◀ Build adjacency list (xx ms)
-                        ▶ Sort and validate
-                          ▶ Topo sort
-                            ▶ Compute SCCs
-                            ◀ Compute SCCs (xx ms)
-                            ▶ Check for cycles
-                            ◀ Check for cycles (xx ms)
-                            ▶ Build component DAG
-                            ◀ Build component DAG (xx ms)
-                            ▶ Topo sort component DAG
-                            ◀ Topo sort component DAG (xx ms)
-                            ▶ Expand components
-                            ◀ Expand components (xx ms)
-                            ▶ Compute deferred init order
-                            ◀ Compute deferred init order (xx ms)
-                          ◀ Topo sort (xx ms)
-                        ◀ Sort and validate (xx ms)
-                        ▶ Compute binding indices
-                        ◀ Compute binding indices (xx ms)
-                      ◀ seal graph (xx ms)
-                      ▶ check empty multibindings
-                      ◀ check empty multibindings (xx ms)
-                      ▶ check for absent bindings
-                      ◀ check for absent bindings (xx ms)
-                    ◀ Validate graph (xx ms)
-                  ◀ Validate binding graph (xx ms)
-                  ▶ Transform metro graph
-                    ▶ Collect bindings
-                    ◀ Collect bindings (xx ms)
-                    ▶ Implement overrides
-                    ◀ Implement overrides (xx ms)
-                  ◀ Transform metro graph (xx ms)
-                ◀ [ChildGraphImpl] Transform dependency graph (xx ms)
-                  ▶ Validate binding graph
-                    ▶ Validate graph
-                      ▶ seal graph
-                        ▶ Populate bindings
-                        ◀ Populate bindings (xx ms)
-                        ▶ Build adjacency list
-                        ◀ Build adjacency list (xx ms)
-                        ▶ Sort and validate
-                          ▶ Topo sort
-                            ▶ Compute SCCs
-                            ◀ Compute SCCs (xx ms)
-                            ▶ Check for cycles
-                            ◀ Check for cycles (xx ms)
-                            ▶ Build component DAG
-                            ◀ Build component DAG (xx ms)
-                            ▶ Topo sort component DAG
-                            ◀ Topo sort component DAG (xx ms)
-                            ▶ Expand components
-                            ◀ Expand components (xx ms)
-                            ▶ Compute deferred init order
-                            ◀ Compute deferred init order (xx ms)
-                          ◀ Topo sort (xx ms)
-                        ◀ Sort and validate (xx ms)
-                        ▶ Compute binding indices
-                        ◀ Compute binding indices (xx ms)
-                      ◀ seal graph (xx ms)
-                      ▶ check empty multibindings
-                      ◀ check empty multibindings (xx ms)
-                      ▶ check for absent bindings
-                      ◀ check for absent bindings (xx ms)
-                    ◀ Validate graph (xx ms)
-                  ◀ Validate binding graph (xx ms)
-                  ▶ Transform metro graph
-                    ▶ Collect bindings
-                    ◀ Collect bindings (xx ms)
-                    ▶ Implement overrides
-                    ◀ Implement overrides (xx ms)
-                    ▶ Generate Metro metadata
-                    ◀ Generate Metro metadata (xx ms)
-                  ◀ Transform metro graph (xx ms)
-                ◀ [ExampleGraph] Transform dependency graph (xx ms)
-              ◀ Core transformers (xx ms)
-            [main] ◀ Metro compiler (xx ms)
+          [main] ▶ Metro compiler
+            ▶ Transform contributions
+            ◀ Transform contributions (xx ms)
+            ▶ Core transformers
+              ▶ [ExampleGraph] Transform dependency graph
+                ▶ Build DependencyGraphNode
+                ◀ Build DependencyGraphNode (xx ms)
+                ▶ Implement creator functions
+                ◀ Implement creator functions (xx ms)
+                ▶ Build binding graph
+                ◀ Build binding graph (xx ms)
+                ▶ Generate graph extension ChildGraph
+                ◀ Generate graph extension ChildGraph (xx ms)
+              ▶ [ChildGraphImpl] Transform dependency graph
+                ▶ Build DependencyGraphNode
+                ◀ Build DependencyGraphNode (xx ms)
+                ▶ Implement creator functions
+                ◀ Implement creator functions (xx ms)
+                ▶ Build binding graph
+                ◀ Build binding graph (xx ms)
+                ▶ Validate binding graph
+                  ▶ Validate graph
+                    ▶ seal graph
+                      ▶ Populate bindings
+                      ◀ Populate bindings (xx ms)
+                      ▶ Build adjacency list
+                      ◀ Build adjacency list (xx ms)
+                      ▶ Sort and validate
+                        ▶ Topo sort
+                          ▶ Compute SCCs
+                          ◀ Compute SCCs (xx ms)
+                          ▶ Check for cycles
+                          ◀ Check for cycles (xx ms)
+                          ▶ Build component DAG
+                          ◀ Build component DAG (xx ms)
+                          ▶ Topo sort component DAG
+                          ◀ Topo sort component DAG (xx ms)
+                          ▶ Expand components
+                          ◀ Expand components (xx ms)
+                          ▶ Compute deferred init order
+                          ◀ Compute deferred init order (xx ms)
+                        ◀ Topo sort (xx ms)
+                      ◀ Sort and validate (xx ms)
+                      ▶ Compute binding indices
+                      ◀ Compute binding indices (xx ms)
+                    ◀ seal graph (xx ms)
+                    ▶ check empty multibindings
+                    ◀ check empty multibindings (xx ms)
+                    ▶ check for absent bindings
+                    ◀ check for absent bindings (xx ms)
+                  ◀ Validate graph (xx ms)
+                ◀ Validate binding graph (xx ms)
+                ▶ Transform metro graph
+                  ▶ Collect bindings
+                  ◀ Collect bindings (xx ms)
+                  ▶ Implement overrides
+                  ◀ Implement overrides (xx ms)
+                ◀ Transform metro graph (xx ms)
+              ◀ [ChildGraphImpl] Transform dependency graph (xx ms)
+                ▶ Validate binding graph
+                  ▶ Validate graph
+                    ▶ seal graph
+                      ▶ Populate bindings
+                      ◀ Populate bindings (xx ms)
+                      ▶ Build adjacency list
+                      ◀ Build adjacency list (xx ms)
+                      ▶ Sort and validate
+                        ▶ Topo sort
+                          ▶ Compute SCCs
+                          ◀ Compute SCCs (xx ms)
+                          ▶ Check for cycles
+                          ◀ Check for cycles (xx ms)
+                          ▶ Build component DAG
+                          ◀ Build component DAG (xx ms)
+                          ▶ Topo sort component DAG
+                          ◀ Topo sort component DAG (xx ms)
+                          ▶ Expand components
+                          ◀ Expand components (xx ms)
+                          ▶ Compute deferred init order
+                          ◀ Compute deferred init order (xx ms)
+                        ◀ Topo sort (xx ms)
+                      ◀ Sort and validate (xx ms)
+                      ▶ Compute binding indices
+                      ◀ Compute binding indices (xx ms)
+                    ◀ seal graph (xx ms)
+                    ▶ check empty multibindings
+                    ◀ check empty multibindings (xx ms)
+                    ▶ check for absent bindings
+                    ◀ check for absent bindings (xx ms)
+                  ◀ Validate graph (xx ms)
+                ◀ Validate binding graph (xx ms)
+                ▶ Transform metro graph
+                  ▶ Collect bindings
+                  ◀ Collect bindings (xx ms)
+                  ▶ Implement overrides
+                  ◀ Implement overrides (xx ms)
+                  ▶ Generate Metro metadata
+                  ◀ Generate Metro metadata (xx ms)
+                ◀ Transform metro graph (xx ms)
+              ◀ [ExampleGraph] Transform dependency graph (xx ms)
+            ◀ Core transformers (xx ms)
+          [main] ◀ Metro compiler (xx ms)
           """
             .trimIndent()
         )
@@ -350,30 +350,30 @@ class TracingTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @DependencyGraph(AppScope::class)
-            interface ExampleGraph {
-              @DependencyGraph.Factory
-              fun interface Factory {
-                fun create(@Provides text: String): ExampleGraph
-              }
-            }
+        @DependencyGraph(AppScope::class)
+        interface ExampleGraph {
+          @DependencyGraph.Factory
+          fun interface Factory {
+            fun create(@Provides text: String): ExampleGraph
+          }
+        }
 
-            @GraphExtension(Unit::class)
-            interface ChildGraph {
+        @GraphExtension(Unit::class)
+        interface ChildGraph {
 
-              fun exampleClass(): ExampleClass
+          fun exampleClass(): ExampleClass
 
-              @GraphExtension.Factory @ContributesTo(AppScope::class)
-              fun interface Factory {
-                fun createChildGraph(): ChildGraph
-              }
-            }
+          @GraphExtension.Factory @ContributesTo(AppScope::class)
+          fun interface Factory {
+            fun createChildGraph(): ChildGraph
+          }
+        }
 
-            @Inject
-            class ExampleClass(private val text: String) : Callable<String> {
-              override fun call(): String = text
-            }
-          """
+        @Inject
+        class ExampleClass(private val text: String) : Callable<String> {
+          override fun call(): String = text
+        }
+        """
           .trimIndent()
       ),
       options = metroOptions.copy(reportsDestination = reportsDir),
@@ -382,7 +382,7 @@ class TracingTest : MetroCompilerTest() {
       val withoutTime = timings.lines().drop(1).joinToString("\n") { it.substringBeforeLast(",") }
       assertThat(withoutTime)
         .isEqualTo(
-          $$$"""
+          $$"""
           main,Transform contributions
           ExampleGraph,Build DependencyGraphNode
           ExampleGraph,Implement creator functions
@@ -434,7 +434,7 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,[ExampleGraph] Transform dependency graph
           main,Core transformers
           main,Metro compiler
-        """
+          """
             .trimIndent()
         )
 
@@ -442,109 +442,109 @@ class TracingTest : MetroCompilerTest() {
       val cleanedLog = traceLog.replace("\\((\\d+) ms\\)".toRegex(), "(xx ms)")
       assertThat(cleanedLog.trim())
         .isEqualTo(
-          $$$"""
-            [main] ▶ Metro compiler
-              ▶ Transform contributions
-              ◀ Transform contributions (xx ms)
-              ▶ Core transformers
-                ▶ [ExampleGraph] Transform dependency graph
-                  ▶ Build DependencyGraphNode
-                  ◀ Build DependencyGraphNode (xx ms)
-                  ▶ Implement creator functions
-                  ◀ Implement creator functions (xx ms)
-                  ▶ Build binding graph
-                  ◀ Build binding graph (xx ms)
-                  ▶ Generate graph extension ChildGraph
-                  ◀ Generate graph extension ChildGraph (xx ms)
-                ▶ [ChildGraphImpl] Transform dependency graph
-                  ▶ Build DependencyGraphNode
-                  ◀ Build DependencyGraphNode (xx ms)
-                  ▶ Implement creator functions
-                  ◀ Implement creator functions (xx ms)
-                  ▶ Build binding graph
-                  ◀ Build binding graph (xx ms)
-                  ▶ Validate binding graph
-                    ▶ Validate graph
-                      ▶ seal graph
-                        ▶ Populate bindings
-                        ◀ Populate bindings (xx ms)
-                        ▶ Build adjacency list
-                        ◀ Build adjacency list (xx ms)
-                        ▶ Sort and validate
-                          ▶ Topo sort
-                            ▶ Compute SCCs
-                            ◀ Compute SCCs (xx ms)
-                            ▶ Check for cycles
-                            ◀ Check for cycles (xx ms)
-                            ▶ Build component DAG
-                            ◀ Build component DAG (xx ms)
-                            ▶ Topo sort component DAG
-                            ◀ Topo sort component DAG (xx ms)
-                            ▶ Expand components
-                            ◀ Expand components (xx ms)
-                            ▶ Compute deferred init order
-                            ◀ Compute deferred init order (xx ms)
-                          ◀ Topo sort (xx ms)
-                        ◀ Sort and validate (xx ms)
-                        ▶ Compute binding indices
-                        ◀ Compute binding indices (xx ms)
-                      ◀ seal graph (xx ms)
-                      ▶ check empty multibindings
-                      ◀ check empty multibindings (xx ms)
-                      ▶ check for absent bindings
-                      ◀ check for absent bindings (xx ms)
-                    ◀ Validate graph (xx ms)
-                  ◀ Validate binding graph (xx ms)
-                  ▶ Transform metro graph
-                    ▶ Collect bindings
-                    ◀ Collect bindings (xx ms)
-                    ▶ Implement overrides
-                    ◀ Implement overrides (xx ms)
-                  ◀ Transform metro graph (xx ms)
-                ◀ [ChildGraphImpl] Transform dependency graph (xx ms)
-                  ▶ Validate binding graph
-                    ▶ Validate graph
-                      ▶ seal graph
-                        ▶ Populate bindings
-                        ◀ Populate bindings (xx ms)
-                        ▶ Build adjacency list
-                        ◀ Build adjacency list (xx ms)
-                        ▶ Sort and validate
-                          ▶ Topo sort
-                            ▶ Compute SCCs
-                            ◀ Compute SCCs (xx ms)
-                            ▶ Check for cycles
-                            ◀ Check for cycles (xx ms)
-                            ▶ Build component DAG
-                            ◀ Build component DAG (xx ms)
-                            ▶ Topo sort component DAG
-                            ◀ Topo sort component DAG (xx ms)
-                            ▶ Expand components
-                            ◀ Expand components (xx ms)
-                            ▶ Compute deferred init order
-                            ◀ Compute deferred init order (xx ms)
-                          ◀ Topo sort (xx ms)
-                        ◀ Sort and validate (xx ms)
-                        ▶ Compute binding indices
-                        ◀ Compute binding indices (xx ms)
-                      ◀ seal graph (xx ms)
-                      ▶ check empty multibindings
-                      ◀ check empty multibindings (xx ms)
-                      ▶ check for absent bindings
-                      ◀ check for absent bindings (xx ms)
-                    ◀ Validate graph (xx ms)
-                  ◀ Validate binding graph (xx ms)
-                  ▶ Transform metro graph
-                    ▶ Collect bindings
-                    ◀ Collect bindings (xx ms)
-                    ▶ Implement overrides
-                    ◀ Implement overrides (xx ms)
-                    ▶ Generate Metro metadata
-                    ◀ Generate Metro metadata (xx ms)
-                  ◀ Transform metro graph (xx ms)
-                ◀ [ExampleGraph] Transform dependency graph (xx ms)
-              ◀ Core transformers (xx ms)
-            [main] ◀ Metro compiler (xx ms)
+          $$"""
+          [main] ▶ Metro compiler
+            ▶ Transform contributions
+            ◀ Transform contributions (xx ms)
+            ▶ Core transformers
+              ▶ [ExampleGraph] Transform dependency graph
+                ▶ Build DependencyGraphNode
+                ◀ Build DependencyGraphNode (xx ms)
+                ▶ Implement creator functions
+                ◀ Implement creator functions (xx ms)
+                ▶ Build binding graph
+                ◀ Build binding graph (xx ms)
+                ▶ Generate graph extension ChildGraph
+                ◀ Generate graph extension ChildGraph (xx ms)
+              ▶ [ChildGraphImpl] Transform dependency graph
+                ▶ Build DependencyGraphNode
+                ◀ Build DependencyGraphNode (xx ms)
+                ▶ Implement creator functions
+                ◀ Implement creator functions (xx ms)
+                ▶ Build binding graph
+                ◀ Build binding graph (xx ms)
+                ▶ Validate binding graph
+                  ▶ Validate graph
+                    ▶ seal graph
+                      ▶ Populate bindings
+                      ◀ Populate bindings (xx ms)
+                      ▶ Build adjacency list
+                      ◀ Build adjacency list (xx ms)
+                      ▶ Sort and validate
+                        ▶ Topo sort
+                          ▶ Compute SCCs
+                          ◀ Compute SCCs (xx ms)
+                          ▶ Check for cycles
+                          ◀ Check for cycles (xx ms)
+                          ▶ Build component DAG
+                          ◀ Build component DAG (xx ms)
+                          ▶ Topo sort component DAG
+                          ◀ Topo sort component DAG (xx ms)
+                          ▶ Expand components
+                          ◀ Expand components (xx ms)
+                          ▶ Compute deferred init order
+                          ◀ Compute deferred init order (xx ms)
+                        ◀ Topo sort (xx ms)
+                      ◀ Sort and validate (xx ms)
+                      ▶ Compute binding indices
+                      ◀ Compute binding indices (xx ms)
+                    ◀ seal graph (xx ms)
+                    ▶ check empty multibindings
+                    ◀ check empty multibindings (xx ms)
+                    ▶ check for absent bindings
+                    ◀ check for absent bindings (xx ms)
+                  ◀ Validate graph (xx ms)
+                ◀ Validate binding graph (xx ms)
+                ▶ Transform metro graph
+                  ▶ Collect bindings
+                  ◀ Collect bindings (xx ms)
+                  ▶ Implement overrides
+                  ◀ Implement overrides (xx ms)
+                ◀ Transform metro graph (xx ms)
+              ◀ [ChildGraphImpl] Transform dependency graph (xx ms)
+                ▶ Validate binding graph
+                  ▶ Validate graph
+                    ▶ seal graph
+                      ▶ Populate bindings
+                      ◀ Populate bindings (xx ms)
+                      ▶ Build adjacency list
+                      ◀ Build adjacency list (xx ms)
+                      ▶ Sort and validate
+                        ▶ Topo sort
+                          ▶ Compute SCCs
+                          ◀ Compute SCCs (xx ms)
+                          ▶ Check for cycles
+                          ◀ Check for cycles (xx ms)
+                          ▶ Build component DAG
+                          ◀ Build component DAG (xx ms)
+                          ▶ Topo sort component DAG
+                          ◀ Topo sort component DAG (xx ms)
+                          ▶ Expand components
+                          ◀ Expand components (xx ms)
+                          ▶ Compute deferred init order
+                          ◀ Compute deferred init order (xx ms)
+                        ◀ Topo sort (xx ms)
+                      ◀ Sort and validate (xx ms)
+                      ▶ Compute binding indices
+                      ◀ Compute binding indices (xx ms)
+                    ◀ seal graph (xx ms)
+                    ▶ check empty multibindings
+                    ◀ check empty multibindings (xx ms)
+                    ▶ check for absent bindings
+                    ◀ check for absent bindings (xx ms)
+                  ◀ Validate graph (xx ms)
+                ◀ Validate binding graph (xx ms)
+                ▶ Transform metro graph
+                  ▶ Collect bindings
+                  ◀ Collect bindings (xx ms)
+                  ▶ Implement overrides
+                  ◀ Implement overrides (xx ms)
+                  ▶ Generate Metro metadata
+                  ◀ Generate Metro metadata (xx ms)
+                ◀ Transform metro graph (xx ms)
+              ◀ [ExampleGraph] Transform dependency graph (xx ms)
+            ◀ Core transformers (xx ms)
+          [main] ◀ Metro compiler (xx ms)
           """
             .trimIndent()
         )

@@ -346,7 +346,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
                 receiver = invokeFunction.owner.dispatchReceiverParameter!!,
                 parametersToFields = sourceParametersToFields,
               ),
-          ),
+          )
         )
       }
 
@@ -749,7 +749,12 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
                     MetroAnnotations.Kind.BindsOptionalOf,
                   ),
               )
-            if (annotations.isProvides || annotations.isBinds || annotations.isMultibinds || annotations.isBindsOptionalOf) {
+            if (
+              annotations.isProvides ||
+                annotations.isBinds ||
+                annotations.isMultibinds ||
+                annotations.isBindsOptionalOf
+            ) {
               val isProperty = decl is IrProperty
               val callableId: CallableId
               val typeKey: IrTypeKey

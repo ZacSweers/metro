@@ -95,30 +95,31 @@ public class CompatContextImpl : CompatContext {
     isFromEnumClass: Boolean,
     isFun: Boolean,
     hasStableParameterNames: Boolean,
-  ): FirDeclarationStatus = copyDeclarationNative(
-    visibility = visibility,
-    modality = modality,
-    isExpect = isExpect,
-    isActual = isActual,
-    isOverride = isOverride,
-    isOperator = isOperator,
-    isInfix = isInfix,
-    isInline = isInline,
-    isValue = isValue,
-    isTailRec = isTailRec,
-    isExternal = isExternal,
-    isConst = isConst,
-    isLateInit = isLateInit,
-    isInner = isInner,
-    isCompanion = isCompanion,
-    isData = isData,
-    isSuspend = isSuspend,
-    isStatic = isStatic,
-    isFromSealedClass = isFromSealedClass,
-    isFromEnumClass = isFromEnumClass,
-    isFun = isFun,
-    hasStableParameterNames = hasStableParameterNames,
-  )
+  ): FirDeclarationStatus =
+    copyDeclarationNative(
+      visibility = visibility,
+      modality = modality,
+      isExpect = isExpect,
+      isActual = isActual,
+      isOverride = isOverride,
+      isOperator = isOperator,
+      isInfix = isInfix,
+      isInline = isInline,
+      isValue = isValue,
+      isTailRec = isTailRec,
+      isExternal = isExternal,
+      isConst = isConst,
+      isLateInit = isLateInit,
+      isInner = isInner,
+      isCompanion = isCompanion,
+      isData = isData,
+      isSuspend = isSuspend,
+      isStatic = isStatic,
+      isFromSealedClass = isFromSealedClass,
+      isFromEnumClass = isFromEnumClass,
+      isFun = isFun,
+      hasStableParameterNames = hasStableParameterNames,
+    )
 
   override fun IrClass.addFakeOverrides(typeSystem: IrTypeSystemContext) {
     return addFakeOverridesNative(typeSystem)
@@ -130,8 +131,9 @@ public class CompatContextImpl : CompatContext {
     isMutable: Boolean,
     origin: IrDeclarationOrigin,
     startOffset: Int,
-    endOffset: Int
-  ): IrVariable = createTemporaryVariableDeclaration(irType, nameHint, isMutable, origin, startOffset, endOffset)
+    endOffset: Int,
+  ): IrVariable =
+    createTemporaryVariableDeclaration(irType, nameHint, isMutable, origin, startOffset, endOffset)
 
   public class Factory : CompatContext.Factory {
     override val minVersion: String = "2.2.20"

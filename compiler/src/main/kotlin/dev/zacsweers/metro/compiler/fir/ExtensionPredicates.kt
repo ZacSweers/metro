@@ -27,8 +27,7 @@ internal class ExtensionPredicates(private val classIds: ClassIds) {
 
   internal val bindingContainerPredicate =
     annotated(classIds.bindingContainerAnnotations.asFqNames())
-  internal val originPredicate =
-    annotated(classIds.originAnnotations.asFqNames())
+  internal val originPredicate = annotated(classIds.originAnnotations.asFqNames())
   internal val dependencyGraphPredicate = annotated(classIds.dependencyGraphAnnotations.asFqNames())
   internal val graphExtensionFactoryPredicate =
     annotated(classIds.graphExtensionFactoryAnnotations.asFqNames())
@@ -48,7 +47,8 @@ internal class ExtensionPredicates(private val classIds: ClassIds) {
 
   internal val injectAnnotationPredicate = annotated(classIds.injectAnnotations.asFqNames())
 
-  internal val injectLikeAnnotationsPredicate = annotated(classIds.injectLikeAnnotations.asFqNames())
+  internal val injectLikeAnnotationsPredicate =
+    annotated(classIds.injectLikeAnnotations.asFqNames())
 
   internal val assistedAnnotationPredicate = annotated(classIds.assistedAnnotations.asFqNames())
 
@@ -59,5 +59,6 @@ internal class ExtensionPredicates(private val classIds: ClassIds) {
 
   internal val multibindsAnnotationPredicate = annotated(classIds.multibindsAnnotations.asFqNames())
 
-  internal val bindsOptionalOfAnnotationPredicate = annotated(Symbols.DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF.asSingleFqName())
+  internal val bindsOptionalOfAnnotationPredicate =
+    annotated(Symbols.DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF.asSingleFqName())
 }

@@ -194,7 +194,8 @@ internal class IrBindingGraph(
     val hasErrors: Boolean,
     val deferredInitOrder: Map<IrTypeKey, IrTypeKey?>,
   ) {
-    val deferredTypes: Set<IrTypeKey> get()= deferredInitOrder.keys
+    val deferredTypes: Set<IrTypeKey>
+      get() = deferredInitOrder.keys
   }
 
   data class GraphError(val declaration: IrDeclaration?, val message: String)

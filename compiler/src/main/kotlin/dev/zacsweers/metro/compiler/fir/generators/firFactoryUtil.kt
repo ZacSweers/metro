@@ -48,61 +48,62 @@ internal fun FirExtension.buildFactoryConstructor(
   instanceReceiver: ConeClassLikeType?,
   extensionReceiver: ConeClassLikeType?,
   valueParameters: List<MetroFirValueParameter>,
-): FirConstructor = with(session.compatContext) {
-  val owner = context.owner
+): FirConstructor =
+  with(session.compatContext) {
+    val owner = context.owner
 
-  // Get the target class to build substitution map
-  val targetClass = owner.getContainingClassSymbol() as? FirClassSymbol<*>
-  val substitutionMap =
-    if (targetClass != null) {
-      buildFullSubstitutionMap(
-        targetClass,
-        targetClass.typeParameterSymbols.associateWith { it.toConeType() },
-        session,
-      )
-    } else {
-      emptyMap()
-    }
-  val substitutor = substitutorByMap(substitutionMap, session)
-
-  return createConstructor(
-      owner,
-      Keys.Default,
-      isPrimary = true,
-      generateDelegatedNoArgConstructorCall = true,
-    ) {
-      visibility = Visibilities.Private
-      instanceReceiver?.let {
-        valueParameter(Symbols.Names.instance, it, key = Keys.InstanceParameter)
-      }
-      extensionReceiver?.let {
-        valueParameter(
-          Symbols.Names.receiver,
-          it.wrapInProviderIfNecessary(session, Symbols.ClassIds.metroProvider),
-          key = Keys.ReceiverParameter,
+    // Get the target class to build substitution map
+    val targetClass = owner.getContainingClassSymbol() as? FirClassSymbol<*>
+    val substitutionMap =
+      if (targetClass != null) {
+        buildFullSubstitutionMap(
+          targetClass,
+          targetClass.typeParameterSymbols.associateWith { it.toConeType() },
+          session,
         )
+      } else {
+        emptyMap()
       }
-      for (i in valueParameters.indices) {
-        val valueParameter = valueParameters[i]
-        if (
-          valueParameter.symbol.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)
-        ) {
-          continue
+    val substitutor = substitutorByMap(substitutionMap, session)
+
+    return createConstructor(
+        owner,
+        Keys.Default,
+        isPrimary = true,
+        generateDelegatedNoArgConstructorCall = true,
+      ) {
+        visibility = Visibilities.Private
+        instanceReceiver?.let {
+          valueParameter(Symbols.Names.instance, it, key = Keys.InstanceParameter)
         }
+        extensionReceiver?.let {
+          valueParameter(
+            Symbols.Names.receiver,
+            it.wrapInProviderIfNecessary(session, Symbols.ClassIds.metroProvider),
+            key = Keys.ReceiverParameter,
+          )
+        }
+        for (i in valueParameters.indices) {
+          val valueParameter = valueParameters[i]
+          if (
+            valueParameter.symbol.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)
+          ) {
+            continue
+          }
 
-        // Apply substitution to the type
-        val originalType = valueParameter.contextKey.typeKey.type
-        val substitutedType = substitutor.substituteOrNull(originalType) ?: originalType
+          // Apply substitution to the type
+          val originalType = valueParameter.contextKey.typeKey.type
+          val substitutedType = substitutor.substituteOrNull(originalType) ?: originalType
 
-        valueParameter(
-          valueParameter.name,
-          substitutedType.wrapInProviderIfNecessary(session, Symbols.ClassIds.metroProvider),
-          key = Keys.RegularParameter,
-        )
+          valueParameter(
+            valueParameter.name,
+            substitutedType.wrapInProviderIfNecessary(session, Symbols.ClassIds.metroProvider),
+            key = Keys.RegularParameter,
+          )
+        }
       }
-    }
-    .also { it.containingClassForStaticMemberAttr = owner.toLookupTag() }
-}
+      .also { it.containingClassForStaticMemberAttr = owner.toLookupTag() }
+  }
 
 internal fun FirExtension.buildFactoryCreateFunction(
   context: MemberGenerationContext,
@@ -127,17 +128,18 @@ internal fun FirExtension.buildFactoryCreateFunction(
   instanceReceiver: ConeClassLikeType?,
   extensionReceiver: ConeClassLikeType?,
   valueParameters: List<MetroFirValueParameter>,
-): FirNamedFunctionSymbol = with(session.compatContext) {
-  return generateMemberFunction(
-      owner = context.owner,
-      returnTypeProvider = returnTypeProvider,
-      callableId = CallableId(context.owner.classId, Symbols.Names.create),
-      origin = Keys.FactoryCreateFunction.origin,
-    ) {
-      val thisFunctionSymbol = symbol
+): FirNamedFunctionSymbol =
+  with(session.compatContext) {
+    return generateMemberFunction(
+        owner = context.owner,
+        returnTypeProvider = returnTypeProvider,
+        callableId = CallableId(context.owner.classId, Symbols.Names.create),
+        origin = Keys.FactoryCreateFunction.origin,
+      ) {
+        val thisFunctionSymbol = symbol
 
-      val containingClassSymbol = context.owner.getContainingClassSymbol()!!
-      val ownerToCopyTypeParametersFrom: FirClassSymbol<*> =
+        val containingClassSymbol = context.owner.getContainingClassSymbol()!!
+        val ownerToCopyTypeParametersFrom: FirClassSymbol<*> =
           if (context.owner.isCompanion) {
             // companion -> class factory -> original class
             containingClassSymbol.getContainingClassSymbol()!!
@@ -147,64 +149,64 @@ internal fun FirExtension.buildFactoryCreateFunction(
           }
             as FirClassSymbol<*>
 
-      // Copy type parameters from the target class
-      val classTypeArgsToReplace = mutableMapOf<FirTypeParameterSymbol, ConeKotlinType>()
-      for (typeParameter in ownerToCopyTypeParametersFrom.typeParameterSymbols) {
-        typeParameters +=
-          buildTypeParameterCopy(typeParameter.fir) {
-              origin = Keys.Default.origin
-              this.symbol = FirTypeParameterSymbol()
-              containingDeclarationSymbol = thisFunctionSymbol
-            }
-            .also { classTypeArgsToReplace[typeParameter] = it.symbol.constructType() }
-      }
+        // Copy type parameters from the target class
+        val classTypeArgsToReplace = mutableMapOf<FirTypeParameterSymbol, ConeKotlinType>()
+        for (typeParameter in ownerToCopyTypeParametersFrom.typeParameterSymbols) {
+          typeParameters +=
+            buildTypeParameterCopy(typeParameter.fir) {
+                origin = Keys.Default.origin
+                this.symbol = FirTypeParameterSymbol()
+                containingDeclarationSymbol = thisFunctionSymbol
+              }
+              .also { classTypeArgsToReplace[typeParameter] = it.symbol.constructType() }
+        }
 
-      // Build substitution map for parameters from ancestor classes
-      val fullSubstitutionMap =
-        buildFullSubstitutionMap(ownerToCopyTypeParametersFrom, classTypeArgsToReplace, session)
+        // Build substitution map for parameters from ancestor classes
+        val fullSubstitutionMap =
+          buildFullSubstitutionMap(ownerToCopyTypeParametersFrom, classTypeArgsToReplace, session)
 
-      instanceReceiver?.let {
-        this.valueParameters +=
-          buildSimpleValueParameter(
-            name = Symbols.Names.instance,
-            type = it.toFirResolvedTypeRef(),
-            containingFunctionSymbol = thisFunctionSymbol,
-            origin = Keys.InstanceParameter.origin,
-          )
-      }
-      extensionReceiver?.let {
-        this.valueParameters +=
-          buildSimpleValueParameter(
-            name = Symbols.Names.receiver,
-            type =
-              it
-                .wrapInProviderIfNecessary(session, Symbols.ClassIds.metroProvider)
-                .toFirResolvedTypeRef(),
-            containingFunctionSymbol = thisFunctionSymbol,
-            origin = Keys.ReceiverParameter.origin,
-          )
-      }
+        instanceReceiver?.let {
+          this.valueParameters +=
+            buildSimpleValueParameter(
+              name = Symbols.Names.instance,
+              type = it.toFirResolvedTypeRef(),
+              containingFunctionSymbol = thisFunctionSymbol,
+              origin = Keys.InstanceParameter.origin,
+            )
+        }
+        extensionReceiver?.let {
+          this.valueParameters +=
+            buildSimpleValueParameter(
+              name = Symbols.Names.receiver,
+              type =
+                it
+                  .wrapInProviderIfNecessary(session, Symbols.ClassIds.metroProvider)
+                  .toFirResolvedTypeRef(),
+              containingFunctionSymbol = thisFunctionSymbol,
+              origin = Keys.ReceiverParameter.origin,
+            )
+        }
 
-      copyParameters(
-        functionBuilder = this,
-        sourceParameters =
-          valueParameters.filterNot {
-            it.symbol.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)
-          },
-        // Will be copied in IR
-        copyParameterDefaults = false,
-      ) { original ->
-        val type = original.contextKey.typeKey.type
-        val substitutor = substitutorByMap(fullSubstitutionMap, session)
-        val copiedType = substitutor.substituteOrNull(type) ?: type
-        this.returnTypeRef =
-          copiedType
-            .wrapInProviderIfNecessary(session, Symbols.ClassIds.metroProvider)
-            .toFirResolvedTypeRef()
+        copyParameters(
+          functionBuilder = this,
+          sourceParameters =
+            valueParameters.filterNot {
+              it.symbol.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)
+            },
+          // Will be copied in IR
+          copyParameterDefaults = false,
+        ) { original ->
+          val type = original.contextKey.typeKey.type
+          val substitutor = substitutorByMap(fullSubstitutionMap, session)
+          val copiedType = substitutor.substituteOrNull(type) ?: type
+          this.returnTypeRef =
+            copiedType
+              .wrapInProviderIfNecessary(session, Symbols.ClassIds.metroProvider)
+              .toFirResolvedTypeRef()
+        }
       }
-    }
-    .symbol
-}
+      .symbol
+  }
 
 @OptIn(SymbolInternals::class)
 internal fun FirExtension.buildNewInstanceFunction(
@@ -214,70 +216,71 @@ internal fun FirExtension.buildNewInstanceFunction(
   instanceReceiver: ConeClassLikeType?,
   extensionReceiver: ConeClassLikeType?,
   valueParameters: List<MetroFirValueParameter>,
-): FirNamedFunctionSymbol = with(session.compatContext) {
-  return generateMemberFunction(
-      context.owner,
-      returnType.toFirResolvedTypeRef(),
-      CallableId(context.owner.classId, name),
-      origin = Keys.FactoryNewInstanceFunction.origin,
-    ) {
-      val thisFunctionSymbol = symbol
+): FirNamedFunctionSymbol =
+  with(session.compatContext) {
+    return generateMemberFunction(
+        context.owner,
+        returnType.toFirResolvedTypeRef(),
+        CallableId(context.owner.classId, name),
+        origin = Keys.FactoryNewInstanceFunction.origin,
+      ) {
+        val thisFunctionSymbol = symbol
 
-      val containingClassSymbol = context.owner.getContainingClassSymbol()!!
-    val ownerToCopyTypeParametersFrom: FirClassSymbol<*> =
-        if (context.owner.isCompanion) {
-          // companion -> class factory -> original class
-          containingClassSymbol.getContainingClassSymbol()!!
-        } else {
-          // object factory -> original class
-          containingClassSymbol
+        val containingClassSymbol = context.owner.getContainingClassSymbol()!!
+        val ownerToCopyTypeParametersFrom: FirClassSymbol<*> =
+          if (context.owner.isCompanion) {
+            // companion -> class factory -> original class
+            containingClassSymbol.getContainingClassSymbol()!!
+          } else {
+            // object factory -> original class
+            containingClassSymbol
+          }
+            as FirClassSymbol<*>
+
+        val classTypeArgsToReplace = mutableMapOf<FirTypeParameterSymbol, ConeKotlinType>()
+        for (typeParameter in ownerToCopyTypeParametersFrom.typeParameterSymbols) {
+          typeParameters +=
+            buildTypeParameterCopy(typeParameter.fir) {
+                origin = Keys.Default.origin
+                this.symbol = FirTypeParameterSymbol()
+                containingDeclarationSymbol = thisFunctionSymbol
+              }
+              .also { classTypeArgsToReplace[typeParameter] = it.symbol.constructType() }
         }
-          as FirClassSymbol<*>
 
-      val classTypeArgsToReplace = mutableMapOf<FirTypeParameterSymbol, ConeKotlinType>()
-      for (typeParameter in ownerToCopyTypeParametersFrom.typeParameterSymbols) {
-        typeParameters +=
-          buildTypeParameterCopy(typeParameter.fir) {
-              origin = Keys.Default.origin
-              this.symbol = FirTypeParameterSymbol()
-              containingDeclarationSymbol = thisFunctionSymbol
-            }
-            .also { classTypeArgsToReplace[typeParameter] = it.symbol.constructType() }
-      }
+        instanceReceiver?.let {
+          this.valueParameters +=
+            buildSimpleValueParameter(
+              name = Symbols.Names.instance,
+              type = it.toFirResolvedTypeRef(),
+              containingFunctionSymbol = thisFunctionSymbol,
+              origin = Keys.InstanceParameter.origin,
+            )
+        }
+        extensionReceiver?.let {
+          this.valueParameters +=
+            buildSimpleValueParameter(
+              name = Symbols.Names.receiver,
+              type = it.toFirResolvedTypeRef(),
+              containingFunctionSymbol = thisFunctionSymbol,
+              origin = Keys.ReceiverParameter.origin,
+            )
+        }
 
-      instanceReceiver?.let {
-        this.valueParameters +=
-          buildSimpleValueParameter(
-            name = Symbols.Names.instance,
-            type = it.toFirResolvedTypeRef(),
-            containingFunctionSymbol = thisFunctionSymbol,
-            origin = Keys.InstanceParameter.origin,
-          )
+        copyParameters(
+          functionBuilder = this,
+          sourceParameters = valueParameters,
+          // Will be copied in IR
+          copyParameterDefaults = false,
+        ) { original ->
+          val type = original.contextKey.originalType(session)
+          val substitutor = substitutorByMap(classTypeArgsToReplace, session)
+          val copiedType = substitutor.substituteOrNull(type) ?: type
+          this.returnTypeRef = copiedType.toFirResolvedTypeRef()
+        }
       }
-      extensionReceiver?.let {
-        this.valueParameters +=
-          buildSimpleValueParameter(
-            name = Symbols.Names.receiver,
-            type = it.toFirResolvedTypeRef(),
-            containingFunctionSymbol = thisFunctionSymbol,
-            origin = Keys.ReceiverParameter.origin,
-          )
-      }
-
-      copyParameters(
-        functionBuilder = this,
-        sourceParameters = valueParameters,
-        // Will be copied in IR
-        copyParameterDefaults = false,
-      ) { original ->
-        val type = original.contextKey.originalType(session)
-        val substitutor = substitutorByMap(classTypeArgsToReplace, session)
-        val copiedType = substitutor.substituteOrNull(type) ?: type
-        this.returnTypeRef = copiedType.toFirResolvedTypeRef()
-      }
-    }
-    .symbol
-}
+      .symbol
+  }
 
 internal fun FirClassSymbol<*>.findSamFunction(session: FirSession): FirFunctionSymbol<*>? {
   return collectAbstractFunctions(session, exitOnAbstractProperties = true)?.singleOrNull()

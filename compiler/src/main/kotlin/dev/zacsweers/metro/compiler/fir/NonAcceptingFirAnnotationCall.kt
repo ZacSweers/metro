@@ -49,9 +49,8 @@ private class NonAcceptingFirAnnotationCall(
   override val containingDeclarationSymbol: FirBasedSymbol<*>,
 ) : FirAnnotationCall() {
   override val source: KtSourceElement?
-    get() = with(compatContext) {
-      delegate.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
-    }
+    get() =
+      with(compatContext) { delegate.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated) }
 
   @UnresolvedExpressionTypeAccess
   override val coneTypeOrNull: ConeKotlinType?

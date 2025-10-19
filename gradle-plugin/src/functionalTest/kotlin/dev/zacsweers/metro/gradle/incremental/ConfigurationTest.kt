@@ -25,11 +25,11 @@ class ConfigurationTest {
           // language=kotlin
           appendLine(
             """
-              kotlin {
-                compilerOptions {
-                  languageVersion = org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_1_9
-                }
+            kotlin {
+              compilerOptions {
+                languageVersion = org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_1_9
               }
+            }
             """
               .trimIndent()
           )

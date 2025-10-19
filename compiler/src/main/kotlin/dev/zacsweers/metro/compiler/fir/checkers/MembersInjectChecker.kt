@@ -44,7 +44,8 @@ internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
       return
 
     val isConstructorInjected by memoize {
-      declaration.symbol.findInjectLikeConstructors(session, checkClass = true).firstOrNull() != null
+      declaration.symbol.findInjectLikeConstructors(session, checkClass = true).firstOrNull() !=
+        null
     }
 
     val isInClass = declaration.classKind == ClassKind.CLASS

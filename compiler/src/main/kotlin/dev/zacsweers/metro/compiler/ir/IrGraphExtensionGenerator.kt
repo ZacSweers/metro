@@ -160,7 +160,7 @@ internal class IrGraphExtensionGenerator(
             for (i in 0 until samFunction.regularParameters.size) {
               arguments[i + 1] = irGet(samFunction.regularParameters[i])
             }
-          },
+          }
         )
       }
 
@@ -284,10 +284,7 @@ internal class IrGraphExtensionGenerator(
   }
 }
 
-internal class GeneratedGraphExtensionData(
-  val typeKey: IrTypeKey,
-  val factoryImpl: IrClass? = null,
-)
+internal class GeneratedGraphExtensionData(val typeKey: IrTypeKey, val factoryImpl: IrClass? = null)
 
 internal var IrClass.generatedGraphExtensionData: GeneratedGraphExtensionData? by
   irAttribute(copyByDefault = false)

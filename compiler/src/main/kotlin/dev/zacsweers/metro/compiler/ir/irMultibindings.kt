@@ -27,10 +27,13 @@ internal fun IrTypeKey.transformMultiboundQualifier(
     return this
   }
 
-  val rawSymbol = annotations.symbol ?: reportCompilerBug("No symbol found for multibinding annotation")
+  val rawSymbol =
+    annotations.symbol ?: reportCompilerBug("No symbol found for multibinding annotation")
   val declaration =
     rawSymbol.expectAsOrNull<IrSymbol>()?.owner?.expectAsOrNull<IrOverridableDeclaration<*>>()
-      ?: reportCompilerBug("Expected symbol to be an IrSymbol but was ${rawSymbol::class.simpleName}")
+      ?: reportCompilerBug(
+        "Expected symbol to be an IrSymbol but was ${rawSymbol::class.simpleName}"
+      )
 
   val elementId = declaration.multibindingElementId
   val bindingId =

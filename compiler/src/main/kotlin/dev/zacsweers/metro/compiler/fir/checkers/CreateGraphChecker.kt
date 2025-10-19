@@ -101,11 +101,12 @@ internal object CreateGraphChecker : FirFunctionCallChecker(MppCheckerKind.Commo
       val containingClass = context.findClosestClassOrObject()
       val isInLocalClass = containingClass?.isLocalClassOrAnonymousObject == true
       if (isInLocalClass) {
-        val message = if (containingClass is FirAnonymousObjectSymbol) {
-          "This call is inside an anonymous object."
-        } else {
-          "Containing class '${containingClass.name}' is a local class."
-        }
+        val message =
+          if (containingClass is FirAnonymousObjectSymbol) {
+            "This call is inside an anonymous object."
+          } else {
+            "Containing class '${containingClass.name}' is a local class."
+          }
         reporter.reportOn(
           expression.source,
           CREATE_DYNAMIC_GRAPH_ERROR,
