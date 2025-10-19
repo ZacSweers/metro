@@ -781,7 +781,6 @@ private constructor(
     keyType: IrType,
     valueType: IrType,
     originalValueContextKey: IrContextualTypeKey,
-    valueProviderSymbols: Symbols.ProviderSymbols,
     valueAccessType: AccessType,
     fieldInitKey: IrTypeKey?,
   ): IrExpression =
@@ -1038,7 +1037,6 @@ private constructor(
               keyType,
               valueWrappedType.toIrType(),
               originalValueContextKey,
-              valueProviderSymbols,
               if (valueIsWrappedInProvider) AccessType.PROVIDER else AccessType.INSTANCE,
               fieldInitKey,
             )
