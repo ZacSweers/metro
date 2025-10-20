@@ -17,6 +17,7 @@ import dev.zacsweers.metro.compiler.invokeInstanceMethod
 import dev.zacsweers.metro.compiler.invokeSuspendInstanceFunction
 import kotlin.reflect.KClass
 import kotlin.reflect.full.contextParameters
+import kotlin.reflect.full.valueParameters
 import kotlin.reflect.jvm.kotlinFunction
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
@@ -558,7 +559,7 @@ class TopLevelInjectTest : MetroCompilerTest() {
       .isEqualTo("test.SharedTransitionScope")
 
     // Ensure we carry over parameter default
-        assertThat(kFunction.valueParameters[0].isOptional).isTrue()
+    assertThat(kFunction.valueParameters[0].isOptional).isTrue()
   }
 
   @Test

@@ -21,6 +21,7 @@ import org.jetbrains.kotlin.fir.declarations.builder.buildValueParameter
 import org.jetbrains.kotlin.fir.declarations.builder.buildValueParameterCopy
 import org.jetbrains.kotlin.fir.declarations.impl.FirResolvedDeclarationStatusImpl
 import org.jetbrains.kotlin.fir.declarations.origin
+import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.buildResolvedArgumentList
 import org.jetbrains.kotlin.fir.expressions.builder.buildArgumentList
 import org.jetbrains.kotlin.fir.expressions.builder.buildExpressionStub
@@ -132,26 +133,7 @@ internal fun FirExtension.copyParameters(
           if (originalFir.symbol.hasDefaultValue) {
             if (originalFir.symbol.hasMetroDefault(session)) {
               if (!copyParameterDefaults) {
-                defaultValue = buildFunctionCall {
-                  this.coneTypeOrNull = session.builtinTypes.nothingType.coneType
-                  this.calleeReference = buildResolvedNamedReference {
-                    this.resolvedSymbol = session.metroFirBuiltIns.errorFunctionSymbol
-                    this.name = session.metroFirBuiltIns.errorFunctionSymbol.name
-                  }
-                  argumentList =
-                    buildResolvedArgumentList(
-                      buildArgumentList {
-                        this.arguments +=
-                          buildLiteralExpression(
-                            source = null,
-                            kind = ConstantValueKind.String,
-                            value = "Replaced in IR",
-                            setType = true,
-                          )
-                      },
-                      LinkedHashMap(),
-                    )
-                }
+                defaultValue = buildSafeDefaultValueStub(session)
               }
             } else {
               defaultValue = null
@@ -161,6 +143,33 @@ internal fun FirExtension.copyParameters(
         .apply {
           context(session.compatContext) { replaceAnnotationsSafe(original.symbol.annotations) }
         }
+  }
+}
+
+// Workaround for https://youtrack.jetbrains.com/issue/KT-81808
+internal fun buildSafeDefaultValueStub(
+  session: FirSession,
+  message: String = "Stub!",
+): FirFunctionCall {
+  return buildFunctionCall {
+    this.coneTypeOrNull = session.builtinTypes.nothingType.coneType
+    this.calleeReference = buildResolvedNamedReference {
+      this.resolvedSymbol = session.metroFirBuiltIns.errorFunctionSymbol
+      this.name = session.metroFirBuiltIns.errorFunctionSymbol.name
+    }
+    argumentList =
+      buildResolvedArgumentList(
+        buildArgumentList {
+          this.arguments +=
+            buildLiteralExpression(
+              source = null,
+              kind = ConstantValueKind.String,
+              value = message,
+              setType = true,
+            )
+        },
+        LinkedHashMap(),
+      )
   }
 }
 
