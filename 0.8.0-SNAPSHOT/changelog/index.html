@@ -1904,6 +1904,7 @@
 <li><strong>Fix</strong>: Compute <code>Optional</code> instance lazily when requested as a <code>Provider&lt;Optional&lt;T&gt;&gt;</code> and the underlying optional is not empty. Only applies to <code>@BindsOptionalOf</code> interop.</li>
 <li><strong>Fix</strong>: Interleave <code>setDelegate()</code> calls in correct order within initializer statements to ensure cycles with intermediate initialization don&rsquo;t crash. Sorry, word soup I know.</li>
 <li><strong>Fix</strong>: Don&rsquo;t generate duplicate <code>init()</code> functions when chunking initializers if graphs already have an explicit <code>init()</code> function.</li>
+<li><strong>Fix</strong>: Fix support for assisted inject with no assisted params.</li>
 </ul>
 <h2 id="070">0.7.0<a class="headerlink" href="#070" title="Permanent link">&para;</a></h2>
 <p><em>2025-10-17</em></p>
