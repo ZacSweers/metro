@@ -6,7 +6,7 @@ import org.jetbrains.kotlin.generators.TestGroup.TestClass
 import org.jetbrains.kotlin.generators.generateTestGroupSuiteWithJUnit5
 
 inline fun <reified Box, reified Diagnostic, reified FirDump, reified IrDump> generateTests(
-  exclusionPattern: String
+  exclusionPattern: String?
 ) {
   generateTestGroupSuiteWithJUnit5 {
     testGroup(

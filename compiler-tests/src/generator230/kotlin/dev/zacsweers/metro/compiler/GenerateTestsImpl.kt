@@ -7,7 +7,7 @@ import org.jetbrains.kotlin.generators.dsl.junit5.generateTestGroupSuiteWithJUni
 
 // API repackaged in kotlin 2.3.0
 inline fun <reified Box, reified Diagnostic, reified FirDump, reified IrDump> generateTests(
-  exclusionPattern: String
+  exclusionPattern: String?
 ) {
   generateTestGroupSuiteWithJUnit5 {
     testGroup(

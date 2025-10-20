@@ -13,8 +13,10 @@ sourceSets {
   register("generator230")
 }
 
-val testCompilerVersion =
-  providers.gradleProperty("metro.testCompilerVersion").orElse(libs.versions.kotlin).get()
+val testCompilerVersionProvider =
+  providers.gradleProperty("metro.testCompilerVersion")
+
+val testCompilerVersion = testCompilerVersionProvider.orElse(libs.versions.kotlin).get()
 
 val kotlinVersion =
   testCompilerVersion.substringBefore('-').split('.').let { (major, minor, patch) ->
@@ -31,6 +33,8 @@ buildConfig {
     }
   }
   sourceSets.named("test") {
+    // Not a Boolean to avoid warnings about constants in if conditions
+    buildConfigField("String", "OVERRIDE_COMPILER_VERSION", "\"${testCompilerVersionProvider.isPresent}\"")
     buildConfigField("String", "JVM_TARGET", libs.versions.jvmTarget.map { "\"$it\"" })
     buildConfigField(
       "kotlin.KotlinVersion",
@@ -98,29 +102,28 @@ dependencies {
   testRuntimeOnly(libs.kotlin.annotationsJvm)
 }
 
-val generateTests = tasks.register<JavaExec>("generateTests") {
-  inputs
-    .dir(layout.projectDirectory.dir("src/test/data"))
-    .withPropertyName("testData")
-    .withPathSensitivity(PathSensitivity.RELATIVE)
+val generateTests =
+  tasks.register<JavaExec>("generateTests") {
+    inputs
+      .dir(layout.projectDirectory.dir("src/test/data"))
+      .withPropertyName("testData")
+      .withPathSensitivity(PathSensitivity.RELATIVE)
 
-  inputs.property("testCompilerVersion", testCompilerVersion)
+    inputs.property("testCompilerVersion", testCompilerVersionProvider)
 
-  outputs.dir(layout.projectDirectory.dir("src/test/java")).withPropertyName("generatedTests")
+    outputs.dir(layout.projectDirectory.dir("src/test/java")).withPropertyName("generatedTests")
 
-  classpath = sourceSets.test.get().runtimeClasspath
-  mainClass.set("dev.zacsweers.metro.compiler.GenerateTestsKt")
-  workingDir = rootDir
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("dev.zacsweers.metro.compiler.GenerateTestsKt")
+    workingDir = rootDir
 
-  // Larger heap size
-  minHeapSize = "128m"
-  maxHeapSize = "1g"
+    // Larger heap size
+    minHeapSize = "128m"
+    maxHeapSize = "1g"
 
-  // Larger stack size
-  jvmArgs("-Xss1m")
-}
-
-tasks.compileTestKotlin { dependsOn(generateTests) }
+    // Larger stack size
+    jvmArgs("-Xss1m")
+  }
 
 tasks.withType<Test> {
   dependsOn(metroRuntimeClasspath)
