@@ -2,18 +2,24 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
+import org.jetbrains.kotlin.generators.TestGroup.TestClass
 import org.jetbrains.kotlin.generators.generateTestGroupSuiteWithJUnit5
 
-inline fun <reified Box, reified Diagnostic, reified FirDump, reified IrDump> generateTests() {
+inline fun <reified Box, reified Diagnostic, reified FirDump, reified IrDump> generateTests(
+  exclusionPattern: String
+) {
   generateTestGroupSuiteWithJUnit5 {
     testGroup(
       testDataRoot = "compiler-tests/src/test/data",
       testsRoot = "compiler-tests/src/test/java",
     ) {
-      testClass<Box> { model("box") }
-      testClass<Diagnostic> { model("diagnostic") }
-      testClass<FirDump> { model("dump/fir") }
-      testClass<IrDump> { model("dump/ir") }
+      val commonModel: TestClass.(name: String) -> Unit = { name ->
+        model(name, excludedPattern = exclusionPattern)
+      }
+      testClass<Box> { commonModel("box") }
+      testClass<Diagnostic> { commonModel("diagnostic") }
+      testClass<FirDump> { commonModel("dump/fir") }
+      testClass<IrDump> { commonModel("dump/ir") }
     }
   }
 }
