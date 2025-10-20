@@ -131,7 +131,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       assertDiagnostics(
         """
         e: ExampleClass.kt:6:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:
-          Missing from constructor: kotlin.Int
+          Missing from factory: kotlin.Int
         """
           .trimIndent()
       )
@@ -160,7 +160,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       assertDiagnostics(
         """
         e: ExampleClass.kt:6:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:
-          Missing from constructor: kotlin.String
+          Missing from factory: kotlin.String
         """
           .trimIndent()
       )
@@ -188,8 +188,8 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       assertDiagnostics(
         """
         e: ExampleClass.kt:6:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:
-          Missing from factory: kotlin.Int
-          Missing from constructor: kotlin.String
+          Missing from factory: kotlin.String
+          Missing from constructor: kotlin.Int
         """
           .trimIndent()
       )
@@ -217,8 +217,8 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       assertDiagnostics(
         """
         e: ExampleClass.kt:6:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:
-          Missing from factory: kotlin.Int (notcount)
-          Missing from constructor: kotlin.String (count)
+          Missing from factory: kotlin.String (count)
+          Missing from constructor: kotlin.Int (notcount)
         """
           .trimIndent()
       )
@@ -246,8 +246,8 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       assertDiagnostics(
         """
         e: ExampleClass.kt:6:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:
-          Missing from factory: kotlin.Int (count)
-          Missing from constructor: kotlin.String (count)
+          Missing from factory: kotlin.String (count)
+          Missing from constructor: kotlin.Int (count)
         """
           .trimIndent()
       )

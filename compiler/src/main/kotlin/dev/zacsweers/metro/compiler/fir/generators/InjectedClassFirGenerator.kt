@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
+import dev.zacsweers.metro.compiler.fir.buildSafeDefaultValueStub
 import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
 import dev.zacsweers.metro.compiler.fir.callableDeclarations
 import dev.zacsweers.metro.compiler.fir.classIds
@@ -579,7 +580,6 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
     if (nonNullContext.owner.hasOrigin(Keys.TopLevelInjectFunctionClass)) {
       check(callableId.callableName == Symbols.Names.invoke)
       val function = symbols.getValue(Unit, null).getValue(context.owner.classId)
-      // TODO default param values probably require generateMemberFunction
       return createMemberFunction(
           nonNullContext.owner,
           Keys.TopLevelInjectFunctionClassFunction,
@@ -596,6 +596,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
             // TODO others?
           }
 
+          var actualIndex = 0
           for (param in function.valueParameterSymbols) {
             if (!param.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)) {
               continue
@@ -608,10 +609,16 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
                 //  .withArguments(it.mapToArray(FirTypeParameterRef::toConeType))
               },
               key = Keys.RegularParameter,
+              hasDefaultValue = param.hasDefaultValue,
             )
           }
         }
         .apply {
+          for (param in valueParameters) {
+            if (param.defaultValue != null) {
+              param.replaceDefaultValue(buildSafeDefaultValueStub(session))
+            }
+          }
           // TODO this is ugly but there's no API on SimpleFunctionBuildingContext
           val contextParams = mutableListOf<FirValueParameter>()
           for (original in function.contextParameterSymbols) {

@@ -186,8 +186,8 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
 
     // check non-matching keys
     if (factoryKeys != constructorKeys) {
-      val missingFromFactory = factoryKeys.subtract(constructorKeys).joinToString()
-      val missingFromConstructor = constructorKeys.subtract(factoryKeys).joinToString()
+      val missingFromFactory = constructorKeys.subtract(factoryKeys).joinToString()
+      val missingFromConstructor = factoryKeys.subtract(constructorKeys).joinToString()
       reporter.reportOn(
         targetType.source,
         ASSISTED_INJECTION_ERROR,
