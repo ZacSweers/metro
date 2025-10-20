@@ -181,9 +181,6 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
       constructorParameters.filter { it.isAssisted }
     }
 
-    val isAssisted
-      get() = assistedParameters.isNotEmpty()
-
     val injectedMembersParamsByMemberKey = LinkedHashMap<Name, List<MetroFirValueParameter>>()
     val injectedMembersParameters: List<MetroFirValueParameter>
       get() = injectedMembersParamsByMemberKey.values.flatten()
@@ -417,7 +414,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
           ) {
             copyTypeParametersFrom(injectedClass.classSymbol, session)
 
-            if (!injectedClass.isAssisted) {
+            if (!injectedClass.isAssistedInject) {
               superType { typeParameterRefs ->
                 Symbols.ClassIds.metroFactory.constructClassLikeType(
                   arrayOf(owner.constructType(typeParameterRefs))
@@ -428,7 +425,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
           .apply {
             markAsDeprecatedHidden(session)
             // Add @AssistedMarker annotation if this is an assisted factory
-            if (injectedClass.isAssisted) {
+            if (injectedClass.isAssistedInject) {
               replaceAnnotationsSafe(annotations + buildAssistedMarkerAnnotation())
             }
           }
@@ -486,13 +483,8 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
     if (isFactoryClass) {
       // Only generate an invoke() function if it has assisted parameters, as it won't be inherited
       // from Factory<T> in this case
-      val target = injectFactoryClassIdsToInjectedClass[classSymbol.classId]?.classSymbol
-      val injectConstructor = target?.findInjectLikeConstructors(session).orEmpty().singleOrNull()
-      if (
-        injectConstructor?.constructor?.valueParameterSymbols.orEmpty().any {
-          it.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)
-        }
-      ) {
+      val target = injectFactoryClassIdsToInjectedClass[classSymbol.classId]
+      if (target?.isAssistedInject == true) {
         names += Symbols.Names.invoke
       }
     }
@@ -690,7 +682,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
             buildFactoryCreateFunction(
               nonNullContext,
               { typeParams ->
-                if (injectedClass.isAssisted) {
+                if (injectedClass.isAssistedInject) {
                   targetClass.constructType(typeParams.mapToArray(FirTypeParameterRef::toConeType))
                 } else {
                   Symbols.ClassIds.metroFactory.constructClassLikeType(
