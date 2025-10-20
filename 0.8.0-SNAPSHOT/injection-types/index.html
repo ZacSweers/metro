@@ -1511,10 +1511,6 @@ support is rudimentary at best and currently requires enabling a custom registry
 <span class="p">}</span>
 </code></pre></div>
 <p>Similarly, if the injected function is a <code>suspend</code> function, the <code>suspend</code> keyword will be ported to the generated <code>invoke()</code> function too.</p>
-<div class="admonition warning">
-<p class="admonition-title">Default parameters</p>
-<p>Default parameters are not supported yet for top-level functions due to <a href="https://youtrack.jetbrains.com/issue/KT-81656/">KT-81656</a>.</p>
-</div>
 <h3 id="context-parameters">Context parameters<a class="headerlink" href="#context-parameters" title="Permanent link">&para;</a></h3>
 <p>Top-level injected functions also support context parameters. Both regular and context parameters may be assisted.</p>
 <p>Any assisted context parameters will be carried as context parameters to the generated class&rsquo;s <code>invoke()</code> function.</p>
