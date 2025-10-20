@@ -8,7 +8,8 @@ import org.jetbrains.kotlin.test.directives.model.SimpleDirectivesContainer
 object MetroDirectives : SimpleDirectivesContainer() {
   val COMPILER_VERSION by stringDirective("Target kotlin compiler version, if any")
   // TODO eventually support multiple outputs
-  val CUSTOM_TEST_DATA_PER_COMPILER_VERSION by directive("Generate custom test data files per compiler version")
+  val CUSTOM_TEST_DATA_PER_COMPILER_VERSION by
+    directive("Generate custom test data files per compiler version")
   val GENERATE_ASSISTED_FACTORIES by directive("Enable assisted factories generation.")
   val ENABLE_TOP_LEVEL_FUNCTION_INJECTION by directive("Enable top-level function injection.")
   val DISABLE_TRANSFORM_PROVIDERS_TO_PRIVATE by

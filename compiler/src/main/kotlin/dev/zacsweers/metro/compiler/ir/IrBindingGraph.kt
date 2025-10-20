@@ -60,7 +60,9 @@ internal class IrBindingGraph(
         onError(message, stack)
         exitProcessing()
       },
-      findSimilarBindings = { key -> findSimilarBindings(key).mapValues { it.value.render(short = true) } },
+      findSimilarBindings = { key ->
+        findSimilarBindings(key).mapValues { it.value.render(short = true) }
+      },
     )
 
   // TODO hoist accessors up and visit in seal?

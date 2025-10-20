@@ -3,11 +3,9 @@
 package dev.zacsweers.metro.compiler
 
 import dev.zacsweers.metro.compiler.test.COMPILER_VERSION
-import java.io.File
 import org.jetbrains.kotlin.test.directives.model.DirectivesContainer
 import org.jetbrains.kotlin.test.services.MetaTestConfigurator
 import org.jetbrains.kotlin.test.services.TestServices
-import org.jetbrains.kotlin.test.services.moduleStructure
 
 class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(testServices) {
   override val directiveContainers: List<DirectivesContainer>
