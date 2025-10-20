@@ -1216,8 +1216,8 @@ class ICTests : BaseIncrementalCompilationTest() {
         """
         [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Foo
 
-          test.Foo is requested at
-              [test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl] test.LoggedInGraph.childDependency
+            test.Foo is requested at
+                [test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl] test.LoggedInGraph.childDependency
         """
           .trimIndent()
       )
