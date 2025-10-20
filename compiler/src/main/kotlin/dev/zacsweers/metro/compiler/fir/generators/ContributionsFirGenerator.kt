@@ -296,7 +296,9 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
               buildAnnotationArgumentMapping {
                 val originalScopeArg =
                   contributingClassToScopedContributions.getValueIfComputed(owner)?.get(name)
-                    ?: reportCompilerBug("Could not find a contribution scope for ${owner.classId}.$name")
+                    ?: reportCompilerBug(
+                      "Could not find a contribution scope for ${owner.classId}.$name"
+                    )
                 this.mapping[Symbols.Names.scope] = originalScopeArg
               }
             )

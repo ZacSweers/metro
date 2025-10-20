@@ -515,7 +515,7 @@ internal class DependencyGraphTransformer(
             graphClass = metroGraph,
             bindingGraph = bindingGraph,
             sealResult = result,
-            fieldNameAllocator = propertyNameAllocator,
+            propertyNameAllocator = propertyNameAllocator,
             parentTracer = tracer,
             bindingContainerTransformer = bindingContainerTransformer,
             membersInjectorTransformer = membersInjectorTransformer,
@@ -604,7 +604,7 @@ internal class DependencyGraphTransformer(
                 irCallConstructorWithSameParameters(
                   source = createFunction,
                   constructor = metroGraph.primaryConstructor!!.symbol,
-                ),
+                )
               )
             }
         }
@@ -633,7 +633,7 @@ internal class DependencyGraphTransformer(
               body =
                 pluginContext.createIrBuilder(symbol).run {
                   irExprBodySafe(
-                    irCallConstructor(factoryImpl.primaryConstructor!!.symbol, emptyList()),
+                    irCallConstructor(factoryImpl.primaryConstructor!!.symbol, emptyList())
                   )
                 }
             }
@@ -649,9 +649,7 @@ internal class DependencyGraphTransformer(
           }
           body =
             pluginContext.createIrBuilder(symbol).run {
-              irExprBodySafe(
-                irCallConstructor(metroGraph.primaryConstructor!!.symbol, emptyList()),
-              )
+              irExprBodySafe(irCallConstructor(metroGraph.primaryConstructor!!.symbol, emptyList()))
             }
         }
       }

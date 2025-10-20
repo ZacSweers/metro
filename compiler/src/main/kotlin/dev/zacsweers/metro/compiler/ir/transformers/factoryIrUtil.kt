@@ -69,11 +69,13 @@ internal fun generateStaticCreateFunction(
   return function.apply {
     if (patchCreationParams) {
       val instanceParam = regularParameters.find { it.origin == Origins.InstanceParameter }
-      val valueParamsToPatch = nonDispatchParameters.filter { it.origin == Origins.RegularParameter }
+      val valueParamsToPatch =
+        nonDispatchParameters.filter { it.origin == Origins.RegularParameter }
       copyParameterDefaultValues(
         providerFunction = providerFunction,
         sourceMetroParameters = parameters,
-        sourceParameters = parameters.nonDispatchParameters.filterNot { it.isAssisted }.map { it.ir },
+        sourceParameters =
+          parameters.nonDispatchParameters.filterNot { it.isAssisted }.map { it.ir },
         targetParameters = valueParamsToPatch,
         targetGraphParameter = instanceParam,
         wrapInProvider = true,
@@ -87,7 +89,7 @@ internal fun generateStaticCreateFunction(
             irGetObject(targetClass.symbol)
           } else {
             irCallConstructorWithSameParameters(function, targetConstructor)
-          },
+          }
         )
       }
   }
@@ -119,7 +121,8 @@ internal fun generateStaticNewInstanceFunction(
 
   return function.apply {
     val instanceParam = regularParameters.find { it.origin == Origins.InstanceParameter }
-    val valueParametersToMap = nonDispatchParameters.filter { it.origin == Origins.RegularParameter }
+    val valueParametersToMap =
+      nonDispatchParameters.filter { it.origin == Origins.RegularParameter }
     copyParameterDefaultValues(
       providerFunction = targetFunction,
       sourceMetroParameters = sourceMetroParameters,

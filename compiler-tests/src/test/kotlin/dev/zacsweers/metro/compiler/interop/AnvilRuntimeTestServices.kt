@@ -16,7 +16,6 @@ private val anvilRuntimeClasspath =
   System.getProperty("anvilRuntime.classpath")?.split(File.pathSeparator)?.map(::File)
     ?: error("Unable to get a valid classpath from 'anvilRuntime.classpath' property")
 
-
 private val kiAnvilRuntimeClasspath =
   System.getProperty("kiAnvilRuntime.classpath")?.split(File.pathSeparator)?.map(::File)
     ?: error("Unable to get a valid classpath from 'kiAnvilRuntime.classpath' property")

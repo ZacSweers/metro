@@ -238,7 +238,7 @@ internal class LoggingFirStatusTransformerExtension(
     status: FirDeclarationStatus,
     property: FirProperty,
     containingClass: FirClassLikeSymbol<*>?,
-    isLocal: Boolean
+    isLocal: Boolean,
   ): FirDeclarationStatus {
     return delegate.transformStatus(status, property, containingClass, isLocal)
   }
@@ -247,7 +247,7 @@ internal class LoggingFirStatusTransformerExtension(
     status: FirDeclarationStatus,
     function: FirSimpleFunction,
     containingClass: FirClassLikeSymbol<*>?,
-    isLocal: Boolean
+    isLocal: Boolean,
   ): FirDeclarationStatus {
     return delegate.transformStatus(status, function, containingClass, isLocal)
   }
@@ -256,7 +256,7 @@ internal class LoggingFirStatusTransformerExtension(
     status: FirDeclarationStatus,
     regularClass: FirRegularClass,
     containingClass: FirClassLikeSymbol<*>?,
-    isLocal: Boolean
+    isLocal: Boolean,
   ): FirDeclarationStatus {
     return delegate.transformStatus(status, regularClass, containingClass, isLocal)
   }
@@ -265,7 +265,7 @@ internal class LoggingFirStatusTransformerExtension(
     status: FirDeclarationStatus,
     typeAlias: FirTypeAlias,
     containingClass: FirClassLikeSymbol<*>?,
-    isLocal: Boolean
+    isLocal: Boolean,
   ): FirDeclarationStatus {
     return delegate.transformStatus(status, typeAlias, containingClass, isLocal)
   }
@@ -275,16 +275,22 @@ internal class LoggingFirStatusTransformerExtension(
     propertyAccessor: FirPropertyAccessor,
     containingClass: FirClassLikeSymbol<*>?,
     containingProperty: FirProperty?,
-    isLocal: Boolean
+    isLocal: Boolean,
   ): FirDeclarationStatus {
-    return delegate.transformStatus(status, propertyAccessor, containingClass, containingProperty, isLocal)
+    return delegate.transformStatus(
+      status,
+      propertyAccessor,
+      containingClass,
+      containingProperty,
+      isLocal,
+    )
   }
 
   override fun transformStatus(
     status: FirDeclarationStatus,
     constructor: FirConstructor,
     containingClass: FirClassLikeSymbol<*>?,
-    isLocal: Boolean
+    isLocal: Boolean,
   ): FirDeclarationStatus {
     return delegate.transformStatus(status, constructor, containingClass, isLocal)
   }
@@ -293,7 +299,7 @@ internal class LoggingFirStatusTransformerExtension(
     status: FirDeclarationStatus,
     field: FirField,
     containingClass: FirClassLikeSymbol<*>?,
-    isLocal: Boolean
+    isLocal: Boolean,
   ): FirDeclarationStatus {
     return delegate.transformStatus(status, field, containingClass, isLocal)
   }
@@ -302,7 +308,7 @@ internal class LoggingFirStatusTransformerExtension(
     status: FirDeclarationStatus,
     backingField: FirBackingField,
     containingClass: FirClassLikeSymbol<*>?,
-    isLocal: Boolean
+    isLocal: Boolean,
   ): FirDeclarationStatus {
     return delegate.transformStatus(status, backingField, containingClass, isLocal)
   }
@@ -311,7 +317,7 @@ internal class LoggingFirStatusTransformerExtension(
     status: FirDeclarationStatus,
     enumEntry: FirEnumEntry,
     containingClass: FirClassLikeSymbol<*>?,
-    isLocal: Boolean
+    isLocal: Boolean,
   ): FirDeclarationStatus {
     return delegate.transformStatus(status, enumEntry, containingClass, isLocal)
   }

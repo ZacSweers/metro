@@ -10,5 +10,4 @@ import dev.zacsweers.metro.Qualifier
  * @param bindingId The ID of the set.
  * @param elementId The ID of the element.
  */
-@Qualifier
-public annotation class MultibindingElement(val bindingId: String, val elementId: String)
+@Qualifier public annotation class MultibindingElement(val bindingId: String, val elementId: String)

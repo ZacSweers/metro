@@ -476,7 +476,8 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
       // Graph factory $$Impl class, just generate the SAM function
       log("Generating factory impl into ${owner.classId}")
       val graphClass = owner.requireContainingClassSymbol().requireContainingClassSymbol()
-      val graphObject = graphObject(graphClass) ?: reportCompilerBug("No graph object found for $graphClass")
+      val graphObject =
+        graphObject(graphClass) ?: reportCompilerBug("No graph object found for $graphClass")
       val creator =
         graphObject.findCreator(session, "generateFunctions ${context.owner.classId}", ::log)!!
       val samFunction = creator.classSymbol.findSamFunction(session)

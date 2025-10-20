@@ -33,7 +33,9 @@ object MetroDirectives : SimpleDirectivesContainer() {
   val MAX_IR_ERRORS_COUNT by
     valueDirective(
       "Maximum number of errors to report before exiting IR processing. Default is 20, must be > 0."
-    ) { it.toInt() }
+    ) {
+      it.toInt()
+    }
   val OPTIONAL_DEPENDENCY_BEHAVIOR by
     enumDirective<OptionalDependencyBehavior>(
       "Controls the behavior of optional dependencies on a per-compilation basis."
@@ -49,7 +51,8 @@ object MetroDirectives : SimpleDirectivesContainer() {
 
   // Dependency directives.
   val WITH_ANVIL by directive("Add Anvil as dependency and configure custom annotations.")
-  val WITH_KI_ANVIL by directive("Add kotlin-inject-nnvil as dependency and configure custom annotations.")
+  val WITH_KI_ANVIL by
+    directive("Add kotlin-inject-nnvil as dependency and configure custom annotations.")
   val WITH_DAGGER by directive("Add Dagger as dependency and configure custom annotations.")
   val ENABLE_DAGGER_INTEROP by
     directive("Enable Dagger interop. This implicitly applies WITH_DAGGER directive as well.")

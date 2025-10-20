@@ -106,6 +106,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("EmptyMapMultibindingsUseEmptyMap.kt")
+    public void testEmptyMapMultibindingsUseEmptyMap() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/EmptyMapMultibindingsUseEmptyMap.kt");
+    }
+
+    @Test
     @TestMetadata("ExtensionsAreInnerClasses.kt")
     public void testExtensionsAreInnerClasses() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/ExtensionsAreInnerClasses.kt");
@@ -133,6 +139,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     @TestMetadata("LazyPropertiesHaveDeterministicOrder.kt")
     public void testLazyPropertiesHaveDeterministicOrder() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/LazyPropertiesHaveDeterministicOrder.kt");
+    }
+
+    @Test
+    @TestMetadata("MapsUseMapBuilderIfNoProvider.kt")
+    public void testMapsUseMapBuilderIfNoProvider() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/MapsUseMapBuilderIfNoProvider.kt");
     }
 
     @Test
@@ -178,6 +190,22 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
       @TestMetadata("SimpleDynamicGraph.kt")
       public void testSimpleDynamicGraph() {
         runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/dynamic/SimpleDynamicGraph.kt");
+      }
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/dump/ir/dependencygraph/interop")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Interop {
+      @Test
+      public void testAllFilesPresentInInterop() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph/interop"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      }
+
+      @Test
+      @TestMetadata("BindsOptionalOfUsesLazyProviders.kt")
+      public void testBindsOptionalOfUsesLazyProviders() {
+        runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/interop/BindsOptionalOfUsesLazyProviders.kt");
       }
     }
   }

@@ -506,7 +506,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     // First build should succeed
     val firstBuildResult = build(project.rootDir, "compileKotlin")
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    assertThat(project.appGraphReports.scopedProviderFieldKeys).isEmpty()
+    assertThat(project.appGraphReports.scopedProviderPropertyKeys).isEmpty()
 
     // Add scope to the provider method
     project.modify(
@@ -525,7 +525,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     // Second build should succeed with the scoped provider
     val secondBuildResult = build(project.rootDir, "compileKotlin")
     assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    assertThat(project.appGraphReports.scopedProviderFieldKeys).contains("kotlin.String")
+    assertThat(project.appGraphReports.scopedProviderPropertyKeys).contains("kotlin.String")
   }
 
   @Test
@@ -1938,7 +1938,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             fun provideString(): kotlin.String
                                  ~~~~~~~~~~~~~
         """
-        .trimIndent()
+          .trimIndent()
       )
   }
 }

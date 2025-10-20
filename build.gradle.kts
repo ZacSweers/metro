@@ -89,6 +89,10 @@ allprojects {
       endWithNewline()
     }
     java {
+      googleJavaFormat(libs.versions.gjf.get())
+        .reorderImports(true)
+        .reflowLongStrings(true)
+        .reorderImports(true)
       target("src/**/*.java")
       trimTrailingWhitespace()
       endWithNewline()
@@ -97,6 +101,7 @@ allprojects {
       targetExclude("**/*Generated.java")
     }
     kotlin {
+      ktfmt(ktfmtVersion).googleStyle().configure { it.setRemoveUnusedImports(true) }
       target("src/**/*.kt")
       trimTrailingWhitespace()
       endWithNewline()
@@ -104,6 +109,7 @@ allprojects {
       targetExclude("**/src/test/data/**")
     }
     kotlinGradle {
+      ktfmt(ktfmtVersion).googleStyle().configure { it.setRemoveUnusedImports(true) }
       target("*.kts")
       trimTrailingWhitespace()
       endWithNewline()

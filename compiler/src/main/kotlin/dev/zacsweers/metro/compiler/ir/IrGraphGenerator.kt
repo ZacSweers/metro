@@ -48,6 +48,7 @@ import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.copyTo
+import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
@@ -59,6 +60,9 @@ import org.jetbrains.kotlin.name.Name
 internal typealias PropertyInitializer =
   IrBuilderWithScope.(thisReceiver: IrValueParameter, key: IrTypeKey) -> IrExpression
 
+internal typealias InitStatement =
+  IrBuilderWithScope.(thisReceiver: IrValueParameter) -> IrStatement
+
 internal class IrGraphGenerator(
   metroContext: IrMetroContext,
   private val dependencyGraphNodesByClass: (ClassId) -> DependencyGraphNode?,
@@ -66,7 +70,7 @@ internal class IrGraphGenerator(
   private val graphClass: IrClass,
   private val bindingGraph: IrBindingGraph,
   private val sealResult: IrBindingGraph.BindingGraphResult,
-  private val fieldNameAllocator: NameAllocator,
+  private val propertyNameAllocator: NameAllocator,
   private val parentTracer: Tracer,
   // TODO move these accesses to irAttributes
   bindingContainerTransformer: BindingContainerTransformer,
@@ -74,6 +78,20 @@ internal class IrGraphGenerator(
   assistedFactoryTransformer: AssistedFactoryTransformer,
   graphExtensionGenerator: IrGraphExtensionGenerator,
 ) : IrMetroContext by metroContext {
+
+  private var _functionNameAllocatorInitialized = false
+  private val _functionNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
+  private val functionNameAllocator: NameAllocator
+    get() {
+      if (!_functionNameAllocatorInitialized) {
+        // pre-allocate existing function names
+        for (function in graphClass.functions) {
+          _functionNameAllocator.newName(function.name.asString())
+        }
+        _functionNameAllocatorInitialized = true
+      }
+      return _functionNameAllocator
+    }
 
   private val bindingPropertyContext = BindingPropertyContext()
 
@@ -85,8 +103,8 @@ internal class IrGraphGenerator(
   private val lazyProperties = mutableMapOf<IrContextualTypeKey, IrProperty>()
 
   /**
-   * To avoid `MethodTooLargeException`, we split field initializations up over multiple constructor
-   * inits.
+   * To avoid `MethodTooLargeException`, we split property field initializations up over multiple
+   * constructor inits.
    *
    * @see <a href="https://github.com/ZacSweers/metro/issues/645">#645</a>
    */
@@ -130,8 +148,8 @@ internal class IrGraphGenerator(
   }
 
   /**
-   * Graph extensions may reserve field names for their linking, so if they've done that we use the
-   * precomputed field rather than generate a new one.
+   * Graph extensions may reserve property names for their linking, so if they've done that we use
+   * the precomputed property rather than generate a new one.
    */
   private fun IrClass.getOrCreateBindingProperty(
     key: IrTypeKey,
@@ -143,7 +161,7 @@ internal class IrGraphGenerator(
     val property =
       bindingGraph.reservedProperty(key)?.property?.also { addChild(it) }
         ?: addProperty {
-            this.name = fieldNameAllocator.newName(name()).asName()
+            this.name = propertyNameAllocator.newName(name()).asName()
             this.visibility = visibility
           }
           .apply { graphPropertyData = GraphPropertyData(key, type()) }
@@ -168,7 +186,7 @@ internal class IrGraphGenerator(
       // Create the property but don't add it to the graph yet
       graphClass.factory
         .buildProperty {
-          this.name = fieldNameAllocator.newName(binding.nameHint.decapitalizeUS()).asName()
+          this.name = propertyNameAllocator.newName(binding.nameHint.decapitalizeUS()).asName()
           this.visibility = DescriptorVisibilities.PRIVATE
         }
         .apply {
@@ -195,11 +213,7 @@ internal class IrGraphGenerator(
     with(graphClass) {
       val ctor = primaryConstructor!!
 
-      val constructorStatements =
-        mutableListOf<IrBuilderWithScope.(thisReceiver: IrValueParameter) -> IrStatement>()
-
-      val initStatements =
-        mutableListOf<IrBuilderWithScope.(thisReceiver: IrValueParameter) -> IrStatement>()
+      val constructorStatements = mutableListOf<InitStatement>()
 
       val thisReceiverParameter = thisReceiverOrFail
 
@@ -255,7 +269,7 @@ internal class IrGraphGenerator(
             }
           } else {
             // It's a graph dep. Add all its accessors as available keys and point them at
-            // this constructor parameter for provider field initialization
+            // this constructor parameter for provider property initialization
             val graphDep =
               node.includedGraphNodes[param.typeKey]
                 ?: reportCompilerBug("Undefined graph node ${param.typeKey}")
@@ -265,7 +279,7 @@ internal class IrGraphGenerator(
 
             val graphDepProperty =
               addSimpleInstanceProperty(
-                fieldNameAllocator.newName(graphDep.sourceGraph.name.asString() + "Instance"),
+                propertyNameAllocator.newName(graphDep.sourceGraph.name.asString() + "Instance"),
                 param.typeKey,
               ) {
                 irGet(irParam)
@@ -274,10 +288,10 @@ internal class IrGraphGenerator(
             bindingPropertyContext.putInstanceProperty(param.typeKey, graphDepProperty)
             bindingPropertyContext.putInstanceProperty(graphDep.typeKey, graphDepProperty)
 
-            // Expose the graph as a provider field
-            // TODO this isn't always actually needed but different than the instance field above
-            //  would be nice if we could determine if this field is unneeded
-            val providerWrapperField =
+            // Expose the graph as a provider property
+            // TODO this isn't always actually needed but different than the instance property above
+            //  would be nice if we could determine if this property is unneeded
+            val providerWrapperProperty =
               getOrCreateBindingProperty(
                 param.typeKey,
                 { graphDepProperty.name.asString() + "Provider" },
@@ -287,7 +301,7 @@ internal class IrGraphGenerator(
 
             bindingPropertyContext.putProviderProperty(
               param.typeKey,
-              providerWrapperField.initFinal {
+              providerWrapperProperty.initFinal {
                 instanceFactory(
                   param.typeKey.type,
                   irGetProperty(irGet(thisReceiverParameter), graphDepProperty),
@@ -295,8 +309,8 @@ internal class IrGraphGenerator(
               },
             )
             // Link both the graph typekey and the (possibly-impl type)
-            bindingPropertyContext.putProviderProperty(param.typeKey, providerWrapperField)
-            bindingPropertyContext.putProviderProperty(graphDep.typeKey, providerWrapperField)
+            bindingPropertyContext.putProviderProperty(param.typeKey, providerWrapperProperty)
+            bindingPropertyContext.putProviderProperty(graphDep.typeKey, providerWrapperProperty)
 
             if (graphDep.hasExtensions) {
               val depMetroGraph = graphDep.sourceGraph.metroGraphOrFail
@@ -309,7 +323,7 @@ internal class IrGraphGenerator(
         }
       }
 
-      // Create managed binding containers instance fields if used
+      // Create managed binding containers instance properties if used
       val allBindingContainers = buildSet {
         addAll(node.bindingContainers)
         addAll(node.allExtendedNodes.values.flatMap { it.bindingContainers })
@@ -331,16 +345,19 @@ internal class IrGraphGenerator(
       // Don't add it if it's not used
       if (node.typeKey in sealResult.reachableKeys) {
         val thisGraphProperty =
-          addSimpleInstanceProperty(fieldNameAllocator.newName("thisGraphInstance"), node.typeKey) {
+          addSimpleInstanceProperty(
+            propertyNameAllocator.newName("thisGraphInstance"),
+            node.typeKey,
+          ) {
             irGet(thisReceiverParameter)
           }
 
         bindingPropertyContext.putInstanceProperty(node.typeKey, thisGraphProperty)
 
-        // Expose the graph as a provider field
+        // Expose the graph as a provider property
         // TODO this isn't always actually needed but different than the instance field above
         //  would be nice if we could determine if this field is unneeded
-        val field =
+        val property =
           getOrCreateBindingProperty(
             node.typeKey,
             { "thisGraphInstanceProvider" },
@@ -350,7 +367,7 @@ internal class IrGraphGenerator(
 
         bindingPropertyContext.putProviderProperty(
           node.typeKey,
-          field.initFinal {
+          property.initFinal {
             instanceFactory(
               node.typeKey.type,
               irGetProperty(irGet(thisReceiverParameter), thisGraphProperty),
@@ -359,7 +376,7 @@ internal class IrGraphGenerator(
         )
       }
 
-      // Collect bindings and their dependencies for provider field ordering
+      // Collect bindings and their dependencies for provider property ordering
       val initOrder =
         parentTracer.traceNested("Collect bindings") {
           val collectedProperties = BindingPropertyCollector(bindingGraph).collect()
@@ -373,7 +390,8 @@ internal class IrGraphGenerator(
         }
 
       // For all deferred types, assign them first as factories
-      // TODO For any types that depend on deferred types, they need providers too?
+      // DelegateFactory properties can be initialized inline since they're just empty factories.
+      // Only the setDelegate() calls need to be ordered in init blocks.
       @Suppress("UNCHECKED_CAST")
       val deferredProperties: Map<IrTypeKey, IrProperty> =
         sealResult.deferredTypes.associateWith { deferredTypeKey ->
@@ -385,7 +403,8 @@ internal class IrGraphGenerator(
                 { deferredTypeKey.type.wrapInProvider(metroSymbols.metroProvider) },
                 PropertyType.FIELD,
               )
-              .withInit(binding.typeKey) { _, _ ->
+              // TODO if needed we could move this back to withInit()
+              .initFinal {
                 irInvoke(
                   callee = metroSymbols.metroDelegateFactoryConstructor,
                   typeArgs = listOf(deferredTypeKey.type),
@@ -396,17 +415,21 @@ internal class IrGraphGenerator(
           property
         }
 
-      // TODO need different getters for different map types
-      // Create fields in dependency-order
+      // Create properties in dependency-order
+      // Track which keys actually get properties generated so we can reference this for deferred
+      // init ordering
+      val keysWithProperties = linkedSetOf<IrTypeKey>()
+
       initOrder
         .asSequence()
         .filterNot { (binding, _) ->
           // Don't generate deferred types here, we'll generate them last
           binding.typeKey in deferredProperties ||
-            // Don't generate fields for anything already provided in provider/instance fields (i.e.
+            // Don't generate properties for anything already provided in provider/instance
+            // properties (i.e.
             // bound instance types)
             binding.typeKey in bindingPropertyContext ||
-            // We don't generate fields for these even though we do track them in dependencies
+            // We don't generate properties for these even though we do track them in dependencies
             // above, it's just for propagating their aliased type in sorting
             binding is IrBinding.Alias ||
             // For implicit outer class receivers we don't need to generate a property for them
@@ -414,12 +437,13 @@ internal class IrGraphGenerator(
             // Parent graph bindings don't need duplicated properties
             (binding is IrBinding.GraphDependency && binding.propertyAccess != null)
         }
+        .onEach { keysWithProperties.add(it.binding.typeKey) }
         .toList()
         .also { propertyBindings ->
-          writeDiagnostic("keys-providerFields-${parentTracer.tag}.txt") {
+          writeDiagnostic("keys-providerProperties-${parentTracer.tag}.txt") {
             propertyBindings.joinToString("\n") { it.binding.typeKey.toString() }
           }
-          writeDiagnostic("keys-scopedProviderFields-${parentTracer.tag}.txt") {
+          writeDiagnostic("keys-scopedProviderProperties-${parentTracer.tag}.txt") {
             propertyBindings
               .filter { it.binding.isScoped() }
               .joinToString("\n") { it.binding.typeKey.toString() }
@@ -428,7 +452,7 @@ internal class IrGraphGenerator(
         .forEach { (binding, propertyType) ->
           val key = binding.typeKey
           // Since assisted and member injections don't implement Factory, we can't just type these
-          // as Provider<*> fields
+          // as Provider<*> properties
           var isProviderType = true
           val suffix: String
           val irType =
@@ -480,19 +504,62 @@ internal class IrGraphGenerator(
           }
         }
 
-      // Add statements to our constructor's deferred fields _after_ we've added all provider
-      // fields for everything else. This is important in case they reference each other
-      for ((deferredTypeKey, field) in deferredProperties) {
+      // TODO can we reduce some of the mappings here? Or can we interleave these in the topo sort
+      //  result?
+
+      // Now that we know which keys have properties, populate the deferred init ordering
+      // Build a map from type keys to their property indices for faster lookup
+      val propertyIndexByKey: Map<IrTypeKey, Int>
+
+      // Determine which deferred types should be initialized immediately vs after specific
+      // properties
+      val immediateDeferredInits = mutableSetOf<IrTypeKey>()
+
+      // Build reverse map for deferred inits - will be populated after we know which keys have
+      // properties
+      val deferredInitsAfterKey = mutableMapOf<IrTypeKey, MutableList<IrTypeKey>>()
+
+      val hasDeferredKeys = sealResult.deferredInitOrder.isNotEmpty()
+      if (hasDeferredKeys) {
+        propertyIndexByKey = buildMap {
+          for ((index, propertyAndInit) in propertyInitializers.withIndex()) {
+            val typeKey = propertiesToTypeKeys[propertyAndInit.first]
+            if (typeKey != null) {
+              put(typeKey, index)
+            }
+          }
+        }
+
+        for ((deferredKey, triggerKey) in sealResult.deferredInitOrder) {
+          if (triggerKey != null && triggerKey in propertyIndexByKey) {
+            // Trigger key has a property that's initialized in init blocks, add to
+            // deferredInitsAfterKey
+            deferredInitsAfterKey.getOrPut(triggerKey) { mutableListOf() }.add(deferredKey)
+          } else {
+            // Either no trigger key, or trigger key has an inline initializer (or no property at
+            // all)
+            // These can be initialized in the constructor body before init() is called
+            immediateDeferredInits.add(deferredKey)
+          }
+        }
+      } else {
+        propertyIndexByKey = emptyMap()
+      }
+
+      // Helper function to generate setDelegate call
+      fun generateSetDelegateCall(
+        deferredTypeKey: IrTypeKey
+      ): IrBuilderWithScope.(IrValueParameter) -> IrStatement {
+        val property = deferredProperties.getValue(deferredTypeKey)
         val binding = bindingGraph.requireBinding(deferredTypeKey)
-        initStatements.add { thisReceiver ->
+        return { thisReceiver ->
           irInvoke(
             dispatchReceiver = irGetObject(metroSymbols.metroDelegateFactoryCompanion),
             callee = metroSymbols.metroDelegateFactorySetDelegate,
             typeArgs = listOf(deferredTypeKey.type),
-            // TODO de-dupe?
             args =
               listOf(
-                irGetProperty(irGet(thisReceiver), field),
+                irGetProperty(irGet(thisReceiver), property),
                 createIrBuilder(symbol).run {
                   expressionGeneratorFactory
                     .create(thisReceiver)
@@ -502,8 +569,6 @@ internal class IrGraphGenerator(
                       fieldInitKey = deferredTypeKey,
                     )
                     .letIf(binding.isScoped()) {
-                      // If it's scoped, wrap it in double-check
-                      // DoubleCheck.provider(<provider>)
                       it.doubleCheck(this@run, metroSymbols, binding.typeKey)
                     }
                 },
@@ -512,34 +577,74 @@ internal class IrGraphGenerator(
         }
       }
 
-      if (
-        options.chunkFieldInits &&
-          propertyInitializers.size + initStatements.size > options.statementsPerInitFun
-      ) {
+      // Track where setDelegate calls should be inserted
+      val deferredInitsAtIndex = mutableMapOf<Int, MutableList<InitStatement>>()
+
+      if (hasDeferredKeys) {
+        // Add immediate deferred inits at index 0 (before any property initializers)
+        for (deferredTypeKey in immediateDeferredInits) {
+          deferredInitsAtIndex
+            .getOrPut(0, ::mutableListOf)
+            .add(generateSetDelegateCall(deferredTypeKey))
+        }
+
+        // Add deferred inits that should happen after specific properties
+        for ((triggerKey, deferredKeys) in deferredInitsAfterKey) {
+          val propertyIndex = propertyIndexByKey[triggerKey]
+          if (propertyIndex != null) {
+            // Add setDelegate calls after this property (index + 1)
+            for (deferredKey in deferredKeys) {
+              deferredInitsAtIndex
+                .getOrPut(propertyIndex + 1, ::mutableListOf)
+                .add(generateSetDelegateCall(deferredKey))
+            }
+          }
+        }
+      }
+
+      // Use chunked inits if we have deferred init statements to interleave with init block
+      // statements, or if the graph is large enough. If all deferred inits are "immediate"
+      // (index 0), we don't need chunking.
+      val hasInterleavedDeferredInits = deferredInitsAtIndex.keys.any { it > 0 }
+      val mustChunkInits =
+        hasInterleavedDeferredInits ||
+          (options.chunkFieldInits && propertyInitializers.size > options.statementsPerInitFun)
+
+      if (mustChunkInits) {
         // Larger graph, split statements
         // Chunk our constructor statements and split across multiple init functions
+        @Suppress("RemoveExplicitTypeArguments")
         val chunks =
-          buildList<IrBuilderWithScope.(thisReceiver: IrValueParameter) -> IrStatement> {
-              // Add field initializers first
-              for ((property, init) in propertyInitializers) {
+          buildList<InitStatement> {
+              // Add immediate deferred inits (before any property initializers)
+              deferredInitsAtIndex[0]?.forEach { statement -> add(statement) }
+
+              // Add property initializers and interleave setDelegate calls as dependencies are
+              // ready
+              for ((index, propertyAndInit) in propertyInitializers.withIndex()) {
+                val (property, init) = propertyAndInit
+                val typeKey = propertiesToTypeKeys.getValue(property)
+
+                // Add this property's initialization
                 add { thisReceiver ->
                   irSetField(
                     irGet(thisReceiver),
                     property.backingField!!,
-                    init(thisReceiver, propertiesToTypeKeys.getValue(property)),
+                    init(thisReceiver, typeKey),
                   )
                 }
-              }
-              for (statement in initStatements) {
-                add { thisReceiver -> statement(thisReceiver) }
+
+                // Add any deferred inits that should happen after this property
+                // (index + 1 because we stored them keyed by propertyInitializers.size, which was
+                // the next index)
+                deferredInitsAtIndex[index + 1]?.forEach { statement -> add(statement) }
               }
             }
             .chunked(options.statementsPerInitFun)
 
-        val initAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
         val initFunctionsToCall =
           chunks.map { statementsChunk ->
-            val initName = initAllocator.newName("init")
+            val initName = functionNameAllocator.newName("init")
             addFunction(initName, irBuiltIns.unitType, visibility = DescriptorVisibilities.PRIVATE)
               .apply {
                 val localReceiver = thisReceiverParameter.copyTo(this)
@@ -560,14 +665,22 @@ internal class IrGraphGenerator(
         }
       } else {
         // Small graph, just do it in the constructor
-        // Assign those initializers directly to their fields and mark them as final
-        for ((field, init) in propertyInitializers) {
-          field.initFinal {
-            val typeKey = propertiesToTypeKeys.getValue(field)
+        // Assign those initializers directly to their properties and mark them as final
+        for ((property, init) in propertyInitializers) {
+          property.initFinal {
+            val typeKey = propertiesToTypeKeys.getValue(property)
             init(thisReceiverParameter, typeKey)
           }
         }
-        constructorStatements += initStatements
+
+        // Add deferred init statements even in non-chunked path
+        // First add immediate deferred inits (before any property initializers)
+        deferredInitsAtIndex[0]?.forEach { statement -> constructorStatements.add(statement) }
+
+        // Then add deferred inits that should happen after each property
+        for (index in 1..propertyInitializers.size) {
+          deferredInitsAtIndex[index]?.forEach { statement -> constructorStatements.add(statement) }
+        }
       }
 
       // Add extra constructor statements
@@ -657,7 +770,7 @@ internal class IrGraphGenerator(
                   .generateBindingCode(binding, contextualTypeKey = contextualTypeKey),
                 isAssisted = false,
                 isGraphInstance = false,
-              ),
+              )
             )
           }
       }
@@ -785,7 +898,7 @@ internal class IrGraphGenerator(
                 irExprBodySafe(
                   expressionGeneratorFactory
                     .create(irFunction.dispatchReceiverParameter!!)
-                    .generateBindingCode(binding = binding, contextualTypeKey = contextKey),
+                    .generateBindingCode(binding = binding, contextualTypeKey = contextKey)
                 )
               }
           }

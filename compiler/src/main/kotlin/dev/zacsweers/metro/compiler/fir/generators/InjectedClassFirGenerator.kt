@@ -353,7 +353,9 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
             injectConstructor?.constructor?.valueParameterSymbols.orEmpty().map {
               MetroFirValueParameter(session, it)
             }
-          val isAssistedInject = injectConstructor?.annotation?.toAnnotationClassIdSafe(session) in session.classIds.assistedInjectAnnotations || params.any { it.isAssisted }
+          val isAssistedInject =
+            injectConstructor?.annotation?.toAnnotationClassIdSafe(session) in
+              session.classIds.assistedInjectAnnotations || params.any { it.isAssisted }
           InjectedClass(classSymbol, injectConstructor != null, params, isAssistedInject)
         }
 
@@ -427,9 +429,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
             markAsDeprecatedHidden(session)
             // Add @AssistedMarker annotation if this is an assisted factory
             if (injectedClass.isAssisted) {
-              replaceAnnotationsSafe(
-                annotations + buildAssistedMarkerAnnotation()
-              )
+              replaceAnnotationsSafe(annotations + buildAssistedMarkerAnnotation())
             }
           }
           .symbol
@@ -489,9 +489,9 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
       val target = injectFactoryClassIdsToInjectedClass[classSymbol.classId]?.classSymbol
       val injectConstructor = target?.findInjectLikeConstructors(session).orEmpty().singleOrNull()
       if (
-          injectConstructor?.constructor?.valueParameterSymbols.orEmpty().any {
-            it.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)
-          }
+        injectConstructor?.constructor?.valueParameterSymbols.orEmpty().any {
+          it.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)
+        }
       ) {
         names += Symbols.Names.invoke
       }
@@ -628,13 +628,14 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
               continue
             }
             @OptIn(SymbolInternals::class)
-            contextParams += buildValueParameterCopy(original.fir) {
-              name = original.name
-              origin = Keys.RegularParameter.origin
-              symbol = FirValueParameterSymbol()
-              containingDeclarationSymbol = this@apply.symbol
-            }
-              .apply { replaceAnnotationsSafe(original.annotations) }
+            contextParams +=
+              buildValueParameterCopy(original.fir) {
+                  name = original.name
+                  origin = Keys.RegularParameter.origin
+                  symbol = FirValueParameterSymbol()
+                  containingDeclarationSymbol = this@apply.symbol
+                }
+                .apply { replaceAnnotationsSafe(original.annotations) }
           }
           replaceContextParameters(contextParams)
           if (function.hasAnnotation(Symbols.ClassIds.Composable, session)) {
