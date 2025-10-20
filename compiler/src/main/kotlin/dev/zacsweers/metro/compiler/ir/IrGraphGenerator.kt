@@ -451,7 +451,7 @@ internal class IrGraphGenerator(
         }
         .forEach { (binding, propertyType) ->
           val key = binding.typeKey
-          // Since assisted and member injections don't implement Factory, we can't just type these
+          // Since assisted-inject classes don't implement Factory, we can't just type these
           // as Provider<*> properties
           var isProviderType = true
           val suffix: String

@@ -96,6 +96,7 @@ private constructor(
 
   enum class AccessType {
     INSTANCE,
+    // note: maybe rename this to PROVIDER_LIKE or PROVIDER_OR_FACTORY
     PROVIDER,
   }
 
@@ -118,6 +119,15 @@ private constructor(
         reportCompilerBug(
           "Absent bindings need to be checked prior to generateBindingCode(). ${binding.typeKey} missing."
         )
+      }
+
+      if (
+        accessType != AccessType.INSTANCE &&
+          binding is IrBinding.ConstructorInjected &&
+          binding.isAssisted
+      ) {
+        // Should be caught in FIR
+        reportCompilerBug("Assisted inject factories should only be accessed as instances")
       }
 
       val metroProviderSymbols = metroSymbols.providerSymbolsFor(contextualTypeKey)
@@ -168,16 +178,18 @@ private constructor(
                 fieldInitKey = null,
               )
             }
-            .transformAccessIfNeeded(
-              accessType,
-              // Assisted inject types don't implement Provider
-              if (binding.classFactory.isAssistedInject) {
-                AccessType.INSTANCE
-              } else {
-                AccessType.PROVIDER
-              },
-              binding.typeKey.type,
-            )
+            .let { factoryInstance ->
+              val isAssistedInject = binding.classFactory.isAssistedInject
+              if (isAssistedInject) {
+                return@let factoryInstance
+              }
+
+              factoryInstance.transformAccessIfNeeded(
+                accessType,
+                AccessType.PROVIDER,
+                binding.typeKey.type,
+              )
+            }
         }
 
         is IrBinding.CustomWrapper -> {
@@ -251,12 +263,22 @@ private constructor(
           val factoryImpl = assistedFactoryTransformer.getOrGenerateImplClass(binding.type)
 
           val targetBinding = bindingGraph.requireBinding(binding.target.typeKey)
-          // Assisted-inject factories don't implement Provider
-          val delegateFactoryProvider =
-            generateBindingCode(targetBinding, accessType = AccessType.INSTANCE)
 
-          with(factoryImpl) { invokeCreate(delegateFactoryProvider) }
-            .transformAccessIfNeeded(accessType, AccessType.PROVIDER, targetBinding.typeKey.type)
+          // Assisted-inject factories don't implement Provider
+          val delegateFactory =
+            generateBindingCode(
+              targetBinding,
+              accessType = AccessType.INSTANCE,
+              fieldInitKey = fieldInitKey,
+            )
+
+          val factoryProvider = with(factoryImpl) { invokeCreate(delegateFactory) }
+
+          factoryProvider.transformAccessIfNeeded(
+            accessType,
+            AccessType.PROVIDER,
+            targetBinding.typeKey.type,
+          )
         }
 
         is IrBinding.Multibinding -> {

@@ -9,6 +9,7 @@ Changelog
 - **Fix**: Compute `Optional` instance lazily when requested as a `Provider<Optional<T>>` and the underlying optional is not empty. Only applies to `@BindsOptionalOf` interop.
 - **Fix**: Interleave `setDelegate()` calls in correct order within initializer statements to ensure cycles with intermediate initialization don't crash. Sorry, word soup I know.
 - **Fix**: Don't generate duplicate `init()` functions when chunking initializers if graphs already have an explicit `init()` function.
+- **Fix**: Fix support for assisted inject with no assisted params.
 
 0.7.0
 ------
