@@ -98,11 +98,14 @@ dependencies {
   testRuntimeOnly(libs.kotlin.annotationsJvm)
 }
 
-tasks.register<JavaExec>("generateTests") {
+val generateTests = tasks.register<JavaExec>("generateTests") {
   inputs
     .dir(layout.projectDirectory.dir("src/test/data"))
     .withPropertyName("testData")
     .withPathSensitivity(PathSensitivity.RELATIVE)
+
+  inputs.property("testCompilerVersion", testCompilerVersion)
+
   outputs.dir(layout.projectDirectory.dir("src/test/java")).withPropertyName("generatedTests")
 
   classpath = sourceSets.test.get().runtimeClasspath
@@ -116,6 +119,8 @@ tasks.register<JavaExec>("generateTests") {
   // Larger stack size
   jvmArgs("-Xss1m")
 }
+
+tasks.compileTestKotlin { dependsOn(generateTests) }
 
 tasks.withType<Test> {
   dependsOn(metroRuntimeClasspath)
