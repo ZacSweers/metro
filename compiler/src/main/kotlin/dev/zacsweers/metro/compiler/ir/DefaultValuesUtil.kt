@@ -54,10 +54,7 @@ internal fun copyParameterDefaultValues(
 
   val transformer =
     object : IrTransformer<RemappingData>() {
-      override fun visitExpression(
-        expression: IrExpression,
-        data: RemappingData
-      ): IrExpression {
+      override fun visitExpression(expression: IrExpression, data: RemappingData): IrExpression {
         if (isTopLevelFunction) {
           // https://youtrack.jetbrains.com/issue/KT-81656
           expression.startOffset = SYNTHETIC_OFFSET

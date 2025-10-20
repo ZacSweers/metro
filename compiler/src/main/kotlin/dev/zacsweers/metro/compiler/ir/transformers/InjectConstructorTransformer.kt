@@ -384,17 +384,17 @@ internal class InjectConstructorTransformer(
           pluginContext.createIrBuilder(symbol).run {
             val sourceParameters = targetCallable.owner.parameters()
             if (invokeFunction.origin == Origins.TopLevelInjectFunctionClassFunction) {
-                // If this is a top-level function, we need to patch up the parameters
-                copyParameterDefaultValues(
-                  providerFunction = null,
-                  sourceMetroParameters = sourceParameters,
-                  sourceParameters = sourceParameters.nonDispatchParameters.filter {
-                   it.isAssisted }.map { it.ir },
-                  targetParameters = invokeFunction.nonDispatchParameters,
-                  targetGraphParameter = null,
-                  wrapInProvider = false,
-                  isTopLevelFunction = true,
-                )
+              // If this is a top-level function, we need to patch up the parameters
+              copyParameterDefaultValues(
+                providerFunction = null,
+                sourceMetroParameters = sourceParameters,
+                sourceParameters =
+                  sourceParameters.nonDispatchParameters.filter { it.isAssisted }.map { it.ir },
+                targetParameters = invokeFunction.nonDispatchParameters,
+                targetGraphParameter = null,
+                wrapInProvider = false,
+                isTopLevelFunction = true,
+              )
             }
 
             val constructorParameterNames =
