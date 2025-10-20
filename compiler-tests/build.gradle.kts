@@ -13,8 +13,7 @@ sourceSets {
   register("generator230")
 }
 
-val testCompilerVersionProvider =
-  providers.gradleProperty("metro.testCompilerVersion")
+val testCompilerVersionProvider = providers.gradleProperty("metro.testCompilerVersion")
 
 val testCompilerVersion = testCompilerVersionProvider.orElse(libs.versions.kotlin).get()
 
@@ -34,7 +33,11 @@ buildConfig {
   }
   sourceSets.named("test") {
     // Not a Boolean to avoid warnings about constants in if conditions
-    buildConfigField("String", "OVERRIDE_COMPILER_VERSION", "\"${testCompilerVersionProvider.isPresent}\"")
+    buildConfigField(
+      "String",
+      "OVERRIDE_COMPILER_VERSION",
+      "\"${testCompilerVersionProvider.isPresent}\"",
+    )
     buildConfigField("String", "JVM_TARGET", libs.versions.jvmTarget.map { "\"$it\"" })
     buildConfigField(
       "kotlin.KotlinVersion",
