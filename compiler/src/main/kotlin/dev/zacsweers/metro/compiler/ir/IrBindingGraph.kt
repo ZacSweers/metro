@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
+import dev.zacsweers.metro.compiler.graph.MissingBindingHints
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -60,7 +61,11 @@ internal class IrBindingGraph(
         onError(message, stack)
         exitProcessing()
       },
-      findSimilarBindings = { key -> findSimilarBindings(key).mapValues { it.value.toString() } },
+      missingBindingHints = { key ->
+        MissingBindingHints(
+          findSimilarBindings(key).mapValues { it.value.toString() }
+        )
+      },
     )
 
   // TODO hoist accessors up and visit in seal?
