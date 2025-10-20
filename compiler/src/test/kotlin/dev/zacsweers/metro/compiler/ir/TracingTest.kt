@@ -52,7 +52,6 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,Build component DAG
           ExampleGraph,Topo sort component DAG
           ExampleGraph,Expand components
-          ExampleGraph,Compute deferred init order
           ExampleGraph,Topo sort
           ExampleGraph,Sort and validate
           ExampleGraph,Compute binding indices
@@ -107,8 +106,6 @@ class TracingTest : MetroCompilerTest() {
                           ◀ Topo sort component DAG (xx ms)
                           ▶ Expand components
                           ◀ Expand components (xx ms)
-                          ▶ Compute deferred init order
-                          ◀ Compute deferred init order (xx ms)
                         ◀ Topo sort (xx ms)
                       ◀ Sort and validate (xx ms)
                       ▶ Compute binding indices
@@ -191,7 +188,6 @@ class TracingTest : MetroCompilerTest() {
           ChildGraphImpl,Build component DAG
           ChildGraphImpl,Topo sort component DAG
           ChildGraphImpl,Expand components
-          ChildGraphImpl,Compute deferred init order
           ChildGraphImpl,Topo sort
           ChildGraphImpl,Sort and validate
           ChildGraphImpl,Compute binding indices
@@ -211,7 +207,6 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,Build component DAG
           ExampleGraph,Topo sort component DAG
           ExampleGraph,Expand components
-          ExampleGraph,Compute deferred init order
           ExampleGraph,Topo sort
           ExampleGraph,Sort and validate
           ExampleGraph,Compute binding indices
@@ -275,8 +270,6 @@ class TracingTest : MetroCompilerTest() {
                           ◀ Topo sort component DAG (xx ms)
                           ▶ Expand components
                           ◀ Expand components (xx ms)
-                          ▶ Compute deferred init order
-                          ◀ Compute deferred init order (xx ms)
                         ◀ Topo sort (xx ms)
                       ◀ Sort and validate (xx ms)
                       ▶ Compute binding indices
@@ -314,8 +307,6 @@ class TracingTest : MetroCompilerTest() {
                           ◀ Topo sort component DAG (xx ms)
                           ▶ Expand components
                           ◀ Expand components (xx ms)
-                          ▶ Compute deferred init order
-                          ◀ Compute deferred init order (xx ms)
                         ◀ Topo sort (xx ms)
                       ◀ Sort and validate (xx ms)
                       ▶ Compute binding indices
@@ -398,7 +389,6 @@ class TracingTest : MetroCompilerTest() {
           ChildGraphImpl,Build component DAG
           ChildGraphImpl,Topo sort component DAG
           ChildGraphImpl,Expand components
-          ChildGraphImpl,Compute deferred init order
           ChildGraphImpl,Topo sort
           ChildGraphImpl,Sort and validate
           ChildGraphImpl,Compute binding indices
@@ -418,7 +408,6 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,Build component DAG
           ExampleGraph,Topo sort component DAG
           ExampleGraph,Expand components
-          ExampleGraph,Compute deferred init order
           ExampleGraph,Topo sort
           ExampleGraph,Sort and validate
           ExampleGraph,Compute binding indices
@@ -482,8 +471,6 @@ class TracingTest : MetroCompilerTest() {
                           ◀ Topo sort component DAG (xx ms)
                           ▶ Expand components
                           ◀ Expand components (xx ms)
-                          ▶ Compute deferred init order
-                          ◀ Compute deferred init order (xx ms)
                         ◀ Topo sort (xx ms)
                       ◀ Sort and validate (xx ms)
                       ▶ Compute binding indices
@@ -521,8 +508,6 @@ class TracingTest : MetroCompilerTest() {
                           ◀ Topo sort component DAG (xx ms)
                           ▶ Expand components
                           ◀ Expand components (xx ms)
-                          ▶ Compute deferred init order
-                          ◀ Compute deferred init order (xx ms)
                         ◀ Topo sort (xx ms)
                       ◀ Sort and validate (xx ms)
                       ▶ Compute binding indices

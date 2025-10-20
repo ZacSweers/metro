@@ -190,19 +190,16 @@ internal class IrBindingGraph(
 
   data class BindingGraphResult(
     val sortedKeys: List<IrTypeKey>,
+    val deferredTypes: Set<IrTypeKey>,
     val reachableKeys: Set<IrTypeKey>,
     val hasErrors: Boolean,
-    val deferredInitOrder: Map<IrTypeKey, IrTypeKey?>,
-  ) {
-    val deferredTypes: Set<IrTypeKey>
-      get() = deferredInitOrder.keys
-  }
+  )
 
   data class GraphError(val declaration: IrDeclaration?, val message: String)
 
   fun seal(parentTracer: Tracer, onError: (List<GraphError>) -> Unit): BindingGraphResult =
     context(metroContext) {
-      val (sortedKeys, reachableKeys, deferredInitOrder) =
+      val (sortedKeys, deferredTypes, reachableKeys) =
         parentTracer.traceNested("seal graph") { tracer ->
           val roots = buildMap {
             putAll(accessors)
@@ -231,7 +228,7 @@ internal class IrBindingGraph(
         }
 
       if (hasErrors) {
-        return BindingGraphResult(emptyList(), emptySet(), true, emptyMap())
+        return BindingGraphResult(emptyList(), emptySet(), emptySet(), true)
       }
 
       writeDiagnostic("keys-validated-${parentTracer.tag}.txt") {
@@ -239,7 +236,7 @@ internal class IrBindingGraph(
       }
 
       writeDiagnostic("keys-deferred-${parentTracer.tag}.txt") {
-        deferredInitOrder.keys.joinToString(separator = "\n")
+        deferredTypes.joinToString(separator = "\n")
       }
 
       val unused = bindingsSnapshot().keys - reachableKeys
@@ -256,7 +253,7 @@ internal class IrBindingGraph(
           "Found absent bindings in the binding graph: ${dumpGraph("Absent bindings", short = true)}"
         }
       }
-      return BindingGraphResult(sortedKeys, reachableKeys, false, deferredInitOrder)
+      return BindingGraphResult(sortedKeys, deferredTypes, reachableKeys, false)
     }
 
   fun reportDuplicateBinding(
