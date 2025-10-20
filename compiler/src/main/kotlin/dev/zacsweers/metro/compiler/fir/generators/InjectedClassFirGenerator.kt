@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
+import dev.zacsweers.metro.compiler.fir.buildSafeDefaultValueStub
 import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
 import dev.zacsweers.metro.compiler.fir.callableDeclarations
 import dev.zacsweers.metro.compiler.fir.classIds
@@ -24,16 +25,15 @@ import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.metro.compiler.fir.wrapInProviderIfNecessary
 import dev.zacsweers.metro.compiler.mapToArray
+import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.newName
 import dev.zacsweers.metro.compiler.reportCompilerBug
-import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.caches.FirCache
 import org.jetbrains.kotlin.fir.caches.firCachesFactory
-import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.declarations.builder.buildValueParameterCopy
@@ -354,7 +354,9 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
             injectConstructor?.constructor?.valueParameterSymbols.orEmpty().map {
               MetroFirValueParameter(session, it)
             }
-          val isAssistedInject = injectConstructor?.annotation?.toAnnotationClassIdSafe(session) in session.classIds.assistedInjectAnnotations || params.any { it.isAssisted }
+          val isAssistedInject =
+            injectConstructor?.annotation?.toAnnotationClassIdSafe(session) in
+              session.classIds.assistedInjectAnnotations || params.any { it.isAssisted }
           InjectedClass(classSymbol, injectConstructor != null, params, isAssistedInject)
         }
 
@@ -428,9 +430,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
             markAsDeprecatedHidden(session)
             // Add @AssistedMarker annotation if this is an assisted factory
             if (injectedClass.isAssisted) {
-              replaceAnnotationsSafe(
-                annotations + buildAssistedMarkerAnnotation()
-              )
+              replaceAnnotationsSafe(annotations + buildAssistedMarkerAnnotation())
             }
           }
           .symbol
@@ -490,9 +490,9 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
       val target = injectFactoryClassIdsToInjectedClass[classSymbol.classId]?.classSymbol
       val injectConstructor = target?.findInjectLikeConstructors(session).orEmpty().singleOrNull()
       if (
-          injectConstructor?.constructor?.valueParameterSymbols.orEmpty().any {
-            it.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)
-          }
+        injectConstructor?.constructor?.valueParameterSymbols.orEmpty().any {
+          it.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)
+        }
       ) {
         names += Symbols.Names.invoke
       }
@@ -588,7 +588,6 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
     if (nonNullContext.owner.hasOrigin(Keys.TopLevelInjectFunctionClass)) {
       check(callableId.callableName == Symbols.Names.invoke)
       val function = symbols.getValue(Unit, null).getValue(context.owner.classId)
-      // TODO default param values probably require generateMemberFunction
       return createMemberFunction(
           nonNullContext.owner,
           Keys.TopLevelInjectFunctionClassFunction,
@@ -605,6 +604,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
             // TODO others?
           }
 
+          var actualIndex = 0
           for (param in function.valueParameterSymbols) {
             if (!param.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)) {
               continue
@@ -617,10 +617,16 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
                 //  .withArguments(it.mapToArray(FirTypeParameterRef::toConeType))
               },
               key = Keys.RegularParameter,
+              hasDefaultValue = param.hasDefaultValue,
             )
           }
         }
         .apply {
+          for (param in valueParameters) {
+            if (param.defaultValue != null) {
+              param.replaceDefaultValue(buildSafeDefaultValueStub(session))
+            }
+          }
           // TODO this is ugly but there's no API on SimpleFunctionBuildingContext
           val contextParams = mutableListOf<FirValueParameter>()
           for (original in function.contextParameterSymbols) {
@@ -628,13 +634,14 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
               continue
             }
             @OptIn(SymbolInternals::class)
-            contextParams += buildValueParameterCopy(original.fir) {
-              name = original.name
-              origin = Keys.RegularParameter.origin
-              symbol = FirValueParameterSymbol()
-              containingDeclarationSymbol = this@apply.symbol
-            }
-              .apply { replaceAnnotationsSafe(original.annotations) }
+            contextParams +=
+              buildValueParameterCopy(original.fir) {
+                  name = original.name
+                  origin = Keys.RegularParameter.origin
+                  symbol = FirValueParameterSymbol()
+                  containingDeclarationSymbol = this@apply.symbol
+                }
+                .apply { replaceAnnotationsSafe(original.annotations) }
           }
           replaceContextParameters(contextParams)
           if (function.hasAnnotation(Symbols.ClassIds.Composable, session)) {

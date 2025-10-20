@@ -121,8 +121,8 @@ case "$1" in
        rm -rf kotlin-js-store
        rm -rf samples/kotlin-js-store
        ./gradlew clean --quiet
-       ./gradlew spotlessApply apiDump kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks --no-build-cache --no-configuration-cache --quiet 2>&1 | grep -v "npm warn deprecated"
-       ./gradlew -p samples spotlessApply kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --no-configuration-cache --quiet 2>&1 | grep -v "npm warn deprecated"
+       ./gradlew spotlessApply apiDump kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks --no-build-cache --no-configuration-cache --quiet
+       ./gradlew -p samples spotlessApply kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --no-configuration-cache --quiet
        ;;
 
    "gen-compat")

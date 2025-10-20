@@ -163,7 +163,8 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     objects.property(DiagnosticSeverity::class.javaObjectType).convention(DiagnosticSeverity.NONE)
 
   /**
-   * If enabled, treats `@Contributes*` annotations (except ContributesTo) as implicit `@Inject` annotations.
+   * If enabled, treats `@Contributes*` annotations (except ContributesTo) as implicit `@Inject`
+   * annotations.
    *
    * Disabled by default.
    */

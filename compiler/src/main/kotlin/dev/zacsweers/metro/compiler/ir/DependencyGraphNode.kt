@@ -8,9 +8,9 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.isGraphImpl
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.mapToSet
+import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.reportCompilerBug
-import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrFunction
@@ -64,7 +64,9 @@ internal data class DependencyGraphNode(
 
   val metroGraph by memoize { sourceGraph.metroGraphOrNull }
 
-  val metroGraphOrFail by memoize { metroGraph ?: reportCompilerBug("No generated MetroGraph found: ${sourceGraph.kotlinFqName}") }
+  val metroGraphOrFail by memoize {
+    metroGraph ?: reportCompilerBug("No generated MetroGraph found: ${sourceGraph.kotlinFqName}")
+  }
 
   /** [IrTypeKey] of the contributed graph extension, if any. */
   val contributedGraphTypeKey: IrTypeKey? by memoize {

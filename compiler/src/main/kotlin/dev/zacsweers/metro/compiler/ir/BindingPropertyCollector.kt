@@ -2,49 +2,42 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
-import dev.zacsweers.metro.compiler.Symbols
-import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
-import org.jetbrains.kotlin.ir.util.classId
-
 private const val INITIAL_VALUE = 512
 
-/** Computes the set of bindings that must end up in provider fields. */
-internal class ProviderFieldCollector(private val graph: IrBindingGraph) {
+/** Computes the set of bindings that must end up in properties. */
+internal class BindingPropertyCollector(private val graph: IrBindingGraph) {
+
+  data class CollectedProperty(val binding: IrBinding, val propertyType: PropertyType)
 
   private data class Node(val binding: IrBinding, var refCount: Int = 0) {
-    val needsField: Boolean
+    val propertyType: PropertyType?
       get() {
         // Scoped, graph, and members injector bindings always need provider fields
-        if (binding.isScoped()) return true
+        if (binding.isScoped()) return PropertyType.FIELD
 
         when (binding) {
           is IrBinding.GraphDependency,
           // Assisted types always need to be a single field to ensure use of the same provider
-          is IrBinding.Assisted -> return true
-          // TODO what about assisted but no assisted params? These also don't become providers
-          //  we would need to track a set of assisted targets somewhere
-          is IrBinding.ConstructorInjected if binding.isAssisted -> return true
-          // Multibindings are always created adhoc
-          is IrBinding.Multibinding -> return false
-          // Custom wrappers are always created adhoc since
-          // they are usually simple factories like `Optional.of`
-          // and can't be scoped
-          is IrBinding.CustomWrapper -> return false
+          is IrBinding.Assisted -> return PropertyType.FIELD
+          is IrBinding.ConstructorInjected if binding.isAssisted -> return PropertyType.FIELD
+          // Multibindings are always created adhoc, but we create their properties lazily
+          is IrBinding.Multibinding -> return null
           else -> {
             // Do nothing
           }
         }
 
-        if (
-          binding.typeKey.qualifier?.ir?.annotationClass?.classId ==
-            Symbols.ClassIds.MultibindingElement
-        ) {
-          return true
+        if (binding.isIntoMultibinding) {
+          return PropertyType.GETTER
         }
 
         // If it's unscoped but used more than once and not into a multibinding,
         // we can generate a reusable field
-        return refCount >= 2
+        return if (refCount >= 2) {
+          PropertyType.FIELD
+        } else {
+          null
+        }
       }
 
     /** @return true if we've referenced this binding before. */
@@ -56,7 +49,7 @@ internal class ProviderFieldCollector(private val graph: IrBindingGraph) {
 
   private val nodes = HashMap<IrTypeKey, Node>(INITIAL_VALUE)
 
-  fun collect(): Map<IrTypeKey, IrBinding> {
+  fun collect(): Map<IrTypeKey, CollectedProperty> {
     // Count references for each dependency
     for ((key, binding) in graph.bindingsSnapshot()) {
       // Ensure each key has a node
@@ -69,10 +62,8 @@ internal class ProviderFieldCollector(private val graph: IrBindingGraph) {
     // Decide which bindings actually need provider fields
     return buildMap(nodes.size) {
       for ((key, node) in nodes) {
-        val binding = node.binding
-        if (node.needsField) {
-          put(key, binding)
-        }
+        val propertyType = node.propertyType ?: continue
+        put(key, CollectedProperty(node.binding, propertyType))
       }
     }
   }

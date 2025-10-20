@@ -87,9 +87,7 @@ internal class IrDynamicGraphGenerator(
     // Get factory SAM function if this is a factory
     val factorySamFunction = if (isFactory) rawType.singleAbstractFunction() else null
 
-    val targetClass = factorySamFunction?.let {
-      factorySamFunction.returnType.rawType()
-    } ?: rawType
+    val targetClass = factorySamFunction?.let { factorySamFunction.returnType.rawType() } ?: rawType
     val containerClasses = containerTypeKeys.map { it.type.rawType() }
     val containerClassIds = containerClasses.map { it.classIdOrFail }.toSet()
     val graphName = computeStableName(targetClass.classIdOrFail, containerClassIds)
@@ -187,7 +185,8 @@ internal class IrDynamicGraphGenerator(
 
           // Add the generated class as a nested class in the call site's parent class,
           // or as a file-level class if no parent exists
-          val containerToAddTo: IrDeclarationContainer  = context.currentClassAccess?.irElement as? IrClass ?: context.currentFileAccess
+          val containerToAddTo: IrDeclarationContainer =
+            context.currentClassAccess?.irElement as? IrClass ?: context.currentFileAccess
           containerToAddTo.addChild(this)
 
           addFakeOverrides(irTypeSystemContext)
@@ -261,7 +260,6 @@ internal class IrDynamicGraphGenerator(
     samFunction.body =
       createIrBuilder(samFunction.symbol).run {
         irExprBodySafe(
-          samFunction.symbol,
           irCallConstructor(graphCtor.symbol, emptyList()).apply {
             // First, pass SAM parameters
             samFunction.regularParameters.forEachIndexed { index, param ->
@@ -273,7 +271,7 @@ internal class IrDynamicGraphGenerator(
               arguments[samParamCount + index] =
                 irGetField(irGet(samFunction.dispatchReceiverParameter!!), field)
             }
-          },
+          }
         )
       }
 

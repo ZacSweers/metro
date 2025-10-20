@@ -15,9 +15,9 @@ class InjectConstructorErrorsTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @Inject
-            class ExampleClass @Inject constructor(private val value: String)
-          """
+        @Inject
+        class ExampleClass @Inject constructor(private val value: String)
+        """
           .trimIndent()
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
@@ -33,8 +33,8 @@ class InjectConstructorErrorsTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @Inject constructor()
-          """
+        class ExampleClass @Inject constructor()
+        """
           .trimIndent()
       )
     ) {
@@ -49,8 +49,8 @@ class InjectConstructorErrorsTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @Inject constructor()
-          """
+        class ExampleClass @Inject constructor()
+        """
           .trimIndent()
       ),
       options = metroOptions.copy(warnOnInjectAnnotationPlacement = false),
@@ -64,10 +64,10 @@ class InjectConstructorErrorsTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass internal constructor(int: Int) {
-              @Inject constructor() : this(0)
-            }
-          """
+        class ExampleClass internal constructor(int: Int) {
+          @Inject constructor() : this(0)
+        }
+        """
           .trimIndent()
       )
     ) {
@@ -80,19 +80,20 @@ class InjectConstructorErrorsTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass @Inject constructor() {
-              @Inject constructor(value: String) : this()
-            }
-          """
+        class ExampleClass @Inject constructor() {
+          @Inject constructor(value: String) : this()
+        }
+        """
           .trimIndent()
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
         """
-          e: ExampleClass.kt:6:20 Only one `@Inject` constructor is allowed.
-          e: ExampleClass.kt:7:3 Only one `@Inject` constructor is allowed.
-        """.trimIndent()
+        e: ExampleClass.kt:6:20 Only one `@Inject` constructor is allowed.
+        e: ExampleClass.kt:7:3 Only one `@Inject` constructor is allowed.
+        """
+          .trimIndent()
       )
     }
   }
@@ -104,23 +105,23 @@ class InjectConstructorErrorsTest : MetroCompilerTest() {
         fileNameWithoutExtension = "OnlyClasses",
         source =
           """
+          @Inject
+          enum class EnumExampleClass {
             @Inject
-            enum class EnumExampleClass {
-              @Inject
-              INSTANCE
-            }
+            INSTANCE
+          }
 
-            @Inject
-            object ObjectExampleClass
+          @Inject
+          object ObjectExampleClass
 
-            @Inject
-            interface InterfaceExampleClass
+          @Inject
+          interface InterfaceExampleClass
 
-            @Inject
-            annotation class AnnotationExampleClass
+          @Inject
+          annotation class AnnotationExampleClass
 
-            @Inject
-            class HappyClass
+          @Inject
+          class HappyClass
           """
             .trimIndent(),
       ),
@@ -128,11 +129,11 @@ class InjectConstructorErrorsTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-            e: OnlyClasses.kt:7:12 Only classes can be annotated with @Inject or have @Inject-annotated constructors.
-            e: OnlyClasses.kt:13:8 Only classes can be annotated with @Inject or have @Inject-annotated constructors.
-            e: OnlyClasses.kt:16:11 Only classes can be annotated with @Inject or have @Inject-annotated constructors.
-            e: OnlyClasses.kt:19:18 Only classes can be annotated with @Inject or have @Inject-annotated constructors.
-          """
+        e: OnlyClasses.kt:7:12 Only classes can be annotated with @Inject or have @Inject-annotated constructors.
+        e: OnlyClasses.kt:13:8 Only classes can be annotated with @Inject or have @Inject-annotated constructors.
+        e: OnlyClasses.kt:16:11 Only classes can be annotated with @Inject or have @Inject-annotated constructors.
+        e: OnlyClasses.kt:19:18 Only classes can be annotated with @Inject or have @Inject-annotated constructors.
+        """
           .trimIndent()
       )
     }
@@ -145,17 +146,17 @@ class InjectConstructorErrorsTest : MetroCompilerTest() {
         fileNameWithoutExtension = "FinalClasses",
         source =
           """
-            @Inject
-            open class OpenExampleClass
+          @Inject
+          open class OpenExampleClass
 
-            @Inject
-            sealed class SealedExampleClass
+          @Inject
+          sealed class SealedExampleClass
 
-            @Inject
-            abstract class AbstractExampleClass
+          @Inject
+          abstract class AbstractExampleClass
 
-            @Inject
-            class HappyClass
+          @Inject
+          class HappyClass
           """
             .trimIndent(),
       ),
@@ -163,9 +164,9 @@ class InjectConstructorErrorsTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-            e: FinalClasses.kt:10:1 Only final and open classes be annotated with @Inject or have @Inject-annotated constructors.
-            e: FinalClasses.kt:13:1 Only final and open classes be annotated with @Inject or have @Inject-annotated constructors.
-          """
+        e: FinalClasses.kt:10:1 Only final and open classes be annotated with @Inject or have @Inject-annotated constructors.
+        e: FinalClasses.kt:13:1 Only final and open classes be annotated with @Inject or have @Inject-annotated constructors.
+        """
           .trimIndent()
       )
     }
@@ -176,11 +177,11 @@ class InjectConstructorErrorsTest : MetroCompilerTest() {
     compile(
       source(
         """
-            fun example() {
-              @Inject
-              class ExampleClass
-            }
-          """
+        fun example() {
+          @Inject
+          class ExampleClass
+        }
+        """
           .trimIndent()
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
@@ -198,19 +199,19 @@ class InjectConstructorErrorsTest : MetroCompilerTest() {
         fileNameWithoutExtension = "VisibleClasses",
         source =
           """
-            @Inject
-            private class PrivateClass
+          @Inject
+          private class PrivateClass
 
-            open class Example {
-              @Inject
-              protected class ProtectedClass
-            }
-
+          open class Example {
             @Inject
-            internal class HappyInternalClass
+            protected class ProtectedClass
+          }
 
-            @Inject
-            public class HappyPublicClass
+          @Inject
+          internal class HappyInternalClass
+
+          @Inject
+          public class HappyPublicClass
           """
             .trimIndent(),
       ),
@@ -218,9 +219,9 @@ class InjectConstructorErrorsTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-            e: VisibleClasses.kt:7:1 Injected classes must be public or internal.
-            e: VisibleClasses.kt:11:3 Injected classes must be public or internal.
-          """
+        e: VisibleClasses.kt:7:1 Injected classes must be public or internal.
+        e: VisibleClasses.kt:11:3 Injected classes must be public or internal.
+        """
           .trimIndent()
       )
     }
@@ -231,14 +232,14 @@ class InjectConstructorErrorsTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @Inject
-            class ExampleClass<T> {
-              @AssistedFactory
-              interface Factory {
-                fun <T> create(): ExampleClass<T>
-              }
-            }
-          """
+        @Inject
+        class ExampleClass<T> {
+          @AssistedFactory
+          interface Factory {
+            fun <T> create(): ExampleClass<T>
+          }
+        }
+        """
           .trimIndent()
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,

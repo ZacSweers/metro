@@ -128,29 +128,44 @@ interface ExampleGraph : $$MetroContributionToAppScope {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class $$MetroGraph : ExampleGraph {
-    private /* final field */ val thisGraphInstance: ExampleGraph = <this>
-    private /* final field */ val exampleGraphProvider: Provider<ExampleGraph> = Companion.invoke<ExampleGraph>(value = <this>.#thisGraphInstance)
-    private /* final field */ val provide4Provider: Provider<Task> = Companion.create(instance = <this>.#thisGraphInstance)
-    private /* final field */ val provide3Provider: Provider<Task> = Companion.create(instance = <this>.#thisGraphInstance)
+    private val thisGraphInstance: ExampleGraph
+      field = <this>
+
+    private val exampleGraphProvider: Provider<ExampleGraph>
+      field = Companion.invoke<ExampleGraph>(value = <this>.#thisGraphInstance)
+
     @DependencyGraph(scope = Unit::class)
     inner class LoggedInGraphImpl : LoggedInGraph {
-      private /* final field */ val provide4Provider: Provider<Task> = Companion.create(instance = <this>)
-      private /* final field */ val provide3Provider: Provider<Task> = Companion.create(instance = <this>)
       constructor() /* primary */ {
         super/*Any*/()
         /* <init>() */
 
       }
 
-      override val tasksFromParent: Set<Task>
-        override get(): Set<Task> {
+      private val provide3: Task
+        private get(): Task {
+          return Companion.create(instance = <this>).invoke()
+        }
+
+      private val provide4: Task
+        private get(): Task {
+          return Companion.create(instance = <this>).invoke()
+        }
+
+      private val setOfTask: Set<Task>
+        private get(): Set<Task> {
           return buildSet<Task>(capacity = 4, builderAction = local fun MutableSet<Task>.<anonymous>() {
-            $receiver.add(element = <this>.#provide4Provider.invoke())
-            $receiver.add(element = <this>.#provide3Provider.invoke())
+            $receiver.add(element = Companion.invoke<Task>(value = <this>.<get-provide4>()).invoke())
+            $receiver.add(element = Companion.invoke<Task>(value = <this>.<get-provide3>()).invoke())
             $receiver.add(element = $$MetroFactory.create().invoke())
             $receiver.add(element = $$MetroFactory.create().invoke())
           }
 )
+        }
+
+      override val tasksFromParent: Set<Task>
+        override get(): Set<Task> {
+          return <this>.<get-setOfTask>()
         }
 
     }
@@ -179,15 +194,30 @@ interface ExampleGraph : $$MetroContributionToAppScope {
         return error(message = "Never called")
       }
 
-    override val tasks: Set<Task>
-      override get(): Set<Task> {
+    private val provide3: Task
+      private get(): Task {
+        return Companion.create(instance = <this>.#thisGraphInstance).invoke()
+      }
+
+    private val provide4: Task
+      private get(): Task {
+        return Companion.create(instance = <this>.#thisGraphInstance).invoke()
+      }
+
+    private val setOfTask: Set<Task>
+      private get(): Set<Task> {
         return buildSet<Task>(capacity = 4, builderAction = local fun MutableSet<Task>.<anonymous>() {
-          $receiver.add(element = <this>.#provide4Provider.invoke())
-          $receiver.add(element = <this>.#provide3Provider.invoke())
+          $receiver.add(element = Companion.invoke<Task>(value = <this>.<get-provide4>()).invoke())
+          $receiver.add(element = Companion.invoke<Task>(value = <this>.<get-provide3>()).invoke())
           $receiver.add(element = $$MetroFactory.create().invoke())
           $receiver.add(element = $$MetroFactory.create().invoke())
         }
 )
+      }
+
+    override val tasks: Set<Task>
+      override get(): Set<Task> {
+        return <this>.<get-setOfTask>()
       }
 
   }

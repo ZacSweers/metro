@@ -45,10 +45,10 @@ import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.transformMultiboundQualifier
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
+import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
-import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.backend.common.IrElementTransformerVoidWithContext
 import org.jetbrains.kotlin.backend.common.ScopeWithIr
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -74,6 +74,7 @@ import org.jetbrains.kotlin.ir.util.isLocal
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.primaryConstructor
+import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.ClassId
 
@@ -289,7 +290,12 @@ internal class DependencyGraphTransformer(
         node.sourceGraph.metroGraphOrFail,
       )
 
-    val fieldNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
+    val propertyNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
+
+    // Preallocate any existing property and field names in this graph
+    for (property in node.metroGraphOrFail.properties) {
+      propertyNameAllocator.newName(property.name.asString())
+    }
 
     // Before validating/sealing the parent graph, analyze contributed child graphs to
     // determine any parent-scoped static bindings that are required by children and
@@ -350,7 +356,7 @@ internal class DependencyGraphTransformer(
 
       // Transform the contributed graphs
       // Push the parent graph for all contributed graph processing
-      localParentContext.pushParentGraph(node, fieldNameAllocator)
+      localParentContext.pushParentGraph(node, propertyNameAllocator)
 
       // Second pass on graph extensions to actually process them and create GraphExtension bindings
       for ((contributedGraphKey, accessors) in node.graphExtensions) {
@@ -419,7 +425,7 @@ internal class DependencyGraphTransformer(
         for (key in usedKeys) {
           val contextKey = IrContextualTypeKey.create(key)
           bindingGraph.keep(contextKey, IrBindingStack.Entry.simpleTypeRef(contextKey))
-          bindingGraph.reserveField(key, localParentContext.getFieldAccess(key)!!)
+          bindingGraph.reserveProperty(key, localParentContext.getPropertyAccess(key)!!)
         }
       }
 
@@ -509,7 +515,7 @@ internal class DependencyGraphTransformer(
             graphClass = metroGraph,
             bindingGraph = bindingGraph,
             sealResult = result,
-            fieldNameAllocator = fieldNameAllocator,
+            propertyNameAllocator = propertyNameAllocator,
             parentTracer = tracer,
             bindingContainerTransformer = bindingContainerTransformer,
             membersInjectorTransformer = membersInjectorTransformer,
@@ -595,11 +601,10 @@ internal class DependencyGraphTransformer(
           body =
             pluginContext.createIrBuilder(symbol).run {
               irExprBodySafe(
-                symbol,
                 irCallConstructorWithSameParameters(
                   source = createFunction,
                   constructor = metroGraph.primaryConstructor!!.symbol,
-                ),
+                )
               )
             }
         }
@@ -628,8 +633,7 @@ internal class DependencyGraphTransformer(
               body =
                 pluginContext.createIrBuilder(symbol).run {
                   irExprBodySafe(
-                    symbol,
-                    irCallConstructor(factoryImpl.primaryConstructor!!.symbol, emptyList()),
+                    irCallConstructor(factoryImpl.primaryConstructor!!.symbol, emptyList())
                   )
                 }
             }
@@ -645,10 +649,7 @@ internal class DependencyGraphTransformer(
           }
           body =
             pluginContext.createIrBuilder(symbol).run {
-              irExprBodySafe(
-                symbol,
-                irCallConstructor(metroGraph.primaryConstructor!!.symbol, emptyList()),
-              )
+              irExprBodySafe(irCallConstructor(metroGraph.primaryConstructor!!.symbol, emptyList()))
             }
         }
       }

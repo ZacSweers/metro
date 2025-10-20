@@ -641,7 +641,7 @@ internal class BindingGraphGenerator(
 
         // Add bindings for the parent itself as a field reference
         // TODO it would be nice if we could do this lazily with addLazyParentKey
-        val fieldAccess =
+        val propertyAccess =
           parentContext.mark(parentKey) ?: reportCompilerBug("Missing parent key $parentKey")
         graph.addBinding(
           parentKey,
@@ -650,7 +650,7 @@ internal class BindingGraphGenerator(
             "parent",
             parentNode.sourceGraph,
             classReceiverParameter = parentNodeClass.thisReceiver,
-            providerFieldAccess = fieldAccess,
+            providerPropertyAccess = propertyAccess,
           ),
           bindingStack,
         )
@@ -684,11 +684,11 @@ internal class BindingGraphGenerator(
           val fieldAccess = parentContext.mark(key) ?: reportCompilerBug("Missing parent key $key")
 
           // Record a lookup for IC when the binding is actually created
-          val fieldParentClass = fieldAccess.field.parentAsClass
+          val fieldParentClass = fieldAccess.property.parentAsClass
           trackMemberDeclarationCall(
             node.sourceGraph,
             fieldParentClass.kotlinFqName,
-            fieldAccess.field.name.asString(),
+            fieldAccess.property.name.asString(),
           )
 
           if (key == fieldAccess.parentKey) {
@@ -696,15 +696,15 @@ internal class BindingGraphGenerator(
             IrBinding.BoundInstance(
               key,
               "parent",
-              fieldAccess.field,
+              fieldAccess.property,
               classReceiverParameter = fieldAccess.receiverParameter,
-              providerFieldAccess = fieldAccess,
+              providerPropertyAccess = fieldAccess,
             )
           } else {
             IrBinding.GraphDependency(
               ownerKey = parentKeysByClass.getValue(fieldParentClass),
               graph = node.sourceGraph,
-              fieldAccess = fieldAccess,
+              propertyAccess = fieldAccess,
               typeKey = key,
             )
           }

@@ -22,7 +22,8 @@ public annotation class ContributesGraphExtension(
   @Deprecated(
     "Use @GraphExtension.Factory instead",
     ReplaceWith(
-      expression = """
+      expression =
+        """
         @ContributesTo(scope) @GraphExtension.Factory
       """,
       imports = ["dev.zacsweers.metro.GraphExtension.Factory", "dev.zacsweers.metro.ContributesTo"],

@@ -13,6 +13,8 @@ import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirFunctionCallChecker
+import org.jetbrains.kotlin.fir.analysis.checkers.findClosestClassOrObject
+import org.jetbrains.kotlin.fir.declarations.utils.isLocalClassOrAnonymousObject
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.FirSpreadArgumentExpression
@@ -20,7 +22,7 @@ import org.jetbrains.kotlin.fir.expressions.FirVarargArgumentsExpression
 import org.jetbrains.kotlin.fir.expressions.arguments
 import org.jetbrains.kotlin.fir.expressions.toResolvedCallableSymbol
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
-import org.jetbrains.kotlin.fir.types.classId
+import org.jetbrains.kotlin.fir.symbols.impl.FirAnonymousObjectSymbol
 import org.jetbrains.kotlin.fir.types.classLikeLookupTagIfAny
 import org.jetbrains.kotlin.fir.types.resolvedType
 import org.jetbrains.kotlin.fir.types.toConeTypeProjection
@@ -96,8 +98,21 @@ internal object CreateGraphChecker : FirFunctionCallChecker(MppCheckerKind.Commo
       targetFunction == builtins.createDynamicGraph ||
         targetFunction == builtins.createDynamicGraphFactory
     ) {
-      // TODO only in a function. No local classes. What about default parameter values or class
-      //  delegates
+      val containingClass = context.findClosestClassOrObject()
+      val isInLocalClass = containingClass?.isLocalClassOrAnonymousObject == true
+      if (isInLocalClass) {
+        val message =
+          if (containingClass is FirAnonymousObjectSymbol) {
+            "This call is inside an anonymous object."
+          } else {
+            "Containing class '${containingClass.name}' is a local class."
+          }
+        reporter.reportOn(
+          expression.source,
+          CREATE_DYNAMIC_GRAPH_ERROR,
+          "`${targetFunction.name}` can only be called from a top-level function or concrete class (non-anonymous, non-local). $message",
+        )
+      }
 
       if (expression.arguments.isEmpty()) {
         reporter.reportOn(

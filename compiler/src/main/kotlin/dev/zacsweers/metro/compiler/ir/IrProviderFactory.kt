@@ -51,7 +51,7 @@ internal sealed interface ProviderFactory : IrMetroFactory, IrBindingContainerCa
     override val annotations: MetroAnnotations<IrAnnotation>,
     override val parameters: Parameters,
     override val function: IrSimpleFunction,
-    override val isPropertyAccessor: Boolean
+    override val isPropertyAccessor: Boolean,
   ) : ProviderFactory {
     override val isDaggerFactory: Boolean = true
   }
@@ -64,7 +64,8 @@ internal sealed interface ProviderFactory : IrMetroFactory, IrBindingContainerCa
       mirrorFunction: IrSimpleFunction,
       sourceAnnotations: MetroAnnotations<IrAnnotation>?,
     ): Metro {
-      val callableMetadata = clazz.irCallableMetadata(mirrorFunction, sourceAnnotations, isInterop = false)
+      val callableMetadata =
+        clazz.irCallableMetadata(mirrorFunction, sourceAnnotations, isInterop = false)
       val typeKey = sourceTypeKey.copy(qualifier = callableMetadata.annotations.qualifier)
 
       return Metro(

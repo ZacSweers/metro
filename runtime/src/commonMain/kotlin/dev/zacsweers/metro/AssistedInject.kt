@@ -60,5 +60,4 @@ package dev.zacsweers.metro
  * Assisted injection is supported in top-level function injection, no need to use `@AssistedInject`
  * annotation. See [Inject] for more details.
  */
-@Target(AnnotationTarget.CLASS, AnnotationTarget.CONSTRUCTOR)
-public annotation class AssistedInject
+@Target(AnnotationTarget.CLASS, AnnotationTarget.CONSTRUCTOR) public annotation class AssistedInject

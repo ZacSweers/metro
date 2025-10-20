@@ -339,18 +339,38 @@ interface CycleGraph {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class $$MetroGraph : CycleGraph {
-    private /* final field */ val thisGraphInstance: CycleGraph = <this>
-    private /* final field */ val cycleGraphProvider: Provider<CycleGraph> = Companion.invoke<CycleGraph>(value = <this>.#thisGraphInstance)
-    private /* final field */ val cProvider: Provider<C> = DelegateFactory<C>()
-    private /* final field */ val provideObjectWithCycleProvider: Provider<Any> = DelegateFactory<Any>()
-    private /* final field */ val bProvider: Provider<B> = Companion.create(c = <this>.#cProvider)
-    private /* final field */ val aProvider: Provider<A> = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider)))
+    private val thisGraphInstance: CycleGraph
+      field = <this>
+
+    private val cycleGraphProvider: Provider<CycleGraph>
+      field = Companion.invoke<CycleGraph>(value = <this>.#thisGraphInstance)
+
+    private val cProvider: Provider<C>
+      field = DelegateFactory<C>()
+
+    private val provideObjectWithCycleProvider: Provider<Any>
+      field = DelegateFactory<Any>()
+
+    private val bProvider: Provider<B>
+      field = Companion.create(c = <this>.#cProvider)
+
+    private val aProvider: Provider<A>
+      field = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider)))
+
     @DependencyGraph
     inner class ChildCycleGraphImpl : ChildCycleGraph {
-      private /* final field */ val cProvider: Provider<C> = DelegateFactory<C>()
-      private /* final field */ val provideObjectWithCycleProvider: Provider<Any> = DelegateFactory<Any>()
-      private /* final field */ val bProvider: Provider<B> = Companion.create(c = <this>.#cProvider)
-      private /* final field */ val aProvider: Provider<A> = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider)))
+      private val cProvider: Provider<C>
+        field = DelegateFactory<C>()
+
+      private val provideObjectWithCycleProvider: Provider<Any>
+        field = DelegateFactory<Any>()
+
+      private val bProvider: Provider<B>
+        field = Companion.create(c = <this>.#cProvider)
+
+      private val aProvider: Provider<A>
+        field = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider)))
+
       private class FactoryImpl : Factory {
         private /* final field */ val parentInstance: $$MetroGraph = parentInstance
         constructor(parentInstance: $$MetroGraph) /* primary */ {

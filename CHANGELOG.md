@@ -4,6 +4,18 @@ Changelog
 **Unreleased**
 --------------
 
+- **Enhancement**: Improve code generation around multibinding collection builders and contributors, using more lazy getters in graph code gen.
+- **Enhancement**: Short-circuit empty map providers to `emptyMap()`.
+- **Enhancement**: Support default values for assisted parameter arguments in top-level function injection.
+- **Fix**: Compute `Optional` instance lazily when requested as a `Provider<Optional<T>>` and the underlying optional is not empty. Only applies to `@BindsOptionalOf` interop.
+- **Fix**: Interleave `setDelegate()` calls in correct order within initializer statements to ensure cycles with intermediate initialization don't crash. Sorry, word soup I know.
+- **Fix**: Don't generate duplicate `init()` functions when chunking initializers if graphs already have an explicit `init()` function.
+
+0.7.0
+------
+
+_2025-10-17_
+
 ### Dynamic Graphs
 
 Dynamic graphs are a powerful new feature of the Metro compiler that allows for dynamically replacing bindings in a given graph. To use them, you can pass in a vararg set of _binding containers_ to the `createDynamicGraph()` and `createDynamicGraphFactory()` intrinsics.
@@ -81,8 +93,10 @@ class TacoImpl(...) : Taco
 - **Fix**: Don't reserve provider fields for custom wrapper types like interoped `Optional` types, avoiding accidental eager initialization in cycles.
 - Change the warning key for redundant provides to more specific `REDUNDANT_PROVIDES`.
 
+Special thanks to [@erawhctim](https://github.com/erawhctim) and [@CharlieTap](https://github.com/CharlieTap) for contributing to this release!
+
 0.6.10
------
+------
 
 _2025-10-11_
 

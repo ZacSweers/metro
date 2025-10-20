@@ -20,7 +20,8 @@ package dev.zacsweers.metro
  * `Collection<T>` produced from the accumulation of values will be immutable.
  */
 @MustBeDocumented
-@Target(AnnotationTarget.FUNCTION,
+@Target(
+  AnnotationTarget.FUNCTION,
   AnnotationTarget.FIELD,
   AnnotationTarget.PROPERTY,
   AnnotationTarget.PROPERTY_GETTER,

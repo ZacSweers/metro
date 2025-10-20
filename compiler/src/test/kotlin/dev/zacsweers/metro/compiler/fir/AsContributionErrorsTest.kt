@@ -23,16 +23,16 @@ class AsContributionErrorsTest : MetroCompilerTest() {
         fileNameWithoutExtension = "graphs",
         source =
           """
-            @ContributesTo(AppScope::class)
-            interface ContributedInterface
-            @DependencyGraph(AppScope::class)
-            interface AppGraph
+          @ContributesTo(AppScope::class)
+          interface ContributedInterface
+          @DependencyGraph(AppScope::class)
+          interface AppGraph
 
-            fun example(appGraph: AppGraph) {
-              appGraph.asContribution<ContributedInterface>()
-              val contributed = appGraph.asContribution<ContributedInterface>()
-              val contributed2: ContributedInterface = appGraph.asContribution()
-            }
+          fun example(appGraph: AppGraph) {
+            appGraph.asContribution<ContributedInterface>()
+            val contributed = appGraph.asContribution<ContributedInterface>()
+            val contributed2: ContributedInterface = appGraph.asContribution()
+          }
           """
             .trimIndent(),
       )
@@ -46,16 +46,16 @@ class AsContributionErrorsTest : MetroCompilerTest() {
         fileNameWithoutExtension = "graphs",
         source =
           """
-            @ContributesTo(AppScope::class)
-            interface ContributedInterface
-            @DependencyGraph(AppScope::class)
-            interface AppGraph
+          @ContributesTo(AppScope::class)
+          interface ContributedInterface
+          @DependencyGraph(AppScope::class)
+          interface AppGraph
 
-            fun example(appGraph: AppGraph) {
-              appGraph.asContribution<AppGraph>()
-              val contributed = appGraph.asContribution<AppGraph>()
-              val contributed2: AppGraph = appGraph.asContribution()
-            }
+          fun example(appGraph: AppGraph) {
+            appGraph.asContribution<AppGraph>()
+            val contributed = appGraph.asContribution<AppGraph>()
+            val contributed2: AppGraph = appGraph.asContribution()
+          }
           """
             .trimIndent(),
       ),
@@ -63,9 +63,9 @@ class AsContributionErrorsTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: graphs.kt:12:27 `asContribution` type argument 'test.AppGraph' is the same as its receiver type. This is a useless cast.
-          e: graphs.kt:13:45 `asContribution` type argument 'test.AppGraph' is the same as its receiver type. This is a useless cast.
-          e: graphs.kt:14:41 `asContribution` type argument 'test.AppGraph' is the same as its receiver type. This is a useless cast.
+        e: graphs.kt:12:27 `asContribution` type argument 'test.AppGraph' is the same as its receiver type. This is a useless cast.
+        e: graphs.kt:13:45 `asContribution` type argument 'test.AppGraph' is the same as its receiver type. This is a useless cast.
+        e: graphs.kt:14:41 `asContribution` type argument 'test.AppGraph' is the same as its receiver type. This is a useless cast.
         """
           .trimIndent()
       )
@@ -79,17 +79,17 @@ class AsContributionErrorsTest : MetroCompilerTest() {
         fileNameWithoutExtension = "graphs",
         source =
           """
-            interface Base
-            @ContributesTo(AppScope::class)
-            interface ContributedInterface : Base
-            @DependencyGraph(AppScope::class)
-            interface AppGraph
+          interface Base
+          @ContributesTo(AppScope::class)
+          interface ContributedInterface : Base
+          @DependencyGraph(AppScope::class)
+          interface AppGraph
 
-            fun example(appGraph: AppGraph) {
-              appGraph.asContribution<Base>()
-              val contributed = appGraph.asContribution<Base>()
-              val contributed2: Base = appGraph.asContribution()
-            }
+          fun example(appGraph: AppGraph) {
+            appGraph.asContribution<Base>()
+            val contributed = appGraph.asContribution<Base>()
+            val contributed2: Base = appGraph.asContribution()
+          }
           """
             .trimIndent(),
       )
@@ -103,17 +103,17 @@ class AsContributionErrorsTest : MetroCompilerTest() {
         fileNameWithoutExtension = "graphs",
         source =
           """
-            interface Base<T>
-            @ContributesTo(AppScope::class)
-            interface ContributedInterface : Base<String>
-            @DependencyGraph(AppScope::class)
-            interface AppGraph
+          interface Base<T>
+          @ContributesTo(AppScope::class)
+          interface ContributedInterface : Base<String>
+          @DependencyGraph(AppScope::class)
+          interface AppGraph
 
-            fun example(appGraph: AppGraph) {
-              appGraph.asContribution<Base<String>>()
-              val contributed = appGraph.asContribution<Base<String>>()
-              val contributed2: Base<String> = appGraph.asContribution()
-            }
+          fun example(appGraph: AppGraph) {
+            appGraph.asContribution<Base<String>>()
+            val contributed = appGraph.asContribution<Base<String>>()
+            val contributed2: Base<String> = appGraph.asContribution()
+          }
           """
             .trimIndent(),
       )
@@ -127,17 +127,17 @@ class AsContributionErrorsTest : MetroCompilerTest() {
         fileNameWithoutExtension = "graphs",
         source =
           """
-            interface Base<T>
-            @ContributesTo(AppScope::class)
-            interface ContributedInterface : Base<String>
-            @DependencyGraph(AppScope::class)
-            interface AppGraph
+          interface Base<T>
+          @ContributesTo(AppScope::class)
+          interface ContributedInterface : Base<String>
+          @DependencyGraph(AppScope::class)
+          interface AppGraph
 
-            fun example(appGraph: AppGraph) {
-              appGraph.asContribution<Base<Int>>()
-              val contributed = appGraph.asContribution<Base<Int>>()
-              val contributed2: Base<Int> = appGraph.asContribution()
-            }
+          fun example(appGraph: AppGraph) {
+            appGraph.asContribution<Base<Int>>()
+            val contributed = appGraph.asContribution<Base<Int>>()
+            val contributed2: Base<Int> = appGraph.asContribution()
+          }
           """
             .trimIndent(),
       ),
@@ -145,9 +145,9 @@ class AsContributionErrorsTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: graphs.kt:13:27 `asContribution` type argument 'test.Base' is not a merged supertype of test.AppGraph.
-          e: graphs.kt:14:45 `asContribution` type argument 'test.Base' is not a merged supertype of test.AppGraph.
-          e: graphs.kt:15:42 `asContribution` type argument 'test.Base' is not a merged supertype of test.AppGraph.
+        e: graphs.kt:13:27 `asContribution` type argument 'test.Base' is not a merged supertype of test.AppGraph.
+        e: graphs.kt:14:45 `asContribution` type argument 'test.Base' is not a merged supertype of test.AppGraph.
+        e: graphs.kt:15:42 `asContribution` type argument 'test.Base' is not a merged supertype of test.AppGraph.
         """
           .trimIndent()
       )
@@ -161,15 +161,15 @@ class AsContributionErrorsTest : MetroCompilerTest() {
         fileNameWithoutExtension = "graphs",
         source =
           """
-            @ContributesTo(AppScope::class)
-            interface ContributedInterface
-            interface AppGraph
+          @ContributesTo(AppScope::class)
+          interface ContributedInterface
+          interface AppGraph
 
-            fun example(appGraph: AppGraph) {
-              appGraph.asContribution<ContributedInterface>()
-              val contributed = appGraph.asContribution<ContributedInterface>()
-              val contributed2: ContributedInterface = appGraph.asContribution()
-            }
+          fun example(appGraph: AppGraph) {
+            appGraph.asContribution<ContributedInterface>()
+            val contributed = appGraph.asContribution<ContributedInterface>()
+            val contributed2: ContributedInterface = appGraph.asContribution()
+          }
           """
             .trimIndent(),
       ),
@@ -177,10 +177,10 @@ class AsContributionErrorsTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-            e: graphs.kt:11:3 `asContribution` receiver must be annotated with a `@DependencyGraph` annotation.
-            e: graphs.kt:12:21 `asContribution` receiver must be annotated with a `@DependencyGraph` annotation.
-            e: graphs.kt:13:44 `asContribution` receiver must be annotated with a `@DependencyGraph` annotation.
-          """
+        e: graphs.kt:11:3 `asContribution` receiver must be annotated with a `@DependencyGraph` annotation.
+        e: graphs.kt:12:21 `asContribution` receiver must be annotated with a `@DependencyGraph` annotation.
+        e: graphs.kt:13:44 `asContribution` receiver must be annotated with a `@DependencyGraph` annotation.
+        """
           .trimIndent()
       )
     }
@@ -193,20 +193,20 @@ class AsContributionErrorsTest : MetroCompilerTest() {
         fileNameWithoutExtension = "main",
         source =
           """
-            @GraphExtension(Unit::class)
-            interface UnitGraph {
-              @GraphExtension.Factory @ContributesTo(AppScope::class)
-              interface Factory {
-                fun createUnitGraph(): UnitGraph
-              }
+          @GraphExtension(Unit::class)
+          interface UnitGraph {
+            @GraphExtension.Factory @ContributesTo(AppScope::class)
+            interface Factory {
+              fun createUnitGraph(): UnitGraph
             }
+          }
 
-            @DependencyGraph(AppScope::class)
-            interface ExampleGraph
+          @DependencyGraph(AppScope::class)
+          interface ExampleGraph
 
-            fun main(exampleGraph: ExampleGraph): UnitGraph.Factory {
-              return exampleGraph.asContribution<UnitGraph.Factory>()
-            }
+          fun main(exampleGraph: ExampleGraph): UnitGraph.Factory {
+            return exampleGraph.asContribution<UnitGraph.Factory>()
+          }
           """
             .trimIndent(),
       )

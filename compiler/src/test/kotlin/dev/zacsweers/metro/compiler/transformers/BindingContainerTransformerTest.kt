@@ -31,11 +31,11 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @DependencyGraph
-            interface ExampleGraph {
-              @Provides
-              fun provideValue(): String = "Hello, world!"
-            }
+          @DependencyGraph
+          interface ExampleGraph {
+            @Provides
+            fun provideValue(): String = "Hello, world!"
+          }
           """
             .trimIndent()
         )
@@ -58,11 +58,11 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @DependencyGraph
-            interface ExampleGraph {
-              @Provides
-              val value: String get() = "Hello, world!"
-            }
+          @DependencyGraph
+          interface ExampleGraph {
+            @Provides
+            val value: String get() = "Hello, world!"
+          }
           """
             .trimIndent()
         )
@@ -85,13 +85,13 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @DependencyGraph
-            interface ExampleGraph {
-              companion object {
-                @Provides
-                fun provideValue(): String = "Hello, world!"
-              }
+          @DependencyGraph
+          interface ExampleGraph {
+            companion object {
+              @Provides
+              fun provideValue(): String = "Hello, world!"
             }
+          }
           """
             .trimIndent()
         )
@@ -116,13 +116,13 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @DependencyGraph
-            interface ExampleGraph {
-              companion object {
-                @Provides
-                val value: String get() = "Hello, world!"
-              }
+          @DependencyGraph
+          interface ExampleGraph {
+            companion object {
+              @Provides
+              val value: String get() = "Hello, world!"
             }
+          }
           """
             .trimIndent()
         )
@@ -147,14 +147,14 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       compile(
         source(
           $$"""
-            @DependencyGraph
-            interface ExampleGraph {
-              @Provides
-              fun provideIntValue(): Int = 1
+          @DependencyGraph
+          interface ExampleGraph {
+            @Provides
+            fun provideIntValue(): Int = 1
 
-              @Provides
-              fun provideStringValue(intValue: Int): String = "Hello, $intValue!"
-            }
+            @Provides
+            fun provideStringValue(intValue: Int): String = "Hello, $intValue!"
+          }
           """
             .trimIndent()
         )
@@ -179,12 +179,12 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       compile(
         source(
           $$"""
-            interface ExampleGraph {
-              companion object {
-                @Provides
-                fun provideStringValue(intValue: Int): String = "Hello, $intValue!"
-              }
+          interface ExampleGraph {
+            companion object {
+              @Provides
+              fun provideStringValue(intValue: Int): String = "Hello, $intValue!"
             }
+          }
           """
             .trimIndent()
         )
@@ -208,17 +208,17 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       compile(
         source(
           $$"""
-            @DependencyGraph
-            interface ExampleGraph {
-              @Provides
-              fun provideBooleanValue(): Boolean = false
+          @DependencyGraph
+          interface ExampleGraph {
+            @Provides
+            fun provideBooleanValue(): Boolean = false
 
-              @Provides
-              fun provideIntValue(): Int = 1
+            @Provides
+            fun provideIntValue(): Int = 1
 
-              @Provides
-              fun provideStringValue(intValue: Int, booleanValue: Boolean): String = "Hello, $intValue! $booleanValue"
-            }
+            @Provides
+            fun provideStringValue(intValue: Int, booleanValue: Boolean): String = "Hello, $intValue! $booleanValue"
+          }
           """
             .trimIndent()
         )
@@ -244,17 +244,17 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       compile(
         source(
           $$"""
-            @DependencyGraph
-            interface ExampleGraph {
-              @Provides
-              fun provideIntValue(): Int = 1
+          @DependencyGraph
+          interface ExampleGraph {
+            @Provides
+            fun provideIntValue(): Int = 1
 
-              @Provides
-              fun provideStringValue(
-                intValue: Int,
-                intValue2: Int
-              ): String = "Hello, $intValue - $intValue2!"
-            }
+            @Provides
+            fun provideStringValue(
+              intValue: Int,
+              intValue2: Int
+            ): String = "Hello, $intValue - $intValue2!"
+          }
           """
             .trimIndent()
         )
@@ -280,21 +280,21 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       compile(
         source(
           $$"""
-            @DependencyGraph
-            interface ExampleGraph {
-              @Provides
-              fun provideIntValue(): Int = 1
+          @DependencyGraph
+          interface ExampleGraph {
+            @Provides
+            fun provideIntValue(): Int = 1
 
-              @Named("int2")
-              @Provides
-              fun provideIntValue2(): Int = 1
+            @Named("int2")
+            @Provides
+            fun provideIntValue2(): Int = 1
 
-              @Provides
-              fun provideStringValue(
-                intValue: Int,
-                @Named("int2") intValue2: Int
-              ): String = "Hello, $intValue - $intValue2!"
-            }
+            @Provides
+            fun provideStringValue(
+              intValue: Int,
+              @Named("int2") intValue2: Int
+            ): String = "Hello, $intValue - $intValue2!"
+          }
           """
             .trimIndent()
         )
@@ -320,11 +320,11 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @DependencyGraph
-            interface ExampleGraph {
-              @Provides
-              private fun String.provideValue(): Int = length
-            }
+          @DependencyGraph
+          interface ExampleGraph {
+            @Provides
+            private fun String.provideValue(): Int = length
+          }
           """
             .trimIndent()
         ),
@@ -333,7 +333,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
 
     result.assertDiagnostics(
       """
-        e: ExampleGraph.kt:9:22 `@Provides` functions may not be extension functions. Use `@Binds` instead for these. See https://zacsweers.github.io/metro/latest/bindings/#binds for more information.
+      e: ExampleGraph.kt:9:22 `@Provides` functions may not be extension functions. Use `@Binds` instead for these. See https://zacsweers.github.io/metro/latest/bindings/#binds for more information.
       """
         .trimIndent()
     )
@@ -345,9 +345,9 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       compile(
         source(
           """
-            interface Base {
-              @Provides fun provideInt(): Int = 2
-            }
+          interface Base {
+            @Provides fun provideInt(): Int = 2
+          }
           """
             .trimIndent()
         )
@@ -356,10 +356,10 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph
-          interface ExampleGraph : Base {
-            val int: Int
-          }
+        @DependencyGraph
+        interface ExampleGraph : Base {
+          val int: Int
+        }
         """
           .trimIndent()
       ),
@@ -376,9 +376,9 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       compile(
         source(
           """
-            interface Base {
-              @Provides @Named("int") fun provideInt(): Int = 2
-            }
+          interface Base {
+            @Provides @Named("int") fun provideInt(): Int = 2
+          }
           """
             .trimIndent()
         )
@@ -387,11 +387,11 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph
-          interface ExampleGraph : Base {
-            @Named("int")
-            val int: Int
-          }
+        @DependencyGraph
+        interface ExampleGraph : Base {
+          @Named("int")
+          val int: Int
+        }
         """
           .trimIndent()
       ),
@@ -408,9 +408,9 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       compile(
         source(
           """
-            interface Base {
-              @Provides fun provideString(value: Int = 2): String = value.toString()
-            }
+          interface Base {
+            @Provides fun provideString(value: Int = 2): String = value.toString()
+          }
           """
             .trimIndent()
         )
@@ -419,10 +419,10 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph
-          interface ExampleGraph : Base {
-            val string: String
-          }
+        @DependencyGraph
+        interface ExampleGraph : Base {
+          val string: String
+        }
         """
           .trimIndent()
       ),
@@ -439,9 +439,9 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       compile(
         source(
           """
-            interface Base {
-              @Provides private fun provideInt(): Int = 2
-            }
+          interface Base {
+            @Provides private fun provideInt(): Int = 2
+          }
           """
             .trimIndent()
         )
@@ -450,10 +450,10 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph
-          interface ExampleGraph : Base {
-            val int: Int
-          }
+        @DependencyGraph
+        interface ExampleGraph : Base {
+          val int: Int
+        }
         """
           .trimIndent()
       ),
@@ -469,20 +469,20 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
     compile(
         source(
           """
-            @DependencyGraph
-            interface ExampleGraph {
-              val unitFunction: () -> Unit
-              val intFunction: () -> Int
-              val intIntFunction: (Int) -> Int
-              val floatReceiverFloatFunction: Float.() -> Float
-              val suspendBooleanFunction: suspend () -> Boolean
+          @DependencyGraph
+          interface ExampleGraph {
+            val unitFunction: () -> Unit
+            val intFunction: () -> Int
+            val intIntFunction: (Int) -> Int
+            val floatReceiverFloatFunction: Float.() -> Float
+            val suspendBooleanFunction: suspend () -> Boolean
 
-              @Provides fun provideUnitFunction(): () -> Unit = { println("Hello, world!") }
-              @Provides fun provideIntFunction(): () -> Int = { 2 }
-              @Provides fun provideIntIntFunction(): (Int) -> Int = { 2 * it }
-              @Provides fun provideFloatReceiverFloatFunction(): Float.() -> Float = { 2 * this }
-              @Provides fun provideSuspendBooleanFunction(): suspend () -> Boolean = { true }
-            }
+            @Provides fun provideUnitFunction(): () -> Unit = { println("Hello, world!") }
+            @Provides fun provideIntFunction(): () -> Int = { 2 }
+            @Provides fun provideIntIntFunction(): (Int) -> Int = { 2 * it }
+            @Provides fun provideFloatReceiverFloatFunction(): Float.() -> Float = { 2 * this }
+            @Provides fun provideSuspendBooleanFunction(): suspend () -> Boolean = { true }
+          }
           """
             .trimIndent()
         )
@@ -506,16 +506,16 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       compile(
         source(
           """
-            interface EnabledProvider {
-              @Qualifier @Retention(BINARY) private annotation class FlipperEnabled
+          interface EnabledProvider {
+            @Qualifier @Retention(BINARY) private annotation class FlipperEnabled
 
-              @FlipperEnabled
-              @Provides
-              private fun provideEnabled(): Boolean = true
+            @FlipperEnabled
+            @Provides
+            private fun provideEnabled(): Boolean = true
 
-              @Provides
-              private fun provideEnabledValue(@FlipperEnabled enabled: Boolean): String = enabled.toString()
-            }
+            @Provides
+            private fun provideEnabledValue(@FlipperEnabled enabled: Boolean): String = enabled.toString()
+          }
           """
             .trimIndent(),
           extraImports =
@@ -526,10 +526,10 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph
-          interface ExampleGraph : EnabledProvider {
-            val value: String
-          }
+        @DependencyGraph
+        interface ExampleGraph : EnabledProvider {
+          val value: String
+        }
         """
           .trimIndent()
       ),
@@ -542,19 +542,19 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-          interface Base {
-            @Provides fun provideInt(): Int = 2
-            @Provides fun provideNullNullableInt(): Int? = null
-            @Provides fun provideString(): String = "Hello"
-            @Provides fun provideNotNullNullableString(): String? = "NullableHello"
-          }
-          @DependencyGraph
-          interface ExampleGraph : Base {
-            val int: Int
-            val nullableInt: Int?
-            val string: String
-            val nullableString: String?
-          }
+        interface Base {
+          @Provides fun provideInt(): Int = 2
+          @Provides fun provideNullNullableInt(): Int? = null
+          @Provides fun provideString(): String = "Hello"
+          @Provides fun provideNotNullNullableString(): String? = "NullableHello"
+        }
+        @DependencyGraph
+        interface ExampleGraph : Base {
+          val int: Int
+          val nullableInt: Int?
+          val string: String
+          val nullableString: String?
+        }
         """
           .trimIndent()
       )
@@ -575,30 +575,30 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
         SourceFile.java(
           "SomeSubcomponent.java",
           """
-            import dagger.Subcomponent;
+          import dagger.Subcomponent;
 
-            @Subcomponent
-            public interface SomeSubcomponent {
-              @Subcomponent.Factory
-              interface Factory {
-                SomeSubcomponent create();
-              }
+          @Subcomponent
+          public interface SomeSubcomponent {
+            @Subcomponent.Factory
+            interface Factory {
+              SomeSubcomponent create();
             }
+          }
           """
             .trimIndent(),
         ),
         SourceFile.java(
           "ExampleModule.java",
           """
-            import dagger.Provides;
-            import dagger.Module;
+          import dagger.Provides;
+          import dagger.Module;
 
-            @Module(subcomponents = SomeSubcomponent.class)
-            public class ExampleModule {
-              public ExampleModule() {
+          @Module(subcomponents = SomeSubcomponent.class)
+          public class ExampleModule {
+            public ExampleModule() {
 
-              }
             }
+          }
           """
             .trimIndent(),
         ),
@@ -607,8 +607,8 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(bindingContainers = [ExampleModule::class])
-          interface ExampleGraph
+        @DependencyGraph(bindingContainers = [ExampleModule::class])
+        interface ExampleGraph
         """
           .trimIndent()
       ),

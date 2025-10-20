@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.OptionalDependencyBehavior
-import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import org.jetbrains.kotlin.ir.IrElement
@@ -17,7 +16,6 @@ import org.jetbrains.kotlin.ir.expressions.IrGetValue
 import org.jetbrains.kotlin.ir.expressions.impl.IrCallImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrGetValueImpl
 import org.jetbrains.kotlin.ir.expressions.impl.fromSymbolOwner
-import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
@@ -41,6 +39,7 @@ internal fun copyParameterDefaultValues(
   targetParameters: List<IrValueParameter>,
   targetGraphParameter: IrValueParameter?,
   wrapInProvider: Boolean = false,
+  isTopLevelFunction: Boolean = false,
 ) {
   if (sourceParameters.isEmpty()) return
   check(sourceParameters.size == targetParameters.size) {
@@ -55,6 +54,15 @@ internal fun copyParameterDefaultValues(
 
   val transformer =
     object : IrTransformer<RemappingData>() {
+      override fun visitExpression(expression: IrExpression, data: RemappingData): IrExpression {
+        if (isTopLevelFunction) {
+          // https://youtrack.jetbrains.com/issue/KT-81656
+          expression.startOffset = SYNTHETIC_OFFSET
+          expression.endOffset = SYNTHETIC_OFFSET
+        }
+        return super.visitExpression(expression, data)
+      }
+
       override fun visitGetValue(expression: IrGetValue, data: RemappingData): IrExpression {
         // Check if the expression is the instance receiver
         if (expression.symbol == providerFunction?.dispatchReceiverParameter?.symbol) {

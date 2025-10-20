@@ -1093,6 +1093,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("BindsOptionalInAMultibindingCycle.kt")
+      public void testBindsOptionalInAMultibindingCycle() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/BindsOptionalInAMultibindingCycle.kt");
+      }
+
+      @Test
       @TestMetadata("BindsOptionalOfInterop.kt")
       public void testBindsOptionalOfInterop() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/BindsOptionalOfInterop.kt");

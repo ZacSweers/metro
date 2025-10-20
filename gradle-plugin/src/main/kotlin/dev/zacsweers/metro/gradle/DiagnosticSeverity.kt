@@ -12,5 +12,6 @@ public enum class DiagnosticSeverity {
   /** Emits a compiler error if encountered and fails compilation. */
   ERROR;
 
-  public val isEnabled: Boolean get() = this != DiagnosticSeverity.NONE
+  public val isEnabled: Boolean
+    get() = this != DiagnosticSeverity.NONE
 }
