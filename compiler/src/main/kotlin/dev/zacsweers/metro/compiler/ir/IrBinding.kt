@@ -377,7 +377,16 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
 
     override fun renderDescriptionDiagnostic(short: Boolean, underlineTypeKey: Boolean) =
       buildString {
-        // TODO
+        append('(')
+        append("@AssistedFactory")
+        append(' ')
+        type.parentClassOrNull?.let {
+          append(it.name.asString())
+          append('.')
+        }
+        append(typeKey.render(short = short, includeQualifier = false))
+        append(')')
+        append(' ')
         renderForDiagnostic(
           declaration = function,
           short = short,
