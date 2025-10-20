@@ -1938,7 +1938,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             fun provideString(): kotlin.String
                                  ~~~~~~~~~~~~~
         """
-        .trimIndent()
+          .trimIndent()
       )
   }
 }

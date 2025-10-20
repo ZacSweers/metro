@@ -442,8 +442,8 @@ class GraphExtensionTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ParentGraph.kt:8:35 Graph extension 'test.ChildGraph' has overlapping aggregation scopes with parent graph 'test.ParentGraph':
-          - dev.zacsweers.metro.AppScope
+        e: ParentGraph.kt:8:35 Graph extension 'test.ChildGraph' has overlapping aggregation scopes with parent graph 'test.ParentGraph':
+        - dev.zacsweers.metro.AppScope
         """
           .trimIndent()
       )
@@ -478,8 +478,8 @@ class GraphExtensionTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ParentGraph.kt:9:35 Graph extension 'test.ChildGraph' has overlapping scope annotations with parent graph 'test.ParentGraph':
-          - @SingleIn(dev.zacsweers.metro.AppScope::class)
+        e: ParentGraph.kt:9:35 Graph extension 'test.ChildGraph' has overlapping scope annotations with parent graph 'test.ParentGraph':
+        - @SingleIn(dev.zacsweers.metro.AppScope::class)
         """
           .trimIndent()
       )
@@ -525,8 +525,8 @@ class GraphExtensionTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: GrandParentGraph.kt Graph extension 'test.ChildGraph' has overlapping scope annotations with ancestor graphs':
-          - @dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class) (from ancestor 'test.GrandParentGraph')
+        e: GrandParentGraph.kt Graph extension 'test.ChildGraph' has overlapping scope annotations with ancestor graphs':
+        - @dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class) (from ancestor 'test.GrandParentGraph')
         """
           .trimIndent()
       )

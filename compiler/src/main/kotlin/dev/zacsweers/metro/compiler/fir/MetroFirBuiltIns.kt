@@ -50,7 +50,10 @@ internal class MetroFirBuiltIns(
 
   val createDynamicGraph by memoize {
     session.symbolProvider
-      .getTopLevelFunctionSymbols(Symbols.FqNames.metroRuntimePackage, Symbols.Names.createDynamicGraph)
+      .getTopLevelFunctionSymbols(
+        Symbols.FqNames.metroRuntimePackage,
+        Symbols.Names.createDynamicGraph,
+      )
       .first()
   }
 

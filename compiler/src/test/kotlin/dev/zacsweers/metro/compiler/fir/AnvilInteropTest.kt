@@ -27,7 +27,7 @@ class AnvilInteropTest : MetroCompilerTest() {
 
           @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 100)
           object LibImpl : ContributedInterface
-        """
+          """
             .trimIndent()
         ),
         options = metroOptions.withAnvilInterop(),
@@ -36,13 +36,13 @@ class AnvilInteropTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class)
-          object AppImpl : ContributedInterface
+        @com.squareup.anvil.annotations.ContributesBinding(AppScope::class)
+        object AppImpl : ContributedInterface
 
-          @DependencyGraph(scope = AppScope::class)
-          interface ExampleGraph {
-            val contributedInterface: ContributedInterface
-          }
+        @DependencyGraph(scope = AppScope::class)
+        interface ExampleGraph {
+          val contributedInterface: ContributedInterface
+        }
         """
           .trimIndent()
       ),
@@ -66,7 +66,7 @@ class AnvilInteropTest : MetroCompilerTest() {
 
           @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 1)
           object LibImpl : ContributedInterface
-        """
+          """
             .trimIndent()
         ),
         options = metroOptions.withAnvilInterop(),
@@ -75,13 +75,13 @@ class AnvilInteropTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 100)
-          object AppImpl : ContributedInterface
+        @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 100)
+        object AppImpl : ContributedInterface
 
-          @DependencyGraph(scope = AppScope::class)
-          interface ExampleGraph {
-            val contributedInterface: ContributedInterface
-          }
+        @DependencyGraph(scope = AppScope::class)
+        interface ExampleGraph {
+          val contributedInterface: ContributedInterface
+        }
         """
           .trimIndent()
       ),
@@ -100,21 +100,21 @@ class AnvilInteropTest : MetroCompilerTest() {
     compile(
       source(
         """
-          interface ContributedInterface
+        interface ContributedInterface
 
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class)
-          object Impl1 : ContributedInterface
+        @com.squareup.anvil.annotations.ContributesBinding(AppScope::class)
+        object Impl1 : ContributedInterface
 
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 10)
-          object Impl2 : ContributedInterface
+        @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 10)
+        object Impl2 : ContributedInterface
 
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 100)
-          object Impl3 : ContributedInterface
+        @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 100)
+        object Impl3 : ContributedInterface
 
-          @DependencyGraph(scope = AppScope::class)
-          interface ExampleGraph {
-            val contributedInterface: ContributedInterface
-          }
+        @DependencyGraph(scope = AppScope::class)
+        interface ExampleGraph {
+          val contributedInterface: ContributedInterface
+        }
         """
           .trimIndent()
       ),
@@ -135,22 +135,22 @@ class AnvilInteropTest : MetroCompilerTest() {
     compile(
       source(
         """
-          interface ContributedInterface
+        interface ContributedInterface
 
-          interface OtherInterface
+        interface OtherInterface
 
-          // Having two supertypes and an explicit binding type with Metro's @ContributesBinding
-          // annotation is the key piece of this repro
-          @ContributesBinding(AppScope::class, binding = binding<ContributedInterface>())
-          object Impl1 : ContributedInterface, OtherInterface
+        // Having two supertypes and an explicit binding type with Metro's @ContributesBinding
+        // annotation is the key piece of this repro
+        @ContributesBinding(AppScope::class, binding = binding<ContributedInterface>())
+        object Impl1 : ContributedInterface, OtherInterface
 
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 10)
-          object Impl2 : ContributedInterface
+        @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 10)
+        object Impl2 : ContributedInterface
 
-          @DependencyGraph(scope = AppScope::class)
-          interface ExampleGraph {
-            val contributedInterface: ContributedInterface
-          }
+        @DependencyGraph(scope = AppScope::class)
+        interface ExampleGraph {
+          val contributedInterface: ContributedInterface
+        }
 
         """
           .trimIndent()
@@ -182,7 +182,7 @@ class AnvilInteropTest : MetroCompilerTest() {
           @ContributesBinding(AppScope::class, binding<ContributedInterface>())
           @Inject
           class Impl1 : ContributedInterface, OtherInterface
-        """
+          """
             .trimIndent()
         )
       )
@@ -190,14 +190,14 @@ class AnvilInteropTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 10)
-          @Inject
-          class Impl2 : ContributedInterface
+        @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 10)
+        @Inject
+        class Impl2 : ContributedInterface
 
-          @DependencyGraph(scope = AppScope::class)
-          interface ExampleGraph {
-            val contributedInterface: ContributedInterface
-          }
+        @DependencyGraph(scope = AppScope::class)
+        interface ExampleGraph {
+          val contributedInterface: ContributedInterface
+        }
 
         """
           .trimIndent()
@@ -217,18 +217,18 @@ class AnvilInteropTest : MetroCompilerTest() {
     compile(
       source(
         """
-          interface ContributedInterface
+        interface ContributedInterface
 
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, boundType = ContributedInterface::class, rank = 10)
-          object Impl1 : ContributedInterface
+        @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, boundType = ContributedInterface::class, rank = 10)
+        object Impl1 : ContributedInterface
 
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 100)
-          object Impl2 : ContributedInterface
+        @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 100)
+        object Impl2 : ContributedInterface
 
-          @DependencyGraph(scope = AppScope::class)
-          interface ExampleGraph {
-            val contributedInterface: ContributedInterface
-          }
+        @DependencyGraph(scope = AppScope::class)
+        interface ExampleGraph {
+          val contributedInterface: ContributedInterface
+        }
         """
           .trimIndent()
       ),
@@ -246,18 +246,18 @@ class AnvilInteropTest : MetroCompilerTest() {
     compile(
       source(
         """
-          interface ContributedInterface
+        interface ContributedInterface
 
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, boundType = ContributedInterface::class, rank = 10)
-          object Impl1 : ContributedInterface
+        @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, boundType = ContributedInterface::class, rank = 10)
+        object Impl1 : ContributedInterface
 
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class)
-          object Impl2 : ContributedInterface
+        @com.squareup.anvil.annotations.ContributesBinding(AppScope::class)
+        object Impl2 : ContributedInterface
 
-          @DependencyGraph(scope = AppScope::class)
-          interface ExampleGraph {
-            val contributedInterface: ContributedInterface
-          }
+        @DependencyGraph(scope = AppScope::class)
+        interface ExampleGraph {
+          val contributedInterface: ContributedInterface
+        }
         """
           .trimIndent()
       ),
@@ -276,22 +276,22 @@ class AnvilInteropTest : MetroCompilerTest() {
     compile(
       source(
         """
-          interface ContributedInterface
+        interface ContributedInterface
+
+        @Named("Bob")
+        @com.squareup.anvil.annotations.ContributesBinding(AppScope::class)
+        object Impl1 : ContributedInterface
+
+        @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 100)
+        object Impl2 : ContributedInterface
+
+        @DependencyGraph(scope = AppScope::class)
+        interface ExampleGraph {
+          val contributedInterface: ContributedInterface
 
           @Named("Bob")
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class)
-          object Impl1 : ContributedInterface
-
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 100)
-          object Impl2 : ContributedInterface
-
-          @DependencyGraph(scope = AppScope::class)
-          interface ExampleGraph {
-            val contributedInterface: ContributedInterface
-
-            @Named("Bob")
-            val namedContributedInterface: ContributedInterface
-          }
+          val namedContributedInterface: ContributedInterface
+        }
         """
           .trimIndent()
       ),
@@ -314,15 +314,15 @@ class AnvilInteropTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @Target(AnnotationTarget.ANNOTATION_CLASS)
-            annotation class ThirdPartyQualifier
+          @Target(AnnotationTarget.ANNOTATION_CLASS)
+          annotation class ThirdPartyQualifier
 
-            @Target(
-              AnnotationTarget.CLASS,
-              AnnotationTarget.PROPERTY,
-            )
-            @ThirdPartyQualifier
-            annotation class CompanyFeature
+          @Target(
+            AnnotationTarget.CLASS,
+            AnnotationTarget.PROPERTY,
+          )
+          @ThirdPartyQualifier
+          annotation class CompanyFeature
           """
             .trimIndent()
         ),
@@ -332,22 +332,22 @@ class AnvilInteropTest : MetroCompilerTest() {
     compile(
       source(
         """
-          interface ContributedInterface
+        interface ContributedInterface
+
+        @CompanyFeature
+        @com.squareup.anvil.annotations.ContributesBinding(AppScope::class)
+        object Impl1 : ContributedInterface
+
+        @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 100)
+        object Impl2 : ContributedInterface
+
+        @DependencyGraph(scope = AppScope::class)
+        interface ExampleGraph {
+          val contributedInterface: ContributedInterface
 
           @CompanyFeature
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class)
-          object Impl1 : ContributedInterface
-
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 100)
-          object Impl2 : ContributedInterface
-
-          @DependencyGraph(scope = AppScope::class)
-          interface ExampleGraph {
-            val contributedInterface: ContributedInterface
-
-            @CompanyFeature
-            val qualifiedContributedInterface: ContributedInterface
-          }
+          val qualifiedContributedInterface: ContributedInterface
+        }
         """
           .trimIndent()
       ),
@@ -373,18 +373,18 @@ class AnvilInteropTest : MetroCompilerTest() {
     compile(
       source(
         """
-          interface ContributedInterface
+        interface ContributedInterface
 
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, replaces = [Impl2::class], rank = 10)
-          object Impl1 : ContributedInterface
+        @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, replaces = [Impl2::class], rank = 10)
+        object Impl1 : ContributedInterface
 
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 100)
-          object Impl2 : ContributedInterface
+        @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 100)
+        object Impl2 : ContributedInterface
 
-          @DependencyGraph(scope = AppScope::class)
-          interface ExampleGraph {
-            val contributedInterface: ContributedInterface
-          }
+        @DependencyGraph(scope = AppScope::class)
+        interface ExampleGraph {
+          val contributedInterface: ContributedInterface
+        }
         """
           .trimIndent()
       ),
@@ -402,21 +402,21 @@ class AnvilInteropTest : MetroCompilerTest() {
     compile(
       source(
         """
-          interface ContributedInterface
+        interface ContributedInterface
 
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 100)
-          object Impl1 : ContributedInterface
+        @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 100)
+        object Impl1 : ContributedInterface
 
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class)
-          object Impl2 : ContributedInterface
+        @com.squareup.anvil.annotations.ContributesBinding(AppScope::class)
+        object Impl2 : ContributedInterface
 
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 100)
-          object Impl3 : ContributedInterface
+        @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 100)
+        object Impl3 : ContributedInterface
 
-          @DependencyGraph(scope = AppScope::class)
-          interface ExampleGraph {
-            val contributedInterface: ContributedInterface
-          }
+        @DependencyGraph(scope = AppScope::class)
+        interface ExampleGraph {
+          val contributedInterface: ContributedInterface
+        }
         """
           .trimIndent()
       ),
@@ -425,14 +425,14 @@ class AnvilInteropTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ContributedInterface.kt:18:11 [Metro/DuplicateBinding] Multiple bindings found for test.ContributedInterface
+        e: ContributedInterface.kt:18:11 [Metro/DuplicateBinding] Multiple bindings found for test.ContributedInterface
 
-            ContributedInterface.kt:8:1
-              test.Impl1 contributes a binding of test.ContributedInterface
-                                                  ~~~~~~~~~~~~~~~~~~~~~~~~~
-            ContributedInterface.kt:14:1
-              test.Impl3 contributes a binding of test.ContributedInterface
-                                                  ~~~~~~~~~~~~~~~~~~~~~~~~~
+          ContributedInterface.kt:8:1
+            test.Impl1 contributes a binding of test.ContributedInterface
+                                                ~~~~~~~~~~~~~~~~~~~~~~~~~
+          ContributedInterface.kt:14:1
+            test.Impl3 contributes a binding of test.ContributedInterface
+                                                ~~~~~~~~~~~~~~~~~~~~~~~~~
         """
           .trimIndent()
       )
@@ -444,18 +444,18 @@ class AnvilInteropTest : MetroCompilerTest() {
     compile(
       source(
         """
-          interface ContributedInterface
+        interface ContributedInterface
 
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class)
-          object Impl1 : ContributedInterface
+        @com.squareup.anvil.annotations.ContributesBinding(AppScope::class)
+        object Impl1 : ContributedInterface
 
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 10)
-          object Impl2 : ContributedInterface
+        @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 10)
+        object Impl2 : ContributedInterface
 
-          @DependencyGraph(scope = AppScope::class)
-          interface ExampleGraph {
-            val contributedInterface: ContributedInterface
-          }
+        @DependencyGraph(scope = AppScope::class)
+        interface ExampleGraph {
+          val contributedInterface: ContributedInterface
+        }
         """
           .trimIndent()
       ),
@@ -469,14 +469,14 @@ class AnvilInteropTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ContributedInterface.kt:15:11 [Metro/DuplicateBinding] Multiple bindings found for test.ContributedInterface
+        e: ContributedInterface.kt:15:11 [Metro/DuplicateBinding] Multiple bindings found for test.ContributedInterface
 
-            ContributedInterface.kt:8:1
-              test.Impl1 contributes a binding of test.ContributedInterface
-                                                  ~~~~~~~~~~~~~~~~~~~~~~~~~
-            ContributedInterface.kt:11:1
-              test.Impl2 contributes a binding of test.ContributedInterface
-                                                  ~~~~~~~~~~~~~~~~~~~~~~~~~
+          ContributedInterface.kt:8:1
+            test.Impl1 contributes a binding of test.ContributedInterface
+                                                ~~~~~~~~~~~~~~~~~~~~~~~~~
+          ContributedInterface.kt:11:1
+            test.Impl2 contributes a binding of test.ContributedInterface
+                                                ~~~~~~~~~~~~~~~~~~~~~~~~~
         """
           .trimIndent()
       )
@@ -490,16 +490,16 @@ class AnvilInteropTest : MetroCompilerTest() {
     compile(
       source(
         """
-          interface ContributedInterface
-          interface ContributedInterface2
+        interface ContributedInterface
+        interface ContributedInterface2
 
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 100)
-          object Impl1 : ContributedInterface, ContributedInterface2
+        @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 100)
+        object Impl1 : ContributedInterface, ContributedInterface2
 
-          @DependencyGraph(scope = AppScope::class)
-          interface ExampleGraph {
-            val contributedInterface: ContributedInterface
-          }
+        @DependencyGraph(scope = AppScope::class)
+        interface ExampleGraph {
+          val contributedInterface: ContributedInterface
+        }
         """
           .trimIndent()
       ),
@@ -510,7 +510,7 @@ class AnvilInteropTest : MetroCompilerTest() {
         .contains(
           """
           test.Impl1 has a ranked binding with no explicit bound type and 2 supertypes (test.ContributedInterface, test.ContributedInterface2). There must be exactly one supertype or an explicit bound type.
-        """
+          """
             .trimIndent()
         )
     }
@@ -522,33 +522,33 @@ class AnvilInteropTest : MetroCompilerTest() {
     compile(
       source(
         """
-          class Parent
-          class Child
+        class Parent
+        class Child
 
-          @SingleIn(Parent::class)
-          @DependencyGraph(scope = Parent::class)
-          interface ParentComponent {
-              @DependencyGraph.Factory
-              interface Factory {
-                  fun create(): ParentComponent
-              }
-          }
+        @SingleIn(Parent::class)
+        @DependencyGraph(scope = Parent::class)
+        interface ParentComponent {
+            @DependencyGraph.Factory
+            interface Factory {
+                fun create(): ParentComponent
+            }
+        }
 
-          @com.squareup.anvil.annotations.ContributesSubcomponent(Child::class, parentScope = Parent::class)
-          interface ChildComponent {
-              @GraphExtension.Factory @ContributesTo(Parent::class)
-              interface Factory {
-                  fun create(): ChildComponent
-              }
-          }
+        @com.squareup.anvil.annotations.ContributesSubcomponent(Child::class, parentScope = Parent::class)
+        interface ChildComponent {
+            @GraphExtension.Factory @ContributesTo(Parent::class)
+            interface Factory {
+                fun create(): ChildComponent
+            }
+        }
 
-          interface ActivityNavigator
+        interface ActivityNavigator
 
-          @Inject
-          @ForScope(Child::class)
-          @SingleIn(Child::class)
-          @com.squareup.anvil.annotations.ContributesBinding(Child::class, boundType = ActivityNavigator::class)
-          class BottomSheetNavigator : ActivityNavigator
+        @Inject
+        @ForScope(Child::class)
+        @SingleIn(Child::class)
+        @com.squareup.anvil.annotations.ContributesBinding(Child::class, boundType = ActivityNavigator::class)
+        class BottomSheetNavigator : ActivityNavigator
         """
           .trimIndent()
       ),

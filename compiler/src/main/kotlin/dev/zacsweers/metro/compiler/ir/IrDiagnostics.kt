@@ -23,7 +23,10 @@ internal fun <A : Any> IrMetroContext.reportCompat(
   factory: KtDiagnosticFactory1<A>,
   a: A,
 ) {
-  val toReport = irDeclarations.filterNotNull().firstOrNull { (it.fileOrNull != null && it.sourceElement() != null) || it.locationOrNull() != null } ?: irDeclarations.filterNotNull().firstOrNull()
+  val toReport =
+    irDeclarations.filterNotNull().firstOrNull {
+      (it.fileOrNull != null && it.sourceElement() != null) || it.locationOrNull() != null
+    } ?: irDeclarations.filterNotNull().firstOrNull()
   if (toReport == null) {
     reportCompilerBug("No non-null declarations to report on!")
   }
@@ -42,8 +45,7 @@ internal fun <A : Any> IrMetroContext.reportCompat(
     // Report through message collector for now
     // If we have a source element, report the diagnostic directly
     if (sourceElement != null) {
-      val diagnostic =
-        factory.on(sourceElement, a, null, languageVersionSettings)
+      val diagnostic = factory.on(sourceElement, a, null, languageVersionSettings)
       reportDiagnosticToMessageCollector(
         diagnostic!!,
         irDeclaration.locationOrNull(),
@@ -60,8 +62,6 @@ internal fun <A : Any> IrMetroContext.reportCompat(
   // Log an error to MetroContext
   onErrorReported()
 }
-
-
 
 private fun reportDiagnosticToMessageCollector(
   diagnostic: KtDiagnostic,

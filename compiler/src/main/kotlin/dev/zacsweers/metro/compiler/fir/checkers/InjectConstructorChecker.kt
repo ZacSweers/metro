@@ -69,7 +69,13 @@ internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common
       injectedConstructor?.constructor ?: declaration.primaryConstructorIfAny(session) ?: return
 
     for (parameter in constructorToValidate.valueParameterSymbols) {
-      val annotations = parameter.metroAnnotations(session, MetroAnnotations.Kind.OptionalDependency, MetroAnnotations.Kind.Assisted, MetroAnnotations.Kind.Qualifier)
+      val annotations =
+        parameter.metroAnnotations(
+          session,
+          MetroAnnotations.Kind.OptionalDependency,
+          MetroAnnotations.Kind.Assisted,
+          MetroAnnotations.Kind.Qualifier,
+        )
       if (annotations.isAssisted) continue
       validateInjectionSiteType(
         session,

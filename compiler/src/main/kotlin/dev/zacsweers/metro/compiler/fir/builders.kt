@@ -85,9 +85,10 @@ internal fun FirExtension.generateMemberFunction(
     moduleData = session.moduleData
     this.origin = origin
 
-    source = with(session.compatContext) {
-      owner.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
-    }
+    source =
+      with(session.compatContext) {
+        owner.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
+      }
 
     val functionSymbol = FirNamedFunctionSymbol(callableId)
     symbol = functionSymbol
@@ -158,9 +159,7 @@ internal fun FirExtension.copyParameters(
           }
         }
         .apply {
-          context(session.compatContext) {
-            replaceAnnotationsSafe(original.symbol.annotations)
-          }
+          context(session.compatContext) { replaceAnnotationsSafe(original.symbol.annotations) }
         }
   }
 }

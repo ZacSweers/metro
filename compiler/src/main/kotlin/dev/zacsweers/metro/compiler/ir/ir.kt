@@ -893,8 +893,10 @@ internal val IrDeclarationParent.isExternalParent: Boolean
  * serializable in IR and cannot be used in some places like function bodies. This replicates that
  * ease of use.
  */
-internal fun IrBuilderWithScope.irExprBodySafe(expression: IrExpression, symbol: IrSymbol = scope.scopeOwnerSymbol) =
-  context.createIrBuilder(symbol).irBlockBody { +irReturn(expression) }
+internal fun IrBuilderWithScope.irExprBodySafe(
+  expression: IrExpression,
+  symbol: IrSymbol = scope.scopeOwnerSymbol,
+) = context.createIrBuilder(symbol).irBlockBody { +irReturn(expression) }
 
 context(context: IrPluginContext)
 internal fun IrFunction.buildBlockBody(blockBody: IrBlockBodyBuilder.() -> Unit) {
@@ -1750,4 +1752,5 @@ internal fun IrBuilderWithScope.irGetProperty(
   reportCompilerBug("No backing field or getter for property ${property.dumpKotlinLike()}")
 }
 
-internal val IrConstructorCall.annotationClass: IrClass get() = symbol.owner.parentAsClass
+internal val IrConstructorCall.annotationClass: IrClass
+  get() = symbol.owner.parentAsClass

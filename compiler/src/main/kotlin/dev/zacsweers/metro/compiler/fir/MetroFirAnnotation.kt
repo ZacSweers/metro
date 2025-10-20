@@ -24,9 +24,7 @@ internal class MetroFirAnnotation(
   typeResolver: TypeResolveService? = null,
 ) {
   private val cachedHashKey by memoize { fir.computeAnnotationHash(session, typeResolver) }
-  private val cachedToString by memoize {
-    buildString { renderAsAnnotation(fir, simple = false) }
-  }
+  private val cachedToString by memoize { buildString { renderAsAnnotation(fir, simple = false) } }
 
   fun simpleString() = buildString { renderAsAnnotation(fir, simple = true) }
 

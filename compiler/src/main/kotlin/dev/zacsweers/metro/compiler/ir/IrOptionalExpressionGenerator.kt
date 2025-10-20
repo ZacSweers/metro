@@ -63,7 +63,12 @@ internal object IrOptionalExpressionGenerator : IrWrappedTypeGenerator {
         typeHint = context.metroSymbols.javaOptional.typeWith(type)
       }
     }
-    return irInvoke(callee = callee, args = listOf(instanceExpression), typeArgs = listOf(type), typeHint = typeHint)
+    return irInvoke(
+      callee = callee,
+      args = listOf(instanceExpression),
+      typeArgs = listOf(type),
+      typeHint = typeHint,
+    )
   }
 }
 

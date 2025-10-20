@@ -142,6 +142,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("MapsUseMapBuilderIfNoProvider.kt")
+    public void testMapsUseMapBuilderIfNoProvider() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/MapsUseMapBuilderIfNoProvider.kt");
+    }
+
+    @Test
     @TestMetadata("MultipleRefsGetProviderFields.kt")
     public void testMultipleRefsGetProviderFields() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/MultipleRefsGetProviderFields.kt");

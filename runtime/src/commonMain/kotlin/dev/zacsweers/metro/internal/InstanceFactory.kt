@@ -17,7 +17,6 @@ package dev.zacsweers.metro.internal
 
 import dev.zacsweers.metro.internal.InstanceFactory.Companion.invoke
 
-
 /**
  * A [Factory] implementation that returns a single instance for all invocations of [invoke].
  *

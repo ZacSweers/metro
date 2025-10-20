@@ -188,10 +188,7 @@ internal class AssistedFactoryTransformer(
   }
 
   /** Data class to model the components of the generated companion object */
-  data class ImplCompanionDeclarations(
-    val companion: IrClass,
-    val createFunction: IrSimpleFunction,
-  )
+  data class ImplCompanionDeclarations(val companion: IrClass, val createFunction: IrSimpleFunction)
 
   private fun generateCompanionDeclarations(
     implClass: IrClass,
@@ -347,7 +344,7 @@ internal class AssistedFactoryTransformer(
                 irGetField(irGet(dispatchReceiverParameter!!), delegateFactoryField),
               callee = generatedFactory.invokeFunctionSymbol,
               args = argumentList,
-            ),
+            )
           )
         }
     }
@@ -361,7 +358,7 @@ internal class AssistedFactoryTransformer(
             instanceFactory(
               declaration.typeWith(),
               irInvoke(callee = ctor.symbol, args = listOf(irGet(factoryParam))),
-            ),
+            )
           )
         }
     }

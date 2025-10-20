@@ -13,10 +13,8 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.getAllSuperTypes
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
-import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
-import org.jetbrains.kotlin.backend.common.ir.BuiltinSymbolsBase
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrEnumEntry
@@ -149,13 +147,15 @@ internal class Symbols(
       ClassId(FqNames.metroRuntimeInternalPackage, "MultibindingElement".asName())
     val NonRestartableComposable =
       ClassId(FqNames.composeRuntime, StringNames.NON_RESTARTABLE_COMPOSABLE.asName())
-    val OptionalDependency = ClassId(FqNames.metroRuntimePackage, StringNames.OPTIONAL_DEPENDENCY.asName())
+    val OptionalDependency =
+      ClassId(FqNames.metroRuntimePackage, StringNames.OPTIONAL_DEPENDENCY.asName())
     val CallableMetadata = ClassId(FqNames.metroRuntimeInternalPackage, CALLABLE_METADATA.asName())
     val Stable = ClassId(FqNames.composeRuntime, StringNames.STABLE.asName())
     val graphExtension = ClassId(FqNames.metroRuntimePackage, "GraphExtension".asName())
     val graphExtensionFactory = graphExtension.createNestedClassId(Names.FactoryClass)
     val metroAssisted = ClassId(FqNames.metroRuntimePackage, StringNames.ASSISTED.asName())
-    val metroAssistedMarker = ClassId(FqNames.metroRuntimeInternalPackage, "AssistedMarker".asName())
+    val metroAssistedMarker =
+      ClassId(FqNames.metroRuntimeInternalPackage, "AssistedMarker".asName())
     val metroBinds = ClassId(FqNames.metroRuntimePackage, Names.Binds)
     val metroContribution =
       ClassId(FqNames.metroRuntimeInternalPackage, StringNames.METRO_CONTRIBUTION.asName())
@@ -170,6 +170,10 @@ internal class Symbols(
     val metroProvider = ClassId(FqNames.metroRuntimePackage, Names.ProviderClass)
     val metroProvides = ClassId(FqNames.metroRuntimePackage, StringNames.PROVIDES.asName())
     val metroSingleIn = ClassId(FqNames.metroRuntimePackage, StringNames.SINGLE_IN.asName())
+    val metroInstanceFactory =
+      ClassId(FqNames.metroRuntimeInternalPackage, "InstanceFactory".asName())
+
+    val commonMetroProviders by lazy { setOf(metroProvider, metroFactory, metroInstanceFactory) }
   }
 
   object Names {
@@ -282,7 +286,9 @@ internal class Symbols(
 
   val metroCreateDynamicGraphFactory: IrSimpleFunctionSymbol by lazy {
     pluginContext
-      .referenceFunctions(CallableId(metroRuntime.packageFqName, "createDynamicGraphFactory".asName()))
+      .referenceFunctions(
+        CallableId(metroRuntime.packageFqName, "createDynamicGraphFactory".asName())
+      )
       .first()
   }
 
@@ -305,9 +311,7 @@ internal class Symbols(
   }
 
   private val instanceFactory: IrClassSymbol by lazy {
-    pluginContext.referenceClass(
-      ClassId(metroRuntimeInternal.packageFqName, "InstanceFactory".asName())
-    )!!
+    pluginContext.referenceClass(ClassIds.metroInstanceFactory)!!
   }
   val instanceFactoryCompanionObject by lazy { instanceFactory.owner.companionObject()!!.symbol }
   val instanceFactoryInvoke: IrFunctionSymbol by lazy {
@@ -440,6 +444,18 @@ internal class Symbols(
       .single { it.name.asString() == "add" }
   }
 
+  val buildMapWithCapacity by lazy {
+    pluginContext
+      .referenceFunctions(CallableId(stdlibCollections.packageFqName, "buildMap".asName()))
+      .first { it.owner.hasShape(regularParameters = 2) }
+  }
+
+  val mutableMapPut by lazy {
+    pluginContext.irBuiltIns.mutableMapClass.owner.declarations
+      .filterIsInstance<IrSimpleFunction>()
+      .single { it.name.asString() == "put" }
+  }
+
   val intoMapConstructor by lazy {
     pluginContext
       .referenceClass(ClassId(metroRuntime.packageFqName, StringNames.INTO_MAP.asName()))!!
@@ -503,17 +519,11 @@ internal class Symbols(
       .symbol
   }
 
-  val javaOptional: IrClassSymbol by lazy {
-    pluginContext.referenceClass(ClassIds.JavaOptional)!!
-  }
+  val javaOptional: IrClassSymbol by lazy { pluginContext.referenceClass(ClassIds.JavaOptional)!! }
 
-  val javaOptionalEmpty: IrFunctionSymbol by lazy {
-    javaOptional.requireSimpleFunction("empty")
-  }
+  val javaOptionalEmpty: IrFunctionSymbol by lazy { javaOptional.requireSimpleFunction("empty") }
 
-  val javaOptionalOf: IrFunctionSymbol by lazy {
-    javaOptional.requireSimpleFunction("of")
-  }
+  val javaOptionalOf: IrFunctionSymbol by lazy { javaOptional.requireSimpleFunction("of") }
 
   val dependencyGraphAnnotations
     get() = classIds.dependencyGraphAnnotations
@@ -838,7 +848,8 @@ internal class Symbols(
     ): IrExpression {
       val targetClass = target.rawType?.classOrNull?.owner
       val targetClassId =
-        targetClass?.classId ?: reportCompilerBug("Unexpected non-jakarta/javax provider type $target")
+        targetClass?.classId
+          ?: reportCompilerBug("Unexpected non-jakarta/javax provider type $target")
       val interopFunction =
         when (targetClassId) {
           ClassIds.DAGGER_INTERNAL_PROVIDER_CLASS_ID -> asDaggerInternalProvider

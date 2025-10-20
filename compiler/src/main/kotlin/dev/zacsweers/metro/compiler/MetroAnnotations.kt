@@ -168,7 +168,6 @@ internal class MetroAnnotations<T>(
     MapKey,
     BindsOptionalOf,
     OptionalDependency,
-    ;
   }
 
   companion object {
@@ -214,10 +213,7 @@ internal fun IrAnnotationContainer.metroAnnotations(
   ids: ClassIds,
   vararg kinds: Kind,
 ): MetroAnnotations<IrAnnotation> {
-  return metroAnnotations(
-    ids,
-    kindSetOf(*kinds),
-  )
+  return metroAnnotations(ids, kindSetOf(*kinds))
 }
 
 internal fun IrAnnotationContainer.metroAnnotations(
@@ -305,7 +301,9 @@ private fun IrAnnotationContainer.metroAnnotations(
             isComposable = true
             continue
           }
-          Symbols.DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF if (Kind.BindsOptionalOf in kinds) -> {
+          Symbols.DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF if
+            (Kind.BindsOptionalOf in kinds)
+           -> {
             isBindsOptionalOf = true
             continue
           }
@@ -350,7 +348,9 @@ private fun IrAnnotationContainer.metroAnnotations(
     if (Kind.Scope in kinds && annotationClass.isAnnotatedWithAny(ids.scopeAnnotations)) {
       scope = expectNullAndSet("scope", scope, annotation.asIrAnnotation())
       continue
-    } else if (Kind.Qualifier in kinds && annotationClass.isAnnotatedWithAny(ids.qualifierAnnotations)) {
+    } else if (
+      Kind.Qualifier in kinds && annotationClass.isAnnotatedWithAny(ids.qualifierAnnotations)
+    ) {
       qualifier = expectNullAndSet("qualifier", qualifier, annotation.asIrAnnotation())
       continue
     } else if (Kind.MapKey in kinds && annotationClass.isAnnotatedWithAny(ids.mapKeyAnnotations)) {
@@ -461,10 +461,7 @@ internal fun FirBasedSymbol<*>.metroAnnotations(
   session: FirSession,
   vararg kinds: Kind,
 ): MetroAnnotations<MetroFirAnnotation> {
-  return metroAnnotations(
-    session,
-    kindSetOf(*kinds),
-  )
+  return metroAnnotations(session, kindSetOf(*kinds))
 }
 
 internal fun FirBasedSymbol<*>.metroAnnotations(
@@ -560,7 +557,10 @@ private fun FirBasedSymbol<*>.metroAnnotations(
             isComposable = true
             continue
           }
-          Symbols.DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF if (session.metroFirBuiltIns.options.enableDaggerRuntimeInterop && Kind.BindsOptionalOf in kinds) -> {
+          Symbols.DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF if
+            (session.metroFirBuiltIns.options.enableDaggerRuntimeInterop &&
+              Kind.BindsOptionalOf in kinds)
+           -> {
             isBindsOptionalOf = true
             continue
           }

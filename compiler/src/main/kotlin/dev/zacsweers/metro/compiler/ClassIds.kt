@@ -93,8 +93,7 @@ public class ClassIds(
     setOf(metroAssistedFactory) + customAssistedFactoryAnnotations
 
   internal val injectAnnotations =
-    setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("Inject")) +
-      customInjectAnnotations
+    setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("Inject")) + customInjectAnnotations
 
   internal val allInjectAnnotations = injectAnnotations + assistedInjectAnnotations
 
@@ -106,8 +105,7 @@ public class ClassIds(
     setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("BindingContainer")) +
       customBindingContainerAnnotations
 
-  internal val originAnnotations =
-    setOf(Symbols.ClassIds.metroOrigin) + customOriginAnnotations
+  internal val originAnnotations = setOf(Symbols.ClassIds.metroOrigin) + customOriginAnnotations
 
   internal val bindsAnnotations =
     setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("Binds")) + customBindsAnnotations
@@ -152,15 +150,13 @@ public class ClassIds(
   internal val contributesIntoMapAnnotations =
     setOf(contributesIntoMapAnnotation) + customIntoMapAnnotations
   internal val graphExtensionAnnotations =
-    setOf(Symbols.ClassIds.graphExtension, contributesGraphExtensionAnnotation) + customGraphExtensionAnnotations
+    setOf(Symbols.ClassIds.graphExtension, contributesGraphExtensionAnnotation) +
+      customGraphExtensionAnnotations
   internal val graphExtensionFactoryAnnotations =
-    setOf(
-      Symbols.ClassIds.graphExtensionFactory,
-      contributesGraphExtensionFactoryAnnotation
-    ) + customGraphExtensionFactoryAnnotations
+    setOf(Symbols.ClassIds.graphExtensionFactory, contributesGraphExtensionFactoryAnnotation) +
+      customGraphExtensionFactoryAnnotations
   internal val allGraphExtensionAndFactoryAnnotations =
-    graphExtensionAnnotations +
-      graphExtensionFactoryAnnotations
+    graphExtensionAnnotations + graphExtensionFactoryAnnotations
 
   internal val allContributesAnnotations =
     contributesToAnnotations +
@@ -183,20 +179,20 @@ public class ClassIds(
   internal val allContributesAnnotationsWithContainers =
     allContributesAnnotations + allRepeatableContributesAnnotationsContainers
 
-  internal val graphLikeAnnotations =
-    dependencyGraphAnnotations + graphExtensionAnnotations
+  internal val graphLikeAnnotations = dependencyGraphAnnotations + graphExtensionAnnotations
   internal val graphFactoryLikeAnnotations =
     dependencyGraphFactoryAnnotations + graphExtensionFactoryAnnotations
 
   /**
-   * Class-level annotations that act like @Inject for code gen purposes.
-   * This includes @Inject and all @Contributes* annotations (ContributesBinding,
-   * ContributesIntoSet, ContributesIntoMap) since they implicitly make a class injectable.
+   * Class-level annotations that act like @Inject for code gen purposes. This includes @Inject and
+   * all @Contributes* annotations (ContributesBinding, ContributesIntoSet, ContributesIntoMap)
+   * since they implicitly make a class injectable.
    *
    * Notes:
    * - `ContributesTo` is excluded since it's interface-only and doesn't make a class injectable.
    * - This should NOT be used for constructor/function/member injection sites.
-   * - The inclusion of @Contributes* annotations can be controlled by the `contributesAsInject` option.
+   * - The inclusion of @Contributes* annotations can be controlled by the `contributesAsInject`
+   *   option.
    */
   internal val injectLikeAnnotations =
     if (contributesAsInject) {

@@ -119,8 +119,8 @@ internal fun <TypeKey : Comparable<TypeKey>, Binding> buildFullAdjacency(
 /**
  * @param sortedKeys Topologically sorted list of keys.
  * @param reachableKeys Vertices that were deemed reachable by any input roots.
- * @param deferredInitOrder Mapping of deferred typekeys to the keys they should be initialized after.
- *   This enables proper ordering of `DelegateFactory.setDelegate()` calls.
+ * @param deferredInitOrder Mapping of deferred typekeys to the keys they should be initialized
+ *   after. This enables proper ordering of `DelegateFactory.setDelegate()` calls.
  * @property deferredTypes Vertices that sit inside breakable cycles.
  */
 internal data class TopoSortResult<T>(

@@ -85,8 +85,9 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
           module.directives.singleOrZeroValue(MetroDirectives.OPTIONAL_DEPENDENCY_BEHAVIOR)
             ?: optionDefaults.optionalDependencyBehavior,
         interopAnnotationsNamedArgSeverity =
-          module.directives.singleOrZeroValue(MetroDirectives.INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY)
-            ?: optionDefaults.interopAnnotationsNamedArgSeverity,
+          module.directives.singleOrZeroValue(
+            MetroDirectives.INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY
+          ) ?: optionDefaults.interopAnnotationsNamedArgSeverity,
         maxIrErrorsCount =
           module.directives.singleOrZeroValue(MetroDirectives.MAX_IR_ERRORS_COUNT) ?: 20,
         contributesAsInject = MetroDirectives.CONTRIBUTES_AS_INJECT in module.directives,

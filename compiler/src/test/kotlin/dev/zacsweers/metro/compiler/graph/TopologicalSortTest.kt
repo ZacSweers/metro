@@ -87,10 +87,10 @@ class TopologicalSortTest {
       .hasMessageThat()
       .isEqualTo(
         """
-      |No topological ordering is possible for these items:
-      |  a (b)
-      |  b (a)
-      """
+        |No topological ordering is possible for these items:
+        |  a (b)
+        |  b (a)
+        """
           .trimMargin()
       )
   }
@@ -105,8 +105,8 @@ class TopologicalSortTest {
       .hasMessageThat()
       .isEqualTo(
         """
-      |No element for c found for a
-      """
+        |No element for c found for a
+        """
           .trimMargin()
       )
   }
@@ -122,8 +122,8 @@ class TopologicalSortTest {
       .hasMessageThat()
       .isEqualTo(
         """
-      |No element for f found for e
-      """
+        |No element for f found for e
+        """
           .trimMargin()
       )
   }

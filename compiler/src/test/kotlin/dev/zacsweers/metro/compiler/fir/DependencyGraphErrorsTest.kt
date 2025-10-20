@@ -35,21 +35,21 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
             @DependencyGraph sealed interface SealedInterfaceGraph
             @DependencyGraph private interface PrivateGraph
             @DependencyGraph abstract class PrivateConstructorGraph private constructor()
-          """
+            """
               .trimIndent(),
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertDiagnostics(
       """
-        e: graphs.kt:11:24 DependencyGraph declarations should be non-sealed abstract classes or interfaces.
-        e: graphs.kt:12:29 DependencyGraph declarations should be non-sealed abstract classes or interfaces.
-        e: graphs.kt:13:35 DependencyGraph declarations should be non-sealed abstract classes or interfaces.
-        e: graphs.kt:14:29 DependencyGraph declarations should be non-sealed abstract classes or interfaces.
-        e: graphs.kt:15:31 DependencyGraph declarations should be non-sealed abstract classes or interfaces.
-        e: graphs.kt:16:35 DependencyGraph declarations should be non-sealed abstract classes or interfaces.
-        e: graphs.kt:17:18 DependencyGraph declarations must be public or internal.
-        e: graphs.kt:18:57 DependencyGraph declarations' primary constructor must be public or internal.
+      e: graphs.kt:11:24 DependencyGraph declarations should be non-sealed abstract classes or interfaces.
+      e: graphs.kt:12:29 DependencyGraph declarations should be non-sealed abstract classes or interfaces.
+      e: graphs.kt:13:35 DependencyGraph declarations should be non-sealed abstract classes or interfaces.
+      e: graphs.kt:14:29 DependencyGraph declarations should be non-sealed abstract classes or interfaces.
+      e: graphs.kt:15:31 DependencyGraph declarations should be non-sealed abstract classes or interfaces.
+      e: graphs.kt:16:35 DependencyGraph declarations should be non-sealed abstract classes or interfaces.
+      e: graphs.kt:17:18 DependencyGraph declarations must be public or internal.
+      e: graphs.kt:18:57 DependencyGraph declarations' primary constructor must be public or internal.
       """
         .trimIndent()
     )
@@ -61,11 +61,11 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @DependencyGraph(AppScope::class)
-            interface ExampleGraph {
-              @SingleIn(AppScope::class)
-              val value: String
-            }
+          @DependencyGraph(AppScope::class)
+          interface ExampleGraph {
+            @SingleIn(AppScope::class)
+            val value: String
+          }
           """
             .trimIndent()
         ),
@@ -80,11 +80,11 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @DependencyGraph(AppScope::class)
-            interface ExampleGraph {
-              @get:SingleIn(AppScope::class)
-              val value: String
-            }
+          @DependencyGraph(AppScope::class)
+          interface ExampleGraph {
+            @get:SingleIn(AppScope::class)
+            val value: String
+          }
           """
             .trimIndent()
         ),
@@ -99,10 +99,10 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @DependencyGraph
-            interface ExampleGraph {
-              val value: Unit
-            }
+          @DependencyGraph
+          interface ExampleGraph {
+            val value: Unit
+          }
           """
             .trimIndent()
         ),
@@ -120,10 +120,10 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @DependencyGraph
-            interface ExampleGraph {
-              fun value(): Unit
-            }
+          @DependencyGraph
+          interface ExampleGraph {
+            fun value(): Unit
+          }
           """
             .trimIndent()
         ),
@@ -140,10 +140,10 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @DependencyGraph
-            interface ExampleGraph {
-              fun value()
-            }
+          @DependencyGraph
+          interface ExampleGraph {
+            fun value()
+          }
           """
             .trimIndent()
         ),
@@ -160,10 +160,10 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @DependencyGraph
-            interface ExampleGraph {
-              val value: Nothing
-            }
+          @DependencyGraph
+          interface ExampleGraph {
+            val value: Nothing
+          }
           """
             .trimIndent()
         ),
@@ -178,10 +178,10 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @DependencyGraph
-            interface ExampleGraph {
-              fun value(): Nothing
-            }
+          @DependencyGraph
+          interface ExampleGraph {
+            fun value(): Nothing
+          }
           """
             .trimIndent()
         ),
@@ -196,10 +196,10 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @DependencyGraph
-            interface ExampleGraph {
-              fun inject(target: Int, target2: Int)
-            }
+          @DependencyGraph
+          interface ExampleGraph {
+            fun inject(target: Int, target2: Int)
+          }
           """
             .trimIndent()
         ),
@@ -216,10 +216,10 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @DependencyGraph
-            interface ExampleGraph {
-              fun inject(target: Int): Int
-            }
+          @DependencyGraph
+          interface ExampleGraph {
+            fun inject(target: Int): Int
+          }
           """
             .trimIndent()
         ),
@@ -236,12 +236,12 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @DependencyGraph
-            interface ExampleGraph {
-              fun inject(target: ExampleClass)
-            }
+          @DependencyGraph
+          interface ExampleGraph {
+            fun inject(target: ExampleClass)
+          }
 
-            @Inject class ExampleClass
+          @Inject class ExampleClass
           """
             .trimIndent()
         ),
@@ -258,12 +258,12 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @DependencyGraph
-            interface ExampleGraph {
-              fun inject(target: ExampleClass)
-            }
+          @DependencyGraph
+          interface ExampleGraph {
+            fun inject(target: ExampleClass)
+          }
 
-            class ExampleClass @Inject constructor()
+          class ExampleClass @Inject constructor()
           """
             .trimIndent()
         ),
@@ -280,14 +280,14 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @DependencyGraph
-            interface ExampleGraph {
-              fun inject(target: ExampleClass)
-            }
+          @DependencyGraph
+          interface ExampleGraph {
+            fun inject(target: ExampleClass)
+          }
 
-            class ExampleClass(value: Int) {
-              @Inject constructor() : this(0)
-            }
+          class ExampleClass(value: Int) {
+            @Inject constructor() : this(0)
+          }
           """
             .trimIndent()
         ),
@@ -304,13 +304,13 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @DependencyGraph
-            interface ExampleGraph {
-              @DependencyGraph.Factory
-              fun interface Factory {
-                fun create()
-              }
+          @DependencyGraph
+          interface ExampleGraph {
+            @DependencyGraph.Factory
+            fun interface Factory {
+              fun create()
             }
+          }
           """
             .trimIndent()
         ),
@@ -327,13 +327,13 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @DependencyGraph
-            interface ExampleGraph {
-              @DependencyGraph.Factory
-              fun interface Factory {
-                fun create(): Nothing
-              }
+          @DependencyGraph
+          interface ExampleGraph {
+            @DependencyGraph.Factory
+            fun interface Factory {
+              fun create(): Nothing
             }
+          }
           """
             .trimIndent()
         ),
@@ -351,14 +351,14 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @DependencyGraph
-            interface ExampleGraph {
-              interface BaseFactory<T> {
-                fun create(): T
-              }
-              @DependencyGraph.Factory
-              interface Factory : BaseFactory<Nothing>
+          @DependencyGraph
+          interface ExampleGraph {
+            interface BaseFactory<T> {
+              fun create(): T
             }
+            @DependencyGraph.Factory
+            interface Factory : BaseFactory<Nothing>
+          }
           """
             .trimIndent()
         ),
@@ -373,13 +373,13 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @DependencyGraph
-            interface ExampleGraph {
-              @DependencyGraph.Factory
-              fun interface Factory {
-                fun create(@Provides value: String, value2: Int): ExampleGraph
-              }
+          @DependencyGraph
+          interface ExampleGraph {
+            @DependencyGraph.Factory
+            fun interface Factory {
+              fun create(@Provides value: String, value2: Int): ExampleGraph
             }
+          }
           """
             .trimIndent()
         ),
@@ -396,21 +396,21 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @DependencyGraph
-            interface ExampleGraph {
-              annotation class AnnotationClass
+          @DependencyGraph
+          interface ExampleGraph {
+            annotation class AnnotationClass
 
-              @DependencyGraph.Factory
-              fun interface Factory {
-                fun create(
-                  @Includes value: SomeEnum,
-                  @Includes value2: Int,
-                  @Includes value3: AnnotationClass,
-                ): ExampleGraph
-              }
+            @DependencyGraph.Factory
+            fun interface Factory {
+              fun create(
+                @Includes value: SomeEnum,
+                @Includes value2: Int,
+                @Includes value3: AnnotationClass,
+              ): ExampleGraph
             }
+          }
 
-            enum class SomeEnum { VALUE1 }
+          enum class SomeEnum { VALUE1 }
           """
             .trimIndent()
         ),
@@ -418,8 +418,8 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       )
     result.assertDiagnostics(
       """
-        e: ExampleGraph.kt:13:17 @Includes cannot be applied to enums, annotations, or platform types.
-        e: ExampleGraph.kt:15:17 @Includes cannot be applied to enums, annotations, or platform types.
+      e: ExampleGraph.kt:13:17 @Includes cannot be applied to enums, annotations, or platform types.
+      e: ExampleGraph.kt:15:17 @Includes cannot be applied to enums, annotations, or platform types.
       """
         .trimIndent()
     )
@@ -431,13 +431,13 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @DependencyGraph
-            interface ExampleGraph {
-              @DependencyGraph.Factory
-              fun interface Factory {
-                fun create(@Provides graph: ExampleGraph): ExampleGraph
-              }
+          @DependencyGraph
+          interface ExampleGraph {
+            @DependencyGraph.Factory
+            fun interface Factory {
+              fun create(@Provides graph: ExampleGraph): ExampleGraph
             }
+          }
           """
             .trimIndent()
         ),
@@ -453,9 +453,9 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @DependencyGraph(additionalScopes = [Unit::class])
-            interface ExampleGraph
-          """
+        @DependencyGraph(additionalScopes = [Unit::class])
+        interface ExampleGraph
+        """
           .trimIndent()
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
@@ -471,12 +471,12 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @DependencyGraph(Unit::class)
-            interface ExampleGraph
+        @DependencyGraph(Unit::class)
+        interface ExampleGraph
 
-            @ContributesTo(Unit::class)
-            internal interface ContributedInterface
-          """
+        @ContributesTo(Unit::class)
+        internal interface ContributedInterface
+        """
           .trimIndent()
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
@@ -492,12 +492,12 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @DependencyGraph(Unit::class, excludes = [ContributedInterface::class])
-            interface ExampleGraph
+        @DependencyGraph(Unit::class, excludes = [ContributedInterface::class])
+        interface ExampleGraph
 
-            @ContributesTo(Unit::class)
-            internal interface ContributedInterface
-          """
+        @ContributesTo(Unit::class)
+        internal interface ContributedInterface
+        """
           .trimIndent()
       )
     ) {
@@ -511,12 +511,12 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @DependencyGraph(Unit::class)
-            internal interface ExampleGraph
+        @DependencyGraph(Unit::class)
+        internal interface ExampleGraph
 
-            @ContributesTo(Unit::class)
-            private interface ContributedInterface
-          """
+        @ContributesTo(Unit::class)
+        private interface ContributedInterface
+        """
           .trimIndent()
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
@@ -532,14 +532,14 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
     compile(
       source(
         """
-            internal class Parent {
-              @DependencyGraph(Unit::class)
-              interface ExampleGraph
-            }
+        internal class Parent {
+          @DependencyGraph(Unit::class)
+          interface ExampleGraph
+        }
 
-            @ContributesTo(Unit::class)
-            private interface ContributedInterface
-          """
+        @ContributesTo(Unit::class)
+        private interface ContributedInterface
+        """
           .trimIndent()
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
@@ -555,14 +555,14 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @DependencyGraph(Unit::class)
-            interface ExampleGraph
+        @DependencyGraph(Unit::class)
+        interface ExampleGraph
 
-            private class Parent {
-              @ContributesTo(Unit::class)
-              interface ContributedInterface
-            }
-          """
+        private class Parent {
+          @ContributesTo(Unit::class)
+          interface ContributedInterface
+        }
+        """
           .trimIndent()
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
@@ -578,17 +578,17 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @DependencyGraph(AppScope::class)
-            interface ExampleGraph
+        @DependencyGraph(AppScope::class)
+        interface ExampleGraph
 
-            @GraphExtension(Unit::class)
-            internal interface ContributedInterface {
-              @GraphExtension.Factory @ContributesTo(AppScope::class)
-              interface Factory {
-                fun create(): ContributedInterface
-              }
-            }
-          """
+        @GraphExtension(Unit::class)
+        internal interface ContributedInterface {
+          @GraphExtension.Factory @ContributesTo(AppScope::class)
+          interface Factory {
+            fun create(): ContributedInterface
+          }
+        }
+        """
           .trimIndent()
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
@@ -605,8 +605,8 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @ContributesTo(AppScope::class)
-            internal interface ContributedInterface
+          @ContributesTo(AppScope::class)
+          internal interface ContributedInterface
           """
             .trimIndent()
         )
@@ -622,9 +622,9 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @DependencyGraph(AppScope::class)
-            interface ExampleGraph
-          """
+        @DependencyGraph(AppScope::class)
+        interface ExampleGraph
+        """
           .trimIndent()
       ),
       previousCompilationResult = firstResult,

@@ -31,67 +31,66 @@ internal sealed interface IrMetroFactory {
   val function: IrFunction
   val factoryClass: IrClass
 
-  val createFunctionNames: Set<Name> get() = setOf(
-    Symbols.Names.create
-  )
+  val createFunctionNames: Set<Name>
+    get() = setOf(Symbols.Names.create)
 
   val isDaggerFactory: Boolean
 
   context(context: IrMetroContext, scope: IrBuilderWithScope)
   fun invokeCreateExpression(
     typeKey: IrTypeKey,
-    computeArgs: IrBuilderWithScope.(createFunction: IrSimpleFunction, parameters: Parameters) -> List<IrExpression?>
-  ): IrExpression = with(scope) {
-    // Anvil may generate the factory
-    val isJava = factoryClass.isFromJava()
-    val creatorClass =
-      if (isJava || factoryClass.isObject) {
-        factoryClass
-      } else {
-        factoryClass.companionObject()!!
-      }
-    val createFunction =
-      creatorClass
-        .simpleFunctions()
-        .first {
-          it.name in createFunctionNames
+    computeArgs:
+      IrBuilderWithScope.(createFunction: IrSimpleFunction, parameters: Parameters) -> List<
+          IrExpression?
+        >,
+  ): IrExpression =
+    with(scope) {
+      // Anvil may generate the factory
+      val isJava = factoryClass.isFromJava()
+      val creatorClass =
+        if (isJava || factoryClass.isObject) {
+          factoryClass
+        } else {
+          factoryClass.companionObject()!!
+        }
+      val createFunction = creatorClass.simpleFunctions().first { it.name in createFunctionNames }
+
+      val remapper = createFunction.typeRemapperFor(typeKey.type)
+      val finalFunction =
+        createFunction.deepCopyWithSymbols(initialParent = createFunction.parent).also {
+          it.parent = createFunction.parent
+          it.remapTypes(remapper)
         }
 
-    val remapper = createFunction.typeRemapperFor(typeKey.type)
-    val finalFunction = createFunction.deepCopyWithSymbols(initialParent = createFunction.parent).also {
-      it.parent = createFunction.parent
-      it.remapTypes(remapper)
-    }
+      val parameters =
+        if (isDaggerFactory) {
+          // Dagger factories don't copy over qualifiers, so we wanna copy them over here
+          val qualifiers = function.parameters.map { it.qualifierAnnotation() }
+          createFunction.parameters(remapper).overlayQualifiers(qualifiers)
+        } else {
+          createFunction.parameters(remapper)
+        }
 
-    val parameters = if (isDaggerFactory) {
-      // Dagger factories don't copy over qualifiers, so we wanna copy them over here
-      val qualifiers = function.parameters.map { it.qualifierAnnotation() }
-      createFunction.parameters(remapper)
-        .overlayQualifiers(qualifiers)
-    } else {
-      createFunction.parameters(remapper)
-    }
+      val args = computeArgs(finalFunction, parameters)
+      val createExpression =
+        irInvoke(
+          dispatchReceiver = if (isJava) null else irGetObject(creatorClass.symbol),
+          callee = createFunction.symbol,
+          args = args,
+          typeHint = factoryClass.typeWith(),
+        )
 
-    val args = computeArgs(finalFunction, parameters)
-    val createExpression =
-      irInvoke(
-        dispatchReceiver = if (isJava) null else irGetObject(creatorClass.symbol),
-        callee = createFunction.symbol,
-        args = args,
-        typeHint = factoryClass.typeWith(),
-      )
-
-    // Wrap in a metro provider if this is a provider
-    return if (isDaggerFactory && factoryClass.defaultType.implementsProviderType()) {
-      irInvoke(
-        extensionReceiver = createExpression,
-        callee = context.metroSymbols.daggerSymbols.asMetroProvider,
-      )
-        .apply { typeArguments[0] = factoryClass.typeWith() }
-    } else {
-      createExpression
+      // Wrap in a metro provider if this is a provider
+      return if (isDaggerFactory && factoryClass.defaultType.implementsProviderType()) {
+        irInvoke(
+            extensionReceiver = createExpression,
+            callee = context.metroSymbols.daggerSymbols.asMetroProvider,
+          )
+          .apply { typeArguments[0] = factoryClass.typeWith() }
+      } else {
+        createExpression
+      }
     }
-  }
 }
 
 internal sealed interface ClassFactory : IrMetroFactory {
@@ -135,9 +134,8 @@ internal sealed interface ClassFactory : IrMetroFactory {
     override val targetFunctionParameters: Parameters,
   ) : ClassFactory {
     override val function: IrConstructor = targetFunctionParameters.ir!! as IrConstructor
-    override val createFunctionNames: Set<Name> = setOf(
-      Symbols.Names.create, Symbols.Names.createFactoryProvider
-    )
+    override val createFunctionNames: Set<Name> =
+      setOf(Symbols.Names.create, Symbols.Names.createFactoryProvider)
     override val isAssistedInject: Boolean by memoize {
       // Check if the constructor has an @AssistedInject annotation
       function.hasAnnotation(DaggerSymbols.ClassIds.DAGGER_ASSISTED_INJECT)

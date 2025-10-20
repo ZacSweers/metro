@@ -11,7 +11,6 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.graph.BaseBinding
 import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
-import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.isWordPrefixRegex
@@ -473,7 +472,8 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
 
     override val reportableDeclaration: IrDeclarationWithName?
-      get() = propertyAccess?.property ?: getter?.propertyIfAccessor?.expectAs<IrDeclarationWithName>()
+      get() =
+        propertyAccess?.property ?: getter?.propertyIfAccessor?.expectAs<IrDeclarationWithName>()
 
     override fun renderDescriptionDiagnostic(short: Boolean, underlineTypeKey: Boolean): String {
       // TODO render parent?
@@ -524,7 +524,13 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
           append(v.render(short = true).capitalizeUS())
         } else {
           append("setOf")
-          append(typeKey.type.requireSimpleType(declaration).arguments[0].render(short = true).capitalizeUS())
+          append(
+            typeKey.type
+              .requireSimpleType(declaration)
+              .arguments[0]
+              .render(short = true)
+              .capitalizeUS()
+          )
         }
       }
     }
@@ -961,6 +967,5 @@ private fun StringBuilder.renderAnnotations(
 
 internal val IrBinding.isIntoMultibinding: Boolean
   get() {
-    return typeKey.qualifier?.ir?.annotationClass?.classId ==
-      Symbols.ClassIds.MultibindingElement
+    return typeKey.qualifier?.ir?.annotationClass?.classId == Symbols.ClassIds.MultibindingElement
   }

@@ -19,13 +19,15 @@ internal fun ClassId.isPlatformType(): Boolean {
 
 internal const val LOG_PREFIX = "[METRO]"
 
-internal const val REPORT_METRO_MESSAGE = "This is a bug in the Metro compiler, please report it to https://github.com/zacsweers/metro."
+internal const val REPORT_METRO_MESSAGE =
+  "This is a bug in the Metro compiler, please report it to https://github.com/zacsweers/metro."
 
 internal fun <T> memoize(initializer: () -> T) = lazy(LazyThreadSafetyMode.NONE, initializer)
 
 internal inline fun <reified T : Any> Any.expectAs(): T {
   contract { returns() implies (this@expectAs is T) }
-  return expectAsOrNull<T>() ?: reportCompilerBug("Expected $this to be of type ${T::class.qualifiedName}")
+  return expectAsOrNull<T>()
+    ?: reportCompilerBug("Expected $this to be of type ${T::class.qualifiedName}")
 }
 
 internal inline fun <reified T : Any> Any.expectAsOrNull(): T? {
@@ -191,7 +193,11 @@ internal fun reportCompilerBug(message: String): Nothing {
   error("${message.suffixIfNot(".")} $REPORT_METRO_MESSAGE ")
 }
 
-internal fun StringBuilder.appendLineWithUnderlinedContent(content: String, target: String = content, char: Char = '~') {
+internal fun StringBuilder.appendLineWithUnderlinedContent(
+  content: String,
+  target: String = content,
+  char: Char = '~',
+) {
   appendLine(content)
   val lines = lines()
   val index = lines[lines.lastIndex - 1].lastIndexOf(target)
@@ -203,7 +209,15 @@ internal fun StringBuilder.appendLineWithUnderlinedContent(content: String, targ
 /**
  * Copied from [kotlin.collections.joinTo] with the support for dynamically choosing a [separator].
  */
-public fun <T, A : Appendable> Iterable<T>.joinWithDynamicSeparatorTo(buffer: A, separator: (prev: T, next: T) -> CharSequence, prefix: CharSequence = "", postfix: CharSequence = "", limit: Int = -1, truncated: CharSequence = "...", transform: ((T) -> CharSequence)? = null): A {
+public fun <T, A : Appendable> Iterable<T>.joinWithDynamicSeparatorTo(
+  buffer: A,
+  separator: (prev: T, next: T) -> CharSequence,
+  prefix: CharSequence = "",
+  postfix: CharSequence = "",
+  limit: Int = -1,
+  truncated: CharSequence = "...",
+  transform: ((T) -> CharSequence)? = null,
+): A {
   buffer.append(prefix)
   var count = 0
   var prev: T? = null
@@ -233,7 +247,7 @@ private fun <T> Appendable.appendElement(element: T, transform: ((T) -> CharSequ
 internal fun computeMetroDefault(
   behavior: OptionalDependencyBehavior,
   isAnnotatedOptionalDep: () -> Boolean,
-  hasDefaultValue: () -> Boolean
+  hasDefaultValue: () -> Boolean,
 ): Boolean {
   return if (behavior == OptionalDependencyBehavior.DISABLED) {
     false

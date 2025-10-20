@@ -145,8 +145,9 @@ public class CompatContextImpl : CompatContext {
     isMutable: Boolean,
     origin: IrDeclarationOrigin,
     startOffset: Int,
-    endOffset: Int
-  ): IrVariable = createTemporaryVariableDeclaration(irType, nameHint, isMutable, origin, startOffset, endOffset)
+    endOffset: Int,
+  ): IrVariable =
+    createTemporaryVariableDeclaration(irType, nameHint, isMutable, origin, startOffset, endOffset)
 
   public class Factory : CompatContext.Factory {
     override val minVersion: String = "2.3.0-dev-7984"
