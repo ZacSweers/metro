@@ -23,7 +23,7 @@ Changelog
 - **Enhancement**: Improve code generation around multibinding collection builders and contributors, using more lazy getters in graph code gen.
 - **Enhancement**: Short-circuit empty map providers to `emptyMap()`.
 - **Enhancement**: Support default values for assisted parameter arguments in top-level function injection.
-- **Enhancement**: Allow using `@ContributesBinding` on assisted factories with `contributesAsInject` enabled.
+- **Enhancement**: Allow using `@Contributes*` annotations on assisted factories with `contributesAsInject` enabled.
 - **Fix**: Compute `Optional` instance lazily when requested as a `Provider<Optional<T>>` and the underlying optional is not empty. Only applies to `@BindsOptionalOf` interop.
 - **Fix**: Don't generate duplicate `init()` functions when chunking initializers if graphs already have an explicit `init()` function.
 - **Fix**: Fix support for assisted inject with no assisted params.
