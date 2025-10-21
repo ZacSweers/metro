@@ -604,7 +604,6 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
             // TODO others?
           }
 
-          var actualIndex = 0
           for (param in function.valueParameterSymbols) {
             if (!param.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)) {
               continue

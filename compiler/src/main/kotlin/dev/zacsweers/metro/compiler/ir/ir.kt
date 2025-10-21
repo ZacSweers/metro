@@ -202,7 +202,6 @@ internal fun CompilerMessageSourceLocation.render(short: Boolean): String? {
       // No line or column numbers makes this kind of useless so return null
       return null
     }
-    append(' ')
   }
 }
 

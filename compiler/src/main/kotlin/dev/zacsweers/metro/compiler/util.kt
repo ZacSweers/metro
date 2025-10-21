@@ -4,9 +4,18 @@ package dev.zacsweers.metro.compiler
 
 import java.util.Locale
 import kotlin.contracts.contract
+import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
+
+// As of Kotlin 2.3, context parameters always have a mapped name of
+// "$context-<simple name>"
+internal const val CONTEXT_PARAMETER_NAME_PREFIX = $$"$context-"
+
+internal fun generatedContextParameterName(classId: ClassId): Name {
+  return "$CONTEXT_PARAMETER_NAME_PREFIX${classId.shortClassName.capitalizeUS()}".asName()
+}
 
 private val PLATFORM_TYPE_PACKAGES =
   setOf("android.", "androidx.", "java.", "javax.", "kotlin.", "kotlinx.", "scala.")
