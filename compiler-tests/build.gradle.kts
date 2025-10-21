@@ -13,7 +13,8 @@ sourceSets {
   register("generator230")
 }
 
-val testCompilerVersionProvider = providers.gradleProperty("metro.testCompilerVersion")
+val testCompilerVersionProvider =
+  providers.gradleProperty("metro.testCompilerVersion").orElse(libs.versions.kotlin)
 
 val testCompilerVersion = testCompilerVersionProvider.orElse(libs.versions.kotlin).get()
 
