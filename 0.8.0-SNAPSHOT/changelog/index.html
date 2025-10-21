@@ -1898,12 +1898,31 @@
 <h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
 <h2 id="unreleased"><strong>Unreleased</strong><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Enhancement</strong>: Improve code generation around multibinding collection builders and contributors, using more lazy getters in graph code gen.</li>
+<li>
+<p><strong>New</strong>: Add missing dependency hints for missing bindings errors<br />
+    <div class="highlight"><pre><span></span><code>[Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: FooImpl
+
+    FooImpl is injected at
+        [AppGraph] Bindings.bind: FooImpl
+    Base is requested at
+        [AppGraph] AppGraph.base
+
+(Hint)
+&#39;FooImpl&#39; doesn&#39;t appear to be visible to this compilation. This can happen when a binding references a type from an &#39;implementation&#39; dependency that isn&#39;t exposed to the consuming graph&#39;s module.
+Possible fixes:
+- Mark the module containing &#39;FooImpl&#39; as an &#39;api&#39; dependency in the module that defines &#39;Bindings&#39; (which is requesting it).
+- Add the module containing &#39;FooImpl&#39; as an explicit dependency to the module that defines &#39;AppGraph&#39;.
+</code></pre></div></p>
+</li>
+<li>
+<p><strong>Enhancement</strong>: Improve code generation around multibinding collection builders and contributors, using more lazy getters in graph code gen.</p>
+</li>
 <li><strong>Enhancement</strong>: Short-circuit empty map providers to <code>emptyMap()</code>.</li>
 <li><strong>Enhancement</strong>: Support default values for assisted parameter arguments in top-level function injection.</li>
 <li><strong>Fix</strong>: Compute <code>Optional</code> instance lazily when requested as a <code>Provider&lt;Optional&lt;T&gt;&gt;</code> and the underlying optional is not empty. Only applies to <code>@BindsOptionalOf</code> interop.</li>
 <li><strong>Fix</strong>: Don&rsquo;t generate duplicate <code>init()</code> functions when chunking initializers if graphs already have an explicit <code>init()</code> function.</li>
 <li><strong>Fix</strong>: Fix support for assisted inject with no assisted params.</li>
+<li><strong>Fix</strong>: Detect platform types in just the <code>kotlin</code> package. Previously it missed any that didn&rsquo;t have multiple package segments.</li>
 </ul>
 <h2 id="070">0.7.0<a class="headerlink" href="#070" title="Permanent link">&para;</a></h2>
 <p><em>2025-10-17</em></p>
