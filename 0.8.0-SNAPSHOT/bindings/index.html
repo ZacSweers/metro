@@ -655,9 +655,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#optional-dependencies" class="md-nav__link">
+  <a href="#optional-bindings" class="md-nav__link">
     <span class="md-ellipsis">
-      Optional Dependencies
+      Optional Bindings
     </span>
   </a>
   
@@ -1099,9 +1099,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#optional-dependencies" class="md-nav__link">
+  <a href="#optional-bindings" class="md-nav__link">
     <span class="md-ellipsis">
-      Optional Dependencies
+      Optional Bindings
     </span>
   </a>
   
@@ -1241,8 +1241,8 @@
 <summary>Implementation Notes</summary>
 <p>Metro takes inspiration from Guice in handling these in the binding graph. Since they cannot be added directly to the graph as-is (otherwise they would cause duplicate binding errors), a synthetic <code>@MultibindingElement</code> <em>qualifier</em> annotation is generated for them at compile-time to disambiguate them. These are user-invisible but allows them to participate directly in graph validation like any other dependency. Metro then just adds these bindings as dependencies to <code>Binding.Multibinding</code> types.</p>
 </details>
-<h2 id="optional-dependencies">Optional Dependencies<a class="headerlink" href="#optional-dependencies" title="Permanent link">&para;</a></h2>
-<p>Metro supports optional dependencies by leaning on Kotlin’s native support for default parameter values. These are checked at injection sites and are allowed to be missing from the dependency graph when performing a lookup at validation/code-gen time.</p>
+<h2 id="optional-bindings">Optional Bindings<a class="headerlink" href="#optional-bindings" title="Permanent link">&para;</a></h2>
+<p>Metro supports optional bindings by leaning on Kotlin’s native support for default parameter values. These are checked at injection sites and are allowed to be missing from the dependency graph when performing a lookup at validation/code-gen time.</p>
 <p>The below example would, since there is no <code>Int</code> binding provided, provide a message of <code>Count: -1</code>.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
@@ -1251,21 +1251,21 @@
 <span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideMessage</span><span class="p">(</span><span class="n">count</span><span class="p">:</span><span class="w"> </span><span class="kt">Int</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">-</span><span class="m">1</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Count: </span><span class="si">$</span><span class="n">count</span><span class="s">&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>To expose accessors for optional dependencies, use <code>@OptionalDependency</code> on the accessor. Note that the accessor <em>must</em> declare a default body that Metro will use if the dependency is absent.</p>
+<p>To expose accessors for optional bindings, use <code>@OptionalBinding</code> on the accessor. Note that the accessor <em>must</em> declare a default body that Metro will use if the binding is absent.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nd">@OptionalDependency</span>
+<span class="w">  </span><span class="nd">@OptionalBinding</span>
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">message</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span>
 <span class="w">    </span><span class="k">get</span><span class="p">()</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Absent!&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>There are a couple of optional configuration for Metro&rsquo;s optional dependency support that can be configured via the <code>optionalDependencyBehavior</code> Gradle DSL:</p>
+<p>There are a couple of optional configuration for Metro&rsquo;s optional binding support that can be configured via the <code>optionalBindingBehavior</code> Gradle DSL:</p>
 <ul>
-<li><code>DISABLED</code> - Disallows optional dependencies entirely.</li>
-<li><code>REQUIRE_OPTIONAL_DEPENDENCY</code> - Requires optional dependency <em>parameters</em> to also be annotated with <code>@OptionalDependency</code>. This may be preferable for consistency with accessors and/or explicitness.</li>
-<li><code>DEFAULT</code> - The default behavior as described above — accessors must be annotated with <code>@OptionalDependency</code> with default bodies and parameters just use default value expressions.</li>
+<li><code>DISABLED</code> - Disallows optional bindings entirely.</li>
+<li><code>REQUIRE_OPTIONAL_BINDING</code> - Requires optional binding <em>parameters</em> to also be annotated with <code>@OptionalBinding</code>. This may be preferable for consistency with accessors and/or explicitness.</li>
+<li><code>DEFAULT</code> - The default behavior as described above — accessors must be annotated with <code>@OptionalBinding</code> with default bodies and parameters just use default value expressions.</li>
 </ul>
-<p>Dagger supports a similar feature via <code>@BindsOptionalOf</code>, but requires a separate declaration of this optional dependency to the graph.</p>
+<p>Dagger supports a similar feature via <code>@BindsOptionalOf</code>, but requires a separate declaration of this optional binding to the graph and works via <code>Optional&lt;T&gt;</code> types.</p>
 <p>KI supports the same feature.</p>
 <h2 id="nullability">Nullability<a class="headerlink" href="#nullability" title="Permanent link">&para;</a></h2>
 <p>As nullability is a first-class concept in Kotlin, Metro supports it too. Bindings in Metro graphs may be nullable, but it&rsquo;s important to understand how Metro treats them!</p>
