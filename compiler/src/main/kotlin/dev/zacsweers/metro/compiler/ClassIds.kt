@@ -31,6 +31,7 @@ public class ClassIds(
   customScopeAnnotations: Set<ClassId> = emptySet(),
   customBindingContainerAnnotations: Set<ClassId> = emptySet(),
   customOriginAnnotations: Set<ClassId> = emptySet(),
+  customOptionalBindingAnnotations: Set<ClassId> = emptySet(),
   private val contributesAsInject: Boolean = false,
 ) {
   public companion object {
@@ -60,6 +61,7 @@ public class ClassIds(
         customScopeAnnotations = options.customScopeAnnotations,
         customBindingContainerAnnotations = options.customBindingContainerAnnotations,
         customOriginAnnotations = options.customOriginAnnotations,
+        customOptionalBindingAnnotations = options.customOptionalBindingAnnotations,
         contributesAsInject = options.contributesAsInject,
       )
   }
@@ -106,6 +108,13 @@ public class ClassIds(
       customBindingContainerAnnotations
 
   internal val originAnnotations = setOf(Symbols.ClassIds.metroOrigin) + customOriginAnnotations
+
+  internal val optionalBindingAnnotations =
+    setOf(
+      Symbols.FqNames.metroRuntimePackage.classIdOf("OptionalBinding"),
+      // TODO can remove once OptionalDependency is removed
+      Symbols.FqNames.metroRuntimePackage.classIdOf("OptionalDependency"),
+    ) + customOptionalBindingAnnotations
 
   internal val bindsAnnotations =
     setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("Binds")) + customBindsAnnotations
@@ -235,5 +244,6 @@ public class ClassIds(
     addAll(customScopeAnnotations)
     addAll(customBindingContainerAnnotations)
     addAll(customOriginAnnotations)
+    addAll(customOptionalBindingAnnotations)
   }
 }

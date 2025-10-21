@@ -81,9 +81,9 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
             module.directives.singleOrZeroValue(MetroDirectives.PUBLIC_PROVIDER_SEVERITY)
               ?: optionDefaults.publicProviderSeverity
           },
-        optionalDependencyBehavior =
+        optionalBindingBehavior =
           module.directives.singleOrZeroValue(MetroDirectives.OPTIONAL_DEPENDENCY_BEHAVIOR)
-            ?: optionDefaults.optionalDependencyBehavior,
+            ?: optionDefaults.optionalBindingBehavior,
         interopAnnotationsNamedArgSeverity =
           module.directives.singleOrZeroValue(
             MetroDirectives.INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY

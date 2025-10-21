@@ -10,7 +10,7 @@ internal sealed interface GraphRoot {
 internal data class GraphAccessor(
   override val contextKey: IrContextualTypeKey,
   override val metroFunction: MetroSimpleFunction,
-  val isAnnotatedOptionalDependency: Boolean,
+  val isAnnotatedOptionalBinding: Boolean,
 ) : GraphRoot
 
 internal data class InjectorFunction(

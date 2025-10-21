@@ -541,12 +541,23 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
     )
   ),
-  OPTIONAL_DEPENDENCY_BEHAVIOR(
+  CUSTOM_OPTIONAL_BINDING(
     RawMetroOption(
-      name = "optional-dependency-behavior",
-      defaultValue = OptionalDependencyBehavior.DEFAULT.name,
-      valueDescription = OptionalDependencyBehavior.entries.joinToString("|"),
-      description = "Controls the behavior of optional dependencies",
+      name = "custom-optional-binding",
+      defaultValue = emptySet(),
+      valueDescription = "OptionalBinding annotations",
+      description = "OptionalBinding annotations",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
+    )
+  ),
+  OPTIONAL_BINDING_BEHAVIOR(
+    RawMetroOption(
+      name = "optional-binding-behavior",
+      defaultValue = OptionalBindingBehavior.DEFAULT.name,
+      valueDescription = OptionalBindingBehavior.entries.joinToString("|"),
+      description = "Controls the behavior of optional bindings",
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it },
@@ -599,9 +610,18 @@ public data class MetroOptions(
         DiagnosticSeverity.valueOf(it)
       }
     },
-  val optionalDependencyBehavior: OptionalDependencyBehavior =
-    MetroOption.OPTIONAL_DEPENDENCY_BEHAVIOR.raw.defaultValue.expectAs<String>().let {
-      OptionalDependencyBehavior.valueOf(it)
+  val optionalBindingBehavior: OptionalBindingBehavior =
+    MetroOption.OPTIONAL_BINDING_BEHAVIOR.raw.defaultValue.expectAs<String>().let { rawValue ->
+      val adjusted = rawValue.uppercase(Locale.US)
+        .let {
+          // temporary cover for deprecated entry
+          if (it == "REQUIRE_OPTIONAL_DEPENDENCY") {
+            "REQUIRE_OPTIONAL_BINDING"
+          } else {
+            it
+          }
+        }
+      OptionalBindingBehavior.valueOf(adjusted)
     },
   val warnOnInjectAnnotationPlacement: Boolean =
     MetroOption.WARN_ON_INJECT_ANNOTATION_PLACEMENT.raw.defaultValue.expectAs(),
@@ -669,6 +689,8 @@ public data class MetroOptions(
   val enableGraphImplClassAsReturnType: Boolean =
     MetroOption.ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE.raw.defaultValue.expectAs(),
   val customOriginAnnotations: Set<ClassId> = MetroOption.CUSTOM_ORIGIN.raw.defaultValue.expectAs(),
+  val customOptionalBindingAnnotations: Set<ClassId> =
+    MetroOption.CUSTOM_OPTIONAL_BINDING.raw.defaultValue.expectAs(),
   val contributesAsInject: Boolean = MetroOption.CONTRIBUTES_AS_INJECT.raw.defaultValue.expectAs(),
 ) {
   internal companion object {
@@ -701,6 +723,7 @@ public data class MetroOptions(
       val customBindingContainerAnnotations = mutableSetOf<ClassId>()
       val customContributesIntoSetAnnotations = mutableSetOf<ClassId>()
       val customOriginAnnotations = mutableSetOf<ClassId>()
+      val customOptionalBindingAnnotations = mutableSetOf<ClassId>()
 
       for (entry in MetroOption.entries) {
         when (entry) {
@@ -834,12 +857,14 @@ public data class MetroOptions(
               options.copy(enableGraphImplClassAsReturnType = configuration.getAsBoolean(entry))
           }
           MetroOption.CUSTOM_ORIGIN -> customOriginAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.OPTIONAL_DEPENDENCY_BEHAVIOR -> {
+          MetroOption.CUSTOM_OPTIONAL_BINDING ->
+            customOptionalBindingAnnotations.addAll(configuration.getAsSet(entry))
+          MetroOption.OPTIONAL_BINDING_BEHAVIOR -> {
             options =
               options.copy(
-                optionalDependencyBehavior =
+                optionalBindingBehavior =
                   configuration.getAsString(entry).let {
-                    OptionalDependencyBehavior.valueOf(it.uppercase(Locale.US))
+                    OptionalBindingBehavior.valueOf(it.uppercase(Locale.US))
                   }
               )
           }
@@ -880,6 +905,7 @@ public data class MetroOptions(
           customBindingContainerAnnotations = customBindingContainerAnnotations,
           customContributesIntoSetAnnotations = customContributesIntoSetAnnotations,
           customOriginAnnotations = customOriginAnnotations,
+          customOptionalBindingAnnotations = customOptionalBindingAnnotations,
         )
 
       return options

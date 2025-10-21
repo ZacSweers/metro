@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
-import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FUNCTION_INJECT_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FUNCTION_INJECT_TYPE_PARAMETERS_ERROR
 import dev.zacsweers.metro.compiler.fir.classIds
@@ -16,7 +15,6 @@ import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirSimpleFunctionChecker
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
-import org.jetbrains.kotlin.fir.declarations.hasAnnotation
 
 internal object FunctionInjectionChecker : FirSimpleFunctionChecker(MppCheckerKind.Common) {
   context(context: CheckerContext, reporter: DiagnosticReporter)
@@ -45,11 +43,11 @@ internal object FunctionInjectionChecker : FirSimpleFunctionChecker(MppCheckerKi
     }
 
     for (contextParam in declaration.symbol.contextParameterSymbols) {
-      if (contextParam.hasAnnotation(Symbols.ClassIds.OptionalDependency, session)) {
+      if (contextParam.isAnnotatedWithAny(session, session.classIds.optionalBindingAnnotations)) {
         reporter.reportOn(
           contextParam.source ?: source,
           FUNCTION_INJECT_ERROR,
-          "Context parameters cannot be annotated @OptionalDependency.",
+          "Context parameters cannot be annotated @OptionalBinding.",
         )
       }
     }
@@ -68,7 +66,7 @@ internal object FunctionInjectionChecker : FirSimpleFunctionChecker(MppCheckerKi
       val annotations =
         param.symbol.metroAnnotations(
           session,
-          MetroAnnotations.Kind.OptionalDependency,
+          MetroAnnotations.Kind.OptionalBinding,
           MetroAnnotations.Kind.Assisted,
           MetroAnnotations.Kind.Qualifier,
         )
@@ -78,7 +76,7 @@ internal object FunctionInjectionChecker : FirSimpleFunctionChecker(MppCheckerKi
         param.returnTypeRef,
         annotations.qualifier,
         param.source ?: source,
-        annotations.isOptionalDependency,
+        annotations.isOptionalBinding,
         param.symbol.hasDefaultValue,
       )
     }

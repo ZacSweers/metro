@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
-import dev.zacsweers.metro.compiler.OptionalDependencyBehavior
+import dev.zacsweers.metro.compiler.OptionalBindingBehavior
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import org.jetbrains.kotlin.ir.IrElement
@@ -101,7 +101,7 @@ internal fun copyParameterDefaultValues(
       }
     }
 
-  val isDisabled = context.options.optionalDependencyBehavior == OptionalDependencyBehavior.DISABLED
+  val isDisabled = context.options.optionalBindingBehavior == OptionalBindingBehavior.DISABLED
 
   for ((index, parameter) in sourceParameters.withIndex()) {
     // If we did get assisted parameters, do copy them over (i.e. top-level function injection)

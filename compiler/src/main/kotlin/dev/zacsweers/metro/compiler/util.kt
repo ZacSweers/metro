@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler
 
 import java.util.Locale
 import kotlin.contracts.contract
-import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
@@ -256,11 +255,11 @@ private fun <T> Appendable.appendElement(element: T, transform: ((T) -> CharSequ
 }
 
 internal fun computeMetroDefault(
-  behavior: OptionalDependencyBehavior,
+  behavior: OptionalBindingBehavior,
   isAnnotatedOptionalDep: () -> Boolean,
   hasDefaultValue: () -> Boolean,
 ): Boolean {
-  return if (behavior == OptionalDependencyBehavior.DISABLED) {
+  return if (behavior == OptionalBindingBehavior.DISABLED) {
     false
   } else if (hasDefaultValue()) {
     if (behavior.requiresAnnotatedParameters) {

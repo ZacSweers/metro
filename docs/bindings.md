@@ -134,9 +134,9 @@ Unlike Dagger, empty multibindings in Metro are a compile error by default. Empt
 
     Metro takes inspiration from Guice in handling these in the binding graph. Since they cannot be added directly to the graph as-is (otherwise they would cause duplicate binding errors), a synthetic `@MultibindingElement` _qualifier_ annotation is generated for them at compile-time to disambiguate them. These are user-invisible but allows them to participate directly in graph validation like any other dependency. Metro then just adds these bindings as dependencies to `Binding.Multibinding` types.
 
-## Optional Dependencies
+## Optional Bindings
 
-Metro supports optional dependencies by leaning on Kotlin’s native support for default parameter values. These are checked at injection sites and are allowed to be missing from the dependency graph when performing a lookup at validation/code-gen time.
+Metro supports optional bindings by leaning on Kotlin’s native support for default parameter values. These are checked at injection sites and are allowed to be missing from the dependency graph when performing a lookup at validation/code-gen time.
 
 The below example would, since there is no `Int` binding provided, provide a message of `Count: -1`.
 
@@ -149,24 +149,24 @@ interface AppGraph {
 }
 ```
 
-To expose accessors for optional dependencies, use `@OptionalDependency` on the accessor. Note that the accessor _must_ declare a default body that Metro will use if the dependency is absent.
+To expose accessors for optional bindings, use `@OptionalBinding` on the accessor. Note that the accessor _must_ declare a default body that Metro will use if the binding is absent.
 
 ```kotlin
 @DependencyGraph
 interface AppGraph {
-  @OptionalDependency
+  @OptionalBinding
   val message: String
     get() = "Absent!"
 }
 ```
 
-There are a couple of optional configuration for Metro's optional dependency support that can be configured via the `optionalDependencyBehavior` Gradle DSL:
+There are a couple of optional configuration for Metro's optional binding support that can be configured via the `optionalBindingBehavior` Gradle DSL:
 
-- `DISABLED` - Disallows optional dependencies entirely.
-- `REQUIRE_OPTIONAL_DEPENDENCY` - Requires optional dependency _parameters_ to also be annotated with `@OptionalDependency`. This may be preferable for consistency with accessors and/or explicitness.
-- `DEFAULT` - The default behavior as described above — accessors must be annotated with `@OptionalDependency` with default bodies and parameters just use default value expressions.
+- `DISABLED` - Disallows optional bindings entirely.
+- `REQUIRE_OPTIONAL_BINDING` - Requires optional binding _parameters_ to also be annotated with `@OptionalBinding`. This may be preferable for consistency with accessors and/or explicitness.
+- `DEFAULT` - The default behavior as described above — accessors must be annotated with `@OptionalBinding` with default bodies and parameters just use default value expressions.
 
-Dagger supports a similar feature via `@BindsOptionalOf`, but requires a separate declaration of this optional dependency to the graph.
+Dagger supports a similar feature via `@BindsOptionalOf`, but requires a separate declaration of this optional binding to the graph and works via `Optional<T>` types.
 
 KI supports the same feature.
 

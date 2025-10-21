@@ -1,21 +1,21 @@
 // MODULE: lib
 interface Base {
-  @OptionalDependency
+  @OptionalBinding
   val absentBoolean: Boolean
     get() = true
 
-  @OptionalDependency
+  @OptionalBinding
   fun presentChar(): Char = 'b'
 }
 
 // MODULE: main(lib)
 @DependencyGraph
 interface AppGraph : Base {
-  @OptionalDependency
+  @OptionalBinding
   val absentInt: Int
     get() = 3
 
-  @OptionalDependency
+  @OptionalBinding
   fun presentLong(): Long = 3L
 
   @Provides

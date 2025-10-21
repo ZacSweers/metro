@@ -80,7 +80,7 @@ internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common
       val annotations =
         parameter.metroAnnotations(
           session,
-          MetroAnnotations.Kind.OptionalDependency,
+          MetroAnnotations.Kind.OptionalBinding,
           MetroAnnotations.Kind.Assisted,
           MetroAnnotations.Kind.Qualifier,
         )
@@ -90,7 +90,7 @@ internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common
         parameter.resolvedReturnTypeRef,
         annotations.qualifier,
         parameter.source ?: source,
-        isOptionalDependency = annotations.isOptionalDependency,
+        isOptionalBinding = annotations.isOptionalBinding,
         hasDefault = parameter.hasDefaultValue,
       )
     }

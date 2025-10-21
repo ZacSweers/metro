@@ -377,7 +377,7 @@ internal object BindingContainerCallableChecker :
           val annotations =
             parameter.symbol.metroAnnotations(
               session,
-              MetroAnnotations.Kind.OptionalDependency,
+              MetroAnnotations.Kind.OptionalBinding,
               MetroAnnotations.Kind.Assisted,
               MetroAnnotations.Kind.Qualifier,
             )
@@ -399,7 +399,7 @@ internal object BindingContainerCallableChecker :
               parameter.returnTypeRef,
               annotations.qualifier,
               parameter.source ?: source,
-              isOptionalDependency = annotations.isOptionalDependency,
+              isOptionalBinding = annotations.isOptionalBinding,
               hasDefault = parameter.symbol.hasDefaultValue,
             )
           ) {

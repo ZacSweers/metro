@@ -1316,8 +1316,8 @@ internal fun FirClassSymbol<*>.originClassId(
 
 internal fun FirValueParameterSymbol.hasMetroDefault(session: FirSession): Boolean {
   return computeMetroDefault(
-    behavior = session.metroFirBuiltIns.options.optionalDependencyBehavior,
-    isAnnotatedOptionalDep = { hasAnnotation(Symbols.ClassIds.OptionalDependency, session) },
+    behavior = session.metroFirBuiltIns.options.optionalBindingBehavior,
+    isAnnotatedOptionalDep = { isAnnotatedWithAny(session, session.classIds.optionalBindingAnnotations) },
     hasDefaultValue = { this@hasMetroDefault.hasDefaultValue },
   )
 }

@@ -1,0 +1,9 @@
+/OptionalBindingParamRequiresDefaultValue.kt:(214,217): error: @OptionalBinding-annotated parameters must have a default value.
+
+/OptionalBindingParamRequiresDefaultValue.kt:(271,287): warning: This annotation is currently applied to the value parameter only, but in the future it will also be applied to property.
+- To opt in to applying to both value parameter and property, add '-Xannotation-default-target=param-property' to your compiler arguments.
+- To keep applying to the value parameter only, use the '@param:' annotation target.
+
+See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
+
+/OptionalBindingParamRequiresDefaultValue.kt:(299,302): error: @OptionalBinding-annotated parameters must have a default value.

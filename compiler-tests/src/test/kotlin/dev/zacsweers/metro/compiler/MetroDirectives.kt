@@ -41,7 +41,7 @@ object MetroDirectives : SimpleDirectivesContainer() {
       it.toInt()
     }
   val OPTIONAL_DEPENDENCY_BEHAVIOR by
-    enumDirective<OptionalDependencyBehavior>(
+    enumDirective<OptionalBindingBehavior>(
       "Controls the behavior of optional dependencies on a per-compilation basis."
     )
   val INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY by

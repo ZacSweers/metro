@@ -405,7 +405,7 @@ internal class DependencyGraphNodeCache(
           is IrSimpleFunction -> {
             // Could be an injector, accessor, or graph extension
             var isGraphExtension = false
-            var isOptionalDependency = annotations.isOptionalDependency
+            var isOptionalBinding = annotations.isOptionalBinding
             var hasDefaultImplementation = false
             var qualifierMismatchData: Triple<IrAnnotation?, IrAnnotation?, IrSimpleFunction>? =
               null
@@ -416,13 +416,13 @@ internal class DependencyGraphNodeCache(
             // Single pass through overridden symbols
             for (overridden in declaration.overriddenSymbolsSequence()) {
               if (overridden.owner.modality == Modality.OPEN || overridden.owner.body != null) {
-                if (!isOptionalDependency) {
-                  isOptionalDependency =
+                if (!isOptionalBinding) {
+                  isOptionalBinding =
                     metroAnnotationsOf(
                         overridden.owner,
-                        EnumSet.of(MetroAnnotations.Kind.OptionalDependency),
+                        EnumSet.of(MetroAnnotations.Kind.OptionalBinding),
                       )
-                      .isOptionalDependency
+                      .isOptionalBinding
                 }
                 hasDefaultImplementation = true
                 break
@@ -483,7 +483,7 @@ internal class DependencyGraphNodeCache(
               }
             }
 
-            if (hasDefaultImplementation && !isOptionalDependency) continue
+            if (hasDefaultImplementation && !isOptionalBinding) continue
 
             // Report qualifier mismatch error if found
             if (qualifierMismatchData != null) {
@@ -582,11 +582,11 @@ internal class DependencyGraphNodeCache(
               // Accessor or binds
               val metroFunction = metroFunctionOf(declaration, annotations)
               val contextKey =
-                IrContextualTypeKey.from(declaration, hasDefaultOverride = isOptionalDependency)
+                IrContextualTypeKey.from(declaration, hasDefaultOverride = isOptionalBinding)
               if (metroFunction.annotations.isBinds) {
                 bindsFunctions += (metroFunction to contextKey)
               } else {
-                accessors += GraphAccessor(contextKey, metroFunction, isOptionalDependency)
+                accessors += GraphAccessor(contextKey, metroFunction, isOptionalBinding)
               }
             }
           }
@@ -600,7 +600,7 @@ internal class DependencyGraphNodeCache(
               rawType.isAnnotatedWithAny(metroSymbols.classIds.graphExtensionFactoryAnnotations)
             var isGraphExtension = isGraphExtensionFactory
             var hasDefaultImplementation = false
-            var isOptionalDependency = annotations.isOptionalDependency
+            var isOptionalBinding = annotations.isOptionalBinding
             var qualifierMismatchData: Triple<IrAnnotation?, IrAnnotation?, IrProperty>? = null
 
             // Single pass through overridden symbols
@@ -610,13 +610,13 @@ internal class DependencyGraphNodeCache(
                   overridden.owner.getter?.modality == Modality.OPEN ||
                     overridden.owner.getter?.body != null
                 ) {
-                  if (!isOptionalDependency) {
-                    isOptionalDependency =
+                  if (!isOptionalBinding) {
+                    isOptionalBinding =
                       metroAnnotationsOf(
                           overridden.owner,
-                          EnumSet.of(MetroAnnotations.Kind.OptionalDependency),
+                          EnumSet.of(MetroAnnotations.Kind.OptionalBinding),
                         )
-                        .isOptionalDependency
+                        .isOptionalBinding
                   }
                   hasDefaultImplementation = true
                   break
@@ -652,7 +652,7 @@ internal class DependencyGraphNodeCache(
               }
             }
 
-            if (hasDefaultImplementation && !isOptionalDependency) continue
+            if (hasDefaultImplementation && !isOptionalBinding) continue
 
             // Report qualifier mismatch error if found
             if (qualifierMismatchData != null) {
@@ -669,7 +669,7 @@ internal class DependencyGraphNodeCache(
 
             val metroFunction = metroFunctionOf(getter, annotations)
             val contextKey =
-              IrContextualTypeKey.from(getter, hasDefaultOverride = isOptionalDependency)
+              IrContextualTypeKey.from(getter, hasDefaultOverride = isOptionalBinding)
             if (isGraphExtension) {
               if (isGraphExtensionFactory) {
                 // For factories, add them to accessors so they participate in the binding graph
@@ -705,7 +705,7 @@ internal class DependencyGraphNodeCache(
                   ) {
                     IrContextualTypeKey(
                       IrTypeKey(functionParent.defaultType, functionParent.qualifierAnnotation()),
-                      hasDefault = isOptionalDependency,
+                      hasDefault = isOptionalBinding,
                     )
                   } else {
                     contextKey
@@ -723,7 +723,7 @@ internal class DependencyGraphNodeCache(
               if (metroFunction.annotations.isBinds) {
                 bindsFunctions += (metroFunction to contextKey)
               } else {
-                accessors += GraphAccessor(contextKey, metroFunction, isOptionalDependency)
+                accessors += GraphAccessor(contextKey, metroFunction, isOptionalBinding)
               }
             }
           }
@@ -944,7 +944,7 @@ internal class DependencyGraphNodeCache(
             GraphAccessor(
               IrContextualTypeKey.from(metroFunction.ir),
               metroFunction,
-              metroFunction.annotations.isOptionalDependency,
+              metroFunction.annotations.isOptionalBinding,
             )
           }
 

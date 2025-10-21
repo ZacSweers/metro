@@ -252,6 +252,10 @@ abstract class MetroCompilerTest {
                 if (customOriginAnnotations.isEmpty()) continue
                 processor.option(entry.raw.cliOption, customOriginAnnotations.joinToString(":"))
               }
+              MetroOption.CUSTOM_OPTIONAL_BINDING -> {
+                if (customOptionalBindingAnnotations.isEmpty()) continue
+                processor.option(entry.raw.cliOption, customOptionalBindingAnnotations.joinToString(":"))
+              }
               MetroOption.ENABLE_DAGGER_ANVIL_INTEROP -> {
                 processor.option(entry.raw.cliOption, enableDaggerAnvilInterop)
               }
@@ -261,8 +265,8 @@ abstract class MetroCompilerTest {
               MetroOption.ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE -> {
                 processor.option(entry.raw.cliOption, enableGraphImplClassAsReturnType)
               }
-              MetroOption.OPTIONAL_DEPENDENCY_BEHAVIOR -> {
-                processor.option(entry.raw.cliOption, optionalDependencyBehavior)
+              MetroOption.OPTIONAL_BINDING_BEHAVIOR -> {
+                processor.option(entry.raw.cliOption, optionalBindingBehavior)
               }
               MetroOption.CONTRIBUTES_AS_INJECT -> {
                 processor.option(entry.raw.cliOption, contributesAsInject)

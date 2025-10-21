@@ -1718,8 +1718,8 @@ internal fun IrType.requireSimpleType(
 context(context: IrMetroContext)
 internal fun IrValueParameter.hasMetroDefault(): Boolean {
   return computeMetroDefault(
-    behavior = context.options.optionalDependencyBehavior,
-    isAnnotatedOptionalDep = { hasAnnotation(Symbols.ClassIds.OptionalDependency) },
+    behavior = context.options.optionalBindingBehavior,
+    isAnnotatedOptionalDep = { isAnnotatedWithAny(context.metroSymbols.classIds.optionalBindingAnnotations) },
     hasDefaultValue = { defaultValue != null },
   )
 }
