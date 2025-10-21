@@ -19,9 +19,9 @@ public enum class OptionalBindingBehavior {
   DEFAULT,
 
   /**
-   * In this mode, all optional bindings must be annotated with `@OptionalBinding` (in both
-   * graph accessors as well as injected parameters). This can be desirable for consistency with
-   * accessors and/or to otherwise make the behavior more explicit.
+   * In this mode, all optional bindings must be annotated with `@OptionalBinding` (in both graph
+   * accessors as well as injected parameters). This can be desirable for consistency with accessors
+   * and/or to otherwise make the behavior more explicit.
    */
   REQUIRE_OPTIONAL_BINDING,
 }

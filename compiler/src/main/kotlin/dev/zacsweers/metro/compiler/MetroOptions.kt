@@ -612,8 +612,8 @@ public data class MetroOptions(
     },
   val optionalBindingBehavior: OptionalBindingBehavior =
     MetroOption.OPTIONAL_BINDING_BEHAVIOR.raw.defaultValue.expectAs<String>().let { rawValue ->
-      val adjusted = rawValue.uppercase(Locale.US)
-        .let {
+      val adjusted =
+        rawValue.uppercase(Locale.US).let {
           // temporary cover for deprecated entry
           if (it == "REQUIRE_OPTIONAL_DEPENDENCY") {
             "REQUIRE_OPTIONAL_BINDING"

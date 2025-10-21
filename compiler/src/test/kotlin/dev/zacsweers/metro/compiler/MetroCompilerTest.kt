@@ -254,7 +254,10 @@ abstract class MetroCompilerTest {
               }
               MetroOption.CUSTOM_OPTIONAL_BINDING -> {
                 if (customOptionalBindingAnnotations.isEmpty()) continue
-                processor.option(entry.raw.cliOption, customOptionalBindingAnnotations.joinToString(":"))
+                processor.option(
+                  entry.raw.cliOption,
+                  customOptionalBindingAnnotations.joinToString(":"),
+                )
               }
               MetroOption.ENABLE_DAGGER_ANVIL_INTEROP -> {
                 processor.option(entry.raw.cliOption, enableDaggerAnvilInterop)

@@ -163,10 +163,14 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         add(lazyOption("chunk-field-inits", extension.chunkFieldInits))
         add(lazyOption("statements-per-init-fun", extension.statementsPerInitFun))
         @Suppress("DEPRECATION")
-        add(lazyOption("optional-binding-behavior",
-          extension.optionalBindingBehavior
-            .orElse(extension.optionalDependencyBehavior.map { it.mapToOptionalBindingBehavior() })
-        ))
+        add(
+          lazyOption(
+            "optional-binding-behavior",
+            extension.optionalBindingBehavior.orElse(
+              extension.optionalDependencyBehavior.map { it.mapToOptionalBindingBehavior() }
+            ),
+          )
+        )
         add(lazyOption("public-provider-severity", extension.publicProviderSeverity))
         add(
           lazyOption(

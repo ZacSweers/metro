@@ -1719,7 +1719,9 @@ context(context: IrMetroContext)
 internal fun IrValueParameter.hasMetroDefault(): Boolean {
   return computeMetroDefault(
     behavior = context.options.optionalBindingBehavior,
-    isAnnotatedOptionalDep = { isAnnotatedWithAny(context.metroSymbols.classIds.optionalBindingAnnotations) },
+    isAnnotatedOptionalDep = {
+      isAnnotatedWithAny(context.metroSymbols.classIds.optionalBindingAnnotations)
+    },
     hasDefaultValue = { defaultValue != null },
   )
 }
