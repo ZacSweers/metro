@@ -16,7 +16,7 @@ sourceSets {
 val testCompilerVersionProvider =
   providers.gradleProperty("metro.testCompilerVersion").orElse(libs.versions.kotlin)
 
-val testCompilerVersion = testCompilerVersionProvider.orElse(libs.versions.kotlin).get()
+val testCompilerVersion = testCompilerVersionProvider.get()
 
 val kotlinVersion =
   testCompilerVersion.substringBefore('-').split('.').let { (major, minor, patch) ->
