@@ -7,12 +7,15 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
+import dev.zacsweers.metro.compiler.graph.MissingBindingHints
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
+import dev.zacsweers.metro.compiler.isPlatformType
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin.Companion.IR_EXTERNAL_DECLARATION_STUB
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrProperty
@@ -30,6 +33,7 @@ import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
+import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
@@ -60,8 +64,11 @@ internal class IrBindingGraph(
         onError(message, stack)
         exitProcessing()
       },
-      findSimilarBindings = { key ->
-        findSimilarBindings(key).mapValues { it.value.render(short = true) }
+      missingBindingHints = { key, stack ->
+        MissingBindingHints(
+          missingBindingHints(key, stack),
+          findSimilarBindings(key).mapValues { it.value.render(short = true) },
+        )
       },
     )
 
@@ -192,19 +199,16 @@ internal class IrBindingGraph(
 
   data class BindingGraphResult(
     val sortedKeys: List<IrTypeKey>,
+    val deferredTypes: Set<IrTypeKey>,
     val reachableKeys: Set<IrTypeKey>,
     val hasErrors: Boolean,
-    val deferredInitOrder: Map<IrTypeKey, IrTypeKey?>,
-  ) {
-    val deferredTypes: Set<IrTypeKey>
-      get() = deferredInitOrder.keys
-  }
+  )
 
   data class GraphError(val declaration: IrDeclaration?, val message: String)
 
   fun seal(parentTracer: Tracer, onError: (List<GraphError>) -> Unit): BindingGraphResult =
     context(metroContext) {
-      val (sortedKeys, reachableKeys, deferredInitOrder) =
+      val (sortedKeys, deferredTypes, reachableKeys) =
         parentTracer.traceNested("seal graph") { tracer ->
           val roots = buildMap {
             putAll(accessors)
@@ -233,7 +237,7 @@ internal class IrBindingGraph(
         }
 
       if (hasErrors) {
-        return BindingGraphResult(emptyList(), emptySet(), true, emptyMap())
+        return BindingGraphResult(emptyList(), emptySet(), emptySet(), true)
       }
 
       writeDiagnostic("keys-validated-${parentTracer.tag}.txt") {
@@ -241,7 +245,7 @@ internal class IrBindingGraph(
       }
 
       writeDiagnostic("keys-deferred-${parentTracer.tag}.txt") {
-        deferredInitOrder.keys.joinToString(separator = "\n")
+        deferredTypes.joinToString(separator = "\n")
       }
 
       val unused = bindingsSnapshot().keys - reachableKeys
@@ -258,7 +262,7 @@ internal class IrBindingGraph(
           "Found absent bindings in the binding graph: ${dumpGraph("Absent bindings", short = true)}"
         }
       }
-      return BindingGraphResult(sortedKeys, reachableKeys, false, deferredInitOrder)
+      return BindingGraphResult(sortedKeys, deferredTypes, reachableKeys, false)
     }
 
   fun reportDuplicateBinding(
@@ -364,6 +368,42 @@ internal class IrBindingGraph(
           .map { it.typeKey }
 
       yieldAll(similar)
+    }
+  }
+
+  private fun missingBindingHints(key: IrTypeKey, stack: IrBindingStack): List<String> {
+    return buildList {
+      key.type.rawTypeOrNull()?.let { klass ->
+        if (
+          klass.origin == IR_EXTERNAL_DECLARATION_STUB &&
+            klass.metadata == null &&
+            !klass.isFromJava() &&
+            klass.classId?.isPlatformType() != true
+        ) {
+          val requestingKey = stack.entries.getOrNull(1)
+          val requestingBinding = requestingKey?.let { findBinding(it.typeKey) }
+          val requestingParent = requestingBinding?.hostParent
+          val requestingLocation = requestingParent?.kotlinFqName?.asString()
+          val message = buildString {
+            appendLine(
+              "'${klass.classId!!.asFqNameString()}' doesn't appear to be visible to this compilation. This can happen when a binding references a type from an 'implementation' dependency that isn't exposed to the consuming graph's module."
+            )
+            appendLine("Possible fixes:")
+            append(
+              "- Mark the module containing '${klass.classId!!.asFqNameString()}' as an 'api' dependency in the module that "
+            )
+            if (requestingLocation == null) {
+              appendLine("binds it.")
+            } else {
+              appendLine("defines '$requestingLocation' (which is requesting it).")
+            }
+            appendLine(
+              "- Add the module containing '${klass.classId!!.asFqNameString()}' as an explicit dependency to the module that defines '${node.typeKey.render(short = false)}'."
+            )
+          }
+          add(message)
+        }
+      }
     }
   }
 

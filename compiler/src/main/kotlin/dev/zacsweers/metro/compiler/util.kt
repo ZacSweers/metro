@@ -18,11 +18,13 @@ internal fun generatedContextParameterName(classId: ClassId): Name {
 }
 
 private val PLATFORM_TYPE_PACKAGES =
-  setOf("android.", "androidx.", "java.", "javax.", "kotlin.", "kotlinx.", "scala.")
+  setOf("android", "androidx", "java", "javax", "kotlin", "kotlinx", "scala")
 
 internal fun ClassId.isPlatformType(): Boolean {
   return packageFqName.asString().let { packageName ->
-    PLATFORM_TYPE_PACKAGES.any { packageName.startsWith(it) }
+    PLATFORM_TYPE_PACKAGES.any { platformPackage ->
+      packageName == platformPackage || packageName.startsWith("$platformPackage.")
+    }
   }
 }
 

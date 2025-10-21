@@ -221,6 +221,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/MultipleMissingDeps.kt");
     }
 
+    @Test
+    @TestMetadata("UsefulHintsForMissingImplDeps.kt")
+    public void testUsefulHintsForMissingImplDeps() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/UsefulHintsForMissingImplDeps.kt");
+    }
+
     @Nested
     @TestMetadata("compiler-tests/src/test/data/diagnostic/dependencygraph/dynamic")
     @TestDataPath("$PROJECT_ROOT")

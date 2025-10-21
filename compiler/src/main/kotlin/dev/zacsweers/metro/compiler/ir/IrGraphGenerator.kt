@@ -391,7 +391,6 @@ internal class IrGraphGenerator(
 
       // For all deferred types, assign them first as factories
       // DelegateFactory properties can be initialized inline since they're just empty factories.
-      // Only the setDelegate() calls need to be ordered in init blocks.
       @Suppress("UNCHECKED_CAST")
       val deferredProperties: Map<IrTypeKey, IrProperty> =
         sealResult.deferredTypes.associateWith { deferredTypeKey ->
@@ -403,8 +402,7 @@ internal class IrGraphGenerator(
                 { deferredTypeKey.type.wrapInProvider(metroSymbols.metroProvider) },
                 PropertyType.FIELD,
               )
-              // TODO if needed we could move this back to withInit()
-              .initFinal {
+              .withInit(binding.typeKey) { _, _ ->
                 irInvoke(
                   callee = metroSymbols.metroDelegateFactoryConstructor,
                   typeArgs = listOf(deferredTypeKey.type),
@@ -414,11 +412,6 @@ internal class IrGraphGenerator(
           bindingPropertyContext.putProviderProperty(deferredTypeKey, property)
           property
         }
-
-      // Create properties in dependency-order
-      // Track which keys actually get properties generated so we can reference this for deferred
-      // init ordering
-      val keysWithProperties = linkedSetOf<IrTypeKey>()
 
       initOrder
         .asSequence()
@@ -437,7 +430,6 @@ internal class IrGraphGenerator(
             // Parent graph bindings don't need duplicated properties
             (binding is IrBinding.GraphDependency && binding.propertyAccess != null)
         }
-        .onEach { keysWithProperties.add(it.binding.typeKey) }
         .toList()
         .also { propertyBindings ->
           writeDiagnostic("keys-providerProperties-${parentTracer.tag}.txt") {
@@ -451,7 +443,7 @@ internal class IrGraphGenerator(
         }
         .forEach { (binding, propertyType) ->
           val key = binding.typeKey
-          // Since assisted and member injections don't implement Factory, we can't just type these
+          // Since assisted-inject classes don't implement Factory, we can't just type these
           // as Provider<*> properties
           var isProviderType = true
           val suffix: String
@@ -504,125 +496,52 @@ internal class IrGraphGenerator(
           }
         }
 
-      // TODO can we reduce some of the mappings here? Or can we interleave these in the topo sort
-      //  result?
-
-      // Now that we know which keys have properties, populate the deferred init ordering
-      // Build a map from type keys to their property indices for faster lookup
-      val propertyIndexByKey: Map<IrTypeKey, Int>
-
-      // Determine which deferred types should be initialized immediately vs after specific
-      // properties
-      val immediateDeferredInits = mutableSetOf<IrTypeKey>()
-
-      // Build reverse map for deferred inits - will be populated after we know which keys have
-      // properties
-      val deferredInitsAfterKey = mutableMapOf<IrTypeKey, MutableList<IrTypeKey>>()
-
-      val hasDeferredKeys = sealResult.deferredInitOrder.isNotEmpty()
-      if (hasDeferredKeys) {
-        propertyIndexByKey = buildMap {
-          for ((index, propertyAndInit) in propertyInitializers.withIndex()) {
-            val typeKey = propertiesToTypeKeys[propertyAndInit.first]
-            if (typeKey != null) {
-              put(typeKey, index)
-            }
-          }
-        }
-
-        for ((deferredKey, triggerKey) in sealResult.deferredInitOrder) {
-          if (triggerKey != null && triggerKey in propertyIndexByKey) {
-            // Trigger key has a property that's initialized in init blocks, add to
-            // deferredInitsAfterKey
-            deferredInitsAfterKey.getOrPut(triggerKey) { mutableListOf() }.add(deferredKey)
-          } else {
-            // Either no trigger key, or trigger key has an inline initializer (or no property at
-            // all)
-            // These can be initialized in the constructor body before init() is called
-            immediateDeferredInits.add(deferredKey)
-          }
-        }
-      } else {
-        propertyIndexByKey = emptyMap()
-      }
-
-      // Helper function to generate setDelegate call
-      fun generateSetDelegateCall(
-        deferredTypeKey: IrTypeKey
-      ): IrBuilderWithScope.(IrValueParameter) -> IrStatement {
-        val property = deferredProperties.getValue(deferredTypeKey)
-        val binding = bindingGraph.requireBinding(deferredTypeKey)
-        return { thisReceiver ->
-          irInvoke(
-            dispatchReceiver = irGetObject(metroSymbols.metroDelegateFactoryCompanion),
-            callee = metroSymbols.metroDelegateFactorySetDelegate,
-            typeArgs = listOf(deferredTypeKey.type),
-            args =
-              listOf(
-                irGetProperty(irGet(thisReceiver), property),
-                createIrBuilder(symbol).run {
-                  expressionGeneratorFactory
-                    .create(thisReceiver)
-                    .generateBindingCode(
-                      binding,
-                      accessType = IrGraphExpressionGenerator.AccessType.PROVIDER,
-                      fieldInitKey = deferredTypeKey,
-                    )
-                    .letIf(binding.isScoped()) {
-                      it.doubleCheck(this@run, metroSymbols, binding.typeKey)
-                    }
-                },
-              ),
-          )
-        }
-      }
-
-      // Track where setDelegate calls should be inserted
-      val deferredInitsAtIndex = mutableMapOf<Int, MutableList<InitStatement>>()
-
-      if (hasDeferredKeys) {
-        // Add immediate deferred inits at index 0 (before any property initializers)
-        for (deferredTypeKey in immediateDeferredInits) {
-          deferredInitsAtIndex
-            .getOrPut(0, ::mutableListOf)
-            .add(generateSetDelegateCall(deferredTypeKey))
-        }
-
-        // Add deferred inits that should happen after specific properties
-        for ((triggerKey, deferredKeys) in deferredInitsAfterKey) {
-          val propertyIndex = propertyIndexByKey[triggerKey]
-          if (propertyIndex != null) {
-            // Add setDelegate calls after this property (index + 1)
-            for (deferredKey in deferredKeys) {
-              deferredInitsAtIndex
-                .getOrPut(propertyIndex + 1, ::mutableListOf)
-                .add(generateSetDelegateCall(deferredKey))
-            }
+      fun addDeferredSetDelegateCalls(collector: MutableList<InitStatement>) {
+        // Add statements to our constructor's deferred properties _after_ we've added all provider
+        // properties for everything else. This is important in case they reference each other
+        for ((deferredTypeKey, field) in deferredProperties) {
+          val binding = bindingGraph.requireBinding(deferredTypeKey)
+          collector.add { thisReceiver ->
+            irInvoke(
+              dispatchReceiver = irGetObject(metroSymbols.metroDelegateFactoryCompanion),
+              callee = metroSymbols.metroDelegateFactorySetDelegate,
+              typeArgs = listOf(deferredTypeKey.type),
+              // TODO de-dupe?
+              args =
+                listOf(
+                  irGetProperty(irGet(thisReceiver), field),
+                  createIrBuilder(symbol).run {
+                    expressionGeneratorFactory
+                      .create(thisReceiver)
+                      .generateBindingCode(
+                        binding,
+                        accessType = IrGraphExpressionGenerator.AccessType.PROVIDER,
+                        fieldInitKey = deferredTypeKey,
+                      )
+                      .letIf(binding.isScoped()) {
+                        // If it's scoped, wrap it in double-check
+                        // DoubleCheck.provider(<provider>)
+                        it.doubleCheck(this@run, metroSymbols, binding.typeKey)
+                      }
+                  },
+                ),
+            )
           }
         }
       }
 
-      // Use chunked inits if we have deferred init statements to interleave with init block
-      // statements, or if the graph is large enough. If all deferred inits are "immediate"
-      // (index 0), we don't need chunking.
-      val hasInterleavedDeferredInits = deferredInitsAtIndex.keys.any { it > 0 }
+      // Use chunked inits if the graph is large enough
       val mustChunkInits =
-        hasInterleavedDeferredInits ||
-          (options.chunkFieldInits && propertyInitializers.size > options.statementsPerInitFun)
+        options.chunkFieldInits && propertyInitializers.size > options.statementsPerInitFun
 
       if (mustChunkInits) {
         // Larger graph, split statements
         // Chunk our constructor statements and split across multiple init functions
-        @Suppress("RemoveExplicitTypeArguments")
         val chunks =
           buildList<InitStatement> {
-              // Add immediate deferred inits (before any property initializers)
-              deferredInitsAtIndex[0]?.forEach { statement -> add(statement) }
-
               // Add property initializers and interleave setDelegate calls as dependencies are
               // ready
-              for ((index, propertyAndInit) in propertyInitializers.withIndex()) {
-                val (property, init) = propertyAndInit
+              for ((property, init) in propertyInitializers) {
                 val typeKey = propertiesToTypeKeys.getValue(property)
 
                 // Add this property's initialization
@@ -633,12 +552,9 @@ internal class IrGraphGenerator(
                     init(thisReceiver, typeKey),
                   )
                 }
-
-                // Add any deferred inits that should happen after this property
-                // (index + 1 because we stored them keyed by propertyInitializers.size, which was
-                // the next index)
-                deferredInitsAtIndex[index + 1]?.forEach { statement -> add(statement) }
               }
+
+              addDeferredSetDelegateCalls(this)
             }
             .chunked(options.statementsPerInitFun)
 
@@ -672,15 +588,7 @@ internal class IrGraphGenerator(
             init(thisReceiverParameter, typeKey)
           }
         }
-
-        // Add deferred init statements even in non-chunked path
-        // First add immediate deferred inits (before any property initializers)
-        deferredInitsAtIndex[0]?.forEach { statement -> constructorStatements.add(statement) }
-
-        // Then add deferred inits that should happen after each property
-        for (index in 1..propertyInitializers.size) {
-          deferredInitsAtIndex[index]?.forEach { statement -> constructorStatements.add(statement) }
-        }
+        addDeferredSetDelegateCalls(constructorStatements)
       }
 
       // Add extra constructor statements

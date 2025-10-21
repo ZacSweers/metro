@@ -961,6 +961,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("NoAssistedArgsInAssistedInject.kt")
+      public void testNoAssistedArgsInAssistedInject() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/NoAssistedArgsInAssistedInject.kt");
+      }
+
+      @Test
       @TestMetadata("PreserveNullabilityInRemapping.kt")
       public void testPreserveNullabilityInRemapping() {
         runTest("compiler-tests/src/test/data/box/inject/assisted/PreserveNullabilityInRemapping.kt");
