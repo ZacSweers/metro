@@ -901,6 +901,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("AssistedFactoryWithContributesAsInject.kt")
+      public void testAssistedFactoryWithContributesAsInject() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedFactoryWithContributesAsInject.kt");
+      }
+
+      @Test
       @TestMetadata("AssistedParametersInLaterOrderWork.kt")
       public void testAssistedParametersInLaterOrderWork() {
         runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedParametersInLaterOrderWork.kt");
