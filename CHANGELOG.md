@@ -24,6 +24,7 @@ Changelog
 - **Enhancement**: Short-circuit empty map providers to `emptyMap()`.
 - **Enhancement**: Support default values for assisted parameter arguments in top-level function injection.
 - **Enhancement**: Allow using `@Contributes*` annotations on assisted factories with `contributesAsInject` enabled.
+- **Enhancement**: Allow `@OptionalBinding` annotation to be customizable/replaceable.
 - **Change**: Deprecate `@OptionalDependency` in favor of `@OptionalBinding`. Same behavior, just a slightly more consistent name.
 - **Fix**: Compute `Optional` instance lazily when requested as a `Provider<Optional<T>>` and the underlying optional is not empty. Only applies to `@BindsOptionalOf` interop.
 - **Fix**: Don't generate duplicate `init()` functions when chunking initializers if graphs already have an explicit `init()` function.
