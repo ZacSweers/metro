@@ -28,7 +28,7 @@ Changelog
 - **Fix**: Fix support for assisted inject with no assisted params.
 - **Fix**: Detect platform types in just the `kotlin` package. Previously it missed any that didn't have multiple package segments.
 - **Fix**: Align unused context parameter special names on Kotlin 2.3.x.
-- Update IJ 2025.3 EAP support from `2.3.0-dev-7984` to `2.3.0-dev-9992`.
+- Remove `2.3.0-dev-7984` compat (superseded by `2.3.0-Beta1`).
 
 0.7.0
 ------
