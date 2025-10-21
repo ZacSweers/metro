@@ -1945,7 +1945,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
           """
           e: AppTest.kt:6:7 [Metro/DuplicateBinding] Multiple bindings found for kotlin.String
 
-            AppGraph.kt:10:3 
+            AppGraph.kt:10:3
               @Provides fun provideString(): kotlin.String
                                              ~~~~~~~~~~~~~
             test.BindingContainerA
