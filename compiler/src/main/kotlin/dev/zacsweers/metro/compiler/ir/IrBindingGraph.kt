@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin.Companion.IR_EXTERNAL_DECLARATION_STUB
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrProperty
@@ -31,6 +32,7 @@ import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
+import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
@@ -61,9 +63,10 @@ internal class IrBindingGraph(
         onError(message, stack)
         exitProcessing()
       },
-      missingBindingHints = { key ->
+      missingBindingHints = { key, stack ->
         MissingBindingHints(
-          findSimilarBindings(key).mapValues { it.value.toString() }
+          missingBindingHints(key, stack),
+          findSimilarBindings(key).mapValues { it.value.toString() },
         )
       },
     )
@@ -367,6 +370,41 @@ internal class IrBindingGraph(
           .map { it.typeKey }
 
       yieldAll(similar)
+    }
+  }
+
+  private fun missingBindingHints(key: IrTypeKey, stack: IrBindingStack): List<String> {
+    return buildList {
+      key.type.rawTypeOrNull()?.let { klass ->
+        if (
+          klass.origin == IR_EXTERNAL_DECLARATION_STUB &&
+            klass.metadata == null &&
+            !klass.isFromJava()
+        ) {
+          val requestingKey = stack.entries.getOrNull(1)
+          val requestingBinding = requestingKey?.let { findBinding(it.typeKey) }
+          val requestingParent = requestingBinding?.hostParent
+          val requestingLocation = requestingParent?.kotlinFqName?.asString()
+          val message = buildString {
+            appendLine(
+              "'${klass.classId!!.asFqNameString()}' doesn't appear to be visible to this compilation. This can happen when a binding references a type from an 'implementation' dependency that isn't exposed to the consuming graph's module."
+            )
+            appendLine("Possible fixes:")
+            append(
+              "- Mark the module containing '${klass.classId!!.asFqNameString()}' as an 'api' dependency in the module that "
+            )
+            if (requestingLocation == null) {
+              appendLine("binds it.")
+            } else {
+              appendLine("defines '$requestingLocation' (which is requesting it).")
+            }
+            appendLine(
+              "- Add the module containing '${klass.classId!!.asFqNameString()}' as an explicit dependency to the module that defines '${node.typeKey.render(short = false)}'."
+            )
+          }
+          add(message)
+        }
+      }
     }
   }
 
