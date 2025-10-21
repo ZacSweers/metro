@@ -1129,16 +1129,11 @@ private constructor(
                     listOf(
                       generateMapKeyLiteral(sourceBinding),
                       generateMultibindingArgument(
-                          sourceBinding,
-                          originalValueContextKey.wrapInProvider(),
-                          fieldInitKey,
-                          accessType = AccessType.PROVIDER,
-                        )
-                        .let {
-                          with(valueProviderSymbols) {
-                            transformMetroProvider(it, originalValueContextKey)
-                          }
-                        },
+                        sourceBinding,
+                        originalValueContextKey.wrapInProvider(),
+                        fieldInitKey,
+                        accessType = AccessType.PROVIDER,
+                      ),
                     ),
                 )
               }

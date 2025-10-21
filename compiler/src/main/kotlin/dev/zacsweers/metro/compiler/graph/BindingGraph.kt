@@ -446,7 +446,6 @@ internal open class MutableBindingGraph<
     bindingStack: BindingStack,
     extraContent: StringBuilder.() -> Unit = {},
   ) {
-    // TODO referents
     if (reportedMissingKeys.add(typeKey)) {
       val message = buildString {
         append(

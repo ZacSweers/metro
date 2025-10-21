@@ -213,6 +213,12 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
               add(ClassId.fromString("dagger/multibindings/Multibinds"))
             }
           },
+        customMapKeyAnnotations =
+          buildSet {
+            if (addDaggerAnnotations) {
+              add(ClassId.fromString("dagger/MapKey"))
+            }
+          },
         customOriginAnnotations =
           buildSet {
             if (MetroDirectives.WITH_KI_ANVIL in module.directives) {
