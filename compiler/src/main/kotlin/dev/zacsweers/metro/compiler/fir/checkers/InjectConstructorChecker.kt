@@ -46,7 +46,8 @@ internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common
     val isInjected = classInjectLikeAnnotations.isNotEmpty() || injectedConstructor != null
     if (!isInjected) return
 
-    val isAssistedFactory = declaration.isAnnotatedWithAny(session, classIds.assistedFactoryAnnotations)
+    val isAssistedFactory =
+      declaration.isAnnotatedWithAny(session, classIds.assistedFactoryAnnotations)
     if (isAssistedFactory) return
 
     declaration
