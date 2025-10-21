@@ -55,7 +55,8 @@ internal fun IrAnnotationContainer.irCallableMetadata(
     return IrCallableMetadata(
       callableId = mirrorFunction.callableId,
       mirrorCallableId = mirrorFunction.callableId,
-      annotations = sourceAnnotations ?: mirrorFunction.metroAnnotations(context.metroSymbols.classIds),
+      annotations =
+        sourceAnnotations ?: mirrorFunction.metroAnnotations(context.metroSymbols.classIds),
       isPropertyAccessor = mirrorFunction.isPropertyAccessor,
       function = mirrorFunction,
       mirrorFunction = mirrorFunction,

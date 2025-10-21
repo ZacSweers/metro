@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
-import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.Symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.compat.CompatContext
@@ -30,7 +29,6 @@ import org.jetbrains.kotlin.DeprecatedForRemovalCompilerApi
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.ir.createExtensionReceiver
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
-import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.backend.jvm.ir.isWithFlexibleNullability
 import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
@@ -185,14 +183,11 @@ internal fun IrElement?.locationIn(file: IrFile): CompilerMessageSourceLocation 
   )!!
 }
 
-internal fun CompilerMessageSourceLocation.render(): String? {
+internal fun CompilerMessageSourceLocation.render(short: Boolean): String? {
   return buildString {
     // Just for use in testing
-    val useShortName =
-      System.getProperty(MetroOptions.Properties.USE_SHORT_COMPILER_SOURCE_LOCATIONS, "false")
-        .toBoolean()
     val path = File(path).toPath()
-    if (useShortName) {
+    if (short) {
       append(path.name)
     } else {
       val fileUri = path.toUri()
@@ -207,7 +202,6 @@ internal fun CompilerMessageSourceLocation.render(): String? {
       // No line or column numbers makes this kind of useless so return null
       return null
     }
-    append(' ')
   }
 }
 
@@ -894,8 +888,10 @@ internal val IrDeclarationParent.isExternalParent: Boolean
  * serializable in IR and cannot be used in some places like function bodies. This replicates that
  * ease of use.
  */
-internal fun IrBuilderWithScope.irExprBodySafe(symbol: IrSymbol, expression: IrExpression) =
-  context.createIrBuilder(symbol).irBlockBody { +irReturn(expression) }
+internal fun IrBuilderWithScope.irExprBodySafe(
+  expression: IrExpression,
+  symbol: IrSymbol = scope.scopeOwnerSymbol,
+) = context.createIrBuilder(symbol).irBlockBody { +irReturn(expression) }
 
 context(context: IrPluginContext)
 internal fun IrFunction.buildBlockBody(blockBody: IrBlockBodyBuilder.() -> Unit) {
@@ -903,7 +899,16 @@ internal fun IrFunction.buildBlockBody(blockBody: IrBlockBodyBuilder.() -> Unit)
 }
 
 internal fun IrType.render(short: Boolean, includeAnnotations: Boolean = false): String {
-  return StringBuilder().also { renderTo(it, short, includeAnnotations) }.toString()
+  return buildString { renderTo(this, short, includeAnnotations) }
+}
+
+internal fun IrTypeArgument.render(short: Boolean, includeAnnotations: Boolean = false): String {
+  return buildString {
+    when (this@render) {
+      is IrStarProjection -> append("*")
+      is IrTypeProjection -> type.renderTo(this, short, includeAnnotations)
+    }
+  }
 }
 
 internal fun IrType.renderTo(
@@ -1133,7 +1138,7 @@ private fun <S> IrOverridableDeclaration<S>.overriddenSymbolsSequence(
 
 context(context: IrMetroContext)
 internal fun IrFunction.stubExpressionBody(message: String = "Never called"): IrBlockBody {
-  return context.createIrBuilder(symbol).run { irExprBodySafe(symbol, stubExpression(message)) }
+  return context.createIrBuilder(symbol).run { irExprBodySafe(stubExpression(message)) }
 }
 
 context(context: IrMetroContext)
@@ -1554,7 +1559,10 @@ private fun List<IrConstructorCall>?.annotationsAnnotatedWith(
 
 context(context: IrMetroContext)
 internal fun IrClass.findInjectableConstructor(onlyUsePrimaryConstructor: Boolean): IrConstructor? {
-  if (kind.isObject) return null // No constructor for this one but can be annotated with Contributes*
+  if (kind.isObject) {
+    // No constructor for this one but can be annotated with Contributes*
+    return null
+  }
   return findInjectableConstructor(
     onlyUsePrimaryConstructor,
     if (onlyUsePrimaryConstructor) {
@@ -1716,6 +1724,28 @@ internal fun IrValueParameter.hasMetroDefault(): Boolean {
   )
 }
 
-internal fun <T : Any> IrPluginContext.withIrBuilder(symbol: IrSymbol, block: DeclarationIrBuilder.() -> T): T {
+internal fun <T : Any> IrPluginContext.withIrBuilder(
+  symbol: IrSymbol,
+  block: DeclarationIrBuilder.() -> T,
+): T {
   return createIrBuilder(symbol).run(block)
 }
+
+internal val IrProperty.reportableDeclaration: IrDeclarationParent?
+  get() = backingField ?: getter
+
+internal fun IrBuilderWithScope.irGetProperty(
+  receiver: IrExpression,
+  property: IrProperty,
+): IrExpression {
+  property.backingField?.let {
+    return irGetField(receiver, it)
+  }
+  property.getter?.let {
+    return irInvoke(dispatchReceiver = receiver, callee = it.symbol)
+  }
+  reportCompilerBug("No backing field or getter for property ${property.dumpKotlinLike()}")
+}
+
+internal val IrConstructorCall.annotationClass: IrClass
+  get() = symbol.owner.parentAsClass

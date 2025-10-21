@@ -1,0 +1,243 @@
+@DependencyGraph
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  abstract class $$BindsMirror {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Binds
+    @IntoSet
+    @CallableMetadata(callableName = "bindInt", propertyName = "", startOffset = 149, endOffset = 171)
+    abstract fun Int.bindInt_intoset(): Int
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): AppGraph {
+      return $$MetroGraph()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class $$MetroGraph : AppGraph {
+    private val thisGraphInstance: AppGraph
+      field = <this>
+
+    private val thisGraphInstanceProvider: Provider<AppGraph>
+      field = Companion.invoke<AppGraph>(value = <this>.#thisGraphInstance)
+
+    private val provideIntProvider: Provider<Int>
+      field = Companion.create(instance = <this>.#thisGraphInstance)
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Binds
+    @IntoSet
+    override fun Int.bindInt(): Int {
+      return error(message = "Never called")
+    }
+
+    private val bindDouble: Double
+      private get(): Double {
+        return Companion.create(instance = <this>.#thisGraphInstance, int = <this>.#provideIntProvider).invoke()
+      }
+
+    private val bindLong: Long
+      private get(): Long {
+        return Companion.create(instance = <this>.#thisGraphInstance, int = <this>.#provideIntProvider).invoke()
+      }
+
+    override val doubleSet: Set<Double>
+      override get(): Set<Double> {
+        return <this>.<get-setOfDouble>()
+      }
+
+    override val intSet: Set<Int>
+      override get(): Set<Int> {
+        return <this>.<get-setOfInt>()
+      }
+
+    override val longSet: Set<Long>
+      override get(): Set<Long> {
+        return <this>.<get-setOfLong>()
+      }
+
+    private val setOfDouble: Set<Double>
+      private get(): Set<Double> {
+        return setOf<Double>(element = <this>.<get-bindDouble>())
+      }
+
+    private val setOfInt: Set<Int>
+      private get(): Set<Int> {
+        return setOf<Int>(element = <this>.#provideIntProvider.invoke())
+      }
+
+    private val setOfLong: Set<Long>
+      private get(): Set<Long> {
+        return setOf<Long>(element = <this>.<get-bindLong>())
+      }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "bindDouble", propertyName = "", startOffset = 239, endOffset = 307)
+  class BindDouble$$MetroFactory : Factory<Double> {
+    private /* final field */ val instance: AppGraph = instance
+    private /* final field */ val int: Provider<Int> = int
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(instance: AppGraph, int: Provider<Int>): Factory<Double> {
+        return BindDouble$$MetroFactory(instance = instance, int = int)
+      }
+
+      fun bindDouble(instance: AppGraph, int: Int): Double {
+        return instance.bindDouble(int = int)
+      }
+
+    }
+
+    private constructor(instance: AppGraph, int: Provider<Int>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): Double {
+      return Companion.bindDouble(instance = <this>.#instance, int = <this>.#int.invoke())
+    }
+
+    @IntoSet
+    fun mirrorFunction(int: Int): Double {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "bindLong", propertyName = "", startOffset = 174, endOffset = 236)
+  class BindLong$$MetroFactory : Factory<Long> {
+    private /* final field */ val instance: AppGraph = instance
+    private /* final field */ val int: Provider<Int> = int
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(instance: AppGraph, int: Provider<Int>): Factory<Long> {
+        return BindLong$$MetroFactory(instance = instance, int = int)
+      }
+
+      fun bindLong(instance: AppGraph, int: Int): Long {
+        return instance.bindLong(int = int)
+      }
+
+    }
+
+    private constructor(instance: AppGraph, int: Provider<Int>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): Long {
+      return Companion.bindLong(instance = <this>.#instance, int = <this>.#int.invoke())
+    }
+
+    @IntoSet
+    fun mirrorFunction(int: Int): Long {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 95, endOffset = 130)
+  class ProvideInt$$MetroFactory : Factory<Int> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(instance: AppGraph): Factory<Int> {
+        return ProvideInt$$MetroFactory(instance = instance)
+      }
+
+      fun provideInt(instance: AppGraph): Int {
+        return instance.provideInt()
+      }
+
+    }
+
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): Int {
+      return Companion.provideInt(instance = <this>.#instance)
+    }
+
+    fun mirrorFunction(): Int {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Provides
+  @IntoSet
+  private fun bindDouble(int: Int): Double {
+    return int.toDouble()
+  }
+
+  @Binds
+  @IntoSet
+  abstract fun Int.bindInt(): Int
+
+  @Provides
+  @IntoSet
+  private fun bindLong(int: Int): Long {
+    return int.toLong()
+  }
+
+  @Provides
+  private fun provideInt(): Int {
+    return 3
+  }
+
+  abstract val doubleSet: Set<Double>
+    abstract get
+
+  abstract val intSet: Set<Int>
+    abstract get
+
+  abstract val longSet: Set<Long>
+    abstract get
+
+}
+

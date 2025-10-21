@@ -6,6 +6,7 @@ import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
+import dev.zacsweers.metro.compiler.generatedContextParameterName
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
@@ -15,7 +16,9 @@ import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.constArgumentOfTypeAt
 import dev.zacsweers.metro.compiler.ir.hasMetroDefault
 import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
+import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -30,11 +33,13 @@ import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classId
+import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.ir.util.remapTypeParameters
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.name.SpecialNames.UNDERSCORE_FOR_UNUSED_VAR
 
 @Poko
 internal class Parameter
@@ -238,9 +243,13 @@ internal fun IrValueParameter.toConstructorParameter(
 
   val assistedIdentifier = assistedAnnotation?.constArgumentOfTypeAt<String>(0).orEmpty()
 
+  val adjustedName =
+    name.letIf(kind == IrParameterKind.Context && name == UNDERSCORE_FOR_UNUSED_VAR) {
+      generatedContextParameterName(type.rawType().classIdOrFail)
+    }
   return Parameter.regular(
     kind = kind,
-    name = name,
+    name = adjustedName,
     contextualTypeKey = contextKey,
     isAssisted = assistedAnnotation != null,
     assistedIdentifier = assistedIdentifier,

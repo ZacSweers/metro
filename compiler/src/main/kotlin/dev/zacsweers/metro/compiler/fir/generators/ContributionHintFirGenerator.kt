@@ -132,7 +132,8 @@ internal class ContributionHintFirGenerator(session: FirSession, compatContext: 
     return contributionsToScope
       .sortedBy { it.classId.asFqNameString() }
       .map { contributingClass ->
-        val containingFileName = HintGenerator.hintFileName(contributingClass.classId, callableId.callableName)
+        val containingFileName =
+          HintGenerator.hintFileName(contributingClass.classId, callableId.callableName)
         createTopLevelFunction(
             Keys.ContributionHint,
             callableId,

@@ -1562,36 +1562,66 @@ interface AppGraph {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class $$MetroGraph : AppGraph {
-    private var service1Provider: Provider<Service1>
-    private var service2Provider: Provider<Service2>
-    private var service3Provider: Provider<Service3>
-    private var service4Provider: Provider<Service4>
-    private var service5Provider: Provider<Service5>
-    private var service6Provider: Provider<Service6>
-    private var service7Provider: Provider<Service7>
-    private var service8Provider: Provider<Service8>
-    private var service9Provider: Provider<Service9>
-    private var service10Provider: Provider<Service10>
-    private var service11Provider: Provider<Service11>
-    private var service12Provider: Provider<Service12>
-    private var service13Provider: Provider<Service13>
-    private var service14Provider: Provider<Service14>
-    private var service15Provider: Provider<Service15>
-    private var service16Provider: Provider<Service16>
-    private var service17Provider: Provider<Service17>
-    private var service18Provider: Provider<Service18>
-    private var service19Provider: Provider<Service19>
-    private var service20Provider: Provider<Service20>
-    private var service21Provider: Provider<Service21>
-    private var service22Provider: Provider<Service22>
-    private var service23Provider: Provider<Service23>
-    private var service24Provider: Provider<Service24>
-    private var service25Provider: Provider<Service25>
-    private var service26Provider: Provider<Service26>
-    private var service27Provider: Provider<Service27>
-    private var service28Provider: Provider<Service28>
-    private var service29Provider: Provider<Service29>
-    private var service30Provider: Provider<Service30>
+    private val service1Provider: Provider<Service1>
+
+    private val service2Provider: Provider<Service2>
+
+    private val service3Provider: Provider<Service3>
+
+    private val service4Provider: Provider<Service4>
+
+    private val service5Provider: Provider<Service5>
+
+    private val service6Provider: Provider<Service6>
+
+    private val service7Provider: Provider<Service7>
+
+    private val service8Provider: Provider<Service8>
+
+    private val service9Provider: Provider<Service9>
+
+    private val service10Provider: Provider<Service10>
+
+    private val service11Provider: Provider<Service11>
+
+    private val service12Provider: Provider<Service12>
+
+    private val service13Provider: Provider<Service13>
+
+    private val service14Provider: Provider<Service14>
+
+    private val service15Provider: Provider<Service15>
+
+    private val service16Provider: Provider<Service16>
+
+    private val service17Provider: Provider<Service17>
+
+    private val service18Provider: Provider<Service18>
+
+    private val service19Provider: Provider<Service19>
+
+    private val service20Provider: Provider<Service20>
+
+    private val service21Provider: Provider<Service21>
+
+    private val service22Provider: Provider<Service22>
+
+    private val service23Provider: Provider<Service23>
+
+    private val service24Provider: Provider<Service24>
+
+    private val service25Provider: Provider<Service25>
+
+    private val service26Provider: Provider<Service26>
+
+    private val service27Provider: Provider<Service27>
+
+    private val service28Provider: Provider<Service28>
+
+    private val service29Provider: Provider<Service29>
+
+    private val service30Provider: Provider<Service30>
+
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */

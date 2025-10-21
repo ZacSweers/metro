@@ -46,8 +46,13 @@ internal class KotlinOnlyFirSupertypeGenerationExtension(
     resolvedSupertypes: List<FirResolvedTypeRef>,
     typeResolver: TypeResolveService,
   ): List<ConeKotlinType> {
-    return delegate.computeAdditionalSupertypes(classLikeDeclaration, resolvedSupertypes, typeResolver)
+    return delegate.computeAdditionalSupertypes(
+      classLikeDeclaration,
+      resolvedSupertypes,
+      typeResolver,
+    )
   }
 }
 
-internal fun FirSupertypeGenerationExtension.kotlinOnly() = KotlinOnlyFirSupertypeGenerationExtension(session, this)
+internal fun FirSupertypeGenerationExtension.kotlinOnly() =
+  KotlinOnlyFirSupertypeGenerationExtension(session, this)

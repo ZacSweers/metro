@@ -8,7 +8,7 @@ run_checks() {
     local version_flag=""
 
     if [[ -n "$compiler_version" ]]; then
-        version_flag="-Dmetro.testCompilerVersion=$compiler_version"
+        version_flag="-Pmetro.testCompilerVersion=$compiler_version"
         echo "Running checks with Kotlin version $compiler_version..."
     else
         echo "Running checks..."

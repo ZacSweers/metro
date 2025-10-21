@@ -122,8 +122,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
               Visibilities.Internal -> {
                 it.moduleData == session.moduleData ||
                   @OptIn(SymbolInternals::class)
-                  session.moduleVisibilityChecker?.isInFriendModule(it.fir) ==
-                    true
+                  session.moduleVisibilityChecker?.isInFriendModule(it.fir) == true
               }
               else -> true
             }
@@ -307,7 +306,8 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
     // Also check binding containers (e.g., @ContributesTo classes)
     for ((containerClassId, isBindingContainer) in contributionMappingsByClassId) {
       if (isBindingContainer) {
-        val containerSymbol = containerClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()
+        val containerSymbol =
+          containerClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()
         if (containerSymbol != null) {
           val localTypeResolver = typeResolverFor(containerSymbol) ?: continue
 

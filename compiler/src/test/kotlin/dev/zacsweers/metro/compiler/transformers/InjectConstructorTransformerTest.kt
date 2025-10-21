@@ -31,9 +31,9 @@ class InjectConstructorTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-          class ExampleClass @Inject constructor(private val value: String) : Callable<String> {
-            override fun call(): String = value
-          }
+        class ExampleClass @Inject constructor(private val value: String) : Callable<String> {
+          override fun call(): String = value
+        }
         """
           .trimIndent()
       )
@@ -47,9 +47,9 @@ class InjectConstructorTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-          class ExampleClass<T> @Inject constructor(private val value: T) : Callable<T> {
-            override fun call(): T = value
-          }
+        class ExampleClass<T> @Inject constructor(private val value: T) : Callable<T> {
+          override fun call(): T = value
+        }
 
         """
           .trimIndent()
@@ -64,10 +64,10 @@ class InjectConstructorTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @Inject
-          class ExampleClass(private val value: String) : Callable<String> {
-            override fun call(): String = value
-          }
+        @Inject
+        class ExampleClass(private val value: String) : Callable<String> {
+          override fun call(): String = value
+        }
 
         """
           .trimIndent()
@@ -82,10 +82,10 @@ class InjectConstructorTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @Inject
-          class ExampleClass : Callable<String> {
-            override fun call(): String = "Hello, world!"
-          }
+        @Inject
+        class ExampleClass : Callable<String> {
+          override fun call(): String = "Hello, world!"
+        }
 
         """
           .trimIndent()
@@ -112,10 +112,10 @@ class InjectConstructorTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @Inject
-          class ExampleClass(private val value: Provider<String>) : Callable<String> {
-            override fun call(): String = value()
-          }
+        @Inject
+        class ExampleClass(private val value: Provider<String>) : Callable<String> {
+          override fun call(): String = value()
+        }
 
         """
           .trimIndent()
@@ -137,10 +137,10 @@ class InjectConstructorTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @Inject
-          class ExampleClass(private val value: Lazy<String>) : Callable<String> {
-            override fun call(): String = value.value
-          }
+        @Inject
+        class ExampleClass(private val value: Lazy<String>) : Callable<String> {
+          override fun call(): String = value.value
+        }
 
         """
           .trimIndent()
@@ -162,10 +162,10 @@ class InjectConstructorTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @Inject
-          class ExampleClass(private val value: Provider<Lazy<String>>) : Callable<Lazy<String>> {
-            override fun call(): Lazy<String> = value()
-          }
+        @Inject
+        class ExampleClass(private val value: Provider<Lazy<String>>) : Callable<Lazy<String>> {
+          override fun call(): Lazy<String> = value()
+        }
 
         """
           .trimIndent()
@@ -193,10 +193,10 @@ class InjectConstructorTransformerTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @Inject
-            class ExampleClass(private val value: Int) : Callable<Int> {
-              override fun call(): Int = value
-            }
+          @Inject
+          class ExampleClass(private val value: Int) : Callable<Int> {
+            override fun call(): Int = value
+          }
           """
             .trimIndent()
         )
@@ -205,15 +205,15 @@ class InjectConstructorTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph
-          interface ExampleGraph {
-            val exampleClass: ExampleClass
+        @DependencyGraph
+        interface ExampleGraph {
+          val exampleClass: ExampleClass
 
-            @DependencyGraph.Factory
-            fun interface Factory {
-              fun create(@Provides int: Int): ExampleGraph
-            }
+          @DependencyGraph.Factory
+          fun interface Factory {
+            fun create(@Provides int: Int): ExampleGraph
           }
+        }
         """
           .trimIndent()
       ),
@@ -230,10 +230,10 @@ class InjectConstructorTransformerTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @Inject
-            class ExampleClass private constructor(private val value: Int) : Callable<Int> {
-              override fun call(): Int = value
-            }
+          @Inject
+          class ExampleClass private constructor(private val value: Int) : Callable<Int> {
+            override fun call(): Int = value
+          }
           """
             .trimIndent()
         )
@@ -242,15 +242,15 @@ class InjectConstructorTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph
-          interface ExampleGraph {
-            val exampleClass: ExampleClass
+        @DependencyGraph
+        interface ExampleGraph {
+          val exampleClass: ExampleClass
 
-            @DependencyGraph.Factory
-            fun interface Factory {
-              fun create(@Provides int: Int): ExampleGraph
-            }
+          @DependencyGraph.Factory
+          fun interface Factory {
+            fun create(@Provides int: Int): ExampleGraph
           }
+        }
         """
           .trimIndent()
       ),
@@ -266,25 +266,25 @@ class InjectConstructorTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(AppScope::class)
-          interface ExampleGraph {
-            // This is fine
-            @ForScope(AppScope::class)
-            val int: Int
+        @DependencyGraph(AppScope::class)
+        interface ExampleGraph {
+          // This is fine
+          @ForScope(AppScope::class)
+          val int: Int
 
-            val myClass: MyClass
-          }
+          val myClass: MyClass
+        }
 
-          @ContributesTo(AppScope::class)
-          interface ContributedInterface {
-            @Provides @ForScope(AppScope::class) fun provideInt(): Int = 2
-          }
+        @ContributesTo(AppScope::class)
+        interface ContributedInterface {
+          @Provides @ForScope(AppScope::class) fun provideInt(): Int = 2
+        }
 
-          class MyClass @Inject constructor(
-            // This fails
-            @ForScope(AppScope::class)
-            val int: Int
-          )
+        class MyClass @Inject constructor(
+          // This fails
+          @ForScope(AppScope::class)
+          val int: Int
+        )
         """
           .trimIndent()
       )
@@ -300,26 +300,26 @@ class InjectConstructorTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(scope = AppScope::class)
-          interface ExampleGraph {
-            // This is fine
-            @ForScope(AppScope::class)
-            val contributedInterface: ContributedInterface
+        @DependencyGraph(scope = AppScope::class)
+        interface ExampleGraph {
+          // This is fine
+          @ForScope(AppScope::class)
+          val contributedInterface: ContributedInterface
 
-            val myClass: MyClass
-          }
+          val myClass: MyClass
+        }
 
-          interface ContributedInterface
+        interface ContributedInterface
 
-          @ContributesBinding(AppScope::class, binding<@ForScope(AppScope::class) ContributedInterface>())
-          @Inject
-          class Impl : ContributedInterface
+        @ContributesBinding(AppScope::class, binding<@ForScope(AppScope::class) ContributedInterface>())
+        @Inject
+        class Impl : ContributedInterface
 
-          class MyClass @Inject constructor(
-            // This fails
-            @ForScope(AppScope::class)
-            val contributedInterface: ContributedInterface
-          )
+        class MyClass @Inject constructor(
+          // This fails
+          @ForScope(AppScope::class)
+          val contributedInterface: ContributedInterface
+        )
         """
           .trimIndent()
       )
@@ -342,11 +342,11 @@ class InjectConstructorTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-          import dagger.Reusable
+        import dagger.Reusable
 
-          @Reusable
-          @Inject
-          class MyClass
+        @Reusable
+        @Inject
+        class MyClass
         """
           .trimIndent()
       ),
@@ -354,7 +354,7 @@ class InjectConstructorTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: MyClass.kt:8:1 Dagger's `@Reusable` is not supported in Metro. See https://zacsweers.github.io/metro/latest/faq#why-doesnt-metro-support-reusable for more information.
+        e: MyClass.kt:8:1 Dagger's `@Reusable` is not supported in Metro. See https://zacsweers.github.io/metro/latest/faq#why-doesnt-metro-support-reusable for more information.
         """
           .trimIndent()
       )
@@ -370,11 +370,11 @@ class InjectConstructorTransformerTest : MetroCompilerTest() {
       compile(
         sourceJava(
           """
-            public class ExampleClass {
-              @Inject public ExampleClass() {
+          public class ExampleClass {
+            @Inject public ExampleClass() {
 
-              }
             }
+          }
           """
             .trimIndent()
         )
@@ -382,10 +382,10 @@ class InjectConstructorTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph
-          interface ExampleGraph {
-            val exampleClass: ExampleClass
-          }
+        @DependencyGraph
+        interface ExampleGraph {
+          val exampleClass: ExampleClass
+        }
         """
           .trimIndent()
       ),
@@ -395,11 +395,11 @@ class InjectConstructorTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: Could not find generated factory for 'test.ExampleClass' in upstream module where it's defined. Run the Metro compiler over that module too, or Dagger if you're using its interop for Java files.
-          e: ExampleGraph.kt:8:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.ExampleClass
+        e: Could not find generated factory for 'test.ExampleClass' in upstream module where it's defined. Run the Metro compiler over that module too, or Dagger if you're using its interop for Java files.
+        e: ExampleGraph.kt:8:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.ExampleClass
 
-              test.ExampleClass is requested at
-                  [test.ExampleGraph] test.ExampleGraph.exampleClass
+            test.ExampleClass is requested at
+                [test.ExampleGraph] test.ExampleGraph.exampleClass
         """
           .trimIndent()
       )

@@ -64,7 +64,9 @@ internal data class DependencyGraphNode(
 
   val metroGraph by memoize { sourceGraph.metroGraphOrNull }
 
-  val metroGraphOrFail by memoize { metroGraph ?: reportCompilerBug("No generated MetroGraph found: ${sourceGraph.kotlinFqName}") }
+  val metroGraphOrFail by memoize {
+    metroGraph ?: reportCompilerBug("No generated MetroGraph found: ${sourceGraph.kotlinFqName}")
+  }
 
   /** [IrTypeKey] of the contributed graph extension, if any. */
   val contributedGraphTypeKey: IrTypeKey? by memoize {

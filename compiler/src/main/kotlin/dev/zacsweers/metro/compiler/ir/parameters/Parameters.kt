@@ -66,9 +66,7 @@ internal class Parameters(
     }
   }
 
-  val parametersMap by memoize {
-    allParameters.associateBy { it.name }
-  }
+  val parametersMap by memoize { allParameters.associateBy { it.name } }
 
   operator fun get(name: Name): Parameter? = parametersMap[name]
 
@@ -88,15 +86,16 @@ internal class Parameters(
       callableId = callableId,
       dispatchReceiverParameter = dispatchReceiverParameter,
       extensionReceiverParameter = extensionReceiverParameter,
-      regularParameters = regularParameters.mapIndexed { i, param ->
-        val qualifier = qualifiers[i] ?: return@mapIndexed param
-        param.copy(
-          contextualTypeKey =
-            param.contextualTypeKey.withTypeKey(
-              param.contextualTypeKey.typeKey.copy(qualifier = qualifier)
-            )
-        )
-      },
+      regularParameters =
+        regularParameters.mapIndexed { i, param ->
+          val qualifier = qualifiers[i] ?: return@mapIndexed param
+          param.copy(
+            contextualTypeKey =
+              param.contextualTypeKey.withTypeKey(
+                param.contextualTypeKey.typeKey.copy(qualifier = qualifier)
+              )
+          )
+        },
       contextParameters = contextParameters,
       ir = ir,
     )

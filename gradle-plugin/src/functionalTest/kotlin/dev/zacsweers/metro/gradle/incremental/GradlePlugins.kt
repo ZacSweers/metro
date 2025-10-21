@@ -12,9 +12,6 @@ object GradlePlugins {
 
   object Kotlin {
     fun jvm(version: String? = null) =
-      Plugin(
-        "org.jetbrains.kotlin.jvm",
-        version ?: System.getProperty("dev.zacsweers.metro.gradle.test.kotlin-version"),
-      )
+      Plugin("org.jetbrains.kotlin.jvm", version ?: getTestCompilerVersion())
   }
 }

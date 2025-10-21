@@ -6,6 +6,10 @@ import org.jetbrains.kotlin.test.directives.model.RegisteredDirectives
 import org.jetbrains.kotlin.test.directives.model.SimpleDirectivesContainer
 
 object MetroDirectives : SimpleDirectivesContainer() {
+  val COMPILER_VERSION by stringDirective("Target kotlin compiler version, if any")
+  // TODO eventually support multiple outputs
+  val CUSTOM_TEST_DATA_PER_COMPILER_VERSION by
+    directive("Generate custom test data files per compiler version")
   val GENERATE_ASSISTED_FACTORIES by directive("Enable assisted factories generation.")
   val ENABLE_TOP_LEVEL_FUNCTION_INJECTION by directive("Enable top-level function injection.")
   val DISABLE_TRANSFORM_PROVIDERS_TO_PRIVATE by
@@ -33,7 +37,9 @@ object MetroDirectives : SimpleDirectivesContainer() {
   val MAX_IR_ERRORS_COUNT by
     valueDirective(
       "Maximum number of errors to report before exiting IR processing. Default is 20, must be > 0."
-    ) { it.toInt() }
+    ) {
+      it.toInt()
+    }
   val OPTIONAL_DEPENDENCY_BEHAVIOR by
     enumDirective<OptionalDependencyBehavior>(
       "Controls the behavior of optional dependencies on a per-compilation basis."
@@ -49,7 +55,8 @@ object MetroDirectives : SimpleDirectivesContainer() {
 
   // Dependency directives.
   val WITH_ANVIL by directive("Add Anvil as dependency and configure custom annotations.")
-  val WITH_KI_ANVIL by directive("Add kotlin-inject-nnvil as dependency and configure custom annotations.")
+  val WITH_KI_ANVIL by
+    directive("Add kotlin-inject-nnvil as dependency and configure custom annotations.")
   val WITH_DAGGER by directive("Add Dagger as dependency and configure custom annotations.")
   val ENABLE_DAGGER_INTEROP by
     directive("Enable Dagger interop. This implicitly applies WITH_DAGGER directive as well.")

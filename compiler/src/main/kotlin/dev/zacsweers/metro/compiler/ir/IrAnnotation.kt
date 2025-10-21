@@ -111,7 +111,9 @@ private fun StringBuilder.renderAsAnnotationArgument(irElement: IrElement?, shor
       append(irElement.symbol.owner.name.asString())
     }
     else ->
-      reportCompilerBug("Unrecognized annotation argument type: $irElement (type ${irElement::class.java})")
+      reportCompilerBug(
+        "Unrecognized annotation argument type: $irElement (type ${irElement::class.java})"
+      )
   }
 }
 

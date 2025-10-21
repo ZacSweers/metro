@@ -7,12 +7,15 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
+import dev.zacsweers.metro.compiler.graph.MissingBindingHints
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
+import dev.zacsweers.metro.compiler.isPlatformType
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin.Companion.IR_EXTERNAL_DECLARATION_STUB
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrProperty
@@ -30,6 +33,7 @@ import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
+import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
@@ -60,14 +64,19 @@ internal class IrBindingGraph(
         onError(message, stack)
         exitProcessing()
       },
-      findSimilarBindings = { key -> findSimilarBindings(key).mapValues { it.value.toString() } },
+      missingBindingHints = { key, stack ->
+        MissingBindingHints(
+          missingBindingHints(key, stack),
+          findSimilarBindings(key).mapValues { it.value.render(short = true) },
+        )
+      },
     )
 
   // TODO hoist accessors up and visit in seal?
   private val accessors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
   private val injectors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
   private val extraKeeps = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
-  private val reservedFields = mutableMapOf<IrTypeKey, ParentContext.FieldAccess>()
+  private val reservedProperties = mutableMapOf<IrTypeKey, ParentContext.PropertyAccess>()
 
   // Thin immutable view over the internal bindings
   fun bindingsSnapshot(): Map<IrTypeKey, IrBinding> = realGraph.bindings
@@ -88,11 +97,11 @@ internal class IrBindingGraph(
     extraKeeps[key] = entry
   }
 
-  fun reserveField(key: IrTypeKey, access: ParentContext.FieldAccess) {
-    reservedFields[key] = access
+  fun reserveProperty(key: IrTypeKey, access: ParentContext.PropertyAccess) {
+    reservedProperties[key] = access
   }
 
-  fun reservedField(key: IrTypeKey): ParentContext.FieldAccess? = reservedFields[key]
+  fun reservedProperty(key: IrTypeKey): ParentContext.PropertyAccess? = reservedProperties[key]
 
   fun findBinding(key: IrTypeKey): IrBinding? = realGraph[key]
 
@@ -190,7 +199,7 @@ internal class IrBindingGraph(
 
   data class BindingGraphResult(
     val sortedKeys: List<IrTypeKey>,
-    val deferredTypes: List<IrTypeKey>,
+    val deferredTypes: Set<IrTypeKey>,
     val reachableKeys: Set<IrTypeKey>,
     val hasErrors: Boolean,
   )
@@ -228,7 +237,7 @@ internal class IrBindingGraph(
         }
 
       if (hasErrors) {
-        return BindingGraphResult(emptyList(), emptyList(), emptySet(), true)
+        return BindingGraphResult(emptyList(), emptySet(), emptySet(), true)
       }
 
       writeDiagnostic("keys-validated-${parentTracer.tag}.txt") {
@@ -359,6 +368,42 @@ internal class IrBindingGraph(
           .map { it.typeKey }
 
       yieldAll(similar)
+    }
+  }
+
+  private fun missingBindingHints(key: IrTypeKey, stack: IrBindingStack): List<String> {
+    return buildList {
+      key.type.rawTypeOrNull()?.let { klass ->
+        if (
+          klass.origin == IR_EXTERNAL_DECLARATION_STUB &&
+            klass.metadata == null &&
+            !klass.isFromJava() &&
+            klass.classId?.isPlatformType() != true
+        ) {
+          val requestingKey = stack.entries.getOrNull(1)
+          val requestingBinding = requestingKey?.let { findBinding(it.typeKey) }
+          val requestingParent = requestingBinding?.hostParent
+          val requestingLocation = requestingParent?.kotlinFqName?.asString()
+          val message = buildString {
+            appendLine(
+              "'${klass.classId!!.asFqNameString()}' doesn't appear to be visible to this compilation. This can happen when a binding references a type from an 'implementation' dependency that isn't exposed to the consuming graph's module."
+            )
+            appendLine("Possible fixes:")
+            append(
+              "- Mark the module containing '${klass.classId!!.asFqNameString()}' as an 'api' dependency in the module that "
+            )
+            if (requestingLocation == null) {
+              appendLine("binds it.")
+            } else {
+              appendLine("defines '$requestingLocation' (which is requesting it).")
+            }
+            appendLine(
+              "- Add the module containing '${klass.classId!!.asFqNameString()}' as an explicit dependency to the module that defines '${node.typeKey.render(short = false)}'."
+            )
+          }
+          add(message)
+        }
+      }
     }
   }
 
@@ -788,7 +833,7 @@ internal class IrBindingGraph(
     }
 
     binding.reportableDeclaration?.locationOrNull()?.let { location ->
-      appendLine("└─ Location: ${location.render()}")
+      appendLine("└─ Location: ${location.render(short)}")
     }
   }
 
@@ -797,9 +842,9 @@ internal class IrBindingGraph(
     val binding: IrBinding?,
     val description: String,
   ) {
-    override fun toString(): String {
+    fun render(short: Boolean): String {
       return buildString {
-        append(typeKey.render(short = true))
+        append(typeKey.render(short = short))
         append(" (")
         append(description)
         append(")")
@@ -807,7 +852,7 @@ internal class IrBindingGraph(
           append(". Type: ")
           append(binding.javaClass.simpleName)
           append('.')
-          binding.reportableDeclaration?.locationOrNull()?.render()?.let {
+          binding.reportableDeclaration?.locationOrNull()?.render(short)?.let {
             append(" Source: ")
             append(it)
           }

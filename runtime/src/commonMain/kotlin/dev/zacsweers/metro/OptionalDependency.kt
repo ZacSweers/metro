@@ -21,10 +21,10 @@ package dev.zacsweers.metro
  * }
  * ```
  *
- * If you set the `OptionalDependencyBehavior` option to
- * `REQUIRE_OPTIONAL_DEPENDENCY`, this annotation is also required on all injected
- * parameters (even if they already declare a default value). This can be desirable for consistency
- * with accessors and/or to otherwise make the behavior more explicit.
+ * If you set the `OptionalDependencyBehavior` option to `REQUIRE_OPTIONAL_DEPENDENCY`, this
+ * annotation is also required on all injected parameters (even if they already declare a default
+ * value). This can be desirable for consistency with accessors and/or to otherwise make the
+ * behavior more explicit.
  */
 @MustBeDocumented
 @Target(

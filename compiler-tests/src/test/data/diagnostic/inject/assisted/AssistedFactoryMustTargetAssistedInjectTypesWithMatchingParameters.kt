@@ -1,8 +1,8 @@
 // RENDER_DIAGNOSTICS_FULL_TEXT
 @AssistedInject
 class <!ASSISTED_INJECTION_ERROR!>ExampleClass<!>(
-  val count: Int,
-  val message: String,
+  @Assisted val count: Int,
+  @Assisted val message: String,
 )
 
 @AssistedFactory

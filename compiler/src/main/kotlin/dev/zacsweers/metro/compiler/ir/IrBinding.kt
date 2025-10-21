@@ -18,10 +18,12 @@ import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import java.util.TreeSet
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationContainer
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.declarations.IrPackageFragment
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
@@ -36,6 +38,7 @@ import org.jetbrains.kotlin.ir.util.isPropertyAccessor
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
+import org.jetbrains.kotlin.ir.util.parentDeclarationsWithSelf
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
@@ -63,7 +66,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     // First check if we have the contributing file and line number
     val binding = this
     val locationString =
-      reportableDeclaration?.locationOrNull()?.render()
+      reportableDeclaration?.locationOrNull()?.render(short)
         // Or the fully-qualified contributing class name
         // TODO is this right
         ?: parameters.allParameters.firstOrNull()?.typeKey?.render(short = short)
@@ -302,7 +305,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
           val (contributionSourceDeclaration, isContributed) = declarationData
 
           val location =
-            contributionSourceDeclaration.locationOrNull()?.render()
+            contributionSourceDeclaration.locationOrNull()?.render(short)
               ?: "<unknown location, likely a separate compilation>"
           val description = buildString {
             if (isContributed) {
@@ -377,7 +380,16 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
 
     override fun renderDescriptionDiagnostic(short: Boolean, underlineTypeKey: Boolean) =
       buildString {
-        // TODO
+        append('(')
+        append("@AssistedFactory")
+        append(' ')
+        type.parentClassOrNull?.let {
+          append(it.name.asString())
+          append('.')
+        }
+        append(typeKey.render(short = short, includeQualifier = false))
+        append(')')
+        append(' ')
         renderForDiagnostic(
           declaration = function,
           short = short,
@@ -397,7 +409,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val nameHint: String,
     override val reportableDeclaration: IrDeclarationWithName?,
     val classReceiverParameter: IrValueParameter? = null,
-    val providerFieldAccess: ParentContext.FieldAccess? = null,
+    val providerPropertyAccess: ParentContext.PropertyAccess? = null,
   ) : IrBinding {
     constructor(
       parameter: Parameter,
@@ -443,9 +455,9 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     @Poko.Skip val graph: IrClass,
     @Poko.Skip val getter: IrSimpleFunction? = null,
     override val typeKey: IrTypeKey,
-    @Poko.Skip val fieldAccess: ParentContext.FieldAccess? = null,
+    @Poko.Skip val propertyAccess: ParentContext.PropertyAccess? = null,
     val callableId: CallableId =
-      fieldAccess?.field?.callableId
+      propertyAccess?.property?.callableId
         ?: getter?.callableId
         ?: reportCompilerBug("One of getter or fieldAccess must be present"),
   ) : IrBinding {
@@ -453,8 +465,8 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val scope: IrAnnotation? = null
     override val nameHint: String = buildString {
       append(graph.name)
-      if (fieldAccess != null) {
-        append(fieldAccess.field.name)
+      if (propertyAccess != null) {
+        append(propertyAccess.property.name)
       } else {
         val property = getter!!.correspondingPropertySymbol
         if (property != null) {
@@ -472,13 +484,14 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
 
     override val reportableDeclaration: IrDeclarationWithName?
-      get() = fieldAccess?.field ?: getter?.propertyIfAccessor?.expectAs<IrDeclarationWithName>()
+      get() =
+        propertyAccess?.property ?: getter?.propertyIfAccessor?.expectAs<IrDeclarationWithName>()
 
     override fun renderDescriptionDiagnostic(short: Boolean, underlineTypeKey: Boolean): String {
       // TODO render parent?
       return buildString {
         renderForDiagnostic(
-          declaration = fieldAccess?.field ?: getter!!,
+          declaration = propertyAccess?.property?.reportableDeclaration ?: getter!!,
           short = short,
           typeKey = typeKey,
           annotations = MetroAnnotations.none(),
@@ -513,8 +526,26 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val dependencies by memoize { sourceBindings.map { IrContextualTypeKey(it) } }
     override val parameters: Parameters = Parameters.empty()
 
-    override val nameHint: String
-      get() = "${typeKey.type.rawType().name}Multibinding"
+    override val nameHint: String by memoize {
+      buildString {
+        if (isMap) {
+          append("mapOf")
+          val (k, v) = typeKey.type.requireSimpleType(declaration).arguments
+          append(k.render(short = true).capitalizeUS())
+          append("To")
+          append(v.render(short = true).capitalizeUS())
+        } else {
+          append("setOf")
+          append(
+            typeKey.type
+              .requireSimpleType(declaration)
+              .arguments[0]
+              .render(short = true)
+              .capitalizeUS()
+          )
+        }
+      }
+    }
 
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
 
@@ -945,3 +976,22 @@ private fun StringBuilder.renderAnnotations(
     }
   }
 }
+
+internal val IrBinding.isIntoMultibinding: Boolean
+  get() {
+    return typeKey.qualifier?.ir?.annotationClass?.classId == Symbols.ClassIds.MultibindingElement
+  }
+
+internal val IrBinding.hostParent: IrDeclarationContainer?
+  get() {
+    return when (val decl = reportableDeclaration) {
+      is IrClass -> decl
+      is IrPackageFragment -> decl
+      is IrFunction,
+      is IrProperty ->
+        decl.parentDeclarationsWithSelf.firstNotNullOfOrNull {
+          it as? IrClass ?: it as? IrPackageFragment
+        }
+      else -> null
+    }
+  }

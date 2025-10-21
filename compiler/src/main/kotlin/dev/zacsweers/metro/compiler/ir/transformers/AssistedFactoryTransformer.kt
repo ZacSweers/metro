@@ -188,10 +188,7 @@ internal class AssistedFactoryTransformer(
   }
 
   /** Data class to model the components of the generated companion object */
-  data class ImplCompanionDeclarations(
-    val companion: IrClass,
-    val createFunction: IrSimpleFunction,
-  )
+  data class ImplCompanionDeclarations(val companion: IrClass, val createFunction: IrSimpleFunction)
 
   private fun generateCompanionDeclarations(
     implClass: IrClass,
@@ -342,13 +339,12 @@ internal class AssistedFactoryTransformer(
             }
 
           irExprBodySafe(
-            symbol,
             irInvoke(
               dispatchReceiver =
                 irGetField(irGet(dispatchReceiverParameter!!), delegateFactoryField),
               callee = generatedFactory.invokeFunctionSymbol,
               args = argumentList,
-            ),
+            )
           )
         }
     }
@@ -359,11 +355,10 @@ internal class AssistedFactoryTransformer(
       body =
         pluginContext.createIrBuilder(symbol).run {
           irExprBodySafe(
-            symbol,
             instanceFactory(
               declaration.typeWith(),
               irInvoke(callee = ctor.symbol, args = listOf(irGet(factoryParam))),
-            ),
+            )
           )
         }
     }
@@ -408,19 +403,17 @@ internal class AssistedFactoryTransformer(
 internal sealed interface AssistedFactoryImpl {
   /** Invoke the create method with the given delegate factory provider */
   context(context: IrMetroContext)
-  fun IrBuilderWithScope.invokeCreate(delegateFactoryProvider: IrExpression): IrExpression
+  fun IrBuilderWithScope.invokeCreate(delegateFactory: IrExpression): IrExpression
 
   /** Metro implementation of AssistedFactoryHandler */
   class Metro(private val createFunction: IrSimpleFunction) : AssistedFactoryImpl {
 
     context(context: IrMetroContext)
-    override fun IrBuilderWithScope.invokeCreate(
-      delegateFactoryProvider: IrExpression
-    ): IrExpression {
+    override fun IrBuilderWithScope.invokeCreate(delegateFactory: IrExpression): IrExpression {
       return irInvoke(
         dispatchReceiver = irGetObject(createFunction.parentAsClass.symbol),
         callee = createFunction.symbol,
-        args = listOf(delegateFactoryProvider),
+        args = listOf(delegateFactory),
         typeHint = createFunction.returnType,
       )
     }
@@ -436,15 +429,13 @@ internal sealed interface AssistedFactoryImpl {
       }
 
     context(context: IrMetroContext)
-    override fun IrBuilderWithScope.invokeCreate(
-      delegateFactoryProvider: IrExpression
-    ): IrExpression {
+    override fun IrBuilderWithScope.invokeCreate(delegateFactory: IrExpression): IrExpression {
       return with(context.metroSymbols.daggerSymbols) {
         val targetType = (createFunction.returnType as IrSimpleType).arguments[0].typeOrFail
         transformToMetroProvider(
           irInvoke(
             callee = createFunction.symbol,
-            args = listOf(delegateFactoryProvider),
+            args = listOf(delegateFactory),
             typeHint = createFunction.returnType,
           ),
           targetType,

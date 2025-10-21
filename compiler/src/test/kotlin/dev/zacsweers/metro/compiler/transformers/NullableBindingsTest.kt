@@ -20,17 +20,17 @@ class NullableBindingsTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(Unit::class)
-          interface ExampleGraph {
-            val int: Int
-            val nullable: Int?
+        @DependencyGraph(Unit::class)
+        interface ExampleGraph {
+          val int: Int
+          val nullable: Int?
 
-            @Provides
-            fun provideInt(): Int = 0
+          @Provides
+          fun provideInt(): Int = 0
 
-            @Provides
-            fun provideNullableInt(): Int? = 1
-          }
+          @Provides
+          fun provideNullableInt(): Int? = 1
+        }
         """
           .trimIndent()
       )
@@ -46,14 +46,14 @@ class NullableBindingsTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(Unit::class)
-          interface ExampleGraph {
-            val int: Int
-            val nullable: Int?
+        @DependencyGraph(Unit::class)
+        interface ExampleGraph {
+          val int: Int
+          val nullable: Int?
 
-            @Provides
-            fun provideInt(): Int = 0
-          }
+          @Provides
+          fun provideInt(): Int = 0
+        }
         """
           .trimIndent()
       ),
@@ -61,13 +61,13 @@ class NullableBindingsTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleGraph.kt:9:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int?
+        e: ExampleGraph.kt:9:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int?
 
-              kotlin.Int? is requested at
-                  [test.ExampleGraph] test.ExampleGraph.nullable
+            kotlin.Int? is requested at
+                [test.ExampleGraph] test.ExampleGraph.nullable
 
-          Similar bindings:
-            - Int (Non-nullable equivalent). Type: Provided. Source: ExampleGraph.kt:11:3
+        Similar bindings:
+          - Int (Non-nullable equivalent). Type: Provided. Source: ExampleGraph.kt:11:3
         """
           .trimIndent()
       )
@@ -79,14 +79,14 @@ class NullableBindingsTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(Unit::class)
-          interface ExampleGraph {
-            val int: Int
-            val nullable: Int?
+        @DependencyGraph(Unit::class)
+        interface ExampleGraph {
+          val int: Int
+          val nullable: Int?
 
-            @Provides
-            fun provideNullableInt(): Int? = 1
-          }
+          @Provides
+          fun provideNullableInt(): Int? = 1
+        }
         """
           .trimIndent()
       ),
@@ -94,13 +94,13 @@ class NullableBindingsTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleGraph.kt:8:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
+        e: ExampleGraph.kt:8:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
 
-              kotlin.Int is requested at
-                  [test.ExampleGraph] test.ExampleGraph.int
+            kotlin.Int is requested at
+                [test.ExampleGraph] test.ExampleGraph.int
 
-          Similar bindings:
-            - Int? (Nullable equivalent). Type: Provided. Source: ExampleGraph.kt:11:3
+        Similar bindings:
+          - Int? (Nullable equivalent). Type: Provided. Source: ExampleGraph.kt:11:3
         """
           .trimIndent()
       )
@@ -112,13 +112,13 @@ class NullableBindingsTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(Unit::class)
-          interface ExampleGraph {
-            val foo: Foo
+        @DependencyGraph(Unit::class)
+        interface ExampleGraph {
+          val foo: Foo
 
-            @Inject
-            class Foo(val input: Int?)
-          }
+          @Inject
+          class Foo(val input: Int?)
+        }
         """
           .trimIndent()
       ),
@@ -126,12 +126,12 @@ class NullableBindingsTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleGraph.kt:11:13 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int?
+        e: ExampleGraph.kt:11:13 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int?
 
-              kotlin.Int? is injected at
-                  [test.ExampleGraph] test.ExampleGraph.Foo(…, input)
-              test.ExampleGraph.Foo is requested at
-                  [test.ExampleGraph] test.ExampleGraph.foo
+            kotlin.Int? is injected at
+                [test.ExampleGraph] test.ExampleGraph.Foo(…, input)
+            test.ExampleGraph.Foo is requested at
+                [test.ExampleGraph] test.ExampleGraph.foo
         """
           .trimIndent()
       )
@@ -144,16 +144,16 @@ class NullableBindingsTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(Unit::class)
-          interface ExampleGraph {
-            val foo: GenericFoo<String?>
+        @DependencyGraph(Unit::class)
+        interface ExampleGraph {
+          val foo: GenericFoo<String?>
 
-            @Inject
-            class GenericFoo<T>(val input: T)
+          @Inject
+          class GenericFoo<T>(val input: T)
 
-            @Provides
-            fun provideNullableString(): String? = "hello"
-          }
+          @Provides
+          fun provideNullableString(): String? = "hello"
+        }
         """
           .trimIndent()
       )
@@ -169,19 +169,19 @@ class NullableBindingsTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(Unit::class)
-          interface ExampleGraph {
-            val foo: Foo
+        @DependencyGraph(Unit::class)
+        interface ExampleGraph {
+          val foo: Foo
 
-            @Inject
-            class Foo(val bar: Bar)
+          @Inject
+          class Foo(val bar: Bar)
 
-            @Inject
-            class Bar(val value: String?)
+          @Inject
+          class Bar(val value: String?)
 
-            @Provides
-            fun provideNullableString(): String? = "test"
-          }
+          @Provides
+          fun provideNullableString(): String? = "test"
+        }
         """
           .trimIndent()
       )
@@ -198,27 +198,27 @@ class NullableBindingsTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(Unit::class)
-          interface ExampleGraph {
-            val nullableInts: Set<Int?>
-            val ints: Set<Int>
+        @DependencyGraph(Unit::class)
+        interface ExampleGraph {
+          val nullableInts: Set<Int?>
+          val ints: Set<Int>
 
-            @Provides
-            @IntoSet
-            fun provideInt1(): Int? = 0
+          @Provides
+          @IntoSet
+          fun provideInt1(): Int? = 0
 
-            @Provides
-            @IntoSet
-            fun provideIntNull(): Int? = null
+          @Provides
+          @IntoSet
+          fun provideIntNull(): Int? = null
 
-            @Provides
-            @IntoSet
-            fun provideIntNull2(): Int? = null
+          @Provides
+          @IntoSet
+          fun provideIntNull2(): Int? = null
 
-            @Provides
-            @IntoSet
-            fun provideInt3(): Int = 3
-          }
+          @Provides
+          @IntoSet
+          fun provideInt3(): Int = 3
+        }
         """
           .trimIndent()
       )
@@ -236,16 +236,16 @@ class NullableBindingsTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(Unit::class)
-          interface ExampleGraph {
-            @Multibinds
-            val nullableInts: Set<Int?>
-            val ints: Set<Int>
+        @DependencyGraph(Unit::class)
+        interface ExampleGraph {
+          @Multibinds
+          val nullableInts: Set<Int?>
+          val ints: Set<Int>
 
-            @Provides
-            @IntoSet
-            fun provideInt(): Int = 3
-          }
+          @Provides
+          @IntoSet
+          fun provideInt(): Int = 3
+        }
         """
           .trimIndent()
       ),
@@ -253,12 +253,12 @@ class NullableBindingsTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleGraph.kt:9:7 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.Int?>' was unexpectedly empty.
+        e: ExampleGraph.kt:9:7 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.Int?>' was unexpectedly empty.
 
-          If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
+        If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
 
-          Similar multibindings:
-          - Set<Int>
+        Similar multibindings:
+        - Set<Int>
         """
           .trimIndent()
       )
@@ -270,31 +270,31 @@ class NullableBindingsTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(Unit::class)
-          interface ExampleGraph {
-            val nullableInts: Map<Int, Int?>
-            val ints: Map<Int, Int>
+        @DependencyGraph(Unit::class)
+        interface ExampleGraph {
+          val nullableInts: Map<Int, Int?>
+          val ints: Map<Int, Int>
 
-            @Provides
-            @IntoMap
-            @IntKey(0)
-            fun provideInt1(): Int? = 0
+          @Provides
+          @IntoMap
+          @IntKey(0)
+          fun provideInt1(): Int? = 0
 
-            @Provides
-            @IntoMap
-            @IntKey(1)
-            fun provideIntNull(): Int? = null
+          @Provides
+          @IntoMap
+          @IntKey(1)
+          fun provideIntNull(): Int? = null
 
-            @Provides
-            @IntoMap
-            @IntKey(2)
-            fun provideIntNull2(): Int? = null
+          @Provides
+          @IntoMap
+          @IntKey(2)
+          fun provideIntNull2(): Int? = null
 
-            @Provides
-            @IntoMap
-            @IntKey(3)
-            fun provideInt3(): Int = 3
-          }
+          @Provides
+          @IntoMap
+          @IntKey(3)
+          fun provideInt3(): Int = 3
+        }
         """
           .trimIndent()
       )
@@ -312,31 +312,31 @@ class NullableBindingsTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(Unit::class)
-          interface ExampleGraph {
-            val nullableInts: Map<Int, Provider<Int?>>
-            val ints: Map<Int, Provider<Int>>
+        @DependencyGraph(Unit::class)
+        interface ExampleGraph {
+          val nullableInts: Map<Int, Provider<Int?>>
+          val ints: Map<Int, Provider<Int>>
 
-            @Provides
-            @IntoMap
-            @IntKey(0)
-            fun provideInt1(): Int? = 0
+          @Provides
+          @IntoMap
+          @IntKey(0)
+          fun provideInt1(): Int? = 0
 
-            @Provides
-            @IntoMap
-            @IntKey(1)
-            fun provideIntNull(): Int? = null
+          @Provides
+          @IntoMap
+          @IntKey(1)
+          fun provideIntNull(): Int? = null
 
-            @Provides
-            @IntoMap
-            @IntKey(2)
-            fun provideIntNull2(): Int? = null
+          @Provides
+          @IntoMap
+          @IntKey(2)
+          fun provideIntNull2(): Int? = null
 
-            @Provides
-            @IntoMap
-            @IntKey(3)
-            fun provideInt3(): Int = 3
-          }
+          @Provides
+          @IntoMap
+          @IntKey(3)
+          fun provideInt3(): Int = 3
+        }
         """
           .trimIndent()
       )
@@ -354,16 +354,16 @@ class NullableBindingsTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(Unit::class)
-          interface ExampleGraph {
-            @Multibinds
-            val nullableInts: Set<Int?>
-            val ints: Set<Int>
+        @DependencyGraph(Unit::class)
+        interface ExampleGraph {
+          @Multibinds
+          val nullableInts: Set<Int?>
+          val ints: Set<Int>
 
-            @Provides
-            @IntoSet
-            fun provideInt(): Int = 3
-          }
+          @Provides
+          @IntoSet
+          fun provideInt(): Int = 3
+        }
         """
           .trimIndent()
       ),
@@ -371,12 +371,12 @@ class NullableBindingsTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleGraph.kt:9:7 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.Int?>' was unexpectedly empty.
+        e: ExampleGraph.kt:9:7 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.Int?>' was unexpectedly empty.
 
-          If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
+        If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
 
-          Similar multibindings:
-          - Set<Int>
+        Similar multibindings:
+        - Set<Int>
         """
           .trimIndent()
       )
@@ -388,17 +388,17 @@ class NullableBindingsTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(Unit::class)
-          interface ExampleGraph {
-            val int: Int
-            val nullableInt: Int?
+        @DependencyGraph(Unit::class)
+        interface ExampleGraph {
+          val int: Int
+          val nullableInt: Int?
 
-            @Provides
-            fun provideInt(): Int = 1
+          @Provides
+          fun provideInt(): Int = 1
 
-            @Binds
-            val Int.bindAsNullable: Int?
-          }
+          @Binds
+          val Int.bindAsNullable: Int?
+        }
         """
           .trimIndent()
       )
@@ -414,17 +414,17 @@ class NullableBindingsTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(Unit::class)
-          interface ExampleGraph {
-            val int: Int
-            val nullableInt: Int?
+        @DependencyGraph(Unit::class)
+        interface ExampleGraph {
+          val int: Int
+          val nullableInt: Int?
 
-            @Provides
-            fun provideInt(): Int = 1
+          @Provides
+          fun provideInt(): Int = 1
 
-            @Binds
-            val Int?.bindAsNullable: Int
-          }
+          @Binds
+          val Int?.bindAsNullable: Int
+        }
         """
           .trimIndent()
       ),
@@ -432,7 +432,7 @@ class NullableBindingsTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleGraph.kt:15:12 Binds receiver type `kotlin.Int?` is not a subtype of bound type `kotlin.Int`.
+        e: ExampleGraph.kt:15:12 Binds receiver type `kotlin.Int?` is not a subtype of bound type `kotlin.Int`.
         """
           .trimIndent()
       )
