@@ -69,6 +69,7 @@ dependencies {
   functionalTestImplementation(libs.junit)
   functionalTestImplementation(libs.truth)
   functionalTestImplementation(libs.kotlin.stdlib)
+  functionalTestImplementation(libs.kotlin.test)
   functionalTestImplementation(libs.testkit.support)
   functionalTestImplementation(libs.testkit.truth)
   functionalTestRuntimeOnly(project(":compiler"))

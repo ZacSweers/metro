@@ -12,8 +12,11 @@ import com.autonomousapps.kit.truth.TestKitTruth.Companion.assertThat
 import java.io.File
 import java.net.URLClassLoader
 import java.util.Locale
+import kotlin.collections.component1
 import kotlin.io.path.absolute
 import kotlin.io.path.exists
+import kotlin.test.assertContains
+import org.gradle.testkit.runner.BuildResult
 import org.intellij.lang.annotations.Language
 
 // TODO dedupe with MetroCompilerTest
@@ -98,3 +101,27 @@ fun buildAndAssertThat(projectDir: File, args: String, body: BuildResultSubject.
   val result = build(projectDir, *args.split(' ').toTypedArray())
   assertThat(result).body()
 }
+
+fun BuildResult.assertOutputContains(text: String) {
+  val output = output.cleanOutputLine()
+  assertContains(output, text)
+}
+
+fun String.toKotlinVersion(): KotlinVersion =
+  substringBefore("-").split(".").let { (major, minor, patch) ->
+    KotlinVersion(major.toInt(), minor.toInt(), patch.toInt())
+  }
+
+// Overload that accepts a map of exp
+fun BuildResult.assertOutputContainsOnDifferentKotlinVersions(map: Map<String, String>) {
+  val mapped = map.mapKeys { it.key.toKotlinVersion() }
+  val testCompilerVersion = getTestCompilerVersion().toKotlinVersion()
+  val outputForVersion =
+    mapped[testCompilerVersion]
+      ?: mapped.entries.filter { it.key <= testCompilerVersion }.maxByOrNull { it.key }?.value
+      ?: error("No output found for version $testCompilerVersion or any lower version")
+  assertOutputContains(outputForVersion)
+}
+
+fun getTestCompilerVersion(): String =
+  System.getProperty("dev.zacsweers.metro.gradle.test.kotlin-version")
