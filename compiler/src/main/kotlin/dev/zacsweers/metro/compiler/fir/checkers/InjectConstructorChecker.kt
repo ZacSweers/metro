@@ -46,10 +46,6 @@ internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common
     val isInjected = classInjectLikeAnnotations.isNotEmpty() || injectedConstructor != null
     if (!isInjected) return
 
-    val isAssistedFactory =
-      declaration.isAnnotatedWithAny(session, classIds.assistedFactoryAnnotations)
-    if (isAssistedFactory) return
-
     declaration
       .getAnnotationByClassId(DaggerSymbols.ClassIds.DAGGER_REUSABLE_CLASS_ID, session)
       ?.let {
@@ -68,7 +64,14 @@ internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common
       )
     }
 
-    declaration.validateInjectedClass(context, reporter, classInjectAnnotations)
+    // Assisted factories can be annotated with @Contributes* annotations and fall through here
+    // While they're implicitly injectable lookups, they aren't beholden to the same injection
+    // requirements
+    val isAssistedFactory =
+      declaration.isAnnotatedWithAny(session, classIds.assistedFactoryAnnotations)
+    if (!isAssistedFactory) {
+      declaration.validateInjectedClass(context, reporter, classInjectAnnotations)
+    }
 
     val constructorToValidate =
       injectedConstructor?.constructor ?: declaration.primaryConstructorIfAny(session) ?: return
