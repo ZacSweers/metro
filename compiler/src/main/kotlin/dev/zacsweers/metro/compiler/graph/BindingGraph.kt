@@ -460,9 +460,9 @@ internal open class MutableBindingGraph<
         val similarBindings = hints.similarBindings
 
         if (messages.isNotEmpty() || similarBindings.isNotEmpty()) {
-          appendLine()
-          appendLine("(Hint)")
           if (messages.isNotEmpty()) {
+            appendLine()
+            appendLine("(Hint)")
             messages.joinTo(this, separator = "\n\n")
           }
           if (similarBindings.isNotEmpty()) {

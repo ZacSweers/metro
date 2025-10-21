@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.graph.MissingBindingHints
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
+import dev.zacsweers.metro.compiler.isPlatformType
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
@@ -379,7 +380,8 @@ internal class IrBindingGraph(
         if (
           klass.origin == IR_EXTERNAL_DECLARATION_STUB &&
             klass.metadata == null &&
-            !klass.isFromJava()
+            !klass.isFromJava() &&
+            klass.classId?.isPlatformType() != true
         ) {
           val requestingKey = stack.entries.getOrNull(1)
           val requestingBinding = requestingKey?.let { findBinding(it.typeKey) }
