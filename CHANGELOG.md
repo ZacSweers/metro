@@ -27,6 +27,7 @@ Changelog
 - **Fix**: Don't generate duplicate `init()` functions when chunking initializers if graphs already have an explicit `init()` function.
 - **Fix**: Fix support for assisted inject with no assisted params.
 - **Fix**: Detect platform types in just the `kotlin` package. Previously it missed any that didn't have multiple package segments.
+- **Fix**: Align unused context parameter special names on Kotlin 2.3.x.
 
 0.7.0
 ------
