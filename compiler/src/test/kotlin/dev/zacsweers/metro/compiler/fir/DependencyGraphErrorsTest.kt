@@ -419,6 +419,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
     result.assertDiagnostics(
       """
       e: ExampleGraph.kt:13:17 @Includes cannot be applied to enums, annotations, or platform types.
+      e: ExampleGraph.kt:14:17 @Includes cannot be applied to enums, annotations, or platform types.
       e: ExampleGraph.kt:15:17 @Includes cannot be applied to enums, annotations, or platform types.
       """
         .trimIndent()

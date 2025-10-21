@@ -4,12 +4,29 @@ Changelog
 **Unreleased**
 --------------
 
+- **New**: Add missing dependency hints for missing bindings errors
+    ```
+    [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: FooImpl
+
+        FooImpl is injected at
+            [AppGraph] Bindings.bind: FooImpl
+        Base is requested at
+            [AppGraph] AppGraph.base
+
+    (Hint)
+    'FooImpl' doesn't appear to be visible to this compilation. This can happen when a binding references a type from an 'implementation' dependency that isn't exposed to the consuming graph's module.
+    Possible fixes:
+    - Mark the module containing 'FooImpl' as an 'api' dependency in the module that defines 'Bindings' (which is requesting it).
+    - Add the module containing 'FooImpl' as an explicit dependency to the module that defines 'AppGraph'.
+    ```
+
 - **Enhancement**: Improve code generation around multibinding collection builders and contributors, using more lazy getters in graph code gen.
 - **Enhancement**: Short-circuit empty map providers to `emptyMap()`.
 - **Enhancement**: Support default values for assisted parameter arguments in top-level function injection.
 - **Fix**: Compute `Optional` instance lazily when requested as a `Provider<Optional<T>>` and the underlying optional is not empty. Only applies to `@BindsOptionalOf` interop.
 - **Fix**: Don't generate duplicate `init()` functions when chunking initializers if graphs already have an explicit `init()` function.
 - **Fix**: Fix support for assisted inject with no assisted params.
+- **Fix**: Detect platform types in just the `kotlin` package. Previously it missed any that didn't have multiple package segments.
 
 0.7.0
 ------

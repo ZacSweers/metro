@@ -18,10 +18,12 @@ import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import java.util.TreeSet
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationContainer
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.declarations.IrPackageFragment
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
@@ -36,6 +38,7 @@ import org.jetbrains.kotlin.ir.util.isPropertyAccessor
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
+import org.jetbrains.kotlin.ir.util.parentDeclarationsWithSelf
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
@@ -977,4 +980,18 @@ private fun StringBuilder.renderAnnotations(
 internal val IrBinding.isIntoMultibinding: Boolean
   get() {
     return typeKey.qualifier?.ir?.annotationClass?.classId == Symbols.ClassIds.MultibindingElement
+  }
+
+internal val IrBinding.hostParent: IrDeclarationContainer?
+  get() {
+    return when (val decl = reportableDeclaration) {
+      is IrClass -> decl
+      is IrPackageFragment -> decl
+      is IrFunction,
+      is IrProperty ->
+        decl.parentDeclarationsWithSelf.firstNotNullOfOrNull {
+          it as? IrClass ?: it as? IrPackageFragment
+        }
+      else -> null
+    }
   }
