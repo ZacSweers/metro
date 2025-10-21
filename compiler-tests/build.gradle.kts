@@ -13,10 +13,9 @@ sourceSets {
   register("generator230")
 }
 
-val testCompilerVersionProvider =
-  providers.gradleProperty("metro.testCompilerVersion").orElse(libs.versions.kotlin)
+val testCompilerVersionProvider = providers.gradleProperty("metro.testCompilerVersion")
 
-val testCompilerVersion = testCompilerVersionProvider.get()
+val testCompilerVersion = testCompilerVersionProvider.orElse(libs.versions.kotlin).get()
 
 val kotlinVersion =
   testCompilerVersion.substringBefore('-').split('.').let { (major, minor, patch) ->
@@ -113,7 +112,7 @@ val generateTests =
       .withPropertyName("testData")
       .withPathSensitivity(PathSensitivity.RELATIVE)
 
-    inputs.property("testCompilerVersion", testCompilerVersionProvider)
+    inputs.property("testCompilerVersion", testCompilerVersionProvider.orNull)
 
     outputs.dir(layout.projectDirectory.dir("src/test/java")).withPropertyName("generatedTests")
 
