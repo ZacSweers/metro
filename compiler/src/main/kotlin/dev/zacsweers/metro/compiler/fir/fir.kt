@@ -182,9 +182,18 @@ internal fun FirBasedSymbol<*>.annotationsIn(
     }
 }
 
+/**
+ * Not typed as `FirArrayLiteral` or `FirCollectionLiteral` due to
+ * https://github.com/ZacSweers/metro/issues/1217
+ */
+// TODO after min kotlin 2.3.20 we can remove this for FirCollectionLiteral
+private fun FirAnnotation.arrayArgument(name: Name, index: Int): FirCall? {
+  return argumentAsOrNull<FirCall>(name, index)
+}
+
 /** @see [dev.zacsweers.metro.compiler.ClassIds.allRepeatableContributesAnnotationsContainers] */
 internal fun FirAnnotation.flattenRepeatedAnnotations(): Sequence<FirAnnotation> {
-  return argumentAsOrNull<FirCall>(StandardNames.DEFAULT_VALUE_PARAMETER, 0)
+  return arrayArgument(StandardNames.DEFAULT_VALUE_PARAMETER, 0)
     ?.arguments
     ?.asSequence()
     ?.filterIsInstance<FirAnnotation>()
@@ -836,13 +845,12 @@ internal fun FirAnnotation.originArgument() =
 internal fun FirAnnotation.scopeArgument() = classArgument(Symbols.Names.scope, index = 0)
 
 internal fun FirAnnotation.additionalScopesArgument() =
-  argumentAsOrNull<FirCall>(Symbols.Names.additionalScopes, index = 1)
+  arrayArgument(Symbols.Names.additionalScopes, index = 1)
 
 internal fun FirAnnotation.bindingContainersArgument() =
-  argumentAsOrNull<FirCall>(Symbols.Names.bindingContainers, index = 4)
+  arrayArgument(Symbols.Names.bindingContainers, index = 4)
 
-internal fun FirAnnotation.includesArgument() =
-  argumentAsOrNull<FirCall>(Symbols.Names.includes, index = 0)
+internal fun FirAnnotation.includesArgument() = arrayArgument(Symbols.Names.includes, index = 0)
 
 internal fun FirAnnotation.allScopeClassIds(): Set<ClassId> =
   buildSet {
@@ -851,11 +859,9 @@ internal fun FirAnnotation.allScopeClassIds(): Set<ClassId> =
     }
     .filterNotTo(mutableSetOf()) { it == StandardClassIds.Nothing }
 
-internal fun FirAnnotation.excludesArgument() =
-  argumentAsOrNull<FirCall>(Symbols.Names.excludes, index = 2)
+internal fun FirAnnotation.excludesArgument() = arrayArgument(Symbols.Names.excludes, index = 2)
 
-internal fun FirAnnotation.replacesArgument() =
-  argumentAsOrNull<FirCall>(Symbols.Names.replaces, index = 2)
+internal fun FirAnnotation.replacesArgument() = arrayArgument(Symbols.Names.replaces, index = 2)
 
 internal fun FirAnnotation.rankValue(): Long {
   // Although the parameter is defined as an Int, the value we receive here may end up being
