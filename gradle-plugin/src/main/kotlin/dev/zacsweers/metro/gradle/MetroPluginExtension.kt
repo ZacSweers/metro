@@ -115,14 +115,21 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
   public val statementsPerInitFun: Property<Int> =
     objects.property(Int::class.javaObjectType).convention(25)
 
-  /**
-   * Controls the behavior of optional dependencies on a per-compilation basis. Default is
-   * [OptionalDependencyBehavior.DEFAULT] mode.
-   */
+  @Suppress("DEPRECATION")
+  @Deprecated("Use optionalBindingBehavior instead", ReplaceWith("optionalBindingBehavior"))
   public val optionalDependencyBehavior: Property<OptionalDependencyBehavior> =
     objects
       .property(OptionalDependencyBehavior::class.java)
       .convention(OptionalDependencyBehavior.DEFAULT)
+
+  /**
+   * Controls the behavior of optional dependencies on a per-compilation basis. Default is
+   * [OptionalBindingBehavior.DEFAULT] mode.
+   */
+  public val optionalBindingBehavior: Property<OptionalBindingBehavior> =
+    objects
+      .property(OptionalBindingBehavior::class.java)
+      .convention(OptionalBindingBehavior.DEFAULT)
 
   /** Enable/disable automatic transformation of providers to be private. Enabled by default. */
   public val transformProvidersToPrivate: Property<Boolean> =
@@ -239,6 +246,7 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     public val scope: SetProperty<String> = objects.setProperty(String::class.java)
     public val bindingContainer: SetProperty<String> = objects.setProperty(String::class.java)
     public val origin: SetProperty<String> = objects.setProperty(String::class.java)
+    public val optionalBinding: SetProperty<String> = objects.setProperty(String::class.java)
 
     // Interop markers
     public val enableDaggerAnvilInterop: Property<Boolean> = objects.property(Boolean::class.java)
