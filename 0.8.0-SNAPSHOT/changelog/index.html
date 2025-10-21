@@ -1919,6 +1919,7 @@ Possible fixes:
 </li>
 <li><strong>Enhancement</strong>: Short-circuit empty map providers to <code>emptyMap()</code>.</li>
 <li><strong>Enhancement</strong>: Support default values for assisted parameter arguments in top-level function injection.</li>
+<li><strong>Enhancement</strong>: Allow using <code>@Contributes*</code> annotations on assisted factories with <code>contributesAsInject</code> enabled.</li>
 <li><strong>Fix</strong>: Compute <code>Optional</code> instance lazily when requested as a <code>Provider&lt;Optional&lt;T&gt;&gt;</code> and the underlying optional is not empty. Only applies to <code>@BindsOptionalOf</code> interop.</li>
 <li><strong>Fix</strong>: Don&rsquo;t generate duplicate <code>init()</code> functions when chunking initializers if graphs already have an explicit <code>init()</code> function.</li>
 <li><strong>Fix</strong>: Fix support for assisted inject with no assisted params.</li>
