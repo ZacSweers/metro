@@ -442,6 +442,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("DependenciesWithSameClassName.kt")
+    public void testDependenciesWithSameClassName() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/DependenciesWithSameClassName.kt");
+    }
+
+    @Test
     @TestMetadata("ExposingIncludedGraphsDirectly.kt")
     public void testExposingIncludedGraphsDirectly() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/ExposingIncludedGraphsDirectly.kt");
