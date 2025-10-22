@@ -24,12 +24,12 @@ internal class BindingPropertyContext {
 
   fun hasKey(key: IrTypeKey): Boolean = key in instanceProperties || key in providerProperties
 
-  fun putInstanceProperty(key: IrTypeKey, field: IrProperty) {
-    instanceProperties[key] = field
+  fun putInstanceProperty(key: IrTypeKey, property: IrProperty) {
+    instanceProperties[key] = property
   }
 
-  fun putProviderProperty(key: IrTypeKey, field: IrProperty) {
-    providerProperties[key] = field
+  fun putProviderProperty(key: IrTypeKey, property: IrProperty) {
+    providerProperties[key] = property
   }
 
   fun instanceProperty(key: IrTypeKey): IrProperty? {
