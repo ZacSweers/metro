@@ -1310,6 +1310,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("LazyMemberInjectedBindings.kt")
+    public void testLazyMemberInjectedBindings() {
+      runTest("compiler-tests/src/test/data/box/multibindings/LazyMemberInjectedBindings.kt");
+    }
+
+    @Test
     @TestMetadata("MultibindingGraphWithWithScopedMapProviderDeps.kt")
     public void testMultibindingGraphWithWithScopedMapProviderDeps() {
       runTest("compiler-tests/src/test/data/box/multibindings/MultibindingGraphWithWithScopedMapProviderDeps.kt");

@@ -35,19 +35,6 @@ internal class IrContextualTypeKey(
     return IrContextualTypeKey(typeKey, wrappedType, hasDefault, rawType)
   }
 
-  fun wrapInProvider(providerType: ClassId = Symbols.ClassIds.metroProvider): IrContextualTypeKey {
-    return if (wrappedType is WrappedType.Provider) {
-      this
-    } else {
-      IrContextualTypeKey(
-        typeKey,
-        WrappedType.Provider(wrappedType, providerType),
-        hasDefault,
-        rawType,
-      )
-    }
-  }
-
   override fun render(short: Boolean, includeQualifier: Boolean): String = buildString {
     append(
       wrappedType.render { type ->
@@ -175,6 +162,36 @@ internal class IrContextualTypeKey(
 }
 
 context(context: IrMetroContext)
+internal fun IrContextualTypeKey.stripLazy(): IrContextualTypeKey {
+  return if (wrappedType !is WrappedType.Lazy) {
+    this
+  } else {
+    IrContextualTypeKey(
+      typeKey,
+      wrappedType.innerType,
+      hasDefault,
+      rawType?.requireSimpleType()?.arguments?.single()?.typeOrFail,
+    )
+  }
+}
+
+context(context: IrMetroContext)
+internal fun IrContextualTypeKey.wrapInProvider(
+  providerType: ClassId = Symbols.ClassIds.metroProvider
+): IrContextualTypeKey {
+  return if (wrappedType is WrappedType.Provider) {
+    this
+  } else {
+    IrContextualTypeKey(
+      typeKey,
+      WrappedType.Provider(wrappedType, providerType),
+      hasDefault,
+      rawType?.let { context.metroSymbols.metroProvider.typeWith(it) },
+    )
+  }
+}
+
+context(context: IrMetroContext)
 internal fun IrType.findProviderSupertype(): IrType? {
   check(this is IrSimpleType) { "Unrecognized IrType '${javaClass}': ${render()}" }
   val rawTypeClass = rawTypeOrNull() ?: return null
@@ -190,6 +207,13 @@ internal fun IrType.findProviderSupertype(): IrType? {
 context(context: IrMetroContext)
 internal fun IrType.implementsProviderType(): Boolean {
   return findProviderSupertype() != null
+}
+
+context(context: IrMetroContext)
+internal fun IrType.implementsLazyType(): Boolean {
+  check(this is IrSimpleType) { "Unrecognized IrType '${javaClass}': ${render()}" }
+  val rawTypeClass = rawTypeOrNull() ?: return false
+  return rawTypeClass.classId in context.metroSymbols.lazyTypes
 }
 
 context(context: IrMetroContext)

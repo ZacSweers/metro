@@ -4,6 +4,8 @@ Changelog
 **Unreleased**
 --------------
 
+- **Fix**: Fix injection of `Lazy`-wrapped multibindings.
+
 0.7.1
 -----
 

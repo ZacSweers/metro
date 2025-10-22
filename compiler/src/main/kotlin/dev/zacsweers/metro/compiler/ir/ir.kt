@@ -548,10 +548,13 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
   isGraphInstance: Boolean,
 ): IrExpression {
   val symbols = context.metroSymbols
-  val providerType = bindingCode.type.findProviderSupertype()
-  if (providerType == null) {
-    // Not a provider, nothing else to do here!
-    return bindingCode
+  val irType = bindingCode.type
+  if (!irType.implementsLazyType()) {
+    val providerType = bindingCode.type.findProviderSupertype()
+    if (providerType == null) {
+      // Not a provider, nothing else to do here!
+      return bindingCode
+    }
   }
 
   // More readability

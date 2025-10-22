@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
+import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
@@ -647,11 +648,16 @@ private constructor(
     accessType: AccessType,
     fieldInitKey: IrTypeKey?,
   ): IrExpression {
+    val transformedContextKey =
+      contextualTypeKey.letIf(contextualTypeKey.isWrappedInLazy) {
+        // need to change this to a Provider for our generation
+        contextualTypeKey.stripLazy().wrapInProvider()
+      }
     return if (binding.isSet) {
-      generateSetMultibindingExpression(binding, accessType, contextualTypeKey, fieldInitKey)
+      generateSetMultibindingExpression(binding, accessType, transformedContextKey, fieldInitKey)
     } else {
       // It's a map
-      generateMapMultibindingExpression(binding, contextualTypeKey, accessType, fieldInitKey)
+      generateMapMultibindingExpression(binding, transformedContextKey, accessType, fieldInitKey)
     }
   }
 
