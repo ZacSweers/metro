@@ -508,6 +508,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("NoEagerInits.kt")
+    public void testNoEagerInits() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/NoEagerInits.kt");
+    }
+
+    @Test
     @TestMetadata("NullabilityInContributions.kt")
     public void testNullabilityInContributions() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/NullabilityInContributions.kt");
