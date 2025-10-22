@@ -4,6 +4,7 @@ Changelog
 **Unreleased**
 --------------
 
+- **Fix**: Fix eager initialization of some bindings going into multibindings.
 - **Fix**: Fix injection of `Lazy`-wrapped multibindings.
 
 0.7.1
