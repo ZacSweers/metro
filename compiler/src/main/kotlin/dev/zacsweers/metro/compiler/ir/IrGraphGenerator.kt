@@ -452,9 +452,9 @@ internal class IrGraphGenerator(
               isProviderType = false
               suffix = "Factory"
               binding.classFactory.factoryClass.typeWith() // TODO generic factories?
-            } else if (propertyType == PropertyType.GETTER) {
+            } else if (propertyType == PropertyType.GETTER && binding is IrBinding.Multibinding) {
               // Getters don't need to be providers for multibindings
-              isProviderType = binding is IrBinding.Multibinding
+              isProviderType = false
               suffix = ""
               binding.typeKey.type
             } else {
