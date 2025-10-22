@@ -29,6 +29,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
   }
 
   @Test
+  @TestMetadata("MultibindingsWithComplexDependenciesGetProperties.kt")
+  public void testMultibindingsWithComplexDependenciesGetProperties() {
+    runTest("compiler-tests/src/test/data/dump/ir/MultibindingsWithComplexDependenciesGetProperties.kt");
+  }
+
+  @Test
   @TestMetadata("scratch.kt")
   public void testScratch() {
     runTest("compiler-tests/src/test/data/dump/ir/scratch.kt");
