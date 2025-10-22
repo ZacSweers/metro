@@ -27,14 +27,13 @@ internal class BindingPropertyCollector(private val graph: IrBindingGraph) {
           }
         }
 
-        if (binding.isIntoMultibinding) {
-          return PropertyType.GETTER
-        }
-
-        // If it's unscoped but used more than once and not into a multibinding,
-        // we can generate a reusable field
         return if (refCount >= 2) {
+          // If it's unscoped but used more than once, we can generate a reusable field
           PropertyType.FIELD
+        } else if (binding.isIntoMultibinding && !binding.hasSimpleDependencies) {
+          // If it's into a multibinding with dependencies, extract a getter to reduce code
+          // boilerplate
+          PropertyType.GETTER
         } else {
           null
         }
@@ -78,3 +77,26 @@ internal class BindingPropertyCollector(private val graph: IrBindingGraph) {
     return node.mark()
   }
 }
+
+private val IrBinding.hasSimpleDependencies: Boolean
+  get() {
+    return when (this) {
+      is IrBinding.Absent -> false
+      // Only one dependency that's always a field
+      is IrBinding.Assisted -> true
+      is IrBinding.ObjectClass -> true
+      is IrBinding.BoundInstance -> true
+      is IrBinding.GraphDependency -> true
+      // Standard types with actual dependencies
+      is IrBinding.ConstructorInjected -> dependencies.isEmpty()
+      is IrBinding.Provided -> parameters.nonDispatchParameters.isEmpty()
+      is IrBinding.MembersInjected -> dependencies.isEmpty()
+      is IrBinding.Multibinding -> sourceBindings.isEmpty()
+      // False because we don't know about the targets
+      is IrBinding.Alias -> false
+      is IrBinding.CustomWrapper -> false
+      // TODO maybe?
+      is IrBinding.GraphExtension -> false
+      is IrBinding.GraphExtensionFactory -> false
+    }
+  }
