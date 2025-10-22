@@ -56,7 +56,7 @@ interface AppGraph {
     private val mapOfIntToInt: Map<Int, Int>
       private get(): Map<Int, Int> {
         return buildMap<Int, Int>(capacity = 1, builderAction = local fun MutableMap<Int, Int>.<anonymous>() {
-          $receiver.put(key = 3, value = <this>.<get-provideInt>())
+          $receiver.put(key = 3, value = Companion.create(instance = <this>.#thisGraphInstance).invoke())
         }
 )
       }
@@ -64,14 +64,9 @@ interface AppGraph {
     private val mapOfIntToInt2: Map<Int, Provider<Int>>
       private get(): Map<Int, Provider<Int>> {
         return buildMap<Int, Provider<Int>>(capacity = 1, builderAction = local fun MutableMap<Int, Provider<Int>>.<anonymous>() {
-          $receiver.put(key = 3, value = Companion.invoke<Int>(value = <this>.<get-provideInt>()))
+          $receiver.put(key = 3, value = Companion.create(instance = <this>.#thisGraphInstance))
         }
 )
-      }
-
-    private val provideInt: Int
-      private get(): Int {
-        return Companion.create(instance = <this>.#thisGraphInstance).invoke()
       }
 
   }

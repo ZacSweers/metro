@@ -52,14 +52,14 @@ interface AppGraph {
       return error(message = "Never called")
     }
 
-    private val bindDouble: Double
-      private get(): Double {
-        return Companion.create(instance = <this>.#thisGraphInstance, int = <this>.#provideIntProvider).invoke()
+    private val bindDoubleProvider: Provider<Double>
+      private get(): Provider<Double> {
+        return Companion.create(instance = <this>.#thisGraphInstance, int = <this>.#provideIntProvider)
       }
 
-    private val bindLong: Long
-      private get(): Long {
-        return Companion.create(instance = <this>.#thisGraphInstance, int = <this>.#provideIntProvider).invoke()
+    private val bindLongProvider: Provider<Long>
+      private get(): Provider<Long> {
+        return Companion.create(instance = <this>.#thisGraphInstance, int = <this>.#provideIntProvider)
       }
 
     override val doubleSet: Set<Double>
@@ -79,7 +79,7 @@ interface AppGraph {
 
     private val setOfDouble: Set<Double>
       private get(): Set<Double> {
-        return setOf<Double>(element = <this>.<get-bindDouble>())
+        return setOf<Double>(element = <this>.<get-bindDoubleProvider>().invoke())
       }
 
     private val setOfInt: Set<Int>
@@ -89,7 +89,7 @@ interface AppGraph {
 
     private val setOfLong: Set<Long>
       private get(): Set<Long> {
-        return setOf<Long>(element = <this>.<get-bindLong>())
+        return setOf<Long>(element = <this>.<get-bindLongProvider>().invoke())
       }
 
   }

@@ -142,21 +142,11 @@ interface ExampleGraph : $$MetroContributionToAppScope {
 
       }
 
-      private val provide3: Task
-        private get(): Task {
-          return Companion.create(instance = <this>).invoke()
-        }
-
-      private val provide4: Task
-        private get(): Task {
-          return Companion.create(instance = <this>).invoke()
-        }
-
       private val setOfTask: Set<Task>
         private get(): Set<Task> {
           return buildSet<Task>(capacity = 4, builderAction = local fun MutableSet<Task>.<anonymous>() {
-            $receiver.add(element = Companion.invoke<Task>(value = <this>.<get-provide4>()).invoke())
-            $receiver.add(element = Companion.invoke<Task>(value = <this>.<get-provide3>()).invoke())
+            $receiver.add(element = Companion.create(instance = <this>).invoke())
+            $receiver.add(element = Companion.create(instance = <this>).invoke())
             $receiver.add(element = $$MetroFactory.create().invoke())
             $receiver.add(element = $$MetroFactory.create().invoke())
           }
@@ -194,21 +184,11 @@ interface ExampleGraph : $$MetroContributionToAppScope {
         return error(message = "Never called")
       }
 
-    private val provide3: Task
-      private get(): Task {
-        return Companion.create(instance = <this>.#thisGraphInstance).invoke()
-      }
-
-    private val provide4: Task
-      private get(): Task {
-        return Companion.create(instance = <this>.#thisGraphInstance).invoke()
-      }
-
     private val setOfTask: Set<Task>
       private get(): Set<Task> {
         return buildSet<Task>(capacity = 4, builderAction = local fun MutableSet<Task>.<anonymous>() {
-          $receiver.add(element = Companion.invoke<Task>(value = <this>.<get-provide4>()).invoke())
-          $receiver.add(element = Companion.invoke<Task>(value = <this>.<get-provide3>()).invoke())
+          $receiver.add(element = Companion.create(instance = <this>.#thisGraphInstance).invoke())
+          $receiver.add(element = Companion.create(instance = <this>.#thisGraphInstance).invoke())
           $receiver.add(element = $$MetroFactory.create().invoke())
           $receiver.add(element = $$MetroFactory.create().invoke())
         }
