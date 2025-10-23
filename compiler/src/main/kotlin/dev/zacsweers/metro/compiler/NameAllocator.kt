@@ -59,6 +59,7 @@ private val CROSS_PLATFORM_RESERVED_KEYWORDS = setOf(
  * Dangerous characters that must be replaced in identifiers.
  */
 private val DANGEROUS_CHARS = setOf('.', ';', '/', '<', '>', '[', ']')
+private val RESERVED_KEYWORDS = KEYWORDS + CROSS_PLATFORM_RESERVED_KEYWORDS
 
 /**
  * Assigns Kotlin identifier names to avoid collisions, keywords, and invalid characters. To use,
@@ -152,7 +153,7 @@ private constructor(
     mode: Mode = Mode.UNDERSCORE,
   ) : this(
     allocatedNames = if (preallocateKeywords) {
-      (KEYWORDS + CROSS_PLATFORM_RESERVED_KEYWORDS).toMutableSet()
+      RESERVED_KEYWORDS.toMutableSet()
     } else {
       mutableSetOf()
     },
