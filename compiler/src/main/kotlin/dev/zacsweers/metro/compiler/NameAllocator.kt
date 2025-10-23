@@ -230,7 +230,6 @@ internal fun toValidatedIdentifier(suggestion: String) = buildString {
   var i = 0
   while (i < suggestion.length) {
     val codePoint = suggestion.codePointAt(i)
-    val char = suggestion[i]
 
     // Check if we need to prepend underscore at the start
     if (
@@ -243,10 +242,10 @@ internal fun toValidatedIdentifier(suggestion: String) = buildString {
 
     // Determine the valid code point to use
     val validCodePoint: Int = when {
-      // Explicitly block dangerous characters
-      char in DANGEROUS_CHARS -> '_'.code
       // Block non-ASCII for cross-platform compatibility (code point > 127)
       codePoint > 127 -> '_'.code
+      // Explicitly block dangerous characters
+      codePoint.toChar() in DANGEROUS_CHARS -> '_'.code
       // Use Java identifier validation for other characters
       Character.isJavaIdentifierPart(codePoint) -> codePoint
       // Replace any other invalid character with underscore
