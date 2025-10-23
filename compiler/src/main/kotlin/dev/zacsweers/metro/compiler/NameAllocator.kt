@@ -167,7 +167,7 @@ private constructor(
    * [NameAllocator.get].
    */
   fun newName(suggestion: String, tag: Any = Uuid.random().toString()): String {
-    val cleanedSuggestion = toValidatedIdentifier(suggestion)
+    val cleanedSuggestion = toSafeIdentifier(suggestion)
     val result = buildString {
       append(cleanedSuggestion)
       var count = 1
@@ -226,7 +226,7 @@ private constructor(
  * - `123abc` → `_123abc` (starts with digit)
  * - `foo<T>` → `foo_T_` (dangerous characters)
  */
-internal fun toValidatedIdentifier(suggestion: String) = buildString {
+internal fun toSafeIdentifier(suggestion: String) = buildString {
   var i = 0
   while (i < suggestion.length) {
     val codePoint = suggestion.codePointAt(i)
