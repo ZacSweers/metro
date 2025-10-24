@@ -428,7 +428,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
                   }
                 "inject${memberName.capitalizeUS()}"
               }
-            clazz.cacheMemberInjectFunctionNames(functionNames)
+            clazz.cacheMemberInjectFunctionNamesInMetadata(functionNames)
 
             computed
           }
@@ -438,7 +438,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
     return result
   }
 
-  private fun IrClass.cacheMemberInjectFunctionNames(functionNames: List<String>) {
+  private fun IrClass.cacheMemberInjectFunctionNamesInMetadata(functionNames: List<String>) {
     if (isExternalParent) return
     val injectedClass = InjectedClassProto(member_inject_functions = functionNames)
 
