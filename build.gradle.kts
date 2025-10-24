@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import com.diffplug.gradle.spotless.SpotlessExtension
 import com.diffplug.gradle.spotless.SpotlessExtensionPredeclare
+import com.diffplug.spotless.LineEnding
 import com.vanniktech.maven.publish.MavenPublishBaseExtension
 import kotlinx.validation.ExperimentalBCVApi
 import org.jetbrains.dokka.gradle.DokkaExtension
@@ -82,6 +83,7 @@ configure<SpotlessExtensionPredeclare> {
 allprojects {
   apply(plugin = "com.diffplug.spotless")
   configure<SpotlessExtension> {
+    setLineEndings(LineEnding.GIT_ATTRIBUTES_FAST_ALLSAME)
     format("misc") {
       target("*.gradle", "*.md", ".gitignore")
       trimTrailingWhitespace()
