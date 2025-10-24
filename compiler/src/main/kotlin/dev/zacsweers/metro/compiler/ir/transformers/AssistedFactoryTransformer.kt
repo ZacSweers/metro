@@ -18,6 +18,7 @@ import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isExternalParent
+import dev.zacsweers.metro.compiler.ir.isStaticIsh
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter.AssistedParameterKey.Companion.toAssistedParameterKey
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
@@ -62,7 +63,6 @@ import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.isFromJava
-import org.jetbrains.kotlin.ir.util.isStatic
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
@@ -424,7 +424,7 @@ internal sealed interface AssistedFactoryImpl {
     // For Dagger, we need to call the static create method directly
     private val createFunction =
       daggerImplClass.simpleFunctions().first {
-        it.isStatic &&
+        it.isStaticIsh &&
           (it.name == Symbols.Names.create || it.name == Symbols.Names.createFactoryProvider)
       }
 

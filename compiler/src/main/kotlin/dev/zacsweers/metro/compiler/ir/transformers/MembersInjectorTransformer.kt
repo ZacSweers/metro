@@ -23,6 +23,7 @@ import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isExternalParent
+import dev.zacsweers.metro.compiler.ir.isStaticIsh
 import dev.zacsweers.metro.compiler.ir.metroMetadata
 import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
@@ -68,7 +69,6 @@ import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.isInterface
-import org.jetbrains.kotlin.ir.util.isStatic
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
@@ -512,7 +512,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
     return injectorClass.functions
       .filter { function ->
         // Match all static functions starting with "inject" that return Unit
-        function.isStatic &&
+        function.isStaticIsh &&
           function.name.asString().startsWith("inject") &&
           function.returnType.isUnit() &&
           // Shorthand to filter out overrides of "injectMembers", which may pass through here

@@ -45,7 +45,6 @@ import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.isObject
-import org.jetbrains.kotlin.ir.util.isStatic
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.Name
@@ -337,14 +336,6 @@ private constructor(
             // exampleComponentProvider)
             val provider =
               irInvoke(
-                  dispatchReceiver =
-                    if (injectorCreatorClass.isObject) {
-                      irGetObject(injectorCreatorClass.symbol)
-                    } else {
-                      // It's static from java, dagger interop
-                      check(createFunction.owner.isStatic)
-                      null
-                    },
                   callee = createFunction,
                   args = args,
                 )

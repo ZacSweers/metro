@@ -1767,3 +1767,10 @@ internal fun IrClass.companionObjectOrSelfIfObjectOrJava(): IrClass {
     else -> companionObject() ?: this
   }
 }
+
+/**
+ * In cases where we read Anvil-generated kotlin code, "static" may be a function in a companion
+ * object, where [IrFunction.dispatchReceiverParameter] isn't quite enough.
+ */
+internal val IrFunction.isStaticIsh: Boolean
+  get() = parent is IrClass && (dispatchReceiverParameter == null || parentAsClass.isObject)
