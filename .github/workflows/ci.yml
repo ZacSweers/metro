@@ -84,7 +84,7 @@ jobs:
 
       - name: (Fail-only) Upload reports
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: reports-core-${{ matrix.kotlin-compiler }}
           path: |
@@ -139,7 +139,7 @@ jobs:
 
       - name: (Fail-only) Upload reports
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: reports-samples-${{ runner.os }}
           path: |
@@ -204,7 +204,7 @@ jobs:
 
       - name: (Fail-only) Upload reports
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: reports-multiplatform-${{ matrix.os }}
           path: |
@@ -260,7 +260,7 @@ jobs:
 
       - name: (Fail-only) Upload reports
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: reports-benchmarks
           path: |
