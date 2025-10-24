@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.test.directives.model.RegisteredDirectives
 import org.jetbrains.kotlin.test.directives.model.SimpleDirectivesContainer
 
 object MetroDirectives : SimpleDirectivesContainer() {
+  val DISABLE_METRO by directive("Disables metro entirely on this module compilation if present.")
   val COMPILER_VERSION by stringDirective("Target kotlin compiler version, if any")
   // TODO eventually support multiple outputs
   val CUSTOM_TEST_DATA_PER_COMPILER_VERSION by

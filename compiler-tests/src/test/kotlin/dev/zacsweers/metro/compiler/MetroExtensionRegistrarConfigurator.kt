@@ -57,6 +57,7 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
 
     val options =
       MetroOptions(
+        enabled = MetroDirectives.DISABLE_METRO !in module.directives,
         enableDaggerRuntimeInterop = MetroDirectives.enableDaggerRuntimeInterop(module.directives),
         generateAssistedFactories =
           MetroDirectives.GENERATE_ASSISTED_FACTORIES in module.directives,
@@ -250,6 +251,9 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
           },
         // TODO other dagger annotations/types not yet implemented
       )
+
+    if (!options.enabled) return
+
     val classIds = ClassIds.fromOptions(options)
     val compatContext = CompatContext.getInstance()
     FirExtensionRegistrarAdapter.registerExtension(
