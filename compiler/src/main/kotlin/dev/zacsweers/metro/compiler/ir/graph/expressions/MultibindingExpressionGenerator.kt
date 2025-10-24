@@ -1,3 +1,5 @@
+// Copyright (C) 2025 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph.expressions
 
 import dev.zacsweers.metro.compiler.expectAs
@@ -85,15 +87,14 @@ internal class MultibindingExpressionGenerator(
     fieldInitKey: IrTypeKey?,
   ): IrExpression =
     with(scope) {
-      val generateCode: MultibindingExpression =
-        { expressionGenerator ->
-          expressionGenerator.buildSetMultibindingExpression(
-            binding,
-            accessType,
-            contextualTypeKey,
-            fieldInitKey,
-          )
-        }
+      val generateCode: MultibindingExpression = { expressionGenerator ->
+        expressionGenerator.buildSetMultibindingExpression(
+          binding,
+          accessType,
+          contextualTypeKey,
+          fieldInitKey,
+        )
+      }
 
       if (binding.isEmpty()) {
         // Short-circuit and generate the empty call directly
@@ -402,9 +403,7 @@ internal class MultibindingExpressionGenerator(
       // Use lazy property to cache the multibinding and handle different access patterns
       val property =
         getterPropertyFor(binding, contextualTypeKey) { expressionGenerator ->
-          irExprBodySafe(
-            generateCode(expressionGenerator)
-          )
+          irExprBodySafe(generateCode(expressionGenerator))
         }
 
       // Return the property access, which will be the provider

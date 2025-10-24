@@ -64,7 +64,7 @@ private constructor(
   override val parentTracer: Tracer,
   getterPropertyFor:
     (
-    IrBinding, IrContextualTypeKey, IrBuilderWithScope.(GraphExpressionGenerator) -> IrBody,
+      IrBinding, IrContextualTypeKey, IrBuilderWithScope.(GraphExpressionGenerator) -> IrBody,
     ) -> IrProperty,
 ) : BindingExpressionGenerator<IrBinding>(context) {
 
@@ -80,7 +80,7 @@ private constructor(
     private val parentTracer: Tracer,
     private val getterPropertyFor:
       (
-      IrBinding, IrContextualTypeKey, IrBuilderWithScope.(GraphExpressionGenerator) -> IrBody,
+        IrBinding, IrContextualTypeKey, IrBuilderWithScope.(GraphExpressionGenerator) -> IrBody,
       ) -> IrProperty,
   ) {
     fun create(thisReceiver: IrValueParameter): GraphExpressionGenerator {
@@ -628,4 +628,3 @@ private constructor(
       }
     }
 }
-
