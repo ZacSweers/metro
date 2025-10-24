@@ -1063,7 +1063,7 @@
 
 <h1 id="kotlin-compatibility">Kotlin Compatibility<a class="headerlink" href="#kotlin-compatibility" title="Permanent link">&para;</a></h1>
 <p>The Kotlin compiler plugin API is not a stable API, so not every version of Metro will work with every version of the Kotlin compiler.</p>
-<p>Starting with Metro <code>0.6.9</code>, Metro tries to support forward compatibility on a best-effort basis. Some releases may introduce prohibitively difficult breaking changes that require companion release, so check Metro&rsquo;s open PRs for one targeting that Kotlin version for details.</p>
+<p>Starting with Metro <code>0.6.9</code>, Metro tries to support forward compatibility on a best-effort basis. Usually, it&rsquo;s <code>N+.2</code> (so a Metro version built against Kotlin <code>2.3.0</code> will try to support up to <code>2.3.20</code>) Some releases may introduce prohibitively difficult breaking changes that require companion release, so check Metro&rsquo;s open PRs for one targeting that Kotlin version for details. There is a tested versions table at the bottom of this page that is updated with each Metro release.</p>
 <table>
 <thead>
 <tr>
@@ -1123,9 +1123,10 @@
 </tr>
 </tbody>
 </table>
-<blockquote>
-<p><strong>Note:</strong> Versions without dedicated compiler-compat modules will use the nearest available implementation. See <code>compiler-compat/version-aliases.txt</code> for the full list.</p>
-</blockquote>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Versions without dedicated compiler-compat modules will use the nearest available implementation <em>below</em> that version. See <a href="https://github.com/ZacSweers/metro/blob/main/compiler-compat/version-aliases.txt"><code>compiler-compat/version-aliases.txt</code></a> for the full list.</p>
+</div>
 
 
 
