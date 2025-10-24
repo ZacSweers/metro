@@ -169,7 +169,9 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
     val isAssistedInject: Boolean,
   ) {
     private val parameterNameAllocator = NameAllocator()
-    private val memberNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
+    // Don't preallocate as these are always prefixed later with "inject"
+    private val memberNameAllocator =
+      NameAllocator(preallocateKeywords = false, mode = NameAllocator.Mode.COUNT)
     private var declaredInjectedMembersPopulated = false
     private var ancestorInjectedMembersPopulated = false
 
