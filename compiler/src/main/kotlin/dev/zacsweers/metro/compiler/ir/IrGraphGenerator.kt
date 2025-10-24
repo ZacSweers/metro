@@ -50,7 +50,6 @@ import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.kotlinFqName
-import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.ir.util.statements
@@ -656,13 +655,13 @@ internal class IrGraphGenerator(
         reportCompilerBug("No binding found for $contextualTypeKey")
       }
 
-      function.ir.apply {
+      val irFunction = function.ir
+      irFunction.apply {
         val declarationToFinalize =
-          function.ir.propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
+          irFunction.propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
         if (declarationToFinalize.isFakeOverride) {
           declarationToFinalize.finalizeFakeOverride(graphClass.thisReceiverOrFail)
         }
-        val irFunction = this
         body =
           createIrBuilder(symbol).run {
             if (binding is IrBinding.Multibinding) {
@@ -726,7 +725,6 @@ internal class IrGraphGenerator(
                 // Record for IC
                 trackFunctionCall(this@apply, function)
                 +irInvoke(
-                  dispatchReceiver = irGetObject(function.parentAsClass.symbol),
                   callee = function.symbol,
                   args =
                     buildList {
@@ -761,7 +759,8 @@ internal class IrGraphGenerator(
     // Note we can't source this from the node.bindsCallables as those are pointed at their original
     // declarations and we need to implement their fake overrides here
     bindsFunctions.forEach { function ->
-      function.ir.apply {
+      val irFunction = function.ir
+      irFunction.apply {
         val declarationToFinalize = propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
         if (declarationToFinalize.isFakeOverride) {
           declarationToFinalize.finalizeFakeOverride(graphClass.thisReceiverOrFail)
@@ -776,13 +775,13 @@ internal class IrGraphGenerator(
     for ((typeKey, functions) in graphExtensions) {
       for (extensionAccessor in functions) {
         val function = extensionAccessor.accessor
-        function.ir.apply {
+        val irFunction = function.ir
+        irFunction.apply {
           val declarationToFinalize =
-            function.ir.propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
+            irFunction.propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
           if (declarationToFinalize.isFakeOverride) {
             declarationToFinalize.finalizeFakeOverride(graphClass.thisReceiverOrFail)
           }
-          val irFunction = this
 
           if (extensionAccessor.isFactory) {
             // Handled in regular accessors
@@ -795,12 +794,12 @@ internal class IrGraphGenerator(
                 ?: IrBinding.GraphExtension(
                   typeKey = typeKey,
                   parent = metroGraphOrFail,
-                  accessor = function.ir,
+                  accessor = irFunction,
                   // Implementing a factory SAM, no scoping or dependencies here,
                   extensionScopes = emptySet(),
                   dependencies = emptyList(),
                 )
-            val contextKey = IrContextualTypeKey.from(function.ir)
+            val contextKey = IrContextualTypeKey.from(irFunction)
             body =
               createIrBuilder(symbol).run {
                 irExprBodySafe(

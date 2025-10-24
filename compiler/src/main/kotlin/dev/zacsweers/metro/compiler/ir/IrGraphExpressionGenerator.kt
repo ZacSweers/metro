@@ -295,7 +295,8 @@ private constructor(
         is IrBinding.MembersInjected -> {
           val injectedClass = referenceClass(binding.targetClassId)!!.owner
           val injectedType = injectedClass.defaultType
-          val injectorClass = membersInjectorTransformer.getOrGenerateInjector(injectedClass)?.ir
+          val injectorClass =
+            membersInjectorTransformer.getOrGenerateInjector(injectedClass)?.injectorClass
 
           if (injectorClass == null) {
             // Return a noop

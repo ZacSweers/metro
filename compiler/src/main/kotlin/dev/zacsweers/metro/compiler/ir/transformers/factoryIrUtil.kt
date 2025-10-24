@@ -75,7 +75,7 @@ internal fun generateStaticCreateFunction(
         providerFunction = providerFunction,
         sourceMetroParameters = parameters,
         sourceParameters =
-          parameters.nonDispatchParameters.filterNot { it.isAssisted }.map { it.ir },
+          parameters.nonDispatchParameters.filterNot { it.isAssisted }.map { it.asValueParameter },
         targetParameters = valueParamsToPatch,
         targetGraphParameter = instanceParam,
         wrapInProvider = true,

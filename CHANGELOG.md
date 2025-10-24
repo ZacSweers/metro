@@ -4,6 +4,9 @@ Changelog
 **Unreleased**
 --------------
 
+- **New**: Support interop with Dagger/Anvil-generated member injector classes.
+- **Enhancement**: Skip reading members when loading externally-compiled member injector classes. Parameters are now computed from their static `inject*` functions.
+
 0.7.2
 -----
 

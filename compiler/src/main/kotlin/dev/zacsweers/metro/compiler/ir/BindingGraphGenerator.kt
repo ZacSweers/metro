@@ -368,13 +368,13 @@ internal class BindingGraphGenerator(
 
         // Check if there's a dynamic replacement for this bound instance
         val hasDynamicReplacement = paramTypeKey in node.dynamicTypeKeys
-        val isDynamic = creatorParam.ir.origin == Origins.DynamicContainerParam
+        val isDynamic = creatorParam.ir?.origin == Origins.DynamicContainerParam
 
         if (isDynamic || !hasDynamicReplacement) {
           // Only add the bound instance if there's no dynamic replacement
           graph.addBinding(
             paramTypeKey,
-            IrBinding.BoundInstance(creatorParam, creatorParam.ir),
+            IrBinding.BoundInstance(creatorParam, creatorParam.ir!!),
             bindingStack,
           )
 

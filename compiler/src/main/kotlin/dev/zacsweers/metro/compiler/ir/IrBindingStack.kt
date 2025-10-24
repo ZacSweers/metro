@@ -7,6 +7,7 @@ import com.jakewharton.picnic.renderText
 import com.jakewharton.picnic.table
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.BaseBindingStack
 import dev.zacsweers.metro.compiler.graph.BaseTypeKey
 import dev.zacsweers.metro.compiler.ir.IrBindingStack.Entry
@@ -458,7 +459,7 @@ internal fun bindingStackEntryForDependency(
       Entry.injectedAt(
         contextKey,
         callingBinding.ir,
-        callingBinding.parameters.extensionOrFirstParameter?.ir,
+        callingBinding.parameters.extensionOrFirstParameter?.ir?.expectAs(),
         displayTypeKey = targetKey,
       )
     }

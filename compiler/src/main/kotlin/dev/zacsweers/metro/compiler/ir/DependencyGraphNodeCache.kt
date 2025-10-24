@@ -236,7 +236,7 @@ internal class DependencyGraphNodeCache(
           checkGraphSelfCycle(graphDeclaration, graphTypeKey, bindingStack)
 
           // Add any included graph provider factories IFF it's a binding container
-          val isDynamicContainer = parameter.ir.origin == Origins.DynamicContainerParam
+          val isDynamicContainer = parameter.ir?.origin == Origins.DynamicContainerParam
           if (isDynamicContainer) {
             dynamicBindingContainers += klass
             // Parameter's dynamism will be checked by its origin
@@ -279,7 +279,7 @@ internal class DependencyGraphNodeCache(
           // Still tie to the parameter key because that's what gets the instance binding
           if (parameter.isIncludes) {
             includedGraphNodes[parameter.typeKey] = node
-          } else if (parameter.ir.origin == Origins.DynamicContainerParam) {
+          } else if (parameter.ir?.origin == Origins.DynamicContainerParam) {
             // Do nothing, it'll be checked separately in IrGraphGen
           } else {
             reportCompilerBug("Unexpected parameter type for graph: $parameter")

@@ -90,6 +90,8 @@ dependencies {
   testImplementation(libs.ksp.symbolProcessing.api)
   testImplementation(libs.classgraph)
   testImplementation(libs.dagger.compiler)
+  // TODO runtimeOnly
+  testImplementation(libs.anvil.kspCompiler)
 
   metroRuntimeClasspath(project(":runtime"))
   daggerInteropClasspath(project(":interop-dagger"))

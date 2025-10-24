@@ -21,7 +21,9 @@ import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.singleOrNullUnlessMultiple
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrProperty
@@ -34,6 +36,7 @@ import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
+import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
@@ -55,7 +58,7 @@ private constructor(
   val isBindsInstance: Boolean,
   val isIncludes: Boolean,
   val isMember: Boolean,
-  ir: IrValueParameter?,
+  val ir: IrDeclarationWithName?,
 ) : Comparable<Parameter> {
   val typeKey: IrTypeKey = contextualTypeKey.typeKey
   val type: IrType = contextualTypeKey.typeKey.type
@@ -64,10 +67,25 @@ private constructor(
   val isLazyWrappedInProvider: Boolean = contextualTypeKey.isLazyWrappedInProvider
   val hasDefault: Boolean = contextualTypeKey.hasDefault
 
-  // TODO just make this nullable
-  private val _ir = ir
-  val ir: IrValueParameter
-    get() = _ir ?: reportCompilerBug("Parameter $name has no backing IR value parameter!")
+  val asValueParameter: IrValueParameter
+    get() {
+      return when (ir) {
+        is IrValueParameter -> ir
+        is IrProperty ->
+          ir.setter?.nonDispatchParameters?.single()
+            ?: reportCompilerBug("No getter for property $ir")
+        is IrFunction ->
+          ir.nonDispatchParameters.singleOrNull()
+            ?: reportCompilerBug("No or too many value parameters for function $ir")
+        else -> reportCompilerBug("Not a value parameter! Was $ir")
+      }
+    }
+
+  val asFunction: IrFunction
+    get() = ir as? IrFunction ?: reportCompilerBug("Not a function! Was $ir")
+
+  val asProperty: IrProperty
+    get() = ir as? IrProperty ?: reportCompilerBug("Not a property! Was $ir")
 
   private val cachedToString by memoize {
     buildString {
@@ -97,7 +115,7 @@ private constructor(
     isBindsInstance: Boolean = this.isBindsInstance,
     isIncludes: Boolean = this.isIncludes,
     isMember: Boolean = this.isMember,
-    ir: IrValueParameter? = this._ir,
+    ir: IrDeclarationWithName? = this.ir,
   ) =
     Parameter(
       kind = kind,
@@ -177,7 +195,8 @@ private constructor(
       name: Name,
       contextualTypeKey: IrContextualTypeKey,
       originalName: Name,
-      ir: IrValueParameter,
+      // Can be a property, parameter, or a function
+      ir: IrDeclarationWithName?,
     ): Parameter {
       return Parameter(
         kind = kind,
@@ -223,7 +242,11 @@ internal fun IrValueParameter.toConstructorParameter(
       declaration = this,
     )
 
-  val assistedAnnotation = annotationsIn(context.metroSymbols.assistedAnnotations).singleOrNull()
+  val assistedAnnotation =
+    annotationsIn(context.metroSymbols.assistedAnnotations)
+      .singleOrNullUnlessMultiple({
+        reportCompilerBug("Multiple @Assisted annotations on parameter $this")
+      })
 
   var isProvides = false
   var isIncludes = false
@@ -283,8 +306,6 @@ internal fun IrProperty.toMemberInjectParameter(
   val propertyType =
     getter?.returnType ?: backingField?.type ?: reportCompilerBug("No getter or backing field!")
 
-  val setterParam = setter?.regularParameters?.singleOrNull()
-
   // Remap type parameters in underlying types to the new target container. This is important for
   // type mangling
   val declaredType = typeParameterRemapper?.invoke(propertyType) ?: propertyType
@@ -311,7 +332,7 @@ internal fun IrProperty.toMemberInjectParameter(
     name = uniqueName,
     originalName = name,
     contextualTypeKey = contextKey,
-    ir = setterParam!!,
+    ir = this,
   )
 }
 

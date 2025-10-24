@@ -271,3 +271,24 @@ internal fun computeMetroDefault(
     false
   }
 }
+
+/**
+ * [singleOrNull] but if there are multiple elements it will throw an error instead of returning
+ * null
+ */
+public fun <T> Sequence<T>.singleOrNullUnlessMultiple(
+  onError: (T) -> Nothing,
+  predicate: (T) -> Boolean = { true },
+): T? {
+  var found: T? = null
+  for (element in this) {
+    if (predicate(element)) {
+      if (found != null) {
+        onError(found)
+      } else {
+        found = element
+      }
+    }
+  }
+  return found
+}

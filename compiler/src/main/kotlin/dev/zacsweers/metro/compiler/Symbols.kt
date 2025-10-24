@@ -488,6 +488,13 @@ internal class Symbols(
       .single()
   }
 
+  val assistedConstructor by lazy {
+    pluginContext
+      .referenceClass(ClassId(metroRuntime.packageFqName, StringNames.ASSISTED.asName()))!!
+      .constructors
+      .single()
+  }
+
   val bindsOptionalConstructor by lazy {
     pluginContext
       .referenceClass(DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF)!!

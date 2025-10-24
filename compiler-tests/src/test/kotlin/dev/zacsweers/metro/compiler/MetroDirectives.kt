@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
+import java.util.EnumSet
+import java.util.Locale
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.test.directives.model.RegisteredDirectives
 import org.jetbrains.kotlin.test.directives.model.SimpleDirectivesContainer
 
@@ -64,18 +67,53 @@ object MetroDirectives : SimpleDirectivesContainer() {
     directive(
       "Enable Dagger KSP processing. This implicitly applies WITH_DAGGER and ENABLE_DAGGER_INTEROP directives as well."
     )
+  val ENABLE_ANVIL_KSP by
+    directive(
+      "Enable Anvil KSP processing. This implicitly applies WITH_DAGGER, ENABLE_DAGGER_INTEROP, and WITH_ANVIL directives as well."
+    )
+
+  // Anvil KSP options
+  val ANVIL_GENERATE_DAGGER_FACTORIES by
+    valueDirective("Enable/disable generation of Dagger factories in Anvil KSP.") { it.toBoolean() }
+  val ANVIL_GENERATE_DAGGER_FACTORIES_ONLY by
+    valueDirective(
+      "Enable/disable generating only Dagger factories in Anvil KSP, skip component merging. Default is true."
+    ) {
+      it.toBoolean()
+    }
+  val ANVIL_DISABLE_COMPONENT_MERGING by
+    valueDirective("Enable/disable component merging in Anvil KSP.") { it.toBoolean() }
+  val ANVIL_EXTRA_CONTRIBUTING_ANNOTATIONS by
+    stringDirective(
+      "Colon-separated list of extra contributing annotations for Anvil KSP. Example: 'com.example.MyAnnotation:com.example.OtherAnnotation'."
+    )
+  val KSP_LOG_SEVERITY by
+    valueDirective("KSP logging directive.") { value ->
+      when (val upper = value.uppercase(Locale.US)) {
+        "VERBOSE" ->
+          EnumSet.range(CompilerMessageSeverity.EXCEPTION, CompilerMessageSeverity.LOGGING)
+        else -> EnumSet.of(CompilerMessageSeverity.valueOf(upper))
+      }
+    }
 
   fun enableDaggerRuntime(directives: RegisteredDirectives): Boolean {
     return WITH_DAGGER in directives ||
       ENABLE_DAGGER_INTEROP in directives ||
-      ENABLE_DAGGER_KSP in directives
+      ENABLE_DAGGER_KSP in directives ||
+      ENABLE_ANVIL_KSP in directives
   }
 
   fun enableDaggerRuntimeInterop(directives: RegisteredDirectives): Boolean {
-    return ENABLE_DAGGER_INTEROP in directives || ENABLE_DAGGER_KSP in directives
+    return ENABLE_DAGGER_INTEROP in directives ||
+      ENABLE_DAGGER_KSP in directives ||
+      ENABLE_ANVIL_KSP in directives
   }
 
   fun enableDaggerKsp(directives: RegisteredDirectives): Boolean {
     return ENABLE_DAGGER_KSP in directives
+  }
+
+  fun enableAnvilKsp(directives: RegisteredDirectives): Boolean {
+    return ENABLE_ANVIL_KSP in directives
   }
 }

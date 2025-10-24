@@ -24,11 +24,6 @@ internal class TestKSPLogger(
 
   val recordedEvents = mutableListOf<Event>()
 
-  private val reportToCompilerSeverity =
-    setOf(CompilerMessageSeverity.ERROR, CompilerMessageSeverity.EXCEPTION)
-
-  private var reportedToCompiler = false
-
   private fun convertMessage(message: String, symbol: KSNode?): String =
     when (val location = symbol?.location) {
       is FileLocation -> "$PREFIX${location.filePath}:${location.lineNumber}: $message"
@@ -60,13 +55,21 @@ internal class TestKSPLogger(
     recordedEvents.add(Event(CompilerMessageSeverity.EXCEPTION, writer.toString()))
   }
 
-  fun reportAll() {
+  fun reportAll(reportToCompilerSeverity: Set<CompilerMessageSeverity>) {
+    var errorReported = false
     for (event in recordedEvents) {
-      if (!reportedToCompiler && event.severity in reportToCompilerSeverity) {
-        reportedToCompiler = true
-        messageCollector.report(event.severity, "Error occurred in KSP, check log for detail")
+      if (!errorReported && event.severity in reportToCompilerSeverity) {
+        messageCollector.report(event.severity, event.message)
+        if (event.severity <= CompilerMessageSeverity.ERROR) {
+          errorReported = true
+        }
       }
-      messageCollector.report(event.severity, event.message)
+    }
+    if (errorReported) {
+      messageCollector.report(
+        CompilerMessageSeverity.ERROR,
+        "Error occurred in KSP, check log for detail",
+      )
     }
   }
 }

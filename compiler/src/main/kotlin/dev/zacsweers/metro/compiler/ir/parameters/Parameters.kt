@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.compareTo
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.NOOP_TYPE_REMAPPER
 import dev.zacsweers.metro.compiler.ir.contextParameters
 import dev.zacsweers.metro.compiler.ir.extensionReceiverParameterCompat
@@ -37,7 +38,7 @@ internal class Parameters(
 ) : Comparable<Parameters> {
 
   val isProperty: Boolean
-    get() = (ir as? IrSimpleFunction?)?.isPropertyAccessor == true
+    get() = ir?.isPropertyAccessor == true
 
   val irProperty: IrProperty?
     get() {
@@ -156,6 +157,17 @@ internal class Parameters(
       regularParameters,
       contextParameters,
       ir,
+    )
+  }
+
+  fun with(other: MetroSimpleFunction): Parameters {
+    return Parameters(
+      callableId,
+      dispatchReceiverParameter,
+      extensionReceiverParameter,
+      regularParameters,
+      contextParameters,
+      other.ir,
     )
   }
 

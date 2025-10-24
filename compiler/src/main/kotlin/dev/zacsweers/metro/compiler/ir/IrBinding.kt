@@ -223,7 +223,10 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
       get() = providerFactory.function
 
     fun parameterFor(typeKey: IrTypeKey): IrValueParameter {
-      return parameters.allParameters.find { it.typeKey == typeKey }?.ir
+      return parameters.allParameters
+        .find { it.typeKey == typeKey }
+        ?.ir
+        ?.expectAs<IrValueParameter>()
         ?: reportCompilerBug(
           "No value parameter found for key $typeKey in ${providerFactory.callableId.asSingleFqName().asString()}."
         )
@@ -677,11 +680,21 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
 
     override val scope: IrAnnotation? = null
 
-    override val nameHint: String = "${typeKey.type.rawType().name}MembersInjector"
+    override val nameHint: String by memoize { "${targetClassId.shortClassName}MembersInjector" }
 
     override fun renderDescriptionDiagnostic(short: Boolean, underlineTypeKey: Boolean) =
       buildString {
+        typeKey.qualifier?.let {
+          append(it.render(short = short))
+          append(' ')
+        }
+        append("MembersInjector<")
+        append(targetClassId.shortClassName.asString())
+        append('>')
         if (function != null) {
+          appendLine()
+          appendLine("(injected at)")
+          append("  ")
           renderForDiagnostic(
             declaration = function,
             short = short,
@@ -690,15 +703,8 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
             parameters = parameters,
             isProperty = function.isPropertyAccessor,
             underlineTypeKey = underlineTypeKey,
+            format = Format.CALL,
           )
-        } else {
-          typeKey.qualifier?.let {
-            append(it.render(short = short))
-            append(' ')
-          }
-          append("MembersInjector<")
-          append(typeKey.render(short = short, includeQualifier = false))
-          append('>')
         }
       }
 
@@ -847,6 +853,17 @@ private fun IrClass.renderForDiagnostic(
   }
 }
 
+private enum class Format {
+  DECLARATION,
+  CALL;
+
+  val isDeclaration: Boolean
+    get() = this == DECLARATION
+
+  val isCall: Boolean
+    get() = this == CALL
+}
+
 private fun StringBuilder.renderForDiagnostic(
   declaration: IrDeclarationParent,
   short: Boolean,
@@ -855,6 +872,7 @@ private fun StringBuilder.renderForDiagnostic(
   parameters: Parameters,
   isProperty: Boolean?,
   underlineTypeKey: Boolean,
+  format: Format = Format.DECLARATION,
 ) {
   val property: IrProperty?
   val name: Name
@@ -884,43 +902,76 @@ private fun StringBuilder.renderForDiagnostic(
   }
 
   val isProperty = isProperty == true || property != null
-  annotations?.let { renderAnnotations(it, short, isClass = false) }
-  if (isProperty) {
-    if (property != null) {
-      if (property.isVar) {
-        if (property.isLateinit) {
-          append("lateinit ")
+
+  if (format.isDeclaration) {
+    annotations?.let { renderAnnotations(it, short, isClass = false) }
+    if (isProperty) {
+      if (property != null) {
+        if (property.isVar) {
+          if (property.isLateinit) {
+            append("lateinit ")
+          }
+          append("var ")
+        } else {
+          append("val ")
         }
-        append("var ")
       } else {
         append("val ")
       }
     } else {
-      append("val ")
+      append("fun ")
     }
-  } else {
-    append("fun ")
+
+    if (parameters.contextParameters.isNotEmpty()) {
+      parameters.contextParameters.joinTo(this, ", ", prefix = "context(", postfix = ")\n") {
+        it.name.asString() + ": " + it.typeKey.render(short = short)
+      }
+    }
   }
 
-  if (parameters.contextParameters.isNotEmpty()) {
-    parameters.contextParameters.joinTo(this, ", ", prefix = "context(", postfix = ")\n") {
-      it.name.asString() + ": " + it.typeKey.render(short = short)
+  val dispatchReceiverName =
+    declaration.parentClassOrNull?.sourceGraphIfMetroGraph?.name?.asString()
+  var hasReceiver = false
+
+  if (format.isCall) {
+    dispatchReceiverName?.let {
+      append(it)
+      hasReceiver = true
     }
   }
 
   parameters.extensionReceiverParameter?.let {
+    if (format.isCall) {
+      // Put the receiver in parens for context
+      append('(')
+    }
     it.typeKey.qualifier?.let { qualifier ->
       append(qualifier.render(short = short, "receiver"))
       append(' ')
     }
     append(it.typeKey.render(short = short))
+    if (format.isCall) {
+      // Put the receiver in parens for context
+      append(')')
+    }
+    hasReceiver = true
+  }
+
+  if (hasReceiver) {
     append('.')
   }
 
   append(name.asString())
 
-  if (parameters.regularParameters.isNotEmpty()) {
-    parameters.contextParameters.joinTo(this, ", ", prefix = "(", postfix = ")\n") {
+  val paramsToDisplay =
+    if (format.isCall) {
+      // Likely member inject() call
+      parameters.regularParameters.filterNot { it.isAssisted }
+    } else {
+      parameters.regularParameters
+    }
+  if (paramsToDisplay.isNotEmpty()) {
+    paramsToDisplay.joinTo(this, ", ", prefix = "(", postfix = ")\n") {
       it.name.asString() + ": " + it.typeKey.render(short = short, includeQualifier = true)
     }
   } else if (!isProperty) {

@@ -466,7 +466,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
         parentClass = classToGenerateCreatorsIn,
         targetFunction = reference.callee.owner,
         sourceMetroParameters = reference.parameters,
-        sourceParameters = reference.parameters.regularParameters.map { it.ir },
+        sourceParameters = reference.parameters.regularParameters.map { it.asValueParameter },
       ) { function ->
         val parameters = function.regularParameters
 

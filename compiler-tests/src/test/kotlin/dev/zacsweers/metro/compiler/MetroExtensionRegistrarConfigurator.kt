@@ -50,7 +50,8 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
     val addDaggerAnnotations =
       MetroDirectives.WITH_DAGGER in module.directives ||
         MetroDirectives.ENABLE_DAGGER_INTEROP in module.directives ||
-        MetroDirectives.ENABLE_DAGGER_KSP in module.directives
+        MetroDirectives.ENABLE_DAGGER_KSP in module.directives ||
+        MetroDirectives.ENABLE_ANVIL_KSP in module.directives
 
     val optionDefaults = MetroOptions()
 
@@ -91,10 +92,15 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         maxIrErrorsCount =
           module.directives.singleOrZeroValue(MetroDirectives.MAX_IR_ERRORS_COUNT) ?: 20,
         contributesAsInject = MetroDirectives.CONTRIBUTES_AS_INJECT in module.directives,
-        enableDaggerAnvilInterop = MetroDirectives.WITH_ANVIL in module.directives,
+        enableDaggerAnvilInterop =
+          MetroDirectives.WITH_ANVIL in module.directives ||
+            MetroDirectives.ENABLE_ANVIL_KSP in module.directives,
         customGraphAnnotations =
           buildSet {
-            if (MetroDirectives.WITH_ANVIL in module.directives) {
+            if (
+              MetroDirectives.WITH_ANVIL in module.directives ||
+                MetroDirectives.ENABLE_ANVIL_KSP in module.directives
+            ) {
               add(ClassId.fromString("com/squareup/anvil/annotations/MergeComponent"))
             }
             if (addDaggerAnnotations) {
@@ -121,7 +127,10 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
           },
         customGraphFactoryAnnotations =
           buildSet {
-            if (MetroDirectives.WITH_ANVIL in module.directives) {
+            if (
+              MetroDirectives.WITH_ANVIL in module.directives ||
+                MetroDirectives.ENABLE_ANVIL_KSP in module.directives
+            ) {
               add(ClassId.fromString("com/squareup/anvil/annotations/MergeComponent.Factory"))
             }
             if (addDaggerAnnotations) {
@@ -130,19 +139,28 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
           },
         customContributesToAnnotations =
           buildSet {
-            if (MetroDirectives.WITH_ANVIL in module.directives) {
+            if (
+              MetroDirectives.WITH_ANVIL in module.directives ||
+                MetroDirectives.ENABLE_ANVIL_KSP in module.directives
+            ) {
               add(ClassId.fromString("com/squareup/anvil/annotations/ContributesTo"))
             }
           },
         customContributesBindingAnnotations =
           buildSet {
-            if (MetroDirectives.WITH_ANVIL in module.directives) {
+            if (
+              MetroDirectives.WITH_ANVIL in module.directives ||
+                MetroDirectives.ENABLE_ANVIL_KSP in module.directives
+            ) {
               add(ClassId.fromString("com/squareup/anvil/annotations/ContributesBinding"))
             }
           },
         customContributesIntoSetAnnotations =
           buildSet {
-            if (MetroDirectives.WITH_ANVIL in module.directives) {
+            if (
+              MetroDirectives.WITH_ANVIL in module.directives ||
+                MetroDirectives.ENABLE_ANVIL_KSP in module.directives
+            ) {
               add(ClassId.fromString("com/squareup/anvil/annotations/ContributesMultibinding"))
             }
           },
@@ -151,7 +169,10 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
             if (MetroDirectives.ENABLE_DAGGER_INTEROP in module.directives) {
               add(ClassId.fromString("dagger/Subcomponent"))
             }
-            if (MetroDirectives.WITH_ANVIL in module.directives) {
+            if (
+              MetroDirectives.WITH_ANVIL in module.directives ||
+                MetroDirectives.ENABLE_ANVIL_KSP in module.directives
+            ) {
               add(ClassId.fromString("com/squareup/anvil/annotations/ContributesSubcomponent"))
             }
           },
