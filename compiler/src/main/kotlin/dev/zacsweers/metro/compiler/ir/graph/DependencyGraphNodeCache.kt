@@ -1,6 +1,6 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-package dev.zacsweers.metro.compiler.ir
+package dev.zacsweers.metro.compiler.ir.graph
 
 import dev.zacsweers.metro.compiler.BitField
 import dev.zacsweers.metro.compiler.MetroAnnotations
@@ -10,11 +10,48 @@ import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
+import dev.zacsweers.metro.compiler.ir.BindsCallable
+import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
+import dev.zacsweers.metro.compiler.ir.IrAnnotation
+import dev.zacsweers.metro.compiler.ir.IrBindingContainerCallable
+import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
+import dev.zacsweers.metro.compiler.ir.IrContributionMerger
+import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
+import dev.zacsweers.metro.compiler.ir.MultibindsCallable
+import dev.zacsweers.metro.compiler.ir.ProviderFactory
+import dev.zacsweers.metro.compiler.ir.allCallableMembers
+import dev.zacsweers.metro.compiler.ir.annotationsIn
+import dev.zacsweers.metro.compiler.ir.bindingContainerClasses
+import dev.zacsweers.metro.compiler.ir.createIrBuilder
+import dev.zacsweers.metro.compiler.ir.excludedClasses
+import dev.zacsweers.metro.compiler.ir.getAllSuperTypes
+import dev.zacsweers.metro.compiler.ir.isAccessorCandidate
+import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.ir.isExternalParent
+import dev.zacsweers.metro.compiler.ir.isInheritedFromAny
+import dev.zacsweers.metro.compiler.ir.linkDeclarationsInCompilation
+import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
+import dev.zacsweers.metro.compiler.ir.metroFunctionOf
+import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
+import dev.zacsweers.metro.compiler.ir.metroGraphOrNull
+import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInMembersInjector
+import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
+import dev.zacsweers.metro.compiler.ir.rawType
+import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
+import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.ir.reportCompat
+import dev.zacsweers.metro.compiler.ir.scopeAnnotations
+import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
+import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
+import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
+import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.isGeneratedGraph
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.mapToSet

@@ -5,6 +5,11 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.decapitalizeUS
+import dev.zacsweers.metro.compiler.ir.graph.DependencyGraphNode
+import dev.zacsweers.metro.compiler.ir.graph.GraphPropertyData
+import dev.zacsweers.metro.compiler.ir.graph.PropertyType
+import dev.zacsweers.metro.compiler.ir.graph.ensureInitialized
+import dev.zacsweers.metro.compiler.ir.graph.graphPropertyData
 import dev.zacsweers.metro.compiler.newName
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.suffixIfNot

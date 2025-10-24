@@ -3,16 +3,16 @@
 package dev.zacsweers.metro.compiler.ir.graph.expressions
 
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.ir.BindingPropertyContext
-import dev.zacsweers.metro.compiler.ir.DependencyGraphNode
-import dev.zacsweers.metro.compiler.ir.IrBinding
-import dev.zacsweers.metro.compiler.ir.IrBindingGraph
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
-import dev.zacsweers.metro.compiler.ir.IrGraphExtensionGenerator
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
-import dev.zacsweers.metro.compiler.ir.generatedGraphExtensionData
 import dev.zacsweers.metro.compiler.ir.getAllSuperTypes
+import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyContext
+import dev.zacsweers.metro.compiler.ir.graph.DependencyGraphNode
+import dev.zacsweers.metro.compiler.ir.graph.IrBinding
+import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
+import dev.zacsweers.metro.compiler.ir.graph.IrGraphExtensionGenerator
+import dev.zacsweers.metro.compiler.ir.graph.generatedGraphExtensionData
 import dev.zacsweers.metro.compiler.ir.instanceFactory
 import dev.zacsweers.metro.compiler.ir.irGetProperty
 import dev.zacsweers.metro.compiler.ir.irInvoke
@@ -469,7 +469,7 @@ private constructor(
                   "No matching included type instance found for type $ownerKey while processing ${node.typeKey}. Available instance fields ${bindingPropertyContext.availableInstanceKeys}"
                 )
 
-            val getterContextKey = IrContextualTypeKey.Companion.from(binding.getter)
+            val getterContextKey = IrContextualTypeKey.from(binding.getter)
 
             val invokeGetter =
               irInvoke(
@@ -552,7 +552,7 @@ private constructor(
           Input type keys:
             - ${paramsToMap.map { it.typeKey }.joinToString()}
           Binding parameters (${function.kotlinFqName}):
-            - ${function.regularParameters.map { IrContextualTypeKey.Companion.from(it).typeKey }.joinToString()}
+            - ${function.regularParameters.map { IrContextualTypeKey.from(it).typeKey }.joinToString()}
           """
             .trimIndent()
         }
@@ -568,7 +568,7 @@ private constructor(
           Input type keys:
             - ${paramsToMap.map { it.typeKey }.joinToString()}
           Binding parameters (${function.kotlinFqName}):
-            - ${function.regularParameters.map { IrContextualTypeKey.Companion.from(it).typeKey }.joinToString()}
+            - ${function.regularParameters.map { IrContextualTypeKey.from(it).typeKey }.joinToString()}
           """
             .trimIndent()
         }

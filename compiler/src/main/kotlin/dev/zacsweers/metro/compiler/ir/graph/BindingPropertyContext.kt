@@ -1,7 +1,8 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-package dev.zacsweers.metro.compiler.ir
+package dev.zacsweers.metro.compiler.ir.graph
 
+import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 
 internal class BindingPropertyContext {

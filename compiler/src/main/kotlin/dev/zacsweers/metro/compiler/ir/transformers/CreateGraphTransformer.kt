@@ -5,9 +5,9 @@ package dev.zacsweers.metro.compiler.ir.transformers
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
-import dev.zacsweers.metro.compiler.ir.IrDynamicGraphGenerator
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
-import dev.zacsweers.metro.compiler.ir.generatedDynamicGraphData
+import dev.zacsweers.metro.compiler.ir.graph.IrDynamicGraphGenerator
+import dev.zacsweers.metro.compiler.ir.graph.generatedDynamicGraphData
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail

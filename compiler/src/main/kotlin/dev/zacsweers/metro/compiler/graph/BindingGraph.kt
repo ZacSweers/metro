@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
-import dev.zacsweers.metro.compiler.ir.appendBindingStack
-import dev.zacsweers.metro.compiler.ir.appendBindingStackEntries
-import dev.zacsweers.metro.compiler.ir.withEntry
+import dev.zacsweers.metro.compiler.ir.graph.appendBindingStack
+import dev.zacsweers.metro.compiler.ir.graph.appendBindingStackEntries
+import dev.zacsweers.metro.compiler.ir.graph.withEntry
 import dev.zacsweers.metro.compiler.joinWithDynamicSeparatorTo
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.tracing.Tracer

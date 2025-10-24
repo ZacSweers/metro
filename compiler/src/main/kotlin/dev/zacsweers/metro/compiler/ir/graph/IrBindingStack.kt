@@ -1,6 +1,6 @@
 // Copyright (C) 2024 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-package dev.zacsweers.metro.compiler.ir
+package dev.zacsweers.metro.compiler.ir.graph
 
 import com.jakewharton.picnic.TextAlignment
 import com.jakewharton.picnic.renderText
@@ -10,7 +10,11 @@ import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.BaseBindingStack
 import dev.zacsweers.metro.compiler.graph.BaseTypeKey
-import dev.zacsweers.metro.compiler.ir.IrBindingStack.Entry
+import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
+import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.graph.IrBindingStack.Entry
+import dev.zacsweers.metro.compiler.ir.rawType
+import dev.zacsweers.metro.compiler.ir.resolveOverriddenTypeIfAny
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.withoutLineBreaks
@@ -326,8 +330,8 @@ internal class IrBindingStackImpl(override val graph: IrClass, private val logge
   // TODO can we use one structure?
   // TODO can we use scattermap's IntIntMap? Store the typekey hash to its index
   private val entrySet = mutableSetOf<IrTypeKey>()
-  private val stack = ArrayDeque<Entry>()
-  override val entries: List<Entry> = stack
+  private val stack = ArrayDeque<IrBindingStack.Entry>()
+  override val entries: List<IrBindingStack.Entry> = stack
 
   init {
     logger.log("New stack: ${logger.type}")
@@ -342,7 +346,7 @@ internal class IrBindingStackImpl(override val graph: IrClass, private val logge
     }
   }
 
-  override fun push(entry: Entry) {
+  override fun push(entry: IrBindingStack.Entry) {
     val logPrefix =
       if (stack.isEmpty()) {
         "\uD83C\uDF32"
@@ -363,7 +367,7 @@ internal class IrBindingStackImpl(override val graph: IrClass, private val logge
     entrySet.remove(removed.typeKey)
   }
 
-  override fun entryFor(key: IrTypeKey): Entry? {
+  override fun entryFor(key: IrTypeKey): IrBindingStack.Entry? {
     return if (key in entrySet) {
       stack.first { entry -> entry.typeKey == key }
     } else {
@@ -372,7 +376,7 @@ internal class IrBindingStackImpl(override val graph: IrClass, private val logge
   }
 
   // TODO optimize this by looking in the entrySet first?
-  override fun entriesSince(key: IrTypeKey): List<Entry> {
+  override fun entriesSince(key: IrTypeKey): List<IrBindingStack.Entry> {
     // Top entry is always the key currently being processed, so exclude it from analysis with
     // dropLast(1)
     val inFocus = stack.asReversed().dropLast(1)
@@ -441,10 +445,10 @@ internal fun bindingStackEntryForDependency(
   callingBinding: IrBinding,
   contextKey: IrContextualTypeKey,
   targetKey: IrTypeKey,
-): Entry {
+): IrBindingStack.Entry {
   return when (callingBinding) {
     is IrBinding.ConstructorInjected -> {
-      Entry.injectedAt(
+      IrBindingStack.Entry.injectedAt(
         contextKey,
         callingBinding.classFactory.function,
         callingBinding.parameterFor(targetKey),
@@ -453,10 +457,14 @@ internal fun bindingStackEntryForDependency(
       )
     }
     is IrBinding.CustomWrapper -> {
-      Entry.injectedAt(contextKey, callingBinding.declaration, displayTypeKey = targetKey)
+      IrBindingStack.Entry.injectedAt(
+        contextKey,
+        callingBinding.declaration,
+        displayTypeKey = targetKey,
+      )
     }
     is IrBinding.Alias -> {
-      Entry.injectedAt(
+      IrBindingStack.Entry.injectedAt(
         contextKey,
         callingBinding.ir,
         callingBinding.parameters.extensionOrFirstParameter?.ir?.expectAs(),
@@ -464,7 +472,7 @@ internal fun bindingStackEntryForDependency(
       )
     }
     is IrBinding.Provided -> {
-      Entry.injectedAt(
+      IrBindingStack.Entry.injectedAt(
         contextKey,
         callingBinding.providerFactory.function,
         callingBinding.parameterFor(targetKey),
@@ -473,28 +481,39 @@ internal fun bindingStackEntryForDependency(
       )
     }
     is IrBinding.Assisted -> {
-      Entry.injectedAt(contextKey, callingBinding.function, displayTypeKey = targetKey)
+      IrBindingStack.Entry.injectedAt(
+        contextKey,
+        callingBinding.function,
+        displayTypeKey = targetKey,
+      )
     }
     is IrBinding.MembersInjected -> {
-      Entry.injectedAt(contextKey, callingBinding.function, displayTypeKey = targetKey)
+      IrBindingStack.Entry.injectedAt(
+        contextKey,
+        callingBinding.function,
+        displayTypeKey = targetKey,
+      )
     }
     is IrBinding.Multibinding -> {
-      Entry.contributedToMultibinding(callingBinding.contextualTypeKey, callingBinding.declaration)
+      IrBindingStack.Entry.contributedToMultibinding(
+        callingBinding.contextualTypeKey,
+        callingBinding.declaration,
+      )
     }
     is IrBinding.ObjectClass -> TODO()
     is IrBinding.BoundInstance -> TODO()
     is IrBinding.GraphDependency -> {
-      Entry.injectedAt(contextKey, callingBinding.getter, displayTypeKey = targetKey)
+      IrBindingStack.Entry.injectedAt(contextKey, callingBinding.getter, displayTypeKey = targetKey)
     }
     is IrBinding.GraphExtension -> {
-      Entry.generatedExtensionAt(
+      IrBindingStack.Entry.generatedExtensionAt(
         contextKey,
         parent = callingBinding.parent.kotlinFqName.asString(),
         callingBinding.accessor,
       )
     }
     is IrBinding.GraphExtensionFactory -> {
-      Entry.generatedExtensionAt(
+      IrBindingStack.Entry.generatedExtensionAt(
         contextKey,
         parent = callingBinding.parent.kotlinFqName.asString(),
         callingBinding.accessor,
