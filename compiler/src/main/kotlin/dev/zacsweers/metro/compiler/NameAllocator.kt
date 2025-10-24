@@ -244,10 +244,10 @@ internal fun toSafeIdentifier(suggestion: String) = buildString {
     val validCodePoint: Int = when {
       // Block non-ASCII for cross-platform compatibility (code point > 127)
       codePoint > 127 -> '_'.code
-      // Explicitly block dangerous characters
-      codePoint.toChar() in DANGEROUS_CHARS -> '_'.code
       // Use Java identifier validation for other characters
       Character.isJavaIdentifierPart(codePoint) -> codePoint
+      // Explicitly block dangerous characters
+      codePoint.toChar() in DANGEROUS_CHARS -> '_'.code
       // Replace any other invalid character with underscore
       else -> '_'.code
     }
