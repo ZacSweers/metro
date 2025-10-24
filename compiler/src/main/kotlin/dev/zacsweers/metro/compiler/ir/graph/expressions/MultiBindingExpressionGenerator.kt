@@ -56,27 +56,6 @@ internal class MultiBindingExpressionGenerator(
   override val parentTracer: Tracer
     get() = parentGenerator.parentTracer
 
-  private fun generateMapKeyLiteral(binding: IrBinding): IrExpression {
-    val mapKey =
-      when (binding) {
-        is IrBinding.Alias -> binding.annotations.mapKeys.first().ir
-        is IrBinding.Provided -> binding.annotations.mapKeys.first().ir
-        is IrBinding.ConstructorInjected -> binding.annotations.mapKeys.first().ir
-        else -> reportCompilerBug("Unsupported multibinding source: $binding")
-      }
-
-    val unwrapValue = shouldUnwrapMapKeyValues(mapKey)
-    val expression =
-      if (!unwrapValue) {
-        mapKey
-      } else {
-        // We can just copy the expression!
-        mapKey.arguments[0]!!.deepCopyWithSymbols()
-      }
-
-    return expression
-  }
-
   context(scope: IrBuilderWithScope)
   override fun generateBindingCode(
     binding: IrBinding.Multibinding,
@@ -237,6 +216,27 @@ internal class MultiBindingExpressionGenerator(
           }
         }
     }
+
+  private fun generateMapKeyLiteral(binding: IrBinding): IrExpression {
+    val mapKey =
+      when (binding) {
+        is IrBinding.Alias -> binding.annotations.mapKeys.first().ir
+        is IrBinding.Provided -> binding.annotations.mapKeys.first().ir
+        is IrBinding.ConstructorInjected -> binding.annotations.mapKeys.first().ir
+        else -> reportCompilerBug("Unsupported multibinding source: $binding")
+      }
+
+    val unwrapValue = shouldUnwrapMapKeyValues(mapKey)
+    val expression =
+      if (!unwrapValue) {
+        mapKey
+      } else {
+        // We can just copy the expression!
+        mapKey.arguments[0]!!.deepCopyWithSymbols()
+      }
+
+    return expression
+  }
 
   context(scope: IrBuilderWithScope)
   private fun generateMapBuilderExpression(
