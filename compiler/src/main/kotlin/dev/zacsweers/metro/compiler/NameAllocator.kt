@@ -25,39 +25,87 @@ import org.jetbrains.kotlin.renderer.KeywordStringsGenerated.KEYWORDS
 /**
  * Cross-platform reserved keywords that must be avoided in generated identifiers.
  *
- * This set contains reserved keywords from JavaScript (ES5/ES6), C99, and Objective-C
- * that are NOT already included in Kotlin's KEYWORDS constant. By pre-allocating these
- * keywords, we ensure generated code compiles successfully on all Kotlin multiplatform
- * targets (JVM, JS, Native).
+ * This set contains reserved keywords from JavaScript (ES5/ES6), C99, and Objective-C that are NOT
+ * already included in Kotlin's KEYWORDS constant. By pre-allocating these keywords, we ensure
+ * generated code compiles successfully on all Kotlin multiplatform targets (JVM, JS, Native).
  *
  * Sources:
  * - JavaScript: ECMAScript 5.1 spec (https://262.ecma-international.org/5.1/#sec-7.6)
  * - C99: ISO/IEC 9899:1999 C Standard
  * - Objective-C: Apple Objective-C Documentation + Clang keywords
  *
- * Many keywords overlap across platforms (e.g., `break`, `case`, `for`), so this set
- * only contains platform-specific keywords not already blocked by Kotlin.
+ * Many keywords overlap across platforms (e.g., `break`, `case`, `for`), so this set only contains
+ * platform-specific keywords not already blocked by Kotlin.
  */
-private val CROSS_PLATFORM_RESERVED_KEYWORDS = setOf(
-  // JavaScript-specific keywords and special identifiers
-  // (not already in Kotlin KEYWORDS)
-  "arguments", "await", "debugger", "delete", "eval", "function",
-  "in", "instanceof", "let", "typeof", "var", "void", "with", "yield",
+private val CROSS_PLATFORM_RESERVED_KEYWORDS =
+  setOf(
+    // JavaScript-specific keywords and special identifiers
+    // (not already in Kotlin KEYWORDS)
+    "arguments",
+    "await",
+    "debugger",
+    "delete",
+    "eval",
+    "function",
+    "in",
+    "instanceof",
+    "let",
+    "typeof",
+    "var",
+    "void",
+    "with",
+    "yield",
 
-  // C99-specific keywords (not already in Kotlin KEYWORDS)
-  "auto", "char", "double", "extern", "float", "goto", "inline", "int",
-  "long", "register", "restrict", "short", "signed", "sizeof", "struct",
-  "typedef", "union", "unsigned", "volatile", "_Bool", "_Complex", "_Imaginary",
+    // C99-specific keywords (not already in Kotlin KEYWORDS)
+    "auto",
+    "char",
+    "double",
+    "extern",
+    "float",
+    "goto",
+    "inline",
+    "int",
+    "long",
+    "register",
+    "restrict",
+    "short",
+    "signed",
+    "sizeof",
+    "struct",
+    "typedef",
+    "union",
+    "unsigned",
+    "volatile",
+    "_Bool",
+    "_Complex",
+    "_Imaginary",
 
-  // Objective-C-specific keywords (not already in Kotlin KEYWORDS)
-  "id", "nil", "Nil", "YES", "NO", "SEL", "IMP", "BOOL", "instancetype",
-  "required", "optional", "synthesize", "dynamic", "readonly", "readwrite",
-  "assign", "retain", "copy", "nonatomic", "atomic", "strong", "weak",
-)
+    // Objective-C-specific keywords (not already in Kotlin KEYWORDS)
+    "id",
+    "nil",
+    "Nil",
+    "YES",
+    "NO",
+    "SEL",
+    "IMP",
+    "BOOL",
+    "instancetype",
+    "required",
+    "optional",
+    "synthesize",
+    "dynamic",
+    "readonly",
+    "readwrite",
+    "assign",
+    "retain",
+    "copy",
+    "nonatomic",
+    "atomic",
+    "strong",
+    "weak",
+  )
 
-/**
- * Dangerous characters that must be replaced in identifiers.
- */
+/** Dangerous characters that must be replaced in identifiers. */
 private const val DANGEROUS_CHARS = ".l/<>[]"
 private val RESERVED_KEYWORDS = KEYWORDS + CROSS_PLATFORM_RESERVED_KEYWORDS
 
@@ -152,11 +200,12 @@ private constructor(
     preallocateKeywords: Boolean = true,
     mode: Mode = Mode.UNDERSCORE,
   ) : this(
-    allocatedNames = if (preallocateKeywords) {
-      RESERVED_KEYWORDS.toMutableSet()
-    } else {
-      mutableSetOf()
-    },
+    allocatedNames =
+      if (preallocateKeywords) {
+        RESERVED_KEYWORDS.toMutableSet()
+      } else {
+        mutableSetOf()
+      },
     tagToName = mutableMapOf(),
     mode = mode,
   )
@@ -241,16 +290,17 @@ internal fun toSafeIdentifier(suggestion: String) = buildString {
     }
 
     // Determine the valid code point to use
-    val validCodePoint: Int = when {
-      // Block non-ASCII for cross-platform compatibility (code point > 127)
-      codePoint > 127 -> '_'.code
-      // Use Java identifier validation for other characters
-      Character.isJavaIdentifierPart(codePoint) -> codePoint
-      // Explicitly block dangerous characters
-      codePoint.toChar() in DANGEROUS_CHARS -> '_'.code
-      // Replace any other invalid character with underscore
-      else -> '_'.code
-    }
+    val validCodePoint: Int =
+      when {
+        // Block non-ASCII for cross-platform compatibility (code point > 127)
+        codePoint > 127 -> '_'.code
+        // Use Java identifier validation for other characters
+        Character.isJavaIdentifierPart(codePoint) -> codePoint
+        // Explicitly block dangerous characters
+        codePoint.toChar() in DANGEROUS_CHARS -> '_'.code
+        // Replace any other invalid character with underscore
+        else -> '_'.code
+      }
 
     appendCodePoint(validCodePoint)
     i += Character.charCount(codePoint)
