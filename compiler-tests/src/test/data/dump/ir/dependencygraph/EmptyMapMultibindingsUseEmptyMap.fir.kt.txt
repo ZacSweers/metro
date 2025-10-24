@@ -39,11 +39,6 @@ interface AppGraph {
     @Multibinds(allowEmpty = true)
     override val ints: Map<String, Int>
       override get(): Map<String, Int> {
-        return <this>.<get-mapOfStringToInt>()
-      }
-
-    private val mapOfStringToInt: Map<String, Int>
-      private get(): Map<String, Int> {
         return emptyMap<String, Int>()
       }
 

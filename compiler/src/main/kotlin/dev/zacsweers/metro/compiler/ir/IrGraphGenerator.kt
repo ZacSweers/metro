@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.expectAs
+import dev.zacsweers.metro.compiler.ir.graph.expressions.BindingExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.expressions.GraphExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
@@ -464,9 +465,9 @@ internal class IrGraphGenerator(
 
           val accessType =
             if (isProviderType) {
-              GraphExpressionGenerator.AccessType.PROVIDER
+              BindingExpressionGenerator.AccessType.PROVIDER
             } else {
-              GraphExpressionGenerator.AccessType.INSTANCE
+              BindingExpressionGenerator.AccessType.INSTANCE
             }
 
           // If we've reserved a property for this key here, pull it out and use that
@@ -515,7 +516,7 @@ internal class IrGraphGenerator(
                       .create(thisReceiver)
                       .generateBindingCode(
                         binding,
-                        accessType = GraphExpressionGenerator.AccessType.PROVIDER,
+                        accessType = BindingExpressionGenerator.AccessType.PROVIDER,
                         fieldInitKey = deferredTypeKey,
                       )
                       .letIf(binding.isScoped()) {
