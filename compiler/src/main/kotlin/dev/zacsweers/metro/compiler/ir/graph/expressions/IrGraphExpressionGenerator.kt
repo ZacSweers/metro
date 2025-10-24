@@ -1,17 +1,44 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-package dev.zacsweers.metro.compiler.ir
+package dev.zacsweers.metro.compiler.ir.graph.expressions
 
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.WrappedType
+import dev.zacsweers.metro.compiler.ir.BindingPropertyContext
+import dev.zacsweers.metro.compiler.ir.DependencyGraphNode
+import dev.zacsweers.metro.compiler.ir.IrBinding
+import dev.zacsweers.metro.compiler.ir.IrBindingGraph
+import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
+import dev.zacsweers.metro.compiler.ir.IrGraphExtensionGenerator
+import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
+import dev.zacsweers.metro.compiler.ir.extensionReceiverParameterCompat
+import dev.zacsweers.metro.compiler.ir.generatedGraphExtensionData
+import dev.zacsweers.metro.compiler.ir.getAllSuperTypes
+import dev.zacsweers.metro.compiler.ir.instanceFactory
+import dev.zacsweers.metro.compiler.ir.irExprBodySafe
+import dev.zacsweers.metro.compiler.ir.irGetProperty
+import dev.zacsweers.metro.compiler.ir.irInvoke
+import dev.zacsweers.metro.compiler.ir.irLambda
+import dev.zacsweers.metro.compiler.ir.metroFunctionOf
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
+import dev.zacsweers.metro.compiler.ir.rawType
+import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
+import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
+import dev.zacsweers.metro.compiler.ir.shouldUnwrapMapKeyValues
+import dev.zacsweers.metro.compiler.ir.stripLazy
+import dev.zacsweers.metro.compiler.ir.toIrType
 import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
+import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
+import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -140,7 +167,7 @@ private constructor(
   override val parentTracer: Tracer,
   getterPropertyFor:
     (
-      IrBinding, IrContextualTypeKey, IrBuilderWithScope.(IrGraphExpressionGenerator) -> IrBody,
+    IrBinding, IrContextualTypeKey, IrBuilderWithScope.(IrGraphExpressionGenerator) -> IrBody,
     ) -> IrProperty,
 ) : BindingExpressionGenerator<IrBinding>(context) {
 
@@ -156,7 +183,7 @@ private constructor(
     private val parentTracer: Tracer,
     private val getterPropertyFor:
       (
-        IrBinding, IrContextualTypeKey, IrBuilderWithScope.(IrGraphExpressionGenerator) -> IrBody,
+      IrBinding, IrContextualTypeKey, IrBuilderWithScope.(IrGraphExpressionGenerator) -> IrBody,
       ) -> IrProperty,
   ) {
     fun create(thisReceiver: IrValueParameter): IrGraphExpressionGenerator {
@@ -545,7 +572,7 @@ private constructor(
                   "No matching included type instance found for type $ownerKey while processing ${node.typeKey}. Available instance fields ${bindingPropertyContext.availableInstanceKeys}"
                 )
 
-            val getterContextKey = IrContextualTypeKey.from(binding.getter)
+            val getterContextKey = IrContextualTypeKey.Companion.from(binding.getter)
 
             val invokeGetter =
               irInvoke(
@@ -628,7 +655,7 @@ private constructor(
           Input type keys:
             - ${paramsToMap.map { it.typeKey }.joinToString()}
           Binding parameters (${function.kotlinFqName}):
-            - ${function.regularParameters.map { IrContextualTypeKey.from(it).typeKey }.joinToString()}
+            - ${function.regularParameters.map { IrContextualTypeKey.Companion.from(it).typeKey }.joinToString()}
           """
             .trimIndent()
         }
@@ -644,7 +671,7 @@ private constructor(
           Input type keys:
             - ${paramsToMap.map { it.typeKey }.joinToString()}
           Binding parameters (${function.kotlinFqName}):
-            - ${function.regularParameters.map { IrContextualTypeKey.from(it).typeKey }.joinToString()}
+            - ${function.regularParameters.map { IrContextualTypeKey.Companion.from(it).typeKey }.joinToString()}
           """
             .trimIndent()
         }
