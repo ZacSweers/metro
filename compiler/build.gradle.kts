@@ -1,6 +1,8 @@
 // Copyright (C) 2024 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
   alias(libs.plugins.kotlin.jvm)
@@ -24,6 +26,12 @@ kotlin {
     )
   }
 }
+
+tasks.withType<KotlinCompile>().configureEach {
+  compilerOptions { jvmTarget.set(libs.versions.compilerJvmTarget.map(JvmTarget::fromTarget)) }
+}
+
+tasks.withType<JavaCompile>().configureEach { options.release.convention(libs.versions.compilerJvmTarget.map(String::toInt)) }
 
 buildConfig {
   generateAtSync = true
