@@ -102,7 +102,7 @@ private constructor(
 
   private val wrappedTypeGenerators = listOf(IrOptionalExpressionGenerator).associateBy { it.key }
   private val multibindingExpressionGenerator by memoize {
-    MultiBindingExpressionGenerator(this) { binding, contextKey, generateCode ->
+    MultibindingExpressionGenerator(this) { binding, contextKey, generateCode ->
       getterPropertyFor(binding, contextKey) { parentGenerator ->
         generateCode(parentGenerator.multibindingGetter)
       }
@@ -110,7 +110,7 @@ private constructor(
   }
 
   // Here to defeat type checking
-  private val multibindingGetter: MultiBindingExpressionGenerator
+  private val multibindingGetter: MultibindingExpressionGenerator
     get() = multibindingExpressionGenerator
 
   context(scope: IrBuilderWithScope)

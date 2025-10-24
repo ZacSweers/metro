@@ -529,6 +529,8 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val dependencies by memoize { sourceBindings.map { IrContextualTypeKey(it) } }
     override val parameters: Parameters = Parameters.empty()
 
+    fun isEmpty() = sourceBindings.isEmpty()
+
     override val nameHint: String by memoize {
       buildString {
         if (isMap) {
