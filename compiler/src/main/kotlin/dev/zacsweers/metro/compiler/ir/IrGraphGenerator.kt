@@ -8,7 +8,7 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.expectAs
-import dev.zacsweers.metro.compiler.ir.graph.expressions.IrGraphExpressionGenerator
+import dev.zacsweers.metro.compiler.ir.graph.expressions.GraphExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer
@@ -112,7 +112,7 @@ internal class IrGraphGenerator(
   // TODO replace with irAttribute
   private val propertiesToTypeKeys = mutableMapOf<IrProperty, IrTypeKey>()
   private val expressionGeneratorFactory =
-    IrGraphExpressionGenerator.Factory(
+    GraphExpressionGenerator.Factory(
       context = this,
       node = node,
       bindingPropertyContext = bindingPropertyContext,
@@ -180,7 +180,7 @@ internal class IrGraphGenerator(
   fun getOrCreateLazyProperty(
     binding: IrBinding,
     contextualTypeKey: IrContextualTypeKey,
-    bodyGenerator: IrBuilderWithScope.(IrGraphExpressionGenerator) -> IrBody,
+    bodyGenerator: IrBuilderWithScope.(GraphExpressionGenerator) -> IrBody,
   ): IrProperty {
     return lazyProperties.getOrPut(contextualTypeKey) {
       // Create the property but don't add it to the graph yet
@@ -464,9 +464,9 @@ internal class IrGraphGenerator(
 
           val accessType =
             if (isProviderType) {
-              IrGraphExpressionGenerator.AccessType.PROVIDER
+              GraphExpressionGenerator.AccessType.PROVIDER
             } else {
-              IrGraphExpressionGenerator.AccessType.INSTANCE
+              GraphExpressionGenerator.AccessType.INSTANCE
             }
 
           // If we've reserved a property for this key here, pull it out and use that
@@ -515,7 +515,7 @@ internal class IrGraphGenerator(
                       .create(thisReceiver)
                       .generateBindingCode(
                         binding,
-                        accessType = IrGraphExpressionGenerator.AccessType.PROVIDER,
+                        accessType = GraphExpressionGenerator.AccessType.PROVIDER,
                         fieldInitKey = deferredTypeKey,
                       )
                       .letIf(binding.isScoped()) {
