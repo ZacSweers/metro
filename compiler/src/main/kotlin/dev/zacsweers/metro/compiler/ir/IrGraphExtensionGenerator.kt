@@ -42,7 +42,7 @@ internal class IrGraphExtensionGenerator(
   private val parentGraph: IrClass,
 ) : IrMetroContext by context {
 
-  private val nameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
+  private val classNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
   private val generatedClassesCache = mutableMapOf<CacheKey, IrClass>()
 
   private data class CacheKey(val typeKey: IrTypeKey, val parentGraph: ClassId)
@@ -186,7 +186,7 @@ internal class IrGraphExtensionGenerator(
         .buildClass {
           // Ensure a unique name
           name =
-            nameAllocator
+            classNameAllocator
               .newName("${sourceGraph.name.asString().capitalizeUS()}${Symbols.StringNames.IMPL}")
               .asName()
           origin = Origins.GeneratedGraphExtension
