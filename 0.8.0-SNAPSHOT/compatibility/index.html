@@ -774,6 +774,19 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Compatibility
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -785,6 +798,34 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#tested-versions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tested Versions
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -986,6 +1027,23 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#tested-versions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tested Versions
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -1015,8 +1073,12 @@
 </thead>
 <tbody>
 <tr>
-<td>2.3.0</td>
-<td>0.6.9 -</td>
+<td>2.3.0-Beta1</td>
+<td>0.6.9, 0.6.11 -</td>
+</tr>
+<tr>
+<td>2.2.21</td>
+<td>0.6.6 -</td>
 </tr>
 <tr>
 <td>2.2.20</td>
@@ -1040,6 +1102,30 @@
 </tr>
 </tbody>
 </table>
+<h2 id="tested-versions">Tested Versions<a class="headerlink" href="#tested-versions" title="Permanent link">&para;</a></h2>
+<p><a href="https://github.com/ZacSweers/metro/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/ZacSweers/metro/actions/workflows/ci.yml/badge.svg" /></a></p>
+<p>The following Kotlin versions are tested via CI:</p>
+<table>
+<thead>
+<tr>
+<th>Kotlin Version</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2.3.0-Beta1</td>
+</tr>
+<tr>
+<td>2.2.21</td>
+</tr>
+<tr>
+<td>2.2.20</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Note:</strong> Versions without dedicated compiler-compat modules will use the nearest available implementation. See <code>compiler-compat/version-aliases.txt</code> for the full list.</p>
+</blockquote>
 
 
 
