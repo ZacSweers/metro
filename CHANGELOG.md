@@ -8,6 +8,7 @@ Changelog
 - **Enhancement**: Skip reading members when loading externally compiled member injector classes. Parameters are now computed from their static `inject*` functions.
 - **Enhancement**: Improve logic for avoiding reserved keywords or illegal character for names in more platforms.
 - **Enhancement**: Inline empty multibinding expressions in code gen.
+- **Enhancement**: Better detect static-ish functions in generated Kotlin factories from Dagger/Anvil interop.
 
 0.7.2
 -----

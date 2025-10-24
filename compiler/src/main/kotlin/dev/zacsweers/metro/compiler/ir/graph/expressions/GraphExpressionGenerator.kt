@@ -335,10 +335,7 @@ private constructor(
             // InjectableClass_MembersInjector.create(stringValueProvider,
             // exampleComponentProvider)
             val provider =
-              irInvoke(
-                  callee = createFunction,
-                  args = args,
-                )
+              irInvoke(callee = createFunction, args = args)
                 .transformAccessIfNeeded(
                   requested = AccessType.PROVIDER,
                   actual = AccessType.INSTANCE,
