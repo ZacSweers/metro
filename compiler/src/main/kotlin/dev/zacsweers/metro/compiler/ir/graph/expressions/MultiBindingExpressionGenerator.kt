@@ -42,10 +42,8 @@ internal class MultiBindingExpressionGenerator(
   private val parentGenerator: BindingExpressionGenerator<IrBinding>,
   private val getterPropertyFor:
     (
-    IrBinding,
-    IrContextualTypeKey,
-    IrBuilderWithScope.(MultiBindingExpressionGenerator) -> IrBody,
-  ) -> IrProperty,
+      IrBinding, IrContextualTypeKey, IrBuilderWithScope.(MultiBindingExpressionGenerator) -> IrBody,
+    ) -> IrProperty,
 ) : BindingExpressionGenerator<IrBinding.Multibinding>(parentGenerator) {
   override val thisReceiver: IrValueParameter
     get() = parentGenerator.thisReceiver
@@ -206,10 +204,10 @@ internal class MultiBindingExpressionGenerator(
       }
 
       return irCall(
-        callee = callee,
-        type = binding.typeKey.type,
-        typeArguments = listOf(elementType),
-      )
+          callee = callee,
+          type = binding.typeKey.type,
+          typeArguments = listOf(elementType),
+        )
         .apply {
           for ((i, arg) in args.withIndex()) {
             arguments[i] = arg
@@ -249,10 +247,10 @@ internal class MultiBindingExpressionGenerator(
     with(scope) {
       // buildMap(size) { put(key, value) ... }
       return irCall(
-        callee = metroSymbols.buildMapWithCapacity,
-        type = irBuiltIns.mapClass.typeWith(keyType, valueType),
-        typeArguments = listOf(keyType, valueType),
-      )
+          callee = metroSymbols.buildMapWithCapacity,
+          type = irBuiltIns.mapClass.typeWith(keyType, valueType),
+          typeArguments = listOf(keyType, valueType),
+        )
         .apply {
           arguments[0] = irInt(size)
           arguments[1] =
@@ -301,10 +299,12 @@ internal class MultiBindingExpressionGenerator(
     fieldInitKey: IrTypeKey?,
   ): IrExpression =
     with(scope) {
-      // SetFactory.<String>builder(1, 1)
-      //   .addProvider(FileSystemModule_Companion_ProvideString1Factory.create())
-      //   .addCollectionProvider(provideString2Provider)
-      //   .build()
+      /*
+        SetFactory.<String>builder(1, 1)
+          .addProvider(FileSystemModule_Companion_ProvideString1Factory.create())
+          .addCollectionProvider(provideString2Provider)
+          .build()
+      */
 
       // Used to unpack the right provider type
       val valueProviderSymbols = metroSymbols.providerSymbolsFor(elementType)
@@ -399,14 +399,17 @@ internal class MultiBindingExpressionGenerator(
     fieldInitKey: IrTypeKey?,
   ): IrExpression =
     with(scope) {
-      // MapFactory.<Integer, Integer>builder(2)
-      //   .put(1, FileSystemModule_Companion_ProvideMapInt1Factory.create())
-      //   .put(2, provideMapInt2Provider)
-      //   .build()
-      // MapProviderFactory.<Integer, Integer>builder(2)
-      //   .put(1, FileSystemModule_Companion_ProvideMapInt1Factory.create())
-      //   .put(2, provideMapInt2Provider)
-      //   .build()
+      /*
+        MapFactory.<Integer, Integer>builder(2)
+          .put(1, FileSystemModule_Companion_ProvideMapInt1Factory.create())
+          .put(2, provideMapInt2Provider)
+          .build()
+        MapProviderFactory.<Integer, Integer>builder(2)
+          .put(1, FileSystemModule_Companion_ProvideMapInt1Factory.create())
+          .put(2, provideMapInt2Provider)
+          .build()
+      */
+
       val valueWrappedType = contextualTypeKey.wrappedType.findMapValueType()!!
 
       val mapTypeArgs = (contextualTypeKey.typeKey.type as IrSimpleType).arguments
