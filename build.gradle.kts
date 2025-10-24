@@ -184,7 +184,7 @@ subprojects {
         progressiveMode.set(true)
         if (this is KotlinJvmCompilerOptions) {
           jvmTarget.set(libs.versions.jvmTarget.map(JvmTarget::fromTarget))
-          freeCompilerArgs.addAll("-Xjvm-default=all")
+          freeCompilerArgs.addAll("-jvm-default=all")
         }
       }
     }
