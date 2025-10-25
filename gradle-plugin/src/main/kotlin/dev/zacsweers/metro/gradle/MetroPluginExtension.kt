@@ -286,13 +286,23 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     }
 
     /** Includes Anvil annotations support. */
-    public fun includeAnvil() {
-      includeAnvilAnnotations.set(true)
-    }
-
-    /** Includes kotlin-inject Anvil annotations support. */
-    public fun includeKotlinInjectAnvil() {
-      includeKotlinInjectAnvilAnnotations.set(true)
+    @JvmOverloads
+    public fun includeAnvil(
+      includeDaggerAnvil: Boolean = true,
+      includeKotlinInjectAnvil: Boolean = true,
+    ) {
+      check(includeDaggerAnvil || includeKotlinInjectAnvil) {
+        "At least one of includeDaggerAnvil or includeKotlinInjectAnvil must be true"
+      }
+      enableDaggerAnvilInterop.set(includeDaggerAnvil)
+      if (includeDaggerAnvil) {
+        includeDagger()
+        includeAnvilAnnotations.set(true)
+      }
+      if (includeKotlinInjectAnvil) {
+        includeKotlinInject()
+        includeKotlinInjectAnvilAnnotations.set(true)
+      }
     }
   }
 }

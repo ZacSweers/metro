@@ -852,64 +852,67 @@ public data class MetroOptions(
 
     public fun includeDaggerAnnotations() {
       enableDaggerRuntimeInterop = true
+      // Assisted inject
       customAssistedAnnotations.add(daggerAssistedPackage.classId("Assisted"))
       customAssistedFactoryAnnotations.add(daggerAssistedPackage.classId("AssistedFactory"))
       customAssistedInjectAnnotations.add(daggerAssistedPackage.classId("AssistedInject"))
-      customBindsAnnotations.add(daggerPackage.classId("Binds"))
+      // Multibindings
       customElementsIntoSetAnnotations.add(daggerMultibindingsPackage.classId("ElementsIntoSet"))
-      customGraphAnnotations.add(daggerPackage.classId("Component"))
-      customGraphFactoryAnnotations.add(daggerPackage.classId("Component.Factory"))
-      customGraphExtensionAnnotations.add(daggerPackage.classId("Subcomponent"))
-      customGraphExtensionFactoryAnnotations.add(daggerPackage.classId("Subcomponent.Factory"))
       customIntoMapAnnotations.add(daggerMultibindingsPackage.classId("IntoMap"))
       customIntoSetAnnotations.add(daggerMultibindingsPackage.classId("IntoSet"))
-      customLazyTypes.add(daggerPackage.classId("Lazy"))
-      customMapKeyAnnotations.add(daggerPackage.classId("MapKey"))
       customMultibindsAnnotations.add(daggerMultibindingsPackage.classId("Multibinds"))
-      customProvidesAnnotations.add(daggerPackage.classId("Provides"))
-      customProvidesAnnotations.add(daggerPackage.classId("BindsInstance"))
-      customProviderTypes.add(daggerPackage.child(internalName).classId("Provider"))
+      customMapKeyAnnotations.add(daggerPackage.classId("MapKey"))
+      // Everything else
       customBindingContainerAnnotations.add(daggerPackage.classId("Module"))
+      customBindsAnnotations.add(daggerPackage.classId("Binds"))
+      customGraphAnnotations.add(daggerPackage.classId("Component"))
+      customGraphExtensionAnnotations.add(daggerPackage.classId("Subcomponent"))
+      customGraphExtensionFactoryAnnotations.add(daggerPackage.classId("Subcomponent.Factory"))
+      customGraphFactoryAnnotations.add(daggerPackage.classId("Component.Factory"))
+      customLazyTypes.add(daggerPackage.classId("Lazy"))
+      customProviderTypes.add(daggerPackage.child(internalName).classId("Provider"))
+      customProvidesAnnotations.addAll(
+        listOf(
+          daggerPackage.classId("Provides"),
+          daggerPackage.classId("BindsInstance")
+        )
+      )
+      // Implicitly includes javax/jakarta
       includeJavaxAnnotations()
       includeJakartaAnnotations()
     }
 
     public fun includeKotlinInjectAnnotations() {
-      customInjectAnnotations.add(kotlinInjectPackage.classId("Inject"))
-      customAssistedFactoryAnnotations.add(kotlinInjectPackage.classId("AssistedFactory"))
-      customQualifierAnnotations.add(kotlinInjectPackage.classId("Qualifier"))
-      customScopeAnnotations.add(kotlinInjectPackage.classId("Scope"))
       customAssistedAnnotations.add(kotlinInjectPackage.classId("Assisted"))
+      customAssistedFactoryAnnotations.add(kotlinInjectPackage.classId("AssistedFactory"))
       customGraphAnnotations.add(kotlinInjectPackage.classId("Component"))
+      customInjectAnnotations.add(kotlinInjectPackage.classId("Inject"))
       customIntoMapAnnotations.add(kotlinInjectPackage.classId("IntoMap"))
       customIntoSetAnnotations.add(kotlinInjectPackage.classId("IntoSet"))
       customProvidesAnnotations.add(kotlinInjectPackage.classId("Provides"))
+      customQualifierAnnotations.add(kotlinInjectPackage.classId("Qualifier"))
+      customScopeAnnotations.add(kotlinInjectPackage.classId("Scope"))
     }
 
     public fun includeAnvilAnnotations() {
       enableDaggerAnvilInterop = true
-      customGraphAnnotations.add(anvilPackage.classId("MergeComponent"))
-      customGraphFactoryAnnotations.add(anvilPackage.classId("MergeComponent.Factory"))
-      customGraphExtensionAnnotations.add(anvilPackage.classId("MergeSubcomponent"))
-      customGraphExtensionAnnotations.add(anvilPackage.classId("ContributesSubcomponent"))
-      customContributesToAnnotations.add(anvilPackage.classId("ContributesTo"))
       customContributesBindingAnnotations.add(anvilPackage.classId("ContributesBinding"))
       customContributesIntoSetAnnotations.add(anvilPackage.classId("ContributesMultibinding"))
+      customContributesToAnnotations.add(anvilPackage.classId("ContributesTo"))
+      customGraphAnnotations.add(anvilPackage.classId("MergeComponent"))
+      customGraphExtensionAnnotations.add(anvilPackage.classId("ContributesSubcomponent"))
+      customGraphExtensionAnnotations.add(anvilPackage.classId("MergeSubcomponent"))
+      // Anvil for Dagger doesn't have MergeSubcomponent.Factory
+      customGraphFactoryAnnotations.add(anvilPackage.classId("MergeComponent.Factory"))
       includeDaggerAnnotations()
     }
 
     public fun includeKotlinInjectAnvilAnnotations() {
-      customGraphAnnotations.add(kotlinInjectAnvilPackage.classId("MergeComponent"))
+      customContributesBindingAnnotations.add(kotlinInjectAnvilPackage.classId("ContributesBinding"))
       customContributesToAnnotations.add(kotlinInjectAnvilPackage.classId("ContributesTo"))
-      customContributesBindingAnnotations.add(
-        kotlinInjectAnvilPackage.classId("ContributesBinding")
-      )
-      customGraphExtensionAnnotations.add(
-        kotlinInjectAnvilPackage.classId("ContributesSubcomponent")
-      )
-      customGraphExtensionFactoryAnnotations.add(
-        kotlinInjectAnvilPackage.classId("ContributesSubcomponent.Factory")
-      )
+      customGraphAnnotations.add(kotlinInjectAnvilPackage.classId("MergeComponent"))
+      customGraphExtensionAnnotations.add(kotlinInjectAnvilPackage.classId("ContributesSubcomponent"))
+      customGraphExtensionFactoryAnnotations.add(kotlinInjectAnvilPackage.classId("ContributesSubcomponent.Factory"))
       customOriginAnnotations.add(kotlinInjectAnvilPackage.child(internalName).classId("Origin"))
       includeKotlinInjectAnnotations()
     }
