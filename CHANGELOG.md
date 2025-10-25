@@ -9,6 +9,7 @@ Changelog
 - **Enhancement**: Improve logic for avoiding reserved keywords or illegal character for names in more platforms.
 - **Enhancement**: Inline empty multibinding expressions in code gen.
 - **Enhancement**: Better detect static-ish functions in generated Kotlin factories from Dagger/Anvil interop.
+- **Enhancement**: Cache members injector binding lookups.
 
 0.7.2
 -----

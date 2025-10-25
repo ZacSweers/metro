@@ -43,6 +43,7 @@ internal class BindingLookup(
   // Caches
   private val providedBindingsCache = mutableMapOf<IrTypeKey, IrBinding.Provided>()
   private val aliasBindingsCache = mutableMapOf<IrTypeKey, IrBinding.Alias>()
+  private val membersInjectorBindingsCache = mutableMapOf<IrTypeKey, IrBinding.MembersInjected>()
   private val classBindingsCache = mutableMapOf<IrContextualTypeKey, Set<IrBinding>>()
 
   private data class ParentGraphDepKey(val owner: IrClass, val typeKey: IrTypeKey)
@@ -62,6 +63,10 @@ internal class BindingLookup(
 
   fun getStaticBinding(typeKey: IrTypeKey): IrBinding.StaticBinding? {
     return providedBindingsCache[typeKey] ?: aliasBindingsCache[typeKey]
+  }
+
+  fun getMembersInjectorBinding(typeKey: IrTypeKey): IrBinding.MembersInjected? {
+    return membersInjectorBindingsCache[typeKey]
   }
 
   fun putBinding(binding: IrBinding.Provided) {
@@ -85,37 +90,35 @@ internal class BindingLookup(
   }
 
   context(context: IrMetroContext)
-  private fun IrClass.computeMembersInjectorBindings(
-    currentBindings: Set<IrTypeKey>,
-    remapper: TypeRemapper,
-  ): Set<IrBinding.MembersInjected> {
+  private fun IrClass.computeMembersInjectorBindings(remapper: TypeRemapper):
+    Set<IrBinding.MembersInjected> {
     val bindings = mutableSetOf<IrBinding.MembersInjected>()
     for (generatedInjector in findMemberInjectors(this)) {
       val mappedTypeKey = generatedInjector.typeKey.remapTypes(remapper)
-      if (mappedTypeKey !in currentBindings) {
-        // Remap type args using the same remapper used for the class
+      // Get or create cached binding for this type key
+      val binding = membersInjectorBindingsCache.getOrPut(mappedTypeKey) {
         val remappedParameters = generatedInjector.mergedParameters(remapper)
         val contextKey = IrContextualTypeKey(mappedTypeKey)
 
-        bindings +=
-          IrBinding.MembersInjected(
-            contextKey,
-            // Need to look up the injector class and gather all params
-            parameters = remappedParameters,
-            reportableDeclaration = this,
-            function = null,
-            // TODO this isn't actually necessarily true?
-            isFromInjectorFunction = true,
-            // Unpack the target class from the type
-            targetClassId =
-              mappedTypeKey.type
-                .requireSimpleType(this)
-                .arguments[0]
-                .typeOrFail
-                .rawType()
-                .classIdOrFail,
-          )
+        IrBinding.MembersInjected(
+          contextKey,
+          // Need to look up the injector class and gather all params
+          parameters = remappedParameters,
+          reportableDeclaration = this,
+          function = null,
+          // TODO this isn't actually necessarily true?
+          isFromInjectorFunction = true,
+          // Unpack the target class from the type
+          targetClassId =
+            mappedTypeKey.type
+              .requireSimpleType(this)
+              .arguments[0]
+              .typeOrFail
+              .rawType()
+              .classIdOrFail,
+        )
       }
+      bindings += binding
     }
     return bindings
   }
@@ -210,7 +213,9 @@ internal class BindingLookup(
         val targetType = key.type.requireSimpleType().arguments.first().typeOrFail
         val targetClass = targetType.rawType()
         val remapper = targetClass.deepRemapperFor(targetType)
-        return targetClass.computeMembersInjectorBindings(currentBindings, remapper)
+        // Filter out bindings that already exist to avoid duplicates
+        return targetClass.computeMembersInjectorBindings(remapper)
+          .filterTo(mutableSetOf()) { it.typeKey !in currentBindings }
       }
 
       val classAnnotations = irClass.metroAnnotations(context.metroSymbols.classIds)
@@ -226,8 +231,13 @@ internal class BindingLookup(
 
       val bindings = mutableSetOf<IrBinding>()
       val remapper by memoize { irClass.deepRemapperFor(key.type) }
+
+      // Compute all member injector bindings (needed for injectedMembers field)
+      // Only add new bindings (not in currentBindings) to the graph to avoid duplicates
       val membersInjectBindings = memoize {
-        irClass.computeMembersInjectorBindings(currentBindings, remapper).also { bindings += it }
+        irClass.computeMembersInjectorBindings(remapper).also { allBindings ->
+          bindings += allBindings.filterNot { it.typeKey in currentBindings }
+        }
       }
 
       val classFactory = findClassFactory(irClass)
