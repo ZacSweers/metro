@@ -214,12 +214,18 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     public abstract val enableDaggerRuntimeInterop: Property<Boolean>
 
     // Interop mode flags
-    public val includeJavaxAnnotations: Property<Boolean> = objects.property(Boolean::class.java).convention(false)
-    public val includeJakartaAnnotations: Property<Boolean> = objects.property(Boolean::class.java).convention(false)
-    public val includeDaggerAnnotations: Property<Boolean> = objects.property(Boolean::class.java).convention(false)
-    public val includeKotlinInjectAnnotations: Property<Boolean> = objects.property(Boolean::class.java).convention(false)
-    public val includeAnvilAnnotations: Property<Boolean> = objects.property(Boolean::class.java).convention(false)
-    public val includeKotlinInjectAnvilAnnotations: Property<Boolean> = objects.property(Boolean::class.java).convention(false)
+    public val includeJavaxAnnotations: Property<Boolean> =
+      objects.property(Boolean::class.java).convention(false)
+    public val includeJakartaAnnotations: Property<Boolean> =
+      objects.property(Boolean::class.java).convention(false)
+    public val includeDaggerAnnotations: Property<Boolean> =
+      objects.property(Boolean::class.java).convention(false)
+    public val includeKotlinInjectAnnotations: Property<Boolean> =
+      objects.property(Boolean::class.java).convention(false)
+    public val includeAnvilAnnotations: Property<Boolean> =
+      objects.property(Boolean::class.java).convention(false)
+    public val includeKotlinInjectAnvilAnnotations: Property<Boolean> =
+      objects.property(Boolean::class.java).convention(false)
 
     // Intrinsics
     public val provider: SetProperty<String> = objects.setProperty(String::class.java)

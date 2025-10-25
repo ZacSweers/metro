@@ -151,7 +151,8 @@ internal object BindingContainerCallableChecker :
         return
       }
 
-    // After the reusable check because reusable is technically a scope and we don't want to double-report
+    // After the reusable check because reusable is technically a scope and we don't want to
+    // double-report
     if (annotations.isBinds && annotations.scope != null) {
       reporter.reportOn(
         annotations.scope.fir.source ?: source,
