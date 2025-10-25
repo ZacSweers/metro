@@ -90,34 +90,36 @@ internal class BindingLookup(
   }
 
   context(context: IrMetroContext)
-  private fun IrClass.computeMembersInjectorBindings(remapper: TypeRemapper):
-    Set<IrBinding.MembersInjected> {
+  private fun IrClass.computeMembersInjectorBindings(
+    remapper: TypeRemapper
+  ): Set<IrBinding.MembersInjected> {
     val bindings = mutableSetOf<IrBinding.MembersInjected>()
     for (generatedInjector in findMemberInjectors(this)) {
       val mappedTypeKey = generatedInjector.typeKey.remapTypes(remapper)
       // Get or create cached binding for this type key
-      val binding = membersInjectorBindingsCache.getOrPut(mappedTypeKey) {
-        val remappedParameters = generatedInjector.mergedParameters(remapper)
-        val contextKey = IrContextualTypeKey(mappedTypeKey)
+      val binding =
+        membersInjectorBindingsCache.getOrPut(mappedTypeKey) {
+          val remappedParameters = generatedInjector.mergedParameters(remapper)
+          val contextKey = IrContextualTypeKey(mappedTypeKey)
 
-        IrBinding.MembersInjected(
-          contextKey,
-          // Need to look up the injector class and gather all params
-          parameters = remappedParameters,
-          reportableDeclaration = this,
-          function = null,
-          // TODO this isn't actually necessarily true?
-          isFromInjectorFunction = true,
-          // Unpack the target class from the type
-          targetClassId =
-            mappedTypeKey.type
-              .requireSimpleType(this)
-              .arguments[0]
-              .typeOrFail
-              .rawType()
-              .classIdOrFail,
-        )
-      }
+          IrBinding.MembersInjected(
+            contextKey,
+            // Need to look up the injector class and gather all params
+            parameters = remappedParameters,
+            reportableDeclaration = this,
+            function = null,
+            // TODO this isn't actually necessarily true?
+            isFromInjectorFunction = true,
+            // Unpack the target class from the type
+            targetClassId =
+              mappedTypeKey.type
+                .requireSimpleType(this)
+                .arguments[0]
+                .typeOrFail
+                .rawType()
+                .classIdOrFail,
+          )
+        }
       bindings += binding
     }
     return bindings
@@ -214,8 +216,9 @@ internal class BindingLookup(
         val targetClass = targetType.rawType()
         val remapper = targetClass.deepRemapperFor(targetType)
         // Filter out bindings that already exist to avoid duplicates
-        return targetClass.computeMembersInjectorBindings(remapper)
-          .filterTo(mutableSetOf()) { it.typeKey !in currentBindings }
+        return targetClass.computeMembersInjectorBindings(remapper).filterTo(mutableSetOf()) {
+          it.typeKey !in currentBindings
+        }
       }
 
       val classAnnotations = irClass.metroAnnotations(context.metroSymbols.classIds)

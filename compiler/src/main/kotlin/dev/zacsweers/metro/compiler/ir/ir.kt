@@ -1764,21 +1764,24 @@ internal val IrConstructorCall.annotationClass: IrClass
  * Returns the container that can hold static-ish declarations.
  * - If Java -> this
  * - If Kotlin ->
- *   - If isObject -> this
- *   - Companion object -> it
- *   - else -> error
+ *     - If isObject -> this
+ *     - Companion object -> it
+ *     - else -> error
  */
 internal fun IrClass.requireStaticIshDeclarationContainer(): IrClass {
-  return staticIshDeclarationContainerOrNull() ?: reportCompilerBug("No contain present that can hold static-ish declarations in ${classId?.asFqNameString()}!")
+  return staticIshDeclarationContainerOrNull()
+    ?: reportCompilerBug(
+      "No contain present that can hold static-ish declarations in ${classId?.asFqNameString()}!"
+    )
 }
 
 /**
  * Returns the container that can hold static-ish declarations.
  * - If Java -> this
  * - If Kotlin ->
- *   - If isObject -> this
- *   - Companion object -> it
- *   - else null
+ *     - If isObject -> this
+ *     - Companion object -> it
+ *     - else null
  */
 internal fun IrClass.staticIshDeclarationContainerOrNull(): IrClass? {
   return when {

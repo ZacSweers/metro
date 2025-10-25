@@ -145,18 +145,16 @@ internal class InjectConstructorTransformer(
         }
 
         val message = buildString {
-          append("Could not find generated factory for '${declaration.kotlinFqName}' in the upstream module where it's defined. ")
+          append(
+            "Could not find generated factory for '${declaration.kotlinFqName}' in the upstream module where it's defined. "
+          )
           append("Run the Metro compiler over that module too")
           if (options.enableDaggerRuntimeInterop) {
             append(" (or Dagger if you're using its interop)")
           }
           appendLine(".")
         }
-        reportCompat(
-          declaration,
-          MetroDiagnostics.METRO_ERROR,
-          message,
-        )
+        reportCompat(declaration, MetroDiagnostics.METRO_ERROR, message)
         return null
       } else if (doNotErrorOnMissing) {
         // Store a null here because it's absent

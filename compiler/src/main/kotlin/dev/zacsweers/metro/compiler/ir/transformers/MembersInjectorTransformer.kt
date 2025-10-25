@@ -384,7 +384,8 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
       processTypes(allTypes) { clazz, classId, nameAllocator ->
         injectorParamsByClass.getOrPut(classId) {
           if (clazz.isExternalParent) {
-            // For external classes, check for Dagger first if we're in Dagger mode or interop is enabled
+            // For external classes, check for Dagger first if we're in Dagger mode or interop is
+            // enabled
             if (isDagger || options.enableDaggerRuntimeInterop) {
               val injectorClass =
                 pluginContext

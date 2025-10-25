@@ -68,7 +68,6 @@ import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.functions
-import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
@@ -104,14 +103,18 @@ internal class AssistedFactoryTransformer(
       val metadata = declaration.metroMetadata?.assisted_factory_impl
       if (metadata != null) {
         // Metro impl exists - look for the Metro-generated impl class
-        val metroImplClass = declaration.declarations.filterIsInstance<IrClass>()
-          .singleOrNull { it.name == Symbols.Names.MetroImpl }
+        val metroImplClass =
+          declaration.declarations.filterIsInstance<IrClass>().singleOrNull {
+            it.name == Symbols.Names.MetroImpl
+          }
 
         if (metroImplClass != null) {
           // Found Metro impl - use it
           val companionObject = metroImplClass.companionObject()
-          val createFunction = companionObject?.declarations?.filterIsInstance<IrSimpleFunction>()
-            ?.singleOrNull { it.name.asString() == "create" }
+          val createFunction =
+            companionObject?.declarations?.filterIsInstance<IrSimpleFunction>()?.singleOrNull {
+              it.name.asString() == "create"
+            }
 
           if (createFunction != null) {
             val metroImpl = AssistedFactoryImpl.Metro(createFunction)
@@ -139,11 +142,7 @@ internal class AssistedFactoryTransformer(
         append("impl class for external factory ")
         append(classId.asFqNameString())
       }
-      reportCompat(
-        declaration,
-        MetroDiagnostics.METRO_ERROR,
-        message,
-      )
+      reportCompat(declaration, MetroDiagnostics.METRO_ERROR, message)
     }
 
     // Find the SAM function - for external use metadata as hint, for in-compilation get directly
@@ -469,12 +468,10 @@ internal sealed interface AssistedFactoryImpl {
   class Dagger(daggerImplClass: IrClass) : AssistedFactoryImpl {
     // For Dagger, we need to call the static create method directly
     private val createFunction by memoize {
-      daggerImplClass
-        .requireStaticIshDeclarationContainer()
-        .simpleFunctions().first {
-          it.isStaticIsh &&
-            (it.name == Symbols.Names.create || it.name == Symbols.Names.createFactoryProvider)
-        }
+      daggerImplClass.requireStaticIshDeclarationContainer().simpleFunctions().first {
+        it.isStaticIsh &&
+          (it.name == Symbols.Names.create || it.name == Symbols.Names.createFactoryProvider)
+      }
     }
 
     context(context: IrMetroContext)
