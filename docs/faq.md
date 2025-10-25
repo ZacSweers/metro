@@ -4,27 +4,15 @@ This is a list of frequently asked questions about Metro. Consider also searchin
 
 ### **Compiler plugins are not a stable API, is Metro safe to use?**
 
-This is a fair question! Metro will often require new companion releases for each Kotlin release. This is a part of life when using compiler plugins. That said, Kotlin does extensive beta/RC cycles that Metro will test against and turn around new releases within a day or two barring any unexpected circumstances (or vacation!)
+This is a fair question! Often times, compiler plugins require new companion releases for each Kotlin release. This is a part of life when using compiler plugins.
 
-The harder issue is going to be IDE support, as the Kotlin IDE plugin branches independently from regular Kotlin releases. Right now the answer is "YMMV", but we're exploring a couple solutions for this to ensure better stability.
+Metro takes a slightly different approach to this and tries to support forward compatibility on a best-effort basis. Usually, it's `N+.2` (so a Metro version built against Kotlin `2.3.0` will try to support up to `2.3.20`). This allows Metro to support a reasonable range of Kotlin releases across compiler and IDE versions. See the [compatibility docs](compatibility.md) for more details.
 
-### **Will Metro add support for Hilt features or Hilt interop?**
+### **Metro is not a stable API, is Metro safe to use?**
 
-Metro is largely inspired by Dagger and Anvil, but not Hilt. Hilt works in different ways and has different goals. Hilt is largely focused around supporting android components and relies heavily on subcomponents to achieve this.
+Yes, Metro is _functionally_ stable and ready for production use. Its runtime and Gradle plugin APIs are not yet _stabilized_, which is not the same as being unstable for use
 
-Some features overlap but just work differently in Metro:
-
-- Instead of `@UninstallModules` and `@TestInstallIn`, Metro graphs can exclude aggregations and contributed bindings can replace other bindings.
-- Hilt has support for injecting `ViewModel`s, but this is entirely doable without Hilt as well by just creating a multibinding. See the [android-app](https://github.com/ZacSweers/metro/tree/main/samples/android-app) sample for an example.
-- Hilt has support for aggregation with `@InstallIn`, Metro uses `@Contributes*` annotations.
-
-Some features are focused around injecting Android framework components. There are two arguably better solutions to this and one not-better solution.
-
-1. (Not better) Expose injector functions on a graph to do member injection directly from the graph.
-2. (Better) Constructor-inject these types using `AppComponentFactory`. This does require minSdk 28. When Hilt was first released in 2020, this was a relatively new API. However, 2020 was a long time ago! minSdk 28+ is much more common today, making this much more feasible of a solution.
-3. (Best) Use an app architecture that better abstracts away the surrounding Android framework components, making them solely entry points.
-
-The rest of Hilt's features focus on gluing these pieces together and also supporting Java (which Metro doesn't support).
+See the [stability docs](stability.md) for more details.
 
 ### **Why doesn't Metro support `@Reusable`?**
 
@@ -51,6 +39,26 @@ This allows some dynamism with keys but has some downsides. A few different reas
 - Duplicate key checking becomes a runtime failure rather than compile-time.
 - It breaks the ability to expose `Map<Key, Provider<Value>>` unless you start manually managing `Provider` types yourself.
 - You allocate and throw away a `Pair` instance each time it's called.
+
+## Hilt FAQ
+
+### **Will Metro add support for Hilt features or Hilt interop?**
+
+Metro is largely inspired by Dagger and Anvil, but not Hilt. Hilt works in different ways and has different goals. Hilt is largely focused around supporting android components and relies heavily on subcomponents to achieve this.
+
+Some features overlap but just work differently in Metro:
+
+- Instead of `@UninstallModules` and `@TestInstallIn`, Metro graphs can exclude aggregations and contributed bindings can replace other bindings.
+- Hilt has support for injecting `ViewModel`s, but this is entirely doable without Hilt as well by just creating a multibinding. See the [android-app](https://github.com/ZacSweers/metro/tree/main/samples/android-app) sample for an example.
+- Hilt has support for aggregation with `@InstallIn`, Metro uses `@Contributes*` annotations.
+
+Some features are focused around injecting Android framework components. There are two arguably better solutions to this and one not-better solution.
+
+1. (Not better) Expose injector functions on a graph to do member injection directly from the graph.
+2. (Better) Constructor-inject these types using `AppComponentFactory`. This does require minSdk 28. When Hilt was first released in 2020, this was a relatively new API. However, 2020 was a long time ago! minSdk 28+ is much more common today, making this much more feasible of a solution.
+3. (Best) Use an app architecture that better abstracts away the surrounding Android framework components, making them solely entry points.
+
+The rest of Hilt's features focus on gluing these pieces together and also supporting Java (which Metro doesn't support).
 
 ### How can I replicate Hilt's `@HiltAndroidTest`?
 
