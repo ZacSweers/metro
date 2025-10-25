@@ -70,6 +70,12 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension$InteropHan
 	public abstract fun getEnableDaggerRuntimeInterop ()Lorg/gradle/api/provider/Property;
 	public final fun getGraphExtension ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getGraphExtensionFactory ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getIncludeAnvilAnnotations ()Lorg/gradle/api/provider/Property;
+	public final fun getIncludeDaggerAnnotations ()Lorg/gradle/api/provider/Property;
+	public final fun getIncludeJakartaAnnotations ()Lorg/gradle/api/provider/Property;
+	public final fun getIncludeJavaxAnnotations ()Lorg/gradle/api/provider/Property;
+	public final fun getIncludeKotlinInjectAnnotations ()Lorg/gradle/api/provider/Property;
+	public final fun getIncludeKotlinInjectAnvilAnnotations ()Lorg/gradle/api/provider/Property;
 	public final fun getInject ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getIntoMap ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getIntoSet ()Lorg/gradle/api/provider/SetProperty;
@@ -83,16 +89,11 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension$InteropHan
 	public final fun getQualifier ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getScope ()Lorg/gradle/api/provider/SetProperty;
 	public final fun includeAnvil ()V
-	public final fun includeAnvil (Z)V
-	public final fun includeAnvil (ZZ)V
-	public static synthetic fun includeAnvil$default (Ldev/zacsweers/metro/gradle/MetroPluginExtension$InteropHandler;ZZILjava/lang/Object;)V
 	public final fun includeDagger ()V
-	public final fun includeDagger (Z)V
-	public final fun includeDagger (ZZ)V
-	public static synthetic fun includeDagger$default (Ldev/zacsweers/metro/gradle/MetroPluginExtension$InteropHandler;ZZILjava/lang/Object;)V
 	public final fun includeJakarta ()V
 	public final fun includeJavax ()V
 	public final fun includeKotlinInject ()V
+	public final fun includeKotlinInjectAnvil ()V
 }
 
 public final class dev/zacsweers/metro/gradle/OptionalBindingBehavior : java/lang/Enum {
