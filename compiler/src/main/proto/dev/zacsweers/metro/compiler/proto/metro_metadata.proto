@@ -27,10 +27,17 @@ message InjectedClassProto {
   repeated string member_inject_functions = 1;
 }
 
+message AssistedFactoryImplProto {
+  // The name of the SAM function in the factory interface
+  string sam_function_name = 1;
+}
+
 message MetroMetadata {
   string version = 1;
 
   DependencyGraphProto dependency_graph = 2;
 
   InjectedClassProto injected_class = 3;
+
+  AssistedFactoryImplProto assisted_factory_impl = 4;
 }

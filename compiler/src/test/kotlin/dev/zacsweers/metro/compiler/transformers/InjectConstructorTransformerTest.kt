@@ -395,7 +395,8 @@ class InjectConstructorTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: Could not find generated factory for 'test.ExampleClass' in upstream module where it's defined. Run the Metro compiler over that module too, or Dagger if you're using its interop for Java files.
+        e: Could not find generated factory for 'test.ExampleClass' in the upstream module where it's defined. Run the Metro compiler over that module too (or Dagger if you're using its interop).
+
         e: ExampleGraph.kt:8:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.ExampleClass
 
             test.ExampleClass is requested at

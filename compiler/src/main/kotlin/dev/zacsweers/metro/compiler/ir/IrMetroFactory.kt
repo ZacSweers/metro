@@ -46,13 +46,7 @@ internal sealed interface IrMetroFactory {
   ): IrExpression =
     with(scope) {
       // Anvil may generate the factory
-      val isJava = factoryClass.isFromJava()
-      val creatorClass =
-        if (isJava || factoryClass.isObject) {
-          factoryClass
-        } else {
-          factoryClass.companionObject()!!
-        }
+      val creatorClass = factoryClass.requireStaticIshDeclarationContainer()
       val createFunction = creatorClass.simpleFunctions().first { it.name in createFunctionNames }
 
       val remapper = createFunction.typeRemapperFor(typeKey.type)
@@ -74,7 +68,6 @@ internal sealed interface IrMetroFactory {
       val args = computeArgs(finalFunction, parameters)
       val createExpression =
         irInvoke(
-          dispatchReceiver = if (isJava) null else irGetObject(creatorClass.symbol),
           callee = createFunction.symbol,
           args = args,
           typeHint = factoryClass.typeWith(),

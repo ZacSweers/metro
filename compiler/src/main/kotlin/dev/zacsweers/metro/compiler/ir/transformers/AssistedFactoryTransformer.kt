@@ -19,17 +19,22 @@ import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.isStaticIsh
+import dev.zacsweers.metro.compiler.ir.metroMetadata
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter.AssistedParameterKey.Companion.toAssistedParameterKey
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.reportCompat
+import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer.AssistedFactoryFunction.Companion.toAssistedFactoryFunction
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
+import dev.zacsweers.metro.compiler.memoize
+import dev.zacsweers.metro.compiler.proto.AssistedFactoryImplProto
+import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
@@ -57,6 +62,7 @@ import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
+import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
@@ -92,23 +98,52 @@ internal class AssistedFactoryTransformer(
 
     val isExternal = declaration.isExternalParent
 
-    // Check for Dagger interop first for external declarations
-    if (isExternal && options.enableDaggerRuntimeInterop) {
-      if (declaration.isFromJava()) {
+    // For external declarations, check for Metro impl first, then Dagger
+    if (isExternal) {
+      // Check if Metro generated an impl by looking at metadata
+      val metadata = declaration.metroMetadata?.assisted_factory_impl
+      if (metadata != null) {
+        // Metro impl exists - look for the Metro-generated impl class
+        val metroImplClass = declaration.declarations.filterIsInstance<IrClass>()
+          .singleOrNull { it.name == Symbols.Names.MetroImpl }
+
+        if (metroImplClass != null) {
+          // Found Metro impl - use it
+          val companionObject = metroImplClass.companionObject()
+          val createFunction = companionObject?.declarations?.filterIsInstance<IrSimpleFunction>()
+            ?.singleOrNull { it.name.asString() == "create" }
+
+          if (createFunction != null) {
+            val metroImpl = AssistedFactoryImpl.Metro(createFunction)
+            implsCache[classId] = metroImpl
+            return metroImpl
+          }
+        }
+      } else if (options.enableDaggerRuntimeInterop) {
+        // Fall back to Dagger if enabled and Metro impl not found
+        // Don't gate on Java source because anvil may have generated this too
         val daggerImplClassId = classId.generatedClass("_Impl")
         val daggerImplClass = pluginContext.referenceClass(daggerImplClassId)?.owner
         if (daggerImplClass != null) {
           val daggerImpl = AssistedFactoryImpl.Dagger(daggerImplClass)
           implsCache[classId] = daggerImpl
           return daggerImpl
-        } else {
-          reportCompat(
-            declaration,
-            MetroDiagnostics.METRO_ERROR,
-            "Could not find Dagger impl for external factory class ${classId.asFqNameString()}",
-          )
         }
       }
+
+      val message = buildString {
+        append("Could not find a generated Metro ")
+        if (options.enableDaggerRuntimeInterop) {
+          append("or Dagger ")
+        }
+        append("impl class for external factory ")
+        append(classId.asFqNameString())
+      }
+      reportCompat(
+        declaration,
+        MetroDiagnostics.METRO_ERROR,
+        message,
+      )
     }
 
     // Find the SAM function - for external use metadata as hint, for in-compilation get directly
@@ -363,7 +398,18 @@ internal class AssistedFactoryTransformer(
         }
     }
 
+    // Write metadata to indicate Metro generated this impl
+    cacheAssistedFactoryInMetadata(declaration, samFunction.name.asString())
+
     implClass.dumpToMetroLog()
+  }
+
+  private fun cacheAssistedFactoryInMetadata(factoryClass: IrClass, samFunctionName: String) {
+    if (factoryClass.isExternalParent) return
+    val assistedFactoryImpl = AssistedFactoryImplProto(sam_function_name = samFunctionName)
+
+    // Store the metadata for this factory class
+    factoryClass.metroMetadata = MetroMetadata(assisted_factory_impl = assistedFactoryImpl)
   }
 
   /** Represents a parsed function in an `@AssistedFactory`-annotated interface. */
@@ -422,11 +468,14 @@ internal sealed interface AssistedFactoryImpl {
   /** Dagger implementation of AssistedFactoryHandler */
   class Dagger(daggerImplClass: IrClass) : AssistedFactoryImpl {
     // For Dagger, we need to call the static create method directly
-    private val createFunction =
-      daggerImplClass.simpleFunctions().first {
-        it.isStaticIsh &&
-          (it.name == Symbols.Names.create || it.name == Symbols.Names.createFactoryProvider)
-      }
+    private val createFunction by memoize {
+      daggerImplClass
+        .requireStaticIshDeclarationContainer()
+        .simpleFunctions().first {
+          it.isStaticIsh &&
+            (it.name == Symbols.Names.create || it.name == Symbols.Names.createFactoryProvider)
+        }
+    }
 
     context(context: IrMetroContext)
     override fun IrBuilderWithScope.invokeCreate(delegateFactory: IrExpression): IrExpression {
