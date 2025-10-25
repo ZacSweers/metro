@@ -10,6 +10,7 @@ Changelog
 - **Enhancement**: Inline empty multibinding expressions in code gen.
 - **Enhancement**: Better detect static-ish functions in generated Kotlin factories from Dagger/Anvil interop.
 - **Enhancement**: Cache members injector binding lookups.
+- Move interop annotations controls to compiler. For Gradle users, there's no change. For users of any other build system, this makes it a bit easier to reuse the interop annotations logic.
 
 0.7.2
 -----
