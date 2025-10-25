@@ -226,6 +226,8 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
       objects.property(Boolean::class.java).convention(false)
     public val includeKotlinInjectAnvilAnnotations: Property<Boolean> =
       objects.property(Boolean::class.java).convention(false)
+    public val includeGuiceAnnotations: Property<Boolean> =
+      objects.property(Boolean::class.java).convention(false)
 
     // Intrinsics
     public val provider: SetProperty<String> = objects.setProperty(String::class.java)
@@ -329,6 +331,11 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     public fun includeAnvilForKotlinInject() {
       includeKotlinInject()
       includeKotlinInjectAnvilAnnotations.set(true)
+    }
+
+    /** Includes Guice annotations support. */
+    public fun includeGuice() {
+      includeGuiceAnnotations.set(true)
     }
   }
 }

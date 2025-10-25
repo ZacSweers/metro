@@ -637,6 +637,16 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       required = false,
       allowMultipleOccurrences = false,
     )
+  ),
+  INTEROP_INCLUDE_GUICE_ANNOTATIONS(
+    RawMetroOption.boolean(
+      name = "interop-include-guice-annotations",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description = "Interop with Guice annotations (automatically includes javax annotations)",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
   );
 
   companion object {
@@ -920,6 +930,31 @@ public data class MetroOptions(
       includeKotlinInjectAnnotations()
     }
 
+    public fun includeGuiceAnnotations() {
+      // TODO
+      //  Injector (members injector)
+      //  ProvidesIntoOptional. Different than `@BindsOptionalOf`, provides a value
+
+      customInjectAnnotations.add(guicePackage.classId("Inject"))
+      customProvidesAnnotations.add(guicePackage.classId("Provides"))
+      customProviderTypes.add(guicePackage.classId("Provider"))
+      customAssistedAnnotations.add(guiceAssistedInjectPackage.classId("Assisted"))
+      customAssistedInjectAnnotations.add(guiceAssistedInjectPackage.classId("AssistedInject"))
+      // Guice has no AssistedFactory
+      customQualifierAnnotations.add(guicePackage.classId("BindingAnnotation"))
+      customScopeAnnotations.add(guicePackage.classId("ScopeAnnotation"))
+      customMapKeyAnnotations.add(guiceMultibindingsPackage.classId("MapKey"))
+      customIntoMapAnnotations.add(guiceMultibindingsPackage.classId("ProvidesIntoMap"))
+      customIntoSetAnnotations.add(guiceMultibindingsPackage.classId("ProvidesIntoSet"))
+
+      // TODO only when implemented in runtime
+      // customBindingContainerAnnotations.add(guicePackage.classId("Module"))
+
+      // Guice javax and jakarta
+      includeJavaxAnnotations()
+      includeJakartaAnnotations()
+    }
+
     public fun build(): MetroOptions {
       if (debug) {
         enabledLoggers += MetroLogger.Type.entries
@@ -984,6 +1019,10 @@ public data class MetroOptions(
       val kotlinInjectPackage = FqName("me.tatarka.inject.annotations")
       val anvilPackage = FqName("com.squareup.anvil.annotations")
       val kotlinInjectAnvilPackage = FqName("software.amazon.lastmile.kotlin.inject.anvil")
+      val guicePackage = FqName("com.google.inject")
+      val guiceMultibindingsPackage = FqName("com.google.inject.multibindings")
+      val guiceAssistedInjectPackage = FqName("com.google.inject.assistedinject")
+      val guiceNamePackage = FqName("com.google.inject.name")
       val internalName = Name.identifier("internal")
     }
   }
@@ -1136,6 +1175,9 @@ public data class MetroOptions(
           }
           MetroOption.INTEROP_INCLUDE_KOTLIN_INJECT_ANVIL_ANNOTATIONS -> {
             if (configuration.getAsBoolean(entry)) includeKotlinInjectAnvilAnnotations()
+          }
+          MetroOption.INTEROP_INCLUDE_GUICE_ANNOTATIONS -> {
+            if (configuration.getAsBoolean(entry)) includeGuiceAnnotations()
           }
         }
       }

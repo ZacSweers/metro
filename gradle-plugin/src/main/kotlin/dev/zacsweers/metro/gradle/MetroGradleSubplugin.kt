@@ -347,6 +347,7 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
               includeKotlinInjectAnvilAnnotations,
             )
           )
+          add(lazyOption("interop-include-guice-annotations", includeGuiceAnnotations))
           add(
             SubpluginOption(
               "enable-dagger-anvil-interop",
