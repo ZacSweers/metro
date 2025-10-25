@@ -39,6 +39,7 @@ include(
   ":circuit-app",
   ":integration-tests",
   ":interop:customAnnotations-dagger",
+  ":interop:customAnnotations-guice",
   ":interop:customAnnotations-kotlinInject",
   ":interop:dependencies-dagger",
   ":interop:dependencies-kotlinInject",
