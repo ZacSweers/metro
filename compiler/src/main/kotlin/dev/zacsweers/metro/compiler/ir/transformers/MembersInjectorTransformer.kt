@@ -14,7 +14,6 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
-import dev.zacsweers.metro.compiler.ir.companionObjectOrSelfIfObjectOrJava
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.declaredCallableMembers
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
@@ -38,6 +37,7 @@ import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
+import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
@@ -169,6 +169,50 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
     val typeKey =
       IrTypeKey(declaration.defaultType.wrapInMembersInjector(), declaration.qualifierAnnotation())
 
+    fun computeMemberInjectClass(injectorClass: IrClass, isDagger: Boolean): MemberInjectClass {
+      // Use cached member inject parameters if available, otherwise fall back to fresh lookup
+      val injectedMembersByClass = declaration.getOrComputeMemberInjectParameters(isDagger)
+      val parameterGroupsForClass = injectedMembersByClass.getValue(injectedClassId)
+
+      val declaredInjectFunctions =
+        parameterGroupsForClass.associateBy { params ->
+          val name =
+            if (params.isProperty) {
+              params.irProperty!!.name
+            } else {
+              params.callableId.callableName
+            }
+          val creatorsClass = injectorClass.requireStaticIshDeclarationContainer()
+          creatorsClass.requireSimpleFunction("inject${name.capitalizeUS().asString()}").owner
+        }
+
+      return MemberInjectClass(
+        declaration,
+        injectorClass,
+        typeKey,
+        injectedMembersByClass,
+        declaredInjectFunctions,
+        isDagger,
+      )
+    }
+
+    // For external classes with no Metro metadata, the only option is Dagger (if enabled)
+    if (isExternal && declaration.metroMetadata?.injected_class == null) {
+      if (options.enableDaggerRuntimeInterop) {
+        val daggerInjector =
+          pluginContext.referenceClass(declaration.classIdOrFail.generatedClass("_MembersInjector"))
+        if (daggerInjector != null) {
+          return computeMemberInjectClass(daggerInjector.owner, isDagger = true).also {
+            generatedInjectors[injectedClassId] = it
+          }
+        }
+      }
+      // No Metro metadata and no Dagger injector found - assume no members to inject
+      generatedInjectors[injectedClassId] = null
+      return null
+    }
+
+    // Look for Metro-generated injector (either in-compilation or external with metadata)
     val injectorClass =
       declaration.nestedClasses.singleOrNull {
         val isMetroImpl = it.name == Symbols.Names.MetroMembersInjector
@@ -186,46 +230,16 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
         isMetroImpl
       }
 
-    fun computeMemberInjectClass(injectorClass: IrClass, isDagger: Boolean): MemberInjectClass {
-      // Use cached member inject parameters if available, otherwise fall back to fresh lookup
-      val injectedMembersByClass = declaration.getOrComputeMemberInjectParameters(isDagger)
-      val parameterGroupsForClass = injectedMembersByClass.getValue(injectedClassId)
-
-      val declaredInjectFunctions =
-        parameterGroupsForClass.associateBy { params ->
-          val name =
-            if (params.isProperty) {
-              params.irProperty!!.name
-            } else {
-              params.callableId.callableName
-            }
-          val creatorsClass = injectorClass.companionObjectOrSelfIfObjectOrJava()
-          creatorsClass.requireSimpleFunction("inject${name.capitalizeUS().asString()}").owner
-        }
-
-      return MemberInjectClass(
-        declaration,
-        injectorClass,
-        typeKey,
-        injectedMembersByClass,
-        declaredInjectFunctions,
-        isDagger,
-      )
-    }
-
     if (injectorClass == null) {
-      if (options.enableDaggerRuntimeInterop) {
-        // Look up where dagger would generate one
-        val daggerInjector =
-          pluginContext.referenceClass(declaration.classIdOrFail.generatedClass("_MembersInjector"))
-        if (daggerInjector != null) {
-          return computeMemberInjectClass(daggerInjector.owner, isDagger = true).also {
-            generatedInjectors[injectedClassId] = it
-          }
-        }
+      // If we're external with Metro metadata but no nested class, that's an error
+      if (isExternal) {
+        reportCompat(
+          declaration,
+          MetroDiagnostics.METRO_ERROR,
+          "Found Metro metadata for members injector on ${declaration.kotlinFqName} but could not find the nested MetroMembersInjector class",
+        )
       }
-      // For now, assume there's no members to inject. Would be nice if we could better check this
-      // in the future
+      // For in-compilation classes, assume no members to inject
       generatedInjectors[injectedClassId] = null
       return null
     }
@@ -370,36 +384,52 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
       processTypes(allTypes) { clazz, classId, nameAllocator ->
         injectorParamsByClass.getOrPut(classId) {
           if (clazz.isExternalParent) {
-            if (isDagger) {
-              // External Dagger class - read from annotations
+            // For external classes, check for Dagger first if we're in Dagger mode or interop is enabled
+            if (isDagger || options.enableDaggerRuntimeInterop) {
               val injectorClass =
                 pluginContext
                   .referenceClass(clazz.classIdOrFail.generatedClass("_MembersInjector"))
                   ?.owner
 
               if (injectorClass != null) {
-                deriveParametersFromStaticInjectFunctions(
+                return@getOrPut deriveParametersFromStaticInjectFunctions(
                   clazz,
-                  injectorClass.companionObjectOrSelfIfObjectOrJava(),
+                  injectorClass.requireStaticIshDeclarationContainer(),
                   nameAllocator,
                 )
-              } else {
-                emptyList()
-              }
-            } else {
-              // External Metro class - use metadata
-              val metadata = clazz.metroMetadata?.injected_class
-              val injectFunctionNames = metadata?.member_inject_functions ?: emptyList()
-
-              if (injectFunctionNames.isNotEmpty()) {
-                // Derive from existing injector class using cached function names
-                deriveParametersFromInjectFunctionNames(clazz, injectFunctionNames, nameAllocator)
-              } else {
-                emptyList()
               }
             }
+
+            // No Dagger injector found - check Metro metadata
+            val metadata = clazz.metroMetadata?.injected_class
+            val injectFunctionNames = metadata?.member_inject_functions ?: emptyList()
+
+            if (injectFunctionNames.isNotEmpty()) {
+              // Derive from existing injector class using cached function names
+              deriveParametersFromInjectFunctionNames(clazz, injectFunctionNames, nameAllocator)
+            } else {
+              emptyList()
+            }
           } else {
-            // In-round class or from dagger - compute normally and cache
+            // In-round class - could be from Dagger (via KSP/KAPT) or Metro
+            // Check for Dagger injector first, even if not external
+            if (isDagger || options.enableDaggerRuntimeInterop) {
+              val injectorClass =
+                pluginContext
+                  .referenceClass(clazz.classIdOrFail.generatedClass("_MembersInjector"))
+                  ?.owner
+
+              if (injectorClass != null) {
+                // Found Dagger injector, derive from it
+                return@getOrPut deriveParametersFromStaticInjectFunctions(
+                  clazz,
+                  injectorClass.requireStaticIshDeclarationContainer(),
+                  nameAllocator,
+                )
+              }
+            }
+
+            // No Dagger injector found - compute from source and cache
             val computed =
               clazz
                 .declaredCallableMembers(
