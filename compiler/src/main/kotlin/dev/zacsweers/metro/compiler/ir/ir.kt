@@ -1760,11 +1760,31 @@ internal fun IrBuilderWithScope.irGetProperty(
 internal val IrConstructorCall.annotationClass: IrClass
   get() = symbol.owner.parentAsClass
 
-internal fun IrClass.companionObjectOrSelfIfObjectOrJava(): IrClass {
+/**
+ * Returns the container that can hold static-ish declarations.
+ * - If Java -> this
+ * - If Kotlin ->
+ *   - If isObject -> this
+ *   - Companion object -> it
+ *   - else -> error
+ */
+internal fun IrClass.requireStaticIshDeclarationContainer(): IrClass {
+  return staticIshDeclarationContainerOrNull() ?: reportCompilerBug("No contain present that can hold static-ish declarations in ${classId?.asFqNameString()}!")
+}
+
+/**
+ * Returns the container that can hold static-ish declarations.
+ * - If Java -> this
+ * - If Kotlin ->
+ *   - If isObject -> this
+ *   - Companion object -> it
+ *   - else null
+ */
+internal fun IrClass.staticIshDeclarationContainerOrNull(): IrClass? {
   return when {
     isFromJava() -> this
     kind.isObject -> this
-    else -> companionObject() ?: this
+    else -> companionObject()
   }
 }
 
