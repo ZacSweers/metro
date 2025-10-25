@@ -19,6 +19,7 @@ import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.isPropertyAccessor
+import org.jetbrains.kotlin.ir.types.isUnit
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
@@ -141,11 +142,13 @@ internal class Parameters(
         regularParameters.joinTo(this)
         append(')')
       }
-      append(": ")
       ir?.let {
-        val typeKey = IrTypeKey(it.returnType)
-        append(typeKey.render(short = true, includeQualifier = false))
-      } ?: run { append("<error>") }
+        if (!it.returnType.isUnit()) {
+          append(": ")
+          val typeKey = IrTypeKey(it.returnType)
+          append(typeKey.render(short = true, includeQualifier = false))
+        }
+      }
     }
   }
 
