@@ -155,6 +155,12 @@ internal class MetroFrameworkSymbols(
   }
 }
 
+internal object GuiceSymbols {
+  object ClassIds {
+    val assistedAnnotation = ClassId.fromString("com/google/inject/assistedinject/Assisted")
+  }
+}
+
 internal class DaggerSymbols(
   private val moduleFragment: IrModuleFragment,
   private val pluginContext: IrPluginContext,

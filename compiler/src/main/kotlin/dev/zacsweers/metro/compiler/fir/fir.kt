@@ -662,6 +662,10 @@ internal fun List<FirAnnotation>.qualifierAnnotation(
 ): MetroFirAnnotation? =
   asSequence()
     .annotationAnnotatedWithAny(session, session.classIds.qualifierAnnotations, typeResolver)
+    ?.takeIf {
+      // Guice's `@Assisted` annoyingly annotates itself as a qualifier too, so we catch that here
+      it.fir.toAnnotationClassIdSafe(session) != Symbols.GuiceSymbols.ClassIds.assistedAnnotation
+    }
 
 internal fun FirBasedSymbol<*>.mapKeyAnnotation(session: FirSession): MetroFirAnnotation? =
   resolvedCompilerAnnotationsWithClassIds.mapKeyAnnotation(session)

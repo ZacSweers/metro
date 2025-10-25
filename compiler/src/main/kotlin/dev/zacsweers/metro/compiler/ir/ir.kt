@@ -1553,6 +1553,10 @@ context(context: IrMetroContext)
 internal fun IrAnnotationContainer?.qualifierAnnotation() =
   annotationsAnnotatedWith(context.metroSymbols.qualifierAnnotations)
     .singleOrNull()
+    ?.takeIf {
+      // Guice's `@Assisted` annoyingly annotates itself as a qualifier too, so we catch that here
+      it.annotationClass.classId != Symbols.GuiceSymbols.ClassIds.assistedAnnotation
+    }
     ?.let(::IrAnnotation)
 
 context(context: IrMetroContext)
