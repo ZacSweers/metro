@@ -89,11 +89,13 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension$InteropHan
 	public final fun getQualifier ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getScope ()Lorg/gradle/api/provider/SetProperty;
 	public final fun includeAnvil ()V
+	public final fun includeAnvil (Z)V
+	public final fun includeAnvil (ZZ)V
+	public static synthetic fun includeAnvil$default (Ldev/zacsweers/metro/gradle/MetroPluginExtension$InteropHandler;ZZILjava/lang/Object;)V
 	public final fun includeDagger ()V
 	public final fun includeJakarta ()V
 	public final fun includeJavax ()V
 	public final fun includeKotlinInject ()V
-	public final fun includeKotlinInjectAnvil ()V
 }
 
 public final class dev/zacsweers/metro/gradle/OptionalBindingBehavior : java/lang/Enum {

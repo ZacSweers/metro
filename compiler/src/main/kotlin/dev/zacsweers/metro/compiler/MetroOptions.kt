@@ -872,10 +872,7 @@ public data class MetroOptions(
       customLazyTypes.add(daggerPackage.classId("Lazy"))
       customProviderTypes.add(daggerPackage.child(internalName).classId("Provider"))
       customProvidesAnnotations.addAll(
-        listOf(
-          daggerPackage.classId("Provides"),
-          daggerPackage.classId("BindsInstance")
-        )
+        listOf(daggerPackage.classId("Provides"), daggerPackage.classId("BindsInstance"))
       )
       // Implicitly includes javax/jakarta
       includeJavaxAnnotations()
@@ -908,11 +905,17 @@ public data class MetroOptions(
     }
 
     public fun includeKotlinInjectAnvilAnnotations() {
-      customContributesBindingAnnotations.add(kotlinInjectAnvilPackage.classId("ContributesBinding"))
+      customContributesBindingAnnotations.add(
+        kotlinInjectAnvilPackage.classId("ContributesBinding")
+      )
       customContributesToAnnotations.add(kotlinInjectAnvilPackage.classId("ContributesTo"))
       customGraphAnnotations.add(kotlinInjectAnvilPackage.classId("MergeComponent"))
-      customGraphExtensionAnnotations.add(kotlinInjectAnvilPackage.classId("ContributesSubcomponent"))
-      customGraphExtensionFactoryAnnotations.add(kotlinInjectAnvilPackage.classId("ContributesSubcomponent.Factory"))
+      customGraphExtensionAnnotations.add(
+        kotlinInjectAnvilPackage.classId("ContributesSubcomponent")
+      )
+      customGraphExtensionFactoryAnnotations.add(
+        kotlinInjectAnvilPackage.classId("ContributesSubcomponent.Factory")
+      )
       customOriginAnnotations.add(kotlinInjectAnvilPackage.child(internalName).classId("Origin"))
       includeKotlinInjectAnnotations()
     }
