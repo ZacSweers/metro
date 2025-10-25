@@ -274,6 +274,24 @@ abstract class MetroCompilerTest {
               MetroOption.CONTRIBUTES_AS_INJECT -> {
                 processor.option(entry.raw.cliOption, contributesAsInject)
               }
+              MetroOption.INTEROP_INCLUDE_JAVAX_ANNOTATIONS -> {
+                processor.option(entry.raw.cliOption, false)
+              }
+              MetroOption.INTEROP_INCLUDE_JAKARTA_ANNOTATIONS -> {
+                processor.option(entry.raw.cliOption, false)
+              }
+              MetroOption.INTEROP_INCLUDE_DAGGER_ANNOTATIONS -> {
+                processor.option(entry.raw.cliOption, false)
+              }
+              MetroOption.INTEROP_INCLUDE_KOTLIN_INJECT_ANNOTATIONS -> {
+                processor.option(entry.raw.cliOption, false)
+              }
+              MetroOption.INTEROP_INCLUDE_ANVIL_ANNOTATIONS -> {
+                processor.option(entry.raw.cliOption, false)
+              }
+              MetroOption.INTEROP_INCLUDE_KOTLIN_INJECT_ANVIL_ANNOTATIONS -> {
+                processor.option(entry.raw.cliOption, false)
+              }
             }
           yield(option)
         }

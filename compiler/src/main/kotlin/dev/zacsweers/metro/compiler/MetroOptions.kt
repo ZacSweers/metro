@@ -9,6 +9,8 @@ import org.jetbrains.kotlin.compiler.plugin.CliOption
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.config.CompilerConfigurationKey
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.FqName
+import org.jetbrains.kotlin.name.Name
 
 // Borrowed from Dagger
 // https://github.com/google/dagger/blob/b39cf2d0640e4b24338dd290cb1cb2e923d38cb3/dagger-compiler/main/java/dagger/internal/codegen/writing/ComponentImplementation.java#L263
@@ -573,6 +575,68 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       required = false,
       allowMultipleOccurrences = false,
     )
+  ),
+  INTEROP_INCLUDE_JAVAX_ANNOTATIONS(
+    RawMetroOption.boolean(
+      name = "interop-include-javax-annotations",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description = "Interop with javax annotations",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
+  INTEROP_INCLUDE_JAKARTA_ANNOTATIONS(
+    RawMetroOption.boolean(
+      name = "interop-include-jakarta-annotations",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description = "Interop with jakarta annotations",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
+  INTEROP_INCLUDE_DAGGER_ANNOTATIONS(
+    RawMetroOption.boolean(
+      name = "interop-include-dagger-annotations",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "Interop with Dagger annotations (automatically includes javax and jakarta annotations)",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
+  INTEROP_INCLUDE_KOTLIN_INJECT_ANNOTATIONS(
+    RawMetroOption.boolean(
+      name = "interop-include-kotlin-inject-annotations",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description = "Interop with kotlin-inject annotations",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
+  INTEROP_INCLUDE_ANVIL_ANNOTATIONS(
+    RawMetroOption.boolean(
+      name = "interop-include-anvil-annotations",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description = "Interop with Anvil annotations (automatically includes Dagger annotations)",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
+  INTEROP_INCLUDE_KOTLIN_INJECT_ANVIL_ANNOTATIONS(
+    RawMetroOption.boolean(
+      name = "interop-include-kotlin-inject-anvil-annotations",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "Interop with kotlin-inject Anvil annotations (automatically includes kotlin-inject annotations)",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
   );
 
   companion object {
@@ -693,112 +757,295 @@ public data class MetroOptions(
     MetroOption.CUSTOM_OPTIONAL_BINDING.raw.defaultValue.expectAs(),
   val contributesAsInject: Boolean = MetroOption.CONTRIBUTES_AS_INJECT.raw.defaultValue.expectAs(),
 ) {
-  internal companion object {
-    fun load(configuration: CompilerConfiguration): MetroOptions {
-      var options = MetroOptions()
-      val enabledLoggers = mutableSetOf<MetroLogger.Type>()
+  public fun toBuilder(): Builder = Builder(this)
 
-      // Custom annotations
-      val customProviderTypes = mutableSetOf<ClassId>()
-      val customLazyTypes = mutableSetOf<ClassId>()
-      val customAssistedAnnotations = mutableSetOf<ClassId>()
-      val customAssistedFactoryAnnotations = mutableSetOf<ClassId>()
-      val customAssistedInjectAnnotations = mutableSetOf<ClassId>()
-      val customBindsAnnotations = mutableSetOf<ClassId>()
-      val customContributesToAnnotations = mutableSetOf<ClassId>()
-      val customContributesBindingAnnotations = mutableSetOf<ClassId>()
-      val customGraphExtensionAnnotations = mutableSetOf<ClassId>()
-      val customGraphExtensionFactoryAnnotations = mutableSetOf<ClassId>()
-      val customElementsIntoSetAnnotations = mutableSetOf<ClassId>()
-      val customGraphAnnotations = mutableSetOf<ClassId>()
-      val customGraphFactoryAnnotations = mutableSetOf<ClassId>()
-      val customInjectAnnotations = mutableSetOf<ClassId>()
-      val customIntoMapAnnotations = mutableSetOf<ClassId>()
-      val customIntoSetAnnotations = mutableSetOf<ClassId>()
-      val customMapKeyAnnotations = mutableSetOf<ClassId>()
-      val customMultibindsAnnotations = mutableSetOf<ClassId>()
-      val customProvidesAnnotations = mutableSetOf<ClassId>()
-      val customQualifierAnnotations = mutableSetOf<ClassId>()
-      val customScopeAnnotations = mutableSetOf<ClassId>()
-      val customBindingContainerAnnotations = mutableSetOf<ClassId>()
-      val customContributesIntoSetAnnotations = mutableSetOf<ClassId>()
-      val customOriginAnnotations = mutableSetOf<ClassId>()
-      val customOptionalBindingAnnotations = mutableSetOf<ClassId>()
+  public class Builder(base: MetroOptions = MetroOptions()) {
+    public var debug: Boolean = base.debug
+    public var enabled: Boolean = base.enabled
+    public var reportsDestination: Path? = base.reportsDestination
+    public var generateAssistedFactories: Boolean = base.generateAssistedFactories
+    public var enableTopLevelFunctionInjection: Boolean = base.enableTopLevelFunctionInjection
+    public var generateContributionHints: Boolean = base.generateContributionHints
+    public var generateJvmContributionHintsInFir: Boolean = base.generateJvmContributionHintsInFir
+    public var transformProvidersToPrivate: Boolean = base.transformProvidersToPrivate
+    public var shrinkUnusedBindings: Boolean = base.shrinkUnusedBindings
+    public var chunkFieldInits: Boolean = base.chunkFieldInits
+    public var statementsPerInitFun: Int = base.statementsPerInitFun
+    public var publicProviderSeverity: DiagnosticSeverity = base.publicProviderSeverity
+    public var optionalBindingBehavior: OptionalBindingBehavior = base.optionalBindingBehavior
+    public var warnOnInjectAnnotationPlacement: Boolean = base.warnOnInjectAnnotationPlacement
+    public var interopAnnotationsNamedArgSeverity: DiagnosticSeverity =
+      base.interopAnnotationsNamedArgSeverity
+    public var enabledLoggers: MutableSet<MetroLogger.Type> = base.enabledLoggers.toMutableSet()
+    public var enableDaggerRuntimeInterop: Boolean = base.enableDaggerRuntimeInterop
+    public var maxIrErrorsCount: Int = base.maxIrErrorsCount
+    public var customProviderTypes: MutableSet<ClassId> = base.customProviderTypes.toMutableSet()
+    public var customLazyTypes: MutableSet<ClassId> = base.customLazyTypes.toMutableSet()
+    public var customAssistedAnnotations: MutableSet<ClassId> =
+      base.customAssistedAnnotations.toMutableSet()
+    public var customAssistedFactoryAnnotations: MutableSet<ClassId> =
+      base.customAssistedFactoryAnnotations.toMutableSet()
+    public var customAssistedInjectAnnotations: MutableSet<ClassId> =
+      base.customAssistedInjectAnnotations.toMutableSet()
+    public var customBindsAnnotations: MutableSet<ClassId> =
+      base.customBindsAnnotations.toMutableSet()
+    public var customContributesToAnnotations: MutableSet<ClassId> =
+      base.customContributesToAnnotations.toMutableSet()
+    public var customContributesBindingAnnotations: MutableSet<ClassId> =
+      base.customContributesBindingAnnotations.toMutableSet()
+    public var customContributesIntoSetAnnotations: MutableSet<ClassId> =
+      base.customContributesIntoSetAnnotations.toMutableSet()
+    public var customGraphExtensionAnnotations: MutableSet<ClassId> =
+      base.customGraphExtensionAnnotations.toMutableSet()
+    public var customGraphExtensionFactoryAnnotations: MutableSet<ClassId> =
+      base.customGraphExtensionFactoryAnnotations.toMutableSet()
+    public var customElementsIntoSetAnnotations: MutableSet<ClassId> =
+      base.customElementsIntoSetAnnotations.toMutableSet()
+    public var customGraphAnnotations: MutableSet<ClassId> =
+      base.customGraphAnnotations.toMutableSet()
+    public var customGraphFactoryAnnotations: MutableSet<ClassId> =
+      base.customGraphFactoryAnnotations.toMutableSet()
+    public var customInjectAnnotations: MutableSet<ClassId> =
+      base.customInjectAnnotations.toMutableSet()
+    public var customIntoMapAnnotations: MutableSet<ClassId> =
+      base.customIntoMapAnnotations.toMutableSet()
+    public var customIntoSetAnnotations: MutableSet<ClassId> =
+      base.customIntoSetAnnotations.toMutableSet()
+    public var customMapKeyAnnotations: MutableSet<ClassId> =
+      base.customMapKeyAnnotations.toMutableSet()
+    public var customMultibindsAnnotations: MutableSet<ClassId> =
+      base.customMultibindsAnnotations.toMutableSet()
+    public var customProvidesAnnotations: MutableSet<ClassId> =
+      base.customProvidesAnnotations.toMutableSet()
+    public var customQualifierAnnotations: MutableSet<ClassId> =
+      base.customQualifierAnnotations.toMutableSet()
+    public var customScopeAnnotations: MutableSet<ClassId> =
+      base.customScopeAnnotations.toMutableSet()
+    public var customBindingContainerAnnotations: MutableSet<ClassId> =
+      base.customBindingContainerAnnotations.toMutableSet()
+    public var enableDaggerAnvilInterop: Boolean = base.enableDaggerAnvilInterop
+    public var enableFullBindingGraphValidation: Boolean = base.enableFullBindingGraphValidation
+    public var enableGraphImplClassAsReturnType: Boolean = base.enableGraphImplClassAsReturnType
+    public var customOriginAnnotations: MutableSet<ClassId> =
+      base.customOriginAnnotations.toMutableSet()
+    public var customOptionalBindingAnnotations: MutableSet<ClassId> =
+      base.customOptionalBindingAnnotations.toMutableSet()
+    public var contributesAsInject: Boolean = base.contributesAsInject
 
+    private fun FqName.classId(name: String): ClassId {
+      return ClassId(this, Name.identifier(name))
+    }
+
+    public fun includeJavaxAnnotations() {
+      customProviderTypes.add(javaxInjectPackage.classId("Provider"))
+      customInjectAnnotations.add(javaxInjectPackage.classId("Inject"))
+      customQualifierAnnotations.add(javaxInjectPackage.classId("Qualifier"))
+      customScopeAnnotations.add(javaxInjectPackage.classId("Scope"))
+    }
+
+    public fun includeJakartaAnnotations() {
+      customProviderTypes.add(jakartaInjectPackage.classId("Provider"))
+      customInjectAnnotations.add(jakartaInjectPackage.classId("Inject"))
+      customQualifierAnnotations.add(jakartaInjectPackage.classId("Qualifier"))
+      customScopeAnnotations.add(jakartaInjectPackage.classId("Scope"))
+    }
+
+    public fun includeDaggerAnnotations() {
+      enableDaggerRuntimeInterop = true
+      customAssistedAnnotations.add(daggerAssistedPackage.classId("Assisted"))
+      customAssistedFactoryAnnotations.add(daggerAssistedPackage.classId("AssistedFactory"))
+      customAssistedInjectAnnotations.add(daggerAssistedPackage.classId("AssistedInject"))
+      customBindsAnnotations.add(daggerPackage.classId("Binds"))
+      customElementsIntoSetAnnotations.add(daggerMultibindingsPackage.classId("ElementsIntoSet"))
+      customGraphAnnotations.add(daggerPackage.classId("Component"))
+      customGraphFactoryAnnotations.add(daggerPackage.classId("Component.Factory"))
+      customGraphExtensionAnnotations.add(daggerPackage.classId("Subcomponent"))
+      customGraphExtensionFactoryAnnotations.add(daggerPackage.classId("Subcomponent.Factory"))
+      customIntoMapAnnotations.add(daggerMultibindingsPackage.classId("IntoMap"))
+      customIntoSetAnnotations.add(daggerMultibindingsPackage.classId("IntoSet"))
+      customLazyTypes.add(daggerPackage.classId("Lazy"))
+      customMapKeyAnnotations.add(daggerPackage.classId("MapKey"))
+      customMultibindsAnnotations.add(daggerMultibindingsPackage.classId("Multibinds"))
+      customProvidesAnnotations.add(daggerPackage.classId("Provides"))
+      customProvidesAnnotations.add(daggerPackage.classId("BindsInstance"))
+      customProviderTypes.add(daggerPackage.child(internalName).classId("Provider"))
+      customBindingContainerAnnotations.add(daggerPackage.classId("Module"))
+      includeJavaxAnnotations()
+      includeJakartaAnnotations()
+    }
+
+    public fun includeKotlinInjectAnnotations() {
+      customInjectAnnotations.add(kotlinInjectPackage.classId("Inject"))
+      customAssistedFactoryAnnotations.add(kotlinInjectPackage.classId("AssistedFactory"))
+      customQualifierAnnotations.add(kotlinInjectPackage.classId("Qualifier"))
+      customScopeAnnotations.add(kotlinInjectPackage.classId("Scope"))
+      customAssistedAnnotations.add(kotlinInjectPackage.classId("Assisted"))
+      customGraphAnnotations.add(kotlinInjectPackage.classId("Component"))
+      customIntoMapAnnotations.add(kotlinInjectPackage.classId("IntoMap"))
+      customIntoSetAnnotations.add(kotlinInjectPackage.classId("IntoSet"))
+      customProvidesAnnotations.add(kotlinInjectPackage.classId("Provides"))
+    }
+
+    public fun includeAnvilAnnotations() {
+      enableDaggerAnvilInterop = true
+      customGraphAnnotations.add(anvilPackage.classId("MergeComponent"))
+      customGraphFactoryAnnotations.add(anvilPackage.classId("MergeComponent.Factory"))
+      customGraphExtensionAnnotations.add(anvilPackage.classId("MergeSubcomponent"))
+      customGraphExtensionAnnotations.add(anvilPackage.classId("ContributesSubcomponent"))
+      customContributesToAnnotations.add(anvilPackage.classId("ContributesTo"))
+      customContributesBindingAnnotations.add(anvilPackage.classId("ContributesBinding"))
+      customContributesIntoSetAnnotations.add(anvilPackage.classId("ContributesMultibinding"))
+      includeDaggerAnnotations()
+    }
+
+    public fun includeKotlinInjectAnvilAnnotations() {
+      customGraphAnnotations.add(kotlinInjectAnvilPackage.classId("MergeComponent"))
+      customContributesToAnnotations.add(kotlinInjectAnvilPackage.classId("ContributesTo"))
+      customContributesBindingAnnotations.add(
+        kotlinInjectAnvilPackage.classId("ContributesBinding")
+      )
+      customGraphExtensionAnnotations.add(
+        kotlinInjectAnvilPackage.classId("ContributesSubcomponent")
+      )
+      customGraphExtensionFactoryAnnotations.add(
+        kotlinInjectAnvilPackage.classId("ContributesSubcomponent.Factory")
+      )
+      customOriginAnnotations.add(kotlinInjectAnvilPackage.child(internalName).classId("Origin"))
+      includeKotlinInjectAnnotations()
+    }
+
+    public fun build(): MetroOptions {
+      if (debug) {
+        enabledLoggers += MetroLogger.Type.entries
+      }
+      return MetroOptions(
+        debug = debug,
+        enabled = enabled,
+        reportsDestination = reportsDestination,
+        generateAssistedFactories = generateAssistedFactories,
+        enableTopLevelFunctionInjection = enableTopLevelFunctionInjection,
+        generateContributionHints = generateContributionHints,
+        generateJvmContributionHintsInFir = generateJvmContributionHintsInFir,
+        transformProvidersToPrivate = transformProvidersToPrivate,
+        shrinkUnusedBindings = shrinkUnusedBindings,
+        chunkFieldInits = chunkFieldInits,
+        statementsPerInitFun = statementsPerInitFun,
+        publicProviderSeverity = publicProviderSeverity,
+        optionalBindingBehavior = optionalBindingBehavior,
+        warnOnInjectAnnotationPlacement = warnOnInjectAnnotationPlacement,
+        interopAnnotationsNamedArgSeverity = interopAnnotationsNamedArgSeverity,
+        enabledLoggers = enabledLoggers,
+        enableDaggerRuntimeInterop = enableDaggerRuntimeInterop,
+        maxIrErrorsCount = maxIrErrorsCount,
+        customProviderTypes = customProviderTypes,
+        customLazyTypes = customLazyTypes,
+        customAssistedAnnotations = customAssistedAnnotations,
+        customAssistedFactoryAnnotations = customAssistedFactoryAnnotations,
+        customAssistedInjectAnnotations = customAssistedInjectAnnotations,
+        customBindsAnnotations = customBindsAnnotations,
+        customContributesToAnnotations = customContributesToAnnotations,
+        customContributesBindingAnnotations = customContributesBindingAnnotations,
+        customContributesIntoSetAnnotations = customContributesIntoSetAnnotations,
+        customGraphExtensionAnnotations = customGraphExtensionAnnotations,
+        customGraphExtensionFactoryAnnotations = customGraphExtensionFactoryAnnotations,
+        customElementsIntoSetAnnotations = customElementsIntoSetAnnotations,
+        customGraphAnnotations = customGraphAnnotations,
+        customGraphFactoryAnnotations = customGraphFactoryAnnotations,
+        customInjectAnnotations = customInjectAnnotations,
+        customIntoMapAnnotations = customIntoMapAnnotations,
+        customIntoSetAnnotations = customIntoSetAnnotations,
+        customMapKeyAnnotations = customMapKeyAnnotations,
+        customMultibindsAnnotations = customMultibindsAnnotations,
+        customProvidesAnnotations = customProvidesAnnotations,
+        customQualifierAnnotations = customQualifierAnnotations,
+        customScopeAnnotations = customScopeAnnotations,
+        customBindingContainerAnnotations = customBindingContainerAnnotations,
+        enableDaggerAnvilInterop = enableDaggerAnvilInterop,
+        enableFullBindingGraphValidation = enableFullBindingGraphValidation,
+        enableGraphImplClassAsReturnType = enableGraphImplClassAsReturnType,
+        customOriginAnnotations = customOriginAnnotations,
+        customOptionalBindingAnnotations = customOptionalBindingAnnotations,
+        contributesAsInject = contributesAsInject,
+      )
+    }
+
+    private companion object {
+      val javaxInjectPackage = FqName("javax.inject")
+      val jakartaInjectPackage = FqName("jakarta.inject")
+      val daggerPackage = FqName("dagger")
+      val daggerAssistedPackage = FqName("dagger.assisted")
+      val daggerMultibindingsPackage = FqName("dagger.multibindings")
+      val kotlinInjectPackage = FqName("me.tatarka.inject.annotations")
+      val anvilPackage = FqName("com.squareup.anvil.annotations")
+      val kotlinInjectAnvilPackage = FqName("software.amazon.lastmile.kotlin.inject.anvil")
+      val internalName = Name.identifier("internal")
+    }
+  }
+
+  public companion object {
+    public fun buildOptions(body: Builder.() -> Unit): MetroOptions {
+      return Builder().apply(body).build()
+    }
+
+    internal fun load(configuration: CompilerConfiguration): MetroOptions = buildOptions {
       for (entry in MetroOption.entries) {
         when (entry) {
-          MetroOption.DEBUG -> options = options.copy(debug = configuration.getAsBoolean(entry))
+          MetroOption.DEBUG -> debug = configuration.getAsBoolean(entry)
 
-          MetroOption.ENABLED -> options = options.copy(enabled = configuration.getAsBoolean(entry))
+          MetroOption.ENABLED -> enabled = configuration.getAsBoolean(entry)
 
           MetroOption.REPORTS_DESTINATION -> {
-            options =
-              options.copy(
-                reportsDestination =
-                  configuration.getAsString(entry).takeUnless(String::isBlank)?.let(Paths::get)
-              )
+            reportsDestination =
+              configuration.getAsString(entry).takeUnless(String::isBlank)?.let(Paths::get)
           }
 
           MetroOption.GENERATE_ASSISTED_FACTORIES ->
-            options = options.copy(generateAssistedFactories = configuration.getAsBoolean(entry))
+            generateAssistedFactories = configuration.getAsBoolean(entry)
 
           MetroOption.ENABLE_TOP_LEVEL_FUNCTION_INJECTION ->
-            options =
-              options.copy(enableTopLevelFunctionInjection = configuration.getAsBoolean(entry))
+            enableTopLevelFunctionInjection = configuration.getAsBoolean(entry)
 
           MetroOption.GENERATE_CONTRIBUTION_HINTS ->
-            options = options.copy(generateContributionHints = configuration.getAsBoolean(entry))
+            generateContributionHints = configuration.getAsBoolean(entry)
 
           MetroOption.GENERATE_JVM_CONTRIBUTION_HINTS_IN_FIR ->
-            options =
-              options.copy(generateJvmContributionHintsInFir = configuration.getAsBoolean(entry))
+            generateJvmContributionHintsInFir = configuration.getAsBoolean(entry)
 
           MetroOption.TRANSFORM_PROVIDERS_TO_PRIVATE ->
-            options = options.copy(transformProvidersToPrivate = configuration.getAsBoolean(entry))
+            transformProvidersToPrivate = configuration.getAsBoolean(entry)
 
           MetroOption.SHRINK_UNUSED_BINDINGS ->
-            options = options.copy(shrinkUnusedBindings = configuration.getAsBoolean(entry))
+            shrinkUnusedBindings = configuration.getAsBoolean(entry)
 
-          MetroOption.CHUNK_FIELD_INITS ->
-            options = options.copy(chunkFieldInits = configuration.getAsBoolean(entry))
+          MetroOption.CHUNK_FIELD_INITS -> chunkFieldInits = configuration.getAsBoolean(entry)
 
           MetroOption.STATEMENTS_PER_INIT_FUN ->
-            options = options.copy(statementsPerInitFun = configuration.getAsInt(entry))
+            statementsPerInitFun = configuration.getAsInt(entry)
 
           MetroOption.PUBLIC_PROVIDER_SEVERITY ->
-            options =
-              options.copy(
-                publicProviderSeverity =
-                  configuration.getAsString(entry).let {
-                    DiagnosticSeverity.valueOf(it.uppercase(Locale.US))
-                  }
-              )
+            publicProviderSeverity =
+              configuration.getAsString(entry).let {
+                DiagnosticSeverity.valueOf(it.uppercase(Locale.US))
+              }
 
           MetroOption.WARN_ON_INJECT_ANNOTATION_PLACEMENT ->
-            options =
-              options.copy(warnOnInjectAnnotationPlacement = configuration.getAsBoolean(entry))
+            warnOnInjectAnnotationPlacement = configuration.getAsBoolean(entry)
 
           MetroOption.INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY ->
-            options =
-              options.copy(
-                interopAnnotationsNamedArgSeverity =
-                  configuration.getAsString(entry).let {
-                    DiagnosticSeverity.valueOf(it.uppercase(Locale.US))
-                  }
-              )
+            interopAnnotationsNamedArgSeverity =
+              configuration.getAsString(entry).let {
+                DiagnosticSeverity.valueOf(it.uppercase(Locale.US))
+              }
 
           MetroOption.LOGGING -> {
             enabledLoggers +=
               configuration.get(entry.raw.key)?.expectAs<Set<MetroLogger.Type>>().orEmpty()
           }
 
-          MetroOption.ENABLE_DAGGER_RUNTIME_INTEROP -> {
-            options = options.copy(enableDaggerRuntimeInterop = configuration.getAsBoolean(entry))
-          }
+          MetroOption.ENABLE_DAGGER_RUNTIME_INTEROP ->
+            enableDaggerRuntimeInterop = configuration.getAsBoolean(entry)
 
-          MetroOption.MAX_IR_ERRORS_COUNT -> {
-            options = options.copy(maxIrErrorsCount = configuration.getAsInt(entry))
-          }
+          MetroOption.MAX_IR_ERRORS_COUNT -> maxIrErrorsCount = configuration.getAsInt(entry)
 
           // Intrinsics
           MetroOption.CUSTOM_PROVIDER -> customProviderTypes.addAll(configuration.getAsSet(entry))
@@ -845,70 +1092,47 @@ public data class MetroOptions(
           MetroOption.CUSTOM_CONTRIBUTES_INTO_SET ->
             customContributesIntoSetAnnotations.addAll(configuration.getAsSet(entry))
 
-          MetroOption.ENABLE_DAGGER_ANVIL_INTEROP -> {
-            options = options.copy(enableDaggerAnvilInterop = configuration.getAsBoolean(entry))
-          }
-          MetroOption.ENABLE_FULL_BINDING_GRAPH_VALIDATION -> {
-            options =
-              options.copy(enableFullBindingGraphValidation = configuration.getAsBoolean(entry))
-          }
-          MetroOption.ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE -> {
-            options =
-              options.copy(enableGraphImplClassAsReturnType = configuration.getAsBoolean(entry))
-          }
+          MetroOption.ENABLE_DAGGER_ANVIL_INTEROP ->
+            enableDaggerAnvilInterop = configuration.getAsBoolean(entry)
+
+          MetroOption.ENABLE_FULL_BINDING_GRAPH_VALIDATION ->
+            enableFullBindingGraphValidation = configuration.getAsBoolean(entry)
+
+          MetroOption.ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE ->
+            enableGraphImplClassAsReturnType = configuration.getAsBoolean(entry)
+
           MetroOption.CUSTOM_ORIGIN -> customOriginAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_OPTIONAL_BINDING ->
             customOptionalBindingAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.OPTIONAL_BINDING_BEHAVIOR -> {
-            options =
-              options.copy(
-                optionalBindingBehavior =
-                  configuration.getAsString(entry).let {
-                    OptionalBindingBehavior.valueOf(it.uppercase(Locale.US))
-                  }
-              )
+          MetroOption.OPTIONAL_BINDING_BEHAVIOR ->
+            optionalBindingBehavior =
+              configuration.getAsString(entry).let {
+                OptionalBindingBehavior.valueOf(it.uppercase(Locale.US))
+              }
+
+          MetroOption.CONTRIBUTES_AS_INJECT ->
+            contributesAsInject = configuration.getAsBoolean(entry)
+
+          MetroOption.INTEROP_INCLUDE_JAVAX_ANNOTATIONS -> {
+            if (configuration.getAsBoolean(entry)) includeJavaxAnnotations()
           }
-          MetroOption.CONTRIBUTES_AS_INJECT -> {
-            options = options.copy(contributesAsInject = configuration.getAsBoolean(entry))
+          MetroOption.INTEROP_INCLUDE_JAKARTA_ANNOTATIONS -> {
+            if (configuration.getAsBoolean(entry)) includeJakartaAnnotations()
+          }
+          MetroOption.INTEROP_INCLUDE_DAGGER_ANNOTATIONS -> {
+            if (configuration.getAsBoolean(entry)) includeDaggerAnnotations()
+          }
+          MetroOption.INTEROP_INCLUDE_KOTLIN_INJECT_ANNOTATIONS -> {
+            if (configuration.getAsBoolean(entry)) includeKotlinInjectAnnotations()
+          }
+          MetroOption.INTEROP_INCLUDE_ANVIL_ANNOTATIONS -> {
+            if (configuration.getAsBoolean(entry)) includeAnvilAnnotations()
+          }
+          MetroOption.INTEROP_INCLUDE_KOTLIN_INJECT_ANVIL_ANNOTATIONS -> {
+            if (configuration.getAsBoolean(entry)) includeKotlinInjectAnvilAnnotations()
           }
         }
       }
-
-      if (options.debug) {
-        enabledLoggers += MetroLogger.Type.entries
-      }
-      options = options.copy(enabledLoggers = enabledLoggers)
-
-      options =
-        options.copy(
-          customProviderTypes = customProviderTypes,
-          customLazyTypes = customLazyTypes,
-          customAssistedAnnotations = customAssistedAnnotations,
-          customAssistedFactoryAnnotations = customAssistedFactoryAnnotations,
-          customAssistedInjectAnnotations = customAssistedInjectAnnotations,
-          customBindsAnnotations = customBindsAnnotations,
-          customContributesToAnnotations = customContributesToAnnotations,
-          customContributesBindingAnnotations = customContributesBindingAnnotations,
-          customGraphExtensionAnnotations = customGraphExtensionAnnotations,
-          customGraphExtensionFactoryAnnotations = customGraphExtensionFactoryAnnotations,
-          customElementsIntoSetAnnotations = customElementsIntoSetAnnotations,
-          customGraphAnnotations = customGraphAnnotations,
-          customGraphFactoryAnnotations = customGraphFactoryAnnotations,
-          customInjectAnnotations = customInjectAnnotations,
-          customIntoMapAnnotations = customIntoMapAnnotations,
-          customIntoSetAnnotations = customIntoSetAnnotations,
-          customMapKeyAnnotations = customMapKeyAnnotations,
-          customMultibindsAnnotations = customMultibindsAnnotations,
-          customProvidesAnnotations = customProvidesAnnotations,
-          customQualifierAnnotations = customQualifierAnnotations,
-          customScopeAnnotations = customScopeAnnotations,
-          customBindingContainerAnnotations = customBindingContainerAnnotations,
-          customContributesIntoSetAnnotations = customContributesIntoSetAnnotations,
-          customOriginAnnotations = customOriginAnnotations,
-          customOptionalBindingAnnotations = customOptionalBindingAnnotations,
-        )
-
-      return options
     }
 
     private fun CompilerConfiguration.getAsString(option: MetroOption): String {

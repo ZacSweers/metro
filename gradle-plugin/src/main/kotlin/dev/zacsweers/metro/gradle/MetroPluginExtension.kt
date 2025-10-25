@@ -213,6 +213,14 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
   public abstract class InteropHandler @Inject constructor(objects: ObjectFactory) {
     public abstract val enableDaggerRuntimeInterop: Property<Boolean>
 
+    // Interop mode flags
+    public val includeJavaxAnnotations: Property<Boolean> = objects.property(Boolean::class.java).convention(false)
+    public val includeJakartaAnnotations: Property<Boolean> = objects.property(Boolean::class.java).convention(false)
+    public val includeDaggerAnnotations: Property<Boolean> = objects.property(Boolean::class.java).convention(false)
+    public val includeKotlinInjectAnnotations: Property<Boolean> = objects.property(Boolean::class.java).convention(false)
+    public val includeAnvilAnnotations: Property<Boolean> = objects.property(Boolean::class.java).convention(false)
+    public val includeKotlinInjectAnvilAnnotations: Property<Boolean> = objects.property(Boolean::class.java).convention(false)
+
     // Intrinsics
     public val provider: SetProperty<String> = objects.setProperty(String::class.java)
     public val lazy: SetProperty<String> = objects.setProperty(String::class.java)
@@ -253,99 +261,32 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
 
     /** Includes Javax annotations support. */
     public fun includeJavax() {
-      provider.add("javax/inject/Provider")
-      inject.add("javax/inject/Inject")
-      qualifier.add("javax/inject/Qualifier")
-      scope.add("javax/inject/Scope")
+      includeJavaxAnnotations.set(true)
     }
 
     /** Includes Jakarta annotations support. */
     public fun includeJakarta() {
-      provider.add("jakarta/inject/Provider")
-      inject.add("jakarta/inject/Inject")
-      qualifier.add("jakarta/inject/Qualifier")
-      scope.add("jakarta/inject/Scope")
+      includeJakartaAnnotations.set(true)
     }
 
     /** Includes Dagger annotations support. */
-    @JvmOverloads
-    public fun includeDagger(includeJavax: Boolean = true, includeJakarta: Boolean = true) {
-      enableDaggerRuntimeInterop.set(true)
-
-      assisted.add("dagger/assisted/Assisted")
-      assistedFactory.add("dagger/assisted/AssistedFactory")
-      assistedInject.add("dagger/assisted/AssistedInject")
-      binds.add("dagger/Binds")
-      elementsIntoSet.add("dagger/multibindings/ElementsIntoSet")
-      dependencyGraph.add("dagger/Component")
-      dependencyGraphFactory.add("dagger/Component.Factory")
-      graphExtension.add("dagger/Subcomponent")
-      graphExtensionFactory.add("dagger/Subcomponent.Factory")
-      intoMap.add("dagger/multibindings/IntoMap")
-      intoSet.add("dagger/multibindings/IntoSet")
-      lazy.addAll("dagger/Lazy")
-      mapKey.add("dagger/MapKey")
-      multibinds.add("dagger/multibindings/Multibinds")
-      provides.addAll("dagger/Provides", "dagger/BindsInstance")
-      provider.add("dagger/internal/Provider")
-      bindingContainer.add("dagger/Module")
-
-      if (!includeJavax && !includeJakarta) {
-        System.err.println(
-          "At least one of metro.interop.includeDagger.includeJavax or metro.interop.includeDagger.includeJakarta should be true"
-        )
-      }
-      if (includeJavax) {
-        includeJavax()
-      }
-      if (includeJakarta) {
-        includeJakarta()
-      }
+    public fun includeDagger() {
+      includeDaggerAnnotations.set(true)
     }
 
     /** Includes kotlin-inject annotations support. */
     public fun includeKotlinInject() {
-      inject.add("me/tatarka/inject/annotations/Inject")
-      assistedFactory.add("me/tatarka/inject/annotations/AssistedFactory")
-      qualifier.add("me/tatarka/inject/annotations/Qualifier")
-      scope.add("me/tatarka/inject/annotations/Scope")
-      assisted.add("me/tatarka/inject/annotations/Assisted")
-      dependencyGraph.add("me/tatarka/inject/annotations/Component")
-      intoMap.add("me/tatarka/inject/annotations/IntoMap")
-      intoSet.add("me/tatarka/inject/annotations/IntoSet")
-      provides.add("me/tatarka/inject/annotations/Provides")
+      includeKotlinInjectAnnotations.set(true)
     }
 
-    @JvmOverloads
-    public fun includeAnvil(
-      includeDaggerAnvil: Boolean = true,
-      includeKotlinInjectAnvil: Boolean = true,
-    ) {
-      check(includeDaggerAnvil || includeKotlinInjectAnvil) {
-        "At least one of includeDaggerAnvil or includeKotlinInjectAnvil must be true"
-      }
-      enableDaggerAnvilInterop.set(includeDaggerAnvil)
-      if (includeDaggerAnvil) {
-        dependencyGraph.add("com/squareup/anvil/annotations/MergeComponent")
-        dependencyGraphFactory.add("com/squareup/anvil/annotations/MergeComponent.Factory")
-        graphExtension.add("com/squareup/anvil/annotations/MergeSubcomponent")
-        // Anvil for Dagger doesn't have MergeSubcomponent.Factory
-        contributesTo.add("com/squareup/anvil/annotations/ContributesTo")
-        contributesBinding.add("com/squareup/anvil/annotations/ContributesBinding")
-        contributesIntoSet.add("com/squareup/anvil/annotations/ContributesMultibinding")
-        graphExtension.add("com/squareup/anvil/annotations/ContributesSubcomponent")
-        // Anvil for Dagger doesn't have ContributesSubcomponent.Factory
-      }
-      if (includeKotlinInjectAnvil) {
-        dependencyGraph.add("software/amazon/lastmile/kotlin/inject/anvil/MergeComponent")
-        contributesTo.add("software/amazon/lastmile/kotlin/inject/anvil/ContributesTo")
-        contributesBinding.add("software/amazon/lastmile/kotlin/inject/anvil/ContributesBinding")
-        graphExtension.add("software/amazon/lastmile/kotlin/inject/anvil/ContributesSubcomponent")
-        graphExtensionFactory.add(
-          "software/amazon/lastmile/kotlin/inject/anvil/ContributesSubcomponent.Factory"
-        )
-        origin.add("software/amazon/lastmile/kotlin/inject/anvil/internal/Origin")
-      }
+    /** Includes Anvil annotations support. */
+    public fun includeAnvil() {
+      includeAnvilAnnotations.set(true)
+    }
+
+    /** Includes kotlin-inject Anvil annotations support. */
+    public fun includeKotlinInjectAnvil() {
+      includeKotlinInjectAnvilAnnotations.set(true)
     }
   }
 }

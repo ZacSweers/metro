@@ -334,6 +334,12 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-optional-binding", value = it.joinToString(":")) }
             ?.let(::add)
+          add(lazyOption("interop-include-javax-annotations", includeJavaxAnnotations))
+          add(lazyOption("interop-include-jakarta-annotations", includeJakartaAnnotations))
+          add(lazyOption("interop-include-dagger-annotations", includeDaggerAnnotations))
+          add(lazyOption("interop-include-kotlin-inject-annotations", includeKotlinInjectAnnotations))
+          add(lazyOption("interop-include-anvil-annotations", includeAnvilAnnotations))
+          add(lazyOption("interop-include-kotlin-inject-anvil-annotations", includeKotlinInjectAnvilAnnotations))
           add(
             SubpluginOption(
               "enable-dagger-anvil-interop",
