@@ -1,7 +1,6 @@
-// ENABLE_DAGGER_KSP
-// ENABLE_DAGGER_INTEROP
-
 // MODULE: lib
+// ENABLE_DAGGER_KSP
+
 // FILE: Dependency.java
 public interface Dependency {
 }
@@ -28,6 +27,8 @@ public class ExampleClass {
 }
 
 // MODULE: main(lib)
+// ENABLE_DAGGER_INTEROP
+
 // FILE: DependencyImpl.kt
 @ContributesBinding(AppScope::class)
 class DependencyImpl @Inject constructor() : Dependency

@@ -1,6 +1,7 @@
-// ENABLE_ANVIL_KSP
-
 // MODULE: lib
+// ENABLE_ANVIL_KSP
+// DISABLE_METRO
+
 // FILE: Dependency.java
 public interface Dependency {
 }
@@ -30,6 +31,9 @@ class ExampleClass {
 }
 
 // MODULE: main(lib)
+// WITH_ANVIL
+// ENABLE_DAGGER_INTEROP
+
 // FILE: DependencyImpl.kt
 @ContributesBinding(AppScope::class)
 class DependencyImpl @Inject constructor() : Dependency
@@ -52,8 +56,9 @@ fun box(): String {
 
   graph.inject(example)
   assertNotNull(example.dependency)
-  assertNotNull(example.setterDep)
-  assertNotNull(example.setterDep2)
-  assertEquals("Hello", example.setterDep3)
+  // TODO anvil (and anvil-ksp) don't support setter injection
+//  assertNotNull(example.setterDep)
+//  assertNotNull(example.setterDep2)
+//  assertEquals("Hello", example.setterDep3)
   return "OK"
 }
