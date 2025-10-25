@@ -1,6 +1,10 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 import org.gradle.kotlin.dsl.sourceSets
+import org.gradle.kotlin.dsl.withType
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget.Companion.fromTarget
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
   alias(libs.plugins.kotlin.jvm)
@@ -11,6 +15,14 @@ plugins {
 sourceSets {
   register("generator220")
   register("generator230")
+}
+
+tasks.withType<KotlinCompile>().configureEach {
+  compilerOptions { jvmTarget.set(libs.versions.compilerJvmTarget.map(JvmTarget::fromTarget)) }
+}
+
+tasks.withType<JavaCompile>().configureEach {
+  options.release.convention(libs.versions.compilerJvmTarget.map(String::toInt))
 }
 
 val testCompilerVersionProvider = providers.gradleProperty("metro.testCompilerVersion")

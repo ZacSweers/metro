@@ -176,7 +176,7 @@ subprojects {
       toolchain { languageVersion.set(libs.versions.jdk.map(JavaLanguageVersion::of)) }
     }
     tasks.withType<JavaCompile>().configureEach {
-      options.release.set(libs.versions.jvmTarget.map(String::toInt))
+      options.release.convention(libs.versions.jvmTarget.map(String::toInt))
     }
   }
 
@@ -185,7 +185,7 @@ subprojects {
       compilerOptions {
         progressiveMode.set(true)
         if (this is KotlinJvmCompilerOptions) {
-          jvmTarget.set(libs.versions.jvmTarget.map(JvmTarget::fromTarget))
+          jvmTarget.convention(libs.versions.jvmTarget.map(JvmTarget::fromTarget))
           freeCompilerArgs.addAll("-jvm-default=no-compatibility")
         }
       }

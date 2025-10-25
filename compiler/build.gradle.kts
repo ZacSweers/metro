@@ -1,6 +1,8 @@
 // Copyright (C) 2024 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
   alias(libs.plugins.kotlin.jvm)
@@ -15,7 +17,15 @@ plugins {
 
 kotlin {
   compilerOptions {
-    freeCompilerArgs.add("-Xcontext-parameters")
+    freeCompilerArgs.addAll(
+      "-Xcontext-parameters",
+      // https://kotlinlang.org/docs/whatsnew2220.html#data-flow-based-exhaustiveness-checks-for-when-expressions
+      "-Xdata-flow-based-exhaustiveness",
+      // https://kotlinlang.org/docs/whatsnew22.html#preview-of-context-sensitive-resolution
+      "-Xcontext-sensitive-resolution",
+      // https://kotlinlang.org/docs/whatsnew2220.html#kotlin-jvm-support-invokedynamic-with-when-expressions
+      "-Xwhen-expressions=indy",
+    )
     optIn.addAll(
       "dev.drewhamilton.poko.SkipSupport",
       "kotlin.contracts.ExperimentalContracts",
@@ -23,6 +33,14 @@ kotlin {
       "org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI",
     )
   }
+}
+
+tasks.withType<KotlinCompile>().configureEach {
+  compilerOptions { jvmTarget.set(libs.versions.compilerJvmTarget.map(JvmTarget::fromTarget)) }
+}
+
+tasks.withType<JavaCompile>().configureEach {
+  options.release.convention(libs.versions.compilerJvmTarget.map(String::toInt))
 }
 
 buildConfig {
