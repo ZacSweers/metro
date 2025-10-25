@@ -18,7 +18,7 @@
         <link rel="prev" href="../debugging/">
       
       
-        <link rel="next" href="../adoption/">
+        <link rel="next" href="../stability/">
       
       
       <link rel="icon" href="../site-assets/img/favicon.ico">
@@ -823,6 +823,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#what-about-metros-stability" class="md-nav__link">
+    <span class="md-ellipsis">
+      What about Metro&rsquo;s stability?
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -838,12 +847,12 @@
   
   
     <li class="md-nav__item">
-      <a href="../adoption/" class="md-nav__link">
+      <a href="../stability/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    Adoption Strategies
+    Stability
     
   </span>
   
@@ -866,6 +875,28 @@
   
   <span class="md-ellipsis">
     FAQ
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adoption/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Adoption Strategies
     
   </span>
   
@@ -1042,6 +1073,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#what-about-metros-stability" class="md-nav__link">
+    <span class="md-ellipsis">
+      What about Metro&rsquo;s stability?
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1063,7 +1103,7 @@
 
 <h1 id="kotlin-compatibility">Kotlin Compatibility<a class="headerlink" href="#kotlin-compatibility" title="Permanent link">&para;</a></h1>
 <p>The Kotlin compiler plugin API is not a stable API, so not every version of Metro will work with every version of the Kotlin compiler.</p>
-<p>Starting with Metro <code>0.6.9</code>, Metro tries to support forward compatibility on a best-effort basis. Usually, it&rsquo;s <code>N+.2</code> (so a Metro version built against Kotlin <code>2.3.0</code> will try to support up to <code>2.3.20</code>) Some releases may introduce prohibitively difficult breaking changes that require companion release, so check Metro&rsquo;s open PRs for one targeting that Kotlin version for details. There is a tested versions table at the bottom of this page that is updated with each Metro release.</p>
+<p>Starting with Metro <code>0.6.9</code>, Metro tries to support forward compatibility on a best-effort basis. Usually, it&rsquo;s <code>N+.2</code> (so a Metro version built against Kotlin <code>2.3.0</code> will try to support up to <code>2.3.20</code>.</p>
 <table>
 <thead>
 <tr>
@@ -1102,6 +1142,7 @@
 </tr>
 </tbody>
 </table>
+<p>Some releases may introduce prohibitively difficult breaking changes that require companion release, so check Metro&rsquo;s open PRs for one targeting that Kotlin version for details. There is a tested versions table at the bottom of this page that is updated with each Metro release.</p>
 <h2 id="tested-versions">Tested Versions<a class="headerlink" href="#tested-versions" title="Permanent link">&para;</a></h2>
 <p><a href="https://github.com/ZacSweers/metro/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/ZacSweers/metro/actions/workflows/ci.yml/badge.svg" /></a></p>
 <p>The following Kotlin versions are tested via CI:</p>
@@ -1127,6 +1168,8 @@
 <p class="admonition-title">Note</p>
 <p>Versions without dedicated compiler-compat modules will use the nearest available implementation <em>below</em> that version. See <a href="https://github.com/ZacSweers/metro/blob/main/compiler-compat/version-aliases.txt"><code>compiler-compat/version-aliases.txt</code></a> for the full list.</p>
 </div>
+<h2 id="what-about-metros-stability">What about Metro&rsquo;s stability?<a class="headerlink" href="#what-about-metros-stability" title="Permanent link">&para;</a></h2>
+<p>See the <a href="../stability/">stability docs</a>.</p>
 
 
 

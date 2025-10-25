@@ -15,10 +15,10 @@
         <link rel="canonical" href="https://zacsweers.github.io/metro/0.8.0-SNAPSHOT/faq/">
       
       
-        <link rel="prev" href="../adoption/">
+        <link rel="prev" href="../stability/">
       
       
-        <link rel="next" href="../samples/">
+        <link rel="next" href="../adoption/">
       
       
       <link rel="icon" href="../site-assets/img/favicon.ico">
@@ -787,12 +787,12 @@
   
   
     <li class="md-nav__item">
-      <a href="../adoption/" class="md-nav__link">
+      <a href="../stability/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    Adoption Strategies
+    Stability
     
   </span>
   
@@ -868,9 +868,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#will-metro-add-support-for-hilt-features-or-hilt-interop" class="md-nav__link">
+  <a href="#metro-is-not-a-stable-api-is-metro-safe-to-use" class="md-nav__link">
     <span class="md-ellipsis">
-      Will Metro add support for Hilt features or Hilt interop?
+      Metro is not a stable API, is Metro safe to use?
     </span>
   </a>
   
@@ -895,6 +895,25 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#hilt-faq" class="md-nav__link">
+    <span class="md-ellipsis">
+      Hilt FAQ
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Hilt FAQ">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#will-metro-add-support-for-hilt-features-or-hilt-interop" class="md-nav__link">
+    <span class="md-ellipsis">
+      Will Metro add support for Hilt features or Hilt interop?
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#how-can-i-replicate-hilts-hiltandroidtest" class="md-nav__link">
     <span class="md-ellipsis">
       How can I replicate Hilt&rsquo;s @HiltAndroidTest?
@@ -902,11 +921,38 @@
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
     </ul>
   
 </nav>
       
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adoption/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Adoption Strategies
+    
+  </span>
+  
+
+      </a>
     </li>
   
 
@@ -1079,9 +1125,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#will-metro-add-support-for-hilt-features-or-hilt-interop" class="md-nav__link">
+  <a href="#metro-is-not-a-stable-api-is-metro-safe-to-use" class="md-nav__link">
     <span class="md-ellipsis">
-      Will Metro add support for Hilt features or Hilt interop?
+      Metro is not a stable API, is Metro safe to use?
     </span>
   </a>
   
@@ -1106,11 +1152,35 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#hilt-faq" class="md-nav__link">
+    <span class="md-ellipsis">
+      Hilt FAQ
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Hilt FAQ">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#will-metro-add-support-for-hilt-features-or-hilt-interop" class="md-nav__link">
+    <span class="md-ellipsis">
+      Will Metro add support for Hilt features or Hilt interop?
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#how-can-i-replicate-hilts-hiltandroidtest" class="md-nav__link">
     <span class="md-ellipsis">
       How can I replicate Hilt&rsquo;s @HiltAndroidTest?
     </span>
   </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1136,23 +1206,11 @@
 <h1 id="faq">FAQ<a class="headerlink" href="#faq" title="Permanent link">&para;</a></h1>
 <p>This is a list of frequently asked questions about Metro. Consider also searching the issue tracker and discussions section of the Metro repo for anything not covered here!</p>
 <h3 id="compiler-plugins-are-not-a-stable-api-is-metro-safe-to-use"><strong>Compiler plugins are not a stable API, is Metro safe to use?</strong><a class="headerlink" href="#compiler-plugins-are-not-a-stable-api-is-metro-safe-to-use" title="Permanent link">&para;</a></h3>
-<p>This is a fair question! Metro will often require new companion releases for each Kotlin release. This is a part of life when using compiler plugins. That said, Kotlin does extensive beta/RC cycles that Metro will test against and turn around new releases within a day or two barring any unexpected circumstances (or vacation!)</p>
-<p>The harder issue is going to be IDE support, as the Kotlin IDE plugin branches independently from regular Kotlin releases. Right now the answer is &ldquo;YMMV&rdquo;, but we&rsquo;re exploring a couple solutions for this to ensure better stability.</p>
-<h3 id="will-metro-add-support-for-hilt-features-or-hilt-interop"><strong>Will Metro add support for Hilt features or Hilt interop?</strong><a class="headerlink" href="#will-metro-add-support-for-hilt-features-or-hilt-interop" title="Permanent link">&para;</a></h3>
-<p>Metro is largely inspired by Dagger and Anvil, but not Hilt. Hilt works in different ways and has different goals. Hilt is largely focused around supporting android components and relies heavily on subcomponents to achieve this.</p>
-<p>Some features overlap but just work differently in Metro:</p>
-<ul>
-<li>Instead of <code>@UninstallModules</code> and <code>@TestInstallIn</code>, Metro graphs can exclude aggregations and contributed bindings can replace other bindings.</li>
-<li>Hilt has support for injecting <code>ViewModel</code>s, but this is entirely doable without Hilt as well by just creating a multibinding. See the <a href="https://github.com/ZacSweers/metro/tree/main/samples/android-app">android-app</a> sample for an example.</li>
-<li>Hilt has support for aggregation with <code>@InstallIn</code>, Metro uses <code>@Contributes*</code> annotations.</li>
-</ul>
-<p>Some features are focused around injecting Android framework components. There are two arguably better solutions to this and one not-better solution.</p>
-<ol>
-<li>(Not better) Expose injector functions on a graph to do member injection directly from the graph.</li>
-<li>(Better) Constructor-inject these types using <code>AppComponentFactory</code>. This does require minSdk 28. When Hilt was first released in 2020, this was a relatively new API. However, 2020 was a long time ago! minSdk 28+ is much more common today, making this much more feasible of a solution.</li>
-<li>(Best) Use an app architecture that better abstracts away the surrounding Android framework components, making them solely entry points.</li>
-</ol>
-<p>The rest of Hilt&rsquo;s features focus on gluing these pieces together and also supporting Java (which Metro doesn&rsquo;t support).</p>
+<p>This is a fair question! Often times, compiler plugins require new companion releases for each Kotlin release. This is a part of life when using compiler plugins.</p>
+<p>Metro takes a slightly different approach to this and tries to support forward compatibility on a best-effort basis. Usually, it&rsquo;s <code>N+.2</code> (so a Metro version built against Kotlin <code>2.3.0</code> will try to support up to <code>2.3.20</code>). This allows Metro to support a reasonable range of Kotlin releases across compiler and IDE versions. See the <a href="../compatibility/">compatibility docs</a> for more details.</p>
+<h3 id="metro-is-not-a-stable-api-is-metro-safe-to-use"><strong>Metro is not a stable API, is Metro safe to use?</strong><a class="headerlink" href="#metro-is-not-a-stable-api-is-metro-safe-to-use" title="Permanent link">&para;</a></h3>
+<p>Yes, Metro is <em>functionally</em> stable and ready for production use. Its runtime and Gradle plugin APIs are not yet <em>stabilized</em>, which is not the same as being unstable for use</p>
+<p>See the <a href="../stability/">stability docs</a> for more details.</p>
 <h3 id="why-doesnt-metro-support-reusable"><strong>Why doesn&rsquo;t Metro support <code>@Reusable</code>?</strong><a class="headerlink" href="#why-doesnt-metro-support-reusable" title="Permanent link">&para;</a></h3>
 <div class="admonition tip">
 <p class="admonition-title">Some technical context</p>
@@ -1183,6 +1241,22 @@
 <li>It breaks the ability to expose <code>Map&lt;Key, Provider&lt;Value&gt;&gt;</code> unless you start manually managing <code>Provider</code> types yourself.</li>
 <li>You allocate and throw away a <code>Pair</code> instance each time it&rsquo;s called.</li>
 </ul>
+<h2 id="hilt-faq">Hilt FAQ<a class="headerlink" href="#hilt-faq" title="Permanent link">&para;</a></h2>
+<h3 id="will-metro-add-support-for-hilt-features-or-hilt-interop"><strong>Will Metro add support for Hilt features or Hilt interop?</strong><a class="headerlink" href="#will-metro-add-support-for-hilt-features-or-hilt-interop" title="Permanent link">&para;</a></h3>
+<p>Metro is largely inspired by Dagger and Anvil, but not Hilt. Hilt works in different ways and has different goals. Hilt is largely focused around supporting android components and relies heavily on subcomponents to achieve this.</p>
+<p>Some features overlap but just work differently in Metro:</p>
+<ul>
+<li>Instead of <code>@UninstallModules</code> and <code>@TestInstallIn</code>, Metro graphs can exclude aggregations and contributed bindings can replace other bindings.</li>
+<li>Hilt has support for injecting <code>ViewModel</code>s, but this is entirely doable without Hilt as well by just creating a multibinding. See the <a href="https://github.com/ZacSweers/metro/tree/main/samples/android-app">android-app</a> sample for an example.</li>
+<li>Hilt has support for aggregation with <code>@InstallIn</code>, Metro uses <code>@Contributes*</code> annotations.</li>
+</ul>
+<p>Some features are focused around injecting Android framework components. There are two arguably better solutions to this and one not-better solution.</p>
+<ol>
+<li>(Not better) Expose injector functions on a graph to do member injection directly from the graph.</li>
+<li>(Better) Constructor-inject these types using <code>AppComponentFactory</code>. This does require minSdk 28. When Hilt was first released in 2020, this was a relatively new API. However, 2020 was a long time ago! minSdk 28+ is much more common today, making this much more feasible of a solution.</li>
+<li>(Best) Use an app architecture that better abstracts away the surrounding Android framework components, making them solely entry points.</li>
+</ol>
+<p>The rest of Hilt&rsquo;s features focus on gluing these pieces together and also supporting Java (which Metro doesn&rsquo;t support).</p>
 <h3 id="how-can-i-replicate-hilts-hiltandroidtest">How can I replicate Hilt&rsquo;s <code>@HiltAndroidTest</code>?<a class="headerlink" href="#how-can-i-replicate-hilts-hiltandroidtest" title="Permanent link">&para;</a></h3>
 <div class="admonition tip">
 <p class="admonition-title">Some technical context</p>

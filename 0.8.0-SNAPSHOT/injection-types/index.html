@@ -948,12 +948,12 @@
   
   
     <li class="md-nav__item">
-      <a href="../adoption/" class="md-nav__link">
+      <a href="../stability/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    Adoption Strategies
+    Stability
     
   </span>
   
@@ -976,6 +976,28 @@
   
   <span class="md-ellipsis">
     FAQ
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adoption/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Adoption Strategies
     
   </span>
   
@@ -1343,8 +1365,7 @@ Metro will automatically generate a default factory as a nested class within the
 </code></pre></div>
 <p>If a nested class called <code>Factory</code> is already present, Metro will do nothing.</p>
 <h3 id="why-opt-in">Why opt-in?<a class="headerlink" href="#why-opt-in" title="Permanent link">&para;</a></h3>
-<p>The main reason this is behind an opt-in option at the moment is because compiler plugin IDE<br />
-support is rudimentary at best and currently requires enabling a custom registry flag. See <a href="../installation/#ide-support">the docs for how to enable IDE support</a>.</p>
+<p>The main reason this is behind an opt-in option at the moment is because compiler plugin IDE support requires some rudimentary configuration to work. See <a href="../installation/#ide-support">the docs for how to enable IDE support</a>.</p>
 <p>Because of this, it&rsquo;s likely better for now to just hand-write the equivalent class that Metro generates. If you still wish to proceed with using this, it can be enabled via the Gradle DSL.</p>
 <div class="highlight"><pre><span></span><code>metro {
   generateAssistedFactories.set(true)
@@ -1543,9 +1564,12 @@ support is rudimentary at best and currently requires enabling a custom registry
 </div>
 <h3 id="why-opt-in_1">Why opt-in?<a class="headerlink" href="#why-opt-in_1" title="Permanent link">&para;</a></h3>
 <p>There are two reasons this is behind an opt-in option at the moment.</p>
+<p>There are three reasons this is behind an opt-in option at the moment.</p>
 <ol>
 <li>Generating top-level declarations in Kotlin compiler plugins (in FIR specifically) is not<br />
-   currently compatible with incremental compilation.</li>
+   currently compatible with incremental compilation on the JVM.</li>
+<li>Generating top-level declarations in Kotlin compiler plugins (in FIR specifically) is not<br />
+   currently compatible with non-JVM targets.</li>
 <li>IDE support is rudimentary at best and currently requires enabling a custom registry flag.<br />
    See <a href="../installation/#ide-support">the docs for how to enable IDE support</a>.</li>
 </ol>
