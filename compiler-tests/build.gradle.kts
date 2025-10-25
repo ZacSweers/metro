@@ -90,8 +90,6 @@ dependencies {
   testImplementation(libs.ksp.symbolProcessing.api)
   testImplementation(libs.classgraph)
   testImplementation(libs.dagger.compiler)
-  // TODO runtimeOnly
-  testImplementation(libs.anvil.kspCompiler)
 
   metroRuntimeClasspath(project(":runtime"))
   daggerInteropClasspath(project(":interop-dagger"))
@@ -99,6 +97,10 @@ dependencies {
   anvilRuntimeClasspath(libs.anvil.annotations.optional)
   daggerRuntimeClasspath(libs.dagger.runtime)
   kiAnvilRuntimeClasspath(libs.kotlinInject.anvil.runtime)
+
+  // Anvil KSP processors, only needs to be on the classpath at runtime since they're loaded via
+  // ServiceLoader
+  testRuntimeOnly(libs.anvil.kspCompiler)
 
   // Dependencies required to run the internal test framework.
   testRuntimeOnly(libs.kotlin.reflect)
@@ -131,6 +133,7 @@ val generateTests =
   }
 
 tasks.withType<Test> {
+  outputs.upToDateWhen { false }
   dependsOn(metroRuntimeClasspath)
   dependsOn(daggerInteropClasspath)
   inputs
