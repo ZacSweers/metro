@@ -7,7 +7,7 @@ plugins {
 
 dependencies {
   api(project(":runtime"))
-  api(project(":interop-javax"))
+  // Guice dropped javax.inject in 7.0
   api(project(":interop-jakarta"))
   api(libs.guice)
   implementation(libs.atomicfu)
