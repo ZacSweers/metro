@@ -3,13 +3,9 @@
 plugins {
   alias(libs.plugins.kotlin.jvm)
   alias(libs.plugins.mavenPublish)
-  alias(libs.plugins.testkit)
 }
 
 dependencies {
   api(project(":runtime"))
-  api(project(":interop-javax"))
-  api(project(":interop-jakarta"))
-  api(libs.dagger.runtime)
-  implementation(libs.atomicfu)
+  compileOnly(libs.dagger.runtime) // Includes jakarta.inject
 }
