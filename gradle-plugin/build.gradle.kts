@@ -74,6 +74,7 @@ dependencies {
   functionalTestImplementation(libs.testkit.truth)
   functionalTestRuntimeOnly(project(":compiler"))
   functionalTestRuntimeOnly(project(":runtime"))
+  functionalTestRuntimeOnly(project(":interop-dagger"))
 }
 
 val testCompilerVersion =
