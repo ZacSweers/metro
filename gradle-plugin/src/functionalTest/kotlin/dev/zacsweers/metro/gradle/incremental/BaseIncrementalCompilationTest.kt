@@ -5,6 +5,7 @@ package dev.zacsweers.metro.gradle.incremental
 import com.autonomousapps.kit.GradleProject
 import com.autonomousapps.kit.Source
 import com.autonomousapps.kit.Subproject
+import dev.zacsweers.metro.gradle.copy
 import java.io.File
 import org.intellij.lang.annotations.Language
 

@@ -319,10 +319,7 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
 
     /** Includes Anvil annotations support for Dagger. */
     @JvmOverloads
-    public fun includeAnvilForDagger(
-      includeJavax: Boolean = true,
-      includeJakarta: Boolean = true
-    ) {
+    public fun includeAnvilForDagger(includeJavax: Boolean = true, includeJakarta: Boolean = true) {
       enableDaggerAnvilInterop.set(true)
       includeAnvilAnnotations.set(true)
       includeDagger(includeJavax, includeJakarta)
