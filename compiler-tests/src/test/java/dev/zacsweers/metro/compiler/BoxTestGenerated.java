@@ -1300,6 +1300,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
         }
 
         @Test
+        @TestMetadata("AnotherAssistedFactoryTest.kt")
+        public void testAnotherAssistedFactoryTest() {
+          runTest("compiler-tests/src/test/data/box/interop/dagger/anvil/AnotherAssistedFactoryTest.kt");
+        }
+
+        @Test
         @TestMetadata("DaggerMergeComponentModulesAnnotationInterop.kt")
         public void testDaggerMergeComponentModulesAnnotationInterop() {
           runTest("compiler-tests/src/test/data/box/interop/dagger/anvil/DaggerMergeComponentModulesAnnotationInterop.kt");
