@@ -10,7 +10,7 @@ Changelog
 - **Enhancement**: Inline empty multibinding expressions in code gen.
 - **Enhancement**: Better detect static-ish functions in generated Kotlin factories from Dagger/Anvil interop.
 - **Enhancement**: Cache members injector binding lookups.
-- **Breaking change**: Remove `includeJavax`/`includeJakarta` options in `includeDagger()` Gradle DSL, these are now always included if Dagger is included.
+- Deprecate `includeAnvil()` Gradle DSL function in favor of more specific `includeAnvilForDagger()` and `includeAnvilForKotlinInject()` functions.
 - Move interop annotations controls to compiler. For Gradle users, there's mostly no change (other than the above). For users of any other build system, this makes it a bit easier to reuse the interop annotations logic.
 
 0.7.2

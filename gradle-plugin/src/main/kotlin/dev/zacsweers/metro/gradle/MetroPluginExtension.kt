@@ -276,8 +276,20 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     }
 
     /** Includes Dagger annotations support. */
-    public fun includeDagger() {
+    public fun includeDagger(includeJavax: Boolean = true, includeJakarta: Boolean = true) {
+      enableDaggerRuntimeInterop.set(true)
       includeDaggerAnnotations.set(true)
+      if (!includeJavax && !includeJakarta) {
+        System.err.println(
+          "At least one of metro.interop.includeDagger.includeJavax or metro.interop.includeDagger.includeJakarta should be true"
+        )
+      }
+      if (includeJavax) {
+        includeJavax()
+      }
+      if (includeJakarta) {
+        includeJakarta()
+      }
     }
 
     /** Includes kotlin-inject annotations support. */
@@ -285,7 +297,7 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
       includeKotlinInjectAnnotations.set(true)
     }
 
-    /** Includes Anvil annotations support. */
+    @Deprecated("Use one of the more specific includeAnvil*() functions instead.")
     @JvmOverloads
     public fun includeAnvil(
       includeDaggerAnvil: Boolean = true,
@@ -303,6 +315,23 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
         includeKotlinInject()
         includeKotlinInjectAnvilAnnotations.set(true)
       }
+    }
+
+    /** Includes Anvil annotations support for Dagger. */
+    @JvmOverloads
+    public fun includeAnvilForDagger(
+      includeJavax: Boolean = true,
+      includeJakarta: Boolean = true
+    ) {
+      enableDaggerAnvilInterop.set(true)
+      includeAnvilAnnotations.set(true)
+      includeDagger(includeJavax, includeJakarta)
+    }
+
+    /** Includes Anvil annotations support for kotlin-inject. */
+    public fun includeAnvilForKotlinInject() {
+      includeKotlinInject()
+      includeKotlinInjectAnvilAnnotations.set(true)
     }
   }
 }

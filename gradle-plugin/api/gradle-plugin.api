@@ -92,7 +92,13 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension$InteropHan
 	public final fun includeAnvil (Z)V
 	public final fun includeAnvil (ZZ)V
 	public static synthetic fun includeAnvil$default (Ldev/zacsweers/metro/gradle/MetroPluginExtension$InteropHandler;ZZILjava/lang/Object;)V
-	public final fun includeDagger ()V
+	public final fun includeAnvilForDagger ()V
+	public final fun includeAnvilForDagger (Z)V
+	public final fun includeAnvilForDagger (ZZ)V
+	public static synthetic fun includeAnvilForDagger$default (Ldev/zacsweers/metro/gradle/MetroPluginExtension$InteropHandler;ZZILjava/lang/Object;)V
+	public final fun includeAnvilForKotlinInject ()V
+	public final fun includeDagger (ZZ)V
+	public static synthetic fun includeDagger$default (Ldev/zacsweers/metro/gradle/MetroPluginExtension$InteropHandler;ZZILjava/lang/Object;)V
 	public final fun includeJakarta ()V
 	public final fun includeJavax ()V
 	public final fun includeKotlinInject ()V
