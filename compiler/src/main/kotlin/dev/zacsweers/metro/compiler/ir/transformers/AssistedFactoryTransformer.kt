@@ -62,18 +62,17 @@ import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
-import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.kotlinFqName
-import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.simpleFunctions
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
 
 internal class AssistedFactoryTransformer(
@@ -103,24 +102,30 @@ internal class AssistedFactoryTransformer(
       // Check if Metro generated an impl by looking at metadata
       val metadata = declaration.metroMetadata?.assisted_factory_impl
       if (metadata != null) {
-        // Metro impl exists - look for the Metro-generated impl class using the name from metadata
-        val implClassName = metadata.impl_class_name.asName()
-        val metroImplClass = declaration.nestedClasses.singleOrNull { it.name == implClassName }
+        val name = metadata.impl_class_name.asName()
+        // Metro impl data exists in metadata - generate header stub
+        // Since impl classes are generated in IR only, they won't show up in metadata,
+        // so we need to generate the header stub rather than look up a nested class
+        val samFunction = declaration.singleAbstractFunction()
 
-        if (metroImplClass != null) {
-          // Found Metro impl - use it
-          val companionObject = metroImplClass.companionObject()
-          val createFunction =
-            companionObject?.declarations?.filterIsInstance<IrSimpleFunction>()?.singleOrNull {
-              it.name.asString() == "create"
-            }
+        val implClass = generateImplClassHeader(declaration, name, isExternal = true)
 
-          if (createFunction != null) {
-            val metroImpl = AssistedFactoryImpl.Metro(createFunction)
-            implsCache[classId] = metroImpl
-            return metroImpl
-          }
-        }
+        val returnType = samFunction.returnType
+        val targetType = returnType.rawType()
+
+        // Generate companion + create() stubs
+        val companionDeclarations =
+          generateCompanionDeclarations(
+            implClass,
+            declaration,
+            targetType,
+            isExternal = true,
+            samFunction,
+          )
+
+        val metroImpl = AssistedFactoryImpl.Metro(companionDeclarations.createFunction)
+        implsCache[classId] = metroImpl
+        return metroImpl
       } else if (options.enableDaggerRuntimeInterop) {
         // Fall back to Dagger (if enabled) and Metro impl not found
         // Don't gate on Java source because Anvil may have generated this in Kotlin too
@@ -148,7 +153,7 @@ internal class AssistedFactoryTransformer(
     val samFunction = declaration.singleAbstractFunction()
 
     // Generate impl class header (same for both external and in-compilation)
-    val implClass = generateImplClassHeader(declaration, isExternal)
+    val implClass = generateImplClassHeader(declaration, name = Symbols.Names.MetroImpl, isExternal)
 
     val returnType = samFunction.returnType
     val targetType = returnType.rawType()
@@ -197,11 +202,15 @@ internal class AssistedFactoryTransformer(
     return implementation
   }
 
-  private fun generateImplClassHeader(declaration: IrClass, isExternal: Boolean): IrClass {
+  private fun generateImplClassHeader(
+    declaration: IrClass,
+    name: Name,
+    isExternal: Boolean,
+  ): IrClass {
     val implClass =
       pluginContext.irFactory
         .buildClass {
-          name = Symbols.Names.MetroImpl
+          this.name = name
           kind = ClassKind.CLASS
           visibility = DescriptorVisibilities.PUBLIC
         }
@@ -402,11 +411,7 @@ internal class AssistedFactoryTransformer(
     implClass.dumpToMetroLog()
   }
 
-  private fun writeMetadata(
-    factoryClass: IrClass,
-    implClass: IrClass,
-    samFunctionName: String,
-  ) {
+  private fun writeMetadata(factoryClass: IrClass, implClass: IrClass, samFunctionName: String) {
     if (factoryClass.isExternalParent) return
     val assistedFactoryImpl =
       AssistedFactoryImplProto(
