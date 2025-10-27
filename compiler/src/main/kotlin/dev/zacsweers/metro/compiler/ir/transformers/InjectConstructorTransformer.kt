@@ -21,6 +21,7 @@ import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.irTemporary
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
+import dev.zacsweers.metro.compiler.ir.metroMetadata
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
@@ -31,6 +32,8 @@ import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
+import dev.zacsweers.metro.compiler.proto.InjectConstructorFactoryProto
+import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import java.util.Optional
 import kotlin.jvm.optionals.getOrNull
@@ -91,59 +94,16 @@ internal class InjectConstructorTransformer(
 
     val isExternal = declaration.isExternalParent
 
-    /*
-    Implement a simple Factory class that takes all injected values as providers
+    fun targetConstructor(): IrConstructor? {
+      return previouslyFoundConstructor
+        ?: declaration.findInjectableConstructor(onlyUsePrimaryConstructor = false)
+    }
 
-    // Simple
-    class Example_Factory(private val valueProvider: Provider<String>) : Factory<Example_Factory>
+    if (isExternal) {
+      // For external: read class name from metadata and match by name
+      val metadata = declaration.metroMetadata?.inject_constructor_factory
 
-    // Generic
-    class Example_Factory<T>(private val valueProvider: Provider<T>) : Factory<Example_Factory<T>>
-    */
-    val factoryCls =
-      declaration.nestedClasses.singleOrNull {
-        val isMetroFactory = it.name == Symbols.Names.MetroFactory
-        // If not external, double check its origin
-        if (isMetroFactory && !isExternal) {
-          if (it.origin != Origins.InjectConstructorFactoryClassDeclaration) {
-            reportCompat(
-              declaration,
-              MetroDiagnostics.METRO_ERROR,
-              "Found a Metro factory declaration in ${declaration.kotlinFqName} but with an unexpected origin ${it.origin}",
-            )
-            return null
-          }
-        }
-        isMetroFactory
-      }
-
-    if (factoryCls == null) {
-      if (isExternal) {
-        // Fall back to Dagger if enabled and Metro factory not found
-        if (options.enableDaggerRuntimeInterop) {
-          val targetConstructor =
-            previouslyFoundConstructor
-              ?: declaration.findInjectableConstructor(onlyUsePrimaryConstructor = false)
-              ?: return null
-          // Look up where dagger would generate one
-          val daggerFactoryClassId = injectedClassId.generatedClass("_Factory")
-          val daggerFactoryClass = pluginContext.referenceClass(daggerFactoryClassId)?.owner
-          if (daggerFactoryClass != null) {
-            val wrapper =
-              ClassFactory.DaggerFactory(
-                metroContext,
-                daggerFactoryClass,
-                targetConstructor.parameters(),
-              )
-            generatedFactories[injectedClassId] = Optional.of(wrapper)
-            return wrapper
-          }
-        } else if (doNotErrorOnMissing) {
-          // Store a null here because it's absent
-          generatedFactories[injectedClassId] = Optional.empty()
-          return null
-        }
-
+      fun reportAndReturn(): ClassFactory? {
         val message = buildString {
           append(
             "Could not find generated factory for '${declaration.kotlinFqName}' in the upstream module where it's defined. "
@@ -156,34 +116,88 @@ internal class InjectConstructorTransformer(
         }
         reportCompat(declaration, MetroDiagnostics.METRO_ERROR, message)
         return null
-      } else if (doNotErrorOnMissing) {
-        // Store a null here because it's absent
-        generatedFactories[injectedClassId] = Optional.empty()
-        return null
-      } else {
-        reportCompilerBug(
-          "No expected factory class generated for '${declaration.kotlinFqName}'. Report this bug with a repro case at https://github.com/zacsweers/metro/issues/new"
-        )
+      }
+
+      return when {
+        metadata != null -> {
+          val factoryClassName = metadata.factory_class_name.asName()
+          val factoryCls =
+            declaration.nestedClasses.singleOrNull { it.name == factoryClassName }
+              ?: reportCompilerBug(
+                "Expected nested class '$factoryClassName' not found in '${declaration.kotlinFqName}'."
+              )
+          val parameters =
+            factoryCls.requireSimpleFunction(Symbols.StringNames.MIRROR_FUNCTION).owner.parameters()
+          val wrapper = ClassFactory.MetroFactory(factoryCls, parameters)
+          // If it's from another module, we're done!
+          // TODO this doesn't work as expected in KMP, where things compiled in common are seen
+          //  as external but no factory is found?
+          generatedFactories[injectedClassId] = Optional.of(wrapper)
+          wrapper
+        }
+
+        options.enableDaggerRuntimeInterop -> {
+          val targetConstructor =
+            targetConstructor()
+              // Not injectable if we reach here
+              // TODO is it an error if we ever hit this?
+              ?: return null
+          // Look up where dagger would generate one
+          val daggerFactoryClassId = injectedClassId.generatedClass("_Factory")
+          val daggerFactoryClass = pluginContext.referenceClass(daggerFactoryClassId)?.owner
+          if (daggerFactoryClass != null) {
+            val wrapper =
+              ClassFactory.DaggerFactory(
+                metroContext,
+                daggerFactoryClass,
+                targetConstructor.parameters(),
+              )
+            generatedFactories[injectedClassId] = Optional.of(wrapper)
+            wrapper
+          } else {
+            reportAndReturn()
+          }
+        }
+
+        doNotErrorOnMissing -> {
+          // Store an empty here because it's absent
+          generatedFactories[injectedClassId] = Optional.empty()
+          null
+        }
+
+        else -> {
+          reportAndReturn()
+        }
       }
     }
 
-    // If it's from another module, we're done!
-    // TODO this doesn't work as expected in KMP, where things compiled in common are seen as
-    //  external but no factory is found?
-    if (isExternal) {
-      val parameters =
-        factoryCls.requireSimpleFunction(Symbols.StringNames.MIRROR_FUNCTION).owner.parameters()
-      val wrapper = ClassFactory.MetroFactory(factoryCls, parameters)
-      generatedFactories[injectedClassId] = Optional.of(wrapper)
-      return wrapper
-    }
+    // For in-compilation: match by FIR-generated origin (metadata not written yet)
+    val targetConstructor =
+      targetConstructor()
+        // Not injectable if we reach here
+        ?: return null
+
+    val factoryCls =
+      declaration.nestedClasses.singleOrNull {
+        it.origin == Origins.InjectConstructorFactoryClassDeclaration
+      }
+        ?: reportCompilerBug(
+          "No expected FIR-generated factory class found for '${declaration.kotlinFqName}'."
+        )
+
+    /*
+    Implement a simple Factory class that takes all injected values as providers
+
+    // Simple
+    class Example_Factory(private val valueProvider: Provider<String>) : Factory<Example_Factory>
+
+    // Generic
+    class Example_Factory<T>(private val valueProvider: Provider<T>) : Factory<Example_Factory<T>>
+    */
 
     val injectors = membersInjectorTransformer.getOrGenerateAllInjectorsFor(declaration)
     val memberInjectParameters = injectors.flatMap { it.requiredParametersByClass.values.flatten() }
 
-    val targetConstructor =
-      previouslyFoundConstructor
-        ?: declaration.findInjectableConstructor(onlyUsePrimaryConstructor = false)!!
     val constructorParameters = targetConstructor.parameters()
     val allParameters =
       buildList {
@@ -257,9 +271,22 @@ internal class InjectConstructorTransformer(
 
     factoryCls.dumpToMetroLog()
 
+    // Write metadata to indicate Metro generated this factory
+    cacheFactoryInMetadata(declaration, factoryCls)
+
     val wrapper = ClassFactory.MetroFactory(factoryCls, mirrorFunction.parameters())
     generatedFactories[injectedClassId] = Optional.of(wrapper)
     return wrapper
+  }
+
+  private fun cacheFactoryInMetadata(targetClass: IrClass, factoryClass: IrClass) {
+    if (targetClass.isExternalParent) {
+      return
+    }
+    val factory = InjectConstructorFactoryProto(factory_class_name = factoryClass.name.asString())
+
+    // Store the metadata for this class
+    targetClass.metroMetadata = MetroMetadata(inject_constructor_factory = factory)
   }
 
   private fun implementFactoryInvokeOrGetBody(

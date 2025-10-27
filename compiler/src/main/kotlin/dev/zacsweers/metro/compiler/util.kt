@@ -134,6 +134,11 @@ internal inline fun <T> T.letIf(condition: Boolean, block: (T) -> T): T {
   return if (condition) block(this) else this
 }
 
+internal inline fun <T> T?.escapeIfNull(block: () -> Nothing): T {
+  if (this == null) block()
+  return this
+}
+
 // omit the `get-` prefix for property names starting with the *word* `is`, like `isProperty`,
 // but not for names which just start with those letters, like `issues`.
 internal val isWordPrefixRegex = "^is([^a-z].*)".toRegex()

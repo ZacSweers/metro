@@ -13,6 +13,7 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.name.ClassId
 
+// TODO cache lookups of injected_class since it's checked multiple times
 context(context: IrMetroContext)
 internal var IrClass.metroMetadata: MetroMetadata?
   get() {

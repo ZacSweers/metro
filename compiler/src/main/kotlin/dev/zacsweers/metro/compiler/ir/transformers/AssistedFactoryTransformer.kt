@@ -69,6 +69,7 @@ import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.kotlinFqName
+import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.simpleFunctions
@@ -102,11 +103,9 @@ internal class AssistedFactoryTransformer(
       // Check if Metro generated an impl by looking at metadata
       val metadata = declaration.metroMetadata?.assisted_factory_impl
       if (metadata != null) {
-        // Metro impl exists - look for the Metro-generated impl class
-        val metroImplClass =
-          declaration.declarations.filterIsInstance<IrClass>().singleOrNull {
-            it.name == Symbols.Names.MetroImpl
-          }
+        // Metro impl exists - look for the Metro-generated impl class using the name from metadata
+        val implClassName = metadata.impl_class_name.asName()
+        val metroImplClass = declaration.nestedClasses.singleOrNull { it.name == implClassName }
 
         if (metroImplClass != null) {
           // Found Metro impl - use it
@@ -123,8 +122,8 @@ internal class AssistedFactoryTransformer(
           }
         }
       } else if (options.enableDaggerRuntimeInterop) {
-        // Fall back to Dagger if enabled and Metro impl not found
-        // Don't gate on Java source because anvil may have generated this too
+        // Fall back to Dagger (if enabled) and Metro impl not found
+        // Don't gate on Java source because Anvil may have generated this in Kotlin too
         val daggerImplClassId = classId.generatedClass("_Impl")
         val daggerImplClass = pluginContext.referenceClass(daggerImplClassId)?.owner
         if (daggerImplClass != null) {
@@ -398,14 +397,22 @@ internal class AssistedFactoryTransformer(
     }
 
     // Write metadata to indicate Metro generated this impl
-    cacheAssistedFactoryInMetadata(declaration, samFunction.name.asString())
+    writeMetadata(declaration, implClass, samFunction.name.asString())
 
     implClass.dumpToMetroLog()
   }
 
-  private fun cacheAssistedFactoryInMetadata(factoryClass: IrClass, samFunctionName: String) {
+  private fun writeMetadata(
+    factoryClass: IrClass,
+    implClass: IrClass,
+    samFunctionName: String,
+  ) {
     if (factoryClass.isExternalParent) return
-    val assistedFactoryImpl = AssistedFactoryImplProto(sam_function_name = samFunctionName)
+    val assistedFactoryImpl =
+      AssistedFactoryImplProto(
+        sam_function_name = samFunctionName,
+        impl_class_name = implClass.name.asString(),
+      )
 
     // Store the metadata for this factory class
     factoryClass.metroMetadata = MetroMetadata(assisted_factory_impl = assistedFactoryImpl)
