@@ -124,18 +124,17 @@ metro {
 }
 ```
 
-This specifically enables two features.
+This specifically enables three features.
 
 1. Interop with Dagger/Javax/Jakarta's `Provider` and `Lazy` runtime intrinsics.
-2. Interop with generated Dagger factories for constructor-injected classes, assisted-injected classes, and Dagger modules. This means that an upstream class or module that was processed with the dagger compiler and has a generated Java _factory_ class can be natively reused by Metro.
+2. Interop with generated Dagger factories for constructor-injected classes, assisted-injected classes, member-injected classes, and Dagger modules. This means that Metro can _natively_ reuse an upstream class or module that was processed with the dagger compiler (or Anvil, if using its factory generation) and has a generated factory/injector class.
+3. Interop with Dagger's `@BindsOptionalOf` annotation.
 
-Note this also automatically adds an extra `interop-dagger` dependency to support this scenario.
-
-Enabling this feature also enables interop with Dagger's `@BindsOptionalOf` annotation.
+Note the companion Gradle plugin automatically adds an extra `dev.zacsweers.metro:interop-dagger` runtime dependency to support this interop. If you only want annotation interop, just replace the annotations only.
 
 ## Diagnostics
 
 When interoping with annotations that are written in Kotlin and have parameters, it may be unsafe to rely on positional arguments. Metro's own annotations often have the same indices, but not always! If you want to be super safe, you can enable the `interopAnnotationsNamedArgSeverity` to `WARN` or `ERROR` to report diagnostics for positional arguments in any custom annotations that Metro is configured to look at.
 
-!!! note "Why only Kotlin annotations?"
+!!! question "Why only Kotlin annotations?"
     This is because the Kotlin compiler doesn't support positional arguments for annotations that are written in Java.
