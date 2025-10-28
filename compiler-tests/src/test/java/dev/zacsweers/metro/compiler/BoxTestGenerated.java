@@ -1237,6 +1237,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("MapMultibindingWithProvidesAndDaggerInterop.kt")
+      public void testMapMultibindingWithProvidesAndDaggerInterop() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/MapMultibindingWithProvidesAndDaggerInterop.kt");
+      }
+
+      @Test
       @TestMetadata("MultibindingMapOfProviders.kt")
       public void testMultibindingMapOfProviders() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/MultibindingMapOfProviders.kt");
