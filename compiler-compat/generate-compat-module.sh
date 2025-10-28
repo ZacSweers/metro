@@ -12,12 +12,59 @@ if [ ! -f "settings.gradle.kts" ] || [ ! -d "compiler-compat" ]; then
     exit 1
 fi
 
+# Function to display help
+show_help() {
+    cat << EOF
+Usage: $0 [OPTIONS] <kotlin-version>
+
+Generate a Metro compiler compatibility module for a specific Kotlin version.
+
+Arguments:
+  <kotlin-version>      Kotlin version to generate compatibility module for
+                        (e.g., 2.3.0, 2.3.0-dev-9673, 2.3.21)
+
+Options:
+  -h, --help           Display this help message and exit
+  --version-only       Add version to version-aliases.txt for CI support only
+                        (no module generation). The version will use the nearest
+                        available module implementation.
+
+Examples:
+  $0 2.3.0-dev-9673              # Generate full compatibility module
+  $0 --version-only 2.3.21       # Add CI-supported version alias only
+  $0 -h                          # Show this help message
+
+Description:
+  This script generates a new compiler compatibility module for a specific Kotlin
+  version, including directory structure, build configuration, and implementation
+  scaffolding. The version is automatically added to version-aliases.txt for CI.
+
+  In --version-only mode, only version-aliases.txt is updated, allowing CI to test
+  against the version using an existing compatibility module implementation.
+
+Generated Structure:
+  compiler-compat/k<version>/
+  ├── build.gradle.kts
+  ├── version.txt
+  └── src/main/
+      ├── kotlin/dev/zacsweers/metro/compiler/compat/k<version>/
+      │   └── CompatContextImpl.kt
+      └── resources/META-INF/services/
+          └── dev.zacsweers.metro.compiler.compat.CompatContext\$Factory
+
+EOF
+}
+
 # Parse arguments
 VERSION_ONLY=false
 KOTLIN_VERSION=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
+        -h|--help)
+            show_help
+            exit 0
+            ;;
         --version-only)
             VERSION_ONLY=true
             shift
@@ -27,11 +74,14 @@ while [[ $# -gt 0 ]]; do
             echo "Usage: $0 [--version-only] <kotlin-version>"
             echo ""
             echo "Options:"
+            echo "  -h, --help        Display help message"
             echo "  --version-only    Add version to version-aliases.txt for CI support (no module generation)"
             echo ""
             echo "Examples:"
             echo "  $0 2.3.0-dev-9673              # Generate full module"
             echo "  $0 --version-only 2.3.21       # Add CI-supported version alias only"
+            echo ""
+            echo "Run '$0 --help' for more information."
             exit 1
             ;;
         *)
