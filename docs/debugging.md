@@ -21,3 +21,6 @@ metro {
   reportsDestination.set(layout.buildDirectory.dir("metro/reports"))
 }
 ```
+
+!!! warning
+    The Kotlin Gradle Plugin does _not_ include file inputs like `reportsDestination` as build inputs, so you may need to compile with `--rerun` to force recompilation after adding this flag.
