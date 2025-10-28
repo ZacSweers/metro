@@ -32,7 +32,7 @@ class AppInfoUnpackers {
 
 @DependencyGraph(AppScope::class)
 interface AppGraph {
-  val data: Map<String, Provider<String>>
+  val data: Provider<Map<String, Provider<String>>>
 }
 
 fun box(): String {
@@ -42,7 +42,7 @@ fun box(): String {
       "name" to "TestApp",
       "version" to "1.0.0"
     ),
-    graph.data.mapValues { it.value.get() }
+    graph.data.get().mapValues { it.value.get() }
   )
   return "OK"
 }
