@@ -21,8 +21,8 @@ fun targetKotlinVersion(testServices: TestServices): Pair<KotlinVersion, Boolean
 }
 
 /**
- * Parses a version string and returns a pair of (KotlinVersion, requiresFullMatch).
- * The boolean indicates whether all specified version components must match.
+ * Parses a version string and returns a pair of (KotlinVersion, requiresFullMatch). The boolean
+ * indicates whether all specified version components must match.
  *
  * Examples:
  * - "2.2" -> only major and minor must match
