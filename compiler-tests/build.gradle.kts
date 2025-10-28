@@ -150,9 +150,6 @@ tasks.withType<Test> {
 
   workingDir = rootDir
 
-  // There seems to be a leak somewhere in the compiler test framework
-  forkEvery = 10
-
   useJUnitPlatform()
 
   setLibraryProperty("kotlin.minimal.stdlib.path", "kotlin-stdlib")
