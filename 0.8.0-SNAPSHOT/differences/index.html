@@ -1040,10 +1040,13 @@
 <li>There is no Producers support.</li>
 <li>There is no Hilt support, though some features are similar in the same way that Anvil’s features are similar.</li>
 <li>There is no <code>@Reusable</code>.</li>
-<li>There is no <code>@BindsOptionalOf</code>. Instead, Metro supports default <a href="../bindings/#optional-dependencies">optional dependencies</a>.</li>
+<li>There is no <code>@BindsOptionalOf</code>. Instead, Metro supports default <a href="../bindings/#optional-bindings">optional bindings</a>.<ul>
+<li>Metro does does support <a href="../interop/">interop</a> with Dagger&rsquo;s <code>@BindsOptionalOf</code> annotation.</li>
+</ul>
+</li>
 <li>Metro can inject private properties, functions, and constructors.</li>
-<li>There is no <code>@BindsInstance</code>. Use <code>@Provides</code> on <code>@DependencyGraph.Factory</code> function parameters instead</li>
-<li>Component dependencies must be annotated with <code>@Includes</code>.</li>
+<li>There is no <code>@BindsInstance</code> annotation. Use <code>@Provides</code> on <code>@DependencyGraph.Factory</code> function parameters instead.</li>
+<li>Included dependencies (&ldquo;component dependencies&rdquo; in Dagger) must be annotated with <code>@Includes</code> in graph creators.</li>
 <li>Metro does not process Java code.</li>
 <li><code>@Multibinds</code> declarations are implemented in Metro graphs to return the declared multibinding.</li>
 <li>Empty multibindings are an error by default in Metro. To allow a multibinding to be empty, it must be declared with <code>@Multibinds(allowEmpty = true)</code>.</li>

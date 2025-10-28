@@ -801,6 +801,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#decompiled-bytecode" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decompiled Bytecode
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1064,6 +1073,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#decompiled-bytecode" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decompiled Bytecode
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1097,6 +1115,12 @@
 <span class="w">  </span><span class="n">reportsDestination</span><span class="p">.</span><span class="na">set</span><span class="p">(</span><span class="n">layout</span><span class="p">.</span><span class="na">buildDirectory</span><span class="p">.</span><span class="na">dir</span><span class="p">(</span><span class="s">&quot;metro/reports&quot;</span><span class="p">))</span>
 <span class="p">}</span>
 </code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The Kotlin Gradle Plugin does <em>not</em> include file inputs like <code>reportsDestination</code> as build inputs, so you may need to compile with <code>--rerun</code> to force recompilation after adding this flag.</p>
+</div>
+<h2 id="decompiled-bytecode">Decompiled Bytecode<a class="headerlink" href="#decompiled-bytecode" title="Permanent link">&para;</a></h2>
+<p>Compiled java class files of Metro-generated types are fairly friendly to the IntelliJ &ldquo;decompile to Java&rdquo; action. Simply open the class file in the IDE (usually seen as a Kotlin bytecode class) then run the &ldquo;decompile to Java&rdquo; action. For JVM projects they are under <code>build/classes</code>. For Android projects, it&rsquo;s <code>build/tmp/kotlin-classes</code>.</p>
 
 
 

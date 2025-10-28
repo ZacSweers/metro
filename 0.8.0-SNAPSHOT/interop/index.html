@@ -1242,16 +1242,16 @@
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>This specifically enables two features.</p>
+<p>This specifically enables three features.</p>
 <ol>
 <li>Interop with Dagger/Javax/Jakarta&rsquo;s <code>Provider</code> and <code>Lazy</code> runtime intrinsics.</li>
-<li>Interop with generated Dagger factories for constructor-injected classes, assisted-injected classes, and Dagger modules. This means that an upstream class or module that was processed with the dagger compiler and has a generated Java <em>factory</em> class can be natively reused by Metro.</li>
+<li>Interop with generated Dagger factories for constructor-injected classes, assisted-injected classes, member-injected classes, and Dagger modules. This means that Metro can <em>natively</em> reuse an upstream class or module that was processed with the dagger compiler (or Anvil, if using its factory generation) and has a generated factory/injector class.</li>
+<li>Interop with Dagger&rsquo;s <code>@BindsOptionalOf</code> annotation.</li>
 </ol>
-<p>Note this also automatically adds an extra <code>interop-dagger</code> dependency to support this scenario.</p>
-<p>Enabling this feature also enables interop with Dagger&rsquo;s <code>@BindsOptionalOf</code> annotation.</p>
+<p>Note the companion Gradle plugin automatically adds an extra <code>dev.zacsweers.metro:interop-dagger</code> runtime dependency to support this interop. If you only want annotation interop, just replace the annotations only.</p>
 <h2 id="diagnostics">Diagnostics<a class="headerlink" href="#diagnostics" title="Permanent link">&para;</a></h2>
 <p>When interoping with annotations that are written in Kotlin and have parameters, it may be unsafe to rely on positional arguments. Metro&rsquo;s own annotations often have the same indices, but not always! If you want to be super safe, you can enable the <code>interopAnnotationsNamedArgSeverity</code> to <code>WARN</code> or <code>ERROR</code> to report diagnostics for positional arguments in any custom annotations that Metro is configured to look at.</p>
-<div class="admonition note">
+<div class="admonition question">
 <p class="admonition-title">Why only Kotlin annotations?</p>
 <p>This is because the Kotlin compiler doesn&rsquo;t support positional arguments for annotations that are written in Java.</p>
 </div>
