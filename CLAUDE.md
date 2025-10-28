@@ -11,6 +11,8 @@ See @README.md, @docs, and @.github/CONTRIBUTING.md for project overview.
 - `./gradlew -p samples check` - Run sample project tests
 - `./metrow check` - Runs _all_ validation and tests in the project (tests, linting, API validation). This is expensive.
 
+Generally you should run with `--quiet` to reduce noise. Failures would be reported to the console as needed.
+
 ### Code Quality
 Don't bother running code formatting, I'll handle that in commits.
 
