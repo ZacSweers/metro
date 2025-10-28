@@ -62,13 +62,13 @@ dependencies {
   // 2.3.0 changed the test gen APIs around into different packages
   "generator220CompileOnly"(libs.kotlin.compilerTestFramework)
   "generator230CompileOnly"(
-    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.3.0-Beta1"
+    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.3.0-Beta2"
   )
   val generatorConfigToUse: String
 
   if (kotlinVersion >= KotlinVersion(2, 3)) {
     generatorConfigToUse = "generator230"
-    compilerTestFrameworkVersion = "2.3.0-Beta1"
+    compilerTestFrameworkVersion = "2.3.0-Beta2"
   } else {
     generatorConfigToUse = "generator220"
     compilerTestFrameworkVersion = libs.versions.kotlin.get()
