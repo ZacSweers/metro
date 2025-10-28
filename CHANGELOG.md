@@ -11,6 +11,7 @@ Changelog
 - **Enhancement**: Better detect static-ish functions in generated Kotlin factories from Dagger/Anvil interop.
 - **Enhancement**: Cache members injector binding lookups.
 - **Enhancement**: Don't double-lookup members injectors already computed from roots.
+- **Enhancement**: Support Kotlin `2.3.0-Beta2`.
 - Deprecate `includeAnvil()` Gradle DSL function in favor of more specific `includeAnvilForDagger()` and `includeAnvilForKotlinInject()` functions.
 - Move interop annotations controls to compiler. For Gradle users, there's mostly no change (other than the above). For users of any other build system, this makes it a bit easier to reuse the interop annotations logic.
 
