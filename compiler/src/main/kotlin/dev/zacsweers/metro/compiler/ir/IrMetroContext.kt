@@ -29,9 +29,7 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContextImpl
-import org.jetbrains.kotlin.ir.util.KotlinLikeDumpOptions
 import org.jetbrains.kotlin.ir.util.TypeRemapper
-import org.jetbrains.kotlin.ir.util.VisibilityPrintingStrategy
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.parentDeclarationsWithSelf
 import org.jetbrains.kotlin.name.ClassId
@@ -114,10 +112,7 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
 
   fun IrElement.dumpToMetroLog(name: String) {
     loggerFor(MetroLogger.Type.GeneratedFactories).log {
-      val irSrc =
-        dumpKotlinLike(
-          KotlinLikeDumpOptions(visibilityPrintingStrategy = VisibilityPrintingStrategy.ALWAYS)
-        )
+      val irSrc = dumpKotlinLike()
       buildString {
         append("IR source dump for ")
         appendLine(name)
