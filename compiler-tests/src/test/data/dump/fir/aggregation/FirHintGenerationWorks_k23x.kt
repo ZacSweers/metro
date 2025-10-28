@@ -1,5 +1,5 @@
 // GENERATE_JVM_CONTRIBUTION_HINTS_IN_FIR
-// COMPILER_VERSION: 2.3.0
+// COMPILER_VERSION: 2.3
 
 @ContributesTo(AppScope::class)
 interface ContributedInterface1

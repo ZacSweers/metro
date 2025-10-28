@@ -1,4 +1,4 @@
-FILE: FirHintGenerationWorks.k230.kt
+FILE: FirHintGenerationWorks_k22x.kt
     @R|dev/zacsweers/metro/ContributesTo|(scope = <getClass>(Q|dev/zacsweers/metro/AppScope|)) public abstract interface ContributedInterface1 : R|kotlin/Any| {
         @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/MetroContribution|(scope = <getClass>(Q|dev/zacsweers/metro/AppScope|)) public abstract interface $$MetroContributionToAppScope : R|ContributedInterface1| {
         }
@@ -17,19 +17,10 @@ FILE: FirHintGenerationWorks.k230.kt
         }
 
     }
-FILE: metro/hints/contributedInterface1AppScope.kt
+FILE: __GENERATED DECLARATIONS__.kt
     package metro.hints
 
     public final fun AppScope(contributed: R|ContributedInterface1|): R|kotlin/Unit|
-FILE: metro/hints/contributedInterface3AppScope.kt
-    package metro.hints
-
     public final fun AppScope(contributed: R|ContributedInterface3|): R|kotlin/Unit|
-FILE: metro/hints/contributedInterface2Unit.kt
-    package metro.hints
-
     public final fun Unit(contributed: R|ContributedInterface2|): R|kotlin/Unit|
-FILE: metro/hints/contributedInterface3Unit.kt
-    package metro.hints
-
     public final fun Unit(contributed: R|ContributedInterface3|): R|kotlin/Unit|
