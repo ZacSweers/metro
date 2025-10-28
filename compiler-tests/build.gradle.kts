@@ -17,7 +17,7 @@ val testCompilerVersionProvider = providers.gradleProperty("metro.testCompilerVe
 
 val testCompilerVersion = testCompilerVersionProvider.orElse(libs.versions.kotlin).get()
 
-val kotlinVersion =
+val testKotlinVersion =
   testCompilerVersion.substringBefore('-').split('.').let { (major, minor, patch) ->
     KotlinVersion(major.toInt(), minor.toInt(), patch.toInt())
   }
@@ -42,7 +42,7 @@ buildConfig {
     buildConfigField(
       "kotlin.KotlinVersion",
       "COMPILER_VERSION",
-      "KotlinVersion(${kotlinVersion.major}, ${kotlinVersion.minor}, ${kotlinVersion.patch})",
+      "KotlinVersion(${testKotlinVersion.major}, ${testKotlinVersion.minor}, ${testKotlinVersion.patch})",
     )
   }
 }
@@ -59,20 +59,27 @@ dependencies {
   // needed for those tests
   val compilerTestFrameworkVersion: String
 
-  // 2.3.0 changed the test gen APIs around into different packages
-  "generator220CompileOnly"(libs.kotlin.compilerTestFramework)
-  "generator230CompileOnly"(
-    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.3.0-Beta2"
-  )
   val generatorConfigToUse: String
 
-  if (kotlinVersion >= KotlinVersion(2, 3)) {
+  if (testKotlinVersion >= KotlinVersion(2, 3)) {
     generatorConfigToUse = "generator230"
-    compilerTestFrameworkVersion = "2.3.0-Beta2"
+    compilerTestFrameworkVersion =
+      if (testCompilerVersion.contains("-dev")) {
+        "2.3.0-Beta2"
+      } else {
+        testCompilerVersion
+      }
   } else {
     generatorConfigToUse = "generator220"
     compilerTestFrameworkVersion = libs.versions.kotlin.get()
   }
+
+  // 2.3.0 changed the test gen APIs around into different packages
+  "generator220CompileOnly"(libs.kotlin.compilerTestFramework)
+  "generator230CompileOnly"(
+    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$compilerTestFrameworkVersion"
+  )
+
   testImplementation(sourceSets.named(generatorConfigToUse).map { it.output })
   testImplementation(
     "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$compilerTestFrameworkVersion"
