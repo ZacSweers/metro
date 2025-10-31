@@ -90,6 +90,7 @@ import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isPropertyAccessor
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
+import org.jetbrains.kotlin.ir.util.packageFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
@@ -371,7 +372,13 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
 
     factoryCls.dumpToMetroLog()
 
-    writeDiagnostic("provider-factory-${factoryCls.kotlinFqName.asString()}.kt") {
+    val factoryPath = factoryCls.packageFqName?.let { packageName ->
+      val fileName = factoryCls.kotlinFqName.toString().replace("$packageName.", "")
+      "$packageName/$fileName"
+    } ?: factoryCls.kotlinFqName.asString()
+
+    // Relative path example: provider-factories/dev.zac.feature/Outer.Inner$$Factory.kt
+    writeDiagnostic("provider-factories/$factoryPath.kt") {
       factoryCls.dumpKotlinLike()
     }
 

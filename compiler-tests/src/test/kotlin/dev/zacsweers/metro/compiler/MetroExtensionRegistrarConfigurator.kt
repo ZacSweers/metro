@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.interop.configureAnvilAnnotations
 import dev.zacsweers.metro.compiler.interop.configureDaggerAnnotations
 import dev.zacsweers.metro.compiler.interop.configureDaggerInterop
 import dev.zacsweers.metro.compiler.ir.MetroIrGenerationExtension
+import kotlin.io.path.Path
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
@@ -21,6 +22,7 @@ import org.jetbrains.kotlin.test.directives.model.singleOrZeroValue
 import org.jetbrains.kotlin.test.model.TestModule
 import org.jetbrains.kotlin.test.services.EnvironmentConfigurator
 import org.jetbrains.kotlin.test.services.TestServices
+import org.jetbrains.kotlin.test.services.temporaryDirectoryManager
 
 fun TestConfigurationBuilder.configurePlugin() {
   useConfigurators(::MetroExtensionRegistrarConfigurator, ::MetroRuntimeEnvironmentConfigurator)
@@ -80,6 +82,10 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
           ?.let { interopAnnotationsNamedArgSeverity = it }
         module.directives.singleOrZeroValue(MetroDirectives.MAX_IR_ERRORS_COUNT)?.let {
           maxIrErrorsCount = it
+        }
+        module.directives.singleOrZeroValue(MetroDirectives.REPORTS_DESTINATION)?.let {
+          reportsDestination =
+            Path("${testServices.temporaryDirectoryManager.rootDir.absolutePath}/$it")
         }
         contributesAsInject = MetroDirectives.CONTRIBUTES_AS_INJECT in module.directives
 

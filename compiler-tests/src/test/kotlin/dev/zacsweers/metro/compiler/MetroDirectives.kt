@@ -96,6 +96,10 @@ object MetroDirectives : SimpleDirectivesContainer() {
         else -> EnumSet.of(CompilerMessageSeverity.valueOf(upper))
       }
     }
+  val REPORTS_DESTINATION by
+    stringDirective(
+      "Relative path to a directory to dump Metro reports information. Example: 'metro/reports'."
+    )
 
   fun enableDaggerRuntime(directives: RegisteredDirectives): Boolean {
     return WITH_DAGGER in directives ||

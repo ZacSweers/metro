@@ -1421,4 +1421,20 @@ public class BoxTestGenerated extends AbstractBoxTest {
       runTest("compiler-tests/src/test/data/box/provides/TransitiveSuccessorScope.kt");
     }
   }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/box/reports")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Reports {
+    @Test
+    public void testAllFilesPresentInReports() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/reports"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    }
+
+    @Test
+    @TestMetadata("ReallyLongPackageNameHandledWhenWritingDebugReports.kt")
+    public void testReallyLongPackageNameHandledWhenWritingDebugReports() {
+      runTest("compiler-tests/src/test/data/box/reports/ReallyLongPackageNameHandledWhenWritingDebugReports.kt");
+    }
+  }
 }
