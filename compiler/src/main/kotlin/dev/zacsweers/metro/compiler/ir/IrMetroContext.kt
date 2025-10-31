@@ -257,11 +257,14 @@ internal fun writeDiagnostic(fileName: String, text: () -> String) {
 
 context(context: IrMetroContext)
 internal fun writeDiagnostic(fileName: () -> String, text: () -> String) {
-  context.reportsDir?.resolve(fileName())?.apply {
-    // Ensure that the path leading up to the file has been created
-    File(this.toString()).mkdirs()
-    deleteIfExists()
-  }?.writeText(text())
+  context.reportsDir
+    ?.resolve(fileName())
+    ?.apply {
+      // Ensure that the path leading up to the file has been created
+      File(this.toString()).mkdirs()
+      deleteIfExists()
+    }
+    ?.writeText(text())
 }
 
 context(context: IrMetroContext)
