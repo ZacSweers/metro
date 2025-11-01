@@ -13,21 +13,12 @@ class AppInfoUnpackers {
   @Provides
   @IntoMap
   @StringKey("name")
-  fun provideConfigDataSource(appInfo: AppInfo): String {
-    return appInfo.appName
-  }
+  fun provideName(): String = "TestApp"
 
   @Provides
   @IntoMap
   @StringKey("version")
-  fun provideDefaultDataSource(appInfo: AppInfo): String {
-    return appInfo.version
-  }
-
-  @Provides
-  fun provideAppInfo(): AppInfo {
-    return AppInfo("TestApp", "1.0.0")
-  }
+  fun provideVersion(): String = "1.0.0"
 }
 
 @DependencyGraph(AppScope::class)
