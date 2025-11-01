@@ -21,7 +21,6 @@ import dev.zacsweers.metro.compiler.ir.stripLazy
 import dev.zacsweers.metro.compiler.ir.toIrType
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
-import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
@@ -36,9 +35,11 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.classOrFail
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
+import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 
 private typealias MultibindingExpression =
   IrBuilderWithScope.(MultibindingExpressionGenerator) -> IrExpression
@@ -47,8 +48,8 @@ internal class MultibindingExpressionGenerator(
   private val parentGenerator: BindingExpressionGenerator<IrBinding>,
   private val getterPropertyFor:
     (
-      IrBinding, IrContextualTypeKey, IrBuilderWithScope.(MultibindingExpressionGenerator) -> IrBody,
-    ) -> IrProperty,
+    IrBinding, IrContextualTypeKey, IrBuilderWithScope.(MultibindingExpressionGenerator) -> IrBody,
+  ) -> IrProperty,
 ) : BindingExpressionGenerator<IrBinding.Multibinding>(parentGenerator) {
   override val thisReceiver: IrValueParameter
     get() = parentGenerator.thisReceiver
@@ -66,11 +67,9 @@ internal class MultibindingExpressionGenerator(
     accessType: AccessType,
     fieldInitKey: IrTypeKey?,
   ): IrExpression {
+    // need to change this to a Metro Provider for our generation
     val transformedContextKey =
-      contextualTypeKey.letIf(contextualTypeKey.isWrappedInLazy) {
-        // need to change this to a Provider for our generation
-        contextualTypeKey.stripLazy().wrapInProvider()
-      }
+      contextualTypeKey.stripLazy().wrapInProvider()
     return if (binding.isSet) {
       generateSetMultibindingExpression(binding, accessType, transformedContextKey, fieldInitKey)
     } else {
@@ -216,10 +215,10 @@ internal class MultibindingExpressionGenerator(
       }
 
       return irCall(
-          callee = callee,
-          type = binding.typeKey.type,
-          typeArguments = listOf(elementType),
-        )
+        callee = callee,
+        type = binding.typeKey.type,
+        typeArguments = listOf(elementType),
+      )
         .apply {
           for ((i, arg) in args.withIndex()) {
             arguments[i] = arg
@@ -259,10 +258,10 @@ internal class MultibindingExpressionGenerator(
     with(scope) {
       // buildMap(size) { put(key, value) ... }
       return irCall(
-          callee = metroSymbols.buildMapWithCapacity,
-          type = irBuiltIns.mapClass.typeWith(keyType, valueType),
-          typeArguments = listOf(keyType, valueType),
-        )
+        callee = metroSymbols.buildMapWithCapacity,
+        type = irBuiltIns.mapClass.typeWith(keyType, valueType),
+        typeArguments = listOf(keyType, valueType),
+      )
         .apply {
           arguments[0] = irInt(size)
           arguments[1] =
@@ -466,12 +465,19 @@ internal class MultibindingExpressionGenerator(
           .typeWith(
             keyType,
             if (valueIsWrappedInProvider) {
-              rawValueType.wrapInProvider(metroSymbols.metroProvider)
+              rawValueType.wrapInProvider(originalValueType.rawType().symbol)
             } else {
               rawValueType
             },
           )
-          .wrapInProvider(metroSymbols.metroProvider)
+          .let {
+            val providerType = if (contextualTypeKey.isWrappedInProvider) {
+              contextualTypeKey.toIrType().classOrFail
+            } else {
+              metroSymbols.metroProvider
+            }
+            it.wrapInProvider(providerType)
+          }
 
       val instance =
         if (size == 0) {
@@ -583,6 +589,10 @@ internal class MultibindingExpressionGenerator(
                     // .put(1, FileSystemModule_Companion_ProvideMapInt1Factory.create())
                     putFunction
                   }
+
+                // Ensure we match the expected parameter type of the put() function we're calling
+                val providerType = putter.owner.nonDispatchParameters[1]
+                  .type.rawType()
                 irInvoke(
                   dispatchReceiver = receiver,
                   callee = putter,
@@ -592,7 +602,7 @@ internal class MultibindingExpressionGenerator(
                       generateMapKeyLiteral(sourceBinding),
                       generateMultibindingArgument(
                         sourceBinding,
-                        originalValueContextKey.wrapInProvider(),
+                        originalValueContextKey.wrapInProvider(providerType),
                         fieldInitKey,
                         accessType = AccessType.PROVIDER,
                       ),
