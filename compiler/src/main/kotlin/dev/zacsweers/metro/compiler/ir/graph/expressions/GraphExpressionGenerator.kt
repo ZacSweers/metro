@@ -289,13 +289,13 @@ private constructor(
         is IrBinding.Multibinding -> {
           multibindingExpressionGenerator
             .generateBindingCode(binding, contextualTypeKey, accessType, fieldInitKey)
-            .let {
-              if (accessType == AccessType.INSTANCE) {
-                it
-              } else {
-                with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) }
-              }
-            }
+//            .let {
+//              if (accessType == AccessType.INSTANCE) {
+//                it
+//              } else {
+//                with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) }
+//              }
+//            }
         }
 
         is IrBinding.MembersInjected -> {
