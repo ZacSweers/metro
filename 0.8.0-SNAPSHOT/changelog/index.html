@@ -978,6 +978,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#073" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.7.3
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#072" class="md-nav__link">
     <span class="md-ellipsis">
       0.7.2
@@ -1500,6 +1509,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#073" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.7.3
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#072" class="md-nav__link">
     <span class="md-ellipsis">
       0.7.2
@@ -1955,6 +1973,8 @@
 
 <h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
 <h2 id="unreleased"><strong>Unreleased</strong><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
+<h2 id="073">0.7.3<a class="headerlink" href="#073" title="Permanent link">&para;</a></h2>
+<p><em>2025-11-02</em></p>
 <ul>
 <li><strong>New</strong>: Support interop with Dagger/Anvil-generated member injector classes.</li>
 <li><strong>Enhancement</strong>: Skip reading members when loading externally compiled member injector classes. Parameters are now computed from their static <code>inject*</code> functions.</li>
@@ -1964,11 +1984,14 @@
 <li><strong>Enhancement</strong>: Cache members injector binding lookups.</li>
 <li><strong>Enhancement</strong>: Don&rsquo;t double-lookup members injectors already computed from roots.</li>
 <li><strong>Enhancement</strong>: Support Kotlin <code>2.3.0-Beta2</code>.</li>
+<li><strong>Enhancement</strong>: Test against Kotlin <code>2.2.21</code>.</li>
 <li><strong>Enhancement</strong>: Improve generated graph impl declaration checks.</li>
 <li><strong>Fix</strong>: Work around &ldquo;LookupSymbols are not yet converted to ProgramSymbols&rdquo; issue (<a href="https://youtrack.jetbrains.com/issue/KT-80412">KT-80412</a>) in incremental compilation by avoiding using <code>$$</code> prefixes in generated class names.</li>
 <li><strong>Fix</strong>: Fix interop support for two layers of <code>Provider</code> interop in map multibindings (i.e. <code>Provider&lt;Map&lt;Key, Provider&lt;Value&gt;&gt;</code>).</li>
 <li>Deprecate <code>includeAnvil()</code> Gradle DSL function in favor of more specific <code>includeAnvilForDagger()</code> and <code>includeAnvilForKotlinInject()</code> functions.</li>
 <li>Move interop annotations controls to compiler. For Gradle users, there&rsquo;s mostly no change (other than the above). For users of any other build system, this makes it a bit easier to reuse the interop annotations logic.</li>
+<li>[docs] Add compatibility docs: <a href="https://zacsweers.github.io/metro/latest/compatibility/">https://zacsweers.github.io/metro/latest/compatibility/</a>. Metro supports a moving range of Kotlin versions, this page captures the tested versions for each release.</li>
+<li>[docs] Add stability docs: <a href="https://zacsweers.github.io/metro/latest/stability/">https://zacsweers.github.io/metro/latest/stability/</a></li>
 </ul>
 <h2 id="072">0.7.2<a class="headerlink" href="#072" title="Permanent link">&para;</a></h2>
 <p><em>2025-10-22</em></p>
