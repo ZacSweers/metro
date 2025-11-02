@@ -14,6 +14,7 @@ Changelog
 - **Enhancement**: Support Kotlin `2.3.0-Beta2`.
 - **Enhancement**: Improve generated graph impl declaration checks.
 - **Fix**: Work around "LookupSymbols are not yet converted to ProgramSymbols" issue ([KT-80412](https://youtrack.jetbrains.com/issue/KT-80412)) in incremental compilation by avoiding using `$$` prefixes in generated class names.
+- **Fix**: Fix interop support for two layers of `Provider` interop in map multibindings (i.e. `Provider<Map<Key, Provider<Value>>`).
 - Deprecate `includeAnvil()` Gradle DSL function in favor of more specific `includeAnvilForDagger()` and `includeAnvilForKotlinInject()` functions.
 - Move interop annotations controls to compiler. For Gradle users, there's mostly no change (other than the above). For users of any other build system, this makes it a bit easier to reuse the interop annotations logic.
 
