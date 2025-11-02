@@ -193,7 +193,10 @@ internal fun IrContextualTypeKey.wrapInProvider(
         typeKey,
         WrappedType.Provider(wrappedType.innerType, providerType.classIdOrFail),
         hasDefault,
-        rawType?.let { providerType.typeWith(it) },
+        rawType?.let {
+          // New type with the original type's arguments
+          providerType.symbol.typeWithArguments(it.requireSimpleType().arguments)
+        },
       )
     }
   } else {
