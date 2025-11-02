@@ -52,7 +52,9 @@ public inline fun <reified T : Any> createGraph(): T {
  * - The target [T] graph _must_ be annotated with [@DependencyGraph][DependencyGraph] and must be a
  *   valid graph on its own.
  */
-public inline fun <reified T : Any> createDynamicGraph(@Suppress("unused") vararg containers: Any): T {
+public inline fun <reified T : Any> createDynamicGraph(
+  @Suppress("unused") vararg containers: Any
+): T {
   throw UnsupportedOperationException("Implemented by the compiler")
 }
 

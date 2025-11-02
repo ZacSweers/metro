@@ -58,7 +58,7 @@ internal class MetroAnnotations<T>(
   val isAssistedFactory: Boolean = false,
   val isComposable: Boolean = false,
   val isBindsOptionalOf: Boolean = false,
-  val isOptionalDependency: Boolean = false,
+  val isOptionalBinding: Boolean = false,
   val multibinds: T? = null,
   val assisted: T? = null,
   val scope: T? = null,
@@ -97,7 +97,7 @@ internal class MetroAnnotations<T>(
     isAssistedFactory: Boolean = this.isAssistedFactory,
     isComposable: Boolean = this.isComposable,
     isBindsOptionalOf: Boolean = this.isBindsOptionalOf,
-    isOptionalDependency: Boolean = this.isOptionalDependency,
+    isOptionalBinding: Boolean = this.isOptionalBinding,
     multibinds: T? = this.multibinds,
     assisted: T? = this.assisted,
     scope: T? = this.scope,
@@ -118,7 +118,7 @@ internal class MetroAnnotations<T>(
       isAssistedFactory = isAssistedFactory,
       isComposable = isComposable,
       isBindsOptionalOf = isBindsOptionalOf,
-      isOptionalDependency = isOptionalDependency,
+      isOptionalBinding = isOptionalBinding,
       multibinds = multibinds,
       assisted = assisted,
       scope = scope,
@@ -167,8 +167,7 @@ internal class MetroAnnotations<T>(
     Qualifier,
     MapKey,
     BindsOptionalOf,
-    OptionalDependency,
-    ;
+    OptionalBinding,
   }
 
   companion object {
@@ -214,10 +213,7 @@ internal fun IrAnnotationContainer.metroAnnotations(
   ids: ClassIds,
   vararg kinds: Kind,
 ): MetroAnnotations<IrAnnotation> {
-  return metroAnnotations(
-    ids,
-    kindSetOf(*kinds),
-  )
+  return metroAnnotations(ids, kindSetOf(*kinds))
 }
 
 internal fun IrAnnotationContainer.metroAnnotations(
@@ -243,7 +239,7 @@ private fun IrAnnotationContainer.metroAnnotations(
   var isAssistedFactory = false
   var isComposable = false
   var isBindsOptionalOf = false
-  var isOptionalDependency = false
+  var isOptionalBinding = false
   var multibinds: IrAnnotation? = null
   var assisted: IrAnnotation? = null
   var scope: IrAnnotation? = null
@@ -266,8 +262,8 @@ private fun IrAnnotationContainer.metroAnnotations(
             assisted = expectNullAndSet("assisted", assisted, annotation.asIrAnnotation())
             continue
           }
-          Symbols.ClassIds.OptionalDependency if (Kind.OptionalDependency in kinds) -> {
-            isOptionalDependency = true
+          in ids.optionalBindingAnnotations if (Kind.OptionalBinding in kinds) -> {
+            isOptionalBinding = true
             continue
           }
         }
@@ -305,12 +301,14 @@ private fun IrAnnotationContainer.metroAnnotations(
             isComposable = true
             continue
           }
-          Symbols.DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF if (Kind.BindsOptionalOf in kinds) -> {
+          Symbols.DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF if
+            (Kind.BindsOptionalOf in kinds)
+           -> {
             isBindsOptionalOf = true
             continue
           }
-          Symbols.ClassIds.OptionalDependency if (Kind.OptionalDependency in kinds) -> {
-            isOptionalDependency = true
+          in ids.optionalBindingAnnotations if (Kind.OptionalBinding in kinds) -> {
+            isOptionalBinding = true
             continue
           }
         }
@@ -350,7 +348,9 @@ private fun IrAnnotationContainer.metroAnnotations(
     if (Kind.Scope in kinds && annotationClass.isAnnotatedWithAny(ids.scopeAnnotations)) {
       scope = expectNullAndSet("scope", scope, annotation.asIrAnnotation())
       continue
-    } else if (Kind.Qualifier in kinds && annotationClass.isAnnotatedWithAny(ids.qualifierAnnotations)) {
+    } else if (
+      Kind.Qualifier in kinds && annotationClass.isAnnotatedWithAny(ids.qualifierAnnotations)
+    ) {
       qualifier = expectNullAndSet("qualifier", qualifier, annotation.asIrAnnotation())
       continue
     } else if (Kind.MapKey in kinds && annotationClass.isAnnotatedWithAny(ids.mapKeyAnnotations)) {
@@ -374,7 +374,7 @@ private fun IrAnnotationContainer.metroAnnotations(
       isAssistedFactory = isAssistedFactory,
       isComposable = isComposable,
       isBindsOptionalOf = isBindsOptionalOf,
-      isOptionalDependency = isOptionalDependency,
+      isOptionalBinding = isOptionalBinding,
       multibinds = multibinds,
       assisted = assisted,
       scope = scope,
@@ -461,10 +461,7 @@ internal fun FirBasedSymbol<*>.metroAnnotations(
   session: FirSession,
   vararg kinds: Kind,
 ): MetroAnnotations<MetroFirAnnotation> {
-  return metroAnnotations(
-    session,
-    kindSetOf(*kinds),
-  )
+  return metroAnnotations(session, kindSetOf(*kinds))
 }
 
 internal fun FirBasedSymbol<*>.metroAnnotations(
@@ -493,7 +490,7 @@ private fun FirBasedSymbol<*>.metroAnnotations(
   var isAssistedFactory = false
   var isComposable = false
   var isBindsOptionalOf = false
-  var isOptionalDependency = false
+  var isOptionalBinding = false
   var multibinds: MetroFirAnnotation? = null
   var assisted: MetroFirAnnotation? = null
   var scope: MetroFirAnnotation? = null
@@ -519,8 +516,8 @@ private fun FirBasedSymbol<*>.metroAnnotations(
               expectNullAndSet("assisted", assisted, MetroFirAnnotation(annotation, session))
             continue
           }
-          Symbols.ClassIds.OptionalDependency if (Kind.OptionalDependency in kinds) -> {
-            isOptionalDependency = true
+          in ids.optionalBindingAnnotations if (Kind.OptionalBinding in kinds) -> {
+            isOptionalBinding = true
             continue
           }
         }
@@ -560,12 +557,15 @@ private fun FirBasedSymbol<*>.metroAnnotations(
             isComposable = true
             continue
           }
-          Symbols.DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF if (session.metroFirBuiltIns.options.enableDaggerRuntimeInterop && Kind.BindsOptionalOf in kinds) -> {
+          Symbols.DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF if
+            (session.metroFirBuiltIns.options.enableDaggerRuntimeInterop &&
+              Kind.BindsOptionalOf in kinds)
+           -> {
             isBindsOptionalOf = true
             continue
           }
-          Symbols.ClassIds.OptionalDependency if (Kind.OptionalDependency in kinds) -> {
-            isOptionalDependency = true
+          in ids.optionalBindingAnnotations if (Kind.OptionalBinding in kinds) -> {
+            isOptionalBinding = true
             continue
           }
         }
@@ -632,7 +632,7 @@ private fun FirBasedSymbol<*>.metroAnnotations(
       isAssistedFactory = isAssistedFactory,
       isComposable = isComposable,
       isBindsOptionalOf = isBindsOptionalOf,
-      isOptionalDependency = isOptionalDependency,
+      isOptionalBinding = isOptionalBinding,
       multibinds = multibinds,
       assisted = assisted,
       scope = scope,

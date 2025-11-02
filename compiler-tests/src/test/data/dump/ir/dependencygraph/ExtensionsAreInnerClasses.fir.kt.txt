@@ -1,26 +1,19 @@
 @DependencyGraph
 interface AppGraph : Factory {
-  companion object Companion {
-    private constructor() /* primary */ {
-      super/*Any*/()
-      /* <init>() */
-
-    }
-
-    @GraphFactoryInvokeFunctionMarker
-    operator fun invoke(): AppGraph {
-      return $$MetroGraph()
-    }
-
-  }
-
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroGraph : AppGraph {
-    private /* final field */ val thisGraphInstance: AppGraph = <this>
-    private /* final field */ val appGraphProvider: Provider<AppGraph> = Companion.invoke<AppGraph>(value = <this>.#thisGraphInstance)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val thisGraphInstance: AppGraph
+      field = <this>
+
+    private val appGraphProvider: Provider<AppGraph>
+      field = Companion.invoke<AppGraph>(value = <this>.#thisGraphInstance)
+
     @DependencyGraph
     inner class LoggedInGraphImpl : LoggedInGraph {
-      private /* final field */ val idInstanceProvider: Provider<String> = Companion.invoke<String>(value = id)
+      private val idInstanceProvider: Provider<String>
+        field = Companion.invoke<String>(value = id)
+
       constructor(@Provides id: String) /* primary */ {
         super/*Any*/()
         /* <init>() */
@@ -51,9 +44,23 @@ interface AppGraph : Factory {
 
   }
 
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @CallableMetadata(callableName = "provideCount", propertyName = "", startOffset = 290, endOffset = 327)
-  class ProvideCount$$MetroFactory : Factory<Int> {
+  class ProvideCountMetroFactory : Factory<Int> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
       private constructor() /* primary */ {
@@ -63,7 +70,7 @@ interface AppGraph : Factory {
       }
 
       fun create(instance: AppGraph): Factory<Int> {
-        return ProvideCount$$MetroFactory(instance = instance)
+        return ProvideCountMetroFactory(instance = instance)
       }
 
       fun provideCount(instance: AppGraph): Int {

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
-import dev.zacsweers.metro.compiler.OptionalDependencyBehavior
+import dev.zacsweers.metro.compiler.OptionalBindingBehavior
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import org.jetbrains.kotlin.ir.IrElement
@@ -39,6 +39,7 @@ internal fun copyParameterDefaultValues(
   targetParameters: List<IrValueParameter>,
   targetGraphParameter: IrValueParameter?,
   wrapInProvider: Boolean = false,
+  isTopLevelFunction: Boolean = false,
 ) {
   if (sourceParameters.isEmpty()) return
   check(sourceParameters.size == targetParameters.size) {
@@ -53,6 +54,15 @@ internal fun copyParameterDefaultValues(
 
   val transformer =
     object : IrTransformer<RemappingData>() {
+      override fun visitExpression(expression: IrExpression, data: RemappingData): IrExpression {
+        if (isTopLevelFunction) {
+          // https://youtrack.jetbrains.com/issue/KT-81656
+          expression.startOffset = SYNTHETIC_OFFSET
+          expression.endOffset = SYNTHETIC_OFFSET
+        }
+        return super.visitExpression(expression, data)
+      }
+
       override fun visitGetValue(expression: IrGetValue, data: RemappingData): IrExpression {
         // Check if the expression is the instance receiver
         if (expression.symbol == providerFunction?.dispatchReceiverParameter?.symbol) {
@@ -91,7 +101,7 @@ internal fun copyParameterDefaultValues(
       }
     }
 
-  val isDisabled = context.options.optionalDependencyBehavior == OptionalDependencyBehavior.DISABLED
+  val isDisabled = context.options.optionalBindingBehavior == OptionalBindingBehavior.DISABLED
 
   for ((index, parameter) in sourceParameters.withIndex()) {
     // If we did get assisted parameters, do copy them over (i.e. top-level function injection)

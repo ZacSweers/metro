@@ -131,6 +131,9 @@ public abstract interface annotation class dev/zacsweers/metro/Named : java/lang
 	public abstract fun name ()Ljava/lang/String;
 }
 
+public abstract interface annotation class dev/zacsweers/metro/OptionalBinding : java/lang/annotation/Annotation {
+}
+
 public abstract interface annotation class dev/zacsweers/metro/OptionalDependency : java/lang/annotation/Annotation {
 }
 

@@ -3,7 +3,7 @@
 @Inject
 class TaskImpl1 : Task {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  object $$MetroFactory : Factory<TaskImpl1> {
+  object MetroFactory : Factory<TaskImpl1> {
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -11,7 +11,7 @@ class TaskImpl1 : Task {
     }
 
     fun create(): Factory<TaskImpl1> {
-      return $$MetroFactory
+      return MetroFactory
     }
 
     fun newInstance(): TaskImpl1 {
@@ -19,7 +19,7 @@ class TaskImpl1 : Task {
     }
 
     override operator fun invoke(): TaskImpl1 {
-      return $$MetroFactory.newInstance()
+      return MetroFactory.newInstance()
     }
 
     fun mirrorFunction(): TaskImpl1 {
@@ -39,7 +39,7 @@ class TaskImpl1 : Task {
 @Inject
 class TaskImpl2 : Task {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  object $$MetroFactory : Factory<TaskImpl2> {
+  object MetroFactory : Factory<TaskImpl2> {
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -47,7 +47,7 @@ class TaskImpl2 : Task {
     }
 
     fun create(): Factory<TaskImpl2> {
-      return $$MetroFactory
+      return MetroFactory
     }
 
     fun newInstance(): TaskImpl2 {
@@ -55,7 +55,7 @@ class TaskImpl2 : Task {
     }
 
     override operator fun invoke(): TaskImpl2 {
-      return $$MetroFactory.newInstance()
+      return MetroFactory.newInstance()
     }
 
     fun mirrorFunction(): TaskImpl2 {
@@ -91,9 +91,9 @@ class TaskImpl4 : Task {
 }
 
 @DependencyGraph(scope = AppScope::class)
-interface ExampleGraph : $$MetroContributionToAppScope {
+interface ExampleGraph : MetroContributionToAppScope {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  abstract class $$BindsMirror {
+  abstract class BindsMirror {
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -112,45 +112,37 @@ interface ExampleGraph : $$MetroContributionToAppScope {
 
   }
 
-  companion object Companion {
-    private constructor() /* primary */ {
-      super/*Any*/()
-      /* <init>() */
-
-    }
-
-    @GraphFactoryInvokeFunctionMarker
-    operator fun invoke(): ExampleGraph {
-      return $$MetroGraph()
-    }
-
-  }
-
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroGraph : ExampleGraph {
-    private /* final field */ val thisGraphInstance: ExampleGraph = <this>
-    private /* final field */ val exampleGraphProvider: Provider<ExampleGraph> = Companion.invoke<ExampleGraph>(value = <this>.#thisGraphInstance)
-    private /* final field */ val provide4Provider: Provider<Task> = Companion.create(instance = <this>.#thisGraphInstance)
-    private /* final field */ val provide3Provider: Provider<Task> = Companion.create(instance = <this>.#thisGraphInstance)
+  @MetroImplMarker
+  class Impl : ExampleGraph {
+    private val thisGraphInstance: ExampleGraph
+      field = <this>
+
+    private val exampleGraphProvider: Provider<ExampleGraph>
+      field = Companion.invoke<ExampleGraph>(value = <this>.#thisGraphInstance)
+
     @DependencyGraph(scope = Unit::class)
     inner class LoggedInGraphImpl : LoggedInGraph {
-      private /* final field */ val provide4Provider: Provider<Task> = Companion.create(instance = <this>)
-      private /* final field */ val provide3Provider: Provider<Task> = Companion.create(instance = <this>)
       constructor() /* primary */ {
         super/*Any*/()
         /* <init>() */
 
       }
 
-      override val tasksFromParent: Set<Task>
-        override get(): Set<Task> {
+      private val setOfTask: Set<Task>
+        private get(): Set<Task> {
           return buildSet<Task>(capacity = 4, builderAction = local fun MutableSet<Task>.<anonymous>() {
-            $receiver.add(element = <this>.#provide4Provider.invoke())
-            $receiver.add(element = <this>.#provide3Provider.invoke())
-            $receiver.add(element = $$MetroFactory.create().invoke())
-            $receiver.add(element = $$MetroFactory.create().invoke())
+            $receiver.add(element = Companion.create(instance = <this>).invoke())
+            $receiver.add(element = Companion.create(instance = <this>).invoke())
+            $receiver.add(element = MetroFactory.create().invoke())
+            $receiver.add(element = MetroFactory.create().invoke())
           }
 )
+        }
+
+      override val tasksFromParent: Set<Task>
+        override get(): Set<Task> {
+          return <this>.<get-setOfTask>()
         }
 
     }
@@ -179,22 +171,41 @@ interface ExampleGraph : $$MetroContributionToAppScope {
         return error(message = "Never called")
       }
 
-    override val tasks: Set<Task>
-      override get(): Set<Task> {
+    private val setOfTask: Set<Task>
+      private get(): Set<Task> {
         return buildSet<Task>(capacity = 4, builderAction = local fun MutableSet<Task>.<anonymous>() {
-          $receiver.add(element = <this>.#provide4Provider.invoke())
-          $receiver.add(element = <this>.#provide3Provider.invoke())
-          $receiver.add(element = $$MetroFactory.create().invoke())
-          $receiver.add(element = $$MetroFactory.create().invoke())
+          $receiver.add(element = Companion.create(instance = <this>.#thisGraphInstance).invoke())
+          $receiver.add(element = Companion.create(instance = <this>.#thisGraphInstance).invoke())
+          $receiver.add(element = MetroFactory.create().invoke())
+          $receiver.add(element = MetroFactory.create().invoke())
         }
 )
       }
+
+    override val tasks: Set<Task>
+      override get(): Set<Task> {
+        return <this>.<get-setOfTask>()
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): ExampleGraph {
+      return Impl()
+    }
 
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @CallableMetadata(callableName = "provide3", propertyName = "", startOffset = 396, endOffset = 449)
-  class Provide3$$MetroFactory : Factory<Task> {
+  class Provide3MetroFactory : Factory<Task> {
     private /* final field */ val instance: ExampleGraph = instance
     companion object Companion {
       private constructor() /* primary */ {
@@ -204,7 +215,7 @@ interface ExampleGraph : $$MetroContributionToAppScope {
       }
 
       fun create(instance: ExampleGraph): Factory<Task> {
-        return Provide3$$MetroFactory(instance = instance)
+        return Provide3MetroFactory(instance = instance)
       }
 
       fun provide3(instance: ExampleGraph): Task {
@@ -232,7 +243,7 @@ interface ExampleGraph : $$MetroContributionToAppScope {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @CallableMetadata(callableName = "provide4", propertyName = "", startOffset = 340, endOffset = 393)
-  class Provide4$$MetroFactory : Factory<Task> {
+  class Provide4MetroFactory : Factory<Task> {
     private /* final field */ val instance: ExampleGraph = instance
     companion object Companion {
       private constructor() /* primary */ {
@@ -242,7 +253,7 @@ interface ExampleGraph : $$MetroContributionToAppScope {
       }
 
       fun create(instance: ExampleGraph): Factory<Task> {
-        return Provide4$$MetroFactory(instance = instance)
+        return Provide4MetroFactory(instance = instance)
       }
 
       fun provide4(instance: ExampleGraph): Task {
@@ -302,7 +313,7 @@ interface LoggedInGraph {
   interface Factory1 {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
     @MetroContribution(scope = AppScope::class)
-    interface $$MetroContributionToAppScope : Factory1 {
+    interface MetroContributionToAppScope : Factory1 {
     }
 
     abstract fun createLoggedInGraph(): LoggedInGraph

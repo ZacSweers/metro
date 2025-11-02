@@ -54,7 +54,7 @@ import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.deserialization.toQualifiedPropertyAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
-import org.jetbrains.kotlin.fir.expressions.FirArrayLiteral
+import org.jetbrains.kotlin.fir.expressions.FirCall
 import org.jetbrains.kotlin.fir.expressions.FirClassReferenceExpression
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
@@ -182,9 +182,18 @@ internal fun FirBasedSymbol<*>.annotationsIn(
     }
 }
 
+/**
+ * Not typed as `FirArrayLiteral` or `FirCollectionLiteral` due to
+ * https://github.com/ZacSweers/metro/issues/1217
+ */
+// TODO after min kotlin 2.3.20 we can remove this for FirCollectionLiteral
+private fun FirAnnotation.arrayArgument(name: Name, index: Int): FirCall? {
+  return argumentAsOrNull<FirCall>(name, index)
+}
+
 /** @see [dev.zacsweers.metro.compiler.ClassIds.allRepeatableContributesAnnotationsContainers] */
 internal fun FirAnnotation.flattenRepeatedAnnotations(): Sequence<FirAnnotation> {
-  return argumentAsOrNull<FirArrayLiteral>(StandardNames.DEFAULT_VALUE_PARAMETER, 0)
+  return arrayArgument(StandardNames.DEFAULT_VALUE_PARAMETER, 0)
     ?.arguments
     ?.asSequence()
     ?.filterIsInstance<FirAnnotation>()
@@ -233,11 +242,13 @@ internal inline fun Visibility.checkVisibility(
       // These are fine
       // TODO what about across modules? Is internal really ok? Or PublishedApi?
     }
+
     Visibilities.Protected -> {
       if (!allowProtected) {
         onError(source, "public or internal")
       }
     }
+
     else -> {
       onError(source, if (allowProtected) "public, internal or protected" else "public or internal")
     }
@@ -363,6 +374,7 @@ internal fun FirAnnotationCall.computeAnnotationHash(
               ?.coneType
               ?.classId
           }
+
           else -> {
             reportCompilerBug(
               "Unexpected annotation argument type: ${arg::class.java} - ${arg.render()}"
@@ -403,6 +415,7 @@ internal inline fun FirClassSymbol<*>.findInjectConstructor(
         }
       }
     }
+
     else -> {
       for (constructorInjection in constructorInjections) {
         reporter.reportOn(
@@ -503,6 +516,7 @@ internal fun FirClass.validateInjectedClass(
         Modality.OPEN -> {
           // final/open This is fine
         }
+
         else -> {
           // sealed/abstract
           reporter.reportOn(
@@ -518,6 +532,7 @@ internal fun FirClass.validateInjectedClass(
       // If we hit here, it's because the class has a `@Contributes*` annotation implying its
       // injectability but no regular `@Inject` annotations. So, report nothing
     }
+
     else -> {
       reporter.reportOn(source, MetroDiagnostics.ONLY_CLASSES_CAN_BE_INJECTED, context)
     }
@@ -571,16 +586,19 @@ internal inline fun FirClass.validateApiDeclaration(
           )
           onError()
         }
+
         else -> {
           // This is fine
         }
       }
     }
+
     ClassKind.CLASS -> {
       when (modality) {
         Modality.ABSTRACT -> {
           // This is fine
         }
+
         else -> {
           // final/open/sealed
           reporter.reportOn(
@@ -592,6 +610,7 @@ internal inline fun FirClass.validateApiDeclaration(
         }
       }
     }
+
     else -> {
       reporter.reportOn(
         source,
@@ -720,6 +739,13 @@ internal fun createDeprecatedHiddenAnnotation(session: FirSession): FirAnnotatio
     }
   }
 
+internal fun FirClassLikeDeclaration.markImpl(session: FirSession) {
+  replaceAnnotations(
+    annotations +
+      listOf(buildSimpleAnnotation { session.metroFirBuiltIns.metroImplMarkerClassSymbol })
+  )
+}
+
 internal fun FirClassLikeDeclaration.markAsDeprecatedHidden(session: FirSession) {
   replaceAnnotations(annotations + listOf(createDeprecatedHiddenAnnotation(session)))
   replaceDeprecationsProvider(this.getDeprecationsProvider(session))
@@ -810,9 +836,11 @@ internal fun FirCallableSymbol<*>.findAnnotation(
           return it
         }
     }
+
     is FirPropertyAccessorSymbol -> {
       return propertySymbol.findAnnotation(session, findAnnotation, this)
     }
+
     is FirBackingFieldSymbol -> {
       return propertySymbol.findAnnotation(session, findAnnotation, this)
     }
@@ -836,13 +864,12 @@ internal fun FirAnnotation.originArgument() =
 internal fun FirAnnotation.scopeArgument() = classArgument(Symbols.Names.scope, index = 0)
 
 internal fun FirAnnotation.additionalScopesArgument() =
-  argumentAsOrNull<FirArrayLiteral>(Symbols.Names.additionalScopes, index = 1)
+  arrayArgument(Symbols.Names.additionalScopes, index = 1)
 
 internal fun FirAnnotation.bindingContainersArgument() =
-  argumentAsOrNull<FirArrayLiteral>(Symbols.Names.bindingContainers, index = 4)
+  arrayArgument(Symbols.Names.bindingContainers, index = 4)
 
-internal fun FirAnnotation.includesArgument() =
-  argumentAsOrNull<FirArrayLiteral>(Symbols.Names.includes, index = 0)
+internal fun FirAnnotation.includesArgument() = arrayArgument(Symbols.Names.includes, index = 0)
 
 internal fun FirAnnotation.allScopeClassIds(): Set<ClassId> =
   buildSet {
@@ -851,11 +878,9 @@ internal fun FirAnnotation.allScopeClassIds(): Set<ClassId> =
     }
     .filterNotTo(mutableSetOf()) { it == StandardClassIds.Nothing }
 
-internal fun FirAnnotation.excludesArgument() =
-  argumentAsOrNull<FirArrayLiteral>(Symbols.Names.excludes, index = 2)
+internal fun FirAnnotation.excludesArgument() = arrayArgument(Symbols.Names.excludes, index = 2)
 
-internal fun FirAnnotation.replacesArgument() =
-  argumentAsOrNull<FirArrayLiteral>(Symbols.Names.replaces, index = 2)
+internal fun FirAnnotation.replacesArgument() = arrayArgument(Symbols.Names.replaces, index = 2)
 
 internal fun FirAnnotation.rankValue(): Long {
   // Although the parameter is defined as an Int, the value we receive here may end up being
@@ -1316,8 +1341,10 @@ internal fun FirClassSymbol<*>.originClassId(
 
 internal fun FirValueParameterSymbol.hasMetroDefault(session: FirSession): Boolean {
   return computeMetroDefault(
-    behavior = session.metroFirBuiltIns.options.optionalDependencyBehavior,
-    isAnnotatedOptionalDep = { hasAnnotation(Symbols.ClassIds.OptionalDependency, session) },
+    behavior = session.metroFirBuiltIns.options.optionalBindingBehavior,
+    isAnnotatedOptionalDep = {
+      isAnnotatedWithAny(session, session.classIds.optionalBindingAnnotations)
+    },
     hasDefaultValue = { this@hasMetroDefault.hasDefaultValue },
   )
 }

@@ -3,7 +3,7 @@
 // ENABLE_TOP_LEVEL_FUNCTION_INJECTION
 
 @Inject
-context(@OptionalDependency <!FUNCTION_INJECT_ERROR!>string<!>: String)
+context(@OptionalBinding <!FUNCTION_INJECT_ERROR!>string<!>: String)
 fun App() {
   // ...
 }

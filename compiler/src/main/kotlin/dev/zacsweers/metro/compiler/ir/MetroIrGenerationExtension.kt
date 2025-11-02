@@ -52,7 +52,7 @@ public class MetroIrGenerationExtension(
           // Create contribution data container
           val contributionData = IrContributionData(context)
 
-          // First - transform $$MetroContribution interfaces and collect contribution data in a
+          // First - transform `MetroContribution` interfaces and collect contribution data in a
           // single pass
           tracer.traceNested("Transform contributions") {
             moduleFragment.transform(ContributionTransformer(context), contributionData)

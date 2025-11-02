@@ -4,8 +4,68 @@ Changelog
 **Unreleased**
 --------------
 
+- **New**: Support interop with Dagger/Anvil-generated member injector classes.
+- **Enhancement**: Skip reading members when loading externally compiled member injector classes. Parameters are now computed from their static `inject*` functions.
+- **Enhancement**: Improve logic for avoiding reserved keywords or illegal character for names in more platforms.
+- **Enhancement**: Inline empty multibinding expressions in code gen.
+- **Enhancement**: Better detect static-ish functions in generated Kotlin factories from Dagger/Anvil interop.
+- **Enhancement**: Cache members injector binding lookups.
+- **Enhancement**: Don't double-lookup members injectors already computed from roots.
+- **Enhancement**: Support Kotlin `2.3.0-Beta2`.
+- **Enhancement**: Improve generated graph impl declaration checks.
+- **Fix**: Work around "LookupSymbols are not yet converted to ProgramSymbols" issue ([KT-80412](https://youtrack.jetbrains.com/issue/KT-80412)) in incremental compilation by avoiding using `$$` prefixes in generated class names.
+- **Fix**: Fix interop support for two layers of `Provider` interop in map multibindings (i.e. `Provider<Map<Key, Provider<Value>>`).
+- Deprecate `includeAnvil()` Gradle DSL function in favor of more specific `includeAnvilForDagger()` and `includeAnvilForKotlinInject()` functions.
+- Move interop annotations controls to compiler. For Gradle users, there's mostly no change (other than the above). For users of any other build system, this makes it a bit easier to reuse the interop annotations logic.
+
+0.7.2
+-----
+
+_2025-10-22_
+
+- **Fix**: Fix eager initialization of some bindings going into multibindings.
+- **Fix**: Fix injection of `Lazy`-wrapped multibindings.
+
+0.7.1
+-----
+
+_2025-10-21_
+
+**🚨 This release has a severe bug in multibinding code gen, please use 0.7.2 instead!**
+
+- **New**: Add missing dependency hints for missing bindings errors
+    ```
+    [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: FooImpl
+
+        FooImpl is injected at
+            [AppGraph] Bindings.bind: FooImpl
+        Base is requested at
+            [AppGraph] AppGraph.base
+
+    (Hint)
+    'FooImpl' doesn't appear to be visible to this compilation. This can happen when a binding references a type from an 'implementation' dependency that isn't exposed to the consuming graph's module.
+    Possible fixes:
+    - Mark the module containing 'FooImpl' as an 'api' dependency in the module that defines 'Bindings' (which is requesting it).
+    - Add the module containing 'FooImpl' as an explicit dependency to the module that defines 'AppGraph'.
+    ```
+
+- **Enhancement**: Improve code generation around multibinding collection builders and contributors, using more lazy getters in graph code gen.
+- **Enhancement**: Short-circuit empty map providers to `emptyMap()`.
+- **Enhancement**: Support default values for assisted parameter arguments in top-level function injection.
+- **Enhancement**: Allow using `@Contributes*` annotations on assisted factories with `contributesAsInject` enabled.
+- **Enhancement**: Allow `@OptionalBinding` annotation to be customizable/replaceable.
+- **Change**: Deprecate `@OptionalDependency` in favor of `@OptionalBinding`. Same behavior, just a slightly more consistent name.
+- **Fix**: Compute `Optional` instance lazily when requested as a `Provider<Optional<T>>` and the underlying optional is not empty. Only applies to `@BindsOptionalOf` interop.
+- **Fix**: Don't generate duplicate `init()` functions when chunking initializers if graphs already have an explicit `init()` function.
+- **Fix**: Fix support for assisted inject with no assisted params.
+- **Fix**: Detect platform types in just the `kotlin` package. Previously it missed any that didn't have multiple package segments.
+- **Fix**: Align unused context parameter special names on Kotlin 2.3.x.
+- Remove `2.3.0-dev-7984` compat (superseded by `2.3.0-Beta1`).
+
+Special thanks to [@Lavmee](https://github.com/Lavmee), [@kevinguitar](https://github.com/kevinguitar), and [@jackwilsdon](https://github.com/jackwilsdon) for contributing to this release!
+
 0.7.0
-------
+-----
 
 _2025-10-17_
 

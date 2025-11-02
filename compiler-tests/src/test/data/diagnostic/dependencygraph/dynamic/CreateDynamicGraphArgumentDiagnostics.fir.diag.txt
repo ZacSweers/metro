@@ -18,9 +18,9 @@
 
 /CreateDynamicGraphArgumentDiagnostics.kt:(977,985): error: `createDynamicGraphFactory` cannot have multiple arguments of the same (raw) type. 'Bindings' is passed multiple times.
 
-/CreateDynamicGraphArgumentDiagnostics.kt:(1060,1070): error: `createDynamicGraph` only accepts concrete, non-local binding container types as arguments. 'kotlin.String' is not annotated with a `@BindingContainer` annotation.
+/CreateDynamicGraphArgumentDiagnostics.kt:(1060,1070): error: `createDynamicGraph` only accepts concrete, non-local binding container types as arguments. Platform type 'kotlin.String' is not a binding container.
 
-/CreateDynamicGraphArgumentDiagnostics.kt:(1133,1143): error: `createDynamicGraphFactory` only accepts concrete, non-local binding container types as arguments. 'kotlin.String' is not annotated with a `@BindingContainer` annotation.
+/CreateDynamicGraphArgumentDiagnostics.kt:(1133,1143): error: `createDynamicGraphFactory` only accepts concrete, non-local binding container types as arguments. Platform type 'kotlin.String' is not a binding container.
 
 /CreateDynamicGraphArgumentDiagnostics.kt:(1224,1241): error: Anonymous objects cannot be annotated with @BindingContainer.
 

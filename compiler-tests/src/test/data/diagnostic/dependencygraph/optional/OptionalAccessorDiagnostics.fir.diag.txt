@@ -1,9 +1,9 @@
-/OptionalAccessorDiagnostics.kt:(145,148): error: @OptionalDependency accessors must have a default body.
+/OptionalAccessorDiagnostics.kt:(142,145): error: @OptionalBinding accessors must have a default body.
 
-/OptionalAccessorDiagnostics.kt:(201,205): error: @OptionalDependency accessors must have a default body.
+/OptionalAccessorDiagnostics.kt:(195,199): error: @OptionalBinding accessors must have a default body.
 
-/OptionalAccessorDiagnostics.kt:(385,391): error: 'string' overrides a declaration annotated `@OptionalDependency`, you must propagate these annotations to overrides.
+/OptionalAccessorDiagnostics.kt:(376,382): error: 'string' overrides a declaration annotated `@OptionalBinding`, you must propagate these annotations to overrides.
 
-/OptionalAccessorDiagnostics.kt:(445,448): error: @OptionalDependency accessors must be open or abstract.
+/OptionalAccessorDiagnostics.kt:(433,436): error: @OptionalBinding accessors must be open or abstract.
 
-/OptionalAccessorDiagnostics.kt:(572,576): error: @OptionalDependency accessors must be open or abstract.
+/OptionalAccessorDiagnostics.kt:(554,558): error: @OptionalBinding accessors must be open or abstract.

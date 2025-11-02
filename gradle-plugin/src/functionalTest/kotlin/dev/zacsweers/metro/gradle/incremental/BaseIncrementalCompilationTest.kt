@@ -5,6 +5,7 @@ package dev.zacsweers.metro.gradle.incremental
 import com.autonomousapps.kit.GradleProject
 import com.autonomousapps.kit.Source
 import com.autonomousapps.kit.Subproject
+import dev.zacsweers.metro.gradle.copy
 import java.io.File
 import org.intellij.lang.annotations.Language
 
@@ -35,11 +36,11 @@ abstract class BaseIncrementalCompilationTest {
     val keysPopulated: Set<String> by lazy {
       reportsDir.resolve("keys-populated-$name.txt").readLines().toSet()
     }
-    val providerFieldKeys: Set<String> by lazy {
-      reportsDir.resolve("keys-providerFields-$name.txt").readLines().toSet()
+    val providerPropertyKeys: Set<String> by lazy {
+      reportsDir.resolve("keys-providerProperties-$name.txt").readLines().toSet()
     }
-    val scopedProviderFieldKeys: Set<String> by lazy {
-      reportsDir.resolve("keys-scopedProviderFields-$name.txt").readLines().toSet()
+    val scopedProviderPropertyKeys: Set<String> by lazy {
+      reportsDir.resolve("keys-scopedProviderProperties-$name.txt").readLines().toSet()
     }
   }
 

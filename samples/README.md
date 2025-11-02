@@ -14,12 +14,6 @@ A multiplatform sample that demonstrates using Metro with [Circuit](https://gith
 
 Various demonstrating interop between Metro and other dependency injection frameworks.
 
-## [multi-module-test](https://github.com/ZacSweers/metro/tree/main/samples/multi-module-test)
-
-A sample + integration test demonstrating Metro in a multi-module project structure with.
-
-This sample shows how Metro handles dependencies across module boundaries and component hierarchies.
-
 ## [weather-app](https://github.com/ZacSweers/metro/tree/main/samples/weather-app)
 
 A simple command-line weather app that demonstrates basic Metro usage.

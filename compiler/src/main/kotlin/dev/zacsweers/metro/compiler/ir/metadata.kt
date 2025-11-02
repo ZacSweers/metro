@@ -3,6 +3,9 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.PLUGIN_ID
+import dev.zacsweers.metro.compiler.ir.graph.DependencyGraphNode
+import dev.zacsweers.metro.compiler.ir.graph.IrBinding
+import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
@@ -10,6 +13,7 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.name.ClassId
 
+// TODO cache lookups of injected_class since it's checked multiple times
 context(context: IrMetroContext)
 internal var IrClass.metroMetadata: MetroMetadata?
   get() {
@@ -22,9 +26,7 @@ internal var IrClass.metroMetadata: MetroMetadata?
     context.metadataDeclarationRegistrar.addCustomMetadataExtension(this, PLUGIN_ID, value.encode())
   }
 
-internal fun DependencyGraphNode.toProto(
-  bindingGraph: IrBindingGraph,
-): DependencyGraphProto {
+internal fun DependencyGraphNode.toProto(bindingGraph: IrBindingGraph): DependencyGraphProto {
   var multibindingAccessors = 0
   val accessorNames =
     accessors
@@ -66,7 +68,9 @@ private fun createGraphProto(
   return DependencyGraphProto(
     is_graph = isGraph,
     provider_factory_classes =
-      providerFactories.map { (_, factory) -> factory.factoryClass.classIdOrFail.protoString }.sorted(),
+      providerFactories
+        .map { (_, factory) -> factory.factoryClass.classIdOrFail.protoString }
+        .sorted(),
     accessor_callable_names = accessorNames.sorted(),
     multibinding_accessor_indices = multibindingAccessorIndices,
     included_binding_containers = includedBindingContainers.sorted(),

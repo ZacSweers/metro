@@ -65,11 +65,7 @@ public class MetroFirExtensionRegistrar(
     +declarationGenerator("FirGen - BindingMirrorClass", ::BindingMirrorClassFirGenerator, true)
     +declarationGenerator("FirGen - ContributionsGenerator", ::ContributionsFirGenerator, true)
     if (options.generateContributionHints) {
-      +declarationGenerator(
-        "FirGen - ContributionHints",
-        ::ContributionHintFirGenerator,
-        true,
-      )
+      +declarationGenerator("FirGen - ContributionHints", ::ContributionHintFirGenerator, true)
     }
     +declarationGenerator("FirGen - DependencyGraph", ::DependencyGraphFirGenerator, true)
 
@@ -121,7 +117,11 @@ public class MetroFirExtensionRegistrar(
         if (logger == MetroLogger.NONE) {
           delegate(session, compatContext)
         } else {
-          LoggingFirDeclarationGenerationExtension(session, logger, delegate(session, compatContext))
+          LoggingFirDeclarationGenerationExtension(
+            session,
+            logger,
+            delegate(session, compatContext),
+          )
         }
       extension.kotlinOnly()
     }

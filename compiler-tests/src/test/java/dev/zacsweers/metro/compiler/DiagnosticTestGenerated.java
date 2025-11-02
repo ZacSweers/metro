@@ -3,9 +3,9 @@
 package dev.zacsweers.metro.compiler;
 
 import com.intellij.testFramework.TestDataPath;
+import org.jetbrains.kotlin.test.util.KtTestUtil;
 import org.jetbrains.kotlin.test.TargetBackend;
 import org.jetbrains.kotlin.test.TestMetadata;
-import org.jetbrains.kotlin.test.util.KtTestUtil;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -221,6 +221,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/MultipleMissingDeps.kt");
     }
 
+    @Test
+    @TestMetadata("UsefulHintsForMissingImplDeps.kt")
+    public void testUsefulHintsForMissingImplDeps() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/UsefulHintsForMissingImplDeps.kt");
+    }
+
     @Nested
     @TestMetadata("compiler-tests/src/test/data/diagnostic/dependencygraph/dynamic")
     @TestDataPath("$PROJECT_ROOT")
@@ -315,27 +321,27 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
-      @TestMetadata("OptionalDependencyErrorIfDisabled.kt")
-      public void testOptionalDependencyErrorIfDisabled() {
-        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/optional/OptionalDependencyErrorIfDisabled.kt");
+      @TestMetadata("OptionalBindingErrorIfDisabled.kt")
+      public void testOptionalBindingErrorIfDisabled() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/optional/OptionalBindingErrorIfDisabled.kt");
       }
 
       @Test
-      @TestMetadata("OptionalDependencyIsNotAllowedOnInjectors.kt")
-      public void testOptionalDependencyIsNotAllowedOnInjectors() {
-        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/optional/OptionalDependencyIsNotAllowedOnInjectors.kt");
+      @TestMetadata("OptionalBindingIsNotAllowedOnInjectors.kt")
+      public void testOptionalBindingIsNotAllowedOnInjectors() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/optional/OptionalBindingIsNotAllowedOnInjectors.kt");
       }
 
       @Test
-      @TestMetadata("OptionalDependencyParamRequiresDefaultValue.kt")
-      public void testOptionalDependencyParamRequiresDefaultValue() {
-        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/optional/OptionalDependencyParamRequiresDefaultValue.kt");
+      @TestMetadata("OptionalBindingParamRequiresDefaultValue.kt")
+      public void testOptionalBindingParamRequiresDefaultValue() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/optional/OptionalBindingParamRequiresDefaultValue.kt");
       }
 
       @Test
-      @TestMetadata("OptionalDependencyParamWarningIfDefault.kt")
-      public void testOptionalDependencyParamWarningIfDefault() {
-        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/optional/OptionalDependencyParamWarningIfDefault.kt");
+      @TestMetadata("OptionalBindingParamWarningIfDefault.kt")
+      public void testOptionalBindingParamWarningIfDefault() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/optional/OptionalBindingParamWarningIfDefault.kt");
       }
 
       @Test
@@ -626,6 +632,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       @TestMetadata("DoNotSuggestMovingInjectAnnotationToClassWhenUsingJavaxOrJakartaInject.kt")
       public void testDoNotSuggestMovingInjectAnnotationToClassWhenUsingJavaxOrJakartaInject() {
         runTest("compiler-tests/src/test/data/diagnostic/interop/dagger/DoNotSuggestMovingInjectAnnotationToClassWhenUsingJavaxOrJakartaInject.kt");
+      }
+
+      @Test
+      @TestMetadata("MemberInjectionQualifiersAreLookedUp.kt")
+      public void testMemberInjectionQualifiersAreLookedUp() {
+        runTest("compiler-tests/src/test/data/diagnostic/interop/dagger/MemberInjectionQualifiersAreLookedUp.kt");
       }
 
       @Test

@@ -203,7 +203,7 @@ package dev.zacsweers.metro
  *
  * There are three reasons this is behind an opt-in option at the moment.
  * 1. Generating top-level declarations in Kotlin compiler plugins (in FIR specifically) is not
- *    currently compatible with incremental compilation.
+ *    currently compatible with incremental compilation on the JVM.
  * 2. Generating top-level declarations in Kotlin compiler plugins (in FIR specifically) is not
  *    currently compatible with non-JVM targets.
  * 3. IDE support is rudimentary at best and currently requires enabling a custom registry flag.

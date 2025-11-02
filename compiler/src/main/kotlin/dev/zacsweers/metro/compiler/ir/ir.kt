@@ -3,7 +3,7 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
-import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.Symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.compat.CompatContext
@@ -22,7 +22,7 @@ import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.singleOrError
-import dev.zacsweers.metro.compiler.toJavaIdentifier
+import dev.zacsweers.metro.compiler.toSafeIdentifier
 import java.io.File
 import java.util.Objects
 import kotlin.io.path.name
@@ -30,7 +30,6 @@ import org.jetbrains.kotlin.DeprecatedForRemovalCompilerApi
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.ir.createExtensionReceiver
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
-import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.backend.jvm.ir.isWithFlexibleNullability
 import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
@@ -143,6 +142,7 @@ import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.getValueArgument
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.hasShape
+import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isStatic
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -185,14 +185,11 @@ internal fun IrElement?.locationIn(file: IrFile): CompilerMessageSourceLocation 
   )!!
 }
 
-internal fun CompilerMessageSourceLocation.render(): String? {
+internal fun CompilerMessageSourceLocation.render(short: Boolean): String? {
   return buildString {
     // Just for use in testing
-    val useShortName =
-      System.getProperty(MetroOptions.Properties.USE_SHORT_COMPILER_SOURCE_LOCATIONS, "false")
-        .toBoolean()
     val path = File(path).toPath()
-    if (useShortName) {
+    if (short) {
       append(path.name)
     } else {
       val fileUri = path.toUri()
@@ -207,7 +204,6 @@ internal fun CompilerMessageSourceLocation.render(): String? {
       // No line or column numbers makes this kind of useless so return null
       return null
     }
-    append(' ')
   }
 }
 
@@ -219,7 +215,8 @@ internal fun IrType.rawType(): IrClass {
         when {
           this is IrErrorType -> "Error type encountered: ${dumpKotlinLike()}"
           classifierOrNull is IrTypeParameterSymbol ->
-            "Type parameter encountered: ${dumpKotlinLike()}"
+            "Unexpected type parameter encountered: ${dumpKotlinLike()}"
+
           else -> "Unrecognized type! ${dumpKotlinLike()} (${classifierOrNull?.javaClass})"
         }
       reportCompilerBug(message)
@@ -374,7 +371,7 @@ internal fun IrConstructorCall.computeAnnotationHash(): Int {
       .mapIndexed { i, arg ->
         arg.computeHashSource()
           ?: reportCompilerBug(
-            "Unknown annotation argument type: ${arg::class.java }. Annotation: ${dumpKotlinLike()}"
+            "Unknown annotation argument type: ${arg::class.java}. Annotation: ${dumpKotlinLike()}"
           )
       }
       .toTypedArray()
@@ -554,10 +551,13 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
   isGraphInstance: Boolean,
 ): IrExpression {
   val symbols = context.metroSymbols
-  val providerType = bindingCode.type.findProviderSupertype()
-  if (providerType == null) {
-    // Not a provider, nothing else to do here!
-    return bindingCode
+  val irType = bindingCode.type
+  if (!irType.implementsLazyType()) {
+    val providerType = bindingCode.type.findProviderSupertype()
+    if (providerType == null) {
+      // Not a provider, nothing else to do here!
+      return bindingCode
+    }
   }
 
   // More readability
@@ -627,7 +627,7 @@ internal fun assignConstructorParamsToFields(
       val irField =
         clazz
           .addField(
-            toJavaIdentifier(irParameter.name.asString()),
+            toSafeIdentifier(irParameter.name.asString()),
             irParameter.type,
             DescriptorVisibilities.PRIVATE,
           )
@@ -656,7 +656,10 @@ internal fun assignConstructorParamsToFields(
           )
           .apply {
             isFinal = true
-            initializer = context.createIrBuilder(symbol).run { irExprBody(irGet(irParameter.ir)) }
+            initializer =
+              context.createIrBuilder(symbol).run {
+                irExprBody(irGet(irParameter.asValueParameter))
+              }
           }
       put(irParameter, irField)
     }
@@ -894,8 +897,10 @@ internal val IrDeclarationParent.isExternalParent: Boolean
  * serializable in IR and cannot be used in some places like function bodies. This replicates that
  * ease of use.
  */
-internal fun IrBuilderWithScope.irExprBodySafe(symbol: IrSymbol, expression: IrExpression) =
-  context.createIrBuilder(symbol).irBlockBody { +irReturn(expression) }
+internal fun IrBuilderWithScope.irExprBodySafe(
+  expression: IrExpression,
+  symbol: IrSymbol = scope.scopeOwnerSymbol,
+) = context.createIrBuilder(symbol).irBlockBody { +irReturn(expression) }
 
 context(context: IrPluginContext)
 internal fun IrFunction.buildBlockBody(blockBody: IrBlockBodyBuilder.() -> Unit) {
@@ -903,7 +908,16 @@ internal fun IrFunction.buildBlockBody(blockBody: IrBlockBodyBuilder.() -> Unit)
 }
 
 internal fun IrType.render(short: Boolean, includeAnnotations: Boolean = false): String {
-  return StringBuilder().also { renderTo(it, short, includeAnnotations) }.toString()
+  return buildString { renderTo(this, short, includeAnnotations) }
+}
+
+internal fun IrTypeArgument.render(short: Boolean, includeAnnotations: Boolean = false): String {
+  return buildString {
+    when (this@render) {
+      is IrStarProjection -> append("*")
+      is IrTypeProjection -> type.renderTo(this, short, includeAnnotations)
+    }
+  }
 }
 
 internal fun IrType.renderTo(
@@ -923,6 +937,7 @@ internal fun IrType.renderTo(
       // TODO IrErrorType.symbol?
       appendable.append("<error>")
     }
+
     is IrSimpleType -> {
       val name =
         when (val classifier = type.classifier) {
@@ -932,8 +947,10 @@ internal fun IrType.renderTo(
             } else {
               classifier.owner.kotlinFqName.asString()
             }
+
           is IrScriptSymbol ->
             reportCompilerBug("No simple name for script symbol: ${type.dumpKotlinLike()}")
+
           is IrTypeParameterSymbol -> {
             classifier.owner.name.asString()
           }
@@ -955,6 +972,7 @@ internal fun IrType.renderTo(
                 Variance.INVARIANT -> {
                   // do nothing
                 }
+
                 Variance.IN_VARIANCE -> appendable.append("in ")
                 Variance.OUT_VARIANCE -> appendable.append("out ")
               }
@@ -1077,19 +1095,25 @@ internal fun IrClass.requireNestedClass(name: Name): IrClass {
     )
 }
 
+internal fun IrClass.requireNestedClass(origin: IrDeclarationOrigin): IrClass {
+  return nestedClassOrNull(origin)
+    ?: reportCompilerBug(
+      "No nested class with origin '$origin' in $classId. Found ${nestedClasses.map { it.name }}"
+    )
+}
+
 internal fun IrClass.nestedClassOrNull(name: Name): IrClass? {
   return nestedClasses.firstOrNull { it.name == name }
+}
+
+internal fun IrClass.nestedClassOrNull(origin: IrDeclarationOrigin): IrClass? {
+  return nestedClasses.firstOrNull { it.origin == origin }
 }
 
 internal fun <T : IrOverridableDeclaration<*>> T.resolveOverriddenTypeIfAny(): T {
   @Suppress("UNCHECKED_CAST")
   return overriddenSymbols.singleOrNull()?.owner as? T? ?: this
 }
-
-internal val IrClass.isMetroGenerated: Boolean
-  get() {
-    return name in Symbols.Names.metroNames
-  }
 
 internal fun IrOverridableDeclaration<*>.finalizeFakeOverride(
   dispatchReceiverParameter: IrValueParameter
@@ -1133,7 +1157,7 @@ private fun <S> IrOverridableDeclaration<S>.overriddenSymbolsSequence(
 
 context(context: IrMetroContext)
 internal fun IrFunction.stubExpressionBody(message: String = "Never called"): IrBlockBody {
-  return context.createIrBuilder(symbol).run { irExprBodySafe(symbol, stubExpression(message)) }
+  return context.createIrBuilder(symbol).run { irExprBodySafe(stubExpression(message)) }
 }
 
 context(context: IrMetroContext)
@@ -1161,11 +1185,30 @@ internal val IrClass.metroGraphOrFail: IrClass
   get() = metroGraphOrNull ?: reportCompilerBug("No generated MetroGraph found: $classId")
 
 internal val IrClass.metroGraphOrNull: IrClass?
-  get() = if (origin.isGraphImpl) this else nestedClassOrNull(Symbols.Names.MetroGraph)
+  get() {
+    return if (isExternalParent) {
+      if (hasAnnotation(Symbols.ClassIds.metroImplMarker)) {
+        this
+      } else {
+        nestedClasses.firstOrNull { it.hasAnnotation(Symbols.ClassIds.metroImplMarker) }
+      }
+    } else {
+      if (origin.isGraphImpl) {
+        this
+      } else {
+        nestedClassOrNull(Origins.GraphImplClassDeclaration)
+      }
+    }
+  }
 
 internal val IrClass.sourceGraphIfMetroGraph: IrClass
   get() {
-    val isGeneratedGraph = name == Symbols.Names.MetroGraph || origin.isGraphImpl
+    val isGeneratedGraph =
+      if (isExternalParent) {
+        hasAnnotation(Symbols.ClassIds.metroImplMarker)
+      } else {
+        origin.isGraphImpl
+      }
     return if (isGeneratedGraph) {
       superTypes.firstOrNull()?.rawTypeOrNull()
         ?: reportCompilerBug("No super type found for $kotlinFqName")
@@ -1348,6 +1391,7 @@ internal fun typeRemapperFor(substitutionMap: Map<IrTypeParameterSymbol, IrType>
                   is IrSimpleType if (!type.isWithFlexibleNullability()) -> {
                     remapped.mergeNullability(type)
                   }
+
                   else -> remapped
                 }
               } ?: type
@@ -1365,6 +1409,7 @@ internal fun typeRemapperFor(substitutionMap: Map<IrTypeParameterSymbol, IrType>
               type.buildSimpleType { arguments = newArguments }
             }
           }
+
           else -> type
         }
       }
@@ -1452,6 +1497,7 @@ private fun buildDeepSubstitutionMap(
 
 private class DeepTypeSubstitutor(private val substitutionMap: Map<IrTypeParameterSymbol, IrType>) :
   TypeRemapper {
+  private val mapByName = substitutionMap.mapKeys { it.key.owner.name.identifier }
   private val cache = mutableMapOf<IrType, IrType>()
 
   override fun enterScope(irTypeParametersContainer: IrTypeParametersContainer) {}
@@ -1476,6 +1522,7 @@ private class DeepTypeSubstitutor(private val substitutionMap: Map<IrTypeParamet
             if (newArgs == type.arguments) type else type.buildSimpleType { arguments = newArgs }
           }
         }
+
         else -> type
       }
     }
@@ -1501,6 +1548,7 @@ internal fun IrConstructorCall.rankValue(): Long {
           else -> Long.MIN_VALUE
         }
       }
+
       else -> Long.MIN_VALUE
     }
   } ?: Long.MIN_VALUE
@@ -1554,7 +1602,10 @@ private fun List<IrConstructorCall>?.annotationsAnnotatedWith(
 
 context(context: IrMetroContext)
 internal fun IrClass.findInjectableConstructor(onlyUsePrimaryConstructor: Boolean): IrConstructor? {
-  if (kind.isObject) return null // No constructor for this one but can be annotated with Contributes*
+  if (kind.isObject) {
+    // No constructor for this one but can be annotated with Contributes*
+    return null
+  }
   return findInjectableConstructor(
     onlyUsePrimaryConstructor,
     if (onlyUsePrimaryConstructor) {
@@ -1710,12 +1761,74 @@ internal fun IrType.requireSimpleType(
 context(context: IrMetroContext)
 internal fun IrValueParameter.hasMetroDefault(): Boolean {
   return computeMetroDefault(
-    behavior = context.options.optionalDependencyBehavior,
-    isAnnotatedOptionalDep = { hasAnnotation(Symbols.ClassIds.OptionalDependency) },
+    behavior = context.options.optionalBindingBehavior,
+    isAnnotatedOptionalDep = {
+      isAnnotatedWithAny(context.metroSymbols.classIds.optionalBindingAnnotations)
+    },
     hasDefaultValue = { defaultValue != null },
   )
 }
 
-internal fun <T : Any> IrPluginContext.withIrBuilder(symbol: IrSymbol, block: DeclarationIrBuilder.() -> T): T {
+internal fun <T : Any> IrPluginContext.withIrBuilder(
+  symbol: IrSymbol,
+  block: DeclarationIrBuilder.() -> T,
+): T {
   return createIrBuilder(symbol).run(block)
 }
+
+internal val IrProperty.reportableDeclaration: IrDeclarationParent?
+  get() = backingField ?: getter
+
+internal fun IrBuilderWithScope.irGetProperty(
+  receiver: IrExpression,
+  property: IrProperty,
+): IrExpression {
+  property.backingField?.let {
+    return irGetField(receiver, it)
+  }
+  property.getter?.let {
+    return irInvoke(dispatchReceiver = receiver, callee = it.symbol)
+  }
+  reportCompilerBug("No backing field or getter for property ${property.dumpKotlinLike()}")
+}
+
+internal val IrConstructorCall.annotationClass: IrClass
+  get() = symbol.owner.parentAsClass
+
+/**
+ * Returns the container that can hold static-ish declarations.
+ * - If Java -> this
+ * - If Kotlin ->
+ *     - If isObject -> this
+ *     - Companion object -> it
+ *     - else -> error
+ */
+internal fun IrClass.requireStaticIshDeclarationContainer(): IrClass {
+  return staticIshDeclarationContainerOrNull()
+    ?: reportCompilerBug(
+      "No contain present that can hold static-ish declarations in ${classId?.asFqNameString()}!"
+    )
+}
+
+/**
+ * Returns the container that can hold static-ish declarations.
+ * - If Java -> this
+ * - If Kotlin ->
+ *     - If isObject -> this
+ *     - Companion object -> it
+ *     - else null
+ */
+internal fun IrClass.staticIshDeclarationContainerOrNull(): IrClass? {
+  return when {
+    isFromJava() -> this
+    kind.isObject -> this
+    else -> companionObject()
+  }
+}
+
+/**
+ * In cases where we read Anvil-generated kotlin code, "static" may be a function in a companion
+ * object, where [IrFunction.dispatchReceiverParameter] isn't quite enough.
+ */
+internal val IrFunction.isStaticIsh: Boolean
+  get() = parent is IrClass && (dispatchReceiverParameter == null || parentAsClass.isObject)

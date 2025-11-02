@@ -16,7 +16,6 @@ private val anvilRuntimeClasspath =
   System.getProperty("anvilRuntime.classpath")?.split(File.pathSeparator)?.map(::File)
     ?: error("Unable to get a valid classpath from 'anvilRuntime.classpath' property")
 
-
 private val kiAnvilRuntimeClasspath =
   System.getProperty("kiAnvilRuntime.classpath")?.split(File.pathSeparator)?.map(::File)
     ?: error("Unable to get a valid classpath from 'kiAnvilRuntime.classpath' property")
@@ -32,7 +31,10 @@ class AnvilRuntimeEnvironmentConfigurator(testServices: TestServices) :
     configuration: CompilerConfiguration,
     module: TestModule,
   ) {
-    if (MetroDirectives.WITH_ANVIL in module.directives) {
+    if (
+      MetroDirectives.WITH_ANVIL in module.directives ||
+        MetroDirectives.ENABLE_ANVIL_KSP in module.directives
+    ) {
       for (file in anvilRuntimeClasspath) {
         configuration.addJvmClasspathRoot(file)
       }
@@ -49,7 +51,10 @@ class AnvilRuntimeClassPathProvider(testServices: TestServices) :
   RuntimeClasspathProvider(testServices) {
   override fun runtimeClassPaths(module: TestModule): List<File> {
     return buildList {
-      if (MetroDirectives.WITH_ANVIL in module.directives) {
+      if (
+        MetroDirectives.WITH_ANVIL in module.directives ||
+          MetroDirectives.ENABLE_ANVIL_KSP in module.directives
+      ) {
         addAll(anvilRuntimeClasspath)
       }
       if (MetroDirectives.WITH_KI_ANVIL in module.directives) {

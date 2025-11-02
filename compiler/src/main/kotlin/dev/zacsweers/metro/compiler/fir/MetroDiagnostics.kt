@@ -44,9 +44,8 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MULTIBINDS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MULTIBINDS_OVERRIDE_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ONLY_CLASSES_CAN_BE_INJECTED
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ONLY_FINAL_AND_OPEN_CLASSES_CAN_BE_INJECTED
-import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.OPTIONAL_DEPENDENCY_ERROR
-import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.OPTIONAL_DEPENDENCY_WARNING
-import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDERS_OF_LAZY_CANNOT_BE_ACCESSORS
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.OPTIONAL_BINDING_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.OPTIONAL_BINDING_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDERS_OF_LAZY_MUST_BE_METRO_ONLY
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDER_OVERRIDES
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_COULD_BE_BINDS
@@ -106,7 +105,6 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val LOCAL_CLASSES_CANNOT_BE_INJECTED by error0<KtElement>(NAME_IDENTIFIER)
   val INJECTED_CLASSES_MUST_BE_VISIBLE by error1<KtElement, String>(VISIBILITY_MODIFIER)
   val PROVIDERS_OF_LAZY_MUST_BE_METRO_ONLY by error2<KtElement, String, String>(NAME_IDENTIFIER)
-  val PROVIDERS_OF_LAZY_CANNOT_BE_ACCESSORS by error0<KtElement>(NAME_IDENTIFIER)
 
   // Assisted factory/inject errors
   val ASSISTED_INJECTION_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
@@ -145,8 +143,8 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val FUNCTION_INJECT_TYPE_PARAMETERS_ERROR by error1<KtElement, String>(TYPE_PARAMETERS_LIST)
   val BINDING_CONTAINER_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
 
-  val OPTIONAL_DEPENDENCY_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
-  val OPTIONAL_DEPENDENCY_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
+  val OPTIONAL_BINDING_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val OPTIONAL_BINDING_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
 
   // Interop warnings
   val INTEROP_ANNOTATION_ARGS_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
@@ -226,7 +224,6 @@ private object FirMetroErrorMessages : BaseDiagnosticRendererFactory() {
           STRING,
           STRING,
         )
-        put(PROVIDERS_OF_LAZY_CANNOT_BE_ACCESSORS, "Provider<Lazy<T>> accessors are not supported.")
         put(ASSISTED_INJECTION_ERROR, "{0}", STRING)
         put(ASSISTED_INJECTION_WARNING, "{0}", STRING)
         put(PROVIDES_ERROR, "{0}", STRING)
@@ -256,8 +253,8 @@ private object FirMetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(FUNCTION_INJECT_ERROR, "{0}", STRING)
         put(FUNCTION_INJECT_TYPE_PARAMETERS_ERROR, "{0}", STRING)
         put(BINDING_CONTAINER_ERROR, "{0}", STRING)
-        put(OPTIONAL_DEPENDENCY_WARNING, "{0}", STRING)
-        put(OPTIONAL_DEPENDENCY_ERROR, "{0}", STRING)
+        put(OPTIONAL_BINDING_WARNING, "{0}", STRING)
+        put(OPTIONAL_BINDING_ERROR, "{0}", STRING)
         put(INTEROP_ANNOTATION_ARGS_ERROR, "{0}", STRING)
         put(INTEROP_ANNOTATION_ARGS_WARNING, "{0}", STRING)
         put(

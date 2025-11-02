@@ -1,12 +1,12 @@
-// OPTIONAL_DEPENDENCY_BEHAVIOR: REQUIRE_OPTIONAL_DEPENDENCY
+// OPTIONAL_DEPENDENCY_BEHAVIOR: REQUIRE_OPTIONAL_BINDING
 
 // MODULE: lib
 @Inject
-class Example(@OptionalDependency val value: String? = null)
+class Example(@OptionalBinding val value: String? = null)
 
 // MODULE: main(lib)
 @Inject
-class Example2(@OptionalDependency val value: String? = null)
+class Example2(@OptionalBinding val value: String? = null)
 
 @DependencyGraph
 interface AppGraph {
@@ -15,7 +15,7 @@ interface AppGraph {
   val int: Int
 
   @Provides
-  fun provideInt(@OptionalDependency long: Long? = null): Int = long?.toInt() ?: 3
+  fun provideInt(@OptionalBinding long: Long? = null): Int = long?.toInt() ?: 3
 }
 
 fun box(): String {

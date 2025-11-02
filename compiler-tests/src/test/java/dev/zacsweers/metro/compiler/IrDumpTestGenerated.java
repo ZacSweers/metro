@@ -3,9 +3,9 @@
 package dev.zacsweers.metro.compiler;
 
 import com.intellij.testFramework.TestDataPath;
+import org.jetbrains.kotlin.test.util.KtTestUtil;
 import org.jetbrains.kotlin.test.TargetBackend;
 import org.jetbrains.kotlin.test.TestMetadata;
-import org.jetbrains.kotlin.test.util.KtTestUtil;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -26,6 +26,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
   @TestMetadata("MultibindingsHaveConsistentOrderAcrossContributedGraph.kt")
   public void testMultibindingsHaveConsistentOrderAcrossContributedGraph() {
     runTest("compiler-tests/src/test/data/dump/ir/MultibindingsHaveConsistentOrderAcrossContributedGraph.kt");
+  }
+
+  @Test
+  @TestMetadata("MultibindingsWithComplexDependenciesGetProperties.kt")
+  public void testMultibindingsWithComplexDependenciesGetProperties() {
+    runTest("compiler-tests/src/test/data/dump/ir/MultibindingsWithComplexDependenciesGetProperties.kt");
   }
 
   @Test
@@ -106,6 +112,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("EmptyMapMultibindingsUseEmptyMap.kt")
+    public void testEmptyMapMultibindingsUseEmptyMap() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/EmptyMapMultibindingsUseEmptyMap.kt");
+    }
+
+    @Test
     @TestMetadata("ExtensionsAreInnerClasses.kt")
     public void testExtensionsAreInnerClasses() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/ExtensionsAreInnerClasses.kt");
@@ -127,6 +139,18 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     @TestMetadata("InitsAreChunked.kt")
     public void testInitsAreChunked() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/InitsAreChunked.kt");
+    }
+
+    @Test
+    @TestMetadata("LazyPropertiesHaveDeterministicOrder.kt")
+    public void testLazyPropertiesHaveDeterministicOrder() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/LazyPropertiesHaveDeterministicOrder.kt");
+    }
+
+    @Test
+    @TestMetadata("MapsUseMapBuilderIfNoProvider.kt")
+    public void testMapsUseMapBuilderIfNoProvider() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/MapsUseMapBuilderIfNoProvider.kt");
     }
 
     @Test
@@ -172,6 +196,22 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
       @TestMetadata("SimpleDynamicGraph.kt")
       public void testSimpleDynamicGraph() {
         runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/dynamic/SimpleDynamicGraph.kt");
+      }
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/dump/ir/dependencygraph/interop")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Interop {
+      @Test
+      public void testAllFilesPresentInInterop() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph/interop"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      }
+
+      @Test
+      @TestMetadata("BindsOptionalOfUsesLazyProviders.kt")
+      public void testBindsOptionalOfUsesLazyProviders() {
+        runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/interop/BindsOptionalOfUsesLazyProviders.kt");
       }
     }
   }

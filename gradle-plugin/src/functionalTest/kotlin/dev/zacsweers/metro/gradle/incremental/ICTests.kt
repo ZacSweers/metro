@@ -10,6 +10,12 @@ import com.autonomousapps.kit.GradleProject
 import com.autonomousapps.kit.GradleProject.DslKind
 import com.autonomousapps.kit.gradle.Dependency
 import com.google.common.truth.Truth.assertThat
+import dev.zacsweers.metro.gradle.MetroOptionOverrides
+import dev.zacsweers.metro.gradle.MetroProject
+import dev.zacsweers.metro.gradle.buildAndAssertThat
+import dev.zacsweers.metro.gradle.classLoader
+import dev.zacsweers.metro.gradle.cleanOutputLine
+import dev.zacsweers.metro.gradle.source
 import org.gradle.testkit.runner.TaskOutcome
 import org.junit.Ignore
 import org.junit.Test
@@ -108,12 +114,12 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.output)
       .contains(
         """
-          FeatureGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Dependency
+        FeatureGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Dependency
 
-              test.Dependency is injected at
-                  [test.FeatureGraph] test.FeatureGraph.inject()
-              dev.zacsweers.metro.MembersInjector<test.FeatureScreen> is requested at
-                  [test.FeatureGraph] test.FeatureGraph.inject()
+            test.Dependency is injected at
+                [test.FeatureGraph] test.FeatureGraph.inject()
+            dev.zacsweers.metro.MembersInjector<test.FeatureScreen> is requested at
+                [test.FeatureGraph] test.FeatureGraph.inject()
         """
           .trimIndent()
       )
@@ -128,26 +134,26 @@ class ICTests : BaseIncrementalCompilationTest() {
         private val baseGraph =
           source(
             """
-          @DependencyGraph
-          interface BaseGraph {
-              val target: Target
+            @DependencyGraph
+            interface BaseGraph {
+                val target: Target
 
-              @DependencyGraph.Factory
-              interface Factory {
-                  fun create(@Includes provider: ServiceProvider): BaseGraph
-              }
-          }
-          """
+                @DependencyGraph.Factory
+                interface Factory {
+                    fun create(@Includes provider: ServiceProvider): BaseGraph
+                }
+            }
+            """
               .trimIndent()
           )
 
         val serviceProvider =
           source(
             """
-          interface ServiceProvider {
-            val dependency: String
-          }
-          """
+            interface ServiceProvider {
+              val dependency: String
+            }
+            """
               .trimIndent()
           )
 
@@ -179,7 +185,7 @@ class ICTests : BaseIncrementalCompilationTest() {
                 [test.BaseGraph] test.Target(…, string)
             test.Target is requested at
                 [test.BaseGraph] test.BaseGraph.target
-      """
+        """
           .trimIndent()
       )
   }
@@ -193,28 +199,28 @@ class ICTests : BaseIncrementalCompilationTest() {
         private val childGraph =
           source(
             """
-          @GraphExtension
-          interface ChildGraph {
-            val target: Target
+            @GraphExtension
+            interface ChildGraph {
+              val target: Target
 
-            @GraphExtension.Factory
-            interface Factory {
-              fun create(): ChildGraph
+              @GraphExtension.Factory
+              interface Factory {
+                fun create(): ChildGraph
+              }
             }
-          }
-          """
+            """
               .trimIndent()
           )
 
         val appGraph =
           source(
             """
-          @DependencyGraph
-          interface AppGraph : ChildGraph.Factory {
-            @Provides
-            fun provideString(): String = ""
-          }
-          """
+            @DependencyGraph
+            interface AppGraph : ChildGraph.Factory {
+              @Provides
+              fun provideString(): String = ""
+            }
+            """
               .trimIndent()
           )
 
@@ -243,12 +249,12 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.output)
       .contains(
         """
-          AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+        AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
-              kotlin.String is injected at
-                  [test.AppGraph.$${'$'}MetroGraph.ChildGraphImpl] test.Target(…, string)
-              test.Target is requested at
-                  [test.AppGraph.$${'$'}MetroGraph.ChildGraphImpl] test.ChildGraph.target
+            kotlin.String is injected at
+                [test.AppGraph.Impl.ChildGraphImpl] test.Target(…, string)
+            test.Target is requested at
+                [test.AppGraph.Impl.ChildGraphImpl] test.ChildGraph.target
         """
           .trimIndent()
       )
@@ -263,22 +269,22 @@ class ICTests : BaseIncrementalCompilationTest() {
         private val appGraph =
           source(
             """
-          @DependencyGraph
-          interface AppGraph : StringProvider {
-            val target: Target
-          }
-          """
+            @DependencyGraph
+            interface AppGraph : StringProvider {
+              val target: Target
+            }
+            """
               .trimIndent()
           )
 
         val stringProvider =
           source(
             """
-          interface StringProvider {
-            @Provides
-            fun provideString(): String = ""
-          }
-          """
+            interface StringProvider {
+              @Provides
+              fun provideString(): String = ""
+            }
+            """
               .trimIndent()
           )
 
@@ -306,12 +312,12 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.output)
       .contains(
         """
-          AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+        AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
-              kotlin.String is injected at
-                  [test.AppGraph] test.Target(…, string)
-              test.Target is requested at
-                  [test.AppGraph] test.AppGraph.target
+            kotlin.String is injected at
+                [test.AppGraph] test.Target(…, string)
+            test.Target is requested at
+                [test.AppGraph] test.AppGraph.target
         """
           .trimIndent()
       )
@@ -326,24 +332,24 @@ class ICTests : BaseIncrementalCompilationTest() {
         private val appGraph =
           source(
             """
-          @DependencyGraph
-          interface AppGraph : StringProvider {
-            val target: Target
-          }
-          """
+            @DependencyGraph
+            interface AppGraph : StringProvider {
+              val target: Target
+            }
+            """
               .trimIndent()
           )
 
         val stringProvider =
           source(
             """
-          interface StringProvider {
-            companion object {
-              @Provides
-              fun provideString(): String = ""
+            interface StringProvider {
+              companion object {
+                @Provides
+                fun provideString(): String = ""
+              }
             }
-          }
-          """
+            """
               .trimIndent()
           )
 
@@ -373,12 +379,12 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.output)
       .contains(
         """
-          AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+        AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
-              kotlin.String is injected at
-                  [test.AppGraph] test.Target(…, string)
-              test.Target is requested at
-                  [test.AppGraph] test.AppGraph.target
+            kotlin.String is injected at
+                [test.AppGraph] test.Target(…, string)
+            test.Target is requested at
+                [test.AppGraph] test.AppGraph.target
         """
           .trimIndent()
       )
@@ -398,7 +404,7 @@ class ICTests : BaseIncrementalCompilationTest() {
               val set: Set<ContributedInterface>
             }
             interface ContributedInterface
-          """
+            """
               .trimIndent()
           )
 
@@ -408,7 +414,7 @@ class ICTests : BaseIncrementalCompilationTest() {
             @Inject
             @ContributesIntoSet(Unit::class)
             class Impl1 : ContributedInterface
-          """
+            """
               .trimIndent()
           )
       }
@@ -439,7 +445,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val classLoader = project.classLoader()
     val exampleGraph = classLoader.loadClass("test.ExampleGraph")
     assertThat(exampleGraph.interfaces.map { it.name })
-      .contains("test.NewContribution$$\$MetroContributionToUnit")
+      .contains("test.NewContribution\$MetroContributionToUnit")
   }
 
   @Test
@@ -456,7 +462,7 @@ class ICTests : BaseIncrementalCompilationTest() {
               val set: Set<ContributedInterface>
             }
             interface ContributedInterface
-          """
+            """
               .trimIndent()
           )
 
@@ -470,7 +476,7 @@ class ICTests : BaseIncrementalCompilationTest() {
             @Inject
             @ContributesIntoSet(Unit::class)
             class Impl2 : ContributedInterface
-          """
+            """
               .trimIndent()
           )
       }
@@ -484,7 +490,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     with(project.classLoader()) {
       val exampleGraph = loadClass("test.ExampleGraph")
       assertThat(exampleGraph.interfaces.map { it.name })
-        .contains("test.Impl2$$\$MetroContributionToUnit")
+        .contains("test.Impl2\$MetroContributionToUnit")
     }
 
     project.modify(
@@ -504,7 +510,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val classLoader = project.classLoader()
     val exampleGraph = classLoader.loadClass("test.ExampleGraph")
     assertThat(exampleGraph.interfaces.map { it.name })
-      .doesNotContain("test.Impl2$$\$MetroContributionToUnit")
+      .doesNotContain("test.Impl2\$MetroContributionToUnit")
   }
 
   @Test
@@ -516,20 +522,20 @@ class ICTests : BaseIncrementalCompilationTest() {
         private val exampleGraph =
           source(
             """
-          interface ContributedInterface
+            interface ContributedInterface
 
-          @DependencyGraph(Unit::class)
-          interface ExampleGraph
-          """
+            @DependencyGraph(Unit::class)
+            interface ExampleGraph
+            """
               .trimIndent()
           )
 
         val contributedInterfaces =
           source(
             """
-          @ContributesTo(Unit::class)
-          interface ContributedInterface1
-          """
+            @ContributesTo(Unit::class)
+            interface ContributedInterface1
+            """
               .trimIndent()
           )
       }
@@ -557,7 +563,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val classLoader = project.classLoader()
     val exampleGraph = classLoader.loadClass("test.ExampleGraph")
     assertThat(exampleGraph.interfaces.map { it.name })
-      .contains("test.ContributedInterface2$$\$MetroContributionToUnit")
+      .contains("test.ContributedInterface2\$MetroContributionToUnit")
   }
 
   @Test
@@ -569,23 +575,23 @@ class ICTests : BaseIncrementalCompilationTest() {
         private val exampleGraph =
           source(
             """
-          interface ContributedInterface
+            interface ContributedInterface
 
-          @DependencyGraph(Unit::class)
-          interface ExampleGraph
-          """
+            @DependencyGraph(Unit::class)
+            interface ExampleGraph
+            """
               .trimIndent()
           )
 
         val contributedInterfaces =
           source(
             """
-          @ContributesTo(Unit::class)
-          interface ContributedInterface1
+            @ContributesTo(Unit::class)
+            interface ContributedInterface1
 
-          @ContributesTo(Unit::class)
-          interface ContributedInterface2
-          """
+            @ContributesTo(Unit::class)
+            interface ContributedInterface2
+            """
               .trimIndent()
           )
       }
@@ -597,7 +603,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     with(project.classLoader()) {
       val exampleGraph = loadClass("test.ExampleGraph")
       assertThat(exampleGraph.interfaces.map { it.name })
-        .contains("test.ContributedInterface2$$\$MetroContributionToUnit")
+        .contains("test.ContributedInterface2\$MetroContributionToUnit")
     }
 
     project.modify(
@@ -616,7 +622,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val classLoader = project.classLoader()
     val exampleGraph = classLoader.loadClass("test.ExampleGraph")
     assertThat(exampleGraph.interfaces.map { it.name })
-      .doesNotContain("test.ContributedInterface2$$\$MetroContributionToUnit")
+      .doesNotContain("test.ContributedInterface2\$MetroContributionToUnit")
   }
 
   @Test
@@ -628,15 +634,15 @@ class ICTests : BaseIncrementalCompilationTest() {
         val exampleGraph =
           source(
             """
-          @DependencyGraph(Unit::class)
-          abstract class ExampleGraph {
-            abstract val int: Int
+            @DependencyGraph(Unit::class)
+            abstract class ExampleGraph {
+              abstract val int: Int
 
-            private var count: Int = 0
+              private var count: Int = 0
 
-            @Provides fun provideInt(): Int = count++
-          }
-          """
+              @Provides fun provideInt(): Int = count++
+            }
+            """
               .trimIndent()
           )
 
@@ -722,27 +728,27 @@ class ICTests : BaseIncrementalCompilationTest() {
         val exampleClass =
           source(
             """
-          @ContributesBinding(Unit::class)
-          @Inject
-          class ExampleClass : Counter {
-            override var count: Int = 0
-          }
-          """
+            @ContributesBinding(Unit::class)
+            @Inject
+            class ExampleClass : Counter {
+              override var count: Int = 0
+            }
+            """
               .trimIndent()
           )
 
         private val exampleGraph =
           source(
             """
-              interface Counter {
-                var count: Int
-              }
-          @SingleIn(AppScope::class)
-          @DependencyGraph(Unit::class)
-          interface ExampleGraph {
-            val counter: Counter
-          }
-          """
+                interface Counter {
+                  var count: Int
+                }
+            @SingleIn(AppScope::class)
+            @DependencyGraph(Unit::class)
+            interface ExampleGraph {
+              val counter: Counter
+            }
+            """
               .trimIndent()
           )
 
@@ -824,7 +830,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         val unusedScope =
           source(
             """
-              interface UnusedScope
+            interface UnusedScope
             """
               .trimIndent()
           )
@@ -832,9 +838,9 @@ class ICTests : BaseIncrementalCompilationTest() {
         val exampleClass =
           source(
             """
-              @Inject
-              @SingleIn(UnusedScope::class)
-              class ExampleClass
+            @Inject
+            @SingleIn(UnusedScope::class)
+            class ExampleClass
             """
               .trimIndent()
           )
@@ -842,8 +848,8 @@ class ICTests : BaseIncrementalCompilationTest() {
         private val exampleGraph =
           source(
             """
-              @DependencyGraph(scope = AppScope::class)
-              interface ExampleGraph
+            @DependencyGraph(scope = AppScope::class)
+            interface ExampleGraph
             """
               .trimIndent()
           )
@@ -851,19 +857,19 @@ class ICTests : BaseIncrementalCompilationTest() {
         private val loggedInGraph =
           source(
             """
-                sealed interface LoggedInScope
+            sealed interface LoggedInScope
 
-                @GraphExtension(LoggedInScope::class)
-                interface LoggedInGraph {
-                  val exampleClass: ExampleClass
+            @GraphExtension(LoggedInScope::class)
+            interface LoggedInGraph {
+              val exampleClass: ExampleClass
 
-                    @ContributesTo(AppScope::class)
-                    @GraphExtension.Factory
-                    interface Factory {
-                        fun createLoggedInGraph(): LoggedInGraph
-                    }
+                @ContributesTo(AppScope::class)
+                @GraphExtension.Factory
+                interface Factory {
+                    fun createLoggedInGraph(): LoggedInGraph
                 }
-              """
+            }
+            """
               .trimIndent()
           )
 
@@ -886,14 +892,14 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(firstBuildResult.output.cleanOutputLine())
       .contains(
         """
-          e: LoggedInScope.kt:9:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
-              test.ExampleClass (scoped to '@SingleIn(UnusedScope::class)')
-              test.ExampleClass is requested at
-                  [test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl] test.LoggedInGraph.exampleClass
+        e: LoggedInScope.kt:9:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph.Impl.LoggedInGraphImpl (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
+            test.ExampleClass (scoped to '@SingleIn(UnusedScope::class)')
+            test.ExampleClass is requested at
+                [test.ExampleGraph.Impl.LoggedInGraphImpl] test.LoggedInGraph.exampleClass
 
 
-          (Hint)
-          LoggedInGraphImpl is contributed by 'test.LoggedInGraph' to 'test.ExampleGraph'.
+        (Hint)
+        LoggedInGraphImpl is contributed by 'test.LoggedInGraph' to 'test.ExampleGraph'.
         """
           .trimIndent()
       )
@@ -901,9 +907,9 @@ class ICTests : BaseIncrementalCompilationTest() {
     project.modify(
       fixture.exampleClass,
       """
-        @Inject
-        @SingleIn(AppScope::class)
-        class ExampleClass
+      @Inject
+      @SingleIn(AppScope::class)
+      class ExampleClass
       """
         .trimIndent(),
     )
@@ -923,8 +929,8 @@ class ICTests : BaseIncrementalCompilationTest() {
     project.modify(
       fixture.exampleClass,
       """
-        @Inject
-        class ExampleClass
+      @Inject
+      class ExampleClass
       """
         .trimIndent(),
     )
@@ -935,9 +941,9 @@ class ICTests : BaseIncrementalCompilationTest() {
     project.modify(
       fixture.exampleClass,
       """
-        @Inject
-        @SingleIn(UnusedScope::class)
-        class ExampleClass
+      @Inject
+      @SingleIn(UnusedScope::class)
+      class ExampleClass
       """
         .trimIndent(),
     )
@@ -948,14 +954,14 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(fourthBuildResult.output.cleanOutputLine())
       .contains(
         """
-          e: [Metro/IncompatiblyScopedBindings] test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
-              test.ExampleClass (scoped to '@SingleIn(UnusedScope::class)')
-              test.ExampleClass is requested at
-                  [test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl] test.LoggedInGraph.exampleClass
+        [Metro/IncompatiblyScopedBindings] test.ExampleGraph.Impl.LoggedInGraphImpl (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
+            test.ExampleClass (scoped to '@SingleIn(UnusedScope::class)')
+            test.ExampleClass is requested at
+                [test.ExampleGraph.Impl.LoggedInGraphImpl] test.LoggedInGraph.exampleClass
 
 
-          (Hint)
-          LoggedInGraphImpl is contributed by 'test.LoggedInGraph' to 'test.ExampleGraph'.
+        (Hint)
+        LoggedInGraphImpl is contributed by 'test.LoggedInGraph' to 'test.ExampleGraph'.
         """
           .trimIndent()
       )
@@ -971,21 +977,21 @@ class ICTests : BaseIncrementalCompilationTest() {
         private val exampleGraph =
           source(
             """
-          interface ContributedInterface
+            interface ContributedInterface
 
-          @DependencyGraph(Unit::class)
-          interface ExampleGraph
-          """
+            @DependencyGraph(Unit::class)
+            interface ExampleGraph
+            """
               .trimIndent()
           )
 
         val contributedClass =
           source(
             """
-          @Inject
-          @ContributesBinding(Unit::class)
-          class ContributedInterfaceImpl : ContributedInterface
-          """
+            @Inject
+            @ContributesBinding(Unit::class)
+            class ContributedInterfaceImpl : ContributedInterface
+            """
               .trimIndent()
           )
       }
@@ -1023,12 +1029,12 @@ class ICTests : BaseIncrementalCompilationTest() {
         private val exampleGraph =
           source(
             """
-          @DependencyGraph
-          interface ExampleGraph {
-            fun inject(exampleClass: ExampleClass)
+            @DependencyGraph
+            interface ExampleGraph {
+              fun inject(exampleClass: ExampleClass)
 
-            @Provides fun provideString(): String = "Hello, world!"
-          }
+              @Provides fun provideString(): String = "Hello, world!"
+            }
             """
               .trimIndent()
           )
@@ -1036,10 +1042,10 @@ class ICTests : BaseIncrementalCompilationTest() {
         val exampleClass =
           source(
             """
-          class ExampleClass {
-            @Inject lateinit var string: String
-          }
-          """
+            class ExampleClass {
+              @Inject lateinit var string: String
+            }
+            """
               .trimIndent()
           )
 
@@ -1105,8 +1111,8 @@ class ICTests : BaseIncrementalCompilationTest() {
         val unusedScope =
           source(
             """
-              interface UnusedScope
-              interface Foo
+            interface UnusedScope
+            interface Foo
             """
               .trimIndent()
           )
@@ -1114,9 +1120,9 @@ class ICTests : BaseIncrementalCompilationTest() {
         val exampleClass =
           source(
             """
-              @Inject
-              @ContributesBinding(UnusedScope::class)
-              class ExampleClass : Foo
+            @Inject
+            @ContributesBinding(UnusedScope::class)
+            class ExampleClass : Foo
             """
               .trimIndent()
           )
@@ -1124,8 +1130,8 @@ class ICTests : BaseIncrementalCompilationTest() {
         private val exampleGraph =
           source(
             """
-              @DependencyGraph(scope = AppScope::class)
-              interface ExampleGraph
+            @DependencyGraph(scope = AppScope::class)
+            interface ExampleGraph
             """
               .trimIndent()
           )
@@ -1133,19 +1139,19 @@ class ICTests : BaseIncrementalCompilationTest() {
         private val loggedInGraph =
           source(
             """
-                sealed interface LoggedInScope
+            sealed interface LoggedInScope
 
-                @GraphExtension(LoggedInScope::class)
-                interface LoggedInGraph {
-                  val childDependency: Foo
+            @GraphExtension(LoggedInScope::class)
+            interface LoggedInGraph {
+              val childDependency: Foo
 
-                    @ContributesTo(AppScope::class)
-                    @GraphExtension.Factory
-                    interface Factory {
-                        fun createLoggedInGraph(): LoggedInGraph
-                    }
+                @ContributesTo(AppScope::class)
+                @GraphExtension.Factory
+                interface Factory {
+                    fun createLoggedInGraph(): LoggedInGraph
                 }
-              """
+            }
+            """
               .trimIndent()
           )
 
@@ -1169,10 +1175,10 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(firstBuildResult.output.cleanOutputLine())
       .contains(
         """
-          e: LoggedInScope.kt:10:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Foo
+        e: LoggedInScope.kt:10:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Foo
 
-              test.Foo is requested at
-                  [test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl] test.LoggedInGraph.childDependenc
+            test.Foo is requested at
+                [test.ExampleGraph.Impl.LoggedInGraphImpl] test.LoggedInGraph.childDependenc
         """
           .trimIndent()
       )
@@ -1181,9 +1187,9 @@ class ICTests : BaseIncrementalCompilationTest() {
     project.modify(
       fixture.exampleClass,
       """
-        @Inject
-        @ContributesBinding(AppScope::class)
-        class ExampleClass : Foo
+      @Inject
+      @ContributesBinding(AppScope::class)
+      class ExampleClass : Foo
       """
         .trimIndent(),
     )
@@ -1201,21 +1207,23 @@ class ICTests : BaseIncrementalCompilationTest() {
     project.modify(
       fixture.exampleClass,
       """
-        @Inject
-        @ContributesBinding(UnusedScope::class)
-        class ExampleClass : Foo
+      @Inject
+      @ContributesBinding(UnusedScope::class)
+      class ExampleClass : Foo
       """
         .trimIndent(),
     )
 
     val thirdBuildResult = buildAndFail(project.rootDir, "compileKotlin")
     assertThat(thirdBuildResult.output.cleanOutputLine())
+      // Omit 'e: ExampleGraph.kt:7:11 ' prefix until 2.3.0+ as we report a more accurate location
+      // there
       .contains(
         """
-          e: ExampleGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Foo
+        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Foo
 
-              test.Foo is requested at
-                  [test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl] test.LoggedInGraph.childDependency
+            test.Foo is requested at
+                [test.ExampleGraph.Impl.LoggedInGraphImpl] test.LoggedInGraph.childDependency
         """
           .trimIndent()
       )
@@ -1256,11 +1264,11 @@ class ICTests : BaseIncrementalCompilationTest() {
         private val bar =
           source(
             """
-              interface Bar
+            interface Bar
 
-              @Inject
-              @ContributesBinding(AppScope::class)
-              class BarImpl : Bar
+            @Inject
+            @ContributesBinding(AppScope::class)
+            class BarImpl : Bar
             """
               .trimIndent()
           )
@@ -1268,12 +1276,12 @@ class ICTests : BaseIncrementalCompilationTest() {
         val foo =
           source(
             """
-              interface Foo
+            interface Foo
 
-              @SingleIn(AppScope::class)
-              @Inject
-              @ContributesBinding(AppScope::class)
-              class FooImpl : Foo
+            @SingleIn(AppScope::class)
+            @Inject
+            @ContributesBinding(AppScope::class)
+            class FooImpl : Foo
             """
               .trimIndent()
           )
@@ -1281,8 +1289,8 @@ class ICTests : BaseIncrementalCompilationTest() {
         private val appGraph =
           source(
             """
-              @DependencyGraph(AppScope::class)
-              interface AppGraph
+            @DependencyGraph(AppScope::class)
+            interface AppGraph
             """
               .trimIndent()
           )
@@ -1312,7 +1320,7 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     buildAndAssertOutput()
 
-    // Adding a bar param to FooImpl, FooImpl.$$MetroFactory should be regenerated with member field
+    // Adding a bar param to FooImpl, FooImpl.MetroFactory should be regenerated with member field
     libProject.modify(
       project.rootDir,
       fixture.foo,
@@ -1365,11 +1373,11 @@ class ICTests : BaseIncrementalCompilationTest() {
         private val bar =
           source(
             """
-              interface Bar
+            interface Bar
 
-              @Inject
-              @ContributesBinding(AppScope::class)
-              class BarImpl : Bar
+            @Inject
+            @ContributesBinding(AppScope::class)
+            class BarImpl : Bar
             """
               .trimIndent()
           )
@@ -1377,12 +1385,12 @@ class ICTests : BaseIncrementalCompilationTest() {
         val foo =
           source(
             """
-              interface Foo
+            interface Foo
 
-              @SingleIn(AppScope::class)
-              @Inject
-              @ContributesBinding(AppScope::class)
-              class FooImpl(int: Int) : Foo
+            @SingleIn(AppScope::class)
+            @Inject
+            @ContributesBinding(AppScope::class)
+            class FooImpl(int: Int) : Foo
             """
               .trimIndent()
           )
@@ -1390,10 +1398,10 @@ class ICTests : BaseIncrementalCompilationTest() {
         private val appGraph =
           source(
             """
-              @DependencyGraph(AppScope::class)
-              interface AppGraph {
-                @Provides fun provideInt(): Int = 0
-              }
+            @DependencyGraph(AppScope::class)
+            interface AppGraph {
+              @Provides fun provideInt(): Int = 0
+            }
             """
               .trimIndent()
           )
@@ -1423,7 +1431,7 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     buildAndAssertOutput()
 
-    // Adding a bar param to FooImpl, FooImpl.$$MetroFactory should be regenerated with member field
+    // Adding a bar param to FooImpl, FooImpl.MetroFactory should be regenerated with member field
     libProject.modify(
       project.rootDir,
       fixture.foo,
@@ -1634,10 +1642,10 @@ class ICTests : BaseIncrementalCompilationTest() {
         private val appGraph =
           source(
             """
-          @DependencyGraph(AppScope::class)
-          interface AppGraph {
-            val bar: Bar
-          }
+            @DependencyGraph(AppScope::class)
+            interface AppGraph {
+              val bar: Bar
+            }
             """
               .trimIndent()
           )
@@ -1645,10 +1653,10 @@ class ICTests : BaseIncrementalCompilationTest() {
         private val fooBar =
           source(
             """
-          interface Foo
-          interface Bar : Foo {
-            val str: String
-          }
+            interface Foo
+            interface Bar : Foo {
+              val str: String
+            }
             """
               .trimIndent()
           )
@@ -1656,26 +1664,26 @@ class ICTests : BaseIncrementalCompilationTest() {
         val realImpl =
           source(
             """
-          @Inject
-          @ContributesBinding(AppScope::class, binding = binding<Foo>())
-          @ContributesBinding(AppScope::class, binding = binding<Bar>())
-          class RealImpl : Bar {
-            override val str: String = "real"
-          }
-          """
+            @Inject
+            @ContributesBinding(AppScope::class, binding = binding<Foo>())
+            @ContributesBinding(AppScope::class, binding = binding<Bar>())
+            class RealImpl : Bar {
+              override val str: String = "real"
+            }
+            """
               .trimIndent()
           )
 
         private val fakeImpl =
           source(
             """
-          @Inject
-          @ContributesBinding(AppScope::class, binding = binding<Foo>(), replaces = [RealImpl::class])
-          @ContributesBinding(AppScope::class, binding = binding<Bar>(), replaces = [RealImpl::class])
-          class FakeImpl : Bar {
-            override val str: String = "fake"
-          }
-          """
+            @Inject
+            @ContributesBinding(AppScope::class, binding = binding<Foo>(), replaces = [RealImpl::class])
+            @ContributesBinding(AppScope::class, binding = binding<Bar>(), replaces = [RealImpl::class])
+            class FakeImpl : Bar {
+              override val str: String = "fake"
+            }
+            """
               .trimIndent()
           )
 
@@ -1721,5 +1729,196 @@ class ICTests : BaseIncrementalCompilationTest() {
     )
 
     buildAndAssertOutput()
+  }
+
+  @Test
+  fun graphExtensionFactoryContributionExternalChangeIsDetected() {
+    val fixture =
+      object : MetroProject() {
+        override fun sources() = throw IllegalStateException()
+
+        override val gradleProject: GradleProject
+          get() =
+            newGradleProjectBuilder(DslKind.KOTLIN)
+              .withRootProject {
+                withBuildScript {
+                  sources = listOf(main)
+                  applyMetroDefault()
+                  dependencies(Dependency.implementation(":lib"))
+                }
+              }
+              .withSubproject("lib") {
+                sources.add(appGraph)
+                sources.add(featureGraph)
+                withBuildScript { applyMetroDefault() }
+              }
+              .write()
+
+        private val appGraph =
+          source(
+            """
+      @DependencyGraph(Unit::class)
+      interface AppGraph
+      """
+          )
+
+        val main =
+          source(
+            """
+                    fun main() {
+                        val appGraph = createGraph<AppGraph>()
+                        val featureGraph = appGraph.asContribution<FeatureGraph.ParentBindings>().featureGraphFactory.create()
+                    }
+                """
+          )
+
+        val featureGraph =
+          source(
+            """
+      @GraphExtension(String::class)
+      interface FeatureGraph {
+          @GraphExtension.Factory
+          interface Factory {
+              fun create(): FeatureGraph
+          }
+
+          @ContributesTo(Unit::class)
+          interface ParentBindings {
+              val featureGraphFactory: FeatureGraph.Factory
+          }
+      }
+      """
+          )
+      }
+
+    val project = fixture.gradleProject
+    val libProject = project.subprojects.first { it.name == "lib" }
+
+    // First build should succeed
+    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    // Modify the FeatureGraph class to contribute the factory directly but leave ParentBindings
+    libProject.modify(
+      project.rootDir,
+      fixture.featureGraph,
+      """
+      @GraphExtension(String::class)
+      interface FeatureGraph {
+          @GraphExtension.Factory
+          @ContributesTo(Unit::class)
+          interface Factory {
+              fun create(): FeatureGraph
+          }
+
+          interface ParentBindings {
+              val featureGraphFactory: FeatureGraph.Factory
+          }
+      }
+      """
+        .trimIndent(),
+    )
+
+    // Update asContribution type argument
+    project.modify(
+      fixture.main,
+      """
+      fun main() {
+          val appGraph = createGraph<AppGraph>()
+          val featureGraph = appGraph.asContribution<FeatureGraph.Factory>().create()
+      }
+      """
+        .trimIndent(),
+    )
+
+    // Second build is still marked as success so we have to check the output
+    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(secondBuildResult.output).doesNotContain("Incremental compilation failed")
+  }
+
+  @Test
+  fun graphExtensionFactoryContributionInternalChangeIsDetected() {
+    val fixture =
+      object : MetroProject() {
+        override fun sources() = listOf(main, appGraph, featureGraph)
+
+        private val appGraph =
+          source(
+            """
+      @DependencyGraph(Unit::class)
+      interface AppGraph
+      """
+          )
+
+        val main =
+          source(
+            """
+                    fun main() {
+                        val appGraph = createGraph<AppGraph>()
+                        val featureGraph = appGraph.asContribution<FeatureGraph.ParentBindings>().featureGraphFactory.create()
+                    }
+                """
+          )
+
+        val featureGraph =
+          source(
+            """
+      @GraphExtension(String::class)
+      interface FeatureGraph {
+          @GraphExtension.Factory
+          interface Factory {
+              fun create(): FeatureGraph
+          }
+
+          @ContributesTo(Unit::class)
+          interface ParentBindings {
+              val featureGraphFactory: FeatureGraph.Factory
+          }
+      }
+      """
+          )
+      }
+
+    val project = fixture.gradleProject
+
+    // First build should succeed
+    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    // Modify the FeatureGraph class to contribute the factory directly but leave ParentBindings
+    project.modify(
+      fixture.featureGraph,
+      """
+      @GraphExtension(String::class)
+      interface FeatureGraph {
+          @GraphExtension.Factory
+          @ContributesTo(Unit::class)
+          interface Factory {
+              fun create(): FeatureGraph
+          }
+
+          interface ParentBindings {
+              val featureGraphFactory: FeatureGraph.Factory
+          }
+      }
+      """
+        .trimIndent(),
+    )
+
+    // Update asContribution type argument
+    project.modify(
+      fixture.main,
+      """
+      fun main() {
+          val appGraph = createGraph<AppGraph>()
+          val featureGraph = appGraph.asContribution<FeatureGraph.Factory>().create()
+      }
+      """
+        .trimIndent(),
+    )
+
+    // Second build is still marked as success so we have to check the output
+    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
   }
 }

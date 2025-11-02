@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
-import dev.zacsweers.metro.compiler.ir.appendBindingStack
-import dev.zacsweers.metro.compiler.ir.appendBindingStackEntries
-import dev.zacsweers.metro.compiler.ir.withEntry
+import dev.zacsweers.metro.compiler.ir.graph.appendBindingStack
+import dev.zacsweers.metro.compiler.ir.graph.appendBindingStackEntries
+import dev.zacsweers.metro.compiler.ir.graph.withEntry
 import dev.zacsweers.metro.compiler.joinWithDynamicSeparatorTo
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.tracing.Tracer
@@ -61,7 +61,11 @@ internal open class MutableBindingGraph<
     },
   private val onError: (String, BindingStack) -> Unit = { message, _ -> error(message) },
   private val onHardError: (String, BindingStack) -> Nothing = { message, _ -> error(message) },
-  private val findSimilarBindings: (key: TypeKey) -> Map<TypeKey, String> = { emptyMap() },
+  private val missingBindingHints:
+    (key: TypeKey, stack: BindingStack) -> MissingBindingHints<Type, TypeKey> =
+    { _, _ ->
+      MissingBindingHints()
+    },
 ) : BindingGraph<Type, TypeKey, ContextualTypeKey, Binding, BindingStackEntry, BindingStack> {
   // Populated by initial graph setup and later seal()
   override val bindings = mutableMapOf<TypeKey, Binding>()
@@ -450,12 +454,23 @@ internal open class MutableBindingGraph<
         appendLine(typeKey.render(short = false))
         appendLine()
         appendBindingStack(bindingStack, short = false)
-        val similarBindings = findSimilarBindings(typeKey)
-        if (similarBindings.isNotEmpty()) {
-          appendLine()
-          appendLine("Similar bindings:")
-          similarBindings.values.map { "  - $it" }.sorted().forEach(::appendLine)
+        val hints = missingBindingHints(typeKey, bindingStack)
+        val messages = hints.messages
+        val similarBindings = hints.similarBindings
+
+        if (messages.isNotEmpty() || similarBindings.isNotEmpty()) {
+          if (messages.isNotEmpty()) {
+            appendLine()
+            appendLine("(Hint)")
+            messages.joinTo(this, separator = "\n\n")
+          }
+          if (similarBindings.isNotEmpty()) {
+            appendLine()
+            appendLine("Similar bindings:")
+            similarBindings.values.map { "  - $it" }.sorted().forEach(::appendLine)
+          }
         }
+
         extraContent()
       }
 

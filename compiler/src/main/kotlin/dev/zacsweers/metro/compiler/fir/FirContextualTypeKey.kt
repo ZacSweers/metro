@@ -35,7 +35,8 @@ internal class FirContextualTypeKey(
   val isLazyWrappedInProvider: Boolean
     get() = wrappedType is WrappedType.Provider && wrappedType.innerType is WrappedType.Lazy
 
-  val isCanonical: Boolean get() = wrappedType is WrappedType.Canonical
+  val isCanonical: Boolean
+    get() = wrappedType is WrappedType.Canonical
 
   fun originalType(session: FirSession): ConeKotlinType {
     return when (val wt = wrappedType) {

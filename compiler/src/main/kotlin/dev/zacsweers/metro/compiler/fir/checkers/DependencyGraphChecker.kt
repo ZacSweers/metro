@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.MetroAnnotations
-import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.additionalScopesArgument
@@ -154,14 +153,14 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
       val annotations =
         callable.metroAnnotations(
           session,
-          MetroAnnotations.Kind.OptionalDependency,
+          MetroAnnotations.Kind.OptionalBinding,
           MetroAnnotations.Kind.Provides,
           MetroAnnotations.Kind.Binds,
         )
 
       val isEffectivelyOpen = with(session.compatContext) { callable.isEffectivelyOpen() }
 
-      if (!isEffectivelyOpen && !annotations.isOptionalDependency) continue
+      if (!isEffectivelyOpen && !annotations.isOptionalBinding) continue
 
       val isBindsOrProvides = annotations.isBinds || annotations.isProvides
       if (isBindsOrProvides) continue
@@ -194,17 +193,17 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
 
       if (callable.isOverride) {
         // If it's an optionaldep, ensure annotations are propagated
-        if (!annotations.isOptionalDependency) {
+        if (!annotations.isOptionalBinding) {
           for (overridden in callable.directOverriddenSymbolsSafe()) {
             if (
               overridden
-                .metroAnnotations(session, MetroAnnotations.Kind.OptionalDependency)
-                .isOptionalDependency
+                .metroAnnotations(session, MetroAnnotations.Kind.OptionalBinding)
+                .isOptionalBinding
             ) {
               reporter.reportOn(
                 callable.source,
                 MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-                "'${callable.name}' overrides a declaration annotated `@OptionalDependency`, you must propagate these annotations to overrides.",
+                "'${callable.name}' overrides a declaration annotated `@OptionalBinding`, you must propagate these annotations to overrides.",
               )
             }
           }
@@ -299,7 +298,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
             else -> false
           }
 
-        if (annotations.isOptionalDependency) {
+        if (annotations.isOptionalBinding) {
           callable.checkOptionalDepAccessor(isEffectivelyOpen, hasBody)
         } else if (hasBody) {
           continue
@@ -328,7 +327,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
           callable.qualifierAnnotation(session),
           callable.source,
           isAccessor = true,
-          isOptionalDependency = annotations.isOptionalDependency,
+          isOptionalBinding = annotations.isOptionalBinding,
         )
 
         val scopeAnnotations = callable.allAnnotations().scopeAnnotations(session)
@@ -368,21 +367,21 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
               )
             }
 
-            if (annotations.isOptionalDependency) {
+            if (annotations.isOptionalBinding) {
               reporter.reportOn(
                 callable.source,
                 MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-                "Injector functions cannot be annotated with @OptionalDependency.",
+                "Injector functions cannot be annotated with @OptionalBinding.",
               )
             }
             parameter
-              .annotationsIn(session, setOf(Symbols.ClassIds.OptionalDependency))
+              .annotationsIn(session, session.classIds.optionalBindingAnnotations)
               .firstOrNull()
               ?.let {
                 reporter.reportOn(
                   it.source ?: parameter.source,
                   MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-                  "Injector function parameters cannot be annotated with @OptionalDependency.",
+                  "Injector function parameters cannot be annotated with @OptionalBinding.",
                 )
               }
           }
@@ -470,7 +469,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
       reporter.reportOn(
         source,
         MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-        "@OptionalDependency accessors must be open or abstract.",
+        "@OptionalBinding accessors must be open or abstract.",
       )
     }
 
@@ -479,7 +478,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
       reporter.reportOn(
         source,
         MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-        "@OptionalDependency accessors must have a default body.",
+        "@OptionalBinding accessors must have a default body.",
       )
     }
   }

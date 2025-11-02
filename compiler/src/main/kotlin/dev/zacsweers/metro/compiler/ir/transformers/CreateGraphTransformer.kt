@@ -5,9 +5,9 @@ package dev.zacsweers.metro.compiler.ir.transformers
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
-import dev.zacsweers.metro.compiler.ir.IrDynamicGraphGenerator
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
-import dev.zacsweers.metro.compiler.ir.generatedDynamicGraphData
+import dev.zacsweers.metro.compiler.ir.graph.IrDynamicGraphGenerator
+import dev.zacsweers.metro.compiler.ir.graph.generatedDynamicGraphData
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
@@ -62,7 +62,7 @@ internal class CreateGraphTransformer(
         val parentDeclaration = rawType.parentAsClass
         val companion = parentDeclaration.companionObject()!!
 
-        val factoryImpl = rawType.nestedClasses.find { it.name == Symbols.Names.MetroImpl }
+        val factoryImpl = rawType.nestedClasses.find { it.name == Symbols.Names.Impl }
         if (factoryImpl != null) {
           // Replace it with a call directly to the factory creator
           return withIrBuilder(expression.symbol) {

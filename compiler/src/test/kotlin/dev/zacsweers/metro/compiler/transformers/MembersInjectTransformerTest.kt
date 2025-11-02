@@ -17,8 +17,8 @@ import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.createGraphViaFactory
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
 import dev.zacsweers.metro.compiler.generatedFactoryClass
+import dev.zacsweers.metro.compiler.generatedImpl
 import dev.zacsweers.metro.compiler.generatedMembersInjector
-import dev.zacsweers.metro.compiler.generatedMetroGraphClass
 import dev.zacsweers.metro.compiler.invokeCreate
 import dev.zacsweers.metro.compiler.invokeNewInstance
 import dev.zacsweers.metro.compiler.newInstanceStrict
@@ -35,59 +35,59 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
       compile(
         source(
           """
-            typealias StringList = List<String>
+          typealias StringList = List<String>
 
-            // Generate a factory too to cover for https://github.com/square/anvil/issues/362
+          // Generate a factory too to cover for https://github.com/square/anvil/issues/362
+          @Inject
+          class ExampleClass {
+            @Inject lateinit var string: String
+            @Named("qualified") @Inject lateinit var qualifiedString: String
+            @Inject lateinit var charSequence: CharSequence
+            @Inject lateinit var list: List<String>
+            @Inject lateinit var pair: Pair<Pair<String, Int>, Set<String>>
+            @Inject lateinit var set: @JvmSuppressWildcards Set<(StringList) -> StringList>
+            var setterAnnotated: Map<String, String> = emptyMap()
+              @Inject set
+            @set:Inject var setterAnnotated2: Map<String, Boolean> = emptyMap()
+            @Inject private lateinit var privateField: String
             @Inject
-            class ExampleClass {
-              @Inject lateinit var string: String
-              @Named("qualified") @Inject lateinit var qualifiedString: String
-              @Inject lateinit var charSequence: CharSequence
-              @Inject lateinit var list: List<String>
-              @Inject lateinit var pair: Pair<Pair<String, Int>, Set<String>>
-              @Inject lateinit var set: @JvmSuppressWildcards Set<(StringList) -> StringList>
-              var setterAnnotated: Map<String, String> = emptyMap()
-                @Inject set
-              @set:Inject var setterAnnotated2: Map<String, Boolean> = emptyMap()
-              @Inject private lateinit var privateField: String
-              @Inject
-              lateinit var privateSetter: String
-                private set
+            lateinit var privateSetter: String
+              private set
 
-              override fun equals(other: Any?): Boolean {
-                if (this === other) return true
-                if (javaClass != other?.javaClass) return false
+            override fun equals(other: Any?): Boolean {
+              if (this === other) return true
+              if (javaClass != other?.javaClass) return false
 
-                other as ExampleClass
+              other as ExampleClass
 
-                if (string != other.string) return false
-                if (qualifiedString != other.qualifiedString) return false
-                if (charSequence != other.charSequence) return false
-                if (list != other.list) return false
-                if (pair != other.pair) return false
-                if (set.single().invoke(emptyList())[0] != other.set.single().invoke(emptyList())[0]) return false
-                if (setterAnnotated != other.setterAnnotated) return false
-                if (setterAnnotated2 != other.setterAnnotated2) return false
-                if (privateField != other.privateField) return false
-                if (privateSetter != other.privateSetter) return false
+              if (string != other.string) return false
+              if (qualifiedString != other.qualifiedString) return false
+              if (charSequence != other.charSequence) return false
+              if (list != other.list) return false
+              if (pair != other.pair) return false
+              if (set.single().invoke(emptyList())[0] != other.set.single().invoke(emptyList())[0]) return false
+              if (setterAnnotated != other.setterAnnotated) return false
+              if (setterAnnotated2 != other.setterAnnotated2) return false
+              if (privateField != other.privateField) return false
+              if (privateSetter != other.privateSetter) return false
 
-                return true
-              }
-
-              override fun hashCode(): Int {
-                var result = string.hashCode()
-                result = 31 * result + qualifiedString.hashCode()
-                result = 31 * result + charSequence.hashCode()
-                result = 31 * result + list.hashCode()
-                result = 31 * result + pair.hashCode()
-                result = 31 * result + set.single().invoke(emptyList())[0].hashCode()
-                result = 31 * result + setterAnnotated.hashCode()
-                result = 31 * result + setterAnnotated2.hashCode()
-                result = 31 * result + privateField.hashCode()
-                result = 31 * result + privateSetter.hashCode()
-                return result
-              }
+              return true
             }
+
+            override fun hashCode(): Int {
+              var result = string.hashCode()
+              result = 31 * result + qualifiedString.hashCode()
+              result = 31 * result + charSequence.hashCode()
+              result = 31 * result + list.hashCode()
+              result = 31 * result + pair.hashCode()
+              result = 31 * result + set.single().invoke(emptyList())[0].hashCode()
+              result = 31 * result + setterAnnotated.hashCode()
+              result = 31 * result + setterAnnotated2.hashCode()
+              result = 31 * result + privateField.hashCode()
+              result = 31 * result + privateSetter.hashCode()
+              return result
+            }
+          }
 
           """
             .trimIndent()
@@ -167,20 +167,20 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
       compile(
         source(
           """
-            class ExampleClass {
-              @Inject lateinit var string: String
-              @Inject lateinit var stringProvider: Provider<String>
-              @Inject lateinit var stringListProvider: Provider<List<String>>
-              @Inject lateinit var lazyString: Lazy<String>
+          class ExampleClass {
+            @Inject lateinit var string: String
+            @Inject lateinit var stringProvider: Provider<String>
+            @Inject lateinit var stringListProvider: Provider<List<String>>
+            @Inject lateinit var lazyString: Lazy<String>
 
-              override fun equals(other: Any?): Boolean {
-                return toString() == other.toString()
-              }
-              override fun toString(): String {
-               return string + stringProvider() +
-                   stringListProvider()[0] + lazyString.value
-              }
+            override fun equals(other: Any?): Boolean {
+              return toString() == other.toString()
             }
+            override fun toString(): String {
+             return string + stringProvider() +
+                 stringListProvider()[0] + lazyString.value
+            }
+          }
           """
             .trimIndent()
         )
@@ -230,16 +230,16 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
       compile(
         source(
           """
-            class ExampleClass {
-              @Inject lateinit var lazyStringProvider: Provider<Lazy<String>>
+          class ExampleClass {
+            @Inject lateinit var lazyStringProvider: Provider<Lazy<String>>
 
-              override fun equals(other: Any?): Boolean {
-                return toString() == other.toString()
-              }
-              override fun toString(): String {
-               return lazyStringProvider().value
-              }
+            override fun equals(other: Any?): Boolean {
+              return toString() == other.toString()
             }
+            override fun toString(): String {
+             return lazyStringProvider().value
+            }
+          }
           """
             .trimIndent()
         )
@@ -272,29 +272,29 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
       compile(
         source(
           """
-            class ExampleClass : Middle() {
+          class ExampleClass : Middle() {
 
-              @Inject
-              lateinit var name: String
-            }
+            @Inject
+            lateinit var name: String
+          }
 
-            abstract class Middle : Base() {
+          abstract class Middle : Base() {
 
-              @Inject
-              lateinit var middle1: Set<Int>
+            @Inject
+            lateinit var middle1: Set<Int>
 
-              @Inject
-              lateinit var middle2: Set<String>
-            }
+            @Inject
+            lateinit var middle2: Set<String>
+          }
 
-            abstract class Base {
+          abstract class Base {
 
-              @Inject
-              lateinit var base1: List<Int>
+            @Inject
+            lateinit var base1: List<Int>
 
-              @Inject
-              lateinit var base2: List<String>
-            }
+            @Inject
+            lateinit var base2: List<String>
+          }
           """
             .trimIndent()
         )
@@ -588,11 +588,11 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
         class ExampleClass2 {
           @Inject lateinit var value: Any
         }
-      """
+        """
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphViaFactory(3)
+      val graph = ExampleGraph.generatedImpl().createGraphViaFactory(3)
       val instance = ExampleClass.newInstanceStrict()
       val instance2 = ExampleClass2.newInstanceStrict()
       graph.callInject(instance)
@@ -607,17 +607,17 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @DependencyGraph
-            interface ExampleGraph {
-              fun inject(value: ExampleClass)
-            }
+        @DependencyGraph
+        interface ExampleGraph {
+          fun inject(value: ExampleClass)
+        }
 
-            class ExampleClass
-          """
+        class ExampleClass
+        """
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val instance = ExampleClass.newInstanceStrict()
       // noop call
       graph.callInject(instance)
@@ -629,24 +629,24 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @DependencyGraph
-            interface ExampleGraph {
-              fun inject(value: ExampleClass)
+        @DependencyGraph
+        interface ExampleGraph {
+          fun inject(value: ExampleClass)
 
-              @DependencyGraph.Factory
-              fun interface Factory {
-                fun create(@Provides value: Int): ExampleGraph
-              }
-            }
+          @DependencyGraph.Factory
+          fun interface Factory {
+            fun create(@Provides value: Int): ExampleGraph
+          }
+        }
 
-            class ExampleClass {
-              @Inject var int: Int = 2
-            }
-          """
+        class ExampleClass {
+          @Inject var int: Int = 2
+        }
+        """
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphViaFactory(3)
+      val graph = ExampleGraph.generatedImpl().createGraphViaFactory(3)
       val instance = ExampleClass.newInstanceStrict()
       graph.callInject(instance)
       assertThat(instance.callProperty<Int>("int")).isEqualTo(3)
@@ -658,25 +658,25 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @DependencyGraph
-            interface ExampleGraph {
-              val exampleClass: ExampleClass
+        @DependencyGraph
+        interface ExampleGraph {
+          val exampleClass: ExampleClass
 
-              @DependencyGraph.Factory
-              fun interface Factory {
-                fun create(@Provides value: Int, @Provides value2: Long): ExampleGraph
-              }
-            }
+          @DependencyGraph.Factory
+          fun interface Factory {
+            fun create(@Provides value: Int, @Provides value2: Long): ExampleGraph
+          }
+        }
 
-            @Inject
-            class ExampleClass(val long: Long) {
-              @Inject var int: Int = 2
-            }
-          """
+        @Inject
+        class ExampleClass(val long: Long) {
+          @Inject var int: Int = 2
+        }
+        """
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphViaFactory(3, 4L)
+      val graph = ExampleGraph.generatedImpl().createGraphViaFactory(3, 4L)
       val instance = graph.callProperty<Any>("exampleClass")
       assertThat(instance.callProperty<Int>("int")).isEqualTo(3)
       assertThat(instance.callProperty<Long>("long")).isEqualTo(4L)
@@ -688,29 +688,29 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @DependencyGraph
-            interface ExampleGraph {
-              val exampleClass: ExampleClass
+        @DependencyGraph
+        interface ExampleGraph {
+          val exampleClass: ExampleClass
 
-              @DependencyGraph.Factory
-              fun interface Factory {
-                fun create(@Provides int: Int, @Provides long: Long): ExampleGraph
-              }
-            }
+          @DependencyGraph.Factory
+          fun interface Factory {
+            fun create(@Provides int: Int, @Provides long: Long): ExampleGraph
+          }
+        }
 
-            abstract class Base {
-              @Inject var baseLong: Long = 0L
-            }
+        abstract class Base {
+          @Inject var baseLong: Long = 0L
+        }
 
-            @Inject
-            class ExampleClass(val long: Long) : Base() {
-              @Inject var int: Int = 2
-            }
-          """
+        @Inject
+        class ExampleClass(val long: Long) : Base() {
+          @Inject var int: Int = 2
+        }
+        """
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphViaFactory(3, 4L)
+      val graph = ExampleGraph.generatedImpl().createGraphViaFactory(3, 4L)
       val instance = graph.callProperty<Any>("exampleClass")
       assertThat(instance.callProperty<Int>("int")).isEqualTo(3)
       assertThat(instance.callProperty<Long>("long")).isEqualTo(4L)
@@ -723,30 +723,30 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @DependencyGraph
-            interface ExampleGraph {
-              val exampleClass: ExampleClass
+        @DependencyGraph
+        interface ExampleGraph {
+          val exampleClass: ExampleClass
 
-              @DependencyGraph.Factory
-              fun interface Factory {
-                fun create(@Provides value: Int, @Provides value2: Long): ExampleGraph
-              }
-            }
+          @DependencyGraph.Factory
+          fun interface Factory {
+            fun create(@Provides value: Int, @Provides value2: Long): ExampleGraph
+          }
+        }
 
-            abstract class Base {
-              @Inject private var privateBaseLong: Long = 0L
-              fun baseLong() = privateBaseLong
-            }
+        abstract class Base {
+          @Inject private var privateBaseLong: Long = 0L
+          fun baseLong() = privateBaseLong
+        }
 
-            @Inject
-            class ExampleClass(val long: Long) : Base() {
-              @Inject var int: Int = 2
-            }
-          """
+        @Inject
+        class ExampleClass(val long: Long) : Base() {
+          @Inject var int: Int = 2
+        }
+        """
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphViaFactory(3, 4L)
+      val graph = ExampleGraph.generatedImpl().createGraphViaFactory(3, 4L)
       val instance = graph.callProperty<Any>("exampleClass")
       assertThat(instance.callProperty<Int>("int")).isEqualTo(3)
       assertThat(instance.callProperty<Long>("long")).isEqualTo(4L)
@@ -759,30 +759,30 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @DependencyGraph
-            interface ExampleGraph {
-              val exampleClass: ExampleClass
+        @DependencyGraph
+        interface ExampleGraph {
+          val exampleClass: ExampleClass
 
-              @DependencyGraph.Factory
-              fun interface Factory {
-                fun create(@Provides value: Int, @Provides value2: Long): ExampleGraph
-              }
-            }
-            @Inject
-            class ExampleClass {
-              var long: Long = 0
-              var int: Int = 0
+          @DependencyGraph.Factory
+          fun interface Factory {
+            fun create(@Provides value: Int, @Provides value2: Long): ExampleGraph
+          }
+        }
+        @Inject
+        class ExampleClass {
+          var long: Long = 0
+          var int: Int = 0
 
-              @Inject fun injectValues(long: Long, int: Int) {
-                this.long = long
-                this.int = int
-              }
-            }
-          """
+          @Inject fun injectValues(long: Long, int: Int) {
+            this.long = long
+            this.int = int
+          }
+        }
+        """
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphViaFactory(3, 4L)
+      val graph = ExampleGraph.generatedImpl().createGraphViaFactory(3, 4L)
       val instance = graph.callProperty<Any>("exampleClass")
       assertThat(instance.callProperty<Int>("int")).isEqualTo(3)
       assertThat(instance.callProperty<Long>("long")).isEqualTo(4L)
@@ -794,30 +794,30 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @DependencyGraph
-            interface ExampleGraph {
-              val exampleClass: ExampleClass
+        @DependencyGraph
+        interface ExampleGraph {
+          val exampleClass: ExampleClass
 
-              @DependencyGraph.Factory
-              fun interface Factory {
-                fun create(@Provides @Named("int") value: Int, @Provides value2: Long): ExampleGraph
-              }
-            }
-            @Inject
-            class ExampleClass {
-              var long: Long = 0
-              var int: Int = 0
+          @DependencyGraph.Factory
+          fun interface Factory {
+            fun create(@Provides @Named("int") value: Int, @Provides value2: Long): ExampleGraph
+          }
+        }
+        @Inject
+        class ExampleClass {
+          var long: Long = 0
+          var int: Int = 0
 
-              @Inject fun injectValues(long: Long, @Named("int") int: Int) {
-                this.long = long
-                this.int = int
-              }
-            }
-          """
+          @Inject fun injectValues(long: Long, @Named("int") int: Int) {
+            this.long = long
+            this.int = int
+          }
+        }
+        """
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphViaFactory(3, 4L)
+      val graph = ExampleGraph.generatedImpl().createGraphViaFactory(3, 4L)
       val instance = graph.callProperty<Any>("exampleClass")
       assertThat(instance.callProperty<Int>("int")).isEqualTo(3)
       assertThat(instance.callProperty<Long>("long")).isEqualTo(4L)
@@ -829,30 +829,30 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @DependencyGraph
-            interface ExampleGraph {
-              fun inject(exampleClass: ExampleClass)
+        @DependencyGraph
+        interface ExampleGraph {
+          fun inject(exampleClass: ExampleClass)
 
-              @DependencyGraph.Factory
-              fun interface Factory {
-                fun create(@Provides value: Int, @Provides value2: Long): ExampleGraph
-              }
-            }
+          @DependencyGraph.Factory
+          fun interface Factory {
+            fun create(@Provides value: Int, @Provides value2: Long): ExampleGraph
+          }
+        }
 
-            class ExampleClass {
-              var long: Long = 0
-              var int: Int = 0
+        class ExampleClass {
+          var long: Long = 0
+          var int: Int = 0
 
-              @Inject fun injectValues(long: Long, int: Int) {
-                this.long = long
-                this.int = int
-              }
-            }
-          """
+          @Inject fun injectValues(long: Long, int: Int) {
+            this.long = long
+            this.int = int
+          }
+        }
+        """
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphViaFactory(3, 4L)
+      val graph = ExampleGraph.generatedImpl().createGraphViaFactory(3, 4L)
       val instance = ExampleClass.newInstanceStrict()
       graph.callInject(instance)
       assertThat(instance.callProperty<Int>("int")).isEqualTo(3)
@@ -865,30 +865,30 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @DependencyGraph
-            interface ExampleGraph {
-              fun inject(exampleClass: ExampleClass)
+        @DependencyGraph
+        interface ExampleGraph {
+          fun inject(exampleClass: ExampleClass)
 
-              @DependencyGraph.Factory
-              fun interface Factory {
-                fun create(@Provides @Named("int") value: Int, @Provides value2: Long): ExampleGraph
-              }
-            }
+          @DependencyGraph.Factory
+          fun interface Factory {
+            fun create(@Provides @Named("int") value: Int, @Provides value2: Long): ExampleGraph
+          }
+        }
 
-            class ExampleClass {
-              var long: Long = 0
-              var int: Int = 0
+        class ExampleClass {
+          var long: Long = 0
+          var int: Int = 0
 
-              @Inject fun injectValues(long: Long, @Named("int") int: Int) {
-                this.long = long
-                this.int = int
-              }
-            }
-          """
+          @Inject fun injectValues(long: Long, @Named("int") int: Int) {
+            this.long = long
+            this.int = int
+          }
+        }
+        """
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphViaFactory(3, 4L)
+      val graph = ExampleGraph.generatedImpl().createGraphViaFactory(3, 4L)
       val instance = ExampleClass.newInstanceStrict()
       graph.callInject(instance)
       assertThat(instance.callProperty<Int>("int")).isEqualTo(3)
@@ -901,25 +901,25 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @DependencyGraph
-            interface ExampleGraph {
-              fun inject(exampleClass: ExampleClass)
-            }
-            class ExampleClass {
-              var int: Int = 0
-              @Inject fun injectValues(dependency: Dependency) {
-                this.int = dependency.int
-              }
-            }
-            @Inject
-            class Dependency {
-              val int: Int = 3
-            }
-          """
+        @DependencyGraph
+        interface ExampleGraph {
+          fun inject(exampleClass: ExampleClass)
+        }
+        class ExampleClass {
+          var int: Int = 0
+          @Inject fun injectValues(dependency: Dependency) {
+            this.int = dependency.int
+          }
+        }
+        @Inject
+        class Dependency {
+          val int: Int = 3
+        }
+        """
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val instance = ExampleClass.newInstanceStrict()
       graph.callInject(instance)
       assertThat(instance.callProperty<Int>("int")).isEqualTo(3)
@@ -931,26 +931,26 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @DependencyGraph
-            interface ExampleGraph {
-              fun inject(exampleClass: ExampleClass)
-            }
-            class ExampleClass {
-              @Inject lateinit var value: String
-            }
-          """
+        @DependencyGraph
+        interface ExampleGraph {
+          fun inject(exampleClass: ExampleClass)
+        }
+        class ExampleClass {
+          @Inject lateinit var value: String
+        }
+        """
           .trimIndent()
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
         """
-          e: ExampleGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+        e: ExampleGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
-              kotlin.String is injected at
-                  [test.ExampleGraph] test.ExampleGraph.inject()
-              dev.zacsweers.metro.MembersInjector<test.ExampleClass> is requested at
-                  [test.ExampleGraph] test.ExampleGraph.inject()
+            kotlin.String is injected at
+                [test.ExampleGraph] test.ExampleGraph.inject()
+            dev.zacsweers.metro.MembersInjector<test.ExampleClass> is requested at
+                [test.ExampleGraph] test.ExampleGraph.inject()
         """
           .trimIndent()
       )

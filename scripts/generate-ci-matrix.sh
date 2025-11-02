@@ -6,7 +6,7 @@
 set -euo pipefail
 
 # Generate CI matrix for compiler-compat modules
-# This script finds all k-prefixed directories in compiler-compat that contain version.txt
+# This script reads versions from compiler-compat/version-aliases.txt
 # and generates a JSON matrix object for use in GitHub Actions
 
 # --versions-only flag is for ./metrow check use to only print the versions and exit
@@ -15,47 +15,50 @@ if [[ "${1:-}" == "--versions-only" ]]; then
     versions_only=true
 fi
 
+ALIASES_FILE="compiler-compat/version-aliases.txt"
+
+# First, validate the version-aliases.txt file
 if [[ "$versions_only" != true ]]; then
-    echo "🔍 Scanning for compiler-compat modules..."
+    echo "🔍 Validating version-aliases.txt..."
+    ./scripts/validate-version-aliases.sh
+    echo ""
 fi
 
-# Find all k-prefixed directories in compiler-compat that contain version.txt
-modules=$(find compiler-compat -maxdepth 1 -type d -name 'k*' -exec test -f {}/version.txt \; -print | sort)
+if [[ "$versions_only" != true ]]; then
+    echo "🔍 Reading versions from $ALIASES_FILE..."
+fi
 
-if [ -z "$modules" ]; then
+# Read versions from version-aliases.txt (skip comments and blank lines)
+versions=$(grep -v '^#' "$ALIASES_FILE" | grep -v '^[[:space:]]*$' | sort)
+
+if [ -z "$versions" ]; then
     if [[ "$versions_only" != true ]]; then
-        echo "❌ No compiler-compat modules found with version.txt files"
+        echo "❌ No versions found in $ALIASES_FILE"
     fi
     exit 1
 fi
 
 if [[ "$versions_only" == true ]]; then
     # Just output the versions, one per line
-    for module_dir in $modules; do
-        cat "$module_dir/version.txt" | tr -d '\n'
-        echo
-    done
+    echo "$versions"
     exit 0
 fi
 
-echo "📦 Found modules:"
-for module_dir in $modules; do
-    version=$(cat "$module_dir/version.txt" | tr -d '\n')
-    echo "  - $module_dir → $version"
+echo "📦 Found versions:"
+for version in $versions; do
+    echo "  - $version"
 done
 
 # Convert to JSON matrix object
 json_array="["
 first=true
-for module_dir in $modules; do
+for version in $versions; do
     if [ "$first" = true ]; then
         first=false
     else
         json_array="$json_array,"
     fi
-    
-    # Read version from version.txt file
-    version=$(cat "$module_dir/version.txt" | tr -d '\n')
+
     json_array="$json_array\"$version\""
 done
 json_array="$json_array]"

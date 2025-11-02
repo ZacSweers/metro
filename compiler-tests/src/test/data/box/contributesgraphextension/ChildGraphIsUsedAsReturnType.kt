@@ -22,10 +22,10 @@ fun box(): String {
   val generatedMetroGraphClass = parentGraph.javaClass.classes.single { it.simpleName == "ChildGraphImpl" }
 
   // In IR we change the return type of the implemented create() function from ChildGraph to
-  // ParentGraph$$$MetroGraph.ChildGraphImpl. The Kotlin compiler creates two functions in
+  // ParentGraph.Impl.ChildGraphImpl. The Kotlin compiler creates two functions in
   // the generated class file, but in IR only one is visible:
   //
-  // public final fun create(..): ParentGraph$$$MetroGraph.ChildGraphImpl
+  // public final fun create(..): ParentGraph.Impl.ChildGraphImpl
   // public fun create(..): ChildGraph
   //
   // Because one of the two functions only exist in Java bytecode, we can only see it through

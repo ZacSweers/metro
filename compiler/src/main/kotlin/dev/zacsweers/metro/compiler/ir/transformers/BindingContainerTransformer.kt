@@ -11,18 +11,19 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.generatedClass
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
-import dev.zacsweers.metro.compiler.ir.IrBinding
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
+import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.dispatchReceiverFor
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.findAnnotations
+import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.includedClasses
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
@@ -58,7 +59,6 @@ import dev.zacsweers.metro.compiler.reportCompilerBug
 import java.util.EnumSet
 import java.util.Optional
 import kotlin.jvm.optionals.getOrNull
-import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.backend.jvm.ir.getJvmNameFromAnnotation
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
@@ -337,7 +337,6 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     invokeFunction.owner.body =
       pluginContext.createIrBuilder(invokeFunction).run {
         irExprBodySafe(
-          invokeFunction,
           irInvoke(
             dispatchReceiver = dispatchReceiverFor(bytecodeFunction),
             callee = bytecodeFunction.symbol,
@@ -347,7 +346,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
                 receiver = invokeFunction.owner.dispatchReceiverParameter!!,
                 parametersToFields = sourceParametersToFields,
               ),
-          ),
+          )
         )
       }
 
@@ -467,7 +466,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
         parentClass = classToGenerateCreatorsIn,
         targetFunction = reference.callee.owner,
         sourceMetroParameters = reference.parameters,
-        sourceParameters = reference.parameters.regularParameters.map { it.ir },
+        sourceParameters = reference.parameters.regularParameters.map { it.asValueParameter },
       ) { function ->
         val parameters = function.regularParameters
 
@@ -750,7 +749,12 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
                     MetroAnnotations.Kind.BindsOptionalOf,
                   ),
               )
-            if (annotations.isProvides || annotations.isBinds || annotations.isMultibinds || annotations.isBindsOptionalOf) {
+            if (
+              annotations.isProvides ||
+                annotations.isBinds ||
+                annotations.isMultibinds ||
+                annotations.isBindsOptionalOf
+            ) {
               val isProperty = decl is IrProperty
               val callableId: CallableId
               val typeKey: IrTypeKey

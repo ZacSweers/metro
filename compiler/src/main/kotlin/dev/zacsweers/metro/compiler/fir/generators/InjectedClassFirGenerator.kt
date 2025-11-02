@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
+import dev.zacsweers.metro.compiler.fir.buildSafeDefaultValueStub
 import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
 import dev.zacsweers.metro.compiler.fir.callableDeclarations
 import dev.zacsweers.metro.compiler.fir.classIds
@@ -168,7 +169,9 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
     val isAssistedInject: Boolean,
   ) {
     private val parameterNameAllocator = NameAllocator()
-    private val memberNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
+    // Don't preallocate as these are always prefixed later with "inject"
+    private val memberKeyAllocator =
+      NameAllocator(preallocateKeywords = false, mode = NameAllocator.Mode.COUNT)
     private var declaredInjectedMembersPopulated = false
     private var ancestorInjectedMembersPopulated = false
 
@@ -180,9 +183,6 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
     val assistedParameters: List<MetroFirValueParameter> by memoize {
       constructorParameters.filter { it.isAssisted }
     }
-
-    val isAssisted
-      get() = assistedParameters.isNotEmpty()
 
     val injectedMembersParamsByMemberKey = LinkedHashMap<Name, List<MetroFirValueParameter>>()
     val injectedMembersParameters: List<MetroFirValueParameter>
@@ -274,14 +274,14 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
                     session = session,
                     symbol = setterParam,
                     name = parameterNameAllocator.newName(propertyName),
-                    memberKey = memberNameAllocator.newName(propertyName),
+                    memberKey = memberKeyAllocator.newName(propertyName),
                   )
                 } else if (fieldSymbol != null) {
                   MetroFirValueParameter(
                     session = session,
                     symbol = fieldSymbol,
                     name = parameterNameAllocator.newName(propertyName),
-                    memberKey = memberNameAllocator.newName(propertyName),
+                    memberKey = memberKeyAllocator.newName(propertyName),
                   )
                 } else {
                   return@forEach
@@ -290,7 +290,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
             }
             is FirNamedFunctionSymbol -> {
               val functionName = injectedMember.name
-              val memberKey = memberNameAllocator.newName(functionName)
+              val memberKey = memberKeyAllocator.newName(functionName)
               val params =
                 injectedMember.valueParameterSymbols.map {
                   MetroFirValueParameter(
@@ -353,7 +353,9 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
             injectConstructor?.constructor?.valueParameterSymbols.orEmpty().map {
               MetroFirValueParameter(session, it)
             }
-          val isAssistedInject = injectConstructor?.annotation?.toAnnotationClassIdSafe(session) in session.classIds.assistedInjectAnnotations || params.any { it.isAssisted }
+          val isAssistedInject =
+            injectConstructor?.annotation?.toAnnotationClassIdSafe(session) in
+              session.classIds.assistedInjectAnnotations || params.any { it.isAssisted }
           InjectedClass(classSymbol, injectConstructor != null, params, isAssistedInject)
         }
 
@@ -415,7 +417,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
           ) {
             copyTypeParametersFrom(injectedClass.classSymbol, session)
 
-            if (!injectedClass.isAssisted) {
+            if (!injectedClass.isAssistedInject) {
               superType { typeParameterRefs ->
                 Symbols.ClassIds.metroFactory.constructClassLikeType(
                   arrayOf(owner.constructType(typeParameterRefs))
@@ -426,10 +428,8 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
           .apply {
             markAsDeprecatedHidden(session)
             // Add @AssistedMarker annotation if this is an assisted factory
-            if (injectedClass.isAssisted) {
-              replaceAnnotationsSafe(
-                annotations + buildAssistedMarkerAnnotation()
-              )
+            if (injectedClass.isAssistedInject) {
+              replaceAnnotationsSafe(annotations + buildAssistedMarkerAnnotation())
             }
           }
           .symbol
@@ -486,13 +486,8 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
     if (isFactoryClass) {
       // Only generate an invoke() function if it has assisted parameters, as it won't be inherited
       // from Factory<T> in this case
-      val target = injectFactoryClassIdsToInjectedClass[classSymbol.classId]?.classSymbol
-      val injectConstructor = target?.findInjectLikeConstructors(session).orEmpty().singleOrNull()
-      if (
-          injectConstructor?.constructor?.valueParameterSymbols.orEmpty().any {
-            it.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)
-          }
-      ) {
+      val target = injectFactoryClassIdsToInjectedClass[classSymbol.classId]
+      if (target?.isAssistedInject == true) {
         names += Symbols.Names.invoke
       }
     }
@@ -587,7 +582,6 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
     if (nonNullContext.owner.hasOrigin(Keys.TopLevelInjectFunctionClass)) {
       check(callableId.callableName == Symbols.Names.invoke)
       val function = symbols.getValue(Unit, null).getValue(context.owner.classId)
-      // TODO default param values probably require generateMemberFunction
       return createMemberFunction(
           nonNullContext.owner,
           Keys.TopLevelInjectFunctionClassFunction,
@@ -616,10 +610,16 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
                 //  .withArguments(it.mapToArray(FirTypeParameterRef::toConeType))
               },
               key = Keys.RegularParameter,
+              hasDefaultValue = param.hasDefaultValue,
             )
           }
         }
         .apply {
+          for (param in valueParameters) {
+            if (param.defaultValue != null) {
+              param.replaceDefaultValue(buildSafeDefaultValueStub(session))
+            }
+          }
           // TODO this is ugly but there's no API on SimpleFunctionBuildingContext
           val contextParams = mutableListOf<FirValueParameter>()
           for (original in function.contextParameterSymbols) {
@@ -627,13 +627,14 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
               continue
             }
             @OptIn(SymbolInternals::class)
-            contextParams += buildValueParameterCopy(original.fir) {
-              name = original.name
-              origin = Keys.RegularParameter.origin
-              symbol = FirValueParameterSymbol()
-              containingDeclarationSymbol = this@apply.symbol
-            }
-              .apply { replaceAnnotationsSafe(original.annotations) }
+            contextParams +=
+              buildValueParameterCopy(original.fir) {
+                  name = original.name
+                  origin = Keys.RegularParameter.origin
+                  symbol = FirValueParameterSymbol()
+                  containingDeclarationSymbol = this@apply.symbol
+                }
+                .apply { replaceAnnotationsSafe(original.annotations) }
           }
           replaceContextParameters(contextParams)
           if (function.hasAnnotation(Symbols.ClassIds.Composable, session)) {
@@ -689,7 +690,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
             buildFactoryCreateFunction(
               nonNullContext,
               { typeParams ->
-                if (injectedClass.isAssisted) {
+                if (injectedClass.isAssistedInject) {
                   targetClass.constructType(typeParams.mapToArray(FirTypeParameterRef::toConeType))
                 } else {
                   Symbols.ClassIds.metroFactory.constructClassLikeType(

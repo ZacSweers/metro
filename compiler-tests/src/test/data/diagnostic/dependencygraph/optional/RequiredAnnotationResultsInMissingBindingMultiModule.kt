@@ -1,6 +1,6 @@
 // RUN_PIPELINE_TILL: FIR2IR
 // RENDER_IR_DIAGNOSTICS_FULL_TEXT
-// OPTIONAL_DEPENDENCY_BEHAVIOR: REQUIRE_OPTIONAL_DEPENDENCY
+// OPTIONAL_DEPENDENCY_BEHAVIOR: REQUIRE_OPTIONAL_BINDING
 
 // MODULE: lib
 @Inject
@@ -10,7 +10,7 @@ interface Base {
   val int: Int
 
   @Provides
-  fun provideInt(@OptionalDependency long: Long? = null): Int = long?.toInt() ?: 3
+  fun provideInt(@OptionalBinding long: Long? = null): Int = long?.toInt() ?: 3
 }
 
 // MODULE: main(lib)

@@ -194,6 +194,10 @@ open annotation class dev.zacsweers.metro/Named : kotlin/Annotation { // dev.zac
         final fun <get-name>(): kotlin/String // dev.zacsweers.metro/Named.name.<get-name>|<get-name>(){}[0]
 }
 
+open annotation class dev.zacsweers.metro/OptionalBinding : kotlin/Annotation { // dev.zacsweers.metro/OptionalBinding|null[0]
+    constructor <init>() // dev.zacsweers.metro/OptionalBinding.<init>|<init>(){}[0]
+}
+
 open annotation class dev.zacsweers.metro/OptionalDependency : kotlin/Annotation { // dev.zacsweers.metro/OptionalDependency|null[0]
     constructor <init>() // dev.zacsweers.metro/OptionalDependency.<init>|<init>(){}[0]
 }

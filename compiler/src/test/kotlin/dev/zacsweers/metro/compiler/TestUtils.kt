@@ -13,6 +13,7 @@ import dev.zacsweers.metro.MembersInjector
 import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.internal.Factory
+import dev.zacsweers.metro.internal.MetroImplMarker
 import dev.zacsweers.metro.provider
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
@@ -96,7 +97,7 @@ fun Class<*>.generatedMembersInjector(): Class<MembersInjector<*>> {
 }
 
 fun Class<*>.generatedAssistedFactoryImpl(): Class<*> {
-  val expectedName = Symbols.Names.MetroImpl.asString()
+  val expectedName = Symbols.Names.Impl.asString()
   return classes.single { it.simpleName == expectedName }
 }
 
@@ -327,15 +328,15 @@ val JvmCompilationResult.Parent1Graph: Class<*>
 val JvmCompilationResult.Parent2Graph: Class<*>
   get() = classLoader.loadClass("test.Parent2Graph")
 
-fun Class<*>.generatedMetroGraphClass(): Class<*> {
-  return classes.singleOrNull { it.simpleName == Symbols.Names.MetroGraph.asString() }
+fun Class<*>.generatedImpl(): Class<*> {
+  return implOrNull()
     ?: error(
-      "Could not find nested class $this.${Symbols.Names.MetroGraph.asString()}. Available: ${classes.joinToString { it.simpleName }}"
+      "Could not find nested class $this.${Symbols.Names.Impl}. Available: ${classes.joinToString { it.simpleName }}"
     )
 }
 
-fun Class<*>.graphImpl(): Class<*> {
-  return declaredClasses.single { it.simpleName.endsWith("Impl") }
+fun Class<*>.implOrNull(): Class<*>? {
+  return declaredClasses.singleOrNull { it.isAnnotationPresent(MetroImplMarker::class.java) }
 }
 
 fun <T> Any.callFunction(name: String, vararg args: Any): T {
@@ -346,7 +347,7 @@ fun <T> Any.callFunction(name: String, vararg args: Any): T {
       *args
         .map { it.javaClass.unboxIfPrimitive }
         .mapToArray {
-          if (it.simpleName == Symbols.StringNames.METRO_GRAPH) {
+          if (it.isAnnotationPresent(MetroImplMarker::class.java)) {
             it.enclosingClass
           } else {
             it
@@ -377,7 +378,13 @@ fun Any.getInstanceMethod(name: String): Method {
   @Suppress("UNCHECKED_CAST")
   return javaClass.methods.singleOrNull { it.name == name && !Modifier.isStatic(it.modifiers) }
     ?: error(
-      "No instance method with name '$name' found in $this. Available: ${javaClass.methods.filterNot { Modifier.isStatic(it.modifiers) }.joinToString { it.name }}"
+      "No instance method with name '$name' found in $this. Available: ${
+        javaClass.methods.filterNot {
+          Modifier.isStatic(
+            it.modifiers
+          )
+        }.joinToString { it.name }
+      }"
     )
 }
 
@@ -401,7 +408,7 @@ fun Class<*>.invokeGraphFactory(): Any {
   return if (staticMethod != null) {
     staticMethod.invoke()!!
   } else {
-    // We're in $$MetroGraph right now, so go up one and then find its companion object
+    // We're in a graph impl right now, so go up one and then find its companion object
     enclosingClass.companionObjectInstanceFieldOrNull?.get(null)
       ?: error("No factory found for $this")
   }
@@ -410,7 +417,7 @@ fun Class<*>.invokeGraphFactory(): Any {
 /** Creates a graph instance via its generated no-arg static create() function. */
 fun Class<*>.createGraphWithNoArgs(): Any {
   // TODO update callers to new location
-  // We're in $$MetroGraph right now, so go up one and then find its companion object
+  // We're in a graph impl right now, so go up one and then find its companion object
   return enclosingClass.invokeStaticInvokeOperator()
 }
 

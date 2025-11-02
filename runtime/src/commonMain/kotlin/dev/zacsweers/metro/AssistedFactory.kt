@@ -49,10 +49,9 @@ package dev.zacsweers.metro
  * ### Why opt-in?
  *
  * The main reason this is behind an opt-in option at the moment is because compiler plugin IDE
- * support is rudimentary at best and currently requires enabling a custom registry flag.
+ * support requires some rudimentary configuration to work.
  *
- * Because of this, it's likely better for now to just hand-write the equivalent class that Metro
- * generates. If you still wish to proceed with using this, it can be enabled via the Gradle DSL.
+ * If you still wish to proceed with using this, it can be enabled via the Gradle DSL.
  *
  * ```
  * metro {

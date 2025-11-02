@@ -2,16 +2,16 @@
 @DependencyGraph
 interface AppGraph {
   // Missing body
-  @OptionalDependency
+  @OptionalBinding
   val <!DEPENDENCY_GRAPH_ERROR!>int<!>: Int
 
   // Missing body
-  @OptionalDependency
+  @OptionalBinding
   fun <!DEPENDENCY_GRAPH_ERROR!>long<!>(): Long
 }
 
 interface Base {
-  @OptionalDependency
+  @OptionalBinding
   fun string(): String
 }
 
@@ -21,18 +21,18 @@ abstract class AppGraphClass : Base {
   override abstract fun <!DEPENDENCY_GRAPH_ERROR!>string<!>(): String
 
   // Non-open
-  @OptionalDependency
+  @OptionalBinding
   val <!DEPENDENCY_GRAPH_ERROR!>int<!>: Int get() = 3
 
   // ok
-  @OptionalDependency
+  @OptionalBinding
   open val char: Char get() = 'c'
 
   // Non-open
-  @OptionalDependency
+  @OptionalBinding
   fun <!DEPENDENCY_GRAPH_ERROR!>long<!>(): Long = 3L
 
   // ok
-  @OptionalDependency
+  @OptionalBinding
   open fun bool(): Boolean = true
 }

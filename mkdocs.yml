@@ -111,8 +111,9 @@ nav:
   - 'Performance': performance.md
   - 'Debugging': debugging.md
   - 'Compatibility': compatibility.md
-  - 'Adoption Strategies': adoption.md
+  - 'Stability': stability.md
   - 'FAQ': faq.md
+  - 'Adoption Strategies': adoption.md
   - 'Samples': samples.md
   - 'API': api/index.html
   - 'Discussions ⏏': https://github.com/ZacSweers/metro/discussions

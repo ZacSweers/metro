@@ -72,8 +72,8 @@ abstract class MetroCompilerTest {
       sources = sourceFiles.asList()
       verbose = false
       jvmTarget = JVM_TARGET
-      kotlincArguments += "-jvm-default=no-compatibility"
-      kotlincArguments += listOf("-Xverify-ir=error", "-Xverify-ir-visibility")
+      kotlincArguments +=
+        listOf("-jvm-default=no-compatibility", "-Xverify-ir=error", "-Xverify-ir-visibility")
 
       // TODO test enabling IC?
       //  kotlincArguments += "-Xenable-incremental-compilation"
@@ -222,7 +222,10 @@ abstract class MetroCompilerTest {
               }
               MetroOption.CUSTOM_BINDING_CONTAINER -> {
                 if (customBindingContainerAnnotations.isEmpty()) continue
-                processor.option(entry.raw.cliOption, customBindingContainerAnnotations.joinToString(":"))
+                processor.option(
+                  entry.raw.cliOption,
+                  customBindingContainerAnnotations.joinToString(":"),
+                )
               }
               MetroOption.CUSTOM_CONTRIBUTES_INTO_SET -> {
                 if (customContributesIntoSetAnnotations.isEmpty()) continue
@@ -247,9 +250,13 @@ abstract class MetroCompilerTest {
               }
               MetroOption.CUSTOM_ORIGIN -> {
                 if (customOriginAnnotations.isEmpty()) continue
+                processor.option(entry.raw.cliOption, customOriginAnnotations.joinToString(":"))
+              }
+              MetroOption.CUSTOM_OPTIONAL_BINDING -> {
+                if (customOptionalBindingAnnotations.isEmpty()) continue
                 processor.option(
                   entry.raw.cliOption,
-                  customOriginAnnotations.joinToString(":"),
+                  customOptionalBindingAnnotations.joinToString(":"),
                 )
               }
               MetroOption.ENABLE_DAGGER_ANVIL_INTEROP -> {
@@ -261,11 +268,29 @@ abstract class MetroCompilerTest {
               MetroOption.ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE -> {
                 processor.option(entry.raw.cliOption, enableGraphImplClassAsReturnType)
               }
-              MetroOption.OPTIONAL_DEPENDENCY_BEHAVIOR -> {
-                processor.option(entry.raw.cliOption, optionalDependencyBehavior)
+              MetroOption.OPTIONAL_BINDING_BEHAVIOR -> {
+                processor.option(entry.raw.cliOption, optionalBindingBehavior)
               }
               MetroOption.CONTRIBUTES_AS_INJECT -> {
                 processor.option(entry.raw.cliOption, contributesAsInject)
+              }
+              MetroOption.INTEROP_INCLUDE_JAVAX_ANNOTATIONS -> {
+                processor.option(entry.raw.cliOption, false)
+              }
+              MetroOption.INTEROP_INCLUDE_JAKARTA_ANNOTATIONS -> {
+                processor.option(entry.raw.cliOption, false)
+              }
+              MetroOption.INTEROP_INCLUDE_DAGGER_ANNOTATIONS -> {
+                processor.option(entry.raw.cliOption, false)
+              }
+              MetroOption.INTEROP_INCLUDE_KOTLIN_INJECT_ANNOTATIONS -> {
+                processor.option(entry.raw.cliOption, false)
+              }
+              MetroOption.INTEROP_INCLUDE_ANVIL_ANNOTATIONS -> {
+                processor.option(entry.raw.cliOption, false)
+              }
+              MetroOption.INTEROP_INCLUDE_KOTLIN_INJECT_ANVIL_ANNOTATIONS -> {
+                processor.option(entry.raw.cliOption, false)
               }
             }
           yield(option)

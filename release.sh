@@ -73,6 +73,9 @@ update_gradle_properties "$NEW_VERSION"
 
 ./metrow regen
 
+# Update compatibility docs with tested versions
+./scripts/update-compatibility-docs.sh
+
 git commit -am "Prepare for release $NEW_VERSION."
 git tag -a "$NEW_VERSION" -m "Version $NEW_VERSION"
 

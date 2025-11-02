@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.compareTo
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.NOOP_TYPE_REMAPPER
 import dev.zacsweers.metro.compiler.ir.contextParameters
 import dev.zacsweers.metro.compiler.ir.extensionReceiverParameterCompat
@@ -18,9 +19,12 @@ import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.isPropertyAccessor
+import org.jetbrains.kotlin.ir.types.isUnit
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.callableId
+import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
+import org.jetbrains.kotlin.ir.util.remapTypes
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.CallableId.Companion.PACKAGE_FQ_NAME_FOR_LOCAL
 import org.jetbrains.kotlin.name.Name
@@ -37,7 +41,7 @@ internal class Parameters(
 ) : Comparable<Parameters> {
 
   val isProperty: Boolean
-    get() = (ir as? IrSimpleFunction?)?.isPropertyAccessor == true
+    get() = ir?.isPropertyAccessor == true
 
   val irProperty: IrProperty?
     get() {
@@ -66,9 +70,7 @@ internal class Parameters(
     }
   }
 
-  val parametersMap by memoize {
-    allParameters.associateBy { it.name }
-  }
+  val parametersMap by memoize { allParameters.associateBy { it.name } }
 
   operator fun get(name: Name): Parameter? = parametersMap[name]
 
@@ -88,15 +90,16 @@ internal class Parameters(
       callableId = callableId,
       dispatchReceiverParameter = dispatchReceiverParameter,
       extensionReceiverParameter = extensionReceiverParameter,
-      regularParameters = regularParameters.mapIndexed { i, param ->
-        val qualifier = qualifiers[i] ?: return@mapIndexed param
-        param.copy(
-          contextualTypeKey =
-            param.contextualTypeKey.withTypeKey(
-              param.contextualTypeKey.typeKey.copy(qualifier = qualifier)
-            )
-        )
-      },
+      regularParameters =
+        regularParameters.mapIndexed { i, param ->
+          val qualifier = qualifiers[i] ?: return@mapIndexed param
+          param.copy(
+            contextualTypeKey =
+              param.contextualTypeKey.withTypeKey(
+                param.contextualTypeKey.typeKey.copy(qualifier = qualifier)
+              )
+          )
+        },
       contextParameters = contextParameters,
       ir = ir,
     )
@@ -141,11 +144,13 @@ internal class Parameters(
         regularParameters.joinTo(this)
         append(')')
       }
-      append(": ")
       ir?.let {
-        val typeKey = IrTypeKey(it.returnType)
-        append(typeKey.render(short = true, includeQualifier = false))
-      } ?: run { append("<error>") }
+        if (!it.returnType.isUnit()) {
+          append(": ")
+          val typeKey = IrTypeKey(it.returnType)
+          append(typeKey.render(short = true, includeQualifier = false))
+        }
+      }
     }
   }
 
@@ -157,6 +162,17 @@ internal class Parameters(
       regularParameters,
       contextParameters,
       ir,
+    )
+  }
+
+  fun with(other: MetroSimpleFunction): Parameters {
+    return Parameters(
+      callableId,
+      dispatchReceiverParameter,
+      extensionReceiverParameter,
+      regularParameters,
+      contextParameters,
+      other.ir,
     )
   }
 
@@ -224,5 +240,17 @@ internal fun IrFunction.parameters(remapper: TypeRemapper = NOOP_TYPE_REMAPPER):
     regularParameters = regularParameters.mapToConstructorParameters(remapper),
     contextParameters = contextParameters.mapToConstructorParameters(remapper),
     ir = this,
+  )
+}
+
+internal fun Parameters.remapTypes(remapper: TypeRemapper): Parameters {
+  if (remapper == NOOP_TYPE_REMAPPER) return this
+  return Parameters(
+    callableId = callableId,
+    instance = dispatchReceiverParameter?.remapTypes(remapper),
+    extensionReceiver = extensionReceiverParameter?.remapTypes(remapper),
+    regularParameters = regularParameters.map { it.remapTypes(remapper) },
+    contextParameters = contextParameters.map { it.remapTypes(remapper) },
+    ir = ir?.let { it.deepCopyWithSymbols(it.parent) { remapper } },
   )
 }

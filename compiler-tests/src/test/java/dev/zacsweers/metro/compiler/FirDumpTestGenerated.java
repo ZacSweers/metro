@@ -3,9 +3,9 @@
 package dev.zacsweers.metro.compiler;
 
 import com.intellij.testFramework.TestDataPath;
+import org.jetbrains.kotlin.test.util.KtTestUtil;
 import org.jetbrains.kotlin.test.TargetBackend;
 import org.jetbrains.kotlin.test.TestMetadata;
-import org.jetbrains.kotlin.test.util.KtTestUtil;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -56,9 +56,15 @@ public class FirDumpTestGenerated extends AbstractFirDumpTest {
     }
 
     @Test
-    @TestMetadata("FirHintGenerationWorks.kt")
-    public void testFirHintGenerationWorks() {
-      runTest("compiler-tests/src/test/data/dump/fir/aggregation/FirHintGenerationWorks.kt");
+    @TestMetadata("FirHintGenerationWorks_k22x.kt")
+    public void testFirHintGenerationWorks_k22x() {
+      runTest("compiler-tests/src/test/data/dump/fir/aggregation/FirHintGenerationWorks_k22x.kt");
+    }
+
+    @Test
+    @TestMetadata("FirHintGenerationWorks_k23x.kt")
+    public void testFirHintGenerationWorks_k23x() {
+      runTest("compiler-tests/src/test/data/dump/fir/aggregation/FirHintGenerationWorks_k23x.kt");
     }
   }
 

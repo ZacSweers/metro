@@ -144,6 +144,15 @@ internal object BindingContainerCallableChecker :
       return
     }
 
+    declaration
+      .getAnnotationByClassId(DaggerSymbols.ClassIds.DAGGER_REUSABLE_CLASS_ID, session)
+      ?.let {
+        reporter.reportOn(it.source ?: source, MetroDiagnostics.DAGGER_REUSABLE_ERROR)
+        return
+      }
+
+    // After the reusable check because reusable is technically a scope and we don't want to
+    // double-report
     if (annotations.isBinds && annotations.scope != null) {
       reporter.reportOn(
         annotations.scope.fir.source ?: source,
@@ -151,13 +160,6 @@ internal object BindingContainerCallableChecker :
         "@Binds declarations may not have scopes.",
       )
     }
-
-    declaration
-      .getAnnotationByClassId(DaggerSymbols.ClassIds.DAGGER_REUSABLE_CLASS_ID, session)
-      ?.let {
-        reporter.reportOn(it.source ?: source, MetroDiagnostics.DAGGER_REUSABLE_ERROR)
-        return
-      }
 
     if (declaration.typeParameters.isNotEmpty()) {
       val type = if (annotations.isProvides) "Provides" else "Binds"
@@ -377,7 +379,7 @@ internal object BindingContainerCallableChecker :
           val annotations =
             parameter.symbol.metroAnnotations(
               session,
-              MetroAnnotations.Kind.OptionalDependency,
+              MetroAnnotations.Kind.OptionalBinding,
               MetroAnnotations.Kind.Assisted,
               MetroAnnotations.Kind.Qualifier,
             )
@@ -399,7 +401,7 @@ internal object BindingContainerCallableChecker :
               parameter.returnTypeRef,
               annotations.qualifier,
               parameter.source ?: source,
-              isOptionalDependency = annotations.isOptionalDependency,
+              isOptionalBinding = annotations.isOptionalBinding,
               hasDefault = parameter.symbol.hasDefaultValue,
             )
           ) {

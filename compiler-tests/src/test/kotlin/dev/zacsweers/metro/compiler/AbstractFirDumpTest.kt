@@ -18,6 +18,8 @@ open class AbstractFirDumpTest : AbstractDiagnosticTest() {
         +FIR_DUMP
         +DISABLE_GENERATED_FIR_TAGS
       }
+
+      useMetaTestConfigurators(::MetroTestConfigurator)
     }
   }
 }

@@ -1,8 +1,6 @@
-// ENABLE_DAGGER_KSP
-
-// Anvil may generate objects
-
 // MODULE: lib
+// ENABLE_DAGGER_KSP
+// DISABLE_METRO
 // FILE: ExampleClass.java
 package test;
 
@@ -28,6 +26,7 @@ public class ExampleClass {
 }
 
 // MODULE: main(lib)
+// ENABLE_DAGGER_INTEROP
 package test
 
 @DependencyGraph

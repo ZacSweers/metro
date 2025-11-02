@@ -162,7 +162,15 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         add(lazyOption("shrink-unused-bindings", extension.shrinkUnusedBindings))
         add(lazyOption("chunk-field-inits", extension.chunkFieldInits))
         add(lazyOption("statements-per-init-fun", extension.statementsPerInitFun))
-        add(lazyOption("optional-dependency-behavior", extension.optionalDependencyBehavior))
+        @Suppress("DEPRECATION")
+        add(
+          lazyOption(
+            "optional-binding-behavior",
+            extension.optionalBindingBehavior.orElse(
+              extension.optionalDependencyBehavior.map { it.mapToOptionalBindingBehavior() }
+            ),
+          )
+        )
         add(lazyOption("public-provider-severity", extension.publicProviderSeverity))
         add(
           lazyOption(
@@ -321,6 +329,24 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-origin", value = it.joinToString(":")) }
             ?.let(::add)
+          optionalBinding
+            .getOrElse(mutableSetOf())
+            .takeUnless { it.isEmpty() }
+            ?.let { SubpluginOption("custom-optional-binding", value = it.joinToString(":")) }
+            ?.let(::add)
+          add(lazyOption("interop-include-javax-annotations", includeJavaxAnnotations))
+          add(lazyOption("interop-include-jakarta-annotations", includeJakartaAnnotations))
+          add(lazyOption("interop-include-dagger-annotations", includeDaggerAnnotations))
+          add(
+            lazyOption("interop-include-kotlin-inject-annotations", includeKotlinInjectAnnotations)
+          )
+          add(lazyOption("interop-include-anvil-annotations", includeAnvilAnnotations))
+          add(
+            lazyOption(
+              "interop-include-kotlin-inject-anvil-annotations",
+              includeKotlinInjectAnvilAnnotations,
+            )
+          )
           add(
             SubpluginOption(
               "enable-dagger-anvil-interop",
