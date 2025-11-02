@@ -1964,6 +1964,8 @@
 <li><strong>Enhancement</strong>: Cache members injector binding lookups.</li>
 <li><strong>Enhancement</strong>: Don&rsquo;t double-lookup members injectors already computed from roots.</li>
 <li><strong>Enhancement</strong>: Support Kotlin <code>2.3.0-Beta2</code>.</li>
+<li><strong>Enhancement</strong>: Improve generated graph impl declaration checks.</li>
+<li><strong>Fix</strong>: Work around &ldquo;LookupSymbols are not yet converted to ProgramSymbols&rdquo; issue (<a href="https://youtrack.jetbrains.com/issue/KT-80412">KT-80412</a>) in incremental compilation by avoiding using <code>$$</code> prefixes in generated class names.</li>
 <li>Deprecate <code>includeAnvil()</code> Gradle DSL function in favor of more specific <code>includeAnvilForDagger()</code> and <code>includeAnvilForKotlinInject()</code> functions.</li>
 <li>Move interop annotations controls to compiler. For Gradle users, there&rsquo;s mostly no change (other than the above). For users of any other build system, this makes it a bit easier to reuse the interop annotations logic.</li>
 </ul>
