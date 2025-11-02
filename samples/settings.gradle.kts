@@ -46,10 +46,9 @@ include(
 )
 
 includeBuild("..") {
-//  dependencySubstitution {
-//    substitute(module("dev.zacsweers.metro:metrox-android"))
-//      .using(project(":metrox:android"))
-//  }
+  dependencySubstitution {
+    substitute(module("dev.zacsweers.metro:metrox-android")).using(project(":metrox:android"))
+  }
 }
 
 develocity {
