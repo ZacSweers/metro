@@ -9,4 +9,4 @@ import kotlin.reflect.KClass
 /** A [MapKey] annotation for binding a BroadcastReceiver in a multibinding map. */
 @MapKey
 @Target(AnnotationTarget.CLASS)
-annotation class ReceiverKey(val value: KClass<out BroadcastReceiver>)
+annotation class BroadcastReceiverKey(val value: KClass<out BroadcastReceiver>)
