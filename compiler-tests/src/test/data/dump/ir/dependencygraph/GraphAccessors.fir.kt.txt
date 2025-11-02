@@ -9,22 +9,9 @@ interface Accessors {
 
 @DependencyGraph
 interface ExampleGraph {
-  companion object Companion : Factory {
-    private constructor() /* primary */ {
-      super/*Any*/()
-      /* <init>() */
-
-    }
-
-    @GraphFactoryInvokeFunctionMarker
-    override fun create(@Includes accessors: Accessors): ExampleGraph {
-      return $$MetroGraph(accessors = accessors)
-    }
-
-  }
-
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroGraph : ExampleGraph {
+  @MetroImplMarker
+  class Impl : ExampleGraph {
     private val accessorsInstance: Accessors
       field = accessors
 
@@ -58,10 +45,25 @@ interface ExampleGraph {
 
   }
 
+  companion object Companion : Factory {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    override fun create(@Includes accessors: Accessors): ExampleGraph {
+      return Impl(accessors = accessors)
+    }
+
+  }
+
   @Factory
   interface Factory {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-    object $$Impl : Factory {
+    @MetroImplMarker
+    object Impl : Factory {
       private constructor() /* primary */ {
         super/*Any*/()
         /* <init>() */
@@ -70,7 +72,7 @@ interface ExampleGraph {
 
       @GraphFactoryInvokeFunctionMarker
       override fun create(@Includes accessors: Accessors): ExampleGraph {
-        return $$MetroGraph(accessors = accessors)
+        return Impl(accessors = accessors)
       }
 
     }

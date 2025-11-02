@@ -1,7 +1,7 @@
 @Inject
 class ClassWithBackRefs<T : Any?, V : Any?, E : V> {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory<T : Any?, V : Any?, E : Any?> : Factory<ClassWithBackRefs<T, V, E>> {
+  class MetroFactory<T : Any?, V : Any?, E : Any?> : Factory<ClassWithBackRefs<T, V, E>> {
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -10,7 +10,7 @@ class ClassWithBackRefs<T : Any?, V : Any?, E : V> {
       }
 
       fun <T : Any?, V : Any?, E : V> create(): Factory<ClassWithBackRefs<T, V, E>> {
-        return $$MetroFactory<T, V, E>()
+        return MetroFactory<T, V, E>()
       }
 
       fun <T : Any?, V : Any?, E : V> newInstance(): ClassWithBackRefs<T, V, E> {
@@ -46,7 +46,7 @@ class ClassWithBackRefs<T : Any?, V : Any?, E : V> {
 @Inject
 class ClassWithBounds<T : Any> {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory<T : Any?> : Factory<ClassWithBounds<T>> {
+  class MetroFactory<T : Any?> : Factory<ClassWithBounds<T>> {
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -55,7 +55,7 @@ class ClassWithBounds<T : Any> {
       }
 
       fun <T : Any> create(): Factory<ClassWithBounds<T>> {
-        return $$MetroFactory<T>()
+        return MetroFactory<T>()
       }
 
       fun <T : Any> newInstance(): ClassWithBounds<T> {
@@ -91,7 +91,7 @@ class ClassWithBounds<T : Any> {
 @Inject
 class ClassWithMultiple<T : Any?, V : Any?, E : Any?> {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory<T : Any?, V : Any?, E : Any?> : Factory<ClassWithMultiple<T, V, E>> {
+  class MetroFactory<T : Any?, V : Any?, E : Any?> : Factory<ClassWithMultiple<T, V, E>> {
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -100,7 +100,7 @@ class ClassWithMultiple<T : Any?, V : Any?, E : Any?> {
       }
 
       fun <T : Any?, V : Any?, E : Any?> create(): Factory<ClassWithMultiple<T, V, E>> {
-        return $$MetroFactory<T, V, E>()
+        return MetroFactory<T, V, E>()
       }
 
       fun <T : Any?, V : Any?, E : Any?> newInstance(): ClassWithMultiple<T, V, E> {
@@ -136,7 +136,7 @@ class ClassWithMultiple<T : Any?, V : Any?, E : Any?> {
 @Inject
 class ClassWithNullable<T : Any?, E : T?> {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory<T : Any?, E : Any?> : Factory<ClassWithNullable<T, E>> {
+  class MetroFactory<T : Any?, E : Any?> : Factory<ClassWithNullable<T, E>> {
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -145,7 +145,7 @@ class ClassWithNullable<T : Any?, E : T?> {
       }
 
       fun <T : Any?, E : T?> create(): Factory<ClassWithNullable<T, E>> {
-        return $$MetroFactory<T, E>()
+        return MetroFactory<T, E>()
       }
 
       fun <T : Any?, E : T?> newInstance(): ClassWithNullable<T, E> {
@@ -181,7 +181,7 @@ class ClassWithNullable<T : Any?, E : T?> {
 @Inject
 class ClassWithWheres<T : Any?, V : Any?, E : V> {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory<T : Any?, V : Any?, E : Any?> : Factory<ClassWithWheres<T, V, E>> {
+  class MetroFactory<T : Any?, V : Any?, E : Any?> : Factory<ClassWithWheres<T, V, E>> {
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -190,7 +190,7 @@ class ClassWithWheres<T : Any?, V : Any?, E : V> {
       }
 
       fun <T : Any?, V : Any?, E : V> create(): Factory<ClassWithWheres<T, V, E>> {
-        return $$MetroFactory<T, V, E>()
+        return MetroFactory<T, V, E>()
       }
 
       fun <T : Any?, V : Any?, E : V> newInstance(): ClassWithWheres<T, V, E> {
@@ -226,7 +226,7 @@ class ClassWithWheres<T : Any?, V : Any?, E : V> {
 @Inject
 class ComplexMonster<T : Any, V : T, E : V, LongName : Any?, NullableLongName : LongName?> {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory<T : Any?, V : Any?, E : Any?, LongName : Any?, NullableLongName : Any?> : Factory<ComplexMonster<T, V, E, LongName, NullableLongName>> {
+  class MetroFactory<T : Any?, V : Any?, E : Any?, LongName : Any?, NullableLongName : Any?> : Factory<ComplexMonster<T, V, E, LongName, NullableLongName>> {
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -235,7 +235,7 @@ class ComplexMonster<T : Any, V : T, E : V, LongName : Any?, NullableLongName : 
       }
 
       fun <T : Any, V : T, E : V, LongName : Any?, NullableLongName : LongName?> create(): Factory<ComplexMonster<T, V, E, LongName, NullableLongName>> {
-        return $$MetroFactory<T, V, E, LongName, NullableLongName>()
+        return MetroFactory<T, V, E, LongName, NullableLongName>()
       }
 
       fun <T : Any, V : T, E : V, LongName : Any?, NullableLongName : LongName?> newInstance(): ComplexMonster<T, V, E, LongName, NullableLongName> {
@@ -271,7 +271,7 @@ class ComplexMonster<T : Any, V : T, E : V, LongName : Any?, NullableLongName : 
 @Inject
 class SimpleClass<T : Any?> {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory<T : Any?> : Factory<SimpleClass<T>> {
+  class MetroFactory<T : Any?> : Factory<SimpleClass<T>> {
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -280,7 +280,7 @@ class SimpleClass<T : Any?> {
       }
 
       fun <T : Any?> create(): Factory<SimpleClass<T>> {
-        return $$MetroFactory<T>()
+        return MetroFactory<T>()
       }
 
       fun <T : Any?> newInstance(): SimpleClass<T> {

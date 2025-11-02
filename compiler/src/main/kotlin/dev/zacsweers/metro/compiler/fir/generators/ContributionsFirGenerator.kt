@@ -71,8 +71,8 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
 
       if (contributionAnnotations.isNotEmpty()) {
         // We create a contribution class for each scope being contributed to. E.g. if there are
-        // contributions for AppScope and LibScope we'll create $$MetroContributionToLibScope and
-        // $$MetroContributionToAppScope
+        // contributions for AppScope and LibScope we'll create `MetroContributionToLibScope` and
+        // `MetroContributionToAppScope`
         // It'll try to use the fully name if possible, but because we really just need these to be
         // disambiguated we can just safely fall back to the short name in the worst case
         contributionAnnotations

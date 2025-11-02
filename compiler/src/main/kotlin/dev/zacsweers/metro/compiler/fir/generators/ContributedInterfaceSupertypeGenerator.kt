@@ -89,7 +89,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
       val allSessions =
         sequenceOf(session).plus(session.moduleData.allDependsOnDependencies.map { it.session })
 
-      // Predicates can't see the generated $$MetroContribution classes, but we can access them
+      // Predicates can't see the generated `MetroContribution` classes, but we can access them
       // by first querying the top level @ContributeX-annotated source symbols and then checking
       // their declaration scopes
       val contributingClasses =
@@ -260,7 +260,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
     val contributions =
       TreeMap<ClassId, ConeClassLikeType>(compareBy(ClassId::asString)).apply {
         for (contribution in contributionClassLikes) {
-          // This is always the $$MetroContribution, the contribution is its parent
+          // This is always the `MetroContribution`, the contribution is its parent
           val classId = contribution.classId?.parentClassId ?: continue
           put(classId, contribution)
         }
@@ -291,7 +291,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
     // TODO make this lazily computed?
     val originToContributions = mutableMapOf<ClassId, MutableSet<ClassId>>()
 
-    // Check regular contributions (classes with nested $$MetroContribution)
+    // Check regular contributions (classes with nested `MetroContribution`)
     for ((parentClassId, _) in contributions) {
       val parentSymbol = parentClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()
       if (parentSymbol != null) {

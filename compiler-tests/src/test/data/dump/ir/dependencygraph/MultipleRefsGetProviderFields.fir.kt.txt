@@ -5,7 +5,7 @@ class IntHolder {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  object $$MetroFactory : Factory<IntHolder> {
+  object MetroFactory : Factory<IntHolder> {
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -13,7 +13,7 @@ class IntHolder {
     }
 
     fun create(): Factory<IntHolder> {
-      return $$MetroFactory
+      return MetroFactory
     }
 
     fun newInstance(): IntHolder {
@@ -21,7 +21,7 @@ class IntHolder {
     }
 
     override operator fun invoke(): IntHolder {
-      return $$MetroFactory.newInstance()
+      return MetroFactory.newInstance()
     }
 
     fun mirrorFunction(): IntHolder {
@@ -40,22 +40,9 @@ class IntHolder {
 
 @DependencyGraph
 interface AppGraph {
-  companion object Companion {
-    private constructor() /* primary */ {
-      super/*Any*/()
-      /* <init>() */
-
-    }
-
-    @GraphFactoryInvokeFunctionMarker
-    operator fun invoke(): AppGraph {
-      return $$MetroGraph()
-    }
-
-  }
-
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroGraph : AppGraph {
+  @MetroImplMarker
+  class Impl : AppGraph {
     private val thisGraphInstance: AppGraph
       field = <this>
 
@@ -63,7 +50,7 @@ interface AppGraph {
       field = Companion.invoke<AppGraph>(value = <this>.#thisGraphInstance)
 
     private val intHolderProvider: Provider<IntHolder>
-      field = $$MetroFactory.create()
+      field = MetroFactory.create()
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -83,9 +70,23 @@ interface AppGraph {
 
   }
 
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @CallableMetadata(callableName = "provideLong", propertyName = "", startOffset = 108, endOffset = 180)
-  class ProvideLong$$MetroFactory : Factory<Long> {
+  class ProvideLongMetroFactory : Factory<Long> {
     private /* final field */ val instance: AppGraph = instance
     private /* final field */ val holder: Provider<IntHolder> = holder
     companion object Companion {
@@ -96,7 +97,7 @@ interface AppGraph {
       }
 
       fun create(instance: AppGraph, holder: Provider<IntHolder>): Factory<Long> {
-        return ProvideLong$$MetroFactory(instance = instance, holder = holder)
+        return ProvideLongMetroFactory(instance = instance, holder = holder)
       }
 
       fun provideLong(instance: AppGraph, holder: IntHolder): Long {
@@ -123,7 +124,7 @@ interface AppGraph {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 183, endOffset = 261)
-  class ProvideString$$MetroFactory : Factory<String> {
+  class ProvideStringMetroFactory : Factory<String> {
     private /* final field */ val instance: AppGraph = instance
     private /* final field */ val holder: Provider<IntHolder> = holder
     companion object Companion {
@@ -134,7 +135,7 @@ interface AppGraph {
       }
 
       fun create(instance: AppGraph, holder: Provider<IntHolder>): Factory<String> {
-        return ProvideString$$MetroFactory(instance = instance, holder = holder)
+        return ProvideStringMetroFactory(instance = instance, holder = holder)
       }
 
       fun provideString(instance: AppGraph, holder: IntHolder): String {

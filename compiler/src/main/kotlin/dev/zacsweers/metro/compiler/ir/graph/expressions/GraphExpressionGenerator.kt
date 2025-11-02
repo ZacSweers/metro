@@ -449,7 +449,7 @@ private constructor(
               binding.propertyAccess.property,
             )
           } else if (binding.getter != null) {
-            val graphInstanceField =
+            val graphInstanceProperty =
               bindingPropertyContext.instanceProperty(ownerKey)
                 ?: reportCompilerBug(
                   "No matching included type instance found for type $ownerKey while processing ${node.typeKey}. Available instance fields ${bindingPropertyContext.availableInstanceKeys}"
@@ -459,7 +459,7 @@ private constructor(
 
             val invokeGetter =
               irInvoke(
-                dispatchReceiver = irGetProperty(irGet(thisReceiver), graphInstanceField),
+                dispatchReceiver = irGetProperty(irGet(thisReceiver), graphInstanceProperty),
                 callee = binding.getter.symbol,
                 typeHint = binding.typeKey.type,
               )

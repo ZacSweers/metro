@@ -10,7 +10,7 @@ import dev.zacsweers.metro.compiler.MetroCompilerTest
 import dev.zacsweers.metro.compiler.assertDiagnostics
 import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
-import dev.zacsweers.metro.compiler.generatedMetroGraphClass
+import dev.zacsweers.metro.compiler.generatedImpl
 import org.junit.Ignore
 import org.junit.Test
 
@@ -35,7 +35,7 @@ class NullableBindingsTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertThat(graph.callProperty<Int>("int")).isEqualTo(0)
       assertThat(graph.callProperty<Int?>("nullable")).isEqualTo(1)
     }
@@ -158,7 +158,7 @@ class NullableBindingsTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val foo = graph.callProperty<Any>("foo")
       assertThat(foo.callProperty<String?>("input")).isEqualTo("hello")
     }
@@ -186,7 +186,7 @@ class NullableBindingsTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val foo = graph.callProperty<Any>("foo")
       val bar = foo.callProperty<Any>("bar")
       assertThat(bar.callProperty<String?>("value")).isEqualTo("test")
@@ -223,7 +223,7 @@ class NullableBindingsTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val ints = graph.callProperty<Set<Int>>("ints")
       assertThat(ints).containsExactly(3)
       val nullableInts = graph.callProperty<Set<Int>>("nullableInts")
@@ -299,7 +299,7 @@ class NullableBindingsTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val ints = graph.callProperty<Map<Int, Int>>("ints")
       assertThat(ints).containsExactly(3, 3)
       val nullableInts = graph.callProperty<Map<Int, Int?>>("nullableInts")
@@ -341,7 +341,7 @@ class NullableBindingsTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val ints = graph.callProperty<Map<Int, Provider<Int>>>("ints")
       assertThat(ints.mapValues { it.value() }).containsExactly(3, 3)
       val nullableInts = graph.callProperty<Map<Int, Provider<Int?>>>("nullableInts")
@@ -403,7 +403,7 @@ class NullableBindingsTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertThat(graph.callProperty<Int>("int")).isEqualTo(1)
       assertThat(graph.callProperty<Int?>("nullableInt")).isEqualTo(1)
     }

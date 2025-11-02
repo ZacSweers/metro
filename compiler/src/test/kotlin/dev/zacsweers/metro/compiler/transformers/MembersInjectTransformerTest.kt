@@ -17,8 +17,8 @@ import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.createGraphViaFactory
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
 import dev.zacsweers.metro.compiler.generatedFactoryClass
+import dev.zacsweers.metro.compiler.generatedImpl
 import dev.zacsweers.metro.compiler.generatedMembersInjector
-import dev.zacsweers.metro.compiler.generatedMetroGraphClass
 import dev.zacsweers.metro.compiler.invokeCreate
 import dev.zacsweers.metro.compiler.invokeNewInstance
 import dev.zacsweers.metro.compiler.newInstanceStrict
@@ -592,7 +592,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphViaFactory(3)
+      val graph = ExampleGraph.generatedImpl().createGraphViaFactory(3)
       val instance = ExampleClass.newInstanceStrict()
       val instance2 = ExampleClass2.newInstanceStrict()
       graph.callInject(instance)
@@ -617,7 +617,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val instance = ExampleClass.newInstanceStrict()
       // noop call
       graph.callInject(instance)
@@ -646,7 +646,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphViaFactory(3)
+      val graph = ExampleGraph.generatedImpl().createGraphViaFactory(3)
       val instance = ExampleClass.newInstanceStrict()
       graph.callInject(instance)
       assertThat(instance.callProperty<Int>("int")).isEqualTo(3)
@@ -676,7 +676,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphViaFactory(3, 4L)
+      val graph = ExampleGraph.generatedImpl().createGraphViaFactory(3, 4L)
       val instance = graph.callProperty<Any>("exampleClass")
       assertThat(instance.callProperty<Int>("int")).isEqualTo(3)
       assertThat(instance.callProperty<Long>("long")).isEqualTo(4L)
@@ -710,7 +710,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphViaFactory(3, 4L)
+      val graph = ExampleGraph.generatedImpl().createGraphViaFactory(3, 4L)
       val instance = graph.callProperty<Any>("exampleClass")
       assertThat(instance.callProperty<Int>("int")).isEqualTo(3)
       assertThat(instance.callProperty<Long>("long")).isEqualTo(4L)
@@ -746,7 +746,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphViaFactory(3, 4L)
+      val graph = ExampleGraph.generatedImpl().createGraphViaFactory(3, 4L)
       val instance = graph.callProperty<Any>("exampleClass")
       assertThat(instance.callProperty<Int>("int")).isEqualTo(3)
       assertThat(instance.callProperty<Long>("long")).isEqualTo(4L)
@@ -782,7 +782,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphViaFactory(3, 4L)
+      val graph = ExampleGraph.generatedImpl().createGraphViaFactory(3, 4L)
       val instance = graph.callProperty<Any>("exampleClass")
       assertThat(instance.callProperty<Int>("int")).isEqualTo(3)
       assertThat(instance.callProperty<Long>("long")).isEqualTo(4L)
@@ -817,7 +817,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphViaFactory(3, 4L)
+      val graph = ExampleGraph.generatedImpl().createGraphViaFactory(3, 4L)
       val instance = graph.callProperty<Any>("exampleClass")
       assertThat(instance.callProperty<Int>("int")).isEqualTo(3)
       assertThat(instance.callProperty<Long>("long")).isEqualTo(4L)
@@ -852,7 +852,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphViaFactory(3, 4L)
+      val graph = ExampleGraph.generatedImpl().createGraphViaFactory(3, 4L)
       val instance = ExampleClass.newInstanceStrict()
       graph.callInject(instance)
       assertThat(instance.callProperty<Int>("int")).isEqualTo(3)
@@ -888,7 +888,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphViaFactory(3, 4L)
+      val graph = ExampleGraph.generatedImpl().createGraphViaFactory(3, 4L)
       val instance = ExampleClass.newInstanceStrict()
       graph.callInject(instance)
       assertThat(instance.callProperty<Int>("int")).isEqualTo(3)
@@ -919,7 +919,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val instance = ExampleClass.newInstanceStrict()
       graph.callInject(instance)
       assertThat(instance.callProperty<Int>("int")).isEqualTo(3)
