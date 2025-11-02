@@ -287,15 +287,12 @@ private constructor(
         }
 
         is IrBinding.Multibinding -> {
-          multibindingExpressionGenerator
-            .generateBindingCode(binding, contextualTypeKey, accessType, fieldInitKey)
-//            .let {
-//              if (accessType == AccessType.INSTANCE) {
-//                it
-//              } else {
-//                with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) }
-//              }
-//            }
+          multibindingExpressionGenerator.generateBindingCode(
+            binding,
+            contextualTypeKey,
+            accessType,
+            fieldInitKey,
+          )
         }
 
         is IrBinding.MembersInjected -> {
@@ -358,6 +355,7 @@ private constructor(
                 // Get it directly
                 irGet(binding.classReceiverParameter)
               }
+
               AccessType.PROVIDER -> {
                 // We need the provider
                 irGetProperty(
