@@ -8,7 +8,6 @@ import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.ContentProvider
 import android.content.Intent
-import android.os.Build
 import androidx.annotation.Keep
 import androidx.annotation.RequiresApi
 import androidx.core.app.AppComponentFactory
@@ -21,7 +20,7 @@ import kotlin.reflect.KClass
  * If you have minSdk < 28, you can fall back to using member injection on Activities or (better)
  * use an architecture that abstracts the Android framework components away.
  */
-@RequiresApi(Build.VERSION_CODES.P)
+@RequiresApi(28)
 @Keep
 class MetroAppComponentFactory : AppComponentFactory() {
 
@@ -40,18 +39,18 @@ class MetroAppComponentFactory : AppComponentFactory() {
     className: String,
     intent: Intent?,
   ): Activity {
-    return getInstance(cl, className, metroAndroidAppGraph.activityProviders)
+    return getInstance(cl, className, appComponentFactoryBindings.activityProviders)
       ?: super.instantiateActivityCompat(cl, className, intent)
   }
 
   override fun instantiateApplicationCompat(cl: ClassLoader, className: String): Application {
     val app = super.instantiateApplicationCompat(cl, className)
-    metroAndroidAppGraph = (app as MetroApplication).appGraph
+    appComponentFactoryBindings = (app as MetroApplication).appComponentProviders
     return app
   }
 
   override fun instantiateProviderCompat(cl: ClassLoader, className: String): ContentProvider {
-    return getInstance(cl, className, metroAndroidAppGraph.providerProviders)
+    return getInstance(cl, className, appComponentFactoryBindings.providerProviders)
       ?: super.instantiateProviderCompat(cl, className)
   }
 
@@ -60,7 +59,7 @@ class MetroAppComponentFactory : AppComponentFactory() {
     className: String,
     intent: Intent?,
   ): BroadcastReceiver {
-    return getInstance(cl, className, metroAndroidAppGraph.receiverProviders)
+    return getInstance(cl, className, appComponentFactoryBindings.receiverProviders)
       ?: super.instantiateReceiverCompat(cl, className, intent)
   }
 
@@ -69,12 +68,12 @@ class MetroAppComponentFactory : AppComponentFactory() {
     className: String,
     intent: Intent?,
   ): Service {
-    return getInstance(cl, className, metroAndroidAppGraph.serviceProviders)
+    return getInstance(cl, className, appComponentFactoryBindings.serviceProviders)
       ?: super.instantiateServiceCompat(cl, className, intent)
   }
 
   // AppComponentFactory can be created multiple times
   companion object {
-    private lateinit var metroAndroidAppGraph: MetroAndroidAppGraph
+    private lateinit var appComponentFactoryBindings: MetroAppComponentProviders
   }
 }
