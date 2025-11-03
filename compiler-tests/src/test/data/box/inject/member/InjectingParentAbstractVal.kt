@@ -1,3 +1,5 @@
+// https://github.com/ZacSweers/metro/pull/1313
+
 // MODULE: lib
 abstract class Parent {
   abstract val message: String
@@ -13,11 +15,9 @@ class MyClass : Parent() {
 interface AppGraph {
   val myClassInjector: MembersInjector<MyClass>
 
-  @Provides
-  fun provideMessage(): String = "message"
+  @Provides fun provideMessage(): String = "message"
 
-  @Provides @IntoSet
-  fun provideInt(): Int = 3
+  @Provides @IntoSet fun provideInt(): Int = 3
 }
 
 fun box(): String {
