@@ -720,9 +720,9 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
         AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
 
             test.InterfaceA is injected at
-                [test.AppGraph.$${'$'}MetroGraph.FeatureGraphImpl] test.Target(…, a)
+                [test.AppGraph.Impl.FeatureGraphImpl] test.Target(…, a)
             test.Target is requested at
-                [test.AppGraph.$${'$'}MetroGraph.FeatureGraphImpl] test.FeatureGraph.target
+                [test.AppGraph.Impl.FeatureGraphImpl] test.FeatureGraph.target
         """
           .trimIndent()
       )

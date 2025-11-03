@@ -242,11 +242,13 @@ internal inline fun Visibility.checkVisibility(
       // These are fine
       // TODO what about across modules? Is internal really ok? Or PublishedApi?
     }
+
     Visibilities.Protected -> {
       if (!allowProtected) {
         onError(source, "public or internal")
       }
     }
+
     else -> {
       onError(source, if (allowProtected) "public, internal or protected" else "public or internal")
     }
@@ -372,6 +374,7 @@ internal fun FirAnnotationCall.computeAnnotationHash(
               ?.coneType
               ?.classId
           }
+
           else -> {
             reportCompilerBug(
               "Unexpected annotation argument type: ${arg::class.java} - ${arg.render()}"
@@ -412,6 +415,7 @@ internal inline fun FirClassSymbol<*>.findInjectConstructor(
         }
       }
     }
+
     else -> {
       for (constructorInjection in constructorInjections) {
         reporter.reportOn(
@@ -512,6 +516,7 @@ internal fun FirClass.validateInjectedClass(
         Modality.OPEN -> {
           // final/open This is fine
         }
+
         else -> {
           // sealed/abstract
           reporter.reportOn(
@@ -527,6 +532,7 @@ internal fun FirClass.validateInjectedClass(
       // If we hit here, it's because the class has a `@Contributes*` annotation implying its
       // injectability but no regular `@Inject` annotations. So, report nothing
     }
+
     else -> {
       reporter.reportOn(source, MetroDiagnostics.ONLY_CLASSES_CAN_BE_INJECTED, context)
     }
@@ -580,16 +586,19 @@ internal inline fun FirClass.validateApiDeclaration(
           )
           onError()
         }
+
         else -> {
           // This is fine
         }
       }
     }
+
     ClassKind.CLASS -> {
       when (modality) {
         Modality.ABSTRACT -> {
           // This is fine
         }
+
         else -> {
           // final/open/sealed
           reporter.reportOn(
@@ -601,6 +610,7 @@ internal inline fun FirClass.validateApiDeclaration(
         }
       }
     }
+
     else -> {
       reporter.reportOn(
         source,
@@ -729,6 +739,13 @@ internal fun createDeprecatedHiddenAnnotation(session: FirSession): FirAnnotatio
     }
   }
 
+internal fun FirClassLikeDeclaration.markImpl(session: FirSession) {
+  replaceAnnotations(
+    annotations +
+      listOf(buildSimpleAnnotation { session.metroFirBuiltIns.metroImplMarkerClassSymbol })
+  )
+}
+
 internal fun FirClassLikeDeclaration.markAsDeprecatedHidden(session: FirSession) {
   replaceAnnotations(annotations + listOf(createDeprecatedHiddenAnnotation(session)))
   replaceDeprecationsProvider(this.getDeprecationsProvider(session))
@@ -819,9 +836,11 @@ internal fun FirCallableSymbol<*>.findAnnotation(
           return it
         }
     }
+
     is FirPropertyAccessorSymbol -> {
       return propertySymbol.findAnnotation(session, findAnnotation, this)
     }
+
     is FirBackingFieldSymbol -> {
       return propertySymbol.findAnnotation(session, findAnnotation, this)
     }

@@ -10,7 +10,7 @@ class S {
     set
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<S> {
+  class MetroFactory : Factory<S> {
     private /* final field */ val sProvider: Provider<S> = sProvider
     private /* final field */ val sLazy: Provider<S> = sLazy
     companion object Companion {
@@ -21,7 +21,7 @@ class S {
       }
 
       fun create(sProvider: Provider<S>, sLazy: Provider<S>): Factory<S> {
-        return $$MetroFactory(sProvider = sProvider, sLazy = sLazy)
+        return MetroFactory(sProvider = sProvider, sLazy = sLazy)
       }
 
       fun newInstance(sProvider: Provider<S>): S {
@@ -49,7 +49,7 @@ class S {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroMembersInjector : MembersInjector<S> {
+  class MetroMembersInjector : MembersInjector<S> {
     private /* final field */ val sLazy: Provider<S> = sLazy
     companion object Companion {
       private constructor() /* primary */ {
@@ -59,7 +59,7 @@ class S {
       }
 
       fun create(sLazy: Provider<S>): MembersInjector<S> {
-        return $$MetroMembersInjector(sLazy = sLazy)
+        return MetroMembersInjector(sLazy = sLazy)
       }
 
       fun injectSLazy(@Assisted instance: S, sLazy: Lazy<S>) {
@@ -90,22 +90,9 @@ class S {
 
 @DependencyGraph
 interface SelfCycleGraph {
-  companion object Companion {
-    private constructor() /* primary */ {
-      super/*Any*/()
-      /* <init>() */
-
-    }
-
-    @GraphFactoryInvokeFunctionMarker
-    operator fun invoke(): SelfCycleGraph {
-      return $$MetroGraph()
-    }
-
-  }
-
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroGraph : SelfCycleGraph {
+  @MetroImplMarker
+  class Impl : SelfCycleGraph {
     private val sProvider: Provider<S>
       field = DelegateFactory<S>()
 
@@ -118,6 +105,20 @@ interface SelfCycleGraph {
 
     override fun s(): S {
       return <this>.#sProvider.invoke()
+    }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): SelfCycleGraph {
+      return Impl()
     }
 
   }

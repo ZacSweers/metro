@@ -152,6 +152,11 @@ internal class MetroFirBuiltIns(
       as FirRegularClassSymbol
   }
 
+  val metroImplMarkerClassSymbol by memoize {
+    session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.metroImplMarker)
+      as FirRegularClassSymbol
+  }
+
   companion object {
     fun getFactory(classIds: ClassIds, options: MetroOptions) = Factory { session ->
       MetroFirBuiltIns(session, classIds, ExtensionPredicates(classIds), options)

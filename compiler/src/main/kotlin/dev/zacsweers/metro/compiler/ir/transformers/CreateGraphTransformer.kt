@@ -62,7 +62,7 @@ internal class CreateGraphTransformer(
         val parentDeclaration = rawType.parentAsClass
         val companion = parentDeclaration.companionObject()!!
 
-        val factoryImpl = rawType.nestedClasses.find { it.name == Symbols.Names.MetroImpl }
+        val factoryImpl = rawType.nestedClasses.find { it.name == Symbols.Names.Impl }
         if (factoryImpl != null) {
           // Replace it with a call directly to the factory creator
           return withIrBuilder(expression.symbol) {

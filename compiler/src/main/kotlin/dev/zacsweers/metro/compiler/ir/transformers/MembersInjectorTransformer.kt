@@ -93,7 +93,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
     val isDagger: Boolean,
   ) {
     fun mergedParameters(remapper: TypeRemapper): Parameters {
-      // $$MembersInjector -> origin class
+      // `MembersInjector` -> origin class
       val allParams =
         declaredInjectFunctions.map { (_, parameters) -> parameters.remapTypes(remapper) }
       return when (allParams.size) {

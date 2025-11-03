@@ -7,13 +7,14 @@ import com.tschuchort.compiletesting.KotlinCompilation.ExitCode
 import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.compiler.ExampleGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
+import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.assertDiagnostics
 import dev.zacsweers.metro.compiler.callFunction
 import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.companionObjectInstance
 import dev.zacsweers.metro.compiler.createGraphViaFactory
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
-import dev.zacsweers.metro.compiler.generatedMetroGraphClass
+import dev.zacsweers.metro.compiler.generatedImpl
 import dev.zacsweers.metro.compiler.invokeInstanceMethod
 import dev.zacsweers.metro.compiler.invokeMain
 import dev.zacsweers.metro.compiler.newInstanceStrict
@@ -57,7 +58,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphViaFactory("Hello, world!")
+      val graph = ExampleGraph.generatedImpl().createGraphViaFactory("Hello, world!")
 
       val exampleClass = graph.callFunction<Callable<String>>("exampleClass")
       assertThat(exampleClass.call()).isEqualTo("Hello, world!")
@@ -321,7 +322,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         )
       )
 
-    val graph = result.ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+    val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
 
     // Repeated calls to the scoped instance only every return one value
     assertThat(graph.callProperty<String>("scoped")).isEqualTo("text 0")
@@ -392,7 +393,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         )
       )
 
-    val graph = result.ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+    val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
     assertThat(graph.callProperty<String>("value")).isEqualTo("Hello, world!")
   }
 
@@ -422,7 +423,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         )
       )
 
-    val graph = result.ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+    val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
     assertThat(graph.callProperty<String>("value")).isEqualTo("Hello, world!")
   }
 
@@ -508,7 +509,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
 
       // Assert we generated a shared field
       val provideValueField =
@@ -551,7 +552,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
 
       assertThat(graph.javaClass.declaredFields.singleOrNull { it.name == "provideValueProvider" })
         .isNull()
@@ -650,7 +651,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertThat(graph.callProperty<String>("value")).isEqualTo("Hello, world!")
       assertThat(graph.callProperty<CharSequence>("value2")).isEqualTo("Hello, world!")
     }
@@ -1335,7 +1336,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             .trimIndent()
         )
       )
-    val graph = result.ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+    val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
 
     val strings = graph.callProperty<Set<String>>("strings")
     assertThat(strings).containsExactly("Hello, world!")
@@ -1363,7 +1364,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             .trimIndent()
         )
       )
-    val graph = result.ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+    val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
 
     val strings = graph.callProperty<Set<String>>("strings")
     assertThat(strings).containsExactly("Hello, world!")
@@ -1387,7 +1388,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             .trimIndent()
         )
       )
-    val graph = result.ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+    val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
 
     val strings = graph.callProperty<Set<String>>("strings")
     assertThat(strings).containsExactly("Hello, world!")
@@ -1497,7 +1498,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             .trimIndent()
         )
       )
-    val graph = result.ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+    val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
 
     val strings = graph.callProperty<Set<String>>("strings")
     assertThat(strings).isEmpty()
@@ -1526,7 +1527,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             .trimIndent()
         )
       )
-    val graph = result.ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+    val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
 
     val strings = graph.callProperty<Callable<Set<String>>>("exampleClass")
     assertThat(strings.call()).containsExactly("Hello, world!")
@@ -1556,7 +1557,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             .trimIndent()
         )
       )
-    val graph = result.ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+    val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
 
     val strings = graph.callProperty<Callable<Set<String>>>("exampleClass")
     assertThat(strings.call()).containsExactly("Hello, world!")
@@ -1606,7 +1607,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             .trimIndent()
         )
       )
-    val graph = result.ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+    val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
 
     val strings = graph.callProperty<Set<String>>("strings")
     assertThat(strings).containsExactly("0", "1", "3")
@@ -1640,7 +1641,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       )
     ) {
       assertThat(exitCode).isEqualTo(ExitCode.OK)
-      val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val exampleGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertThat(
           exampleGraph
             .callProperty<Any>("multibindingConsumer")
@@ -1679,7 +1680,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       )
     ) {
       assertThat(exitCode).isEqualTo(ExitCode.OK)
-      val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val exampleGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertThat(
           exampleGraph
             .callProperty<Any>("multibindingConsumer")
@@ -1707,7 +1708,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val count = graph.callProperty<Int>("count")
       assertThat(count).isEqualTo(3)
     }
@@ -1731,7 +1732,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertNotNull(graph.callProperty<Any>("exampleClass"))
     }
   }
@@ -1761,7 +1762,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertNotNull(graph.callProperty<Any>("appClass"))
       assertNotNull(graph.callProperty<Any>("loggedInClass"))
     }
@@ -1786,7 +1787,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertNotNull(graph.callProperty<Any>("exampleClass"))
     }
   }
@@ -1821,7 +1822,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertNotNull(graph.callProperty<Any>("multi"))
     }
   }
@@ -2105,7 +2106,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
 
       // Impl1 is correctly scoped and bound
       val impl1 = graph.callProperty<Any>("impl1")
@@ -2149,7 +2150,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       val graph = invokeMain<Any>()
       assertNotNull(graph)
-      assertThat(graph.javaClass.simpleName).isEqualTo("$\$MetroGraph")
+      assertThat(graph.javaClass.simpleName).isEqualTo(Symbols.StringNames.IMPL)
     }
   }
 
@@ -2183,7 +2184,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       val graph = invokeMain<Any>()
       assertNotNull(graph)
-      assertThat(graph.javaClass.simpleName).isEqualTo("$\$MetroGraph")
+      assertThat(graph.javaClass.simpleName).isEqualTo(Symbols.StringNames.IMPL)
     }
   }
 
@@ -2425,7 +2426,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val ints = graph.callProperty<Map<Int, Int>>("ints")
       assertThat(ints).containsExactly(0, 0, 1, 1, 2, 2)
     }
@@ -2448,7 +2449,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val ints = graph.callProperty<Map<Int, Provider<Int>>>("ints")
       assertThat(ints.mapValues { (_, value) -> value() }).containsExactly(0, 0, 1, 1, 2, 2)
     }
@@ -2472,7 +2473,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val intsProvider = graph.callProperty<Map<Int, Provider<Int>>>("intsProvider")
       // Use toString() because on JVM this may be inlined
       assertThat(intsProvider.toString()).isEqualTo(MapProviderFactory.empty<Int, Int>().toString())
@@ -2501,7 +2502,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val ints = graph.callProperty<Map<Int, Provider<Lazy<Int>>>>("ints")
       assertThat(ints.mapValues { (_, value) -> value().value }).containsExactly(0, 0, 1, 1, 2, 2)
     }
@@ -2529,7 +2530,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val exampleClass = graph.callProperty<Any>("exampleClass")
       val ints = exampleClass.callProperty<Map<Int, Provider<Int>>>("ints")
       assertThat(ints.mapValues { (_, value) -> value() }).containsExactly(0, 0, 1, 1, 2, 2)
@@ -2568,7 +2569,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val exampleClass = graph.callProperty<Any>("exampleClass")
       val ints = exampleClass.callProperty<Map<Int, Provider<Any>>>("ints")
       assertThat(ints.mapValues { (_, value) -> value().invokeInstanceMethod<Int>("value") })
@@ -2652,8 +2653,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       )
     ) {
       val numberProviders = classLoader.loadClass("test.NumberProviders").newInstanceStrict()
-      val exampleGraph =
-        ExampleGraph.generatedMetroGraphClass().createGraphViaFactory(numberProviders)
+      val exampleGraph = ExampleGraph.generatedImpl().createGraphViaFactory(numberProviders)
       assertThat(exampleGraph.callProperty<Int>("int")).isEqualTo(1)
       assertThat(exampleGraph.callProperty<Int>("qualifiedInt")).isEqualTo(2)
       assertThat(exampleGraph.callProperty<Long>("scopedLong")).isEqualTo(3L)
@@ -2767,7 +2767,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val foo = graph.callFunction<Any>("foo")
       assertThat(foo.callProperty<String>("text")).isEqualTo("default")
     }
@@ -2843,16 +2843,16 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        $$$"""
-          e: Parent1.kt:11:1 [Metro/QualifierOverrideMismatch] Overridden accessor property 'test.AppGraph.$$MetroGraph.prop' must have the same qualifier annotations as the overridden accessor property. However, the final accessor property qualifier is 'null' but overridden symbol test.Parent1.prop has '@Named("qualified")'.'
-          e: Parent1.kt:11:1 [Metro/QualifierOverrideMismatch] Overridden accessor function 'test.AppGraph.$$MetroGraph.function' must have the same qualifier annotations as the overridden accessor function. However, the final accessor function qualifier is 'null' but overridden symbol test.Parent1.function has '@Named("qualified")'.'
-          e: Parent1.kt:13:16 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+        $$"""
+        e: Parent1.kt:11:1 [Metro/QualifierOverrideMismatch] Overridden accessor property 'test.AppGraph.Impl.prop' must have the same qualifier annotations as the overridden accessor property. However, the final accessor property qualifier is 'null' but overridden symbol test.Parent1.prop has '@Named("qualified")'.'
+        e: Parent1.kt:11:1 [Metro/QualifierOverrideMismatch] Overridden accessor function 'test.AppGraph.Impl.function' must have the same qualifier annotations as the overridden accessor function. However, the final accessor function qualifier is 'null' but overridden symbol test.Parent1.function has '@Named("qualified")'.'
+        e: Parent1.kt:13:16 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
-              kotlin.String is requested at
-                  [test.AppGraph] test.AppGraph.function()
+            kotlin.String is requested at
+                [test.AppGraph] test.AppGraph.function()
 
-          Similar bindings:
-            - @Named("qualified") String (Different qualifier). Type: Provided. Source: Parent1.kt:15:3
+        Similar bindings:
+          - @Named("qualified") String (Different qualifier). Type: Provided. Source: Parent1.kt:15:3
         """
           .trimIndent()
       )
@@ -2879,13 +2879,13 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        $$$"""
-          e: Parent1.kt:11:27 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+        $$"""
+        e: Parent1.kt:11:27 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
-              kotlin.String is requested at
-                  [test.AppGraph] test.AppGraph.string
+            kotlin.String is requested at
+                [test.AppGraph] test.AppGraph.string
 
-          e: Parent1.kt:14:1 [Metro/QualifierOverrideMismatch] Overridden accessor property 'test.AppGraph.$$MetroGraph.string' must have the same qualifier annotations as the overridden accessor property. However, the final accessor property qualifier is 'null' but overridden symbol test.Parent2.string has '@Named("qualified")'.'
+        e: Parent1.kt:14:1 [Metro/QualifierOverrideMismatch] Overridden accessor property 'test.AppGraph.Impl.string' must have the same qualifier annotations as the overridden accessor property. However, the final accessor property qualifier is 'null' but overridden symbol test.Parent2.string has '@Named("qualified")'.'
         """
           .trimIndent()
       )
@@ -2912,13 +2912,13 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        $$$"""
-          e: Parent1.kt:11:27 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+        $$"""
+        e: Parent1.kt:11:27 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
-              kotlin.String is requested at
-                  [test.AppGraph] test.AppGraph.string()
+            kotlin.String is requested at
+                [test.AppGraph] test.AppGraph.string()
 
-          e: Parent1.kt:14:1 [Metro/QualifierOverrideMismatch] Overridden accessor function 'test.AppGraph.$$MetroGraph.string' must have the same qualifier annotations as the overridden accessor function. However, the final accessor function qualifier is 'null' but overridden symbol test.Parent2.string has '@Named("qualified")'.'
+        e: Parent1.kt:14:1 [Metro/QualifierOverrideMismatch] Overridden accessor function 'test.AppGraph.Impl.string' must have the same qualifier annotations as the overridden accessor function. However, the final accessor function qualifier is 'null' but overridden symbol test.Parent2.string has '@Named("qualified")'.'
         """
           .trimIndent()
       )
@@ -2949,14 +2949,14 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        $$$"""
-          e: Thing.kt:18:1 [Metro/QualifierOverrideMismatch] Overridden injector function 'test.AppGraph.$$MetroGraph.injectThing' must have the same qualifier annotations as the overridden injector function. However, the final injector function qualifier is 'null' but overridden symbol test.Parent2.injectThing has '@Named("qualified")'.'
-          e: Thing.kt:18:28 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+        $$"""
+        e: Thing.kt:18:1 [Metro/QualifierOverrideMismatch] Overridden injector function 'test.AppGraph.Impl.injectThing' must have the same qualifier annotations as the overridden injector function. However, the final injector function qualifier is 'null' but overridden symbol test.Parent2.injectThing has '@Named("qualified")'.'
+        e: Thing.kt:18:28 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
-              kotlin.String is injected at
-                  [test.AppGraph] test.AppGraph.injectThing()
-              dev.zacsweers.metro.MembersInjector<test.Thing> is requested at
-                  [test.AppGraph] test.AppGraph.injectThing()
+            kotlin.String is injected at
+                [test.AppGraph] test.AppGraph.injectThing()
+            dev.zacsweers.metro.MembersInjector<test.Thing> is requested at
+                [test.AppGraph] test.AppGraph.injectThing()
         """
           .trimIndent()
       )
@@ -2984,7 +2984,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: Thing.kt:14:1 Injector function test.AppGraph.$${'$'}MetroGraph.injectThing must return Unit. Or, if it's not an injector, remove its parameter.
+        e: Thing.kt:14:1 Injector function test.AppGraph.Impl.injectThing must return Unit. Or, if it's not an injector, remove its parameter.
         """
           .trimIndent()
       )

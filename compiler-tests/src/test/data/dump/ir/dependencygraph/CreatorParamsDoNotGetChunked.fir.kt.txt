@@ -15,7 +15,7 @@ class Service1 {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<Service1> {
+  class MetroFactory : Factory<Service1> {
     private /* final field */ val providedExample: Provider<ProvidedExample> = providedExample
     companion object Companion {
       private constructor() /* primary */ {
@@ -25,7 +25,7 @@ class Service1 {
       }
 
       fun create(providedExample: Provider<ProvidedExample>): Factory<Service1> {
-        return $$MetroFactory(providedExample = providedExample)
+        return MetroFactory(providedExample = providedExample)
       }
 
       fun newInstance(providedExample: ProvidedExample): Service1 {
@@ -67,7 +67,7 @@ class Service10 {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<Service10> {
+  class MetroFactory : Factory<Service10> {
     private /* final field */ val s9: Provider<Service9> = s9
     companion object Companion {
       private constructor() /* primary */ {
@@ -77,7 +77,7 @@ class Service10 {
       }
 
       fun create(s9: Provider<Service9>): Factory<Service10> {
-        return $$MetroFactory(s9 = s9)
+        return MetroFactory(s9 = s9)
       }
 
       fun newInstance(s9: Service9): Service10 {
@@ -119,7 +119,7 @@ class Service11 {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<Service11> {
+  class MetroFactory : Factory<Service11> {
     private /* final field */ val s10: Provider<Service10> = s10
     companion object Companion {
       private constructor() /* primary */ {
@@ -129,7 +129,7 @@ class Service11 {
       }
 
       fun create(s10: Provider<Service10>): Factory<Service11> {
-        return $$MetroFactory(s10 = s10)
+        return MetroFactory(s10 = s10)
       }
 
       fun newInstance(s10: Service10): Service11 {
@@ -171,7 +171,7 @@ class Service12 {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<Service12> {
+  class MetroFactory : Factory<Service12> {
     private /* final field */ val s11: Provider<Service11> = s11
     companion object Companion {
       private constructor() /* primary */ {
@@ -181,7 +181,7 @@ class Service12 {
       }
 
       fun create(s11: Provider<Service11>): Factory<Service12> {
-        return $$MetroFactory(s11 = s11)
+        return MetroFactory(s11 = s11)
       }
 
       fun newInstance(s11: Service11): Service12 {
@@ -223,7 +223,7 @@ class Service13 {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<Service13> {
+  class MetroFactory : Factory<Service13> {
     private /* final field */ val s12: Provider<Service12> = s12
     companion object Companion {
       private constructor() /* primary */ {
@@ -233,7 +233,7 @@ class Service13 {
       }
 
       fun create(s12: Provider<Service12>): Factory<Service13> {
-        return $$MetroFactory(s12 = s12)
+        return MetroFactory(s12 = s12)
       }
 
       fun newInstance(s12: Service12): Service13 {
@@ -275,7 +275,7 @@ class Service14 {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<Service14> {
+  class MetroFactory : Factory<Service14> {
     private /* final field */ val s13: Provider<Service13> = s13
     companion object Companion {
       private constructor() /* primary */ {
@@ -285,7 +285,7 @@ class Service14 {
       }
 
       fun create(s13: Provider<Service13>): Factory<Service14> {
-        return $$MetroFactory(s13 = s13)
+        return MetroFactory(s13 = s13)
       }
 
       fun newInstance(s13: Service13): Service14 {
@@ -327,7 +327,7 @@ class Service15 {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<Service15> {
+  class MetroFactory : Factory<Service15> {
     private /* final field */ val s14: Provider<Service14> = s14
     companion object Companion {
       private constructor() /* primary */ {
@@ -337,7 +337,7 @@ class Service15 {
       }
 
       fun create(s14: Provider<Service14>): Factory<Service15> {
-        return $$MetroFactory(s14 = s14)
+        return MetroFactory(s14 = s14)
       }
 
       fun newInstance(s14: Service14): Service15 {
@@ -379,7 +379,7 @@ class Service16 {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<Service16> {
+  class MetroFactory : Factory<Service16> {
     private /* final field */ val s15: Provider<Service15> = s15
     companion object Companion {
       private constructor() /* primary */ {
@@ -389,7 +389,7 @@ class Service16 {
       }
 
       fun create(s15: Provider<Service15>): Factory<Service16> {
-        return $$MetroFactory(s15 = s15)
+        return MetroFactory(s15 = s15)
       }
 
       fun newInstance(s15: Service15): Service16 {
@@ -431,7 +431,7 @@ class Service17 {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<Service17> {
+  class MetroFactory : Factory<Service17> {
     private /* final field */ val s16: Provider<Service16> = s16
     companion object Companion {
       private constructor() /* primary */ {
@@ -441,7 +441,7 @@ class Service17 {
       }
 
       fun create(s16: Provider<Service16>): Factory<Service17> {
-        return $$MetroFactory(s16 = s16)
+        return MetroFactory(s16 = s16)
       }
 
       fun newInstance(s16: Service16): Service17 {
@@ -483,7 +483,7 @@ class Service18 {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<Service18> {
+  class MetroFactory : Factory<Service18> {
     private /* final field */ val s17: Provider<Service17> = s17
     companion object Companion {
       private constructor() /* primary */ {
@@ -493,7 +493,7 @@ class Service18 {
       }
 
       fun create(s17: Provider<Service17>): Factory<Service18> {
-        return $$MetroFactory(s17 = s17)
+        return MetroFactory(s17 = s17)
       }
 
       fun newInstance(s17: Service17): Service18 {
@@ -535,7 +535,7 @@ class Service19 {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<Service19> {
+  class MetroFactory : Factory<Service19> {
     private /* final field */ val s18: Provider<Service18> = s18
     companion object Companion {
       private constructor() /* primary */ {
@@ -545,7 +545,7 @@ class Service19 {
       }
 
       fun create(s18: Provider<Service18>): Factory<Service19> {
-        return $$MetroFactory(s18 = s18)
+        return MetroFactory(s18 = s18)
       }
 
       fun newInstance(s18: Service18): Service19 {
@@ -587,7 +587,7 @@ class Service2 {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<Service2> {
+  class MetroFactory : Factory<Service2> {
     private /* final field */ val s1: Provider<Service1> = s1
     companion object Companion {
       private constructor() /* primary */ {
@@ -597,7 +597,7 @@ class Service2 {
       }
 
       fun create(s1: Provider<Service1>): Factory<Service2> {
-        return $$MetroFactory(s1 = s1)
+        return MetroFactory(s1 = s1)
       }
 
       fun newInstance(s1: Service1): Service2 {
@@ -639,7 +639,7 @@ class Service20 {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<Service20> {
+  class MetroFactory : Factory<Service20> {
     private /* final field */ val s19: Provider<Service19> = s19
     companion object Companion {
       private constructor() /* primary */ {
@@ -649,7 +649,7 @@ class Service20 {
       }
 
       fun create(s19: Provider<Service19>): Factory<Service20> {
-        return $$MetroFactory(s19 = s19)
+        return MetroFactory(s19 = s19)
       }
 
       fun newInstance(s19: Service19): Service20 {
@@ -691,7 +691,7 @@ class Service21 {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<Service21> {
+  class MetroFactory : Factory<Service21> {
     private /* final field */ val s20: Provider<Service20> = s20
     companion object Companion {
       private constructor() /* primary */ {
@@ -701,7 +701,7 @@ class Service21 {
       }
 
       fun create(s20: Provider<Service20>): Factory<Service21> {
-        return $$MetroFactory(s20 = s20)
+        return MetroFactory(s20 = s20)
       }
 
       fun newInstance(s20: Service20): Service21 {
@@ -743,7 +743,7 @@ class Service22 {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<Service22> {
+  class MetroFactory : Factory<Service22> {
     private /* final field */ val s21: Provider<Service21> = s21
     companion object Companion {
       private constructor() /* primary */ {
@@ -753,7 +753,7 @@ class Service22 {
       }
 
       fun create(s21: Provider<Service21>): Factory<Service22> {
-        return $$MetroFactory(s21 = s21)
+        return MetroFactory(s21 = s21)
       }
 
       fun newInstance(s21: Service21): Service22 {
@@ -795,7 +795,7 @@ class Service23 {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<Service23> {
+  class MetroFactory : Factory<Service23> {
     private /* final field */ val s22: Provider<Service22> = s22
     companion object Companion {
       private constructor() /* primary */ {
@@ -805,7 +805,7 @@ class Service23 {
       }
 
       fun create(s22: Provider<Service22>): Factory<Service23> {
-        return $$MetroFactory(s22 = s22)
+        return MetroFactory(s22 = s22)
       }
 
       fun newInstance(s22: Service22): Service23 {
@@ -847,7 +847,7 @@ class Service24 {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<Service24> {
+  class MetroFactory : Factory<Service24> {
     private /* final field */ val s23: Provider<Service23> = s23
     companion object Companion {
       private constructor() /* primary */ {
@@ -857,7 +857,7 @@ class Service24 {
       }
 
       fun create(s23: Provider<Service23>): Factory<Service24> {
-        return $$MetroFactory(s23 = s23)
+        return MetroFactory(s23 = s23)
       }
 
       fun newInstance(s23: Service23): Service24 {
@@ -899,7 +899,7 @@ class Service25 {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<Service25> {
+  class MetroFactory : Factory<Service25> {
     private /* final field */ val s24: Provider<Service24> = s24
     companion object Companion {
       private constructor() /* primary */ {
@@ -909,7 +909,7 @@ class Service25 {
       }
 
       fun create(s24: Provider<Service24>): Factory<Service25> {
-        return $$MetroFactory(s24 = s24)
+        return MetroFactory(s24 = s24)
       }
 
       fun newInstance(s24: Service24): Service25 {
@@ -951,7 +951,7 @@ class Service26 {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<Service26> {
+  class MetroFactory : Factory<Service26> {
     private /* final field */ val s25: Provider<Service25> = s25
     companion object Companion {
       private constructor() /* primary */ {
@@ -961,7 +961,7 @@ class Service26 {
       }
 
       fun create(s25: Provider<Service25>): Factory<Service26> {
-        return $$MetroFactory(s25 = s25)
+        return MetroFactory(s25 = s25)
       }
 
       fun newInstance(s25: Service25): Service26 {
@@ -1003,7 +1003,7 @@ class Service27 {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<Service27> {
+  class MetroFactory : Factory<Service27> {
     private /* final field */ val s26: Provider<Service26> = s26
     companion object Companion {
       private constructor() /* primary */ {
@@ -1013,7 +1013,7 @@ class Service27 {
       }
 
       fun create(s26: Provider<Service26>): Factory<Service27> {
-        return $$MetroFactory(s26 = s26)
+        return MetroFactory(s26 = s26)
       }
 
       fun newInstance(s26: Service26): Service27 {
@@ -1055,7 +1055,7 @@ class Service28 {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<Service28> {
+  class MetroFactory : Factory<Service28> {
     private /* final field */ val s27: Provider<Service27> = s27
     companion object Companion {
       private constructor() /* primary */ {
@@ -1065,7 +1065,7 @@ class Service28 {
       }
 
       fun create(s27: Provider<Service27>): Factory<Service28> {
-        return $$MetroFactory(s27 = s27)
+        return MetroFactory(s27 = s27)
       }
 
       fun newInstance(s27: Service27): Service28 {
@@ -1107,7 +1107,7 @@ class Service29 {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<Service29> {
+  class MetroFactory : Factory<Service29> {
     private /* final field */ val s28: Provider<Service28> = s28
     companion object Companion {
       private constructor() /* primary */ {
@@ -1117,7 +1117,7 @@ class Service29 {
       }
 
       fun create(s28: Provider<Service28>): Factory<Service29> {
-        return $$MetroFactory(s28 = s28)
+        return MetroFactory(s28 = s28)
       }
 
       fun newInstance(s28: Service28): Service29 {
@@ -1159,7 +1159,7 @@ class Service3 {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<Service3> {
+  class MetroFactory : Factory<Service3> {
     private /* final field */ val s2: Provider<Service2> = s2
     companion object Companion {
       private constructor() /* primary */ {
@@ -1169,7 +1169,7 @@ class Service3 {
       }
 
       fun create(s2: Provider<Service2>): Factory<Service3> {
-        return $$MetroFactory(s2 = s2)
+        return MetroFactory(s2 = s2)
       }
 
       fun newInstance(s2: Service2): Service3 {
@@ -1211,7 +1211,7 @@ class Service30 {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<Service30> {
+  class MetroFactory : Factory<Service30> {
     private /* final field */ val s29: Provider<Service29> = s29
     companion object Companion {
       private constructor() /* primary */ {
@@ -1221,7 +1221,7 @@ class Service30 {
       }
 
       fun create(s29: Provider<Service29>): Factory<Service30> {
-        return $$MetroFactory(s29 = s29)
+        return MetroFactory(s29 = s29)
       }
 
       fun newInstance(s29: Service29): Service30 {
@@ -1263,7 +1263,7 @@ class Service4 {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<Service4> {
+  class MetroFactory : Factory<Service4> {
     private /* final field */ val s3: Provider<Service3> = s3
     companion object Companion {
       private constructor() /* primary */ {
@@ -1273,7 +1273,7 @@ class Service4 {
       }
 
       fun create(s3: Provider<Service3>): Factory<Service4> {
-        return $$MetroFactory(s3 = s3)
+        return MetroFactory(s3 = s3)
       }
 
       fun newInstance(s3: Service3): Service4 {
@@ -1315,7 +1315,7 @@ class Service5 {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<Service5> {
+  class MetroFactory : Factory<Service5> {
     private /* final field */ val s4: Provider<Service4> = s4
     companion object Companion {
       private constructor() /* primary */ {
@@ -1325,7 +1325,7 @@ class Service5 {
       }
 
       fun create(s4: Provider<Service4>): Factory<Service5> {
-        return $$MetroFactory(s4 = s4)
+        return MetroFactory(s4 = s4)
       }
 
       fun newInstance(s4: Service4): Service5 {
@@ -1367,7 +1367,7 @@ class Service6 {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<Service6> {
+  class MetroFactory : Factory<Service6> {
     private /* final field */ val s5: Provider<Service5> = s5
     companion object Companion {
       private constructor() /* primary */ {
@@ -1377,7 +1377,7 @@ class Service6 {
       }
 
       fun create(s5: Provider<Service5>): Factory<Service6> {
-        return $$MetroFactory(s5 = s5)
+        return MetroFactory(s5 = s5)
       }
 
       fun newInstance(s5: Service5): Service6 {
@@ -1419,7 +1419,7 @@ class Service7 {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<Service7> {
+  class MetroFactory : Factory<Service7> {
     private /* final field */ val s6: Provider<Service6> = s6
     companion object Companion {
       private constructor() /* primary */ {
@@ -1429,7 +1429,7 @@ class Service7 {
       }
 
       fun create(s6: Provider<Service6>): Factory<Service7> {
-        return $$MetroFactory(s6 = s6)
+        return MetroFactory(s6 = s6)
       }
 
       fun newInstance(s6: Service6): Service7 {
@@ -1471,7 +1471,7 @@ class Service8 {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<Service8> {
+  class MetroFactory : Factory<Service8> {
     private /* final field */ val s7: Provider<Service7> = s7
     companion object Companion {
       private constructor() /* primary */ {
@@ -1481,7 +1481,7 @@ class Service8 {
       }
 
       fun create(s7: Provider<Service7>): Factory<Service8> {
-        return $$MetroFactory(s7 = s7)
+        return MetroFactory(s7 = s7)
       }
 
       fun newInstance(s7: Service7): Service8 {
@@ -1523,7 +1523,7 @@ class Service9 {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<Service9> {
+  class MetroFactory : Factory<Service9> {
     private /* final field */ val s8: Provider<Service8> = s8
     companion object Companion {
       private constructor() /* primary */ {
@@ -1533,7 +1533,7 @@ class Service9 {
       }
 
       fun create(s8: Provider<Service8>): Factory<Service9> {
-        return $$MetroFactory(s8 = s8)
+        return MetroFactory(s8 = s8)
       }
 
       fun newInstance(s8: Service8): Service9 {
@@ -1575,22 +1575,9 @@ interface Included {
 
 @DependencyGraph(scope = AppScope::class)
 interface TestGraph {
-  companion object Companion : Factory {
-    private constructor() /* primary */ {
-      super/*Any*/()
-      /* <init>() */
-
-    }
-
-    @GraphFactoryInvokeFunctionMarker
-    override fun create(@Provides providedExample: ProvidedExample, @Includes included: Included): TestGraph {
-      return $$MetroGraph(providedExample = providedExample, included = included)
-    }
-
-  }
-
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroGraph : TestGraph {
+  @MetroImplMarker
+  class Impl : TestGraph {
     private val providedExampleInstanceProvider: Provider<ProvidedExample>
       field = Companion.invoke<ProvidedExample>(value = providedExample)
 
@@ -1705,10 +1692,25 @@ interface TestGraph {
 
   }
 
+  companion object Companion : Factory {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    override fun create(@Provides providedExample: ProvidedExample, @Includes included: Included): TestGraph {
+      return Impl(providedExample = providedExample, included = included)
+    }
+
+  }
+
   @Factory
   interface Factory {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-    object $$Impl : Factory {
+    @MetroImplMarker
+    object Impl : Factory {
       private constructor() /* primary */ {
         super/*Any*/()
         /* <init>() */
@@ -1717,7 +1719,7 @@ interface TestGraph {
 
       @GraphFactoryInvokeFunctionMarker
       override fun create(@Provides providedExample: ProvidedExample, @Includes included: Included): TestGraph {
-        return $$MetroGraph(providedExample = providedExample, included = included)
+        return Impl(providedExample = providedExample, included = included)
       }
 
     }

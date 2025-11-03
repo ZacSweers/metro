@@ -8,7 +8,7 @@ import dev.zacsweers.metro.compiler.MetroCompilerTest
 import dev.zacsweers.metro.compiler.assertDiagnostics
 import dev.zacsweers.metro.compiler.callFunction
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
-import dev.zacsweers.metro.compiler.generatedMetroGraphClass
+import dev.zacsweers.metro.compiler.generatedImpl
 import dev.zacsweers.metro.compiler.invokeMain
 import kotlin.test.assertNotNull
 import kotlin.test.assertSame
@@ -211,7 +211,7 @@ class AsContributionErrorsTest : MetroCompilerTest() {
             .trimIndent(),
       )
     ) {
-      val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val exampleGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val unitGraphFactory = invokeMain<Any>(exampleGraph)
       assertSame(exampleGraph, unitGraphFactory)
       val unitGraph = unitGraphFactory.callFunction<Any>("createUnitGraph")

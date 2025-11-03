@@ -16,7 +16,7 @@ import dev.zacsweers.metro.compiler.createGraphViaFactory
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
 import dev.zacsweers.metro.compiler.createNewInstanceAs
 import dev.zacsweers.metro.compiler.generatedFactoryClass
-import dev.zacsweers.metro.compiler.generatedMetroGraphClass
+import dev.zacsweers.metro.compiler.generatedImpl
 import dev.zacsweers.metro.compiler.invokeCreateAsFactory
 import dev.zacsweers.metro.compiler.invokeNewInstance
 import dev.zacsweers.metro.provider
@@ -219,7 +219,7 @@ class InjectConstructorTransformerTest : MetroCompilerTest() {
       ),
       previousCompilationResult = otherModuleResult,
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphViaFactory(2)
+      val graph = ExampleGraph.generatedImpl().createGraphViaFactory(2)
       assertThat(graph.callProperty<Callable<Int>>("exampleClass").call()).isEqualTo(2)
     }
   }
@@ -256,7 +256,7 @@ class InjectConstructorTransformerTest : MetroCompilerTest() {
       ),
       previousCompilationResult = otherModuleResult,
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphViaFactory(2)
+      val graph = ExampleGraph.generatedImpl().createGraphViaFactory(2)
       assertThat(graph.callProperty<Callable<Int>>("exampleClass").call()).isEqualTo(2)
     }
   }
@@ -289,7 +289,7 @@ class InjectConstructorTransformerTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertThat(graph.callProperty<Int>("int")).isEqualTo(2)
       assertThat(graph.callProperty<Any>("myClass").callProperty<Int>("int")).isEqualTo(2)
     }
@@ -324,7 +324,7 @@ class InjectConstructorTransformerTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
       assertThat(contributedInterface).isNotNull()
       assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")

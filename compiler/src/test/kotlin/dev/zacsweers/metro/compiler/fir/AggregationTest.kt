@@ -11,7 +11,7 @@ import dev.zacsweers.metro.compiler.assertDiagnostics
 import dev.zacsweers.metro.compiler.callFunction
 import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
-import dev.zacsweers.metro.compiler.generatedMetroGraphClass
+import dev.zacsweers.metro.compiler.generatedImpl
 import kotlin.reflect.KClass
 import kotlin.test.Test
 import kotlin.test.assertNotNull
@@ -87,7 +87,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
       assertThat(contributedInterface).isNotNull()
       assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
@@ -112,7 +112,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
       assertThat(contributedInterface).isNotNull()
       assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
@@ -140,7 +140,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
       assertThat(contributedInterface).isNotNull()
       assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
@@ -175,7 +175,7 @@ class AggregationTest : MetroCompilerTest() {
       ),
       previousCompilationResult = firstResult,
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
       assertThat(contributedInterface).isNotNull()
       assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
@@ -202,7 +202,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
       assertThat(contributedInterface).isNotNull()
       assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
@@ -232,7 +232,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
       assertThat(contributedInterface).isNotNull()
       assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
@@ -267,7 +267,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
       assertThat(contributedInterface).isNotNull()
       assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
@@ -301,7 +301,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
       assertThat(contributedInterface).isNotNull()
       assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
@@ -330,7 +330,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
       assertThat(contributedInterface).isNotNull()
       assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
@@ -368,7 +368,7 @@ class AggregationTest : MetroCompilerTest() {
       ),
       previousCompilationResult = firstResult,
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
       assertThat(contributedInterface).isNotNull()
       assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
@@ -394,7 +394,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Set<Any>>("contributedInterfaces")
       assertThat(contributedInterfaces).isNotNull()
       assertThat(contributedInterfaces).isNotEmpty()
@@ -421,7 +421,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Set<Any>>("contributedInterfaces")
       assertThat(contributedInterfaces).isNotNull()
       assertThat(contributedInterfaces).isNotEmpty()
@@ -458,7 +458,7 @@ class AggregationTest : MetroCompilerTest() {
       ),
       previousCompilationResult = firstResult,
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Set<Any>>("contributedInterfaces")
       assertThat(contributedInterfaces).isNotNull()
       assertThat(contributedInterfaces).isNotEmpty()
@@ -487,7 +487,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Set<Any>>("contributedInterfaces")
       assertThat(contributedInterfaces).isNotNull()
       assertThat(contributedInterfaces).hasSize(1)
@@ -518,7 +518,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Set<Any>>("contributedInterfaces")
       assertThat(contributedInterfaces).isNotNull()
       assertThat(contributedInterfaces).hasSize(1)
@@ -550,7 +550,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Set<Any>>("contributedInterfaces")
       assertThat(contributedInterfaces).isNotNull()
       assertThat(contributedInterfaces).hasSize(1)
@@ -580,7 +580,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Set<Any>>("contributedInterfaces")
       assertThat(contributedInterfaces).isNotNull()
       assertThat(contributedInterfaces).hasSize(1)
@@ -619,7 +619,7 @@ class AggregationTest : MetroCompilerTest() {
       ),
       previousCompilationResult = firstResult,
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Set<Any>>("contributedInterfaces")
       assertThat(contributedInterfaces).isNotNull()
       assertThat(contributedInterfaces).hasSize(1)
@@ -647,7 +647,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Map<KClass<*>, Any>>("contributedInterfaces")
       assertThat(contributedInterfaces).isNotNull()
       assertThat(contributedInterfaces).isNotEmpty()
@@ -676,7 +676,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Map<KClass<*>, Any>>("contributedInterfaces")
       assertThat(contributedInterfaces).isNotNull()
       assertThat(contributedInterfaces).isNotEmpty()
@@ -715,7 +715,7 @@ class AggregationTest : MetroCompilerTest() {
       ),
       previousCompilationResult = firstResult,
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Map<KClass<*>, Any>>("contributedInterfaces")
       assertThat(contributedInterfaces).isNotNull()
       assertThat(contributedInterfaces).isNotEmpty()
@@ -746,7 +746,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Map<KClass<*>, Any>>("contributedInterfaces")
       assertThat(contributedInterfaces).isNotNull()
       assertThat(contributedInterfaces).hasSize(1)
@@ -778,7 +778,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Map<KClass<*>, Any>>("contributedInterfaces")
       assertThat(contributedInterfaces).isNotNull()
       assertThat(contributedInterfaces).hasSize(1)
@@ -811,7 +811,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Map<KClass<*>, Any>>("contributedInterfaces")
       assertThat(contributedInterfaces).isNotNull()
       assertThat(contributedInterfaces).hasSize(1)
@@ -842,7 +842,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Map<KClass<*>, Any>>("contributedInterfaces")
       assertThat(contributedInterfaces).isNotNull()
       assertThat(contributedInterfaces).hasSize(1)
@@ -882,7 +882,7 @@ class AggregationTest : MetroCompilerTest() {
       ),
       previousCompilationResult = firstResult,
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Map<KClass<*>, Any>>("contributedInterfaces")
       assertThat(contributedInterfaces).isNotNull()
       assertThat(contributedInterfaces).hasSize(1)
@@ -935,17 +935,17 @@ class AggregationTest : MetroCompilerTest() {
       previousCompilationResult = previousCompilation,
     ) {
       val appGraphClass = ExampleGraph
-      val appGraph = appGraphClass.generatedMetroGraphClass().createGraphWithNoArgs()
+      val appGraph = appGraphClass.generatedImpl().createGraphWithNoArgs()
       appGraphClass.assertHasContributedSupertype("test.ContributedInterface")
       assertThat(appGraph.callProperty<String>("myVal")).isEqualTo("Hello, world!")
 
       val altGraphClass = classLoader.loadClass("test.AltGraph")
-      val altGraph = altGraphClass.generatedMetroGraphClass().createGraphWithNoArgs()
+      val altGraph = altGraphClass.generatedImpl().createGraphWithNoArgs()
       altGraphClass.assertHasContributedSupertype("test.ContributedInterface", scope = "AltScope")
       assertThat(altGraph.callProperty<String>("altVal")).isEqualTo("Hello, world!")
 
       val thirdGraphClass = classLoader.loadClass("test.ThirdGraph")
-      val thirdGraph = thirdGraphClass.generatedMetroGraphClass().createGraphWithNoArgs()
+      val thirdGraph = thirdGraphClass.generatedImpl().createGraphWithNoArgs()
       thirdGraphClass.assertHasContributedSupertype(
         "test.ContributedInterface",
         scope = "ThirdScope",
@@ -959,8 +959,8 @@ class AggregationTest : MetroCompilerTest() {
    *   suffixed with the scope it's contributing to
    *
    * ```
-   * @ContributesBinding(AppScope::class) // This maps to $$MetroContributionToAppScope
-   * @ContributesBinding(AltScope::class) // This maps to $$MetroContribution2ToAltScope
+   * @ContributesBinding(AppScope::class) // This maps to MetroContributionToAppScope
+   * @ContributesBinding(AltScope::class) // This maps to MetroContribution2ToAltScope
    * @Inject
    * class ContributingClass : SomeInterface
    * ```
@@ -970,7 +970,7 @@ class AggregationTest : MetroCompilerTest() {
     scope: String = "AppScope",
   ) {
     assertThat(allSupertypes().map { it.name })
-      .containsExactly("$superTypeFqName$$\$MetroContributionTo${scope}", superTypeFqName)
+      .containsExactly($$"$$superTypeFqName$MetroContributionTo$${scope}", superTypeFqName)
   }
 
   @Test
@@ -1001,12 +1001,12 @@ class AggregationTest : MetroCompilerTest() {
       )
     ) {
       val appGraphClass = ExampleGraph
-      val appGraph = appGraphClass.generatedMetroGraphClass().createGraphWithNoArgs()
+      val appGraph = appGraphClass.generatedImpl().createGraphWithNoArgs()
       appGraphClass.assertHasContributedSupertype("test.ContributedInterface")
       assertThat(appGraph.callProperty<String>("myVal")).isEqualTo("Hello, world!")
 
       val altGraphClass = classLoader.loadClass("test.AltGraph")
-      val altGraph = altGraphClass.generatedMetroGraphClass().createGraphWithNoArgs()
+      val altGraph = altGraphClass.generatedImpl().createGraphWithNoArgs()
       altGraphClass.assertHasContributedSupertype("test.ContributedInterface", scope = "AltScope")
       assertThat(altGraph.callProperty<String>("altVal")).isEqualTo("Hello, world!")
     }
@@ -1146,7 +1146,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface1 = graph.callProperty<Any>("contributedInterface1")
       assertThat(contributedInterface1).isNotNull()
       assertThat(contributedInterface1.javaClass.name).isEqualTo("test.Impl")
@@ -1178,7 +1178,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface1 = graph.callProperty<Any>("contributedInterface1")
       assertThat(contributedInterface1).isNotNull()
       assertThat(contributedInterface1.javaClass.name).isEqualTo("test.Impl")
@@ -1215,15 +1215,12 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
       assertThat(contributedInterface).isNotNull()
       assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
       val graph2 =
-        classLoader
-          .loadClass("test.ExampleGraph2")
-          .generatedMetroGraphClass()
-          .createGraphWithNoArgs()
+        classLoader.loadClass("test.ExampleGraph2").generatedImpl().createGraphWithNoArgs()
       val contributedInterface2 = graph2.callProperty<Any>("contributedInterface")
       assertThat(contributedInterface2).isNotNull()
       assertThat(contributedInterface2.javaClass.name).isEqualTo("test.Impl")
@@ -1252,7 +1249,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       graph.callProperty<Set<Any>>("contributedSet").also { contributedSet ->
         assertThat(contributedSet.single()::class.qualifiedName).isEqualTo("test.Impl")
         assertThat(contributedSet.single())
@@ -1281,7 +1278,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface1 = graph.callProperty<Any>("contributedInterface1")
       assertThat(contributedInterface1).isNotNull()
       assertThat(contributedInterface1.javaClass.name).isEqualTo("test.Impl")
@@ -1308,7 +1305,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface1")
       assertThat(contributedInterface).isNotNull()
       assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
@@ -1432,7 +1429,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val base = graph.callProperty<Any>("base")
       assertThat(base).isNotNull()
       assertThat(base.javaClass.name).isEqualTo("test.Impl")
@@ -1585,13 +1582,12 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
       assertThat(contributedInterface).isNotNull()
       assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
 
-      val altGraph =
-        classLoader.loadClass("test.AltGraph").generatedMetroGraphClass().createGraphWithNoArgs()
+      val altGraph = classLoader.loadClass("test.AltGraph").generatedImpl().createGraphWithNoArgs()
       val altContributedInterface = altGraph.callProperty<Any>("contributedInterface")
       assertThat(altContributedInterface).isNotNull()
       assertThat(altContributedInterface.javaClass.name).isEqualTo("test.Impl")
@@ -1634,13 +1630,12 @@ class AggregationTest : MetroCompilerTest() {
       ),
       previousCompilationResult = previousCompilation,
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
       assertThat(contributedInterface).isNotNull()
       assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
 
-      val altGraph =
-        classLoader.loadClass("test.AltGraph").generatedMetroGraphClass().createGraphWithNoArgs()
+      val altGraph = classLoader.loadClass("test.AltGraph").generatedImpl().createGraphWithNoArgs()
       val altContributedInterface = altGraph.callProperty<Any>("contributedInterface")
       assertThat(altContributedInterface).isNotNull()
       assertThat(altContributedInterface.javaClass.name).isEqualTo("test.Impl")
@@ -1675,13 +1670,12 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
       assertThat(contributedInterface).isNotNull()
       assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
 
-      val altGraph =
-        classLoader.loadClass("test.AltGraph").generatedMetroGraphClass().createGraphWithNoArgs()
+      val altGraph = classLoader.loadClass("test.AltGraph").generatedImpl().createGraphWithNoArgs()
       val altContributedInterface = altGraph.callProperty<Any>("otherInterface")
       assertThat(altContributedInterface).isNotNull()
       assertThat(altContributedInterface.javaClass.name).isEqualTo("test.Impl")
@@ -1725,13 +1719,12 @@ class AggregationTest : MetroCompilerTest() {
       ),
       previousCompilationResult = previousCompilation,
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
       assertThat(contributedInterface).isNotNull()
       assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
 
-      val altGraph =
-        classLoader.loadClass("test.AltGraph").generatedMetroGraphClass().createGraphWithNoArgs()
+      val altGraph = classLoader.loadClass("test.AltGraph").generatedImpl().createGraphWithNoArgs()
       val altContributedInterface = altGraph.callProperty<Any>("otherInterface")
       assertThat(altContributedInterface).isNotNull()
       assertThat(altContributedInterface.javaClass.name).isEqualTo("test.Impl")
@@ -1766,13 +1759,12 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
       assertThat(contributedInterface).isNotNull()
       assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
 
-      val altGraph =
-        classLoader.loadClass("test.AltGraph").generatedMetroGraphClass().createGraphWithNoArgs()
+      val altGraph = classLoader.loadClass("test.AltGraph").generatedImpl().createGraphWithNoArgs()
       val altContributedInterface = altGraph.callProperty<Any>("otherInterface")
       assertThat(altContributedInterface).isNotNull()
       assertThat(altContributedInterface.javaClass.name).isEqualTo("test.Impl")
@@ -1923,7 +1915,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces1 = graph.callProperty<Set<Any>>("contributedInterfaces1")
       assertThat(contributedInterfaces1).isNotNull()
       assertThat(contributedInterfaces1).hasSize(1)
@@ -1957,7 +1949,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces1 = graph.callProperty<Set<Any>>("contributedInterfaces1")
       assertThat(contributedInterfaces1).isNotNull()
       assertThat(contributedInterfaces1).hasSize(1)
@@ -1989,7 +1981,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces1 = graph.callProperty<Set<Any>>("contributedInterfaces1")
       assertThat(contributedInterfaces1).isNotNull()
       assertThat(contributedInterfaces1).hasSize(1)
@@ -2017,7 +2009,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Set<Any>>("contributedInterfaces1")
       assertThat(contributedInterfaces).isNotNull()
       assertThat(contributedInterfaces.size).isEqualTo(1)
@@ -2130,7 +2122,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val bases = graph.callProperty<Set<Any>>("bases")
       assertThat(bases).isNotNull()
       assertThat(bases).hasSize(1)
@@ -2377,7 +2369,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces1 = graph.callProperty<Map<KClass<*>, Any>>("contributedInterfaces1")
       assertThat(contributedInterfaces1).isNotNull()
       assertThat(contributedInterfaces1).hasSize(1)
@@ -2414,7 +2406,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces1 = graph.callProperty<Map<KClass<*>, Any>>("contributedInterfaces1")
       assertThat(contributedInterfaces1).isNotNull()
       assertThat(contributedInterfaces1).hasSize(1)
@@ -2449,7 +2441,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces1 = graph.callProperty<Map<KClass<*>, Any>>("contributedInterfaces1")
       assertThat(contributedInterfaces1).isNotNull()
       assertThat(contributedInterfaces1).hasSize(1)
@@ -2478,7 +2470,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Map<KClass<*>, Any>>("contributedInterfaces1")
       assertThat(contributedInterfaces).isNotNull()
       assertThat(contributedInterfaces.size).isEqualTo(1)
@@ -2654,7 +2646,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val bases = graph.callProperty<Map<KClass<*>, Any>>("bases")
       assertThat(bases).isNotNull()
       assertThat(bases).hasSize(1)
@@ -2847,7 +2839,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertNotNull(graph.callProperty("contributedInterface"))
     }
   }
@@ -2873,7 +2865,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertThat(graph.callProperty<Set<*>>("contributedInterfaces")).hasSize(1)
     }
   }
@@ -2901,7 +2893,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertThat(graph.callProperty<Map<String, *>>("contributedInterfaces")).hasSize(1)
     }
   }
@@ -2973,7 +2965,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertNotNull(graph.callProperty("contributedInterface"))
     }
   }
@@ -2999,7 +2991,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertThat(graph.callProperty<Set<*>>("contributedInterfaces")).hasSize(1)
     }
   }
@@ -3027,7 +3019,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertThat(graph.callProperty<Map<String, *>>("contributedInterfaces")).hasSize(1)
     }
   }
@@ -3079,7 +3071,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertThat(graph.callProperty<Any>("contributedInterface"))
         .isSameInstanceAs(graph.callProperty<Any>("contributedInterface"))
     }
@@ -3113,7 +3105,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val impl2 = graph.callProperty<Any>("contributedInterface")
       assertThat(impl2.javaClass.simpleName).isEqualTo("Impl2")
       assertThat(impl2).isSameInstanceAs(graph.callProperty<Any>("contributedInterface"))
@@ -3139,7 +3131,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val appGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val appGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
 
       assertThat(appGraph.callProperty<Any>("a").callFunction<Boolean>("areEqual")).isTrue()
     }
@@ -3164,7 +3156,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val appGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val appGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
 
       assertThat(appGraph.callProperty<Any>("a").callFunction<Boolean>("areEqual")).isTrue()
     }
@@ -3188,7 +3180,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val appGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val appGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
 
       assertThat(appGraph.callProperty<Any>("a").callFunction<Boolean>("areEqual")).isTrue()
     }
@@ -3214,7 +3206,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val appGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val appGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
 
       assertThat(appGraph.callProperty<Any>("a").callFunction<Boolean>("areEqual")).isTrue()
     }
@@ -3240,7 +3232,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val appGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val appGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
 
       assertThat(appGraph.callProperty<Any>("a").callFunction<Boolean>("areEqual")).isTrue()
     }
@@ -3270,7 +3262,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val appGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val appGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val singleton0 = appGraph.callProperty<Any>("singleton")
       val provider = appGraph.callProperty<Any>("wrapper").callProperty<Any>("provider")
       val singleton1 =

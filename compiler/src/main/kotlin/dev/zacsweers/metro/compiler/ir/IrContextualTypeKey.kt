@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.graph.BaseContextualTypeKey
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
+import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
@@ -19,7 +20,6 @@ import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.render
-import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.StandardClassIds
 
 /** A class that represents a type with contextual information. */
@@ -64,10 +64,12 @@ internal class IrContextualTypeKey(
         val innerType = IrContextualTypeKey(typeKey, wt.innerType, hasDefault).toIrType()
         innerType.wrapInProvider(context.referenceClass(wt.providerType)!!)
       }
+
       is WrappedType.Lazy -> {
         val innerType = IrContextualTypeKey(typeKey, wt.innerType, hasDefault).toIrType()
         innerType.wrapInProvider(context.referenceClass(wt.lazyType)!!)
       }
+
       is WrappedType.Map -> {
         // For Map types, we need to create a Map<K, V> type
         val keyType = wt.keyType
@@ -136,12 +138,15 @@ internal class IrContextualTypeKey(
               rawClassId!!,
             )
           }
+
           isWrappedInProvider -> {
             WrappedType.Provider(WrappedType.Canonical(typeKey.type), rawClassId!!)
           }
+
           isWrappedInLazy -> {
             WrappedType.Lazy(WrappedType.Canonical(typeKey.type), rawClassId!!)
           }
+
           else -> {
             WrappedType.Canonical(typeKey.type)
           }
@@ -178,16 +183,28 @@ internal fun IrContextualTypeKey.stripLazy(): IrContextualTypeKey {
 
 context(context: IrMetroContext)
 internal fun IrContextualTypeKey.wrapInProvider(
-  providerType: ClassId = Symbols.ClassIds.metroProvider
+  providerType: IrClass = context.metroSymbols.metroProvider.owner
 ): IrContextualTypeKey {
   return if (wrappedType is WrappedType.Provider) {
-    this
+    if (wrappedType.providerType == providerType) {
+      this
+    } else {
+      IrContextualTypeKey(
+        typeKey,
+        WrappedType.Provider(wrappedType.innerType, providerType.classIdOrFail),
+        hasDefault,
+        rawType?.let {
+          // New type with the original type's arguments
+          providerType.symbol.typeWithArguments(it.requireSimpleType().arguments)
+        },
+      )
+    }
   } else {
     IrContextualTypeKey(
       typeKey,
-      WrappedType.Provider(wrappedType, providerType),
+      WrappedType.Provider(wrappedType, providerType.classIdOrFail),
       hasDefault,
-      rawType?.let { context.metroSymbols.metroProvider.typeWith(it) },
+      rawType?.let { providerType.typeWith(it) },
     )
   }
 }
@@ -329,9 +346,11 @@ internal fun WrappedType<IrType>.remapType(remapper: TypeRemapper): WrappedType<
     is WrappedType.Provider -> {
       WrappedType.Provider(innerType.remapType(remapper), providerType)
     }
+
     is WrappedType.Lazy -> {
       WrappedType.Lazy(innerType.remapType(remapper), lazyType)
     }
+
     is WrappedType.Map -> {
       WrappedType.Map(remapper.remapType(keyType), valueType.remapType(remapper)) {
         remapper.remapType(type())

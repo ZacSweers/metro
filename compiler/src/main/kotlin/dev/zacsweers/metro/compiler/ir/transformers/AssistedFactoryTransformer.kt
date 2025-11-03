@@ -154,7 +154,7 @@ internal class AssistedFactoryTransformer(
     val samFunction = declaration.singleAbstractFunction()
 
     // Generate impl class header (same for both external and in-compilation)
-    val implClass = generateImplClassHeader(declaration, name = Symbols.Names.MetroImpl, isExternal)
+    val implClass = generateImplClassHeader(declaration, name = Symbols.Names.Impl, isExternal)
 
     val returnType = samFunction.returnType
     val targetType = returnType.rawType()

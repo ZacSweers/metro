@@ -36,6 +36,7 @@ import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
+import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireNestedClass
@@ -72,7 +73,6 @@ import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.isLocal
 import org.jetbrains.kotlin.ir.util.kotlinFqName
-import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
@@ -192,9 +192,7 @@ internal class DependencyGraphTransformer(
         // nothing
         return
       } else {
-        dependencyGraphDeclaration.nestedClasses.singleOrNull {
-          it.name == Symbols.Names.MetroGraph
-        }
+        dependencyGraphDeclaration.nestedClassOrNull(Origins.GraphImplClassDeclaration)
           ?: reportCompilerBug(
             "Expected generated dependency graph for ${dependencyGraphDeclaration.classIdOrFail}"
           )
@@ -590,7 +588,7 @@ internal class DependencyGraphTransformer(
     val companionObject = sourceGraph.companionObject() ?: return
     val factoryCreator = creator?.expectAsOrNull<DependencyGraphNode.Creator.Factory>()
     if (factoryCreator != null) {
-      // TODO would be nice if we could just class delegate to the $$Impl object
+      // TODO would be nice if we could just class delegate to the `Impl` object
       val implementFactoryFunction: IrClass.() -> Unit = {
         val samName = factoryCreator.function.name.asString()
         requireSimpleFunction(samName).owner.apply {
@@ -610,11 +608,9 @@ internal class DependencyGraphTransformer(
         }
       }
 
-      // Implement the factory's $$Impl class if present
+      // Implement the factory's `Impl` class if present
       val factoryImpl =
-        factoryCreator.type
-          .requireNestedClass(Symbols.Names.MetroImpl)
-          .apply(implementFactoryFunction)
+        factoryCreator.type.requireNestedClass(Symbols.Names.Impl).apply(implementFactoryFunction)
 
       if (
         factoryCreator.type.isInterface &&

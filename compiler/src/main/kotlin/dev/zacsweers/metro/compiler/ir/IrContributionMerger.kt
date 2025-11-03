@@ -83,7 +83,7 @@ internal class IrContributionMerger(
             .flatMap { contributionData.getContributions(it) }
             .groupByTo(mutableMapOf()) {
               // For Metro contributions, we need to check the parent class ID
-              // This is always the $$MetroContribution, the contribution's parent is the actual
+              // This is always the `MetroContribution`, the contribution's parent is the actual
               // class
               it.rawType().classIdOrFail.parentClassId!!
             }
@@ -97,9 +97,9 @@ internal class IrContributionMerger(
         // This maps from an origin class to all contributions that have an @Origin pointing to it
         val originToContributions = mutableMapOf<ClassId, MutableSet<ClassId>>()
 
-        // Check regular contributions (with nested $$MetroContribution classes)
+        // Check regular contributions (with nested `MetroContribution` classes)
         for ((contributionClassId, contributions) in allContributions) {
-          // Get the actual contribution class (nested $$MetroContribution)
+          // Get the actual contribution class (nested `MetroContribution`)
           val contributionClass = contributions.firstOrNull()?.rawTypeOrNull()
           if (contributionClass != null) {
             contributionClass.originClassId()?.let { originClassId ->
@@ -132,7 +132,7 @@ internal class IrContributionMerger(
       // Remove excluded binding containers - they won't contribute their bindings
       mutableContributedBindingContainers.remove(excludedClassId)
 
-      // Remove contributions from excluded classes that have nested $$MetroContribution classes
+      // Remove contributions from excluded classes that have nested `MetroContribution` classes
       // (binding containers don't have these, so this only affects @ContributesBinding etc.)
       mutableAllContributions.remove(excludedClassId)
 

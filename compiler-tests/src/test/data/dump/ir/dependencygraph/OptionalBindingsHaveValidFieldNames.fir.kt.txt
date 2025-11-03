@@ -1,21 +1,8 @@
 @DependencyGraph(scope = AppScope::class, bindingContainers = [Bindings::class])
 interface AppGraph {
-  companion object Companion {
-    private constructor() /* primary */ {
-      super/*Any*/()
-      /* <init>() */
-
-    }
-
-    @GraphFactoryInvokeFunctionMarker
-    operator fun invoke(): AppGraph {
-      return $$MetroGraph()
-    }
-
-  }
-
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroGraph : AppGraph {
+  @MetroImplMarker
+  class Impl : AppGraph {
     private val thisGraphInstance: AppGraph
       field = <this>
 
@@ -38,9 +25,23 @@ interface AppGraph {
 
   }
 
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @CallableMetadata(callableName = "string", propertyName = "string", startOffset = 211, endOffset = 282)
-  class GetString$$MetroFactory : Factory<String> {
+  class GetStringMetroFactory : Factory<String> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
       private constructor() /* primary */ {
@@ -50,7 +51,7 @@ interface AppGraph {
       }
 
       fun create(instance: AppGraph): Factory<String> {
-        return GetString$$MetroFactory(instance = instance)
+        return GetStringMetroFactory(instance = instance)
       }
 
       fun getString(instance: AppGraph): String {
@@ -91,7 +92,7 @@ interface AppGraph {
 @Module
 interface Bindings {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  abstract class $$BindsMirror {
+  abstract class BindsMirror {
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */

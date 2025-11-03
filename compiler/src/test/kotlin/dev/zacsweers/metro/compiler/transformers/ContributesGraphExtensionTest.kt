@@ -13,7 +13,7 @@ import dev.zacsweers.metro.compiler.assertDiagnostics
 import dev.zacsweers.metro.compiler.callFunction
 import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
-import dev.zacsweers.metro.compiler.generatedMetroGraphClass
+import dev.zacsweers.metro.compiler.generatedImpl
 import dev.zacsweers.metro.compiler.invokeInstanceMethod
 import dev.zacsweers.metro.compiler.newInstanceStrict
 import kotlin.test.assertNotNull
@@ -45,7 +45,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val exampleGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val loggedInGraph = exampleGraph.callFunction<Any>("createLoggedInGraph")
       assertThat(loggedInGraph.callProperty<Int>("int")).isEqualTo(0)
     }
@@ -76,7 +76,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val exampleGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val loggedInGraph = exampleGraph.callFunction<Any>("createLoggedInGraph")
       assertThat(loggedInGraph.callProperty<Int>("int")).isEqualTo(0)
     }
@@ -116,7 +116,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
       ),
       previousCompilationResult = firstCompilation,
     ) {
-      val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val exampleGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val loggedInGraph = exampleGraph.callFunction<Any>("createLoggedInGraph")
       assertThat(loggedInGraph.callProperty<Int>("int")).isEqualTo(0)
     }
@@ -184,7 +184,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
       },
     ) {
       assertThat(exitCode).isEqualTo(KotlinCompilation.ExitCode.OK)
-      val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val exampleGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val loggedInGraph = exampleGraph.callFunction<Any>("createLoggedInGraph")
       assertThat(loggedInGraph.callProperty<String>("string")).isEqualTo("0")
     }
@@ -221,7 +221,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
       )
     ) {
       assertThat(exitCode).isEqualTo(KotlinCompilation.ExitCode.OK)
-      val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val exampleGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val loggedInGraph = exampleGraph.callFunction<Any>("createLoggedInGraph")
       assertThat(loggedInGraph.callProperty<String>("string")).isEqualTo("0")
     }
@@ -303,7 +303,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
       },
     ) {
       assertThat(exitCode).isEqualTo(KotlinCompilation.ExitCode.OK)
-      val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val exampleGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val loggedInGraph = exampleGraph.callFunction<Any>("createLoggedInGraph")
       assertThat(loggedInGraph.callProperty<Any>("contributedInterface")).isNotNull()
     }
@@ -340,7 +340,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
       )
     ) {
       assertThat(exitCode).isEqualTo(KotlinCompilation.ExitCode.OK)
-      val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val exampleGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val loggedInGraph = exampleGraph.callFunction<Any>("createLoggedInGraph")
       assertThat(loggedInGraph.callProperty<Any>("contributedInterface")).isNotNull()
     }
@@ -386,7 +386,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
       )
     ) {
       assertThat(exitCode).isEqualTo(KotlinCompilation.ExitCode.OK)
-      val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val exampleGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val loggedInGraph = exampleGraph.callFunction<Any>("createLoggedInGraph")
       assertThat(
           loggedInGraph.callProperty<Any>("consumer").callProperty<Set<Any>>("contributions").map {
@@ -435,7 +435,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val loggedInGraph = graph.callFunction<Any>("createLoggedInGraph")
       assertThat(loggedInGraph.callProperty<Any>("multi")).isNotNull()
     }
@@ -474,7 +474,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val exampleGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val loggedInGraph = exampleGraph.callFunction<Any>("createLoggedInGraph")
       assertThat(loggedInGraph.callProperty<String>("string")).isEqualTo("0")
     }
@@ -508,7 +508,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val exampleGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val loggedInGraph = exampleGraph.callFunction<Any>("createLoggedInGraph")
       assertThat(loggedInGraph.callProperty<Int>("value")).isEqualTo(0)
     }
@@ -542,7 +542,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val exampleGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val loggedInGraph = exampleGraph.callFunction<Any>("createGraph")
       assertThat(loggedInGraph.callProperty<Int>("int")).isEqualTo(0)
     }
@@ -580,7 +580,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
       )
     ) {
       assertThat(exitCode).isEqualTo(KotlinCompilation.ExitCode.OK)
-      val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val exampleGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val loggedInGraph = exampleGraph.callFunction<Any>("createLoggedInGraph", 2L)
       assertThat(loggedInGraph.callProperty<String>("string")).isEqualTo("2")
     }
@@ -618,7 +618,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
       )
     ) {
       assertThat(exitCode).isEqualTo(KotlinCompilation.ExitCode.OK)
-      val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val exampleGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val loggedInGraph = exampleGraph.callFunction<Any>("createLoggedInGraph", 2L)
       assertThat(loggedInGraph.callProperty<String>("string")).isEqualTo("2")
     }
@@ -650,7 +650,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
       )
     ) {
       assertThat(exitCode).isEqualTo(KotlinCompilation.ExitCode.OK)
-      val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val exampleGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val stringProvider = classLoader.loadClass("test.StringProvider").newInstanceStrict("Hello")
       val loggedInGraph = exampleGraph.callFunction<Any>("createLoggedInGraph", stringProvider)
       assertThat(loggedInGraph.callProperty<String>("string")).isEqualTo("Hello")
@@ -691,7 +691,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
       )
     ) {
       assertThat(exitCode).isEqualTo(KotlinCompilation.ExitCode.OK)
-      val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val exampleGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val stringGraph = exampleGraph.invokeInstanceMethod<Any>("create", "Hello")
       val loggedInGraph = stringGraph.callFunction<Any>("createLoggedInGraph")
       assertThat(loggedInGraph.callProperty<String>("string")).isEqualTo("Hello")
@@ -723,7 +723,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
       )
     ) {
       assertThat(exitCode).isEqualTo(KotlinCompilation.ExitCode.OK)
-      assertNotNull(ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs())
+      assertNotNull(ExampleGraph.generatedImpl().createGraphWithNoArgs())
       // Assert no LoggedInGraphImpl or createLoggedInGraph method or parent interface
       assertThat(ExampleGraph.allSupertypes().map { it.name })
         .doesNotContain("test.LoggedInGraph\$Factory")
@@ -757,7 +757,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
       )
     ) {
       assertThat(exitCode).isEqualTo(KotlinCompilation.ExitCode.OK)
-      assertNotNull(ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs())
+      assertNotNull(ExampleGraph.generatedImpl().createGraphWithNoArgs())
       // Assert no LoggedInGraphImpl or createLoggedInGraph method or parent interface
       assertThat(ExampleGraph.allSupertypes().map { it.name })
         .doesNotContain("test.LoggedInGraph\$Factory")
@@ -804,7 +804,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val exampleGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val loggedInGraph = exampleGraph.callFunction<Any>("createLoggedInGraph")
       assertThat(loggedInGraph.callProperty<Int>("int")).isEqualTo(0)
 
@@ -1015,7 +1015,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val parentGraph = ParentGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val parentGraph = ParentGraph.generatedImpl().createGraphWithNoArgs()
       val childGraph = parentGraph.callFunction<Any>("createChildGraph")
       assertThat(childGraph.callProperty<String>("string")).isEqualTo("")
     }
@@ -1053,7 +1053,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val loggedInGraph = graph.callFunction<Any>("createLoggedInGraph")
       val childDep1 = loggedInGraph.callProperty<Any>("childDependency")
       val dep1 = childDep1.callProperty<Any>("dep")
@@ -1105,7 +1105,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val intermediateGraph = graph.callFunction<Any>("createIntermediateGraph")
       val loggedInGraph = intermediateGraph.callFunction<Any>("createLoggedInGraph")
       val childDep1 = loggedInGraph.callProperty<Any>("childDependency")
@@ -1169,7 +1169,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val parentGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val parentGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val childGraph = parentGraph.callFunction<Any>("createLoggedInGraph")
       assertThat(childGraph.callProperty<Any>("childDependency")).isNotNull()
     }
@@ -1204,7 +1204,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val parentGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val parentGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val childGraph = parentGraph.callFunction<Any>("createLoggedInGraph")
       assertThat(childGraph.callProperty<Any>("childDependency")).isNotNull()
     }
@@ -1261,7 +1261,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         addPreviousResultToClasspath(graphExtensionCompilation)
       },
     ) {
-      val parentGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val parentGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val childGraph = parentGraph.callFunction<Any>("createLoggedInGraph")
       assertThat(childGraph.callProperty<Any>("childDependency")).isNotNull()
     }
@@ -1318,7 +1318,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         addPreviousResultToClasspath(graphExtensionCompilation)
       },
     ) {
-      val parentGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val parentGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val childGraph = parentGraph.callFunction<Any>("createLoggedInGraph")
       assertThat(childGraph.callProperty<Any>("childDependency")).isNotNull()
     }
@@ -1362,7 +1362,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val parentGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val parentGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val childGraph1 = parentGraph.callFunction<Any>("createLoggedInGraph")
       val childGraph2 = parentGraph.callFunction<Any>("createOtherGraph")
 
@@ -1405,7 +1405,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val loggedInGraph = graph.callFunction<Any>("createLoggedInGraph")
       val ints = loggedInGraph.callProperty<Set<Int>>("ints")
       assertThat(ints).isNotNull()
@@ -1443,7 +1443,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val loggedInGraph = graph.callFunction<Any>("createLoggedInGraph")
       val tasks = loggedInGraph.callProperty<Set<Any>>("tasks")
       assertThat(tasks).isNotNull()
@@ -1484,7 +1484,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val loggedInGraph = graph.callFunction<Any>("createLoggedInGraph")
       val tasks = loggedInGraph.callProperty<Set<Any>>("tasksFromParent")
       assertThat(tasks).isNotNull()
@@ -1564,7 +1564,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         addPreviousResultToClasspath(libCompilation1)
       },
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val loggedInGraph = graph.callFunction<Any>("createLoggedInGraph")
       val impl2 = loggedInGraph.callProperty<Any>("contributedInterface")
       assertThat(impl2.javaClass.simpleName).isEqualTo("Impl2")
@@ -1734,7 +1734,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val loggedInGraph = graph.callFunction<Any>("createLoggedInGraph")
       val loggedInScreen1 = classLoader.loadClass("test.LoggedInScreen").newInstanceStrict()
       loggedInGraph.callFunction<Any>("inject", loggedInScreen1)

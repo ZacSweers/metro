@@ -1,23 +1,10 @@
 // FILE: GraphImplClassAsReturnType.kt
 
 @DependencyGraph(scope = AppScope::class)
-interface AppGraph : $$MetroContributionToAppScope {
-  companion object Companion {
-    private constructor() /* primary */ {
-      super/*Any*/()
-      /* <init>() */
-
-    }
-
-    @GraphFactoryInvokeFunctionMarker
-    operator fun invoke(): AppGraph {
-      return $$MetroGraph()
-    }
-
-  }
-
+interface AppGraph : MetroContributionToAppScope {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroGraph : AppGraph {
+  @MetroImplMarker
+  class Impl : AppGraph {
     private val thisGraphInstance: AppGraph
       field = <this>
 
@@ -46,6 +33,20 @@ interface AppGraph : $$MetroContributionToAppScope {
 
   }
 
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
 }
 
 @GraphExtension(scope = String::class)
@@ -55,7 +56,7 @@ interface ChildGraph {
   fun interface Factory {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
     @MetroContribution(scope = AppScope::class)
-    interface $$MetroContributionToAppScope : Factory {
+    interface MetroContributionToAppScope : Factory {
     }
 
     abstract fun create(): ChildGraph

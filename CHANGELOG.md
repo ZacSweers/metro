@@ -4,6 +4,11 @@ Changelog
 **Unreleased**
 --------------
 
+0.7.3
+-----
+
+_2025-11-02_
+
 - **New**: Support interop with Dagger/Anvil-generated member injector classes.
 - **Enhancement**: Skip reading members when loading externally compiled member injector classes. Parameters are now computed from their static `inject*` functions.
 - **Enhancement**: Improve logic for avoiding reserved keywords or illegal character for names in more platforms.
@@ -12,8 +17,16 @@ Changelog
 - **Enhancement**: Cache members injector binding lookups.
 - **Enhancement**: Don't double-lookup members injectors already computed from roots.
 - **Enhancement**: Support Kotlin `2.3.0-Beta2`.
+- **Enhancement**: Test against Kotlin `2.2.21`.
+- **Enhancement**: Improve generated graph impl declaration checks.
+- **Fix**: Work around "LookupSymbols are not yet converted to ProgramSymbols" issue ([KT-80412](https://youtrack.jetbrains.com/issue/KT-80412)) in incremental compilation by avoiding using `$$` prefixes in generated class names.
+- **Fix**: Fix interop support for two layers of `Provider` interop in map multibindings (i.e. `Provider<Map<Key, Provider<Value>>`).
 - Deprecate `includeAnvil()` Gradle DSL function in favor of more specific `includeAnvilForDagger()` and `includeAnvilForKotlinInject()` functions.
 - Move interop annotations controls to compiler. For Gradle users, there's mostly no change (other than the above). For users of any other build system, this makes it a bit easier to reuse the interop annotations logic.
+- [docs] Add compatibility docs: https://zacsweers.github.io/metro/latest/compatibility/. Metro supports a moving range of Kotlin versions, this page captures the tested versions for each release.
+- [docs] Add stability docs: https://zacsweers.github.io/metro/latest/stability/
+
+Special thanks to [@jonamireh](https://github.com/jonamireh), [@hossain-khan](https://github.com/hossain-khan), and [@l2hyunwoo](https://github.com/l2hyunwoo) for contributing to this release!
 
 0.7.2
 -----

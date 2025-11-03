@@ -86,11 +86,9 @@ internal class Symbols(
     const val IMPL = "Impl"
     const val INVOKE = "invoke"
     const val METRO_CONTRIBUTION = "MetroContribution"
-    const val METRO_CONTRIBUTION_NAME_PREFIX = $$$"$$MetroContribution"
-    const val METRO_FACTORY = $$$"$$MetroFactory"
+    const val METRO_CONTRIBUTION_NAME_PREFIX = "MetroContribution"
+    const val METRO_FACTORY = "MetroFactory"
     const val METRO_HINTS_PACKAGE = "metro.hints"
-    const val METRO_IMPL = $$$"$$$$$IMPL"
-    const val METRO_GRAPH = $$$"$$MetroGraph"
     const val METRO_RUNTIME_INTERNAL_PACKAGE = "dev.zacsweers.metro.internal"
     const val METRO_RUNTIME_PACKAGE = "dev.zacsweers.metro"
     const val MIRROR_FUNCTION = "mirrorFunction"
@@ -163,6 +161,7 @@ internal class Symbols(
       ClassId(FqNames.metroRuntimeInternalPackage, StringNames.INJECTED_FUNCTION_CLASS.asName())
     val metroIntoMap = ClassId(FqNames.metroRuntimePackage, StringNames.INTO_MAP.asName())
     val metroIntoSet = ClassId(FqNames.metroRuntimePackage, StringNames.INTO_SET.asName())
+    val metroImplMarker = ClassId(FqNames.metroRuntimeInternalPackage, "MetroImplMarker".asName())
     val metroOrigin = ClassId(FqNames.metroRuntimePackage, "Origin".asName())
     val metroProvider = ClassId(FqNames.metroRuntimePackage, Names.ProviderClass)
     val metroProvides = ClassId(FqNames.metroRuntimePackage, StringNames.PROVIDES.asName())
@@ -175,14 +174,13 @@ internal class Symbols(
 
   object Names {
     val Binds = "Binds".asName()
-    val BindsMirrorClass = $$$"$$BindsMirror".asName()
+    val BindsMirrorClass = "BindsMirror".asName()
     val Container = "Container".asName()
     val FactoryClass = "Factory".asName()
     val MetroContributionNamePrefix = StringNames.METRO_CONTRIBUTION_NAME_PREFIX.asName()
     val MetroFactory = StringNames.METRO_FACTORY.asName()
-    val MetroGraph = $$$"$$MetroGraph".asName()
-    val MetroImpl = StringNames.METRO_IMPL.asName()
-    val MetroMembersInjector = $$$"$$MetroMembersInjector".asName()
+    val Impl = StringNames.IMPL.asName()
+    val MetroMembersInjector = "MetroMembersInjector".asName()
     val Optional = "Optional".asName()
     val ProviderClass = "Provider".asName()
     val Provides = StringNames.PROVIDES.asName()
@@ -219,8 +217,6 @@ internal class Symbols(
     val subcomponents = "subcomponents".asName()
     val scope = StringNames.SCOPE.asName()
     val unwrapValue = "unwrapValue".asName()
-
-    val metroNames = setOf(MetroFactory, MetroGraph, MetroImpl, MetroMembersInjector)
   }
 
   private val metroRuntime: IrPackageFragment by lazy {
@@ -862,6 +858,7 @@ internal class Symbols(
           ClassIds.DAGGER_LAZY_CLASS_ID -> {
             return invokeDoubleCheckLazy(target, metroProvider)
           }
+
           else -> reportCompilerBug("Unexpected non-dagger/jakarta/javax provider $targetClassId")
         }
       return irInvoke(

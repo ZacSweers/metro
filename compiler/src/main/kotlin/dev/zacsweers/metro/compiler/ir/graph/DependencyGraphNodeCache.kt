@@ -52,7 +52,7 @@ import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
-import dev.zacsweers.metro.compiler.isGeneratedGraph
+import dev.zacsweers.metro.compiler.isInvisibleGeneratedGraph
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.memoized
@@ -112,7 +112,7 @@ internal class DependencyGraphNodeCache(
     metroGraph: IrClass? = null,
     dependencyGraphAnno: IrConstructorCall? = null,
   ): DependencyGraphNode {
-    if (!graphDeclaration.origin.isGeneratedGraph) {
+    if (!graphDeclaration.origin.isInvisibleGeneratedGraph) {
       val sourceGraph = graphDeclaration.sourceGraphIfMetroGraph
       if (sourceGraph != graphDeclaration) {
         return getOrComputeDependencyGraphNode(
@@ -231,7 +231,7 @@ internal class DependencyGraphNodeCache(
       }
 
       val creator =
-        if (graphDeclaration.origin.isGeneratedGraph) {
+        if (graphDeclaration.origin.isInvisibleGeneratedGraph) {
           val ctor = graphDeclaration.primaryConstructor!!
           val ctorParams = ctor.parameters()
           populateBindingContainerFields(ctorParams)
@@ -305,7 +305,7 @@ internal class DependencyGraphNodeCache(
               IrBindingStack.Entry.injectedAt(graphContextKey, nonNullCreator.function)
             ) {
               val nodeKey =
-                if (klass.origin.isGeneratedGraph) {
+                if (klass.origin.isInvisibleGeneratedGraph) {
                   klass
                 } else {
                   sourceGraph
@@ -417,7 +417,7 @@ internal class DependencyGraphNodeCache(
       // Copy inherited scopes onto this graph for faster lookups downstream
       // Note this is only for scopes inherited from supertypes, not from extended parent graphs
       val inheritedScopes = (scopes - declaredScopes).map { it.ir }
-      if (graphDeclaration.origin.isGeneratedGraph) {
+      if (graphDeclaration.origin.isInvisibleGeneratedGraph) {
         // If it's a contributed/dynamic graph, just add it directly as these are not visible to
         // metadata
         // anyway
@@ -809,14 +809,14 @@ internal class DependencyGraphNodeCache(
       // For regular graphs (not generated extensions/dynamic), aggregate binding containers
       // from scopes using IrContributionMerger to handle merging. This can't be done in FIR
       // since we can't modify the annotation there
-      if (!graphDeclaration.origin.isGeneratedGraph && aggregationScopes.isNotEmpty()) {
+      if (!graphDeclaration.origin.isInvisibleGeneratedGraph && aggregationScopes.isNotEmpty()) {
         val excludes =
           dependencyGraphAnno?.excludedClasses().orEmpty().mapNotNullToSet {
             it.classType.rawTypeOrNull()?.classId
           }
 
         // TODO it kinda sucks that we compute this in both FIR and IR? Maybe we can do this in FIR
-        //  and generate a hint/holder annotation on the $$MetroGraph
+        //  and generate a hint/holder annotation on the graph impl
         nodeCache.contributionMerger
           .computeContributions(
             primaryScope = aggregationScopes.first(),

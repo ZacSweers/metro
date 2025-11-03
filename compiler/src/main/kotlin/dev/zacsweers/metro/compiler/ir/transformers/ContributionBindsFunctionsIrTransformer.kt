@@ -45,7 +45,7 @@ import org.jetbrains.kotlin.name.ClassId
 
 /**
  * A transformer that does three things:
- * 1. Generates `@Binds` properties into FIR-generated `$$MetroContribution` interfaces.
+ * 1. Generates `@Binds` properties into FIR-generated `MetroContribution` interfaces.
  * 2. Transforms extenders of these generated interfaces _in this compilation_ to add new fake
  *    overrides of them.
  * 3. Collects contribution data while transforming for use by the dependency graph.
@@ -154,9 +154,12 @@ internal class ContributionTransformer(private val context: IrMetroContext) :
     // Add fake overrides. This should only add missing ones
     declaration.addFakeOverrides(irTypeSystemContext)
     if (!declaration.isAnnotatedWithAny(metroSymbols.classIds.graphExtensionAnnotations)) {
-      // Only DependencyGraph classes have a $$MetroGraph. ContributesGraphExtension will get
+      // Only DependencyGraph classes have an FIR-generated graph impl. ContributesGraphExtension
+      // will get
       // implemented later in IR
-      declaration.requireNestedClass(Symbols.Names.MetroGraph).addFakeOverrides(irTypeSystemContext)
+      declaration
+        .requireNestedClass(Origins.GraphImplClassDeclaration)
+        .addFakeOverrides(irTypeSystemContext)
     }
     declaration.dumpToMetroLog()
   }

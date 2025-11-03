@@ -308,8 +308,8 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
           it.parentClassOrNull?.hasAnnotation(Symbols.ClassIds.metroContribution) == true
         if (isMetroContribution) {
           // If it's a contribution, the source is
-          // SourceClass.$$MetroContributionScopeName.bindingFunction
-          //                                          ^^^
+          // SourceClass.MetroContributionScopeName.bindingFunction
+          //                                        ^^^
           it.parentAsClass.parentAsClass to true
         } else {
           it to false
