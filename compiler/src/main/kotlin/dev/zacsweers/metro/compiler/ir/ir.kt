@@ -1497,7 +1497,6 @@ private fun buildDeepSubstitutionMap(
 
 private class DeepTypeSubstitutor(private val substitutionMap: Map<IrTypeParameterSymbol, IrType>) :
   TypeRemapper {
-  private val mapByName = substitutionMap.mapKeys { it.key.owner.name.identifier }
   private val cache = mutableMapOf<IrType, IrType>()
 
   override fun enterScope(irTypeParametersContainer: IrTypeParametersContainer) {}
