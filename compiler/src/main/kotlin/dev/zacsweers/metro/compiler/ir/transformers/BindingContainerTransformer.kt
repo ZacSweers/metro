@@ -375,10 +375,10 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     val factoryPath =
       factoryCls.packageFqName?.let { packageName ->
         val fileName = factoryCls.kotlinFqName.toString().replace("$packageName.", "")
-        "$packageName/$fileName"
+        "${packageName.pathSegments().joinToString("/")}/$fileName"
       } ?: factoryCls.kotlinFqName.asString()
 
-    // Relative path example: provider-factories/dev.zac.feature/Outer.Inner$$Factory.kt
+    // Relative path example: provider-factories/dev/zac/feature/Outer.Inner$$Factory.kt
     writeDiagnostic("provider-factories/$factoryPath.kt") { factoryCls.dumpKotlinLike() }
 
     generatedFactories[reference.callableId] = providerFactory
