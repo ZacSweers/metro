@@ -1037,6 +1037,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("InjectingParentAbstractVal.kt")
+      public void testInjectingParentAbstractVal() {
+        runTest("compiler-tests/src/test/data/box/inject/member/InjectingParentAbstractVal.kt");
+      }
+
+      @Test
       @TestMetadata("InjectingSubclassWithNoMembersButParentsDo.kt")
       public void testInjectingSubclassWithNoMembersButParentsDo() {
         runTest("compiler-tests/src/test/data/box/inject/member/InjectingSubclassWithNoMembersButParentsDo.kt");
