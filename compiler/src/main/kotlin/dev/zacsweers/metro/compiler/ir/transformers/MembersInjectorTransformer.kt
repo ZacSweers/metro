@@ -494,8 +494,42 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
 
     val companionObject = injectorClass.companionObject() ?: return emptyList()
 
-    return injectFunctionNames.mapNotNull { functionName ->
-      // Find the inject function by name
+    // Try to get create() function to determine the correct parameter order
+    val createFunction = companionObject.requireSimpleFunction(Symbols.StringNames.CREATE).owner
+
+    val allCreateParams = createFunction.regularParameters
+
+    // Match each inject function to its position in create() params by parameter name
+    data class MatchedFunction(val functionName: String, val startPosition: Int)
+
+    // TODO what about overloads of the same name?
+    val matchedFunctions =
+      injectFunctionNames.mapNotNull { functionName ->
+        // Extract member name from inject function name (e.g., "injectMessage" -> "message")
+        val memberName = functionName.removePrefix("inject").decapitalizeUS()
+
+        // Find the position of this member in create() params by matching parameter names
+        val foundPosition =
+          allCreateParams.indexOfFirst { param -> param.name.asString() == memberName }
+
+        if (foundPosition >= 0) {
+          MatchedFunction(functionName, foundPosition)
+        } else {
+          null
+        }
+      }
+
+    // If we successfully matched all functions, sort by create() order
+    val sortedFunctionNames =
+      if (matchedFunctions.size == injectFunctionNames.size) {
+        matchedFunctions.sortedBy { it.startPosition }.map { it.functionName }
+      } else {
+        // Fallback to the original sorted order if matching failed
+        injectFunctionNames
+      }
+
+    // Extract parameters in the determined order
+    return sortedFunctionNames.mapNotNull { functionName ->
       val injectFunction =
         companionObject.declarations.filterIsInstance<IrSimpleFunction>().find {
           it.name.asString() == functionName
