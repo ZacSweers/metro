@@ -1,0 +1,2825 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A multiplatform dependency injection framework for Kotlin">
+      
+      
+        <meta name="author" content="Zac Sweers">
+      
+      
+        <link rel="canonical" href="https://zacsweers.github.io/metro/0.7.4/changelog/">
+      
+      
+        <link rel="prev" href="../api/">
+      
+      
+        <link rel="next" href="../contributing/">
+      
+      
+      <link rel="icon" href="../site-assets/img/favicon.ico">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.23">
+    
+    
+      
+        <title>Change Log - Metro</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.84d31ad4.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,700,700i%7CFira+Code:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"Fira Code"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+      
+        <meta  property="og:type"  content="website" >
+      
+        <meta  property="og:title"  content="Change Log - Metro" >
+      
+        <meta  property="og:description"  content="A multiplatform dependency injection framework for Kotlin" >
+      
+        <meta  property="og:image"  content="https://zacsweers.github.io/metro/0.7.4/assets/images/social/changelog.png" >
+      
+        <meta  property="og:image:type"  content="image/png" >
+      
+        <meta  property="og:image:width"  content="1200" >
+      
+        <meta  property="og:image:height"  content="630" >
+      
+        <meta  property="og:url"  content="https://zacsweers.github.io/metro/0.7.4/changelog/" >
+      
+        <meta  name="twitter:card"  content="summary_large_image" >
+      
+        <meta  name="twitter:title"  content="Change Log - Metro" >
+      
+        <meta  name="twitter:description"  content="A multiplatform dependency injection framework for Kotlin" >
+      
+        <meta  name="twitter:image"  content="https://zacsweers.github.io/metro/0.7.4/assets/images/social/changelog.png" >
+      
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="white" data-md-color-accent="green">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#changelog" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Metro" class="md-header__button md-logo" aria-label="Metro" data-md-component="logo">
+      
+  <img src="../site-assets/img/metro-icon.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Metro
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Change Log
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="white" data-md-color-accent="green"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="green"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ZacSweers/metro" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Metro
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Metro" class="md-nav__button md-logo" aria-label="Metro" data-md-component="logo">
+      
+  <img src="../site-assets/img/metro-icon.svg" alt="logo">
+
+    </a>
+    Metro
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ZacSweers/metro" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Metro
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Introduction
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Overview
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../features/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Features
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../differences/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Differences
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Installation
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Usage
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Usage
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dependency-graphs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Dependency Graphs
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../provides/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Provides
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../injection-types/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Injection Types
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../scopes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Scopes
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../metro-intrinsics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Metro Intrinsics
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bindings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Bindings
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aggregation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Aggregation (aka "Anvil")
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../multiplatform/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Multiplatform
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../validation-and-error-reporting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Validation & Error Reporting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../interop/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Interop
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../generating-metro-code/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Generating Custom Metro Code
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Performance
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../debugging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Debugging
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../compatibility/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Compatibility
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../stability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Stability
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    FAQ
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adoption/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Adoption Strategies
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../samples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Samples
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    API
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/ZacSweers/metro/discussions" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Discussions ⏏
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Change Log
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Change Log
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#unreleased" class="md-nav__link">
+    <span class="md-ellipsis">
+      Unreleased
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#074" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.7.4
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#073" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.7.3
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#072" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.7.2
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#071" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.7.1
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#070" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.7.0
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.7.0">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dynamic-graphs" class="md-nav__link">
+    <span class="md-ellipsis">
+      Dynamic Graphs
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implicit-inject-behavior-on-most-contributes-annotated-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      Implicit @Inject behavior on (most) @Contributes*-annotated types
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Other Changes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0610" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.6.10
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.6.10">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#optional-dependency-behaviors" class="md-nav__link">
+    <span class="md-ellipsis">
+      Optional Dependency Behaviors
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other-changes_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Other changes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#069" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.6.9
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#068" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.6.8
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#067" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.6.7
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.6.7">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#new-assistedinject-annotation" class="md-nav__link">
+    <span class="md-ellipsis">
+      New @AssistedInject annotation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other-changes_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Other changes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#066" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.6.6
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#065" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.6.5
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#064" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.6.4
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#063" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.6.3
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#062" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.6.2
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#061" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.6.1
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#060" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.6.0
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.6.0">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#graph-extensions-are-no-longer-detached" class="md-nav__link">
+    <span class="md-ellipsis">
+      Graph extensions are no longer detached.
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Graph extensions are no longer detached.">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#graphextension" class="md-nav__link">
+    <span class="md-ellipsis">
+      @GraphExtension
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Migration
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other-changes_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      Other changes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#055" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.5.5
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#054" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.5.4
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#053" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.5.3
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#052" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.5.2
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#051" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.5.1
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#050" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.5.0
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#040" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.4.0
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#038" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.3.8
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#037" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.3.7
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#036" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.3.6
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#035" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.3.5
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#034" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.3.4
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#033" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.3.3
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#032" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.3.2
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#031" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.3.1
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#030" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.3.0
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#020" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.2.0
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#013" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.1.3
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#012" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.1.2
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#011" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.1.1
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Contributing
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../code-of-conduct/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    CoC
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#unreleased" class="md-nav__link">
+    <span class="md-ellipsis">
+      Unreleased
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#074" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.7.4
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#073" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.7.3
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#072" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.7.2
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#071" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.7.1
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#070" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.7.0
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.7.0">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dynamic-graphs" class="md-nav__link">
+    <span class="md-ellipsis">
+      Dynamic Graphs
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implicit-inject-behavior-on-most-contributes-annotated-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      Implicit @Inject behavior on (most) @Contributes*-annotated types
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Other Changes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0610" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.6.10
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.6.10">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#optional-dependency-behaviors" class="md-nav__link">
+    <span class="md-ellipsis">
+      Optional Dependency Behaviors
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other-changes_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Other changes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#069" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.6.9
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#068" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.6.8
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#067" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.6.7
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.6.7">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#new-assistedinject-annotation" class="md-nav__link">
+    <span class="md-ellipsis">
+      New @AssistedInject annotation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other-changes_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Other changes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#066" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.6.6
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#065" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.6.5
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#064" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.6.4
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#063" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.6.3
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#062" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.6.2
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#061" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.6.1
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#060" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.6.0
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.6.0">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#graph-extensions-are-no-longer-detached" class="md-nav__link">
+    <span class="md-ellipsis">
+      Graph extensions are no longer detached.
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Graph extensions are no longer detached.">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#graphextension" class="md-nav__link">
+    <span class="md-ellipsis">
+      @GraphExtension
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Migration
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other-changes_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      Other changes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#055" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.5.5
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#054" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.5.4
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#053" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.5.3
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#052" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.5.2
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#051" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.5.1
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#050" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.5.0
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#040" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.4.0
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#038" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.3.8
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#037" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.3.7
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#036" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.3.6
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#035" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.3.5
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#034" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.3.4
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#033" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.3.3
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#032" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.3.2
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#031" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.3.1
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#030" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.3.0
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#020" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.2.0
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#013" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.1.3
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#012" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.1.2
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#011" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.1.1
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
+<h2 id="unreleased"><strong>Unreleased</strong><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
+<h2 id="074">0.7.4<a class="headerlink" href="#074" title="Permanent link">&para;</a></h2>
+<p><em>2025-11-04</em></p>
+<ul>
+<li><strong>Fix</strong>: Support more than 32 parameters to Graph factories.</li>
+<li><strong>Fix</strong>: Support more than 32 accessors in Graphs.</li>
+<li><strong>Fix</strong>: Transform <code>INSTANCE</code> access types for <code>GraphDependency</code> bindings.</li>
+<li><strong>Fix</strong>: Fix ordering of setter member injection parameters when reading injectors across modules.</li>
+</ul>
+<h2 id="073">0.7.3<a class="headerlink" href="#073" title="Permanent link">&para;</a></h2>
+<p><em>2025-11-02</em></p>
+<ul>
+<li><strong>New</strong>: Support interop with Dagger/Anvil-generated member injector classes.</li>
+<li><strong>Enhancement</strong>: Skip reading members when loading externally compiled member injector classes. Parameters are now computed from their static <code>inject*</code> functions.</li>
+<li><strong>Enhancement</strong>: Improve logic for avoiding reserved keywords or illegal character for names in more platforms.</li>
+<li><strong>Enhancement</strong>: Inline empty multibinding expressions in code gen.</li>
+<li><strong>Enhancement</strong>: Better detect static-ish functions in generated Kotlin factories from Dagger/Anvil interop.</li>
+<li><strong>Enhancement</strong>: Cache members injector binding lookups.</li>
+<li><strong>Enhancement</strong>: Don&rsquo;t double-lookup members injectors already computed from roots.</li>
+<li><strong>Enhancement</strong>: Support Kotlin <code>2.3.0-Beta2</code>.</li>
+<li><strong>Enhancement</strong>: Test against Kotlin <code>2.2.21</code>.</li>
+<li><strong>Enhancement</strong>: Improve generated graph impl declaration checks.</li>
+<li><strong>Fix</strong>: Work around &ldquo;LookupSymbols are not yet converted to ProgramSymbols&rdquo; issue (<a href="https://youtrack.jetbrains.com/issue/KT-80412">KT-80412</a>) in incremental compilation by avoiding using <code>$$</code> prefixes in generated class names.</li>
+<li><strong>Fix</strong>: Fix interop support for two layers of <code>Provider</code> interop in map multibindings (i.e. <code>Provider&lt;Map&lt;Key, Provider&lt;Value&gt;&gt;</code>).</li>
+<li>Deprecate <code>includeAnvil()</code> Gradle DSL function in favor of more specific <code>includeAnvilForDagger()</code> and <code>includeAnvilForKotlinInject()</code> functions.</li>
+<li>Move interop annotations controls to compiler. For Gradle users, there&rsquo;s mostly no change (other than the above). For users of any other build system, this makes it a bit easier to reuse the interop annotations logic.</li>
+<li>[docs] Add compatibility docs: <a href="https://zacsweers.github.io/metro/latest/compatibility/">https://zacsweers.github.io/metro/latest/compatibility/</a>. Metro supports a moving range of Kotlin versions, this page captures the tested versions for each release.</li>
+<li>[docs] Add stability docs: <a href="https://zacsweers.github.io/metro/latest/stability/">https://zacsweers.github.io/metro/latest/stability/</a></li>
+</ul>
+<p>Special thanks to <a href="https://github.com/jonamireh">@jonamireh</a>, <a href="https://github.com/hossain-khan">@hossain-khan</a>, and <a href="https://github.com/l2hyunwoo">@l2hyunwoo</a> for contributing to this release!</p>
+<h2 id="072">0.7.2<a class="headerlink" href="#072" title="Permanent link">&para;</a></h2>
+<p><em>2025-10-22</em></p>
+<ul>
+<li><strong>Fix</strong>: Fix eager initialization of some bindings going into multibindings.</li>
+<li><strong>Fix</strong>: Fix injection of <code>Lazy</code>-wrapped multibindings.</li>
+</ul>
+<h2 id="071">0.7.1<a class="headerlink" href="#071" title="Permanent link">&para;</a></h2>
+<p><em>2025-10-21</em></p>
+<p><strong>🚨 This release has a severe bug in multibinding code gen, please use 0.7.2 instead!</strong></p>
+<ul>
+<li>
+<p><strong>New</strong>: Add missing dependency hints for missing bindings errors<br />
+    <div class="highlight"><pre><span></span><code>[Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: FooImpl
+
+    FooImpl is injected at
+        [AppGraph] Bindings.bind: FooImpl
+    Base is requested at
+        [AppGraph] AppGraph.base
+
+(Hint)
+&#39;FooImpl&#39; doesn&#39;t appear to be visible to this compilation. This can happen when a binding references a type from an &#39;implementation&#39; dependency that isn&#39;t exposed to the consuming graph&#39;s module.
+Possible fixes:
+- Mark the module containing &#39;FooImpl&#39; as an &#39;api&#39; dependency in the module that defines &#39;Bindings&#39; (which is requesting it).
+- Add the module containing &#39;FooImpl&#39; as an explicit dependency to the module that defines &#39;AppGraph&#39;.
+</code></pre></div></p>
+</li>
+<li>
+<p><strong>Enhancement</strong>: Improve code generation around multibinding collection builders and contributors, using more lazy getters in graph code gen.</p>
+</li>
+<li><strong>Enhancement</strong>: Short-circuit empty map providers to <code>emptyMap()</code>.</li>
+<li><strong>Enhancement</strong>: Support default values for assisted parameter arguments in top-level function injection.</li>
+<li><strong>Enhancement</strong>: Allow using <code>@Contributes*</code> annotations on assisted factories with <code>contributesAsInject</code> enabled.</li>
+<li><strong>Enhancement</strong>: Allow <code>@OptionalBinding</code> annotation to be customizable/replaceable.</li>
+<li><strong>Change</strong>: Deprecate <code>@OptionalDependency</code> in favor of <code>@OptionalBinding</code>. Same behavior, just a slightly more consistent name.</li>
+<li><strong>Fix</strong>: Compute <code>Optional</code> instance lazily when requested as a <code>Provider&lt;Optional&lt;T&gt;&gt;</code> and the underlying optional is not empty. Only applies to <code>@BindsOptionalOf</code> interop.</li>
+<li><strong>Fix</strong>: Don&rsquo;t generate duplicate <code>init()</code> functions when chunking initializers if graphs already have an explicit <code>init()</code> function.</li>
+<li><strong>Fix</strong>: Fix support for assisted inject with no assisted params.</li>
+<li><strong>Fix</strong>: Detect platform types in just the <code>kotlin</code> package. Previously it missed any that didn&rsquo;t have multiple package segments.</li>
+<li><strong>Fix</strong>: Align unused context parameter special names on Kotlin 2.3.x.</li>
+<li>Remove <code>2.3.0-dev-7984</code> compat (superseded by <code>2.3.0-Beta1</code>).</li>
+</ul>
+<p>Special thanks to <a href="https://github.com/Lavmee">@Lavmee</a>, <a href="https://github.com/kevinguitar">@kevinguitar</a>, and <a href="https://github.com/jackwilsdon">@jackwilsdon</a> for contributing to this release!</p>
+<h2 id="070">0.7.0<a class="headerlink" href="#070" title="Permanent link">&para;</a></h2>
+<p><em>2025-10-17</em></p>
+<h3 id="dynamic-graphs">Dynamic Graphs<a class="headerlink" href="#dynamic-graphs" title="Permanent link">&para;</a></h3>
+<p>Dynamic graphs are a powerful new feature of the Metro compiler that allows for dynamically replacing bindings in a given graph. To use them, you can pass in a vararg set of <em>binding containers</em> to the <code>createDynamicGraph()</code> and <code>createDynamicGraphFactory()</code> intrinsics.</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span>
+<span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">message</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span>
+
+<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideMessage</span><span class="p">():</span><span class="w"> </span><span class="kt">String</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;real&quot;</span>
+<span class="p">}</span>
+
+<span class="kd">class</span><span class="w"> </span><span class="nc">AppTest</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">testGraph</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">createDynamicGraph</span><span class="o">&lt;</span><span class="n">AppGraph</span><span class="o">&gt;</span><span class="p">(</span><span class="n">FakeBindings</span><span class="p">)</span>
+
+<span class="w">  </span><span class="nd">@Test</span>
+<span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">test</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">assertEquals</span><span class="p">(</span><span class="s">&quot;fake&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">testGraph</span><span class="p">.</span><span class="na">message</span><span class="p">)</span>
+<span class="w">  </span><span class="p">}</span>
+
+<span class="w">  </span><span class="nd">@BindingContainer</span>
+<span class="w">  </span><span class="kd">object</span><span class="w"> </span><span class="nc">FakeBindings</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideMessage</span><span class="p">():</span><span class="w"> </span><span class="kt">String</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;fake&quot;</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>This is particularly useful for tests. See their docs for more information: <a href="https://zacsweers.github.io/metro/latest/dependency-graphs/#dynamic-graphs">Dynamic Graphs</a>.</p>
+<p>This API is experimental and may change in the future, please report any issues you encounter!</p>
+<h3 id="implicit-inject-behavior-on-most-contributes-annotated-types">Implicit <code>@Inject</code> behavior on (most) <code>@Contributes*</code>-annotated types<a class="headerlink" href="#implicit-inject-behavior-on-most-contributes-annotated-types" title="Permanent link">&para;</a></h3>
+<p>Up to this point, Metro has always required you to use <code>@Inject</code> on most <code>@Contributes*</code> annotated types. However, this can feel a bit repetitive and tedious. In this release, there is a new <code>contributesAsInject</code> option that can be enabled that will treat all <code>@Contributes*</code> annotated types as <code>@Inject</code> by default. You can still use <code>@Inject</code> on classes to be explicit, and if you have multiple constructors you must still use <code>@Inject</code> on the constructor you want to be used.</p>
+<p><em>The only exception to this is <code>@ContributesTo</code>, which isn&rsquo;t applicable to injected types.</em></p>
+<p>This is disabled by default to start but will likely become the default in a future release.</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@ContributesBinding</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="c1">// @Inject // &lt;-- now implicit!</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">TacoImpl</span><span class="p">(...)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">Taco</span>
+</code></pre></div>
+<h3 id="other-changes">Other Changes<a class="headerlink" href="#other-changes" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Behavior change</strong>: Remove <code>assistedInjectMigrationSeverity</code> DSL. You must now move fully to using <code>@AssistedInject</code> annotations for assisted types.</li>
+<li><strong>New</strong>: Allow exposing assisted-injected classes on a graph with qualifier annotations via <code>@Provides</code> declarations. This means you could, for example, write a provider like so:<br />
+    <div class="highlight"><pre><span></span><code><span class="nd">@Provides</span><span class="w"> </span><span class="nd">@Named</span><span class="p">(</span><span class="s">&quot;qualified&quot;</span><span class="p">)</span>
+<span class="kd">fun</span><span class="w"> </span><span class="nf">provideTaco</span><span class="p">(</span><span class="n">factory</span><span class="p">:</span><span class="w"> </span><span class="n">Taco</span><span class="p">.</span><span class="na">Factory</span><span class="p">):</span><span class="w"> </span><span class="n">Taco</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">factory</span><span class="p">.</span><span class="na">create</span><span class="p">(</span><span class="s">&quot;spicy&quot;</span><span class="p">)</span>
+</code></pre></div></li>
+<li><strong>New</strong>: Add diagnostic disallowing qualifier annotations directly on <code>@AssistedInject</code>-annotated classes.</li>
+<li><strong>New</strong>: Add <code>wasmWasi</code> targets to Metro&rsquo;s runtime.</li>
+<li><strong>New</strong>: Add diagnostic to report positional arguments use in custom interop annotations. See the <a href="https://zacsweers.github.io/metro/latest/interop#diagnostics">interop docs</a> for more information. This is disabled by default but can be configured via the <code>interopAnnotationsNamedArgSeverity</code> option.</li>
+<li><strong>New</strong>: Support context parameters on top-level injected functions. See the <a href="https://zacsweers.github.io/metro/latest/injection-types/#context-parameters">docs</a> for more information.</li>
+<li><strong>New</strong>: Improve diagnostic checks around binding container arguments to annotations and graph creators.</li>
+<li><strong>New</strong>: Add a diagnostic to warn on suspicious injection of unqualified object classes.</li>
+<li><strong>Enhancement</strong>: Add diagnostic for providing a constructor-injected class with a different scope than the class (if the class has a scope).</li>
+<li><strong>Enhancement</strong>: Allow replacing/excluding binding containers by <code>@Origin</code> annotations.</li>
+<li><strong>Fix</strong>: Don&rsquo;t use interoped annotation arguments at matching indices if their name does not match the requested name.</li>
+<li><strong>Fix</strong>: Trace all member injection dependencies from supertypes in graph reachability computation.</li>
+<li><strong>Fix</strong>: Use compat <code>getContainingClassSymbol()</code> (fixes Kotlin 2.3.0-x compatibility).</li>
+<li><strong>Fix</strong>: Better escape field names to be valid in JVM.</li>
+<li><strong>Fix</strong>: Don&rsquo;t double-invoke <code>Optional</code> binding fields.</li>
+<li><strong>Fix</strong>: Don&rsquo;t report duplicate bindings if injectors for both a parent and child class are present on a graph.</li>
+<li><strong>Fix</strong>: Look up correct target class ID for computed member injectors in <code>BindingLookup</code>.</li>
+<li><strong>Fix</strong>: Don&rsquo;t allow binding containers to be <code>inner</code> classes.</li>
+<li><strong>Fix</strong>: Don&rsquo;t allow binding containers to be local classes.</li>
+<li><strong>Fix</strong>: Don&rsquo;t allow binding containers to be anonymous objects.</li>
+<li><strong>Fix</strong>: Fix wrong parent graph name in <code>IncompatiblyScopedBindings</code> hint.</li>
+<li><strong>Fix</strong>: Fix replacements for regular contributed types not getting processed in graph extensions.</li>
+<li><strong>Fix</strong>: Don&rsquo;t re-process contribution merging for generated graph extension impls during graph node creation.</li>
+<li><strong>Fix</strong>: Don&rsquo;t reserve provider fields for custom wrapper types like interoped <code>Optional</code> types, avoiding accidental eager initialization in cycles.</li>
+<li>Change the warning key for redundant provides to more specific <code>REDUNDANT_PROVIDES</code>.</li>
+</ul>
+<p>Special thanks to <a href="https://github.com/erawhctim">@erawhctim</a> and <a href="https://github.com/CharlieTap">@CharlieTap</a> for contributing to this release!</p>
+<h2 id="0610">0.6.10<a class="headerlink" href="#0610" title="Permanent link">&para;</a></h2>
+<p><em>2025-10-11</em></p>
+<h3 id="optional-dependency-behaviors">Optional Dependency Behaviors<a class="headerlink" href="#optional-dependency-behaviors" title="Permanent link">&para;</a></h3>
+<p>Graph accessors can now expose optional dependencies, just use <code>@OptionalDependency</code> on the accessor. Note that the accessor <em>must</em> declare a default body that Metro will use if the dependency is absent.</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span>
+<span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nd">@OptionalDependency</span>
+<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">message</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span>
+<span class="w">    </span><span class="k">get</span><span class="p">()</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Absent!&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>There are a couple of optional configuration for Metro&rsquo;s optional dependency support that can be configured via the <code>optionalDependencyBehavior</code> Gradle DSL:</p>
+<ul>
+<li><code>DISABLED</code> - Disallows optional dependencies entirely.</li>
+<li><code>REQUIRE_OPTIONAL_DEPENDENCY</code> - Requires optional dependency <em>parameters</em> to also be annotated with <code>@OptionalDependency</code>. This may be preferable for consistency with accessors and/or explicitness.</li>
+<li><code>DEFAULT</code> - The default behavior as described above — accessors must be annotated with <code>@OptionalDependency</code> with default bodies and parameters just use default value expressions.</li>
+</ul>
+<h3 id="other-changes_1">Other changes<a class="headerlink" href="#other-changes_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>New</strong>: Add interop for Dagger <code>@BindsOptionalOf</code>. Note this is currently only limited to <code>java.util.Optional</code>.</li>
+<li><strong>Enhancement</strong>: Improve error messages for unexpected <code>IrErrorType</code> encounters.</li>
+<li><strong>Enhancement</strong>: Add configurable <code>statementsPerInitFun</code> to option to control the number of statements per init function. Only for advanced/debugging use.</li>
+<li><strong>Fix</strong>: Allow <code>@Includes</code> types themselves (i.e., not their accessors) to be dependencies in generated graphs.</li>
+<li><strong>Fix</strong>: Allow multiple graph extension factory accessors of the same factory type on parent graphs.</li>
+<li><strong>Fix</strong>: Report all missing <code>@Provides</code> body diagnostics rather than returning early.</li>
+<li><strong>Fix</strong>: Allow <code>open</code> members from abstract graph class superclasses to be accessors.</li>
+<li><strong>Fix</strong>: When detecting default function/property getter bodies in graph accessors, check for <code>open</code> modality as well.</li>
+<li><strong>Fix</strong>: Don&rsquo;t duplicate includes accessor keys across multiple parent context levels.</li>
+<li><strong>Fix</strong>: Fix not respecting ref counting when allocating provider fields for constructor-injected class providers. This should reduce generated graph code size quite a bit.</li>
+</ul>
+<p>Special thanks to <a href="https://github.com/ChristianKatzmann">@ChristianKatzmann</a> for contributing to this release!</p>
+<h2 id="069">0.6.9<a class="headerlink" href="#069" title="Permanent link">&para;</a></h2>
+<p><em>2025-10-07</em></p>
+<p>This release introduces new experimental support for multiple compiler and IDE versions. The primary goal of this is to better support running Metro&rsquo;s FIR extensions across different IntelliJ Kotlin Plugin versions and make IDE support more robust, and general compiler compatibility falls out of that more or less for free. This is experimental and only going to target <em>forward</em> compatibility.</p>
+<ul>
+<li><strong>New</strong>: Report more IR errors up to a maximum. The default is <code>20</code>, but is configurable via the <code>maxIrErrors</code> Gradle DSL option. If you want to restore the previous &ldquo;fail-fast&rdquo; behavior, you can set this value to <code>1</code>.</li>
+<li><strong>New</strong>: Generate specific containing names in Kotlin 2.3.0+ when generating top-level functions for hint gen.</li>
+<li><strong>Behavior change</strong>: Assisted-inject types can only be directly exposed on a graph if qualified.</li>
+<li><strong>Behavior change</strong>: Update the Gradle plugin to target Kotlin 2.0, which requires Gradle <code>8.11</code> or later.</li>
+<li><strong>Enhancement</strong>: Improve compatibility across 2.2.20 and 2.3.0+ releases. This release <em>should</em> be compatible with both!</li>
+<li><strong>Enhancement</strong>: Add diagnostic for directly injecting unqualified assisted-injected classes rather than using their factories.</li>
+<li><strong>Enhancement</strong>: Add diagnostic mixing <code>Provider</code> and <code>Lazy</code> types for <code>Provider&lt;Lazy&lt;T&gt;&gt;</code> injections.</li>
+<li><strong>Enhancement</strong>: Add diagnostics for custom map keys.</li>
+<li><strong>Enhancement</strong>: Fully allow exposing <code>Provider&lt;Lazy&lt;T&gt;&gt;</code> accessor types.</li>
+<li><strong>Enhancement</strong>: Significantly improve duplicate binding error message rendering.</li>
+<li><strong>Enhancement</strong>: Inline internal <code>trace</code> functions to reduce overhead.</li>
+<li><strong>Enhancement</strong>: Don&rsquo;t always generate fields for <code>MembersInjector</code> bindings.</li>
+<li><strong>Enhancement</strong>: Improve formatting of long cycles in <code>DependencyCycle</code> error messages.</li>
+<li><strong>Enhancement</strong>: Improve formatting of aliases in <code>DependencyCycle</code> error messages. Aliases are now indicated with <code>~~&gt;</code> arrows instead of <code>--&gt;</code>.</li>
+<li><strong>Enhancement</strong>: Improve formatting of member declarations in error messages for better IDE linking (if in the IDE terminal/console output) by using <code>.</code> separators instead of <code>#</code>.</li>
+<li><strong>Fix</strong>: Avoid obscure <code>UnsupportedOperationException</code> failures when reporting missing bindings.</li>
+<li><strong>Fix</strong>: Only generate assisted factories if <code>@AssistedInject</code> annotations are used on the target class.</li>
+<li><strong>Fix</strong>: Remove <code>PsiElement</code> shading workaround when reporting diagnostics.</li>
+<li><strong>Fix</strong>: Treat <code>MembersInjector</code> types as implicitly deferrable in binding graph validation.</li>
+<li><strong>Fix</strong>: Report cycles in form of <code>binding --&gt; dependency</code> rather than the reverse for better readability.</li>
+</ul>
+<p>Special thanks to <a href="https://github.com/kevinguitar">@kevinguitar</a>, <a href="https://github.com/hossain-khan">@hossain-khan</a>, and <a href="https://github.com/vRallev">@vRallev</a> for contributing to this release!</p>
+<h2 id="068">0.6.8<a class="headerlink" href="#068" title="Permanent link">&para;</a></h2>
+<p><em>2025-09-26</em></p>
+<ul>
+<li><strong>Fix</strong>: Preserve original nullability when canonicalizing generic types.</li>
+</ul>
+<h2 id="067">0.6.7<a class="headerlink" href="#067" title="Permanent link">&para;</a></h2>
+<p><em>2025-09-25</em></p>
+<h3 id="new-assistedinject-annotation">New <code>@AssistedInject</code> annotation<a class="headerlink" href="#new-assistedinject-annotation" title="Permanent link">&para;</a></h3>
+<p>Assisted-injected classes must now use <code>@AssistedInject</code> instead of <code>@Inject</code>.</p>
+<p>This is for multiple reasons:<br />
+  - It&rsquo;s more explicit at the source declaration site that this uses assisted injection and cannot be requested directly on the DI graph. This is particularly useful for scenarios where there no assisted parameters but you still want to use assisted injection.<br />
+  - This will allow adding more granular checks at compile-time to validate use-sites.<br />
+  - This will allow providing assisted types directly on the graph.<br />
+  - Will simplify some of Metro&rsquo;s internal logic.</p>
+<p>Note that not all internal changes are implemented yet to allow for a migration period. In this release, use of <code>@Inject</code> with <code>@Assisted</code> parameters is a compiler <em>warning</em> and will become an error in the future. This diagnostic is configurable via the <code>assistedInjectMigrationSeverity</code> Gradle DSL option.</p>
+<h3 id="other-changes_2">Other changes<a class="headerlink" href="#other-changes_2" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>New</strong>: Support for interop with externally generated Dagger modules.</li>
+<li><strong>Enhancement</strong>: Always check for available assisted factories when reporting <code>InvalidBinding</code> errors about misused assisted injects.</li>
+<li><strong>Enhancement</strong>: Always specifically report mismatched assisted parameter mismatches.</li>
+<li><strong>Enhancement</strong>: Validate <code>Lazy</code> assisted factory injections in more places.</li>
+<li><strong>Enhancement</strong>: Allow private <code>@Binds</code> properties.</li>
+<li><strong>Enhancement</strong>: Better canonicalize flexible mutability from Dagger interop in collections and flexible nullability.</li>
+<li><strong>Enhancement</strong>: Better canonicalize flexible nullability from Dagger interop in generic type arguments.</li>
+<li><strong>Enhancement</strong>: Simplify assisted factory impl class generation by moving it entirely to IR.</li>
+<li><strong>Enhancement</strong>: Allow qualifier narrowing but not widening on graph accessor types. Essentially, you can have a base interface with an unqualified accessor and then override that to add a qualifier in a subtype, but not the other way around.</li>
+<li><strong>Fix</strong>: Register <code>MetroDiagnostics</code> in FIR.</li>
+<li><strong>Fix</strong>: Use correct severity when reporting warnings to <code>MessageCollector</code> from newer IR diagnostics factories.</li>
+<li><strong>Fix</strong>: When transforming FIR override statuses, check all supertypes and not just immediate supertype.</li>
+<li><strong>Fix</strong>: Carry qualifiers over from Dagger inject constructors when interoping with dagger factories.</li>
+<li>If Dagger runtime interop is enabled, do not run status transformation on <code>@Provides</code> declarations in dagger modules.</li>
+</ul>
+<p>Special thanks to <a href="https://github.com/kevinguitar">@kevinguitar</a>, <a href="https://github.com/ChristianKatzmann">@ChristianKatzmann</a>, and <a href="https://github.com/hossain-khan">@hossain-khan</a> for contributing to this release!</p>
+<h2 id="066">0.6.6<a class="headerlink" href="#066" title="Permanent link">&para;</a></h2>
+<p><em>2025-09-11</em></p>
+<ul>
+<li><strong>Enhancement:</strong> Optimize annotation lookups in some places in IR.</li>
+<li><strong>Fix:</strong> If a graph declares an overridable declaration that matches one of a contributed supertype, transform it to add the requisite <code>override</code> modifier.<ul>
+<li>All that is to say, this code now works<br />
+  <div class="highlight"><pre><span></span><code><span class="nd">@ContributesTo</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="kd">interface</span><span class="w"> </span><span class="nc">StringRequester</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">string</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span>
+<span class="p">}</span>
+
+<span class="nd">@DependencyGraph</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">string</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="w"> </span><span class="c1">// &lt;-- previously failed to compile due to missing override</span>
+<span class="p">}</span>
+</code></pre></div></li>
+</ul>
+</li>
+<li>Update to Kotlin <code>2.2.20</code>. This release requires <code>2.2.20</code> or later. See the compatibility <a href="https://zacsweers.github.io/metro/latest/compatibility">docs</a>.</li>
+</ul>
+<p>Special thanks to <a href="https://github.com/kevinguitar">@kevinguitar</a> for contributing to this release!</p>
+<h2 id="065">0.6.5<a class="headerlink" href="#065" title="Permanent link">&para;</a></h2>
+<p><em>2025-09-11</em></p>
+<ul>
+<li><strong>New</strong>: Add <code>@Origin</code> annotation for custom code generators to link origin classes. See the <a href="https://zacsweers.github.io/metro/latest/generating-metro-code.html#origin-annotations">docs</a>.</li>
+<li><strong>Fix</strong>: Fix wrong <code>IrType</code> for default value expressions wrapped in <code>Provider</code>.</li>
+</ul>
+<p>Special thanks to <a href="https://github.com/ChristianKatzmann">@ChristianKatzmann</a>, <a href="https://github.com/KevinGuitar">@KevinGuitar</a>, and <a href="https://github.com/hossain-khan">@hossain-khan</a> for contributing to this release!</p>
+<h2 id="064">0.6.4<a class="headerlink" href="#064" title="Permanent link">&para;</a></h2>
+<p><em>2025-09-01</em></p>
+<ul>
+<li><strong>Enhancement</strong>: Transform and collect contribution data in a single pass during IR.</li>
+<li><strong>Fix</strong>: Ensure contributed binding containers&rsquo; included containers are available in root dependency graphs.</li>
+<li><strong>Fix</strong>: Make <code>@Includes</code> parameter keys available to extensions.</li>
+<li><strong>Fix</strong>: Fix an edge case where an included binding container that&rsquo;s transitively included by another container is seen to have zero bindings.</li>
+<li><strong>Fix</strong>: Report diagnostic errors to check that binding containers don&rsquo;t extend other binding containers.</li>
+<li><strong>Fix</strong>: Report diagnostic errors if accessors or injectors have conflicting qualifiers in overridden functions.</li>
+<li><strong>Fix</strong>: Report diagnostic errors if an injector function does not return <code>Unit</code>.</li>
+</ul>
+<p>Special thanks to <a href="https://github.com/joelwilcox">@joelwilcox</a>, <a href="https://github.com/vRallev">@vRallev</a>, <a href="https://github.com/kevinguitar">@kevinguitar</a>, and <a href="https://github.com/erawhctim">@erawhctim</a> for contributing to this release!</p>
+<h2 id="063">0.6.3<a class="headerlink" href="#063" title="Permanent link">&para;</a></h2>
+<p><em>2025-08-23</em></p>
+<ul>
+<li><strong>Enhancement</strong>: Allow <code>@Includes</code> parameters that are binding containers to transitively include other binding containers.</li>
+<li><strong>Fix</strong>: Ensure provider fields for graph instances when needed by extensions.</li>
+</ul>
+<p>Special thanks to <a href="https://github.com/hossain-khan">@hossain-khan</a>, <a href="https://github.com/vRallev">@vRallev</a>, and <a href="https://github.com/erawhctim">@erawhctim</a> for contributing to this release!</p>
+<h2 id="062">0.6.2<a class="headerlink" href="#062" title="Permanent link">&para;</a></h2>
+<p><em>2025-08-22</em></p>
+<ul>
+<li><strong>Enhancement</strong>: Add diagnostic for contributed binding containers with no (visible) no-arg constructor.</li>
+<li><strong>Enhancement</strong>: Add hint for missing bindings if the binding appears to be contributed by an <code>internal</code> type in another, non-friend module.</li>
+<li><strong>Fix</strong>: Don&rsquo;t allocate new fields for deferred bindings reserved by extension graphs.</li>
+<li><strong>Fix</strong>: Allow graph extensions to expose their own factories if inherited from parents.</li>
+</ul>
+<p>Special thanks to <a href="https://github.com/KevinGuitar">@KevinGuitar</a>, <a href="https://github.com/@hossain-khan">@hossain-khan</a> and <a href="https://github.com/ChrisBanes">@ChrisBanes</a> for contributing to this release!</p>
+<h2 id="061">0.6.1<a class="headerlink" href="#061" title="Permanent link">&para;</a></h2>
+<p><em>2025-08-20</em></p>
+<ul>
+<li><strong>New</strong>: Add a diagnostic to report parent keys used by graph extensions <code>parent-keys-used-*.txt</code>.</li>
+<li><strong>Enhancement</strong>: Graph extensions are now generated as <code>inner</code> classes, reducing much of the necessary generated code in parent graphs and allowing them to access parent binding fields directly.</li>
+<li><strong>Enhancement</strong>: Allow graph extensions to depend on other graph extensions within the context of their parent graph.</li>
+<li><strong>Enhancement</strong>: Add a diagnostic for graph factories with vararg parameters.</li>
+<li><strong>Enhancement</strong>: Allow graph extension factories to participate in the binding graph, which then allows injecting or binding them like any other dependency.</li>
+<li><strong>Enhancement</strong>: Improve error message location accuracy for missing bindings when reporting from a <code>@Binds</code> declaration.</li>
+<li><strong>Fix</strong>: Don&rsquo;t override graph extension factories&rsquo; default functions.</li>
+<li><strong>Fix</strong>: Fix Kotlin internal error overriding Metro error when there&rsquo;s a missing factory for a Java <code>@Inject</code> class.</li>
+<li>[Docs] The project website is now versioned. This means you can read the documentation at different versions:</li>
+<li>Latest release: <a href="https://zacsweers.github.io/metro/latest/">https://zacsweers.github.io/metro/latest/</a></li>
+<li>Snapshots (example): <a href="https://zacsweers.github.io/metro/0.7.0-SNAPSHOT/">https://zacsweers.github.io/metro/0.7.0-SNAPSHOT/</a></li>
+<li>Past release (example): <a href="https://zacsweers.github.io/metro/0.6.0/">https://zacsweers.github.io/metro/0.6.0/</a></li>
+<li>Deprecate the <code>enableStrictValidation</code> Gradle property in favor of <code>enableFullBindingGraphValidation</code>, which aligns with <a href="https://dagger.dev/dev-guide/compiler-options#full-binding-graph-validation">Dagger&rsquo;s (better) name for the same functionality</a>.</li>
+<li>Update Wire to <code>5.3.11</code>.</li>
+</ul>
+<p>Special thanks to <a href="https://github.com/hossain-khan">@hossain-khan</a> and <a href="https://github.com/JoelWilcox">@JoelWilcox</a> for contributing to this release!</p>
+<h2 id="060">0.6.0<a class="headerlink" href="#060" title="Permanent link">&para;</a></h2>
+<p><em>2025-08-15</em></p>
+<h3 id="graph-extensions-are-no-longer-detached">Graph extensions are no longer detached.<a class="headerlink" href="#graph-extensions-are-no-longer-detached" title="Permanent link">&para;</a></h3>
+<p><strong>TL;DR: Metro graph extensions are now wired similar to Dagger subcomponents and use a new <code>@GraphExtension</code> annotation. <code>@Extends</code> and <code>isExtendable</code> are now deleted, <code>@ContributesGraphExtension</code> and <code>enableScopedInjectClassHints()</code> are deprecated.</strong></p>
+<p>Up to this point, Metro&rsquo;s graph extensions have been <em>detached</em>. This meant that extensions could simply depend on a parent graph via <code>@Extends</code> and parent graphs had to mark themselves as extendable via <code>isExtendable = true</code>. This approach mirrored kotlin-inject&rsquo;s approach and was convenient in its flexibility. However, it&rsquo;s proven too problematic in practice for a few reasons:</p>
+<ol>
+<li>Parent graphs have to generate a bunch of extra code for extensions. Namely, scoped providers and any instances of containers/parents they are holding on to need accessors. It also generates extra metadata (metro serializes its own metadata to its types) for separate graphs to read.</li>
+<li>Because of the above, parent graphs had to opt-in to extension via <code>isExtendable = true</code>.</li>
+<li>Up to this point, parent graphs always held scoped providers for all <code>@Provides</code> bindings in it or containers, <em>even if they do not use them</em>.</li>
+<li>Similar to #3, we&rsquo;ve had to add support for automatic discovery of scoped constructor-injected classes (via <code>enableScopedInjectClassHints()</code>) to ensure they are also held at the appropriate scope.</li>
+<li>This has ended up causing a lot of headaches because eager validation complicates these in scenarios where you have multiple graphs that may not actually use that class anywhere (and thus not provide some of its dependencies)</li>
+<li>Because every graph must expose every available binding to unknown extensions, every graph in a chain is often bloated with bindings it doesn&rsquo;t use.</li>
+</ol>
+<p>Metro <em>could</em> optimize the <code>@ContributesGraphExtension</code> cases where Metro&rsquo;s compiler has a view of the entire graph chain, but that would frankly leave Metro with a lot of edge cases to deal with and users with needing to know about two different ways to extend graphs. We opted against that, and instead are now going to process graph extensions in a similar way to Dagger&rsquo;s <strong>subcomponents</strong>.</p>
+<p>This will allow Metro to</p>
+<ol>
+<li>Fully optimize the whole graph chain.</li>
+<li>Automatically scope bindings in parents (no need to expose accessors for scoped bindings unused in parents).</li>
+<li>Only generate <em>exactly</em> the bindings that are used in each graph with lazy validation of bindings.</li>
+</ol>
+<h4 id="graphextension"><code>@GraphExtension</code><a class="headerlink" href="#graphextension" title="Permanent link">&para;</a></h4>
+<p><code>@GraphExtension</code> is a new annotation to denote a graph that is an extension. This is analogous to Dagger&rsquo;s <code>@Subcomponent</code> and dagger interop treats it as such.</p>
+<p>To connect an extension to a parent graph, you can do one of multiple ways:</p>
+<ul>
+<li>Declare an accessor on the parent graph directly.</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="nd">@GraphExtension</span>
+<span class="kd">interface</span><span class="w"> </span><span class="nc">LoggedInGraph</span>
+
+<span class="nd">@DependencyGraph</span>
+<span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">loggedInGraph</span><span class="p">:</span><span class="w"> </span><span class="n">LoggedInGraph</span>
+<span class="p">}</span>
+</code></pre></div>
+<ul>
+<li>(If the extension has a creator) declare the creator on the parent graph directly.</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="nd">@GraphExtension</span>
+<span class="kd">interface</span><span class="w"> </span><span class="nc">LoggedInGraph</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nd">@GraphExtension.Factory</span>
+<span class="w">  </span><span class="kd">interface</span><span class="w"> </span><span class="nc">Factory</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">fun</span><span class="w"> </span><span class="nf">createLoggedInGraph</span><span class="p">():</span><span class="w"> </span><span class="n">LoggedInGraph</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="nd">@DependencyGraph</span>
+<span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">loggedInGraphFactory</span><span class="p">:</span><span class="w"> </span><span class="n">LoggedInGraph</span><span class="p">.</span><span class="na">Factory</span>
+<span class="p">}</span>
+</code></pre></div>
+<ul>
+<li>(If the extension has a creator) make the parent graph implement the creator.</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="nd">@GraphExtension</span>
+<span class="kd">interface</span><span class="w"> </span><span class="nc">LoggedInGraph</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nd">@GraphExtension.Factory</span>
+<span class="w">  </span><span class="kd">interface</span><span class="w"> </span><span class="nc">Factory</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">fun</span><span class="w"> </span><span class="nf">createLoggedInGraph</span><span class="p">():</span><span class="w"> </span><span class="n">LoggedInGraph</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="nd">@DependencyGraph</span>
+<span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">LoggedInGraph</span><span class="p">.</span><span class="na">Factory</span>
+</code></pre></div>
+<ul>
+<li>Contribute the factory to the parent graph via <code>@ContributesTo</code>.</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="nd">@GraphExtension</span><span class="p">(</span><span class="n">LoggedInScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="kd">interface</span><span class="w"> </span><span class="nc">LoggedInGraph</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nd">@ContributesTo</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="w">  </span><span class="nd">@GraphExtension.Factory</span>
+<span class="w">  </span><span class="kd">interface</span><span class="w"> </span><span class="nc">Factory</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">fun</span><span class="w"> </span><span class="nf">createLoggedInGraph</span><span class="p">():</span><span class="w"> </span><span class="n">LoggedInGraph</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="nd">@DependencyGraph</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span>
+</code></pre></div>
+<h4 id="migration">Migration<a class="headerlink" href="#migration" title="Permanent link">&para;</a></h4>
+<p>The following APIs have been removed or deprecated:</p>
+<ul>
+<li><code>@Extends</code>. Migrate to <code>@GraphExtension</code>, remove this parameter, and expose the factory in the parent graph API as documented above.</li>
+<li><code>isExtendable</code> is removed from <code>@DependencyGraph</code> and <code>@ContributesGraphExtension</code>.</li>
+<li><code>@ContributesGraphExtension</code> is now deprecated and treated like <code>@GraphExtension</code>.</li>
+<li><code>@ContributesGraphExtension.Factory</code> is deprecated with <strong>error</strong> severity and requires migration to the new <code>@ContributesTo</code> pattern.</li>
+<li><code>enableScopedInjectClassHints()</code> is now deprecated and does nothing. It will be removed in the future.</li>
+<li>Graph extensions may no longer have multiple direct parents.</li>
+</ul>
+<p>To create graph extensions, you now <em>must</em> do so via a parent graph (using one of the above connecting mechanisms).</p>
+<h3 id="other-changes_3">Other changes<a class="headerlink" href="#other-changes_3" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Breaking change</strong>: Rename <code>custom-graph</code> compiler option to <code>custom-dependency-graph</code>.</li>
+<li><strong>Breaking change</strong>: Rename <code>custom-dependency-graph-factory</code> compiler option to <code>custom-dependency-graph-factory</code>.</li>
+<li><strong>Breaking change</strong>: Rename <code>MetroPluginExtension.graph</code> gradle extension property to <code>MetroPluginExtension.dependencyGraph</code>.</li>
+<li><strong>Breaking change</strong>: Rename <code>MetroPluginExtension.graphFactory</code> gradle extension property to <code>MetroPluginExtension.dependencyGraphFactory</code>.</li>
+<li><strong>Behavior change</strong>: <code>@Provides</code> and <code>@Binds</code> bindings are now only validated if they are used by the <em>owning</em> graph. Previously, they were always validated.<ul>
+<li>If you want to keep the previous behavior, you can enable the <code>enableStrictValidation()</code> option.</li>
+</ul>
+</li>
+<li><strong>Behavior change</strong>: <code>chunkFieldInits()</code> is now enabled by default.</li>
+<li><strong>Behavior change</strong>: When adding bindings from extended parent graphs, ignore any that are provided directly in the child graph. Previously, Metro only ignored the binding if the binding was itself a graph type.</li>
+<li><strong>New</strong>: Add diagnostic reports for (valid) cycles. This means if you have a cycle in your graph and enable a <code>reportsDestination</code>, Metro will generate files with a list of all the keys in that cycle.</li>
+<li><strong>Enhancement</strong>: In tracing logs, include the graph name in the &ldquo;Transform dependency graph&rdquo; sections.</li>
+<li><strong>Enhancement</strong>: Allow contributing annotations on assisted-injected classes.</li>
+<li><strong>Enhancement</strong>: Improve dagger interop with <code>dagger.Lazy</code> types by allowing <code>Provider</code> subtypes to be wrapped too.</li>
+<li><strong>Enhancement</strong>: Support <code>rank</code> interop on Anvil annotations in contributed graph extensions.</li>
+<li><strong>Enhancement</strong>: Support <code>ignoreQualifier</code> interop on Anvil annotations in contributed graph extensions.</li>
+<li><strong>Enhancement</strong>: Only process contributions to the consuming graph&rsquo;s scopes when processing <code>rank</code> replacements in FIR.</li>
+<li><strong>Enhancement</strong>: Improve error message for invalid assisted inject bindings to injected target.</li>
+<li><strong>Enhancement</strong>: Report similar bindings in missing binding errors where the similar binding doesn&rsquo;t have a qualifier but the requested binding does. Previously we only reported if the similar binding had a qualifier and the requested binding didn&rsquo;t.</li>
+<li><strong>Fix</strong>: Don&rsquo;t link expect/actual declarations if they&rsquo;re in the same file.</li>
+<li><strong>Fix</strong>: Don&rsquo;t copy map keys over into generated <code>@Binds</code> contributions unless it&rsquo;s an <code>@IntoMap</code> binding.</li>
+<li><strong>Fix</strong>: Fall back to annotation sources if needed when reporting errors with bound types in FIR.</li>
+<li><strong>Fix</strong>: Use <code>MapProviderFactory.builder().build()</code> for Dagger interop on <code>Map&lt;Key, Provider&lt;Value&gt;&gt;</code> types as there is no <code>MapProviderFactory.empty()</code>.</li>
+<li><strong>Fix</strong>: Don&rsquo;t assume <code>@ContributesGraphExtension</code> to have aggregation scopes during graph generation.</li>
+<li><strong>Fix</strong>: When extending graphs, ignore bindings of the same type as the inheriting graph.</li>
+<li><strong>Fix</strong>: Propagate parent graph empty <code>@Multibinds</code> declarations to extensions.</li>
+<li><strong>Fix</strong>: Propagate managed binding containers to extension graphs.</li>
+<li><strong>Fix</strong>: Propagate transitively included binding containers contributed to contributed graphs (sorry, word soup).</li>
+<li><strong>Fix</strong>: Make generated multibinding element IDs stable across compilations.</li>
+<li><strong>Fix</strong>: Handle location-less declarations when reporting invalid assisted inject bindings.</li>
+<li><strong>Fix</strong>: Don&rsquo;t chunk parent graph validation statements as these must be in the original constructor body.</li>
+<li><strong>Fix</strong>: Fix wrong receiver context for chunked field initializers.</li>
+<li><strong>Fix</strong>: Fix support for generic private injected constructors.</li>
+<li>[internal change] Simplify metadata and just use accessor annotations.</li>
+<li>[internal change] Graph extension impls are now generated as nested classes within the generated metro graph that they are contributed to.</li>
+<li>Update to Kotlin <code>2.2.10</code>.</li>
+</ul>
+<p>Special thanks to <a href="https://github.com/hossain-khan">@hossain-khan</a>, <a href="https://github.com/Egorand">@Egorand</a>, <a href="https://github.com/kevinguitar">@kevinguitar</a>, <a href="https://github.com/jonapoul">@jonapoul</a>, and <a href="https://github.com/martinbonnin">@martinbonnin</a> for contributing to this release!</p>
+<h2 id="055">0.5.5<a class="headerlink" href="#055" title="Permanent link">&para;</a></h2>
+<p><em>2025-08-02</em></p>
+<ul>
+<li><strong>Fix</strong>: Fix Wire shading in native targets.</li>
+</ul>
+<h2 id="054">0.5.4<a class="headerlink" href="#054" title="Permanent link">&para;</a></h2>
+<p><em>2025-08-01</em></p>
+<ul>
+<li><strong>Enhancement</strong>: Support <code>excludes</code>, <code>bindingContainers</code>, and <code>additionalScopes</code> in <code>@ContributesGraphExtension</code>.</li>
+<li><strong>Enhancement</strong>: Allow binding containers and regular contributed classes to replace each other in contribution merging.</li>
+<li><strong>Enhancement</strong>: Allow <code>@ElementsIntoSet</code> on properties.</li>
+<li><strong>Enhancement</strong>: Don&rsquo;t run FIR extensions on Java sources.</li>
+<li><strong>Fix</strong>: Report incompatible scopes in nested contributed graphs to <code>MessageCollector</code> until Kotlin 2.2.20.</li>
+<li><strong>Fix</strong>: Report binding issues from externally contributed graphs to <code>MessageCollector</code> until Kotlin 2.2.20.</li>
+<li><strong>Fix</strong>: Preserve nullability when remapping type parameters.</li>
+<li><strong>Fix</strong>: Don&rsquo;t double-add <code>@ContributesTo</code> contributions while merging contributed graphs.</li>
+<li><strong>Fix</strong>: Check <code>rawStatus</code> for overrides when merging contributed supertypes.</li>
+<li><strong>Fix</strong>: Correctly extract the element type when creating implicit <code>Set</code> multibindings from <code>@ElementsIntoSet</code> contributors.</li>
+<li><strong>Fix</strong>: Check <code>additionalScopes</code> when merging binding containers too.</li>
+<li><strong>Fix</strong>: Don&rsquo;t fail if multiple contributing annotations on binding containers match the target scope when aggregating them.</li>
+<li><strong>Fix</strong>: Dedupe binding containers during graph node generation.</li>
+<li><strong>Fix</strong>: Add a checker for <code>@Provides</code> constructor parameters in binding containers.</li>
+<li><strong>Fix</strong>: Fix reading repeated external contributed annotations.</li>
+<li><strong>Fix</strong>: Filter by matching scopes when merging contributed types with repeated annotations.</li>
+</ul>
+<p>Special thanks to <a href="https://github.com/hossain-khan">@hossain-khan</a>, <a href="https://github.com/gabrielittner">@gabrielittner</a>, <a href="https://github.com/kevinguitar">@kevinguitar</a>, <a href="https://github.com/JoelWilcox">@JoelWilcox</a>, and <a href="https://github.com/martinbonnin">@martinbonnin</a> for contributing to this release!</p>
+<h2 id="053">0.5.3<a class="headerlink" href="#053" title="Permanent link">&para;</a></h2>
+<p><em>2025-07-28</em></p>
+<ul>
+<li><strong>Behavior change:</strong> The <code>enableScopedInjectClassHints</code> option is no longer enabled by default. This option is tricky to get right and will be iterated on further in <a href="https://github.com/ZacSweers/metro/issues/764">#764</a>.</li>
+<li><strong>Enhancement:</strong> Generate synthetic <code>$$BindsMirror</code> classes to&hellip;<ul>
+<li>support full IC compatibility with changing annotations and return types on <code>@Binds</code> and <code>@Multibinds</code> declarations</li>
+<li>allow these declarations to be <code>private</code></li>
+</ul>
+</li>
+<li><strong>Enhancement:</strong> Allow <code>@Binds</code> and <code>@Multibinds</code> functions to be private.</li>
+<li><strong>Enhancement:</strong> Allow &ldquo;static graphs&rdquo; via companions implementing the graph interface itself.</li>
+<li><strong>Enhancement:</strong> Allow graphs to aggregate <code>internal</code> contributions from other compilations IFF those compilations are marked as friend paths. This mainly allows for test graphs to consume contributions from their corresponding main source sets.</li>
+<li><strong>Enhancement:</strong> Allow <code>internal</code> graphs to extend <code>internal</code> contributed interfaces from other compilations IFF those compilations are marked as friend paths.</li>
+<li><strong>Fix:</strong> Sort soft edges before hard edges within (valid) cycles. Previously we would just apply a standard topological sort here, but in this scenario we want to add extra weight to ready-up nodes that depend directly on the deferred type being used to break the cycle first.</li>
+<li><strong>Fix:</strong> When recording IC lookups of overridable declarations, only record the original declaration and not fake overrides.</li>
+<li><strong>Fix:</strong> Record IC lookups to <code>@Multibinds</code> declarations.</li>
+<li><strong>Fix:</strong> Write <code>@Multibinds</code> information to metro metadata.</li>
+<li><strong>Fix:</strong> Always write metro metadata to <code>@BindingContainer</code> classes, even if empty.</li>
+<li><strong>Fix:</strong> When <code>@Includes</code>-ing other graphs, link against the original interface accessor rather than the generated <code>$$MetroGraph</code> accessor.</li>
+<li><strong>Fix:</strong> Disambiguate contributed nullable bindings from non-nullable bindings.</li>
+<li><strong>Fix:</strong> When computing <code>@Includes</code> graph dependencies from accessors, only consider directly included graphs and not transitively included graphs.</li>
+<li><strong>Fix:</strong> Expose <code>@Includes</code> graph dependencies as synthetic <code>_metroAccessor</code> types for extended graphs rather than exposing the included graph directly.</li>
+<li><strong>Fix:</strong> Prohibit calling <code>.asContribution()</code> on <code>@ContributesGraphExtension</code>-annotated types. <code>@ContributesGraphExtension</code>-annotated types cannot be validated at compile-time with this function as their generated class is definitionally contextual and the compiler cannot infer that from callsites of this function alone.</li>
+<li><strong>Fix:</strong> Only process <code>@DependencyGraph</code> types in FIR supertype generation. Contributed graph extension supertypes are merged only in IR.</li>
+<li><strong>Fix:</strong> Generate <code>$$MetroContribution</code> binds functions before aggregating contributions.</li>
+<li><strong>Fix:</strong> Don&rsquo;t short-circuit class visiting in contribution visiting in IR.</li>
+<li><strong>Fix:</strong> Propagate property annotations for <code>@Provides</code>-properties, previously only the accessor function annotations were being included.</li>
+<li><strong>Fix:</strong> Propagate class annotations for <code>@Inject</code>-annotated constructors to factory class mirror functions, previously only the constructor&rsquo;s annotations were being included.</li>
+<li><strong>Fix:</strong> Fix dispatch receiver for <code>DelegateFactory</code> fields when <code>chunkFieldInits</code> is enabled.</li>
+<li><strong>Fix:</strong> Fix compilation error for members-injected classes with no direct, but only inherited <code>@Inject</code> attributes.</li>
+<li><strong>Fix:</strong> Always look up member injectors of ancestor classes of classes member-injected by graphs (sorry, word soup I know).</li>
+<li><strong>Fix:</strong> Ensure <code>$$MetroContribution</code> interfaces are not generated for binding containers by ensuring binding container annotations are readable during their generation.</li>
+<li>Change to <code>UnsupportedOperationException</code> for compiler intrinsic stubs, matching what the stdlib does.</li>
+<li>Add a <code>ViewModel</code> assisted injection example to <code>compose-navigation-app</code> sample.</li>
+<li>Small improvements to the doc site (404 page, favicon, etc.)</li>
+</ul>
+<p>Special thanks to <a href="https://github.com/hossain-khan">@hossain-khan</a>, <a href="https://github.com/bnorm">@bnorm</a>, <a href="https://github.com/yschimke">@yschimke</a>, <a href="https://github.com/kevinguitar">@kevinguitar</a>, and <a href="https://github.com/JoelWilcox">@JoelWilcox</a> for contributing to this release!</p>
+<h2 id="052">0.5.2<a class="headerlink" href="#052" title="Permanent link">&para;</a></h2>
+<p><em>2025-07-21</em></p>
+<ul>
+<li><strong>Enhancement</strong>: De-dupe contributions before processing in contributed graphs.</li>
+<li><strong>Fix</strong>: Don&rsquo;t extend contributed binding container classes in generated contributed graphs.</li>
+<li>Small doc fixes.</li>
+</ul>
+<p>Special thanks to <a href="https://github.com/bnorm">@bnorm</a> and <a href="https://github.com/alexvanyo">@alexvanyo</a> for contributing to this release!</p>
+<h2 id="051">0.5.1<a class="headerlink" href="#051" title="Permanent link">&para;</a></h2>
+<p><em>2025-07-18</em></p>
+<ul>
+<li><strong>Breaking change:</strong> Rename the <code>generateHintProperties</code> Gradle DSL property to <code>generateContributionHints</code>.</li>
+<li><strong>Enhancement:</strong> Chunk field initializers and constructor statements across multiple init functions to avoid <code>MethodTooLargeException</code> in large graphs. This is currently experimental and gated behind the <code>chunkFieldInits()</code> Gradle DSL.</li>
+<li><strong>Enhancement:</strong> Mark generated factories and member injectors&rsquo; constructors as <code>private</code>, matching the same <a href="https://github.com/google/dagger/releases/tag/dagger-2.57">change in Dagger 2.57</a>.</li>
+<li><strong>Enhancement:</strong> Add a new Metro option <code>warnOnInjectAnnotationPlacement</code> to disable suggestion to lift @Inject to class when there is only one constructor, the warning applies to constructors with params too.</li>
+<li><strong>Fix:</strong> Fix <code>@Contributes*.replaces</code> not working if the contributed type is in the same compilation but a different file.</li>
+<li><strong>Fix:</strong> Fix generated <code>MembersInjector.create()</code> return types&rsquo; generic argument to use the target class.</li>
+<li><strong>Fix:</strong> Don&rsquo;t generated nested MetroContribution classes for binding containers.</li>
+<li><strong>Fix:</strong> Fix contributing binding containers across compilations.</li>
+</ul>
+<p>Special thanks to <a href="https://github.com/kevinguitar">@kevinguitar</a> and <a href="https://github.com/ChristianKatzmann">@ChristianKatzmann</a> for contributing to this release!</p>
+<h2 id="050">0.5.0<a class="headerlink" href="#050" title="Permanent link">&para;</a></h2>
+<p><em>2025-07-14</em></p>
+<ul>
+<li><strong>New:</strong> Experimental support for &ldquo;binding containers&rdquo; via <code>@BindingContainer</code>. See <a href="https://zacsweers.github.io/metro/dependency-graphs#binding-containers">their docs</a> for more details.</li>
+<li><strong>New:</strong> Add <code>keys-scopedProviderFields-*.txt</code> and <code>keys-providerFields-*.txt</code> reports to see generated field reports for graphs.</li>
+<li><strong>Enhancement:</strong> Remove <code>Any</code> constraint from <code>binding&lt;T&gt;()</code>, allowing bindings to satisfy nullable variants.</li>
+<li><strong>Enhancement:</strong> Add diagnostic to check for scoped <code>@Binds</code> declarations. These are simple pipes and should not have scope annotations.</li>
+<li><strong>Enhancement:</strong> Move graph dependency cycle checks to earlier in validation.</li>
+<li><strong>Enhancement:</strong> When using Dagger interop, default <code>allowEmpty</code> to true when using Dagger&rsquo;s <code>@Multibinds</code> annotation.</li>
+<li><strong>Enhancement:</strong> Make Dagger interop providers/lazy instances a <code>dagger.internal.Provider</code> internally for better compatibility with Dagger internals. Some dagger-generated code assumes this type at runtime.</li>
+<li><strong>Enhancement:</strong> Support javax/jakarta <code>Provider</code> types as multibinding Map value types when Dagger interop is enabled.</li>
+<li><strong>Enhancement:</strong> Completely skip processing local and enum classes as they&rsquo;re irrelevant to Metro&rsquo;s compiler.</li>
+<li><strong>Enhancement:</strong> When reporting <code>@Binds</code> declarations in binding stacks, report the original declaration rather than inherited fake overrides.</li>
+<li><strong>Enhancement:</strong> Add interop support for kotlin-inject&rsquo;s <code>@AssistedFactory</code> annotations.</li>
+<li><strong>Enhancement:</strong> Add diagnostic to check for graph classes directly extending other graph classes. You should use <code>@Extends</code>.</li>
+<li><strong>Enhancement:</strong> Add diagnostic to check for <code>@Assisted</code> parameters in provides functions.</li>
+<li><strong>Enhancement:</strong> Add diagnostic to check duplicate <code>@Provides</code> declaration names in the same class.</li>
+<li><strong>Fix:</strong> Within (valid) cycles, topographically sort bindings within the cycle. Previously these would fall back to a deterministic-but-wrong alphabetical sort.</li>
+<li><strong>Fix:</strong> Handle enum entry arguments to qualifier, scope, and map key annotations.</li>
+<li><strong>Fix:</strong> Report the original location of declarations in fake overrides in error reporting.</li>
+<li><strong>Fix:</strong> Handle default values on provides parameters with absent bindings during graph population.</li>
+<li><strong>Fix:</strong> Don&rsquo;t try to read private accessors of <code>@Includes</code> parameters.</li>
+<li><strong>Fix:</strong> Don&rsquo;t quietly stub accessors for missing <code>Binding.Provided</code> bindings.</li>
+<li><strong>Fix:</strong> Check constructor-annotated injections when discovering scoped classes in parent graphs.</li>
+<li><strong>Fix:</strong> Fix <code>BaseDoubleCheck.isInitialized()</code>.</li>
+<li><strong>Fix:</strong> Gracefully fall back to <code>MessageCollector</code> for graph seal and contributed graph errors on sourceless declarations.</li>
+<li><strong>Fix:</strong> Fix supporting overloads of binds functions from parent graphs or external supertypes.</li>
+<li><strong>Fix:</strong> Fix generating binding functions with names that contain dashes.</li>
+<li><strong>Fix:</strong> Treat interop&rsquo;d Dagger/Anvil/KI components as implicitly extendable.</li>
+<li><strong>Fix:</strong> Record lookups of <code>@Binds</code> declarations for IC.</li>
+<li><strong>Fix:</strong> Record lookups of generated class factories and their constructor signatures for IC.</li>
+</ul>
+<p>Special thanks to <a href="https://github.com/kevinguitar">@kevinguitar</a>, <a href="https://github.com/gabrielittner">@gabrielittner</a>, <a href="https://github.com/chrisbanes">@chrisbanes</a>, <a href="https://github.com/yschimke">@yschimke</a>, and <a href="https://github.com/ajarl">@ajarl</a> for contributing to this release!</p>
+<h2 id="040">0.4.0<a class="headerlink" href="#040" title="Permanent link">&para;</a></h2>
+<p><em>2025-06-23</em></p>
+<ul>
+<li><strong>New:</strong> Injected constructors may now be private. This can be useful for scenarios where you want <code>@Inject</code>-annotated constructors to only be invokable by Metro&rsquo;s generated code.</li>
+<li><strong>New:</strong> If reporting is enabled, write unused bindings diagnostics to <code>keys-unused-*.txt</code>.</li>
+<li><strong>New:</strong> Support for generic assisted injection.</li>
+<li><strong>New:</strong> Support for generic member injection.</li>
+<li><strong>New:</strong> Add diagnostic to prohibit type parameters on injected member functions.</li>
+<li><strong>Enhancement:</strong> Enable child graphs to depend on parent-scoped dependencies that are unused and not referenced in the parent scope. This involves generating hints for scoped <code>@Inject</code> classes and is gated on a new Metro option <code>enableScopedInjectClassHints</code>, which is enabled by default.</li>
+<li><strong>Enhancement:</strong> Check for context parameters in top-level function injection checker.</li>
+<li><strong>Enhancement:</strong> Store member injection info in metro metadata to slightly optimize member injection code gen.</li>
+<li><strong>Enhancement:</strong> Avoid writing providers fields in graphs for unused bindings.</li>
+<li><strong>Enhancement:</strong> Improve missing binding trace originating from root member injectors.</li>
+<li><strong>Fix:</strong> Fix support for generic injected constructor parameters.</li>
+<li><strong>Fix:</strong> Fix support for repeated contributes annotations by moving contribution binding function generation to IR.</li>
+<li><strong>Fix:</strong> Ensure scope/qualifier annotation changes on constructor-injected classes dirty consuming graphs in incremental compilation.</li>
+<li><strong>Fix:</strong> Report member injection dependencies when looking up constructor-injected classes during graph population.</li>
+<li><strong>Fix:</strong> Disable IR hint generation on JS targets too, as these now have the same limitation as native/WASM targets in Kotlin 2.2. Pending upstream support for generating top-level FIR declarations in <a href="https://youtrack.jetbrains.com/issue/KT-75865">KT-75865</a>.</li>
+<li><strong>Fix:</strong> Ensure private provider function annotations are propagated across compilation boundaries.</li>
+<li><strong>Fix:</strong> Substitute copied FIR type parameter symbols with symbols from their target functions.</li>
+<li><strong>Fix:</strong> Improved support for generic member injection.</li>
+<li><strong>Fix:</strong> Propagate qualifiers on graph member injector functions.</li>
+<li><strong>Fix:</strong> Fix support for requesting <code>MembersInjector</code> types.</li>
+<li>[internal] Report IR errors through <code>IrDiagnosticReporter</code>.</li>
+<li>[internal] Significantly refactor + simplify IR parameter handling.</li>
+<li>Fix publishing Apple native targets in snapshots.</li>
+<li>Update to Kotlin <code>2.2.0</code>.</li>
+<li>Update Gradle plugin to target Kotlin language version to <code>1.9</code> (requires Gradle 8.3+).</li>
+</ul>
+<p>Special thanks to <a href="https://github.com/kevinguitar">@kevinguitar</a>, <a href="https://github.com/gabrielittner">@gabrielittner</a>, and <a href="https://github.com/JoelWilcox">@JoelWilcox</a> for contributing to this release!</p>
+<h2 id="038">0.3.8<a class="headerlink" href="#038" title="Permanent link">&para;</a></h2>
+<p><em>2025-06-16</em></p>
+<ul>
+<li><strong>Enhancement:</strong> Disambiguate <code>MetroContribution</code> class names based on scope to better support IC when changing scopes.</li>
+<li><strong>Enhancement:</strong> Minimize deferred types when breaking cycles.</li>
+<li><strong>Fix:</strong> Disallow injection of <code>Lazy&lt;T&gt;</code> where <code>T</code> is an <code>@AssistedFactory</code>-annotated class.</li>
+<li><strong>Fix:</strong> Don&rsquo;t short-circuit assisted injection validation if only an accessor exists.</li>
+<li><strong>Fix:</strong> Allow cycles of assisted factories to their target classes.</li>
+<li>Update shaded okio to <code>3.13.0</code>.</li>
+<li>Update atomicfu to <code>0.28.0</code>.</li>
+</ul>
+<p>Special thanks to <a href="https://github.com/kevinguitar">@kevinguitar</a>, <a href="https://github.com/bnorm">@bnorm</a>, and <a href="https://github.com/JoelWilcox">@JoelWilcox</a> for contributing to this release!</p>
+<h2 id="037">0.3.7<a class="headerlink" href="#037" title="Permanent link">&para;</a></h2>
+<p><em>2025-06-08</em></p>
+<ul>
+<li><strong>Fix:</strong> Record lookups of generated static member inject functions for IC.</li>
+<li><strong>Fix:</strong> Dedupe merged overrides of <code>@Includes</code> accessors.</li>
+</ul>
+<p>Special thanks to <a href="https://github.com/kevinguitar">@kevinguitar</a> for contributing to this release!</p>
+<h2 id="036">0.3.6<a class="headerlink" href="#036" title="Permanent link">&para;</a></h2>
+<p><em>2025-06-06</em></p>
+<ul>
+<li><strong>New:</strong> Add new <code>Provider.map</code>, <code>Provider.flatMap</code>, <code>Provider.zip</code>, and <code>Provider.memoize</code> utility APIs.</li>
+<li><strong>Enhancement:</strong> Improve graph validation performance by avoiding unnecessary intermediate sorts (again).</li>
+<li><strong>Enhancement:</strong> Fail eagerly with a clear error message if <code>languageVersion</code> is too old.</li>
+<li><strong>Enhancement:</strong> Validate improperly depending on assisted-injected classes directly at compile-time.</li>
+<li><strong>Fix:</strong> Support constructing nested function return types for provider functions.</li>
+<li><strong>Fix:</strong> Propagate <code>@Include</code> bindings from parent graphs to extension graphs.</li>
+<li><strong>Fix:</strong> Reparent copied lambda default values in IR.</li>
+<li>[internal] Make internal renderings of <code>IrType</code> more deterministic.</li>
+</ul>
+<p>Special thanks to <a href="https://github.com/kevinguitar">@kevinguitar</a> for contributing to this release!</p>
+<h2 id="035">0.3.5<a class="headerlink" href="#035" title="Permanent link">&para;</a></h2>
+<p><em>2025-05-31</em></p>
+<ul>
+<li><strong>New:</strong> Implement top-level function injection checkers.</li>
+<li><strong>Change:</strong> Disallow top-level function injections to be scoped.</li>
+<li><strong>Fix:</strong> Support type parameters with <code>where</code> bounds.</li>
+<li><strong>Fix:</strong> Support injected class type parameters with any bounds.</li>
+<li><strong>Fix:</strong> Support generic graph factory interfaces.</li>
+<li><strong>Fix:</strong> In the presence of multiple contributing annotations to the same scope, ensure only hint function/file is generated.</li>
+<li><strong>Fix:</strong> Improve shading to avoid packaging in stdlib and other dependency classes.</li>
+<li><strong>Fix:</strong> Revert <a href="https://github.com/ZacSweers/metro/pull/483">#483</a> as it broke some cases we haven&rsquo;t been able to debug yet.</li>
+</ul>
+<p>Special thanks to <a href="https://github.com/gabrielittner">@gabrielittner</a> and <a href="https://github.com/kevinguitar">@kevinguitar</a> for contributing to this release!</p>
+<h2 id="034">0.3.4<a class="headerlink" href="#034" title="Permanent link">&para;</a></h2>
+<p><em>2025-05-27</em></p>
+<ul>
+<li><strong>Enhancement:</strong> Use a simple numbered (but deterministic) naming for contributed graph classes to avoid long class names.</li>
+<li><strong>Enhancement:</strong> Improve graph validation performance by avoiding unnecessary intermediate sorts.</li>
+<li><strong>Enhancement:</strong> Move binding validation into graph validation step.</li>
+<li><strong>Enhancement:</strong> Avoid unnecessary BFS graph walk in provider field collection.</li>
+<li><strong>Fix:</strong> Fix provider field populating missing types that previously seen types dependent on.</li>
+</ul>
+<p>Special thanks to <a href="https://github.com/ChristianKatzmann">@ChristianKatzmann</a> and <a href="https://github.com/madisp">@madisp</a> for contributing to this release!</p>
+<h2 id="033">0.3.3<a class="headerlink" href="#033" title="Permanent link">&para;</a></h2>
+<p><em>2025-05-26</em></p>
+<ul>
+<li><strong>Enhancement:</strong> Don&rsquo;t unnecessarily wrap <code>Provider</code> graph accessors.</li>
+<li><strong>Enhancement:</strong> Allow multiple contributed graphs to the same parent graph.</li>
+<li><strong>Fix:</strong> Don&rsquo;t unnecessarily recompute bindings for roots when populating graphs.</li>
+<li><strong>Fix:</strong> Better handle generic assisted factory interfaces.</li>
+<li><strong>Fix:</strong> Use fully qualified names when generating hint files to avoid collisions.</li>
+<li><strong>Fix:</strong> Support provides functions with capitalized names.</li>
+<li><strong>Fix:</strong> Prohibit consuming <code>Provider&lt;Lazy&lt;...&gt;&gt;</code> graph accessors.</li>
+<li>[internal] Migrate to new IR <code>parameters</code>/<code>arguments</code>/<code>typeArguments</code> compiler APIs.</li>
+</ul>
+<p>Special thanks to <a href="https://github.com/gabrielittner">@gabrielittner</a> for contributing to this release!</p>
+<h2 id="032">0.3.2<a class="headerlink" href="#032" title="Permanent link">&para;</a></h2>
+<p><em>2025-05-15</em></p>
+<ul>
+<li><strong>Enhancement</strong>: Optimize supertype lookups in IR.</li>
+<li><strong>Fix</strong>: Fix generic members inherited from generic supertypes of contributed graphs.</li>
+<li><strong>Fix</strong>: Fix <code>@ContributedGraphExtension</code> that extends the same interface as the parent causes a duplicate binding error.</li>
+<li><strong>Fix</strong>: Fix contributed binding replacements not being respected in contributed graphs.</li>
+<li><strong>Fix</strong>: Fix contributed providers not being visible to N+2+ descendant graphs.</li>
+<li><strong>Fix</strong>: Collect bindings from member injectors as well as exposed accessors when determining scoped provider fields.</li>
+<li><strong>Fix</strong>: Fix a few <code>-Xverify-ir</code> and <code>-Xverify-ir-visibility</code> issues + run all tests with these enabled now.</li>
+</ul>
+<p>Special thanks to <a href="https://github.com/bnorm">@bnorm</a>, <a href="https://github.com/gabrielittner">@gabrielittner</a>, <a href="https://github.com/kevinguitar">@kevinguitar</a>, and <a href="https://github.com/JoelWilcox">@JoelWilcox</a> for contributing to this release!</p>
+<h2 id="031">0.3.1<a class="headerlink" href="#031" title="Permanent link">&para;</a></h2>
+<p><em>2025-05-13</em></p>
+<ul>
+<li><strong>Enhancement</strong>: Rewrite graph resolution using topological sorting to vastly improve performance and simplify generation.</li>
+<li><strong>Enhancement</strong>: Return early once an externally-compiled dependency graph is found.</li>
+<li><strong>Enhancement</strong>: Simplify multibinding contributor handling in graph resolution by generating synthetic qualifiers for each of them. This allows them to participate in standard graph resolution.</li>
+<li><strong>Enhancement</strong>: When there are multiple empty <code>@Multibinds</code> errors, report them all at once.</li>
+<li><strong>Enhancement</strong>: Avoid unnecessary <code>StringBuilder</code> allocations.</li>
+<li><strong>Fix</strong>: Don&rsquo;t transform <code>@Provides</code> function&rsquo;s to be private if its visibility is already explicitly defined.</li>
+<li><strong>Fix</strong>: Fix a comparator infinite loop vector.</li>
+<li><strong>Fix</strong>: Fix <code>@ElementsIntoSet</code> multibinding contributions triggering a dependency cycle in some situations.</li>
+<li><strong>Fix</strong>: Fix assertion error for generated multibinding name hint when using both @Multibinds and @ElementsIntoSet for the same multibinding.</li>
+<li><strong>Fix</strong>: Fix contributed graph extensions not inheriting empty declared multibindings.</li>
+<li><strong>Fix</strong>: Ensure we report the <code>@Multibinds</code> declaration location in errors if one is available.</li>
+<li><strong>Fix</strong>: Dedupe overrides by all parameters not just value parameters.</li>
+<li><strong>Fix</strong>: Dedupe overrides by signature rather than name when generating contributed graphs.</li>
+<li><strong>Fix</strong>: Fix accidentally adding contributed graphs as child elements of parent graphs twice.</li>
+<li><strong>Fix</strong>: Fix not deep copying <code>extensionReceiverParameter</code> when implementing fake overrides in contributed graphs.</li>
+<li><strong>Fix</strong>: Report fully qualified qualifier renderings in diagnostics.</li>
+<li><strong>Fix</strong>: Don&rsquo;t generate provider fields for multibinding elements unnecessarily.</li>
+<li>When debug logging + reports dir is enabled, output a <code>logTrace.txt</code> to the reports dir for tracing data.</li>
+<li>Update to Kotlin <code>2.1.21</code>.</li>
+</ul>
+<p>Special thanks to <a href="https://github.com/asapha">@asapha</a>, <a href="https://github.com/gabrielittner">@gabrielittner</a>, <a href="https://github.com/jzbrooks">@jzbrooks</a>, and <a href="https://github.com/JoelWilcox">@JoelWilcox</a> for contributing to this release!</p>
+<h2 id="030">0.3.0<a class="headerlink" href="#030" title="Permanent link">&para;</a></h2>
+<p><em>2025-05-05</em></p>
+<ul>
+<li><strong>New</strong>: Add support for <code>@ContributesGraphExtension</code>! See the <a href="https://zacsweers.github.io/metro/dependency-graphs#contributed-graph-extensions">docs</a> for more info.</li>
+<li><strong>New</strong>: Add a <code>asContribution()</code> compiler intrinsic to upcast graphs to expected contribution types. For example: <code>val contributedInterface = appGraph.asContribution&lt;ContributedInterface&gt;()</code>. This is validated at compile-time.</li>
+<li><strong>New</strong>: Automatically transform <code>@Provides</code> functions to be <code>private</code>. This is enabled by defaults and supersedes the <code>publicProviderSeverity</code> when enabled, and can be disabled via the Gradle extension or <code>transform-providers-to-private</code> compiler option. Note that properties and providers with any annotations with <code>KClass</code> arguments are not supported yet pending upstream kotlinc changes.</li>
+<li><strong>Enhancement</strong>: Rewrite the internal <code>BindingGraph</code> implementation to be more performant, accurate, and testable.</li>
+<li><strong>Enhancement</strong>: Add diagnostic to check that graph factories don&rsquo;t provide their target graphs as parameters.</li>
+<li><strong>Enhancement</strong>: Add diagnostic to check that a primary scope is defined if any additionalScopes are also defined on a graph annotation.</li>
+<li><strong>Enhancement</strong>: Add diagnostic to validate that contributed types do not have narrower visibility that aggregating graphs. i.e. detect if you accidentally try to contribute an <code>internal</code> type to a <code>public</code> graph.</li>
+<li><strong>Enhancement</strong>: Optimize supertype lookups when building binding classes by avoiding previously visited classes.</li>
+<li><strong>Enhancement</strong>: Don&rsquo;t generate hints for contributed types with non-public API visibility.</li>
+<li><strong>Enhancement</strong>: When reporting duplicate binding errors where one of the bindings is contributed, report the contributing class in the error message.</li>
+<li><strong>Enhancement</strong>: When reporting scope incompatibility, check any extended parents match the scope and suggest a workaround in the error diagnostic.</li>
+<li><strong>Enhancement</strong>: Allow AssistedFactory methods to be protected.</li>
+<li><strong>Fix</strong>: Fix incremental compilation when a parent graph or supertype modifies/removes a provider.</li>
+<li><strong>Fix</strong>: Fix rank processing error when the outranked binding is contributed using Metro&rsquo;s ContributesBinding annotation.</li>
+<li><strong>Fix</strong>: Fix <code>@Provides</code> graph parameters not getting passed on to extended child graphs.</li>
+<li><strong>Fix</strong>: Fix qualifiers on bindings not getting seen by extended child graphs.</li>
+<li><strong>Fix</strong>: Fix qualifiers getting ignored on accessors from <code>@Includes</code> dependencies.</li>
+<li><strong>Fix</strong>: Fix transitive scoped dependencies not always getting initialized first in graph provider fields.</li>
+<li><strong>Fix</strong>: Fix injected <code>lateinit var</code> properties being treated as if they have default values.</li>
+<li><strong>Fix</strong>: Alias bindings not always having their backing type visited during graph validation.</li>
+<li><strong>Fix</strong>: Fix race condition in generating parent graphs first even if child graph is encountered first in processing.</li>
+<li><strong>Fix</strong>: Fallback <code>AssistedInjectChecker</code> error report to the declaration source.</li>
+<li><strong>Fix</strong>: Fix missing parent supertype bindings in graph extensions.</li>
+<li><strong>Change</strong>: <code>InstanceFactory</code> is no longer a value class. This wasn&rsquo;t going to offer much value in practice.</li>
+<li><strong>Change</strong>: Change debug reports dir to be per-compilation rather than per-platform.</li>
+</ul>
+<p>Special thanks to <a href="https://github.com/gabrielittner">@gabrielittner</a>, <a href="https://github.com/kevinguitar">@kevinguitar</a>, <a href="https://github.com/JoelWilcox">@JoelWilcox</a>, and <a href="https://github.com/japplin">@japplin</a> for contributing to this release!</p>
+<h2 id="020">0.2.0<a class="headerlink" href="#020" title="Permanent link">&para;</a></h2>
+<p><em>2025-04-21</em></p>
+<ul>
+<li><strong>New</strong>: Nullable bindings are now allowed! See the <a href="https://zacsweers.github.io/metro/bindings#nullability">nullability docs</a> for more info.</li>
+<li><strong>Enhancement</strong>: Add diagnostics for multibindings with star projections.</li>
+<li><strong>Enhancement</strong>: Add diagnostic for map multibindings with nullable keys.</li>
+<li><strong>Fix</strong>: Ensure assisted factories&rsquo; target bindings&rsquo; parameters are processed in MetroGraph creation. Previously, these weren&rsquo;t processed and could result in scoped bindings not being cached.</li>
+<li><strong>Fix</strong>: Fix duplicate field accessors generated for graph supertypes.</li>
+<li>Add <a href="https://github.com/ZacSweers/metro/tree/main/samples/compose-navigation-app">compose navigation sample</a>.</li>
+</ul>
+<p>Special thanks to <a href="https://github.com/bnorm">@bnorm</a> and <a href="https://github.com/yschimke">@yschimke</a> for contributing to this release!</p>
+<h2 id="013">0.1.3<a class="headerlink" href="#013" title="Permanent link">&para;</a></h2>
+<p><em>2025-04-18</em></p>
+<ul>
+<li><strong>Change</strong>: Multibindings may not be empty by default. To allow an empty multibinding, <code>@Multibinds(allowEmpty = true)</code> must be explicitly declared now.</li>
+<li><strong>New</strong>: Write graph metadata to reports (if enabled).</li>
+<li><strong>New</strong>: Support configuring debug and reports globally via <code>metro.debug</code> and <code>metro.reportsDestination</code> Gradle properties (respectively).</li>
+<li><strong>Enhancement</strong>: Change how aggregation hints are generated to improve incremental compilation. Externally contributed hints are now looked up lazily per-scope instead of all at once.</li>
+<li><strong>Enhancement</strong>: Optimize empty map multibindings to reuse a singleton instance.</li>
+<li><strong>Enhancement</strong>: Report error diagnostic if Dagger&rsquo;s <code>@Reusable</code> is used on a provider or injected class.</li>
+<li><strong>Enhancement</strong>: Tweak diagnostic error strings for members so that IDE terminals auto-link them better. i.e., instead of printing <code>example.AppGraph.provideString</code>, Metro will print <code>example.AppGraph#provideString</code> instead.</li>
+<li><strong>Enhancement</strong>: Support repeatable @ContributesBinding annotations with different scopes.</li>
+<li><strong>Fix</strong>: Fix incremental compilation when <code>@Includes</code>-annotated graph parameters change accessor signatures.</li>
+<li><strong>Fix</strong>: Don&rsquo;t allow graph extensions to use the same scope as any extended ancestor graphs.</li>
+<li><strong>Fix</strong>: Don&rsquo;t allow multiple ancestor graphs of graph extensions to use the same scope.</li>
+<li><strong>Fix</strong>: Handle scenarios where the compose-compiler plugin runs <em>before</em> Metro&rsquo;s when generating wrapper classes for top-level <code>@Composable</code> functions.</li>
+<li><strong>Fix</strong>: Fix an edge case in graph extensions where child graphs would miss a provided scoped binding in a parent graph that was also exposed as an accessor.</li>
+<li><strong>Fix</strong>: Fix Dagger interop issue when calling Javax/Jakarta/Dagger providers from Metro factories.</li>
+<li><strong>Fix</strong>: Fix Dagger interop issue when calling <code>dagger.Lazy</code> from Metro factories.</li>
+<li><strong>Fix</strong>: Preserve the original <code>Provider</code> or <code>Lazy</code> type used in injected types when generating factory creators.</li>
+<li>Temporarily disable hint generation in WASM targets to avoid file count mismatches until <a href="https://youtrack.jetbrains.com/issue/KT-75865">KT-75865</a>.</li>
+<li>Add an Android sample: <a href="https://github.com/ZacSweers/metro/tree/main/samples/android-app">https://github.com/ZacSweers/metro/tree/main/samples/android-app</a></li>
+<li>Add a multiplatform Circuit sample: <a href="https://github.com/ZacSweers/metro/tree/main/samples/circuit-app">https://github.com/ZacSweers/metro/tree/main/samples/circuit-app</a></li>
+<li>Add samples docs: <a href="https://zacsweers.github.io/metro/samples">https://zacsweers.github.io/metro/samples</a></li>
+<li>Add FAQ docs: <a href="https://zacsweers.github.io/metro/faq">https://zacsweers.github.io/metro/faq</a></li>
+</ul>
+<p>Special thanks to <a href="https://github.com/JoelWilcox">@JoelWilcox</a>, <a href="https://github.com/bnorm">@bnorm</a>, and <a href="https://github.com/japplin">@japplin</a> for contributing to this release!</p>
+<h2 id="012">0.1.2<a class="headerlink" href="#012" title="Permanent link">&para;</a></h2>
+<p><em>2025-04-08</em></p>
+<ul>
+<li><strong>Enhancement</strong>: Implement <code>createGraph</code> and <code>createGraphFactory</code> FIR checkers for better error diagnostics on erroneous type arguments.</li>
+<li><strong>Enhancement</strong>: Add <code>ContributesBinding.rank</code> interop support with Anvil.</li>
+<li><strong>Enhancement</strong>: Check Kotlin version compatibility. Use the <code>metro.version.check=false</code> Gradle property to disable these warnings if you&rsquo;re feeling adventurous.</li>
+<li><strong>Fix</strong>: Fix class-private qualifiers on multibinding contributions in other modules not being recognized in downstream graphs.</li>
+<li><strong>Fix</strong>: Fix member injectors not getting properly visited in graph validation.</li>
+<li><strong>Fix</strong>: Fix a bug where <code>Map&lt;Key, Provider&lt;Value&gt;&gt;</code> multibindings weren&rsquo;t always unwrapped correctly.</li>
+<li><strong>Fix</strong>: Fix <code>Map&lt;Key, Provider&lt;Value&gt;&gt;</code> type keys not correctly interpreting the underlying type key as <code>Map&lt;Key, Value&gt;</code>.</li>
+<li><strong>Change</strong>: Change <code>InstanceFactory</code> to a value class.</li>
+<li><strong>Change</strong>: Make <code>providerOf</code> use <code>InstanceFactory</code> under the hood.</li>
+</ul>
+<p>Special thanks to <a href="https://github.com/JoelWilcox">@JoelWilcox</a>, <a href="https://github.com/bnorm">@bnorm</a>, <a href="https://github.com/japplin">@japplin</a>, <a href="https://github.com/kevinguitar">@kevinguitar</a>, and <a href="https://github.com/erawhctim">@erawhctim</a> for contributing to this release!</p>
+<h2 id="011">0.1.1<a class="headerlink" href="#011" title="Permanent link">&para;</a></h2>
+<p><em>2025-04-03</em></p>
+<p>Initial release!</p>
+<p>See the announcement blog post: <a href="https://www.zacsweers.dev/introducing-metro/">https://www.zacsweers.dev/introducing-metro/</a></p>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2025 Zac Sweers
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "..", "features": ["content.code.copy", "content.code.select"], "search": "../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+    
+  </body>
+</html>
