@@ -105,8 +105,7 @@ private val CROSS_PLATFORM_RESERVED_KEYWORDS =
     "weak",
   )
 
-/** Dangerous characters that must be replaced in identifiers. */
-private const val DANGEROUS_CHARS = ".l/<>[]"
+private const val SAFE_CODE = '_'.code
 private val RESERVED_KEYWORDS = KEYWORDS + CROSS_PLATFORM_RESERVED_KEYWORDS
 
 /**
@@ -275,6 +274,7 @@ private constructor(
  * - `123abc` → `_123abc` (starts with digit)
  * - `foo<T>` → `foo_T_` (dangerous characters)
  */
+// TODO would be nice to handle `foo<*>` -> `foo_star_`
 internal fun toSafeIdentifier(suggestion: String) = buildString {
   var i = 0
   while (i < suggestion.length) {
@@ -293,13 +293,25 @@ internal fun toSafeIdentifier(suggestion: String) = buildString {
     val validCodePoint: Int =
       when {
         // Block non-ASCII for cross-platform compatibility (code point > 127)
-        codePoint > 127 -> '_'.code
-        // Use Java identifier validation for other characters
-        Character.isJavaIdentifierPart(codePoint) -> codePoint
-        // Explicitly block dangerous characters
-        codePoint.toChar() in DANGEROUS_CHARS -> '_'.code
-        // Replace any other invalid character with underscore
-        else -> '_'.code
+        codePoint > 127 -> SAFE_CODE
+        // Explicitly block dangerous characters before checking java identifier allowances
+        else ->
+          when (codePoint) {
+            46, // .
+            59, // ;
+            47, // /
+            60, // <
+            62, // >
+            91, // [
+            93 // ]
+            -> SAFE_CODE
+            else ->
+              if (Character.isJavaIdentifierPart(codePoint)) {
+                codePoint
+              } else {
+                SAFE_CODE
+              }
+          }
       }
 
     appendCodePoint(validCodePoint)
