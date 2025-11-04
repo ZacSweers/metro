@@ -11,6 +11,7 @@ import com.tschuchort.compiletesting.SourceFile
 import com.tschuchort.compiletesting.SourceFile.Companion.java
 import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
 import com.tschuchort.compiletesting.addPreviousResultToClasspath
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.nio.file.Path
 import java.nio.file.Paths
 import kotlin.io.path.absolutePathString

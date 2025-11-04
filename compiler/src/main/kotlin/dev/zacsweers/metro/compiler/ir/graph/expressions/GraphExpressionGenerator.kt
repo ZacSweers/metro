@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph.expressions
 
-import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
@@ -29,6 +28,7 @@ import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
@@ -141,17 +141,11 @@ private constructor(
         if (bindingPropertyContext.hasKey(binding.typeKey)) {
           bindingPropertyContext.providerProperty(binding.typeKey)?.let {
             return irGetProperty(irGet(thisReceiver), it)
-              .toTargetType(
-                actual = AccessType.PROVIDER,
-                contextualTypeKey = contextualTypeKey,
-              )
+              .toTargetType(actual = AccessType.PROVIDER, contextualTypeKey = contextualTypeKey)
           }
           bindingPropertyContext.instanceProperty(binding.typeKey)?.let {
             return irGetProperty(irGet(thisReceiver), it)
-              .toTargetType(
-                actual = AccessType.INSTANCE,
-                contextualTypeKey = contextualTypeKey,
-              )
+              .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
           }
           // Should never get here
           reportCompilerBug("Unable to find instance or provider field for ${binding.typeKey}")
@@ -214,10 +208,7 @@ private constructor(
 
         is IrBinding.ObjectClass -> {
           irGetObject(binding.type.symbol)
-            .toTargetType(
-              actual = AccessType.INSTANCE,
-              contextualTypeKey = contextualTypeKey,
-            )
+            .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
         }
 
         is IrBinding.Alias -> {
@@ -249,10 +240,7 @@ private constructor(
                 fieldInitKey = fieldInitKey,
               )
             }
-            .toTargetType(
-              actual = AccessType.PROVIDER,
-              contextualTypeKey = contextualTypeKey,
-            )
+            .toTargetType(actual = AccessType.PROVIDER, contextualTypeKey = contextualTypeKey)
         }
 
         is IrBinding.Assisted -> {
@@ -296,13 +284,11 @@ private constructor(
           if (injectorClass == null) {
             // Return a noop
             irInvoke(
-              dispatchReceiver = irGetObject(metroSymbols.metroMembersInjectors),
-              callee = metroSymbols.metroMembersInjectorsNoOp,
-              typeArgs = listOf(injectedType),
-            ).toTargetType(
-              actual = AccessType.INSTANCE,
-              contextualTypeKey = contextualTypeKey,
-            )
+                dispatchReceiver = irGetObject(metroSymbols.metroMembersInjectors),
+                callee = metroSymbols.metroMembersInjectorsNoOp,
+                typeArgs = listOf(injectedType),
+              )
+              .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
           } else {
             val injectorCreatorClass =
               if (injectorClass.isObject) injectorClass else injectorClass.companionObject()!!
@@ -319,10 +305,7 @@ private constructor(
             // InjectableClass_MembersInjector.create(stringValueProvider,
             // exampleComponentProvider)
             irInvoke(callee = createFunction, args = args)
-              .toTargetType(
-                actual = AccessType.INSTANCE,
-                contextualTypeKey = contextualTypeKey,
-              )
+              .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
           }
         }
 
@@ -386,10 +369,7 @@ private constructor(
                 arguments[i + 1] = irGet(functionParams[i])
               }
             }
-            .toTargetType(
-              actual = AccessType.INSTANCE,
-              contextualTypeKey = contextualTypeKey,
-            )
+            .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
         }
 
         is IrBinding.GraphExtensionFactory -> {
@@ -417,7 +397,8 @@ private constructor(
             )
             .apply {
               // Pass the parent graph instance
-              val graphBinding = bindingGraph.requireBinding(parameters.regularParameters.single().typeKey)
+              val graphBinding =
+                bindingGraph.requireBinding(parameters.regularParameters.single().typeKey)
               arguments[0] =
                 generateBindingCode(
                   graphBinding,
@@ -425,10 +406,7 @@ private constructor(
                   accessType = AccessType.INSTANCE,
                 )
             }
-            .toTargetType(
-              contextualTypeKey = contextualTypeKey,
-              actual = AccessType.INSTANCE,
-            )
+            .toTargetType(contextualTypeKey = contextualTypeKey, actual = AccessType.INSTANCE)
         }
 
         is IrBinding.GraphDependency -> {
@@ -571,10 +549,7 @@ private constructor(
           // IFF the parameter can take a direct instance, try our instance fields
           bindingPropertyContext.instanceProperty(typeKey)?.let { instanceField ->
             return@mapIndexed irGetProperty(irGet(thisReceiver), instanceField)
-              .toTargetType(
-                actual = AccessType.INSTANCE,
-                contextualTypeKey = contextualTypeKey,
-              )
+              .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
           }
         }
 

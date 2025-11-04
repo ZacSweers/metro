@@ -1,6 +1,6 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-package dev.zacsweers.metro.compiler
+package dev.zacsweers.metro.compiler.symbols
 
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -33,17 +33,7 @@ internal class ProviderTypeConverter(
    * 1. Identifies the source framework from the provider type.
    * 2. Identifies the target framework from the target type.
    * 3. Routes through Metro's first party intrinsics as the canonical representation if needed.
-   *
-   * Examples:
-   * ```
-   * // javax.inject.Provider<String> -> dagger.Lazy<String>
-   * // Path: javax Provider -> Metro Provider -> Dagger Lazy
-   *
-   * // Metro Provider<String> -> Metro Provider<String>
-   * // Path: No-op
-   * ```
    */
-  // TODO what about javax.Provider -> Dagger Lazy directly? Dagger can handle it
   context(_: IrMetroContext, _: IrBuilderWithScope)
   internal fun IrExpression.convertTo(targetKey: IrContextualTypeKey): IrExpression {
     val provider = this
@@ -71,4 +61,3 @@ internal class ProviderTypeConverter(
     return metroFramework
   }
 }
-

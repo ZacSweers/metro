@@ -1,14 +1,16 @@
 // Copyright (C) 2024 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-package dev.zacsweers.metro.compiler
+package dev.zacsweers.metro.compiler.symbols
 
-import dev.zacsweers.metro.compiler.Symbols.FqNames.kotlinCollectionsPackageFqn
-import dev.zacsweers.metro.compiler.Symbols.FqNames.metroHintsPackage
-import dev.zacsweers.metro.compiler.Symbols.StringNames.CALLABLE_METADATA
-import dev.zacsweers.metro.compiler.Symbols.StringNames.METRO_RUNTIME_INTERNAL_PACKAGE
-import dev.zacsweers.metro.compiler.Symbols.StringNames.METRO_RUNTIME_PACKAGE
+import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
+import dev.zacsweers.metro.compiler.joinSimpleNames
+import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.symbols.Symbols.FqNames.kotlinCollectionsPackageFqn
+import dev.zacsweers.metro.compiler.symbols.Symbols.StringNames.METRO_RUNTIME_INTERNAL_PACKAGE
+import dev.zacsweers.metro.compiler.symbols.Symbols.StringNames.METRO_RUNTIME_PACKAGE
 import kotlin.lazy
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.declarations.IrEnumEntry
@@ -25,11 +27,9 @@ import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.constructors
-import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.getPropertyGetter
 import org.jetbrains.kotlin.ir.util.hasShape
 import org.jetbrains.kotlin.ir.util.kotlinPackageFqn
-import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
@@ -100,11 +100,12 @@ internal class Symbols(
     val javaUtil = FqName("java.util")
     val kotlinCollectionsPackageFqn = StandardClassIds.BASE_COLLECTIONS_PACKAGE
     val metroHintsPackage = FqName(StringNames.METRO_HINTS_PACKAGE)
-    val metroRuntimeInternalPackage = FqName(METRO_RUNTIME_INTERNAL_PACKAGE)
-    val metroRuntimePackage = FqName(METRO_RUNTIME_PACKAGE)
+    val metroRuntimeInternalPackage = FqName(StringNames.METRO_RUNTIME_INTERNAL_PACKAGE)
+    val metroRuntimePackage = FqName(StringNames.METRO_RUNTIME_PACKAGE)
     val GraphFactoryInvokeFunctionMarkerClass =
       metroRuntimeInternalPackage.child("GraphFactoryInvokeFunctionMarker".asName())
-    val CallableMetadataClass = metroRuntimeInternalPackage.child(CALLABLE_METADATA.asName())
+    val CallableMetadataClass =
+      metroRuntimeInternalPackage.child(StringNames.CALLABLE_METADATA.asName())
 
     fun scopeHint(scopeClassId: ClassId): FqName {
       return CallableIds.scopeHint(scopeClassId).asSingleFqName()
@@ -113,12 +114,12 @@ internal class Symbols(
 
   object CallableIds {
     fun scopeHint(scopeClassId: ClassId): CallableId {
-      return CallableId(metroHintsPackage, scopeClassId.joinSimpleNames().shortClassName)
+      return CallableId(FqNames.metroHintsPackage, scopeClassId.joinSimpleNames().shortClassName)
     }
 
     fun scopedInjectClassHint(scopeAnnotation: IrAnnotation): CallableId {
       return CallableId(
-        metroHintsPackage,
+        FqNames.metroHintsPackage,
         ("scopedInjectClassHintFor" + scopeAnnotation.hashCode()).asName(),
       )
     }
@@ -135,7 +136,8 @@ internal class Symbols(
       ClassId(FqNames.metroRuntimeInternalPackage, "MultibindingElement".asName())
     val NonRestartableComposable =
       ClassId(FqNames.composeRuntime, StringNames.NON_RESTARTABLE_COMPOSABLE.asName())
-    val CallableMetadata = ClassId(FqNames.metroRuntimeInternalPackage, CALLABLE_METADATA.asName())
+    val CallableMetadata =
+      ClassId(FqNames.metroRuntimeInternalPackage, StringNames.CALLABLE_METADATA.asName())
     val Stable = ClassId(FqNames.composeRuntime, StringNames.STABLE.asName())
     val graphExtension = ClassId(FqNames.metroRuntimePackage, "GraphExtension".asName())
     val graphExtensionFactory = graphExtension.createNestedClassId(Names.FactoryClass)

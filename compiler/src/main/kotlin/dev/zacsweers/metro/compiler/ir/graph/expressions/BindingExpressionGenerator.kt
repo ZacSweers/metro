@@ -67,17 +67,16 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(context: IrMet
   context(scope: IrBuilderWithScope)
   protected fun IrExpression.toTargetType(
     contextualTypeKey: IrContextualTypeKey,
-    actual: AccessType =
-      run {
-        val classId = type.classOrNull?.owner?.classId
-        val isProviderType = classId in metroSymbols.providerTypes ||
-          classId in metroSymbols.lazyTypes
-        if (isProviderType) {
-          AccessType.PROVIDER
-        } else {
-          AccessType.INSTANCE
-        }
-      },
+    actual: AccessType = run {
+      val classId = type.classOrNull?.owner?.classId
+      val isProviderType =
+        classId in metroSymbols.providerTypes || classId in metroSymbols.lazyTypes
+      if (isProviderType) {
+        AccessType.PROVIDER
+      } else {
+        AccessType.INSTANCE
+      }
+    },
     requested: AccessType =
       if (contextualTypeKey.requiresProviderInstance) {
         AccessType.PROVIDER
@@ -87,23 +86,22 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(context: IrMet
     useInstanceFactory: Boolean = true,
   ): IrExpression {
     // Step 1: Transform access type (INSTANCE <-> PROVIDER)
-    val accessTransformed = when (requested) {
-      actual -> this
-      AccessType.PROVIDER -> {
-        if (useInstanceFactory) {
-          // actual is an instance, wrap it
-          wrapInInstanceFactory(contextualTypeKey.typeKey.type)
-        } else {
-          scope.wrapInProviderFunction(contextualTypeKey.typeKey.type) {
-            this@toTargetType
+    val accessTransformed =
+      when (requested) {
+        actual -> this
+        AccessType.PROVIDER -> {
+          if (useInstanceFactory) {
+            // actual is an instance, wrap it
+            wrapInInstanceFactory(contextualTypeKey.typeKey.type)
+          } else {
+            scope.wrapInProviderFunction(contextualTypeKey.typeKey.type) { this@toTargetType }
           }
         }
+        AccessType.INSTANCE -> {
+          // actual is a provider but we want instance
+          unwrapProvider(contextualTypeKey.typeKey.type)
+        }
       }
-      AccessType.INSTANCE -> {
-        // actual is a provider but we want instance
-        unwrapProvider(contextualTypeKey.typeKey.type)
-      }
-    }
 
     // Step 2: Convert provider if needed (e.g., Metro -> Dagger)
     // Only do this if we're in PROVIDER mode (or transformed to it)

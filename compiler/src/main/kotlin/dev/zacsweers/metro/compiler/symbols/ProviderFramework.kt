@@ -1,11 +1,15 @@
-package dev.zacsweers.metro.compiler
+// Copyright (C) 2025 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
+package dev.zacsweers.metro.compiler.symbols
 
+import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.getAllSuperTypes
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -65,9 +69,8 @@ internal sealed interface ProviderFramework {
  * All conversions route through Metro Provider, so this framework has the simplest implementation -
  * mostly no-ops for conversions.
  */
-internal class MetroProviderFramework(
-  private val metroFrameworkSymbols: MetroFrameworkSymbols
-) : ProviderFramework {
+internal class MetroProviderFramework(private val metroFrameworkSymbols: MetroFrameworkSymbols) :
+  ProviderFramework {
 
   private val kotlinLazyClassId = ClassId(FqName("kotlin"), "Lazy".asName())
 
@@ -133,8 +136,7 @@ internal class MetroProviderFramework(
  * - javax.inject.Provider
  * - jakarta.inject.Provider
  */
-internal class DaggerProviderFramework(private val symbols: DaggerSymbols) :
-  ProviderFramework {
+internal class DaggerProviderFramework(private val symbols: DaggerSymbols) : ProviderFramework {
 
   // Lazy creation functions
   private val lazyFromDaggerProvider by lazy {
@@ -237,8 +239,7 @@ internal class DaggerProviderFramework(private val symbols: DaggerSymbols) :
           rawType.getAllSuperTypes(excludeSelf = false, excludeAny = true).firstNotNullOfOrNull {
             type ->
             when (type.classOrNull?.owner?.classId) {
-              DaggerSymbols.ClassIds.DAGGER_INTERNAL_PROVIDER_CLASS_ID ->
-                lazyFromDaggerProvider
+              DaggerSymbols.ClassIds.DAGGER_INTERNAL_PROVIDER_CLASS_ID -> lazyFromDaggerProvider
               DaggerSymbols.ClassIds.JAVAX_PROVIDER_CLASS_ID -> lazyFromJavaxProvider
               DaggerSymbols.ClassIds.JAKARTA_PROVIDER_CLASS_ID -> lazyFromJakartaProvider
               Symbols.ClassIds.metroProvider -> lazyFromMetroProvider

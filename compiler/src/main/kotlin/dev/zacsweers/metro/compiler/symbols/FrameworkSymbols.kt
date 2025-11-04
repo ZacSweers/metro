@@ -1,7 +1,8 @@
-package dev.zacsweers.metro.compiler
+// Copyright (C) 2025 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
+package dev.zacsweers.metro.compiler.symbols
 
-import dev.zacsweers.metro.compiler.Symbols.Names
-import dev.zacsweers.metro.compiler.Symbols.StringNames
+import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
@@ -159,8 +160,6 @@ internal class DaggerSymbols(
   private val pluginContext: IrPluginContext,
 ) : FrameworkSymbols() {
 
-  private val daggerRuntime: IrPackageFragment by lazy { moduleFragment.createPackage("dagger") }
-
   private val daggerRuntimeInternal: IrPackageFragment by lazy {
     moduleFragment.createPackage("dagger.internal")
   }
@@ -175,7 +174,7 @@ internal class DaggerSymbols(
 
   override val canonicalProviderType: IrClassSymbol by lazy {
     pluginContext.referenceClass(
-      ClassId(daggerRuntimeInternal.packageFqName, Names.ProviderClass)
+      ClassId(daggerRuntimeInternal.packageFqName, Symbols.Names.ProviderClass)
     )!!
   }
 
@@ -209,7 +208,7 @@ internal class DaggerSymbols(
   override val setFactoryBuilderFunction: IrSimpleFunctionSymbol by lazy {
     // Static function in this case
     setFactory.functions.first {
-      it.owner.nonDispatchParameters.size == 1 && it.owner.name == Names.builder
+      it.owner.nonDispatchParameters.size == 1 && it.owner.name == Symbols.Names.builder
     }
   }
 
@@ -222,7 +221,7 @@ internal class DaggerSymbols(
   override val mapFactoryBuilderFunction: IrSimpleFunctionSymbol by lazy {
     // Static function in this case
     mapFactory.functions.first {
-      it.owner.nonDispatchParameters.size == 1 && it.owner.name == Names.builder
+      it.owner.nonDispatchParameters.size == 1 && it.owner.name == Symbols.Names.builder
     }
   }
 
@@ -240,7 +239,7 @@ internal class DaggerSymbols(
   override val mapProviderFactoryBuilderFunction: IrSimpleFunctionSymbol by lazy {
     // Static function in this case
     mapProviderFactory.functions.first {
-      it.owner.nonDispatchParameters.size == 1 && it.owner.name == Names.builder
+      it.owner.nonDispatchParameters.size == 1 && it.owner.name == Symbols.Names.builder
     }
   }
 
@@ -263,7 +262,7 @@ internal class DaggerSymbols(
       .referenceFunctions(
         CallableId(
           daggerInteropRuntimeInternal.packageFqName,
-          StringNames.AS_DAGGER_INTERNAL_PROVIDER.asName(),
+          Symbols.StringNames.AS_DAGGER_INTERNAL_PROVIDER.asName(),
         )
       )
       .single()
@@ -272,7 +271,10 @@ internal class DaggerSymbols(
   val asJavaxProvider by lazy {
     pluginContext
       .referenceFunctions(
-        CallableId(daggerInteropRuntime.packageFqName, StringNames.AS_JAVAX_PROVIDER.asName())
+        CallableId(
+          daggerInteropRuntime.packageFqName,
+          Symbols.StringNames.AS_JAVAX_PROVIDER.asName(),
+        )
       )
       .single()
   }
@@ -280,7 +282,10 @@ internal class DaggerSymbols(
   val asJakartaProvider by lazy {
     pluginContext
       .referenceFunctions(
-        CallableId(daggerInteropRuntime.packageFqName, StringNames.AS_JAKARTA_PROVIDER.asName())
+        CallableId(
+          daggerInteropRuntime.packageFqName,
+          Symbols.StringNames.AS_JAKARTA_PROVIDER.asName(),
+        )
       )
       .single()
   }
@@ -288,7 +293,10 @@ internal class DaggerSymbols(
   val asMetroProvider by lazy {
     pluginContext
       .referenceFunctions(
-        CallableId(daggerInteropRuntime.packageFqName, StringNames.AS_METRO_PROVIDER.asName())
+        CallableId(
+          daggerInteropRuntime.packageFqName,
+          Symbols.StringNames.AS_METRO_PROVIDER.asName(),
+        )
       )
       .first()
   }
@@ -298,7 +306,7 @@ internal class DaggerSymbols(
       .referenceFunctions(
         CallableId(
           daggerInteropRuntime.packageFqName,
-          StringNames.AS_DAGGER_MEMBERS_INJECTOR.asName(),
+          Symbols.StringNames.AS_DAGGER_MEMBERS_INJECTOR.asName(),
         )
       )
       .first()
@@ -309,7 +317,7 @@ internal class DaggerSymbols(
       .referenceFunctions(
         CallableId(
           daggerInteropRuntime.packageFqName,
-          StringNames.AS_METRO_MEMBERS_INJECTOR.asName(),
+          Symbols.StringNames.AS_METRO_MEMBERS_INJECTOR.asName(),
         )
       )
       .first()
@@ -327,7 +335,7 @@ internal class DaggerSymbols(
     val DAGGER_REUSABLE_CLASS_ID = ClassId(daggerRuntimePackageFqName, "Reusable".asName())
     val DAGGER_BINDS_OPTIONAL_OF = ClassId(daggerRuntimePackageFqName, "BindsOptionalOf".asName())
     val DAGGER_INTERNAL_PROVIDER_CLASS_ID =
-      ClassId(daggerInternalPackageFqName, Names.ProviderClass)
+      ClassId(daggerInternalPackageFqName, Symbols.Names.ProviderClass)
     val DAGGER_MULTIBINDS = ClassId(daggerMultibindsPackageFqName, "Multibinds".asName())
     val DAGGER_ASSISTED_INJECT = ClassId(daggerAssistedPackageFqName, "AssistedInject".asName())
     val DAGGER_INJECTED_FIELD_SIGNATURE =
