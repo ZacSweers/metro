@@ -4,7 +4,10 @@ Changelog
 **Unreleased**
 --------------
 
+- **Enhancement**: Support more than 32 parameters to Graph factories.
+- **Enhancement**: Support more than 32 accessors in Graphs.
 - **Fix**: Transform `INSTANCE` access types for `GraphDependency` bindings.
+- **Fix**: Fix ordering of setter member injection parameters when reading injectors across modules.
 
 0.7.3
 -----
