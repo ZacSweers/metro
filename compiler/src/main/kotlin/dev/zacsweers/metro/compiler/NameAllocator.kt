@@ -275,6 +275,7 @@ private constructor(
  * - `123abc` → `_123abc` (starts with digit)
  * - `foo<T>` → `foo_T_` (dangerous characters)
  */
+// TODO would be nice to handle `foo<*>` -> `foo_star_`
 internal fun toSafeIdentifier(suggestion: String) = buildString {
   var i = 0
   while (i < suggestion.length) {
@@ -294,10 +295,10 @@ internal fun toSafeIdentifier(suggestion: String) = buildString {
       when {
         // Block non-ASCII for cross-platform compatibility (code point > 127)
         codePoint > 127 -> '_'.code
+        // Explicitly block dangerous characters before checking java identifier allowances
+        codePoint.toChar() in DANGEROUS_CHARS -> '_'.code
         // Use Java identifier validation for other characters
         Character.isJavaIdentifierPart(codePoint) -> codePoint
-        // Explicitly block dangerous characters
-        codePoint.toChar() in DANGEROUS_CHARS -> '_'.code
         // Replace any other invalid character with underscore
         else -> '_'.code
       }
