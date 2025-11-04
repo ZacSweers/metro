@@ -107,7 +107,7 @@ internal data class DependencyGraphNode(
   val multibindingAccessors by memoize {
     proto
       ?.let {
-        val bitfield = BitField(it.multibinding_accessor_indices)
+        val bitfield = BitField.fromIntList(it.multibinding_accessor_indices)
         val multibindingCallableIds =
           it.accessor_callable_names.filterIndexedTo(mutableSetOf()) { index, _ ->
             bitfield.isSet(index)
