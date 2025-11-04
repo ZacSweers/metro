@@ -8,12 +8,14 @@ import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.fir.Keys
+import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
+import dev.zacsweers.metro.compiler.fir.memoizedAllSessionsSequence
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
@@ -62,6 +64,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.CompilerConeAttributes
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
+import org.jetbrains.kotlin.fir.types.ConeErrorType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirErrorTypeRef
 import org.jetbrains.kotlin.fir.types.FirFunctionTypeRef
@@ -375,6 +378,9 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
 internal class ProvidesFactorySupertypeGenerator(session: FirSession) :
   FirSupertypeGenerationExtension(session), CompatContext by session.compatContext {
 
+  private val typeResolverFactory =
+    MetroFirTypeResolver.Factory(session, session.memoizedAllSessionsSequence)
+
   override fun needTransformSupertypes(declaration: FirClassLikeDeclaration): Boolean {
     return declaration.symbol.hasOrigin(Keys.ProviderFactoryClassDeclaration)
   }
@@ -416,28 +422,34 @@ internal class ProvidesFactorySupertypeGenerator(session: FirSession) :
     val returnType =
       when (val type = callable.fir.returnTypeRef) {
         is FirUserTypeRef -> {
-          typeResolver
-            .resolveUserType(type)
-            .also {
-              if (it is FirErrorTypeRef) {
-                val message =
-                  """
+          val factoryResolvedType =
+            typeResolverFactory.create(originClassSymbol)!!.resolveType(callable.fir.returnTypeRef)
+          if (factoryResolvedType !is ConeErrorType) {
+            factoryResolvedType
+          } else {
+            typeResolver
+              .resolveUserType(type)
+              .also {
+                if (it is FirErrorTypeRef) {
+                  val message =
+                    """
                 Could not resolve provider return type for provider: ${callable.callableId}
                 This can happen if the provider references a class that is nested within the same parent class and has cyclical references to other classes.
                 ${callable.fir.render()}
               """
-                    .trimIndent()
-                if (session is FirCliSession) {
-                  reportCompilerBug(message)
-                } else {
-                  // TODO TypeResolveService appears to be unimplemented in the IDE
-                  //  https://youtrack.jetbrains.com/issue/KT-74553/
-                  System.err.println(message)
-                  return emptyList()
+                      .trimIndent()
+                  if (session is FirCliSession) {
+                    reportCompilerBug(message)
+                  } else {
+                    // TODO TypeResolveService appears to be unimplemented in the IDE
+                    //  https://youtrack.jetbrains.com/issue/KT-74553/
+                    System.err.println(message)
+                    return emptyList()
+                  }
                 }
               }
-            }
-            .coneType
+              .coneType
+          }
         }
         is FirFunctionTypeRef -> {
           createFunctionType(type, typeResolver) ?: return emptyList()

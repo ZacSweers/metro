@@ -3,14 +3,18 @@
 package dev.zacsweers.metro.compiler.fir
 
 import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
+import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirFile
+import org.jetbrains.kotlin.fir.declarations.FirRegularClass
 import org.jetbrains.kotlin.fir.resolve.ScopeSession
 import org.jetbrains.kotlin.fir.resolve.SupertypeSupplier
 import org.jetbrains.kotlin.fir.resolve.TypeResolutionConfiguration
 import org.jetbrains.kotlin.fir.resolve.providers.firProvider
 import org.jetbrains.kotlin.fir.resolve.typeResolver
 import org.jetbrains.kotlin.fir.scopes.createImportingScopes
+import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirTypeRef
@@ -36,6 +40,7 @@ internal sealed interface MetroFirTypeResolver {
     private val scopeSession = ScopeSession()
     private val resolversByFile = mutableMapOf<FirFile, LocalMetroFirTypeResolver?>()
 
+    @OptIn(SymbolInternals::class, DirectDeclarationsAccess::class)
     fun create(classSymbol: FirClassLikeSymbol<*>): MetroFirTypeResolver? {
       if (classSymbol.origin !is FirDeclarationOrigin.Source) return ExternalMetroFirTypeResolver
       // Look up through all firProviders as we may be a KMP compilation
@@ -47,7 +52,12 @@ internal sealed interface MetroFirTypeResolver {
         } ?: return null
       return resolversByFile.getOrPut(file) {
         val scopes = createImportingScopes(file, session, scopeSession)
-        val configuration = TypeResolutionConfiguration(scopes, emptyList(), useSiteFile = file)
+        val containedTypes =
+          (classSymbol.fir as? FirRegularClass)
+            ?.declarations
+            ?.filter { it is FirRegularClass }
+            .orEmpty() as List<FirClass>
+        val configuration = TypeResolutionConfiguration(scopes, containedTypes, useSiteFile = file)
         LocalMetroFirTypeResolver(session, configuration)
       }
     }
