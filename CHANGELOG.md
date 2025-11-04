@@ -4,6 +4,8 @@ Changelog
 **Unreleased**
 --------------
 
+- **Fix**: Don't treat `l` as an illegal char in name allocating. This was supposed to be `;`.
+
 0.7.4
 -----
 
