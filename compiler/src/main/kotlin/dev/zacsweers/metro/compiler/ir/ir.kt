@@ -553,64 +553,53 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
   val symbols = context.metroSymbols
   val irType = bindingCode.type
   if (!irType.implementsLazyType()) {
-    val providerType = bindingCode.type.findProviderSupertype()
-    if (providerType == null) {
-      // Not a provider, nothing else to do here!
-      return bindingCode
-    }
+    // Not a provider, nothing else to do here!
+    bindingCode.type.findProviderSupertype() ?: return bindingCode
   }
-
-  // More readability
-  val providerExpression = bindingCode
 
   val providerTypeConverter = symbols.providerTypeConverter
 
-  return when {
-    contextKey.isLazyWrappedInProvider -> {
+  // Get the provider expression, handling the special ProviderOfLazy case
+  val metroProviderExpression =
+    when {
       // ProviderOfLazy.create(provider)
-      irInvoke(
-        dispatchReceiver = irGetObject(symbols.providerOfLazyCompanionObject),
-        callee = symbols.providerOfLazyCreate,
-        typeArgs = listOf(contextKey.typeKey.type),
-        args = listOf(providerExpression),
-        typeHint = contextKey.typeKey.type.wrapInLazy(symbols).wrapInProvider(symbols.metroProvider),
-      )
+      contextKey.isLazyWrappedInProvider -> {
+        irInvoke(
+          dispatchReceiver = irGetObject(symbols.providerOfLazyCompanionObject),
+          callee = symbols.providerOfLazyCreate,
+          typeArgs = listOf(contextKey.typeKey.type),
+          args = listOf(bindingCode),
+          typeHint =
+            contextKey.typeKey.type.wrapInLazy(symbols).wrapInProvider(symbols.metroProvider),
+        )
+      }
+
+      else -> with(providerTypeConverter) { bindingCode.convertTo(contextKey) }
     }
 
-    contextKey.isWrappedInProvider -> {
-      with(providerTypeConverter) { providerExpression.convertTo(contextKey) }
-    }
+  // Determine whether we need to invoke the provider to get the value.
+  // We should NOT invoke (i.e., return the provider directly) when:
+  // - Provider-wrapped types
+  // - Lazy-wrapped types (Normally Dagger changes Lazy<Type> parameters to a Provider<Type>,
+  //   usually the container is a joined type, therefore we use DoubleCheck.lazy(..) to convert
+  //   the Provider to a Lazy. Assisted parameters behave differently and the Lazy type is not
+  //   changed to a Provider and we can simply use the parameter name in the argument list.)
+  // - Assisted or graph instance parameters
+  val shouldInvoke =
+    !contextKey.isWrappedInProvider &&
+      !contextKey.isWrappedInLazy &&
+      !isAssisted &&
+      !isGraphInstance
 
-    // Normally Dagger changes Lazy<Type> parameters to a Provider<Type>
-    // (usually the container is a joined type), therefore we use
-    // `.lazy(..)` to convert the Provider to a Lazy. Assisted
-    // parameters behave differently and the Lazy type is not changed
-    // to a Provider and we can simply use the parameter name in the
-    // argument list.
-    contextKey.isWrappedInLazy && isAssisted -> {
-      with(providerTypeConverter) { providerExpression.convertTo(contextKey) }
-    }
-
-    contextKey.isWrappedInLazy -> {
-      // DoubleCheck.lazy(...)
-      with(providerTypeConverter) { providerExpression.convertTo(contextKey) }
-    }
-
-    isAssisted || isGraphInstance -> {
-      // provider
-      with(providerTypeConverter) { providerExpression.convertTo(contextKey) }
-    }
-
-    else -> {
-      // provider.invoke()
-      val metroProviderExpression =
-        with(providerTypeConverter) { providerExpression.convertTo(contextKey) }
-      irInvoke(
-        dispatchReceiver = metroProviderExpression,
-        callee = symbols.providerInvoke,
-        typeHint = contextKey.typeKey.type,
-      )
-    }
+  return if (shouldInvoke) {
+    // provider.invoke()
+    irInvoke(
+      dispatchReceiver = metroProviderExpression,
+      callee = symbols.providerInvoke,
+      typeHint = contextKey.typeKey.type,
+    )
+  } else {
+    metroProviderExpression
   }
 }
 
