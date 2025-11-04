@@ -106,7 +106,7 @@ private val CROSS_PLATFORM_RESERVED_KEYWORDS =
   )
 
 /** Dangerous characters that must be replaced in identifiers. */
-private const val DANGEROUS_CHARS = ".l/<>[]"
+private const val DANGEROUS_CHARS = ".;/<>[]"
 private val RESERVED_KEYWORDS = KEYWORDS + CROSS_PLATFORM_RESERVED_KEYWORDS
 
 /**
