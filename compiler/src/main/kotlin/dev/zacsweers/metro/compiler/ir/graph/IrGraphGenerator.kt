@@ -40,6 +40,7 @@ import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
+import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.isInvisibleGeneratedGraph
 import dev.zacsweers.metro.compiler.letIf
@@ -501,7 +502,12 @@ internal class IrGraphGenerator(
           property.withInit(key) { thisReceiver, typeKey ->
             expressionGeneratorFactory
               .create(thisReceiver)
-              .generateBindingCode(binding, accessType = accessType, fieldInitKey = typeKey)
+              .generateBindingCode(
+                binding,
+                contextualTypeKey = binding.contextualTypeKey.wrapInProvider(),
+                accessType = accessType,
+                fieldInitKey = typeKey,
+              )
               .letIf(binding.isScoped() && isProviderType) {
                 // If it's scoped, wrap it in double-check
                 // DoubleCheck.provider(<provider>)
@@ -535,6 +541,7 @@ internal class IrGraphGenerator(
                       .create(thisReceiver)
                       .generateBindingCode(
                         binding,
+                        contextualTypeKey = binding.contextualTypeKey.wrapInProvider(),
                         accessType = BindingExpressionGenerator.AccessType.PROVIDER,
                         fieldInitKey = deferredTypeKey,
                       )
