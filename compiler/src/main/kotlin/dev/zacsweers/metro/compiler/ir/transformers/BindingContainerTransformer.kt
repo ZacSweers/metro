@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
+import dev.zacsweers.metro.compiler.DaggerSymbols
 import dev.zacsweers.metro.compiler.METRO_VERSION
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
@@ -733,7 +734,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     if (graphProto == null) {
       if (options.enableDaggerRuntimeInterop) {
         val moduleAnno =
-          declaration.findAnnotations(Symbols.DaggerSymbols.ClassIds.DAGGER_MODULE).firstOrNull()
+          declaration.findAnnotations(DaggerSymbols.ClassIds.DAGGER_MODULE).firstOrNull()
 
         if (moduleAnno != null) {
           // It's a dagger module! Iterate over its Provides and Binds

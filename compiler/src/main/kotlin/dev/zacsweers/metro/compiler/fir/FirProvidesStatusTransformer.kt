@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir
 
-import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.DaggerSymbols
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
@@ -37,7 +37,7 @@ internal class FirProvidesStatusTransformer(session: FirSession) :
 
     if (session.metroFirBuiltIns.options.enableDaggerRuntimeInterop) {
       declaration.getContainingClassSymbol()?.let {
-        if (it.hasAnnotation(Symbols.DaggerSymbols.ClassIds.DAGGER_MODULE, session)) {
+        if (it.hasAnnotation(DaggerSymbols.ClassIds.DAGGER_MODULE, session)) {
           // Don't transform the status here because dagger may generate a factory that needs access
           return false
         }

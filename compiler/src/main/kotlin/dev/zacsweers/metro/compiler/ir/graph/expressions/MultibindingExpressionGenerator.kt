@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph.expressions
 
-import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.FrameworkSymbols
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
@@ -667,7 +667,7 @@ internal class MultibindingExpressionGenerator(
     rawValueType: IrType,
     mapProviderType: IrType,
     valueIsWrappedInProvider: Boolean,
-    valueFrameworkSymbols: Symbols.FrameworkSymbols,
+    valueFrameworkSymbols: FrameworkSymbols,
     accessType: AccessType,
   ): IrExpression =
     with(scope) {

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
+import dev.zacsweers.metro.compiler.DaggerSymbols
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
@@ -30,7 +31,6 @@ import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.memberInjectParameters
-import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.remapTypes
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInMembersInjector
 import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
@@ -569,7 +569,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
           if (sourceMemberParametersMap != null) {
             // Dagger context: check if this is a field injection (has @InjectedFieldSignature)
             val isFieldInjection =
-              function.hasAnnotation(Symbols.DaggerSymbols.ClassIds.DAGGER_INJECTED_FIELD_SIGNATURE)
+              function.hasAnnotation(DaggerSymbols.ClassIds.DAGGER_INJECTED_FIELD_SIGNATURE)
 
             if (isFieldInjection) {
               // Field injection: qualifier is on the inject function itself

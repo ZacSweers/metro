@@ -301,7 +301,7 @@ private fun IrAnnotationContainer.metroAnnotations(
             isComposable = true
             continue
           }
-          Symbols.DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF if
+          DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF if
             (Kind.BindsOptionalOf in kinds)
            -> {
             isBindsOptionalOf = true
@@ -557,7 +557,7 @@ private fun FirBasedSymbol<*>.metroAnnotations(
             isComposable = true
             continue
           }
-          Symbols.DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF if
+          DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF if
             (session.metroFirBuiltIns.options.enableDaggerRuntimeInterop &&
               Kind.BindsOptionalOf in kinds)
            -> {

@@ -3,7 +3,7 @@
 package dev.zacsweers.metro.compiler.fir
 
 import dev.zacsweers.metro.compiler.ClassIds
-import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.DaggerSymbols
 import dev.zacsweers.metro.compiler.asFqNames
 import org.jetbrains.kotlin.fir.extensions.predicate.DeclarationPredicate
 import org.jetbrains.kotlin.fir.extensions.predicate.LookupPredicate.BuilderContext.annotated
@@ -60,5 +60,5 @@ internal class ExtensionPredicates(private val classIds: ClassIds) {
   internal val multibindsAnnotationPredicate = annotated(classIds.multibindsAnnotations.asFqNames())
 
   internal val bindsOptionalOfAnnotationPredicate =
-    annotated(Symbols.DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF.asSingleFqName())
+    annotated(DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF.asSingleFqName())
 }
