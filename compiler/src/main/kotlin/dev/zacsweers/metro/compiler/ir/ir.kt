@@ -563,7 +563,7 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
   // More readability
   val providerExpression = bindingCode
 
-  val providerSymbols = symbols.providerSymbolsFor(contextKey)
+  val providerTypeConverter = symbols.providerTypeConverter
 
   return when {
     contextKey.isLazyWrappedInProvider -> {
@@ -578,7 +578,7 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
     }
 
     contextKey.isWrappedInProvider -> {
-      with(providerSymbols) { transformMetroProvider(providerExpression, contextKey) }
+      with(providerTypeConverter) { providerExpression.convertTo(contextKey) }
     }
 
     // Normally Dagger changes Lazy<Type> parameters to a Provider<Type>
@@ -588,25 +588,23 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
     // to a Provider and we can simply use the parameter name in the
     // argument list.
     contextKey.isWrappedInLazy && isAssisted -> {
-      with(providerSymbols) { transformMetroProvider(providerExpression, contextKey) }
+      with(providerTypeConverter) { providerExpression.convertTo(contextKey) }
     }
 
     contextKey.isWrappedInLazy -> {
       // DoubleCheck.lazy(...)
-      with(providerSymbols) { invokeDoubleCheckLazy(contextKey, providerExpression) }
+      with(providerTypeConverter) { providerExpression.convertTo(contextKey) }
     }
 
     isAssisted || isGraphInstance -> {
       // provider
-      with(providerSymbols) { transformMetroProvider(providerExpression, contextKey) }
+      with(providerTypeConverter) { providerExpression.convertTo(contextKey) }
     }
 
     else -> {
       // provider.invoke()
       val metroProviderExpression =
-        with(providerSymbols) {
-          transformToMetroProvider(providerExpression, contextKey.typeKey.type)
-        }
+        with(providerTypeConverter) { providerExpression.convertTo(contextKey) }
       irInvoke(
         dispatchReceiver = metroProviderExpression,
         callee = symbols.providerInvoke,

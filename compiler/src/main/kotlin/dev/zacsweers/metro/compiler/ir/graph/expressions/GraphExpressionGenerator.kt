@@ -13,7 +13,6 @@ import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
 import dev.zacsweers.metro.compiler.ir.graph.IrGraphExtensionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.generatedGraphExtensionData
-import dev.zacsweers.metro.compiler.ir.instanceFactory
 import dev.zacsweers.metro.compiler.ir.irGetProperty
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
@@ -135,36 +134,24 @@ private constructor(
         reportCompilerBug("Assisted inject factories should only be accessed as instances")
       }
 
-      val metroProviderSymbols = metroSymbols.providerSymbolsFor(contextualTypeKey)
-
       // If we're initializing the field for this key, don't ever try to reach for an existing
       // provider for it.
       // This is important for cases like DelegateFactory and breaking cycles.
       if (fieldInitKey == null || fieldInitKey != binding.typeKey) {
         if (bindingPropertyContext.hasKey(binding.typeKey)) {
           bindingPropertyContext.providerProperty(binding.typeKey)?.let {
-            val providerInstance =
-              irGetProperty(irGet(thisReceiver), it).let {
-                with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) }
-              }
-            return if (accessType == AccessType.INSTANCE) {
-              irInvoke(providerInstance, callee = metroSymbols.providerInvoke)
-            } else {
-              providerInstance
-            }
+            return irGetProperty(irGet(thisReceiver), it)
+              .toTargetType(
+                actual = AccessType.PROVIDER,
+                contextualTypeKey = contextualTypeKey,
+              )
           }
           bindingPropertyContext.instanceProperty(binding.typeKey)?.let {
-            val instance = irGetProperty(irGet(thisReceiver), it)
-            return if (accessType == AccessType.INSTANCE) {
-              instance
-            } else {
-              with(metroProviderSymbols) {
-                transformMetroProvider(
-                  instanceFactory(binding.typeKey.type, instance),
-                  contextualTypeKey,
-                )
-              }
-            }
+            return irGetProperty(irGet(thisReceiver), it)
+              .toTargetType(
+                actual = AccessType.INSTANCE,
+                contextualTypeKey = contextualTypeKey,
+              )
           }
           // Should never get here
           reportCompilerBug("Unable to find instance or provider field for ${binding.typeKey}")
@@ -189,10 +176,9 @@ private constructor(
                 return@let factoryInstance
               }
 
-              factoryInstance.transformAccessIfNeeded(
-                accessType,
-                AccessType.PROVIDER,
-                binding.typeKey.type,
+              factoryInstance.toTargetType(
+                actual = AccessType.PROVIDER,
+                contextualTypeKey = contextualTypeKey,
               )
             }
         }
@@ -219,17 +205,19 @@ private constructor(
             }
           generator
             .generate(binding, wrappedInstance)
-            .transformAccessIfNeeded(
-              accessType,
-              AccessType.INSTANCE,
-              binding.typeKey.type,
+            .toTargetType(
+              actual = AccessType.INSTANCE,
+              contextualTypeKey = contextualTypeKey,
               useInstanceFactory = false,
             )
         }
 
         is IrBinding.ObjectClass -> {
           irGetObject(binding.type.symbol)
-            .transformAccessIfNeeded(accessType, AccessType.INSTANCE, binding.typeKey.type)
+            .toTargetType(
+              actual = AccessType.INSTANCE,
+              contextualTypeKey = contextualTypeKey,
+            )
         }
 
         is IrBinding.Alias -> {
@@ -238,6 +226,7 @@ private constructor(
           check(aliasedBinding != binding) { "Aliased binding aliases itself" }
           return generateBindingCode(
             aliasedBinding,
+            contextualTypeKey = contextualTypeKey.withTypeKey(aliasedBinding.typeKey),
             accessType = accessType,
             fieldInitKey = fieldInitKey,
           )
@@ -260,7 +249,10 @@ private constructor(
                 fieldInitKey = fieldInitKey,
               )
             }
-            .transformAccessIfNeeded(accessType, AccessType.PROVIDER, binding.typeKey.type)
+            .toTargetType(
+              actual = AccessType.PROVIDER,
+              contextualTypeKey = contextualTypeKey,
+            )
         }
 
         is IrBinding.Assisted -> {
@@ -273,16 +265,16 @@ private constructor(
           val delegateFactory =
             generateBindingCode(
               targetBinding,
+              contextualTypeKey = targetBinding.contextualTypeKey,
               accessType = AccessType.INSTANCE,
               fieldInitKey = fieldInitKey,
             )
 
           val factoryProvider = with(factoryImpl) { invokeCreate(delegateFactory) }
 
-          factoryProvider.transformAccessIfNeeded(
-            accessType,
-            AccessType.PROVIDER,
-            targetBinding.typeKey.type,
+          factoryProvider.toTargetType(
+            actual = AccessType.PROVIDER,
+            contextualTypeKey = contextualTypeKey,
           )
         }
 
@@ -303,19 +295,14 @@ private constructor(
 
           if (injectorClass == null) {
             // Return a noop
-            val noopInjector =
-              irInvoke(
-                dispatchReceiver = irGetObject(metroSymbols.metroMembersInjectors),
-                callee = metroSymbols.metroMembersInjectorsNoOp,
-                typeArgs = listOf(injectedType),
-              )
-            val noopProvider =
-              noopInjector.transformAccessIfNeeded(
-                requested = AccessType.PROVIDER,
-                actual = AccessType.INSTANCE,
-                type = injectedType,
-              )
-            with(metroProviderSymbols) { transformMetroProvider(noopProvider, contextualTypeKey) }
+            irInvoke(
+              dispatchReceiver = irGetObject(metroSymbols.metroMembersInjectors),
+              callee = metroSymbols.metroMembersInjectorsNoOp,
+              typeArgs = listOf(injectedType),
+            ).toTargetType(
+              actual = AccessType.INSTANCE,
+              contextualTypeKey = contextualTypeKey,
+            )
           } else {
             val injectorCreatorClass =
               if (injectorClass.isObject) injectorClass else injectorClass.companionObject()!!
@@ -331,15 +318,11 @@ private constructor(
 
             // InjectableClass_MembersInjector.create(stringValueProvider,
             // exampleComponentProvider)
-            val provider =
-              irInvoke(callee = createFunction, args = args)
-                .transformAccessIfNeeded(
-                  requested = AccessType.PROVIDER,
-                  actual = AccessType.INSTANCE,
-                  type = injectedType,
-                )
-
-            with(metroProviderSymbols) { transformMetroProvider(provider, contextualTypeKey) }
+            irInvoke(callee = createFunction, args = args)
+              .toTargetType(
+                actual = AccessType.INSTANCE,
+                contextualTypeKey = contextualTypeKey,
+              )
           }
         }
 
@@ -403,7 +386,10 @@ private constructor(
                 arguments[i + 1] = irGet(functionParams[i])
               }
             }
-            .transformAccessIfNeeded(accessType, AccessType.INSTANCE, binding.typeKey.type)
+            .toTargetType(
+              actual = AccessType.INSTANCE,
+              contextualTypeKey = contextualTypeKey,
+            )
         }
 
         is IrBinding.GraphExtensionFactory -> {
@@ -431,13 +417,18 @@ private constructor(
             )
             .apply {
               // Pass the parent graph instance
+              val graphBinding = bindingGraph.requireBinding(parameters.regularParameters.single().typeKey)
               arguments[0] =
                 generateBindingCode(
-                  bindingGraph.requireBinding(parameters.regularParameters.single().typeKey),
+                  graphBinding,
+                  graphBinding.contextualTypeKey,
                   accessType = AccessType.INSTANCE,
                 )
             }
-            .transformAccessIfNeeded(accessType, AccessType.INSTANCE, binding.typeKey.type)
+            .toTargetType(
+              contextualTypeKey = contextualTypeKey,
+              actual = AccessType.INSTANCE,
+            )
         }
 
         is IrBinding.GraphDependency -> {
@@ -482,10 +473,9 @@ private constructor(
             } else {
               reportCompilerBug("Unknown graph dependency type")
             }
-          bindingGetter.transformAccessIfNeeded(
-            accessType,
-            AccessType.PROVIDER,
-            binding.typeKey.type,
+          bindingGetter.toTargetType(
+            contextualTypeKey = contextualTypeKey,
+            actual = AccessType.PROVIDER,
           )
         }
       }
@@ -569,8 +559,6 @@ private constructor(
         val contextualTypeKey = paramsToMap[i].contextualTypeKey
         val typeKey = contextualTypeKey.typeKey
 
-        val metroProviderSymbols = metroSymbols.providerSymbolsFor(contextualTypeKey)
-
         val accessType =
           if (param.contextualTypeKey.requiresProviderInstance) {
             AccessType.PROVIDER
@@ -582,9 +570,11 @@ private constructor(
         if (accessType == AccessType.INSTANCE) {
           // IFF the parameter can take a direct instance, try our instance fields
           bindingPropertyContext.instanceProperty(typeKey)?.let { instanceField ->
-            return@mapIndexed irGetProperty(irGet(thisReceiver), instanceField).let {
-              with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) }
-            }
+            return@mapIndexed irGetProperty(irGet(thisReceiver), instanceField)
+              .toTargetType(
+                actual = AccessType.INSTANCE,
+                contextualTypeKey = contextualTypeKey,
+              )
           }
         }
 

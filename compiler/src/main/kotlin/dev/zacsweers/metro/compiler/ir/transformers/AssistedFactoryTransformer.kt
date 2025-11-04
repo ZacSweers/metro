@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.generatedClass
+import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
@@ -57,7 +58,6 @@ import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeProjection
 import org.jetbrains.kotlin.ir.types.defaultType
-import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.addChild
@@ -489,16 +489,14 @@ internal sealed interface AssistedFactoryImpl {
 
     context(context: IrMetroContext)
     override fun IrBuilderWithScope.invokeCreate(delegateFactory: IrExpression): IrExpression {
-      return with(context.metroSymbols.daggerSymbols) {
-        val targetType = (createFunction.returnType as IrSimpleType).arguments[0].typeOrFail
-        transformToMetroProvider(
-          irInvoke(
+      return with(context.metroSymbols.providerTypeConverter) {
+        val targetType = IrContextualTypeKey.from(createFunction)
+        irInvoke(
             callee = createFunction.symbol,
             args = listOf(delegateFactory),
             typeHint = createFunction.returnType,
-          ),
-          targetType,
-        )
+          )
+          .convertTo(targetType)
       }
     }
   }

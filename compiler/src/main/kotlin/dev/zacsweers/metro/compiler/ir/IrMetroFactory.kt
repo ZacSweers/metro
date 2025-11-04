@@ -69,7 +69,7 @@ internal sealed interface IrMetroFactory {
       return if (isDaggerFactory && factoryClass.defaultType.implementsProviderType()) {
         irInvoke(
             extensionReceiver = createExpression,
-            callee = context.metroSymbols.daggerSymbols.asMetroProvider,
+            callee = context.metroSymbols.requireDaggerSymbols().asMetroProvider,
           )
           .apply { typeArguments[0] = factoryClass.typeWith() }
       } else {
