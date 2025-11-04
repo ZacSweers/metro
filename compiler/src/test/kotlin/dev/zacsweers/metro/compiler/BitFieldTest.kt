@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler
 
 import dev.zacsweers.metro.compiler.BitField.Companion.fromIntList
 import kotlin.test.Test
-import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse

@@ -3,8 +3,8 @@
 package dev.zacsweers.metro.compiler
 
 /**
- * A bit field that can store an arbitrary number of bits using an array of 32-bit integers.
- * Each integer stores 32 bits, allowing support for indices beyond 31.
+ * A bit field that can store an arbitrary number of bits using an array of 32-bit integers. Each
+ * integer stores 32 bits, allowing support for indices beyond 31.
  */
 @JvmInline
 internal value class BitField private constructor(private val words: IntArray) {
@@ -30,11 +30,12 @@ internal value class BitField private constructor(private val words: IntArray) {
     val bitIndex = index % 32
 
     // Expand array if necessary
-    val newWords = if (wordIndex >= words.size) {
-      IntArray(wordIndex + 1).also { words.copyInto(it) }
-    } else {
-      words.copyOf()
-    }
+    val newWords =
+      if (wordIndex >= words.size) {
+        IntArray(wordIndex + 1).also { words.copyInto(it) }
+      } else {
+        words.copyOf()
+      }
 
     newWords[wordIndex] = newWords[wordIndex] or (1 shl bitIndex)
     return BitField(newWords)
