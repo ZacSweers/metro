@@ -425,6 +425,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
   @TestDataPath("$PROJECT_ROOT")
   public class Dependencygraph {
     @Test
+    @TestMetadata("33AccessorsAndFactoryParams.kt")
+    public void test33AccessorsAndFactoryParams() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/33AccessorsAndFactoryParams.kt");
+    }
+
+    @Test
     public void testAllFilesPresentInDependencygraph() {
       KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
     }
