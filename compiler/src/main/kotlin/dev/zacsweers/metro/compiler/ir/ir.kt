@@ -21,6 +21,7 @@ import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.singleOrError
 import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
+import dev.zacsweers.metro.compiler.symbols.GuiceSymbols
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.toSafeIdentifier
 import java.io.File
@@ -1555,7 +1556,7 @@ internal fun IrAnnotationContainer?.qualifierAnnotation() =
     .singleOrNull()
     ?.takeIf {
       // Guice's `@Assisted` annoyingly annotates itself as a qualifier too, so we catch that here
-      it.annotationClass.classId != Symbols.GuiceSymbols.ClassIds.assistedAnnotation
+      it.annotationClass.classId != GuiceSymbols.ClassIds.assistedAnnotation
     }
     ?.let(::IrAnnotation)
 
