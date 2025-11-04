@@ -105,8 +105,7 @@ private val CROSS_PLATFORM_RESERVED_KEYWORDS =
     "weak",
   )
 
-/** Dangerous characters that must be replaced in identifiers. */
-private const val DANGEROUS_CHARS = ".;/<>[]"
+private const val SAFE_CODE = '_'.code
 private val RESERVED_KEYWORDS = KEYWORDS + CROSS_PLATFORM_RESERVED_KEYWORDS
 
 /**
@@ -294,13 +293,25 @@ internal fun toSafeIdentifier(suggestion: String) = buildString {
     val validCodePoint: Int =
       when {
         // Block non-ASCII for cross-platform compatibility (code point > 127)
-        codePoint > 127 -> '_'.code
+        codePoint > 127 -> SAFE_CODE
         // Explicitly block dangerous characters before checking java identifier allowances
-        codePoint.toChar() in DANGEROUS_CHARS -> '_'.code
-        // Use Java identifier validation for other characters
-        Character.isJavaIdentifierPart(codePoint) -> codePoint
-        // Replace any other invalid character with underscore
-        else -> '_'.code
+        else ->
+          when (codePoint) {
+            46, // .
+            59, // ;
+            47, // /
+            60, // <
+            62, // >
+            91, // [
+            93 // ]
+            -> SAFE_CODE
+            else ->
+              if (Character.isJavaIdentifierPart(codePoint)) {
+                codePoint
+              } else {
+                SAFE_CODE
+              }
+          }
       }
 
     appendCodePoint(validCodePoint)
