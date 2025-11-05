@@ -14,13 +14,14 @@ import org.jetbrains.kotlin.ir.util.classId
  * Framework-agnostic API for converting between different `Provider` and `Lazy` types across
  * frameworks.
  *
- * To add a new framework (e.g., Guice, Functions), implement [ProviderFramework] and register it in
- * the [frameworks] list.
+ * To add a new framework, implement [ProviderFramework] and register it in the [frameworks] list.
  *
  * Supported frameworks:
  * - Metro (`dev.zacsweers.metro.Provider`, canonical representation)
- * - Dagger `(dagger.Lazy`, `dagger.internal.Provider`, `javax.inject.Provider`,
- *   `jakarta.inject.Provider`)
+ * - Javax (`javax.inject.Provider`)
+ * - Jakarta (`jakarta.inject.Provider`)
+ * - Dagger (`dagger.Lazy`, `dagger.internal.Provider`)
+ * - Guice (`com.google.inject.Provider`)
  */
 internal class ProviderTypeConverter(
   private val metroFramework: MetroProviderFramework,

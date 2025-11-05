@@ -47,6 +47,8 @@ internal class Symbols(
     const val ASSISTED = "Assisted"
     const val AS_DAGGER_INTERNAL_PROVIDER = "asDaggerInternalProvider"
     const val AS_DAGGER_MEMBERS_INJECTOR = "asDaggerMembersInjector"
+    const val AS_GUICE_MEMBERS_INJECTOR = "asGuiceMembersInjector"
+    const val AS_GUICE_PROVIDER = "asGuiceProvider"
     const val AS_JAKARTA_PROVIDER = "asJakartaProvider"
     const val AS_JAVAX_PROVIDER = "asJavaxProvider"
     const val AS_METRO_MEMBERS_INJECTOR = "asMetroMembersInjector"
@@ -166,6 +168,7 @@ internal class Symbols(
   }
 
   object Names {
+    val Assisted = StringNames.ASSISTED.asName()
     val Binds = "Binds".asName()
     val BindsMirrorClass = "BindsMirror".asName()
     val Container = "Container".asName()
@@ -227,10 +230,23 @@ internal class Symbols(
 
   val metroFrameworkSymbols = MetroFrameworkSymbols(metroRuntimeInternal, pluginContext)
 
+  val javaxSymbols: JavaxSymbols by lazy {
+    JavaxSymbols(moduleFragment, pluginContext, metroFrameworkSymbols)
+  }
+  val jakartaSymbols: JakartaSymbols by lazy {
+    JakartaSymbols(moduleFragment, pluginContext, metroFrameworkSymbols)
+  }
+
   private val daggerSymbols: DaggerSymbols?
 
   fun requireDaggerSymbols(): DaggerSymbols =
     daggerSymbols ?: reportCompilerBug("Dagger symbols are not available!")
+
+  var guiceSymbols: GuiceSymbols? = null
+    private set
+
+  fun requireGuiceSymbols(): GuiceSymbols =
+    guiceSymbols ?: reportCompilerBug("Guice symbols are not available!")
 
   val providerTypeConverter: ProviderTypeConverter
 
@@ -239,6 +255,16 @@ internal class Symbols(
     val metroProviderFramework = MetroProviderFramework(metroFrameworkSymbols)
     // Metro is always first (canonical representation)
     frameworks.add(metroProviderFramework)
+
+    // Add standalone javax and jakarta frameworks
+    if (options.enableDaggerRuntimeInterop) {
+      frameworks += JavaxProviderFramework(javaxSymbols)
+      frameworks += JakartaProviderFramework(jakartaSymbols)
+    } else if (options.enableGuiceRuntimeInterop) {
+      // Guice dropped javax in 7.x
+      frameworks += JakartaProviderFramework(jakartaSymbols)
+    }
+
     daggerSymbols =
       if (options.enableDaggerRuntimeInterop) {
         DaggerSymbols(moduleFragment, pluginContext).also {
@@ -247,18 +273,48 @@ internal class Symbols(
       } else {
         null
       }
+
+    guiceSymbols =
+      if (options.enableGuiceRuntimeInterop) {
+        GuiceSymbols(moduleFragment, pluginContext, metroFrameworkSymbols).also {
+          frameworks += GuiceProviderFramework(it)
+        }
+      } else {
+        null
+      }
+
     providerTypeConverter = ProviderTypeConverter(metroProviderFramework, frameworks)
   }
 
   fun providerSymbolsFor(type: IrType?): FrameworkSymbols {
-    val useDaggerInterop =
-      options.enableDaggerRuntimeInterop &&
-        run {
-          val classId = type?.classOrNull?.owner?.classId
-          classId in requireDaggerSymbols().providerPrimitives ||
-            classId == DaggerSymbols.ClassIds.DAGGER_LAZY_CLASS_ID
-        }
-    return if (useDaggerInterop) requireDaggerSymbols() else metroFrameworkSymbols
+    val classId = type?.classOrNull?.owner?.classId ?: return metroFrameworkSymbols
+
+    // Check Dagger interop
+    if (options.enableDaggerRuntimeInterop) {
+      val daggerSymbols = requireDaggerSymbols()
+      if (classId in daggerSymbols.providerPrimitives || classId == DaggerSymbols.ClassIds.DAGGER_LAZY_CLASS_ID) {
+        return daggerSymbols
+      }
+    }
+
+    // Check Guice interop
+    if (options.enableGuiceRuntimeInterop) {
+      if (classId in requireGuiceSymbols().primitives) {
+        return requireGuiceSymbols()
+      }
+    }
+
+    // Check javax interop (only with Dagger)
+    if (classId in javaxSymbols.primitives && options.enableDaggerRuntimeInterop) {
+      return javaxSymbols
+    }
+
+    // Check jakarta interop (with either Dagger or Guice)
+    if (classId in jakartaSymbols.primitives && (options.enableDaggerRuntimeInterop || options.enableGuiceRuntimeInterop)) {
+      return jakartaSymbols
+    }
+
+    return metroFrameworkSymbols
   }
 
   val asContribution: IrSimpleFunctionSymbol by lazy {

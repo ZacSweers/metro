@@ -124,6 +124,16 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  ENABLE_GUICE_RUNTIME_INTEROP(
+    RawMetroOption.boolean(
+      name = "enable-guice-runtime-interop",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description = "Enable/disable interop with Guice's runtime (Provider and MembersInjector).",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   GENERATE_CONTRIBUTION_HINTS(
     RawMetroOption.boolean(
       name = "generate-contribution-hints",
@@ -712,6 +722,8 @@ public data class MetroOptions(
     },
   val enableDaggerRuntimeInterop: Boolean =
     MetroOption.ENABLE_DAGGER_RUNTIME_INTEROP.raw.defaultValue.expectAs(),
+  val enableGuiceRuntimeInterop: Boolean =
+    MetroOption.ENABLE_GUICE_RUNTIME_INTEROP.raw.defaultValue.expectAs(),
   val maxIrErrorsCount: Int = MetroOption.MAX_IR_ERRORS_COUNT.raw.defaultValue.expectAs(),
   // Intrinsics
   val customProviderTypes: Set<ClassId> = MetroOption.CUSTOM_PROVIDER.raw.defaultValue.expectAs(),
@@ -788,6 +800,7 @@ public data class MetroOptions(
       base.interopAnnotationsNamedArgSeverity
     public var enabledLoggers: MutableSet<MetroLogger.Type> = base.enabledLoggers.toMutableSet()
     public var enableDaggerRuntimeInterop: Boolean = base.enableDaggerRuntimeInterop
+    public var enableGuiceRuntimeInterop: Boolean = base.enableGuiceRuntimeInterop
     public var maxIrErrorsCount: Int = base.maxIrErrorsCount
     public var customProviderTypes: MutableSet<ClassId> = base.customProviderTypes.toMutableSet()
     public var customLazyTypes: MutableSet<ClassId> = base.customLazyTypes.toMutableSet()
@@ -931,6 +944,7 @@ public data class MetroOptions(
     }
 
     public fun includeGuiceAnnotations() {
+      enableGuiceRuntimeInterop = true
       // TODO
       //  Injector (members injector)
       //  ProvidesIntoOptional. Different than `@BindsOptionalOf`, provides a value
@@ -950,7 +964,7 @@ public data class MetroOptions(
       // TODO only when implemented in runtime
       // customBindingContainerAnnotations.add(guicePackage.classId("Module"))
 
-      // Guice javax and jakarta
+      // Guice uses javax and jakarta
       includeJavaxAnnotations()
       includeJakartaAnnotations()
     }
@@ -977,6 +991,7 @@ public data class MetroOptions(
         interopAnnotationsNamedArgSeverity = interopAnnotationsNamedArgSeverity,
         enabledLoggers = enabledLoggers,
         enableDaggerRuntimeInterop = enableDaggerRuntimeInterop,
+        enableGuiceRuntimeInterop = enableGuiceRuntimeInterop,
         maxIrErrorsCount = maxIrErrorsCount,
         customProviderTypes = customProviderTypes,
         customLazyTypes = customLazyTypes,
@@ -1089,6 +1104,9 @@ public data class MetroOptions(
 
           MetroOption.ENABLE_DAGGER_RUNTIME_INTEROP ->
             enableDaggerRuntimeInterop = configuration.getAsBoolean(entry)
+
+          MetroOption.ENABLE_GUICE_RUNTIME_INTEROP ->
+            enableGuiceRuntimeInterop = configuration.getAsBoolean(entry)
 
           MetroOption.MAX_IR_ERRORS_COUNT -> maxIrErrorsCount = configuration.getAsInt(entry)
 

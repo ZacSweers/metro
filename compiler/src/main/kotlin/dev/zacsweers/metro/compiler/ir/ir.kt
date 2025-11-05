@@ -1556,7 +1556,7 @@ internal fun IrAnnotationContainer?.qualifierAnnotation() =
     .singleOrNull()
     ?.takeIf {
       // Guice's `@Assisted` annoyingly annotates itself as a qualifier too, so we catch that here
-      it.annotationClass.classId != GuiceSymbols.ClassIds.assistedAnnotation
+      it.annotationClass.classId != GuiceSymbols.ClassIds.assisted
     }
     ?.let(::IrAnnotation)
 

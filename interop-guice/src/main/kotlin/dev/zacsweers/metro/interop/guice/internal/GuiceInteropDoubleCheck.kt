@@ -28,5 +28,23 @@ public class GuiceInteropDoubleCheck<T : Any>(provider: MetroProvider<T>) :
       }
       return GuiceInteropDoubleCheck(provider)
     }
+
+    /** Converts a Guice Provider to a Kotlin Lazy. */
+    public fun <P : GuiceProvider<T>, T : Any> lazyFromGuiceProvider(provider: P): Lazy<T> {
+      if (provider is Lazy<*>) {
+        @Suppress("UNCHECKED_CAST")
+        return provider as Lazy<T>
+      }
+      return lazy { provider.get() }
+    }
+
+    /** Converts a Metro Provider to a Kotlin Lazy. */
+    public fun <P : MetroProvider<T>, T : Any> lazyFromMetroProvider(provider: P): Lazy<T> {
+      if (provider is Lazy<*>) {
+        @Suppress("UNCHECKED_CAST")
+        return provider as Lazy<T>
+      }
+      return lazy { provider() }
+    }
   }
 }
