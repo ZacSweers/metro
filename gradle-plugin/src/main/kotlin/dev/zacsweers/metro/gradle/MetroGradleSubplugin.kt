@@ -162,6 +162,8 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         add(lazyOption("shrink-unused-bindings", extension.shrinkUnusedBindings))
         add(lazyOption("chunk-field-inits", extension.chunkFieldInits))
         add(lazyOption("statements-per-init-fun", extension.statementsPerInitFun))
+        add(lazyOption("enable-graph-sharding", extension.enableGraphSharding))
+        add(lazyOption("keys-per-graph-shard", extension.keysPerGraphShard))
         @Suppress("DEPRECATION")
         add(
           lazyOption(
