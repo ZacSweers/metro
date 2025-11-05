@@ -1,0 +1,188 @@
+@SingleIn(scope = AppScope::class)
+@Inject
+class Service1 {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<Service1> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    fun create(): Factory<Service1> {
+      return MetroFactory
+    }
+
+    fun newInstance(): Service1 {
+      return Service1()
+    }
+
+    override operator fun invoke(): Service1 {
+      return MetroFactory.newInstance()
+    }
+
+    @SingleIn(scope = AppScope::class)
+    fun mirrorFunction(): Service1 {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@SingleIn(scope = AppScope::class)
+@Inject
+class Service2 {
+  val s1: Service1
+    field = s1
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<Service2> {
+    private /* final field */ val s1: Provider<Service1> = s1
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(s1: Provider<Service1>): Factory<Service2> {
+        return MetroFactory(s1 = s1)
+      }
+
+      fun newInstance(s1: Service1): Service2 {
+        return Service2(s1 = s1)
+      }
+
+    }
+
+    private constructor(s1: Provider<Service1>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): Service2 {
+      return Companion.newInstance(s1 = <this>.#s1.invoke())
+    }
+
+    @SingleIn(scope = AppScope::class)
+    fun mirrorFunction(s1: Service1): Service2 {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(s1: Service1) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@SingleIn(scope = AppScope::class)
+@Inject
+class Service3 {
+  val s2: Service2
+    field = s2
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<Service3> {
+    private /* final field */ val s2: Provider<Service2> = s2
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(s2: Provider<Service2>): Factory<Service3> {
+        return MetroFactory(s2 = s2)
+      }
+
+      fun newInstance(s2: Service2): Service3 {
+        return Service3(s2 = s2)
+      }
+
+    }
+
+    private constructor(s2: Provider<Service2>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): Service3 {
+      return Companion.newInstance(s2 = <this>.#s2.invoke())
+    }
+
+    @SingleIn(scope = AppScope::class)
+    fun mirrorFunction(s2: Service2): Service3 {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(s2: Service2) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@DependencyGraph(scope = AppScope::class)
+interface TestGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : TestGraph {
+    private val service1Provider: Provider<Service1>
+      field = Companion.provider<Provider<Service1>, Service1>(delegate = MetroFactory.create())
+
+    private val service2Provider: Provider<Service2>
+      field = Companion.provider<Provider<Service2>, Service2>(delegate = Companion.create(s1 = <this>.#service1Provider))
+
+    private val service3Provider: Provider<Service3>
+      field = Companion.provider<Provider<Service3>, Service3>(delegate = Companion.create(s2 = <this>.#service2Provider))
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val service3: Service3
+      override get(): Service3 {
+        return <this>.#service3Provider.invoke()
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): TestGraph {
+      return Impl()
+    }
+
+  }
+
+  abstract val service3: Service3
+    abstract get
+
+}
+
