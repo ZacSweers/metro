@@ -41,7 +41,8 @@ import org.jetbrains.kotlin.name.Name
 internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext by context {
 
   /**
-   * Converts planned groups to property bindings and merge all unplanned bindings in the final group.
+   * Converts planned groups to property bindings and merge all unplanned bindings in the final
+   * group.
    */
   fun planShardGroups(
     propertyBindings: List<PropertyBinding>,
@@ -65,8 +66,8 @@ internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext b
   }
 
   /**
-   * Generates inner shard classes with initialize() functions.
-   * Also adds shard instance properties to the parent graph.
+   * Generates inner shard classes with initialize() functions. Also adds shard instance properties
+   * to the parent graph.
    */
   fun generateShards(
     graphClass: IrClass,
@@ -137,7 +138,11 @@ internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext b
 
                 if (backingField != null) {
                   val initValue =
-                    binding.initializer.invoke(this@irBlockBody, graphInstanceParam, binding.typeKey)
+                    binding.initializer.invoke(
+                      this@irBlockBody,
+                      graphInstanceParam,
+                      binding.typeKey,
+                    )
                   +irSetField(irGet(graphInstanceParam), backingField, initValue)
                 }
               }
@@ -157,16 +162,16 @@ internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext b
 
 /** Property with its type key and initializer. */
 internal data class PropertyBinding(
-   val property: IrProperty,
-   val typeKey: IrTypeKey,
-   val initializer: PropertyInitializer,
+  val property: IrProperty,
+  val typeKey: IrTypeKey,
+  val initializer: PropertyInitializer,
 )
 
 /** Generated shard class info, with its parent graph property and the initialize function. */
 internal data class ShardInfo(
-   val index: Int,
-   val shardClass: IrClass,
-   val instanceProperty: IrProperty,
-   val initializeFunction: IrSimpleFunction,
-   val bindings: List<PropertyBinding>,
+  val index: Int,
+  val shardClass: IrClass,
+  val instanceProperty: IrProperty,
+  val initializeFunction: IrSimpleFunction,
+  val bindings: List<PropertyBinding>,
 )

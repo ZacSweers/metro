@@ -26,8 +26,8 @@ internal class ShardingOrchestrator(
 ) {
 
   /**
-   * Returns shard groups in topologically sorted order, or null if sharding isn't needed.
-   * Each list contains type keys for the bindings in that shard.
+   * Returns shard groups in topologically sorted order, or null if sharding isn't needed. Each list
+   * contains type keys for the bindings in that shard.
    */
   fun computeShardGroups(topologyData: TopoSortResult<IrTypeKey>?): List<List<IrTypeKey>>? {
     if (topologyData == null) return null
@@ -59,8 +59,8 @@ internal class ShardingOrchestrator(
    * Partitions bindings by SCCs while respecting [maxBindingsPerShard].
    *
    * Processes SCCs in topological order, keeping all bindings in an SCC together so circular
-   * dependencies (including Provider<T> cycles) stay in the same shard. Adds isolated keys at
-   * the end and merges small tail shards.
+   * dependencies (including Provider<T> cycles) stay in the same shard. Adds isolated keys at the
+   * end and merges small tail shards.
    */
   private inline fun partitionUsingSCCs(
     containsKey: (IrTypeKey) -> Boolean,

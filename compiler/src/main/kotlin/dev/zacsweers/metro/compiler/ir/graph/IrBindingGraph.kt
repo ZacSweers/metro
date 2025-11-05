@@ -293,9 +293,10 @@ internal class IrBindingGraph(
         }
       }
 
-      val shardGroups = parentTracer.traceNested("compute shard groups") {
-         shardingOrchestrator.computeShardGroups(topologyResult)
-      }
+      val shardGroups =
+        parentTracer.traceNested("compute shard groups") {
+          shardingOrchestrator.computeShardGroups(topologyResult)
+        }
 
       return BindingGraphResult(sortedKeys, deferredTypes, reachableKeys, shardGroups, false)
     }
