@@ -12,12 +12,15 @@ import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.buildBlockBody
+import dev.zacsweers.metro.compiler.ir.concreteTypeArguments
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.doubleCheck
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.getAllSuperTypes
 import dev.zacsweers.metro.compiler.ir.graph.expressions.BindingExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.expressions.GraphExpressionGenerator
+import dev.zacsweers.metro.compiler.ir.graph.sharding.IrGraphShardGenerator
+import dev.zacsweers.metro.compiler.ir.graph.sharding.PropertyBinding
 import dev.zacsweers.metro.compiler.ir.instanceFactory
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irGetProperty
@@ -62,6 +65,7 @@ import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
+import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irSetField
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -557,65 +561,118 @@ internal class IrGraphGenerator(
         }
       }
 
-      // Use chunked inits if the graph is large enough
-      val mustChunkInits =
-        options.chunkFieldInits && propertyInitializers.size > options.statementsPerInitFun
+      val propertyBindings =
+        propertyInitializers.map { (property, initializer) ->
+          PropertyBinding(
+            property = property.apply {
+               // Make backing fields internal to prevent property access errors from shards.
+               backingField?.visibility = DescriptorVisibilities.INTERNAL
+            },
+            typeKey = propertiesToTypeKeys.getValue(property),
+            initializer = initializer,
+          )
+        }
+      val shardGenerator = IrGraphShardGenerator(metroContext)
+      val shardGroups = shardGenerator.planShardGroups(propertyBindings, sealResult.shardGroups)
+      if (shardGroups.size > 1) {
+        val shardInfos = shardGenerator.generateShards(graphClass, shardGroups)
 
-      if (mustChunkInits) {
-        // Larger graph, split statements
-        // Chunk our constructor statements and split across multiple init functions
-        val chunks =
-          buildList<InitStatement> {
-              // Add property initializers and interleave setDelegate calls as dependencies are
-              // ready
-              for ((property, init) in propertyInitializers) {
-                val typeKey = propertiesToTypeKeys.getValue(property)
-
-                // Add this property's initialization
-                add { thisReceiver ->
-                  irSetField(
-                    irGet(thisReceiver),
-                    property.backingField!!,
-                    init(thisReceiver, typeKey),
-                  )
-                }
-              }
-
-              addDeferredSetDelegateCalls(this)
-            }
-            .chunked(options.statementsPerInitFun)
-
-        val initFunctionsToCall =
-          chunks.map { statementsChunk ->
-            val initName = functionNameAllocator.newName("init")
-            addFunction(initName, irBuiltIns.unitType, visibility = DescriptorVisibilities.PRIVATE)
-              .apply {
-                val localReceiver = thisReceiverParameter.copyTo(this)
-                setDispatchReceiver(localReceiver)
-                buildBlockBody {
-                  for (statement in statementsChunk) {
-                    +statement(localReceiver)
-                  }
-                }
-              }
-          }
+        // Instantiate all shards, then initialize in order.
         constructorStatements += buildList {
-          for (initFunction in initFunctionsToCall) {
+          // Instantiate all shards
+          for (info in shardInfos) {
             add { dispatchReceiver ->
-              irInvoke(dispatchReceiver = irGet(dispatchReceiver), callee = initFunction.symbol)
+              irSetField(
+                irGet(dispatchReceiver),
+                info.instanceProperty.backingField!!,
+                irCallConstructor(info.shardClass.primaryConstructor!!.symbol, emptyList()).apply {
+                  this.dispatchReceiver = irGet(dispatchReceiver)
+                },
+              )
             }
           }
+
+          // Initialize shards in order
+          for (shardIndex in shardGroups.indices) {
+            val info = shardInfos[shardIndex]
+            add { dispatchReceiver ->
+              irInvoke(
+                dispatchReceiver =
+                  irGetField(irGet(dispatchReceiver), info.instanceProperty.backingField!!),
+                callee = info.initializeFunction.symbol,
+                args = listOf(irGet(dispatchReceiver)),
+              )
+            }
+          }
+
+          // Add deferred setDelegate calls after all shards are initialized
+          addDeferredSetDelegateCalls(this)
         }
       } else {
-        // Small graph, just do it in the constructor
-        // Assign those initializers directly to their properties and mark them as final
-        for ((property, init) in propertyInitializers) {
-          property.initFinal {
-            val typeKey = propertiesToTypeKeys.getValue(property)
-            init(thisReceiverParameter, typeKey)
+        // No sharding needed - use the original chunked init logic
+        val mustChunkInits =
+          options.chunkFieldInits && propertyInitializers.size > options.statementsPerInitFun
+
+        if (mustChunkInits) {
+          // Larger graph, split statements
+          // Chunk our constructor statements and split across multiple init functions
+          val chunks =
+            buildList<InitStatement> {
+                // Add property initializers and interleave setDelegate calls as dependencies are
+                // ready
+                for ((property, init) in propertyInitializers) {
+                  val typeKey = propertiesToTypeKeys.getValue(property)
+
+                  // Add this property's initialization
+                  add { thisReceiver ->
+                    irSetField(
+                      irGet(thisReceiver),
+                      property.backingField!!,
+                      init(thisReceiver, typeKey),
+                    )
+                  }
+                }
+
+                addDeferredSetDelegateCalls(this)
+              }
+              .chunked(options.statementsPerInitFun)
+
+          val initFunctionsToCall =
+            chunks.map { statementsChunk ->
+              val initName = functionNameAllocator.newName("init")
+              addFunction(
+                  initName,
+                  irBuiltIns.unitType,
+                  visibility = DescriptorVisibilities.PRIVATE,
+                )
+                .apply {
+                  val localReceiver = thisReceiverParameter.copyTo(this)
+                  setDispatchReceiver(localReceiver)
+                  buildBlockBody {
+                    for (statement in statementsChunk) {
+                      +statement(localReceiver)
+                    }
+                  }
+                }
+            }
+          constructorStatements += buildList {
+            for (initFunction in initFunctionsToCall) {
+              add { dispatchReceiver ->
+                irInvoke(dispatchReceiver = irGet(dispatchReceiver), callee = initFunction.symbol)
+              }
+            }
           }
+        } else {
+          // Small graph, just do it in the constructor
+          // Assign those initializers directly to their properties and mark them as final
+          for ((property, init) in propertyInitializers) {
+            property.initFinal {
+              val typeKey = propertiesToTypeKeys.getValue(property)
+              init(thisReceiverParameter, typeKey)
+            }
+          }
+          addDeferredSetDelegateCalls(constructorStatements)
         }
-        addDeferredSetDelegateCalls(constructorStatements)
       }
 
       // Add extra constructor statements
@@ -755,7 +812,7 @@ internal class IrGraphGenerator(
                 +irInvoke(
                   callee = function.symbol,
                   typeArgs =
-                    targetParam.type.requireSimpleType(targetParam).arguments.map { it.typeOrFail },
+                    targetParam.type.requireSimpleType(targetParam).concreteTypeArguments(),
                   args =
                     buildList {
                       add(irGet(targetParam))
