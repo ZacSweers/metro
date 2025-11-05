@@ -21,6 +21,7 @@ import dev.zacsweers.metro.compiler.ir.graph.expressions.BindingExpressionGenera
 import dev.zacsweers.metro.compiler.ir.graph.expressions.GraphExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.sharding.IrGraphShardGenerator
 import dev.zacsweers.metro.compiler.ir.graph.sharding.PropertyBinding
+import dev.zacsweers.metro.compiler.ir.graph.sharding.ShardingDiagnostics
 import dev.zacsweers.metro.compiler.ir.instanceFactory
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irGetProperty
@@ -577,6 +578,17 @@ internal class IrGraphGenerator(
       val shardGroups = shardGenerator.planShardGroups(propertyBindings, sealResult.shardGroups)
       if (shardGroups.size > 1) {
         val shardInfos = shardGenerator.generateShards(graphClass, shardGroups)
+
+        writeDiagnostic("sharding-plan-${parentTracer.tag}.txt") {
+          ShardingDiagnostics.generateShardingPlanReport(
+            graphClass = graphClass,
+            shardInfos = shardInfos,
+            initOrder = shardGroups.indices.toList(),
+            totalBindings = propertyInitializers.size,
+            options = options,
+            bindingGraph = bindingGraph,
+          )
+        }
 
         // Instantiate all shards, then initialize in order.
         constructorStatements += buildList {
