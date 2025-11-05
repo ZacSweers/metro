@@ -76,7 +76,7 @@ androidx-fragment = "androidx.fragment:fragment-ktx:1.8.9"
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
 androidx-lint-gradle = { module = "androidx.lint:lint-gradle", version.ref = "androidx-lint-gradle" }
 androidx-material3 = "com.google.android.material:material:1.13.0"
-androidx-navigationCompose = "androidx.navigation:navigation-compose:2.9.5"
+androidx-navigationCompose = "androidx.navigation:navigation-compose:2.9.6"
 androidx-viewmodel = { module = "androidx.lifecycle:lifecycle-viewmodel", version.ref = "androidx-lifecycle" }
 androidx-work = "androidx.work:work-runtime:2.11.0"
 
