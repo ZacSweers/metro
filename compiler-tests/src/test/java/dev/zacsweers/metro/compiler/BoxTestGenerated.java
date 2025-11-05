@@ -856,6 +856,64 @@ public class BoxTestGenerated extends AbstractBoxTest {
         runTest("compiler-tests/src/test/data/box/dependencygraph/optional/RequiredAnnotationWorksWhenPresent.kt");
       }
     }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/box/dependencygraph/sharding")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Sharding {
+      @Test
+      public void testAllFilesPresentInSharding() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/sharding"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      }
+
+      @Test
+      @TestMetadata("CrossShardDependencies.kt")
+      public void testCrossShardDependencies() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/sharding/CrossShardDependencies.kt");
+      }
+
+      @Test
+      @TestMetadata("MinimalGraphSharding.kt")
+      public void testMinimalGraphSharding() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/sharding/MinimalGraphSharding.kt");
+      }
+
+      @Test
+      @TestMetadata("ShardedGraphWithChainedExtensions.kt")
+      public void testShardedGraphWithChainedExtensions() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/sharding/ShardedGraphWithChainedExtensions.kt");
+      }
+
+      @Test
+      @TestMetadata("ShardedGraphWithMultipleExtensions.kt")
+      public void testShardedGraphWithMultipleExtensions() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/sharding/ShardedGraphWithMultipleExtensions.kt");
+      }
+
+      @Test
+      @TestMetadata("ShardingWithBinds.kt")
+      public void testShardingWithBinds() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/sharding/ShardingWithBinds.kt");
+      }
+
+      @Test
+      @TestMetadata("ShardingWithMultibindings.kt")
+      public void testShardingWithMultibindings() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/sharding/ShardingWithMultibindings.kt");
+      }
+
+      @Test
+      @TestMetadata("ShardingWithProvides.kt")
+      public void testShardingWithProvides() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/sharding/ShardingWithProvides.kt");
+      }
+
+      @Test
+      @TestMetadata("ThreeShardsWithOrder.kt")
+      public void testThreeShardsWithOrder() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/sharding/ThreeShardsWithOrder.kt");
+      }
+    }
   }
 
   @Nested
