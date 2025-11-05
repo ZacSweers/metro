@@ -58,6 +58,7 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,seal graph
           ExampleGraph,check empty multibindings
           ExampleGraph,check for absent bindings
+          ExampleGraph,compute shard groups
           ExampleGraph,Validate graph
           ExampleGraph,Validate binding graph
           ExampleGraph,Collect bindings
@@ -115,6 +116,8 @@ class TracingTest : MetroCompilerTest() {
                     ◀ check empty multibindings (xx ms)
                     ▶ check for absent bindings
                     ◀ check for absent bindings (xx ms)
+                    ▶ compute shard groups
+                    ◀ compute shard groups (xx ms)
                   ◀ Validate graph (xx ms)
                 ◀ Validate binding graph (xx ms)
                 ▶ Transform metro graph
@@ -194,6 +197,7 @@ class TracingTest : MetroCompilerTest() {
           ChildGraphImpl,seal graph
           ChildGraphImpl,check empty multibindings
           ChildGraphImpl,check for absent bindings
+          ChildGraphImpl,compute shard groups
           ChildGraphImpl,Validate graph
           ChildGraphImpl,Validate binding graph
           ChildGraphImpl,Collect bindings
@@ -213,6 +217,7 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,seal graph
           ExampleGraph,check empty multibindings
           ExampleGraph,check for absent bindings
+          ExampleGraph,compute shard groups
           ExampleGraph,Validate graph
           ExampleGraph,Validate binding graph
           ExampleGraph,Collect bindings
@@ -279,6 +284,8 @@ class TracingTest : MetroCompilerTest() {
                     ◀ check empty multibindings (xx ms)
                     ▶ check for absent bindings
                     ◀ check for absent bindings (xx ms)
+                    ▶ compute shard groups
+                    ◀ compute shard groups (xx ms)
                   ◀ Validate graph (xx ms)
                 ◀ Validate binding graph (xx ms)
                 ▶ Transform metro graph
@@ -316,6 +323,8 @@ class TracingTest : MetroCompilerTest() {
                     ◀ check empty multibindings (xx ms)
                     ▶ check for absent bindings
                     ◀ check for absent bindings (xx ms)
+                    ▶ compute shard groups
+                    ◀ compute shard groups (xx ms)
                   ◀ Validate graph (xx ms)
                 ◀ Validate binding graph (xx ms)
                 ▶ Transform metro graph
@@ -395,6 +404,7 @@ class TracingTest : MetroCompilerTest() {
           ChildGraphImpl,seal graph
           ChildGraphImpl,check empty multibindings
           ChildGraphImpl,check for absent bindings
+          ChildGraphImpl,compute shard groups
           ChildGraphImpl,Validate graph
           ChildGraphImpl,Validate binding graph
           ChildGraphImpl,Collect bindings
@@ -414,6 +424,7 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,seal graph
           ExampleGraph,check empty multibindings
           ExampleGraph,check for absent bindings
+          ExampleGraph,compute shard groups
           ExampleGraph,Validate graph
           ExampleGraph,Validate binding graph
           ExampleGraph,Collect bindings
@@ -480,6 +491,8 @@ class TracingTest : MetroCompilerTest() {
                     ◀ check empty multibindings (xx ms)
                     ▶ check for absent bindings
                     ◀ check for absent bindings (xx ms)
+                    ▶ compute shard groups
+                    ◀ compute shard groups (xx ms)
                   ◀ Validate graph (xx ms)
                 ◀ Validate binding graph (xx ms)
                 ▶ Transform metro graph
@@ -517,6 +530,8 @@ class TracingTest : MetroCompilerTest() {
                     ◀ check empty multibindings (xx ms)
                     ▶ check for absent bindings
                     ◀ check for absent bindings (xx ms)
+                    ▶ compute shard groups
+                    ◀ compute shard groups (xx ms)
                   ◀ Validate graph (xx ms)
                 ◀ Validate binding graph (xx ms)
                 ▶ Transform metro graph
