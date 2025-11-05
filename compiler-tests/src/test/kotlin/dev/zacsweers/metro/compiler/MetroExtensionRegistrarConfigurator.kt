@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.interop.Ksp2AdditionalSourceProvider
 import dev.zacsweers.metro.compiler.interop.configureAnvilAnnotations
 import dev.zacsweers.metro.compiler.interop.configureDaggerAnnotations
 import dev.zacsweers.metro.compiler.interop.configureDaggerInterop
+import dev.zacsweers.metro.compiler.interop.configureGuiceInterop
 import dev.zacsweers.metro.compiler.ir.MetroIrGenerationExtension
 import kotlin.io.path.Path
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
@@ -36,6 +37,7 @@ fun TestConfigurationBuilder.configurePlugin() {
   configureAnvilAnnotations()
   configureDaggerAnnotations()
   configureDaggerInterop()
+  configureGuiceInterop()
   useAdditionalSourceProviders(::Ksp2AdditionalSourceProvider)
 }
 
@@ -97,7 +99,9 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
             MetroDirectives.ENABLE_ANVIL_KSP in module.directives
         ) {
           includeAnvilAnnotations()
-        } else if (
+        }
+
+        if (
           MetroDirectives.WITH_DAGGER in module.directives ||
             MetroDirectives.ENABLE_DAGGER_INTEROP in module.directives ||
             MetroDirectives.ENABLE_DAGGER_KSP in module.directives
@@ -105,9 +109,18 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
           includeDaggerAnnotations()
         }
 
+        if (MetroDirectives.enableGuiceAnnotations(module.directives)) {
+          includeGuiceAnnotations()
+        }
+
         // Override enableDaggerRuntimeInterop if needed
         if (MetroDirectives.enableDaggerRuntimeInterop(module.directives)) {
           enableDaggerRuntimeInterop = true
+        }
+
+        // Override enableGuiceRuntimeInterop if needed
+        if (MetroDirectives.enableGuiceInterop(module.directives)) {
+          enableGuiceRuntimeInterop = true
         }
       }
 
