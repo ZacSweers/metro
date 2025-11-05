@@ -16,6 +16,7 @@ import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
+import org.jetbrains.kotlin.name.StandardClassIds
 
 internal interface FrameworkSymbols {
   val canonicalProviderType: IrClassSymbol
@@ -171,8 +172,8 @@ internal class MetroFrameworkSymbols(
 internal class JavaxSymbols(
   private val moduleFragment: IrModuleFragment,
   private val pluginContext: IrPluginContext,
-  metroFrameworkSymbols: MetroFrameworkSymbols,
-) : FrameworkSymbols by metroFrameworkSymbols {
+  delegate: FrameworkSymbols,
+) : FrameworkSymbols by delegate {
   private val javaxInteropRuntime: IrPackageFragment by lazy {
     moduleFragment.createPackage("dev.zacsweers.metro.interop.javax")
   }
@@ -215,8 +216,8 @@ internal class JavaxSymbols(
 internal class JakartaSymbols(
   private val moduleFragment: IrModuleFragment,
   private val pluginContext: IrPluginContext,
-  metroFrameworkSymbols: MetroFrameworkSymbols,
-) : FrameworkSymbols by metroFrameworkSymbols {
+  delegate: FrameworkSymbols,
+) : FrameworkSymbols by delegate {
   private val jakartaInteropRuntime: IrPackageFragment by lazy {
     moduleFragment.createPackage("dev.zacsweers.metro.interop.jakarta")
   }
@@ -279,11 +280,14 @@ internal class GuiceSymbols(
       .symbol
   }
 
-  val guiceProvider: IrClassSymbol by lazy { pluginContext.referenceClass(ClassIds.provider)!! }
+  val providerPrimitives = setOf(
+    ClassIds.provider,
+    JakartaSymbols.ClassIds.JAKARTA_PROVIDER_CLASS_ID,
+  )
 
-  val primitives = setOf(ClassIds.provider)
+  val primitives = providerPrimitives
 
-  override val canonicalProviderType: IrClassSymbol by lazy { guiceProvider }
+  override val canonicalProviderType: IrClassSymbol by lazy { pluginContext.referenceClass(ClassIds.provider)!! }
 
   val asGuiceProvider by lazy {
     pluginContext
@@ -345,6 +349,8 @@ internal class DaggerSymbols(
   private val pluginContext: IrPluginContext,
 ) : BaseFrameworkSymbols() {
 
+  lateinit var jakartaSymbols: JakartaSymbols
+
   private val daggerRuntimeInternal: IrPackageFragment by lazy {
     moduleFragment.createPackage("dagger.internal")
   }
@@ -363,9 +369,13 @@ internal class DaggerSymbols(
     )!!
   }
 
-  val primitives = setOf(ClassIds.DAGGER_LAZY_CLASS_ID, ClassIds.DAGGER_INTERNAL_PROVIDER_CLASS_ID)
+  val providerPrimitives = setOf(
+    ClassIds.DAGGER_INTERNAL_PROVIDER_CLASS_ID,
+    JavaxSymbols.ClassIds.JAVAX_PROVIDER_CLASS_ID,
+    JakartaSymbols.ClassIds.JAKARTA_PROVIDER_CLASS_ID,
+  )
 
-  val providerPrimitives = setOf(ClassIds.DAGGER_INTERNAL_PROVIDER_CLASS_ID)
+  val primitives = providerPrimitives + ClassIds.DAGGER_LAZY_CLASS_ID
 
   override val doubleCheck by lazy {
     pluginContext.referenceClass(
@@ -432,17 +442,6 @@ internal class DaggerSymbols(
         )
       )
       .single()
-  }
-
-  val asMetroProvider by lazy {
-    pluginContext
-      .referenceFunctions(
-        CallableId(
-          daggerInteropRuntime.packageFqName,
-          Symbols.StringNames.AS_METRO_PROVIDER.asName(),
-        )
-      )
-      .first()
   }
 
   val asDaggerMembersInjector by lazy {

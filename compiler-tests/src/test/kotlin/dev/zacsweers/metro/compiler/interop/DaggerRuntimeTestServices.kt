@@ -28,6 +28,13 @@ class DaggerRuntimeEnvironmentConfigurator(testServices: TestServices) :
     module: TestModule,
   ) {
     if (MetroDirectives.enableDaggerRuntime(module.directives)) {
+      // Add javax/jakarta classpaths
+      for (file in javaxInteropClasspath) {
+        configuration.addJvmClasspathRoot(file)
+      }
+      for (file in jakartaInteropClasspath) {
+        configuration.addJvmClasspathRoot(file)
+      }
       for (file in daggerRuntimeClasspath) {
         configuration.addJvmClasspathRoot(file)
       }
@@ -38,9 +45,14 @@ class DaggerRuntimeEnvironmentConfigurator(testServices: TestServices) :
 class DaggerRuntimeClassPathProvider(testServices: TestServices) :
   RuntimeClasspathProvider(testServices) {
   override fun runtimeClassPaths(module: TestModule): List<File> {
-    return when (MetroDirectives.enableDaggerRuntime(module.directives)) {
-      true -> daggerRuntimeClasspath
-      false -> emptyList()
+    val paths = mutableListOf<File>()
+
+    if (MetroDirectives.enableDaggerRuntime(module.directives)) {
+      paths.addAll(daggerRuntimeClasspath)
+      paths.addAll(javaxInteropClasspath)
+      paths.addAll(jakartaInteropClasspath)
     }
+
+    return paths
   }
 }

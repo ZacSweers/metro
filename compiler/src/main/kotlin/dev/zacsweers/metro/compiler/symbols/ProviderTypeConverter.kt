@@ -36,9 +36,12 @@ internal class ProviderTypeConverter(
    * 3. Routes through Metro's first party intrinsics as the canonical representation if needed.
    */
   context(_: IrMetroContext, _: IrBuilderWithScope)
-  internal fun IrExpression.convertTo(targetKey: IrContextualTypeKey): IrExpression {
+  internal fun IrExpression.convertTo(
+    targetKey: IrContextualTypeKey,
+    providerType: IrType = type
+  ): IrExpression {
     val provider = this
-    val sourceFramework = frameworkFor(provider.type)
+    val sourceFramework = frameworkFor(providerType)
     val targetFramework = frameworkFor(targetKey.rawType)
 
     // Fast path: same framework, no conversion needed
@@ -48,9 +51,9 @@ internal class ProviderTypeConverter(
 
     // Convert through Metro as canonical representation
     // Source -> Metro -> Target
-    val metroProvider = with(sourceFramework) { provider.toMetroProvider(provider.type) }
+    val metroProvider = with(sourceFramework) { provider.toMetroProvider(providerType) }
 
-    return with(targetFramework) { metroProvider.fromMetroProvider(targetKey) }
+    return with(targetFramework) { fromMetroProvider(metroProvider, targetKey) }
   }
 
   // TODO this currently only checks raw class IDs and not supertypes

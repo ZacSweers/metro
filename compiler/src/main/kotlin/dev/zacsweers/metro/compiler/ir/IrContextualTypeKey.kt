@@ -20,6 +20,7 @@ import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.render
+import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.StandardClassIds
 
 /** A class that represents a type with contextual information. */
@@ -212,14 +213,26 @@ internal fun IrContextualTypeKey.wrapInProvider(
 context(context: IrMetroContext)
 internal fun IrType.findProviderSupertype(): IrType? {
   check(this is IrSimpleType) { "Unrecognized IrType '${javaClass}': ${render()}" }
-  val rawTypeClass = rawTypeOrNull() ?: return null
   // Get the specific provider type it implements
-  return rawTypeClass.getAllSuperTypes(excludeSelf = false).firstOrNull { type ->
-    type.rawTypeOrNull()?.classId?.let { classId ->
+  return matchingSupertype {
+    it.rawTypeOrNull()?.classId?.let { classId ->
       classId in context.metroSymbols.providerTypes ||
         classId in Symbols.ClassIds.commonMetroProviders
     } ?: false
   }
+}
+
+context(context: IrMetroContext)
+internal fun IrType.implements(classId: ClassId): Boolean {
+  return matchingSupertype { it.rawTypeOrNull()?.classId == classId } != null
+}
+
+context(context: IrMetroContext)
+internal fun IrType.matchingSupertype(predicate: (IrType) -> Boolean): IrType? {
+  check(this is IrSimpleType) { "Unrecognized IrType '${javaClass}': ${render()}" }
+  val rawTypeClass = rawTypeOrNull() ?: return null
+  // Get the type it implements
+  return rawTypeClass.getAllSuperTypes(excludeSelf = false).firstOrNull { type -> predicate(type) }
 }
 
 context(context: IrMetroContext)

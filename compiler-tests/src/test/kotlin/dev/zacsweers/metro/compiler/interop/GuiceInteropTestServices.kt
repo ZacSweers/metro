@@ -16,14 +16,6 @@ private val guiceClasspath =
   System.getProperty("guice.classpath")?.split(File.pathSeparator)?.map(::File)
     ?: error("Unable to get a valid classpath from 'guice.classpath' property")
 
-private val javaxInteropClasspath =
-  System.getProperty("javaxInterop.classpath")?.split(File.pathSeparator)?.map(::File)
-    ?: error("Unable to get a valid classpath from 'javaxInterop.classpath' property")
-
-private val jakartaInteropClasspath =
-  System.getProperty("jakartaInterop.classpath")?.split(File.pathSeparator)?.map(::File)
-    ?: error("Unable to get a valid classpath from 'jakartaInterop.classpath' property")
-
 fun TestConfigurationBuilder.configureGuiceInterop() {
   useConfigurators(::GuiceInteropEnvironmentConfigurator)
   useCustomRuntimeClasspathProviders(::GuiceInteropClassPathProvider)
@@ -44,11 +36,8 @@ class GuiceInteropEnvironmentConfigurator(testServices: TestServices) :
       }
     }
 
-    // Add javax and jakarta interop when Guice runtime is enabled
+    // Add jakarta interop when Guice runtime is enabled
     if (addGuiceRuntime) {
-      for (file in javaxInteropClasspath) {
-        configuration.addJvmClasspathRoot(file)
-      }
       for (file in jakartaInteropClasspath) {
         configuration.addJvmClasspathRoot(file)
       }
@@ -61,12 +50,8 @@ class GuiceInteropClassPathProvider(testServices: TestServices) :
   override fun runtimeClassPaths(module: TestModule): List<File> {
     val paths = mutableListOf<File>()
 
-    if (MetroDirectives.enableGuiceInterop(module.directives)) {
-      paths.addAll(guiceClasspath)
-    }
-
     if (MetroDirectives.enableGuiceAnnotations(module.directives)) {
-      paths.addAll(javaxInteropClasspath)
+      paths.addAll(guiceClasspath)
       paths.addAll(jakartaInteropClasspath)
     }
 

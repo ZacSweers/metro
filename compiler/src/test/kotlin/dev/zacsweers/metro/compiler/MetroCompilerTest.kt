@@ -293,6 +293,12 @@ abstract class MetroCompilerTest {
               MetroOption.INTEROP_INCLUDE_KOTLIN_INJECT_ANVIL_ANNOTATIONS -> {
                 processor.option(entry.raw.cliOption, false)
               }
+              MetroOption.ENABLE_GUICE_RUNTIME_INTEROP -> {
+                processor.option(entry.raw.cliOption, enableGuiceRuntimeInterop)
+              }
+              MetroOption.INTEROP_INCLUDE_GUICE_ANNOTATIONS -> {
+                processor.option(entry.raw.cliOption, false)
+              }
             }
           yield(option)
         }

@@ -230,13 +230,6 @@ internal class Symbols(
 
   val metroFrameworkSymbols = MetroFrameworkSymbols(metroRuntimeInternal, pluginContext)
 
-  val javaxSymbols: JavaxSymbols by lazy {
-    JavaxSymbols(moduleFragment, pluginContext, metroFrameworkSymbols)
-  }
-  val jakartaSymbols: JakartaSymbols by lazy {
-    JakartaSymbols(moduleFragment, pluginContext, metroFrameworkSymbols)
-  }
-
   private val daggerSymbols: DaggerSymbols?
 
   fun requireDaggerSymbols(): DaggerSymbols =
@@ -256,19 +249,18 @@ internal class Symbols(
     // Metro is always first (canonical representation)
     frameworks.add(metroProviderFramework)
 
-    // Add standalone javax and jakarta frameworks
-    if (options.enableDaggerRuntimeInterop) {
-      frameworks += JavaxProviderFramework(javaxSymbols)
-      frameworks += JakartaProviderFramework(jakartaSymbols)
-    } else if (options.enableGuiceRuntimeInterop) {
-      // Guice dropped javax in 7.x
-      frameworks += JakartaProviderFramework(jakartaSymbols)
-    }
+    var jakartaSymbolsAdded = false
 
     daggerSymbols =
       if (options.enableDaggerRuntimeInterop) {
-        DaggerSymbols(moduleFragment, pluginContext).also {
-          frameworks += DaggerProviderFramework(it)
+        DaggerSymbols(moduleFragment, pluginContext).also { daggerSymbols ->
+          val javaxSymbols = JavaxSymbols(moduleFragment, pluginContext, daggerSymbols)
+          val jakartaSymbols = JakartaSymbols(moduleFragment, pluginContext, daggerSymbols)
+          val javaxFramework = JavaxProviderFramework(javaxSymbols).also { frameworks += it }
+          val jakartaFramework = JakartaProviderFramework(jakartaSymbols).also { frameworks += it }
+          frameworks += DaggerProviderFramework(daggerSymbols, listOf(javaxFramework, jakartaFramework))
+          jakartaSymbolsAdded = true
+          daggerSymbols.jakartaSymbols = jakartaSymbols
         }
       } else {
         null
@@ -276,8 +268,16 @@ internal class Symbols(
 
     guiceSymbols =
       if (options.enableGuiceRuntimeInterop) {
-        GuiceSymbols(moduleFragment, pluginContext, metroFrameworkSymbols).also {
-          frameworks += GuiceProviderFramework(it)
+        GuiceSymbols(moduleFragment, pluginContext, metroFrameworkSymbols).also { guiceSymbols ->
+          // Guice dropped javax in 7.x, so we only need jakarta
+          val jakartaFramework = if (!jakartaSymbolsAdded) {
+            val jakartaSymbols = JakartaSymbols(moduleFragment, pluginContext, guiceSymbols)
+            JakartaProviderFramework(jakartaSymbols).also { frameworks += it }
+          } else {
+            // Reuse the already-added jakarta framework (from Dagger)
+            frameworks.filterIsInstance<JakartaProviderFramework>().first()
+          }
+          frameworks += GuiceProviderFramework(guiceSymbols, listOf(jakartaFramework))
         }
       } else {
         null
@@ -293,8 +293,7 @@ internal class Symbols(
     if (options.enableDaggerRuntimeInterop) {
       val daggerSymbols = requireDaggerSymbols()
       if (
-        classId in daggerSymbols.providerPrimitives ||
-          classId == DaggerSymbols.ClassIds.DAGGER_LAZY_CLASS_ID
+        classId in daggerSymbols.primitives
       ) {
         return daggerSymbols
       }
@@ -302,22 +301,10 @@ internal class Symbols(
 
     // Check Guice interop
     if (options.enableGuiceRuntimeInterop) {
-      if (classId in requireGuiceSymbols().primitives) {
-        return requireGuiceSymbols()
+      val guiceSymbols = requireGuiceSymbols()
+      if (classId in guiceSymbols.primitives) {
+        return guiceSymbols
       }
-    }
-
-    // Check javax interop (only with Dagger)
-    if (classId in javaxSymbols.primitives && options.enableDaggerRuntimeInterop) {
-      return javaxSymbols
-    }
-
-    // Check jakarta interop (with either Dagger or Guice)
-    if (
-      classId in jakartaSymbols.primitives &&
-        (options.enableDaggerRuntimeInterop || options.enableGuiceRuntimeInterop)
-    ) {
-      return jakartaSymbols
     }
 
     return metroFrameworkSymbols
