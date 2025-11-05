@@ -1037,6 +1037,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("GenericMemberInjectionWithWildcard.kt")
+      public void testGenericMemberInjectionWithWildcard() {
+        runTest("compiler-tests/src/test/data/box/inject/member/GenericMemberInjectionWithWildcard.kt");
+      }
+
+      @Test
       @TestMetadata("GenericMemberInjectorRequest.kt")
       public void testGenericMemberInjectorRequest() {
         runTest("compiler-tests/src/test/data/box/inject/member/GenericMemberInjectorRequest.kt");
