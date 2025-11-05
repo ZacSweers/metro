@@ -274,12 +274,12 @@ internal class GuiceSymbols(
       .referenceClass(
         ClassId(guiceInteropRuntimeInternal.packageFqName, "GuiceInteropDoubleCheck".asName())
       )!!
-      .owner.companionObject()!!.symbol
+      .owner
+      .companionObject()!!
+      .symbol
   }
 
-  val guiceProvider: IrClassSymbol by lazy {
-    pluginContext.referenceClass(ClassIds.provider)!!
-  }
+  val guiceProvider: IrClassSymbol by lazy { pluginContext.referenceClass(ClassIds.provider)!! }
 
   val primitives = setOf(ClassIds.provider)
 
@@ -288,7 +288,10 @@ internal class GuiceSymbols(
   val asGuiceProvider by lazy {
     pluginContext
       .referenceFunctions(
-        CallableId(guiceInteropRuntime.packageFqName, Symbols.StringNames.AS_GUICE_PROVIDER.asName())
+        CallableId(
+          guiceInteropRuntime.packageFqName,
+          Symbols.StringNames.AS_GUICE_PROVIDER.asName(),
+        )
       )
       .single()
   }
@@ -296,7 +299,10 @@ internal class GuiceSymbols(
   val asMetroProvider by lazy {
     pluginContext
       .referenceFunctions(
-        CallableId(guiceInteropRuntime.packageFqName, Symbols.StringNames.AS_METRO_PROVIDER.asName())
+        CallableId(
+          guiceInteropRuntime.packageFqName,
+          Symbols.StringNames.AS_METRO_PROVIDER.asName(),
+        )
       )
       .first()
   }
@@ -328,7 +334,8 @@ internal class GuiceSymbols(
   }
 
   object ClassIds {
-    val assisted = ClassId(FqNames.guiceRuntimePackage.child("assistedinject".asName()), Symbols.Names.Assisted)
+    val assisted =
+      ClassId(FqNames.guiceRuntimePackage.child("assistedinject".asName()), Symbols.Names.Assisted)
     val provider = ClassId(FqNames.guiceRuntimePackage, Symbols.Names.ProviderClass)
   }
 }
@@ -356,11 +363,7 @@ internal class DaggerSymbols(
     )!!
   }
 
-  val primitives =
-    setOf(
-      ClassIds.DAGGER_LAZY_CLASS_ID,
-      ClassIds.DAGGER_INTERNAL_PROVIDER_CLASS_ID,
-    )
+  val primitives = setOf(ClassIds.DAGGER_LAZY_CLASS_ID, ClassIds.DAGGER_INTERNAL_PROVIDER_CLASS_ID)
 
   val providerPrimitives = setOf(ClassIds.DAGGER_INTERNAL_PROVIDER_CLASS_ID)
 

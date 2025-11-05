@@ -11,12 +11,12 @@ import com.google.inject.assistedinject.AssistedInject
 import com.google.inject.name.Named
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.DependencyGraph
+import dev.zacsweers.metro.Provides as MetroProvides
 import dev.zacsweers.metro.createGraphFactory
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotSame
 import kotlin.test.assertSame
-import dev.zacsweers.metro.Provides as MetroProvides
 
 class GuiceTest {
   @Singleton

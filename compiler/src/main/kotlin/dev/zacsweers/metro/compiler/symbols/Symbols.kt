@@ -292,7 +292,10 @@ internal class Symbols(
     // Check Dagger interop
     if (options.enableDaggerRuntimeInterop) {
       val daggerSymbols = requireDaggerSymbols()
-      if (classId in daggerSymbols.providerPrimitives || classId == DaggerSymbols.ClassIds.DAGGER_LAZY_CLASS_ID) {
+      if (
+        classId in daggerSymbols.providerPrimitives ||
+          classId == DaggerSymbols.ClassIds.DAGGER_LAZY_CLASS_ID
+      ) {
         return daggerSymbols
       }
     }
@@ -310,7 +313,10 @@ internal class Symbols(
     }
 
     // Check jakarta interop (with either Dagger or Guice)
-    if (classId in jakartaSymbols.primitives && (options.enableDaggerRuntimeInterop || options.enableGuiceRuntimeInterop)) {
+    if (
+      classId in jakartaSymbols.primitives &&
+        (options.enableDaggerRuntimeInterop || options.enableGuiceRuntimeInterop)
+    ) {
       return jakartaSymbols
     }
 

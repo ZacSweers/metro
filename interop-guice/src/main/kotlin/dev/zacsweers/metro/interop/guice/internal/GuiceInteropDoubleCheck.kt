@@ -4,8 +4,8 @@ package dev.zacsweers.metro.interop.guice.internal
 
 import com.google.inject.Provider as GuiceProvider
 import dev.zacsweers.metro.Provider as MetroProvider
-import dev.zacsweers.metro.interop.guice.asMetroProvider
 import dev.zacsweers.metro.internal.BaseDoubleCheck
+import dev.zacsweers.metro.interop.guice.asMetroProvider
 
 /** @see BaseDoubleCheck */
 public class GuiceInteropDoubleCheck<T : Any>(provider: MetroProvider<T>) :

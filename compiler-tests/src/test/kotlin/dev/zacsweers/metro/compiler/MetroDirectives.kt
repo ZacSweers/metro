@@ -74,7 +74,9 @@ object MetroDirectives : SimpleDirectivesContainer() {
     )
   val GUICE_ANNOTATIONS by directive("Add Guice as dependency and configure custom annotations.")
   val ENABLE_GUICE_INTEROP by
-    directive("Enable Guice runtime interop. This implicitly applies GUICE_ANNOTATIONS directive as well.")
+    directive(
+      "Enable Guice runtime interop. This implicitly applies GUICE_ANNOTATIONS directive as well."
+    )
 
   // Anvil KSP options
   val ANVIL_GENERATE_DAGGER_FACTORIES by

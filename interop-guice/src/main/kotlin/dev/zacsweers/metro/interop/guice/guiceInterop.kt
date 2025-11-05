@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.interop.guice
 
-import com.google.inject.Injector as GuiceInjector
 import com.google.inject.MembersInjector as GuiceMembersInjector
 import com.google.inject.Provider as GuiceProvider
 import dev.zacsweers.metro.MembersInjector as MetroMembersInjector
