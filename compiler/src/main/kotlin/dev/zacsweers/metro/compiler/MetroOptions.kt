@@ -961,9 +961,6 @@ public data class MetroOptions(
       customIntoMapAnnotations.add(guiceMultibindingsPackage.classId("ProvidesIntoMap"))
       customIntoSetAnnotations.add(guiceMultibindingsPackage.classId("ProvidesIntoSet"))
 
-      // TODO only when implemented in runtime
-      // customBindingContainerAnnotations.add(guicePackage.classId("Module"))
-
       // Guice uses jakarta
       includeJakartaAnnotations()
     }
