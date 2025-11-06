@@ -1,5 +1,5 @@
 // ENABLE_GUICE_INTEROP
-import jakarta.inject.Inject
+import com.google.inject.Inject
 
 @DependencyGraph
 interface ExampleGraph {

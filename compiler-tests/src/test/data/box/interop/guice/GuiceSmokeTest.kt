@@ -1,8 +1,16 @@
 // ENABLE_GUICE_INTEROP
+import com.google.inject.Inject
+import com.google.inject.AbstractModule
 import com.google.inject.Provider
-import jakarta.inject.Inject
+import com.google.inject.Provides
 import jakarta.inject.Named
 import jakarta.inject.Singleton
+
+class GuiceModule(private val message: String, private val qualifiedMessage: String) : AbstractModule() {
+  @Provides fun message(): String = message
+
+  @Provides @Named("qualified") fun qualifiedMessage(): String = qualifiedMessage
+}
 
 @Singleton
 @DependencyGraph
@@ -17,10 +25,7 @@ interface AppGraph {
 
   @DependencyGraph.Factory
   interface Factory {
-    fun create(
-      @Provides message: String,
-      @Provides @Named("qualified") qualifiedMessage: String,
-    ): AppGraph
+    fun create(@Includes bindings: GuiceModule): AppGraph
   }
 }
 
@@ -35,7 +40,8 @@ constructor(val message: String, @Named("qualified") val qualifiedMessage: Strin
 
 fun box(): String {
   val graph =
-    createGraphFactory<AppGraph.Factory>().create("Hello, world!", "Hello, qualified world!")
+    createGraphFactory<AppGraph.Factory>()
+      .create(GuiceModule("Hello, world!", "Hello, qualified world!"))
   assertEquals("Hello, world!", graph.message)
   assertEquals("Hello, qualified world!", graph.qualifiedMessage)
 

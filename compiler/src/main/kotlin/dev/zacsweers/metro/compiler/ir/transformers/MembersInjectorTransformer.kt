@@ -12,13 +12,13 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.generatedClass
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.declaredCallableMembers
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
-import dev.zacsweers.metro.compiler.ir.getAllSuperTypes
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
@@ -118,7 +118,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
 
   fun getOrGenerateAllInjectorsFor(declaration: IrClass): List<MemberInjectClass> {
     return declaration
-      .getAllSuperTypes(excludeSelf = false, excludeAny = true)
+      .allSupertypesSequence(excludeSelf = false, excludeAny = true)
       .mapNotNull { it.classOrNull?.owner }
       .filterNot { it.isInterface }
       .mapNotNull { getOrGenerateInjector(it) }
@@ -349,7 +349,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
   ): Map<ClassId, List<Parameters>> {
     // Compute supertypes once - we'll need them for either cached lookup or fresh computation
     val allTypes =
-      getAllSuperTypes(excludeSelf = false, excludeAny = true)
+      allSupertypesSequence(excludeSelf = false, excludeAny = true)
         .mapNotNull { it.rawTypeOrNull() }
         .filterNot { it.isInterface }
         .memoized()

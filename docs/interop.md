@@ -143,7 +143,24 @@ Note the companion Gradle plugin automatically adds an extra `dev.zacsweers.metr
 
 ### Guice
 
-Enabling Guice interop enables _runtime_ interop with Guice's `Provider` type and Jakarta's `Provider` type. This means that you can use Guice's `Provider` type.
+Enabling Guice interop enables annotation interop with the following Guice annotations:
+
+- `@Inject` (but not `@Inject.optional`)
+- `@Provides`
+- `@Assisted`
+- `@AssistedInject`
+- `@BindingAnnotation`
+- `@ScopeAnnotation`
+- `@MapKey`
+- `@ProvidesIntoMap`
+- `@ProvidesIntoSet`
+
+Enabling this also enables _runtime_ interop with:
+
+- Guice's `Provider` type. This means that you can use Guice's `Provider` type interchangeably with Metro's `Provider` type.
+- Jakarta's `Provider` type.
+- Guice modules
+    - Only `@Provides` declarations are supported. `configure` implementations (including anything that would go in them) are not.
 
 ```kotlin
 metro {

@@ -27,6 +27,7 @@ import dev.zacsweers.metro.compiler.ir.includedClasses
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.ir.isBindingContainer
 import dev.zacsweers.metro.compiler.ir.isCompanionObject
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
@@ -848,7 +849,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
 
       val requireMetadata =
         declaration.isAnnotatedWithAny(metroSymbols.classIds.dependencyGraphAnnotations) ||
-          declaration.isAnnotatedWithAny(metroSymbols.classIds.bindingContainerAnnotations)
+          declaration.isBindingContainer()
       if (requireMetadata) {
         val message =
           "No metadata found for ${metadataDeclaration.kotlinFqName} from " +

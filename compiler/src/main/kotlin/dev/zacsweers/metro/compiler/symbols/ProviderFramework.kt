@@ -5,8 +5,8 @@ package dev.zacsweers.metro.compiler.symbols
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
-import dev.zacsweers.metro.compiler.ir.getAllSuperTypes
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
@@ -326,14 +326,15 @@ internal class GuiceProviderFramework(
       // Determine which lazy function to use based on the provider type
       val lazyFunction =
         provider.type.rawTypeOrNull()?.let { rawType ->
-          rawType.getAllSuperTypes(excludeSelf = false, excludeAny = true).firstNotNullOfOrNull {
-            type ->
-            when (type.classOrNull?.owner?.classId) {
-              GuiceSymbols.ClassIds.provider -> lazyFromGuiceProvider
-              Symbols.ClassIds.metroProvider -> lazyFromMetroProvider
-              else -> null
+          rawType
+            .allSupertypesSequence(excludeSelf = false, excludeAny = true)
+            .firstNotNullOfOrNull { type ->
+              when (type.classOrNull?.owner?.classId) {
+                GuiceSymbols.ClassIds.provider -> lazyFromGuiceProvider
+                Symbols.ClassIds.metroProvider -> lazyFromMetroProvider
+                else -> null
+              }
             }
-          }
         } ?: reportCompilerBug("Unexpected provider type: ${provider.type.dumpKotlinLike()}")
 
       return irInvoke(
@@ -499,16 +500,17 @@ internal class DaggerProviderFramework(
       // Determine which lazy function to use based on the provider type
       val lazyFunction =
         provider.type.rawTypeOrNull()?.let { rawType ->
-          rawType.getAllSuperTypes(excludeSelf = false, excludeAny = true).firstNotNullOfOrNull {
-            type ->
-            when (type.classOrNull?.owner?.classId) {
-              DaggerSymbols.ClassIds.DAGGER_INTERNAL_PROVIDER_CLASS_ID -> lazyFromDaggerProvider
-              JavaxSymbols.ClassIds.JAVAX_PROVIDER_CLASS_ID -> lazyFromJavaxProvider
-              JakartaSymbols.ClassIds.JAKARTA_PROVIDER_CLASS_ID -> lazyFromJakartaProvider
-              Symbols.ClassIds.metroProvider -> lazyFromMetroProvider
-              else -> null
+          rawType
+            .allSupertypesSequence(excludeSelf = false, excludeAny = true)
+            .firstNotNullOfOrNull { type ->
+              when (type.classOrNull?.owner?.classId) {
+                DaggerSymbols.ClassIds.DAGGER_INTERNAL_PROVIDER_CLASS_ID -> lazyFromDaggerProvider
+                JavaxSymbols.ClassIds.JAVAX_PROVIDER_CLASS_ID -> lazyFromJavaxProvider
+                JakartaSymbols.ClassIds.JAKARTA_PROVIDER_CLASS_ID -> lazyFromJakartaProvider
+                Symbols.ClassIds.metroProvider -> lazyFromMetroProvider
+                else -> null
+              }
             }
-          }
         } ?: reportCompilerBug("Unexpected provider type: ${provider.type.dumpKotlinLike()}")
 
       return irInvoke(
