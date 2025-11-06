@@ -160,7 +160,7 @@ Enabling this also enables _runtime_ interop with:
 - Guice's `Provider` type. This means that you can use Guice's `Provider` type interchangeably with Metro's `Provider` type.
 - Jakarta's `Provider` type.
 - Guice modules
-  - Only `@Provides` declarations are supported. `configure` implementations (including anything that would go in them) are not.
+    - Only `@Provides` declarations are supported. `configure` implementations (including anything that would go in them) are not.
 
 ```kotlin
 metro {
