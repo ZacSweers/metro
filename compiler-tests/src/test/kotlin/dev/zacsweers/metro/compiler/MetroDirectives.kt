@@ -72,6 +72,11 @@ object MetroDirectives : SimpleDirectivesContainer() {
     directive(
       "Enable Anvil KSP processing. This implicitly applies WITH_DAGGER, ENABLE_DAGGER_INTEROP, and WITH_ANVIL directives as well."
     )
+  val GUICE_ANNOTATIONS by directive("Add Guice as dependency and configure custom annotations.")
+  val ENABLE_GUICE_INTEROP by
+    directive(
+      "Enable Guice runtime interop. This implicitly applies GUICE_ANNOTATIONS directive as well."
+    )
 
   // Anvil KSP options
   val ANVIL_GENERATE_DAGGER_FACTORIES by
@@ -120,5 +125,13 @@ object MetroDirectives : SimpleDirectivesContainer() {
 
   fun enableAnvilKsp(directives: RegisteredDirectives): Boolean {
     return ENABLE_ANVIL_KSP in directives
+  }
+
+  fun enableGuiceAnnotations(directives: RegisteredDirectives): Boolean {
+    return GUICE_ANNOTATIONS in directives || ENABLE_GUICE_INTEROP in directives
+  }
+
+  fun enableGuiceInterop(directives: RegisteredDirectives): Boolean {
+    return ENABLE_GUICE_INTEROP in directives
   }
 }

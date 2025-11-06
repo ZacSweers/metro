@@ -19,7 +19,7 @@ import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.graph.expressions.IrOptionalExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.expressions.optionalType
-import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.ir.isBindingContainer
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
@@ -380,13 +380,13 @@ internal class BindingGraphGenerator(
     }
 
     node.creator?.parameters?.regularParameters.orEmpty().forEach { creatorParam ->
-      // Only expose the binding if it's a bound instance, extended graph, or target is annotated
-      // @BindingContainer
+      // Only expose the binding if it's a bound instance, extended graph, or target is a binding
+      // container
       val shouldExposeBinding =
         creatorParam.isBindsInstance ||
-          creatorParam.typeKey.type
-            .rawTypeOrNull()
-            ?.isAnnotatedWithAny(metroSymbols.classIds.bindingContainerAnnotations) == true
+          with(this@BindingGraphGenerator) {
+            creatorParam.typeKey.type.rawTypeOrNull()?.isBindingContainer() == true
+          }
       if (shouldExposeBinding) {
         val paramTypeKey = creatorParam.typeKey
 

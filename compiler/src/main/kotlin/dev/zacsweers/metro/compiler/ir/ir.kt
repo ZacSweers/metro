@@ -21,6 +21,7 @@ import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.singleOrError
 import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
+import dev.zacsweers.metro.compiler.symbols.GuiceSymbols
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.toSafeIdentifier
 import java.io.File
@@ -111,7 +112,6 @@ import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeArgument
 import org.jetbrains.kotlin.ir.types.IrTypeProjection
 import org.jetbrains.kotlin.ir.types.classOrNull
-import org.jetbrains.kotlin.ir.types.classifierOrFail
 import org.jetbrains.kotlin.ir.types.classifierOrNull
 import org.jetbrains.kotlin.ir.types.createType
 import org.jetbrains.kotlin.ir.types.defaultType
@@ -255,6 +255,20 @@ internal fun IrAnnotationContainer.annotationsAnnotatedWithAny(
 internal fun IrConstructorCall.isAnnotatedWithAny(names: Set<ClassId>): Boolean {
   val annotationClass = this.symbol.owner.parentAsClass
   return annotationClass.annotationsIn(names).any()
+}
+
+context(context: IrMetroContext)
+internal fun IrClass.isBindingContainer(): Boolean {
+  return when {
+    isAnnotatedWithAny(context.metroSymbols.classIds.bindingContainerAnnotations) -> true
+    context.options.enableGuiceRuntimeInterop -> {
+      // Guice interop
+      with(context.pluginContext) {
+        return implements(GuiceSymbols.ClassIds.module)
+      }
+    }
+    else -> false
+  }
 }
 
 internal fun <T> IrConstructorCall.constArgumentOfTypeAt(position: Int): T? {
@@ -552,9 +566,9 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
 ): IrExpression {
   val symbols = context.metroSymbols
   val irType = bindingCode.type
-  if (!irType.implementsLazyType()) {
+  if (!irType.implementsLazyType() && !irType.implementsProviderType()) {
     // Not a provider, nothing else to do here!
-    bindingCode.type.findProviderSupertype() ?: return bindingCode
+    return bindingCode
   }
 
   val providerTypeConverter = symbols.providerTypeConverter
@@ -665,35 +679,6 @@ internal fun IrBuilderWithScope.dispatchReceiverFor(function: IrFunction): IrExp
 internal val IrClass.thisReceiverOrFail: IrValueParameter
   get() = this.thisReceiver ?: reportCompilerBug("No thisReceiver for $classId")
 
-context(pluginContext: IrPluginContext)
-internal fun IrClass.getAllSuperTypes(
-  excludeSelf: Boolean = true,
-  excludeAny: Boolean = true,
-): Sequence<IrType> {
-  val self = this
-  // Cover for cases where a subtype explicitly redeclares an inherited supertype
-  val visitedClasses = mutableSetOf<ClassId>()
-
-  suspend fun SequenceScope<IrType>.allSuperInterfacesImpl(currentClass: IrClass) {
-    for (superType in currentClass.superTypes) {
-      if (excludeAny && superType == pluginContext.irBuiltIns.anyType) continue
-      val clazz = superType.classifierOrFail.owner as IrClass
-      if (excludeSelf && clazz == self) continue
-      if (visitedClasses.add(clazz.classIdOrFail)) {
-        yield(superType)
-        allSuperInterfacesImpl(clazz)
-      }
-    }
-  }
-
-  return sequence {
-    if (!excludeSelf) {
-      yield(self.typeWith())
-    }
-    allSuperInterfacesImpl(self)
-  }
-}
-
 internal fun IrExpression.doubleCheck(
   irBuilder: IrBuilderWithScope,
   symbols: Symbols,
@@ -741,16 +726,6 @@ internal fun IrSimpleFunction.isAbstractAndVisible(): Boolean {
 
 internal fun IrClass.abstractFunctions(): Sequence<IrSimpleFunction> {
   return functions.filter { it.isAbstractAndVisible() }
-}
-
-context(context: IrPluginContext)
-internal fun IrClass.implements(superType: ClassId): Boolean {
-  return implementsAny(setOf(superType))
-}
-
-context(context: IrPluginContext)
-internal fun IrClass.implementsAny(superTypes: Set<ClassId>): Boolean {
-  return getAllSuperTypes(excludeSelf = false).any { it.rawTypeOrNull()?.classId in superTypes }
 }
 
 /**
@@ -1435,93 +1410,6 @@ internal fun IrSimpleFunction.asMemberOf(subtype: IrType): IrSimpleFunction {
   }
 }
 
-context(context: IrMetroContext)
-internal fun IrClass.deepRemapperFor(subtype: IrType): TypeRemapper {
-  // Check cache for existing substitutor
-  val cacheKey = classIdOrFail to subtype
-  return context.typeRemapperCache.getOrPut(cacheKey) {
-    // Build deep substitution map
-    val substitutionMap = buildDeepSubstitutionMap(this, subtype)
-    if (substitutionMap.isEmpty()) {
-      NOOP_TYPE_REMAPPER
-    } else {
-      DeepTypeSubstitutor(substitutionMap)
-    }
-  }
-}
-
-private fun buildDeepSubstitutionMap(
-  targetClass: IrClass,
-  concreteType: IrType,
-): Map<IrTypeParameterSymbol, IrType> {
-  val result = mutableMapOf<IrTypeParameterSymbol, IrType>()
-
-  fun collectSubstitutions(currentClass: IrClass, currentType: IrType) {
-    if (currentType !is IrSimpleType) return
-
-    // Add substitutions for current class's type parameters
-    currentClass.typeParameters.zip(currentType.arguments).forEach { (param, arg) ->
-      if (arg is IrTypeProjection) {
-        result[param.symbol] = arg.type
-      }
-    }
-
-    // Walk up the hierarchy
-    currentClass.superTypes.forEach { superType ->
-      val superClass = superType.classOrNull?.owner ?: return@forEach
-
-      // Apply current substitutions to the supertype
-      val substitutedSuperType = superType.substitute(result)
-
-      // Recursively collect from supertypes
-      collectSubstitutions(superClass, substitutedSuperType)
-    }
-  }
-
-  collectSubstitutions(targetClass, concreteType)
-  return result
-}
-
-private class DeepTypeSubstitutor(private val substitutionMap: Map<IrTypeParameterSymbol, IrType>) :
-  TypeRemapper {
-  private val cache = mutableMapOf<IrType, IrType>()
-
-  override fun enterScope(irTypeParametersContainer: IrTypeParametersContainer) {}
-
-  override fun leaveScope() {}
-
-  override fun remapType(type: IrType): IrType {
-    return cache.getOrPut(type) {
-      when (type) {
-        is IrSimpleType -> {
-          val classifier = type.classifier
-          if (classifier is IrTypeParameterSymbol) {
-            substitutionMap[classifier]?.let { remapType(it) } ?: type
-          } else {
-            val newArgs =
-              type.arguments.map { arg ->
-                when (arg) {
-                  is IrTypeProjection -> makeTypeProjection(remapType(arg.type), arg.variance)
-                  else -> arg
-                }
-              }
-            if (newArgs == type.arguments) type else type.buildSimpleType { arguments = newArgs }
-          }
-        }
-
-        else -> type
-      }
-    }
-  }
-}
-
-// Extension to substitute types in an IrType
-private fun IrType.substitute(substitutions: Map<IrTypeParameterSymbol, IrType>): IrType {
-  if (substitutions.isEmpty()) return this
-  val remapper = DeepTypeSubstitutor(substitutions)
-  return remapper.remapType(this)
-}
-
 internal fun IrConstructorCall.rankValue(): Long {
   // Although the parameter is defined as an Int, the value we receive here may end up being
   // an Int or a Long so we need to handle both
@@ -1553,6 +1441,10 @@ context(context: IrMetroContext)
 internal fun IrAnnotationContainer?.qualifierAnnotation() =
   annotationsAnnotatedWith(context.metroSymbols.qualifierAnnotations)
     .singleOrNull()
+    ?.takeIf {
+      // Guice's `@Assisted` annoyingly annotates itself as a qualifier too, so we catch that here
+      it.annotationClass.classId != GuiceSymbols.ClassIds.assisted
+    }
     ?.let(::IrAnnotation)
 
 context(context: IrMetroContext)

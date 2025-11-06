@@ -68,10 +68,12 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension$InteropHan
 	public final fun getElementsIntoSet ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getEnableDaggerAnvilInterop ()Lorg/gradle/api/provider/Property;
 	public abstract fun getEnableDaggerRuntimeInterop ()Lorg/gradle/api/provider/Property;
+	public abstract fun getEnableGuiceRuntimeInterop ()Lorg/gradle/api/provider/Property;
 	public final fun getGraphExtension ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getGraphExtensionFactory ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getIncludeAnvilAnnotations ()Lorg/gradle/api/provider/Property;
 	public final fun getIncludeDaggerAnnotations ()Lorg/gradle/api/provider/Property;
+	public final fun getIncludeGuiceAnnotations ()Lorg/gradle/api/provider/Property;
 	public final fun getIncludeJakartaAnnotations ()Lorg/gradle/api/provider/Property;
 	public final fun getIncludeJavaxAnnotations ()Lorg/gradle/api/provider/Property;
 	public final fun getIncludeKotlinInjectAnnotations ()Lorg/gradle/api/provider/Property;
@@ -99,6 +101,7 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension$InteropHan
 	public final fun includeAnvilForKotlinInject ()V
 	public final fun includeDagger (ZZ)V
 	public static synthetic fun includeDagger$default (Ldev/zacsweers/metro/gradle/MetroPluginExtension$InteropHandler;ZZILjava/lang/Object;)V
+	public final fun includeGuice ()V
 	public final fun includeJakarta ()V
 	public final fun includeJavax ()V
 	public final fun includeKotlinInject ()V

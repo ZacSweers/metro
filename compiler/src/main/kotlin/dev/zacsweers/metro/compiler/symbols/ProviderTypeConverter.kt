@@ -14,13 +14,14 @@ import org.jetbrains.kotlin.ir.util.classId
  * Framework-agnostic API for converting between different `Provider` and `Lazy` types across
  * frameworks.
  *
- * To add a new framework (e.g., Guice, Functions), implement [ProviderFramework] and register it in
- * the [frameworks] list.
+ * To add a new framework, implement [ProviderFramework] and register it in the [frameworks] list.
  *
  * Supported frameworks:
  * - Metro (`dev.zacsweers.metro.Provider`, canonical representation)
- * - Dagger `(dagger.Lazy`, `dagger.internal.Provider`, `javax.inject.Provider`,
- *   `jakarta.inject.Provider`)
+ * - Javax (`javax.inject.Provider`)
+ * - Jakarta (`jakarta.inject.Provider`)
+ * - Dagger (`dagger.Lazy`, `dagger.internal.Provider`)
+ * - Guice (`com.google.inject.Provider`)
  */
 internal class ProviderTypeConverter(
   private val metroFramework: MetroProviderFramework,
@@ -35,9 +36,12 @@ internal class ProviderTypeConverter(
    * 3. Routes through Metro's first party intrinsics as the canonical representation if needed.
    */
   context(_: IrMetroContext, _: IrBuilderWithScope)
-  internal fun IrExpression.convertTo(targetKey: IrContextualTypeKey): IrExpression {
+  internal fun IrExpression.convertTo(
+    targetKey: IrContextualTypeKey,
+    providerType: IrType = type,
+  ): IrExpression {
     val provider = this
-    val sourceFramework = frameworkFor(provider.type)
+    val sourceFramework = frameworkFor(providerType)
     val targetFramework = frameworkFor(targetKey.rawType)
 
     // Fast path: same framework, no conversion needed
@@ -47,9 +51,9 @@ internal class ProviderTypeConverter(
 
     // Convert through Metro as canonical representation
     // Source -> Metro -> Target
-    val metroProvider = with(sourceFramework) { provider.toMetroProvider(provider.type) }
+    val metroProvider = with(sourceFramework) { provider.toMetroProvider(providerType) }
 
-    return with(targetFramework) { metroProvider.fromMetroProvider(targetKey) }
+    return with(targetFramework) { fromMetroProvider(metroProvider, targetKey) }
   }
 
   // TODO this currently only checks raw class IDs and not supertypes

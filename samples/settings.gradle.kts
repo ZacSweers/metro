@@ -8,7 +8,7 @@ pluginManagement {
   }
   plugins {
     id("com.gradle.develocity") version "4.2.2"
-    id("com.android.settings") version "8.12.3"
+    id("com.android.settings") version "8.13.0"
   }
 }
 
@@ -39,6 +39,7 @@ include(
   ":circuit-app",
   ":integration-tests",
   ":interop:customAnnotations-dagger",
+  ":interop:customAnnotations-guice",
   ":interop:customAnnotations-kotlinInject",
   ":interop:dependencies-dagger",
   ":interop:dependencies-kotlinInject",

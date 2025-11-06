@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.findInjectConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.isBindingContainer
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
 import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
@@ -70,9 +71,7 @@ internal object BindingContainerCallableChecker :
       with(session.compatContext) { declaration.getContainingClassSymbol() }
     }
     if (declaration is FirConstructor) {
-      val isInBindingContainer =
-        containingClassSymbol?.isAnnotatedWithAny(session, classIds.bindingContainerAnnotations)
-          ?: false
+      val isInBindingContainer = containingClassSymbol?.isBindingContainer(session) ?: false
       if (isInBindingContainer) {
         // Check for Provides annotations on constructor params
         for (param in declaration.valueParameters) {
@@ -183,7 +182,7 @@ internal object BindingContainerCallableChecker :
 
     if (annotations.isProvides) {
       containingClassSymbol?.let { containingClass ->
-        if (!containingClass.isAnnotatedWithAny(session, classIds.bindingContainerAnnotations)) {
+        if (!containingClass.isBindingContainer(session)) {
           if (containingClass.classKind?.isObject == true && !containingClass.isCompanion) {
             // @Provides declarations can't live in non-@BindingContainer objects, this is a common
             // case hit when migrating from Dagger/Anvil and you have a non-contributed @Module,

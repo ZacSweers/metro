@@ -1348,6 +1348,34 @@ public class BoxTestGenerated extends AbstractBoxTest {
         }
       }
     }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/box/interop/guice")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Guice {
+      @Test
+      public void testAllFilesPresentInGuice() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/interop/guice"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      }
+
+      @Test
+      @TestMetadata("GuiceSmokeTest.kt")
+      public void testGuiceSmokeTest() {
+        runTest("compiler-tests/src/test/data/box/interop/guice/GuiceSmokeTest.kt");
+      }
+
+      @Test
+      @TestMetadata("InjectedGuiceProviderInteropWorks.kt")
+      public void testInjectedGuiceProviderInteropWorks() {
+        runTest("compiler-tests/src/test/data/box/interop/guice/InjectedGuiceProviderInteropWorks.kt");
+      }
+
+      @Test
+      @TestMetadata("InjectedKotlinLazyFromGuiceProviderWorks.kt")
+      public void testInjectedKotlinLazyFromGuiceProviderWorks() {
+        runTest("compiler-tests/src/test/data/box/interop/guice/InjectedKotlinLazyFromGuiceProviderWorks.kt");
+      }
+    }
   }
 
   @Nested

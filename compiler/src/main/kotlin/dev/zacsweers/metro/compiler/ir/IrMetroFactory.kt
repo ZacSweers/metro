@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
+import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -67,11 +68,16 @@ internal sealed interface IrMetroFactory {
 
       // Wrap in a metro provider if this is a provider
       return if (isDaggerFactory && factoryClass.defaultType.implementsProviderType()) {
-        irInvoke(
-            extensionReceiver = createExpression,
-            callee = context.metroSymbols.requireDaggerSymbols().asMetroProvider,
+        with(context.metroSymbols.providerTypeConverter) {
+          val type = typeKey.type.wrapInProvider(context.metroSymbols.metroProvider)
+          createExpression.convertTo(
+            type.asContextualTypeKey(null, false, false, null),
+            providerType =
+              typeKey.type.wrapInProvider(
+                context.metroSymbols.requireDaggerSymbols().jakartaSymbols.jakartaProvider
+              ),
           )
-          .apply { typeArguments[0] = factoryClass.typeWith() }
+        }
       } else {
         createExpression
       }

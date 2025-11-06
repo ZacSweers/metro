@@ -83,8 +83,8 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
       val contributingClasses = findVisibleContributionClassesForScopeInHints(scope)
       getScopedContributions(contributingClasses, scope, bindingContainersOnly = true)
         .mapNotNullToSet {
-          it.classOrNull?.owner?.takeIf {
-            it.isAnnotatedWithAny(metroContext.metroSymbols.classIds.bindingContainerAnnotations)
+          it.classOrNull?.owner?.takeIf { irClass ->
+            with(metroContext) { irClass.isBindingContainer() }
           }
         }
     }
@@ -113,30 +113,28 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
     return filteredContributions
       .let { contributions ->
         if (bindingContainersOnly) {
-          contributions.filter {
-            it.isAnnotatedWithAny(metroContext.metroSymbols.classIds.bindingContainerAnnotations)
-          }
+          contributions.filter { irClass -> with(metroContext) { irClass.isBindingContainer() } }
         } else {
-          contributions.filterNot {
-            it.isAnnotatedWithAny(metroContext.metroSymbols.classIds.bindingContainerAnnotations)
-          }
+          contributions.filterNot { irClass -> with(metroContext) { irClass.isBindingContainer() } }
         }
       }
-      .flatMapToSet {
-        if (it.isAnnotatedWithAny(metroContext.metroSymbols.classIds.bindingContainerAnnotations)) {
-          setOf(it.defaultType)
-        } else {
-          it.nestedClasses.mapNotNullToSet { nestedClass ->
-            val metroContribution =
-              nestedClass.findAnnotations(Symbols.ClassIds.metroContribution).singleOrNull()
-                ?: return@mapNotNullToSet null
-            val contributionScope =
-              metroContribution.scopeOrNull()
-                ?: reportCompilerBug("No scope found for @MetroContribution annotation")
-            if (contributionScope == scope) {
-              nestedClass.defaultType
-            } else {
-              null
+      .flatMapToSet { irClass ->
+        with(metroContext) {
+          if (irClass.isBindingContainer()) {
+            setOf(irClass.defaultType)
+          } else {
+            irClass.nestedClasses.mapNotNullToSet { nestedClass ->
+              val metroContribution =
+                nestedClass.findAnnotations(Symbols.ClassIds.metroContribution).singleOrNull()
+                  ?: return@mapNotNullToSet null
+              val contributionScope =
+                metroContribution.scopeOrNull()
+                  ?: reportCompilerBug("No scope found for @MetroContribution annotation")
+              if (contributionScope == scope) {
+                nestedClass.defaultType
+              } else {
+                null
+              }
             }
           }
         }

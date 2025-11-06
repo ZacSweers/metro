@@ -116,6 +116,7 @@ nav:
   - 'Adoption Strategies': adoption.md
   - 'Samples': samples.md
   - 'API': api/index.html
+  - 'Design Doc': designdoc.html
   - 'Discussions ⏏': https://github.com/ZacSweers/metro/discussions
   - 'Change Log': changelog.md
   - 'Contributing': contributing.md

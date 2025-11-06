@@ -119,12 +119,21 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
     val isJvmTarget =
       kotlinCompilation.target.platformType == KotlinPlatformType.jvm ||
         kotlinCompilation.target.platformType == KotlinPlatformType.androidJvm
-    if (isJvmTarget && extension.interop.enableDaggerRuntimeInterop.getOrElse(false)) {
-      project.dependencies.add(
-        kotlinCompilation.implementationConfigurationName,
-        "dev.zacsweers.metro:interop-dagger:$VERSION",
-      )
+    if (isJvmTarget) {
+      if (extension.interop.enableDaggerRuntimeInterop.getOrElse(false)) {
+        project.dependencies.add(
+          kotlinCompilation.implementationConfigurationName,
+          "dev.zacsweers.metro:interop-dagger:$VERSION",
+        )
+      }
+      if (extension.interop.enableGuiceRuntimeInterop.getOrElse(false)) {
+        project.dependencies.add(
+          kotlinCompilation.implementationConfigurationName,
+          "dev.zacsweers.metro:interop-guice:$VERSION",
+        )
+      }
     }
+
     val reportsDir = extension.reportsDestination.map { it.dir(kotlinCompilation.name) }
 
     return project.provider {
@@ -351,6 +360,13 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
             SubpluginOption(
               "enable-dagger-anvil-interop",
               value = enableDaggerAnvilInterop.getOrElse(false).toString(),
+            )
+          )
+          add(lazyOption("interop-include-guice-annotations", includeGuiceAnnotations))
+          add(
+            SubpluginOption(
+              "enable-guice-runtime-interop",
+              value = enableGuiceRuntimeInterop.getOrElse(false).toString(),
             )
           )
         }
