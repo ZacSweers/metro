@@ -258,6 +258,20 @@ internal fun IrConstructorCall.isAnnotatedWithAny(names: Set<ClassId>): Boolean 
   return annotationClass.annotationsIn(names).any()
 }
 
+context(context: IrMetroContext)
+internal fun IrClass.isBindingContainer(): Boolean {
+  return when {
+    isAnnotatedWithAny(context.metroSymbols.classIds.bindingContainerAnnotations) -> true
+    context.options.enableGuiceRuntimeInterop -> {
+      // Guice interop
+      with(context.pluginContext) {
+        return implements(GuiceSymbols.ClassIds.module)
+      }
+    }
+    else -> false
+  }
+}
+
 internal fun <T> IrConstructorCall.constArgumentOfTypeAt(position: Int): T? {
   if (arguments.isEmpty()) return null
   return (arguments[position] as? IrConst?)?.valueAs()
