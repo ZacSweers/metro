@@ -212,6 +212,7 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
   @MetroExtensionMarker
   public abstract class InteropHandler @Inject constructor(objects: ObjectFactory) {
     public abstract val enableDaggerRuntimeInterop: Property<Boolean>
+    public abstract val enableGuiceRuntimeInterop: Property<Boolean>
 
     // Interop mode flags
     public val includeJavaxAnnotations: Property<Boolean> =
@@ -335,6 +336,7 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
 
     /** Includes Guice annotations support. */
     public fun includeGuice() {
+      enableGuiceRuntimeInterop.set(true)
       includeGuiceAnnotations.set(true)
     }
   }
