@@ -2021,6 +2021,7 @@
 </code></pre></div></li>
 <li><strong>Enhancement</strong>: Improve IR caching layer with supertype caching.</li>
 <li><strong>Fix</strong>: Don&rsquo;t treat <code>l</code> as an illegal char in name allocating. This was supposed to be <code>;</code>.</li>
+<li><strong>Fix</strong>: Ensure all reserved properties by child graphs get properties in parents. Previously, there were some cases for bindings that were unused in the parent and otherwise did not meet the criteria for having a backing property would get missed in binding property collection.</li>
 <li>Split <code>javax</code> and <code>jakarta</code> interop APIs into separate artifacts from dagger for reuse.</li>
 </ul>
 <h2 id="074">0.7.4<a class="headerlink" href="#074" title="Permanent link">&para;</a></h2>
