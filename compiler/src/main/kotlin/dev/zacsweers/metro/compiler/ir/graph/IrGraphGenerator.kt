@@ -11,11 +11,11 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.buildBlockBody
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.doubleCheck
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
-import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.graph.expressions.BindingExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.expressions.GraphExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.instanceFactory

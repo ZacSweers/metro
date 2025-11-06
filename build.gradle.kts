@@ -157,7 +157,7 @@ allprojects {
         "**/StringKey.kt",
         "**/topologicalSort.kt",
         "**/TopologicalSortTest.kt",
-        "**/ir/cache/*.kt"
+        "**/ir/cache/*.kt",
       )
     }
     format("licenseJava") {

@@ -13,8 +13,7 @@ internal object IrThreadUnsafeCachesFactory : IrCachesFactory() {
     initialCapacity: Int,
     loadFactor: Float,
     createValue: (K, CONTEXT) -> V,
-  ): IrCache<K, V, CONTEXT> =
-    IrThreadUnsafeCache(HashMap(initialCapacity, loadFactor), createValue)
+  ): IrCache<K, V, CONTEXT> = IrThreadUnsafeCache(HashMap(initialCapacity, loadFactor), createValue)
 
   override fun <K : Any, V, CONTEXT, DATA> createCacheWithPostCompute(
     createValue: (K, CONTEXT) -> Pair<V, DATA>,
@@ -33,7 +32,6 @@ internal object IrThreadUnsafeCachesFactory : IrCachesFactory() {
 
   override fun <V> createPossiblySoftLazyValue(createValue: () -> V): IrLazyValue<V> =
     createLazyValue(createValue)
-
 }
 
 @Suppress("UNCHECKED_CAST")
