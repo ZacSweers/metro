@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.fir.argumentAsOrNull
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.isBindingContainer
 import dev.zacsweers.metro.compiler.fir.memoizedAllSessionsSequence
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.originClassId
@@ -150,7 +151,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
   ): Map<ClassId, Boolean> {
     return buildMap {
       for (originClass in contributingClasses) {
-        if (originClass.isAnnotatedWithAny(session, session.classIds.bindingContainerAnnotations)) {
+        if (originClass.isBindingContainer(session)) {
           val hasMatchingScope =
             originClass.annotationsIn(session, session.classIds.contributesToAnnotations).any {
               it.resolvedScopeClassId(typeResolver) == scopeClassId
