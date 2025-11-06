@@ -14,7 +14,7 @@ import dev.zacsweers.metro.compiler.fir.mapKeyAnnotation
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.resolvedBindingArgument
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
-import dev.zacsweers.metro.compiler.unsafeLazy
+import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.isObject
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
@@ -67,7 +67,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
       if (classId in classIds.allContributesAnnotations) {
         val scope = annotation.resolvedScopeClassId() ?: continue
         val replaces = emptySet<ClassId>() // TODO implement
-        val checkIntoSet by unsafeLazy {
+        val checkIntoSet by memoize {
           checkBindingContribution(
             session,
             ContributionKind.CONTRIBUTES_INTO_SET,
@@ -82,7 +82,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
             Contribution.ContributesIntoSet(declaration, annotation, scope, replaces, bindingType)
           }
         }
-        val checkIntoMap by unsafeLazy {
+        val checkIntoMap by memoize {
           checkBindingContribution(
             session,
             ContributionKind.CONTRIBUTES_INTO_MAP,
@@ -182,7 +182,9 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
     val isAssistedFactory =
       declaration.symbol.isAnnotatedWithAny(session, session.classIds.assistedFactoryAnnotations)
     // Ensure the class is injected or an object. Objects are ok IFF they are not @ContributesTo
-    val isNotInjectedOrFactory = !isAssistedFactory && declaration.symbol.findInjectLikeConstructors(session).singleOrNull() == null
+    val isNotInjectedOrFactory =
+      !isAssistedFactory &&
+        declaration.symbol.findInjectLikeConstructors(session).singleOrNull() == null
     val isValidObject = declaration.classKind.isObject && kind != ContributionKind.CONTRIBUTES_TO
     if (isNotInjectedOrFactory && !isValidObject) {
       reporter.reportOn(
@@ -352,8 +354,11 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
       return
     }
     if (declaration.classKind != ClassKind.INTERFACE) {
-      // Special-case: if this is a contributed graph extension factory, don't report here because it has its own (more specific) error.
-      if (declaration.isAnnotatedWithAny(session, session.classIds.graphExtensionFactoryAnnotations)) {
+      // Special-case: if this is a contributed graph extension factory, don't report here because
+      // it has its own (more specific) error.
+      if (
+        declaration.isAnnotatedWithAny(session, session.classIds.graphExtensionFactoryAnnotations)
+      ) {
         return
       }
       reporter.reportOn(

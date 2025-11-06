@@ -13,6 +13,15 @@ sourceSets {
   register("generator230")
 }
 
+val testCompilerVersionProvider = providers.gradleProperty("metro.testCompilerVersion")
+
+val testCompilerVersion = testCompilerVersionProvider.orElse(libs.versions.kotlin).get()
+
+val testKotlinVersion =
+  testCompilerVersion.substringBefore('-').split('.').let { (major, minor, patch) ->
+    KotlinVersion(major.toInt(), minor.toInt(), patch.toInt())
+  }
+
 buildConfig {
   generateAtSync = true
   packageName("dev.zacsweers.metro.compiler.test")
@@ -23,7 +32,18 @@ buildConfig {
     }
   }
   sourceSets.named("test") {
+    // Not a Boolean to avoid warnings about constants in if conditions
+    buildConfigField(
+      "String",
+      "OVERRIDE_COMPILER_VERSION",
+      "\"${testCompilerVersionProvider.isPresent}\"",
+    )
     buildConfigField("String", "JVM_TARGET", libs.versions.jvmTarget.map { "\"$it\"" })
+    buildConfigField(
+      "kotlin.KotlinVersion",
+      "COMPILER_VERSION",
+      "KotlinVersion(${testKotlinVersion.major}, ${testKotlinVersion.minor}, ${testKotlinVersion.patch})",
+    )
   }
 }
 
@@ -34,31 +54,42 @@ val kiAnvilRuntimeClasspath: Configuration by configurations.creating { isTransi
 val daggerRuntimeClasspath: Configuration by configurations.creating {}
 val daggerInteropClasspath: Configuration by configurations.creating { isTransitive = false }
 
-val testCompilerVersion =
-  providers.gradleProperty("metro.testCompilerVersion").orElse(libs.versions.kotlin).get()
+dependencies {
+  // IntelliJ maven repo doesn't carry compiler test framework versions, so we'll pull from that as
+  // needed for those tests
+  val compilerTestFrameworkVersion: String
 
-val kotlinVersion =
-  testCompilerVersion.substringBefore('-').split('.').let { (major, minor, patch) ->
-    KotlinVersion(major.toInt(), minor.toInt(), patch.toInt())
+  val generatorConfigToUse: String
+
+  if (testKotlinVersion >= KotlinVersion(2, 3)) {
+    generatorConfigToUse = "generator230"
+    compilerTestFrameworkVersion =
+      if (testCompilerVersion.contains("-dev")) {
+        "2.3.0-Beta2"
+      } else {
+        testCompilerVersion
+      }
+  } else {
+    generatorConfigToUse = "generator220"
+    compilerTestFrameworkVersion = libs.versions.kotlin.get()
   }
 
-dependencies {
   // 2.3.0 changed the test gen APIs around into different packages
   "generator220CompileOnly"(libs.kotlin.compilerTestFramework)
   "generator230CompileOnly"(
-    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.3.0-dev-9673"
+    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$compilerTestFrameworkVersion"
   )
-  val configToUse = if (kotlinVersion >= KotlinVersion(2, 3)) "generator230" else "generator220"
-  testImplementation(sourceSets.named(configToUse).map { it.output })
+
+  testImplementation(sourceSets.named(generatorConfigToUse).map { it.output })
+  testImplementation(
+    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$compilerTestFrameworkVersion"
+  )
+  testImplementation("org.jetbrains.kotlin:kotlin-compiler:$testCompilerVersion")
 
   testImplementation(project(":compiler"))
   testImplementation(project(":compiler-compat"))
 
   testImplementation(libs.kotlin.testJunit5)
-  testImplementation(
-    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$testCompilerVersion"
-  )
-  testImplementation("org.jetbrains.kotlin:kotlin-compiler:$testCompilerVersion")
 
   testRuntimeOnly(libs.ksp.symbolProcessing)
   testImplementation(libs.ksp.symbolProcessing.aaEmbeddable)
@@ -74,6 +105,10 @@ dependencies {
   daggerRuntimeClasspath(libs.dagger.runtime)
   kiAnvilRuntimeClasspath(libs.kotlinInject.anvil.runtime)
 
+  // Anvil KSP processors, only needs to be on the classpath at runtime since they're loaded via
+  // ServiceLoader
+  testRuntimeOnly(libs.anvil.kspCompiler)
+
   // Dependencies required to run the internal test framework.
   testRuntimeOnly(libs.kotlin.reflect)
   testRuntimeOnly(libs.kotlin.test)
@@ -81,26 +116,31 @@ dependencies {
   testRuntimeOnly(libs.kotlin.annotationsJvm)
 }
 
-tasks.register<JavaExec>("generateTests") {
-  inputs
-    .dir(layout.projectDirectory.dir("src/test/data"))
-    .withPropertyName("testData")
-    .withPathSensitivity(PathSensitivity.RELATIVE)
-  outputs.dir(layout.projectDirectory.dir("src/test/java")).withPropertyName("generatedTests")
+val generateTests =
+  tasks.register<JavaExec>("generateTests") {
+    inputs
+      .dir(layout.projectDirectory.dir("src/test/data"))
+      .withPropertyName("testData")
+      .withPathSensitivity(PathSensitivity.RELATIVE)
 
-  classpath = sourceSets.test.get().runtimeClasspath
-  mainClass.set("dev.zacsweers.metro.compiler.GenerateTestsKt")
-  workingDir = rootDir
+    testCompilerVersionProvider.orNull?.let { inputs.property("testCompilerVersion", it) }
 
-  // Larger heap size
-  minHeapSize = "128m"
-  maxHeapSize = "1g"
+    outputs.dir(layout.projectDirectory.dir("src/test/java")).withPropertyName("generatedTests")
 
-  // Larger stack size
-  jvmArgs("-Xss1m")
-}
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("dev.zacsweers.metro.compiler.GenerateTestsKt")
+    workingDir = rootDir
+
+    // Larger heap size
+    minHeapSize = "128m"
+    maxHeapSize = "1g"
+
+    // Larger stack size
+    jvmArgs("-Xss1m")
+  }
 
 tasks.withType<Test> {
+  outputs.upToDateWhen { false }
   dependsOn(metroRuntimeClasspath)
   dependsOn(daggerInteropClasspath)
   inputs
@@ -109,8 +149,6 @@ tasks.withType<Test> {
     .withPathSensitivity(PathSensitivity.RELATIVE)
 
   workingDir = rootDir
-
-  systemProperty("metro.messaging.useShortCompilerSourceLocations", "true")
 
   useJUnitPlatform()
 

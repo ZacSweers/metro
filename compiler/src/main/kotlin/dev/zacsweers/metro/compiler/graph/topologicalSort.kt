@@ -123,7 +123,7 @@ internal fun <TypeKey : Comparable<TypeKey>, Binding> buildFullAdjacency(
  */
 internal data class TopoSortResult<T>(
   val sortedKeys: List<T>,
-  val deferredTypes: List<T>,
+  val deferredTypes: Set<T>,
   val reachableKeys: Set<T>,
 )
 
@@ -230,6 +230,7 @@ internal fun <V : Comparable<V>> topologicalSort(
       topologicallySortComponentDag(componentDag, components.size)
     }
 
+  // Expand each component back to its original vertices
   val sortedKeys =
     parentTracer.traceNested("Expand components") {
       componentOrder.flatMap { id ->
@@ -246,10 +247,11 @@ internal fun <V : Comparable<V>> topologicalSort(
         }
       }
     }
+
   return TopoSortResult(
     // Expand each component back to its original vertices
     sortedKeys,
-    deferredTypes.toList(),
+    deferredTypes,
     reachableKeys.keys,
   )
 }

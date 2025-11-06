@@ -15,7 +15,6 @@ interface ExtGraph {
       name: String,
       value: Int
     ): ExtGraph {
-      println(name)
       return create(value)
     }
   }

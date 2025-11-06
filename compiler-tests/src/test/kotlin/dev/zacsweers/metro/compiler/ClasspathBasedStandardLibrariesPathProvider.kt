@@ -5,7 +5,6 @@ package dev.zacsweers.metro.compiler
 import java.io.File
 import java.io.File.pathSeparator
 import java.io.File.separator
-import kotlin.text.get
 import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
 
 object ClasspathBasedStandardLibrariesPathProvider : KotlinStandardLibrariesPathProvider() {

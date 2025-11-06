@@ -3,11 +3,11 @@
 package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.compiler.Origins
-import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.BindsCallable
+import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.MultibindsCallable
@@ -16,6 +16,7 @@ import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
 import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
 import dev.zacsweers.metro.compiler.mirrorIrConstructorCalls
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Optional
 import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
@@ -66,8 +67,13 @@ internal data class BindsMirror(
   val bindsCallables: Set<BindsCallable>,
   /** Set of multibinds callables by their [BindsCallable]. */
   val multibindsCallables: Set<MultibindsCallable>,
+  /**
+   * Interoped optional types from `@BindsOptionalOf`. Only present if Dagger interop is enabled.
+   */
+  val optionalKeys: Set<BindsOptionalOfCallable>,
 ) {
-  fun isEmpty() = bindsCallables.isEmpty() && multibindsCallables.isEmpty()
+  fun isEmpty() =
+    bindsCallables.isEmpty() && multibindsCallables.isEmpty() && optionalKeys.isEmpty()
 }
 
 context(context: IrMetroContext)
@@ -78,7 +84,11 @@ private fun transformBindingMirrorClass(parentClass: IrClass, mirrorClass: IrCla
   fun processFunction(declaration: IrSimpleFunction) {
     if (!declaration.isFakeOverride) {
       val metroFunction = metroFunctionOf(declaration)
-      if (metroFunction.annotations.isBinds || metroFunction.annotations.isMultibinds) {
+      if (
+        metroFunction.annotations.isBinds ||
+          metroFunction.annotations.isMultibinds ||
+          metroFunction.annotations.isBindsOptionalOf
+      ) {
         // TODO we round-trip generating -> reading back. Should we optimize that path?
         val function =
           if (isExternal) metroFunction else generateMirrorFunction(mirrorClass, metroFunction)
@@ -119,6 +129,10 @@ private fun generateMirrorFunction(
         annotations.mapKeys.firstOrNull()?.hashCode()?.toUInt()?.let(::append)
         annotations.multibinds?.hashCode()?.toUInt()?.let(::append)
 
+        if (annotations.isBindsOptionalOf) {
+          append("_opt")
+        }
+
         if (annotations.isIntoSet) {
           append("_intoset")
         } else if (annotations.isElementsIntoSet) {
@@ -145,12 +159,19 @@ private fun generateMirrorFunction(
       }
 
   val callableMetadata =
-    buildAnnotation(mirrorFunction.symbol, context.metroSymbols.callableMetadataAnnotationConstructor) {
+    buildAnnotation(
+      mirrorFunction.symbol,
+      context.metroSymbols.callableMetadataAnnotationConstructor,
+    ) {
       with(it) {
         // callableName
         arguments[0] = irString(targetFunction.callableId.callableName.asString())
         // propertyName
-        arguments[1] = irString(targetFunction.ir.propertyIfAccessor.expectAsOrNull<IrProperty>()?.name?.asString() ?: "")
+        arguments[1] =
+          irString(
+            targetFunction.ir.propertyIfAccessor.expectAsOrNull<IrProperty>()?.name?.asString()
+              ?: ""
+          )
 
         // TODO these locations are bogus in generated binding functions. Report origin class
         //  instead somewhere?

@@ -8,7 +8,7 @@ run_checks() {
     local version_flag=""
 
     if [[ -n "$compiler_version" ]]; then
-        version_flag="-Dmetro.testCompilerVersion=$compiler_version"
+        version_flag="-Pmetro.testCompilerVersion=$compiler_version"
         echo "Running checks with Kotlin version $compiler_version..."
     else
         echo "Running checks..."
@@ -115,15 +115,14 @@ case "$1" in
 
    "regen")
        echo "Applying formatting and API gen..."
-       # Annoyingly, the apiDump task has some caching issues
-       ./gradlew spotlessApply apiDump --rerun-tasks --no-build-cache --no-configuration-cache
-       ./gradlew -p samples spotlessApply --no-configuration-cache
+       # Annoyingly, the apiDump and package lock tasks have caching issues
        # https://youtrack.jetbrains.com/issue/KT-69684
-       ./gradlew clean
+       find . -type d -name "api" -exec find {} -name "*.api" -delete \;
        rm -rf kotlin-js-store
        rm -rf samples/kotlin-js-store
-       ./gradlew kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks --no-build-cache
-       ./gradlew -p samples kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks --no-build-cache
+       ./gradlew clean --quiet
+       ./gradlew spotlessApply apiDump kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks --no-build-cache --no-configuration-cache --quiet
+       ./gradlew -p samples spotlessApply kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --no-configuration-cache --quiet
        ;;
 
    "gen-compat")

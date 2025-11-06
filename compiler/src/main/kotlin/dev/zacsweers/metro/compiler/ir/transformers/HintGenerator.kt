@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.compiler.Origins
-import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
@@ -12,6 +11,7 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.joinSimpleNames
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.name
@@ -86,16 +86,16 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
           annotations += hintAnnotations.map { it.ir }
         }
 
-    val fileName =
-      hintFileName(sourceClass.classIdOrFail, hintName)
+    val fileName = hintFileName(sourceClass.classIdOrFail, hintName)
 
     val firFile = buildFile {
       val metadataSource = sourceClass.metadata as? FirMetadataSource.Class
       if (metadataSource == null) {
-        reportCompat(sourceClass,
+        reportCompat(
+          sourceClass,
           MetroDiagnostics.METRO_ERROR,
-            "Class ${sourceClass.classId} does not have a valid metadata source. Found ${sourceClass.metadata?.javaClass?.canonicalName}.",
-          )
+          "Class ${sourceClass.classId} does not have a valid metadata source. Found ${sourceClass.metadata?.javaClass?.canonicalName}.",
+        )
       }
       moduleData = (sourceClass.metadata as FirMetadataSource.Class).fir.moduleData
       origin = FirDeclarationOrigin.Synthetic.PluginFile
@@ -136,10 +136,10 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
     fun hintFileName(sourceClassId: ClassId, hintName: Name): String {
       val fileNameWithoutExtension =
         sequence {
-          yieldAll(sourceClassId.packageFqName.pathSegments())
-          yield(sourceClassId.joinSimpleNames(separator = "", camelCase = true).shortClassName)
-          yield(hintName)
-        }
+            yieldAll(sourceClassId.packageFqName.pathSegments())
+            yield(sourceClassId.joinSimpleNames(separator = "", camelCase = true).shortClassName)
+            yield(hintName)
+          }
           .joinToString(separator = "") { it.asString().capitalizeUS() }
           .decapitalizeUS()
       return "$fileNameWithoutExtension.kt"

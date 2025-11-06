@@ -85,8 +85,7 @@ If a nested class called `Factory` is already present, Metro will do nothing.
 
 ### Why opt-in?
 
-The main reason this is behind an opt-in option at the moment is because compiler plugin IDE
-support is rudimentary at best and currently requires enabling a custom registry flag. See [the docs for how to enable IDE support](installation.md/#ide-support).
+The main reason this is behind an opt-in option at the moment is because compiler plugin IDE support requires some rudimentary configuration to work. See [the docs for how to enable IDE support](installation.md/#ide-support).
 
 Because of this, it's likely better for now to just hand-write the equivalent class that Metro generates. If you still wish to proceed with using this, it can be enabled via the Gradle DSL.
 
@@ -175,12 +174,12 @@ class ProfileInjector(
 
 Like Dagger, option #3 is accomplished via `MembersInjector` interface at runtime and in code gen. This should be reserved for advanced use cases.
 
-### Implementation notes
+??? note "Implementation Notes"
 
-* Property accessors don’t use `get`/`set` names in `inject{name}()` function names.
-* MembersInjector classes are generated as nested classes, allowing private member access.
-    * This includes parent classes’ private members (!!)
-* Optional bindings are not supported for injected member functions currently, but may be possible in the future.
+    * Property accessors don’t use `get`/`set` names in `inject{name}()` function names.
+    * MembersInjector classes are generated as nested classes, allowing private member access.
+        * This includes parent classes’ private members (!!)
+    * optional dependencies are not supported for injected member functions currently, but may be possible in the future.
 
 ## Top-level Function Injection
 
@@ -276,8 +275,7 @@ class AppClass {
 }
 
 // Usage
-val App = createGraph<AppGraph>()
-  .app
+val App = createGraph<AppGraph>().app
 
 // Call it in composition
 setContent {
@@ -287,13 +285,50 @@ setContent {
 
 Similarly, if the injected function is a `suspend` function, the `suspend` keyword will be ported to the generated `invoke()` function too.
 
+### Context parameters
+
+Top-level injected functions also support context parameters. Both regular and context parameters may be assisted.
+
+Any assisted context parameters will be carried as context parameters to the generated class's `invoke()` function.
+
+=== "Source"
+
+    ```kotlin
+    @Inject
+    @Composable
+    context(@Assisted sharedTransitionScope: SharedTransitionScope)
+    fun ClockWidget(
+      clock: Clock, // injected
+      @Assisted modifier: Modifier, // assisted inject
+    ) {
+      // ...
+    }
+    ```
+
+=== "Generated"
+
+    ```kotlin
+    @Inject
+    class ClockWidgetClass(private val clock: Provider<Clock>) {
+      @Composable
+      context(sharedTransitionScope: SharedTransitionScope)
+      operator fun invoke(modifier: Modifier) {
+        ClockWidget(clock(), modifier)
+      }
+    }
+    ```
+
 ### Why opt-in?
 
 There are two reasons this is behind an opt-in option at the moment.
 
+There are three reasons this is behind an opt-in option at the moment.
+
 1. Generating top-level declarations in Kotlin compiler plugins (in FIR specifically) is not
-   currently compatible with incremental compilation.
-2. IDE support is rudimentary at best and currently requires enabling a custom registry flag.
+   currently compatible with incremental compilation on the JVM.
+2. Generating top-level declarations in Kotlin compiler plugins (in FIR specifically) is not
+   currently compatible with non-JVM targets.
+3. IDE support is rudimentary at best and currently requires enabling a custom registry flag.
    See [the docs for how to enable IDE support](installation.md/#ide-support).
 
 Because of this, it's likely better for now to just hand-write the equivalent class that Metro generates. If you still wish to proceed with using this, it can be enabled via the Gradle DSL.
@@ -304,7 +339,7 @@ metro {
 }
 ```
 
-### Implementation notes
+??? note "Implementation Notes"
 
-- This is fairly different from kotlin-inject’s typealias approach. This is necessary because Metro doesn’t use higher order function types or typealiases as qualifiers.
-- Since the compose-compiler's IR transformer may run _before_ Metro's, we check for this during implementation body generation and look up the transformed target composable function as needed.
+    - This is fairly different from kotlin-inject’s typealias approach. This is necessary because Metro doesn’t use higher order function types or typealiases as qualifiers.
+    - Since the compose-compiler's IR transformer may run _before_ Metro's, we check for this during implementation body generation and look up the transformed target composable function as needed.

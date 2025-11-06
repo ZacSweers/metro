@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.generators
 
-import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.metroAnnotations
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
@@ -32,6 +32,7 @@ internal class BindingMirrorClassFirGenerator(session: FirSession, compatContext
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(session.predicates.bindsAnnotationPredicate)
     register(session.predicates.multibindsAnnotationPredicate)
+    register(session.predicates.bindsOptionalOfAnnotationPredicate)
   }
 
   // TODO probably not needed?
@@ -67,7 +68,7 @@ internal class BindingMirrorClassFirGenerator(session: FirSession, compatContext
     val hasBindingMembers =
       classSymbol.declarationSymbols.filterIsInstance<FirCallableSymbol<*>>().any { callable ->
         val annotations = callable.metroAnnotations(session)
-        annotations.isBinds || annotations.isMultibinds
+        annotations.isBinds || annotations.isMultibinds || annotations.isBindsOptionalOf
       }
 
     return if (hasBindingMembers) {

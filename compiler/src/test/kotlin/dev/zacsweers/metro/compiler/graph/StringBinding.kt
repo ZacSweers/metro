@@ -11,10 +11,7 @@ internal class StringBinding(
 ) : BaseBinding<String, StringTypeKey, StringContextualTypeKey> {
 
   override fun renderLocationDiagnostic(short: Boolean): LocationDiagnostic {
-    return LocationDiagnostic(
-      contextualTypeKey.typeKey.render(short = true),
-      null,
-    )
+    return LocationDiagnostic(contextualTypeKey.typeKey.render(short = true), null)
   }
 
   override fun renderDescriptionDiagnostic(short: Boolean, underlineTypeKey: Boolean): String {

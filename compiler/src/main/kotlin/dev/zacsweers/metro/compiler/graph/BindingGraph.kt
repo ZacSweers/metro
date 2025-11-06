@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
-import dev.zacsweers.metro.compiler.ir.appendBindingStack
-import dev.zacsweers.metro.compiler.ir.appendBindingStackEntries
-import dev.zacsweers.metro.compiler.ir.withEntry
+import dev.zacsweers.metro.compiler.ir.graph.appendBindingStack
+import dev.zacsweers.metro.compiler.ir.graph.appendBindingStackEntries
+import dev.zacsweers.metro.compiler.ir.graph.withEntry
 import dev.zacsweers.metro.compiler.joinWithDynamicSeparatorTo
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.tracing.Tracer
@@ -61,7 +61,11 @@ internal open class MutableBindingGraph<
     },
   private val onError: (String, BindingStack) -> Unit = { message, _ -> error(message) },
   private val onHardError: (String, BindingStack) -> Nothing = { message, _ -> error(message) },
-  private val findSimilarBindings: (key: TypeKey) -> Map<TypeKey, String> = { emptyMap() },
+  private val missingBindingHints:
+    (key: TypeKey, stack: BindingStack) -> MissingBindingHints<Type, TypeKey> =
+    { _, _ ->
+      MissingBindingHints()
+    },
 ) : BindingGraph<Type, TypeKey, ContextualTypeKey, Binding, BindingStackEntry, BindingStack> {
   // Populated by initial graph setup and later seal()
   override val bindings = mutableMapOf<TypeKey, Binding>()
@@ -136,13 +140,14 @@ internal open class MutableBindingGraph<
             val binding = bindings.getValue(source)
             val contextKey = binding.dependencies.first { it.typeKey == missing }
             if (!contextKey.hasDefault) {
-              val stackEntry = stack.newBindingStackEntry(contextKey, binding, roots)
+              val stackCopy = stack.copy()
+              val stackEntry = stackCopy.newBindingStackEntry(contextKey, binding, roots)
 
               // If there's a root entry for the missing binding, add it into the stack too
               val matchingRootEntry =
                 roots.entries.firstOrNull { it.key.typeKey == binding.typeKey }?.value
-              matchingRootEntry?.let { stack.push(it) }
-              stack.withEntry(stackEntry) { reportMissingBinding(missing, stack) }
+              matchingRootEntry?.let { stackCopy.push(it) }
+              stackCopy.withEntry(stackEntry) { reportMissingBinding(missing, stackCopy) }
             }
           },
         )
@@ -273,22 +278,21 @@ internal open class MutableBindingGraph<
                 .reversed()
             // Populate the BindingStack for a readable cycle trace
             val entriesInCycle =
-              fullCycle
-                .mapIndexed { i, key ->
-                  val callingBinding =
-                    if (i == 0) {
-                      // This is the first index, back around to the back
-                      bindings.getValue(fullCycle[fullCycle.lastIndex - 1])
-                    } else {
-                      bindings.getValue(fullCycle[i - 1])
-                    }
-                  stack.newBindingStackEntry(
-                    callingBinding.dependencies.firstOrNull { it.typeKey == key }
-                      ?: bindings.getValue(key).contextualTypeKey,
-                    callingBinding,
-                    roots,
-                  )
-                }
+              fullCycle.mapIndexed { i, key ->
+                val callingBinding =
+                  if (i == 0) {
+                    // This is the first index, back around to the back
+                    bindings.getValue(fullCycle[fullCycle.lastIndex - 1])
+                  } else {
+                    bindings.getValue(fullCycle[i - 1])
+                  }
+                stack.newBindingStackEntry(
+                  callingBinding.dependencies.firstOrNull { it.typeKey == key }
+                    ?: bindings.getValue(key).contextualTypeKey,
+                  callingBinding,
+                  roots,
+                )
+              }
             reportCycle(entriesInCycle, stack)
           },
           parentTracer = nestedTracer,
@@ -314,23 +318,27 @@ internal open class MutableBindingGraph<
         )
       } else {
         val singleLine = fullCycle.size < 5
-        fullCycle.joinWithDynamicSeparatorTo(this, separator = { prev, _ ->
-          buildString {
-            if (singleLine) {
+        fullCycle.joinWithDynamicSeparatorTo(
+          this,
+          separator = { prev, _ ->
+            buildString {
+              if (singleLine) {
+                append(' ')
+              } else {
+                append('\n')
+                append(indent)
+              }
+              val prevBinding = bindings.getValue(prev.typeKey)
+              if (prevBinding.isAlias) {
+                append("~~>")
+              } else {
+                append("-->")
+              }
               append(' ')
-            } else {
-              append('\n')
-              append(indent)
             }
-            val prevBinding = bindings.getValue(prev.typeKey)
-            if (prevBinding.isAlias) {
-              append("~~>")
-            } else {
-              append("-->")
-            }
-            append(' ')
-          }
-        }, prefix = indent) {
+          },
+          prefix = indent,
+        ) {
           it.contextKey.render(short = true)
         }
       }
@@ -415,13 +423,9 @@ internal open class MutableBindingGraph<
       )
       appendLine()
       appendLine("  ${location1.location}")
-      location1.description?.let {
-        appendLine(it.prependIndent("    "))
-      }
+      location1.description?.let { appendLine(it.prependIndent("    ")) }
       appendLine("  ${location2.location}")
-      location2.description?.let {
-        appendLine(it.prependIndent("    "))
-      }
+      location2.description?.let { appendLine(it.prependIndent("    ")) }
       extraContent()
       appendBindingStack(bindingStack)
     }
@@ -450,12 +454,23 @@ internal open class MutableBindingGraph<
         appendLine(typeKey.render(short = false))
         appendLine()
         appendBindingStack(bindingStack, short = false)
-        val similarBindings = findSimilarBindings(typeKey)
-        if (similarBindings.isNotEmpty()) {
-          appendLine()
-          appendLine("Similar bindings:")
-          similarBindings.values.map { "  - $it" }.sorted().forEach(::appendLine)
+        val hints = missingBindingHints(typeKey, bindingStack)
+        val messages = hints.messages
+        val similarBindings = hints.similarBindings
+
+        if (messages.isNotEmpty() || similarBindings.isNotEmpty()) {
+          if (messages.isNotEmpty()) {
+            appendLine()
+            appendLine("(Hint)")
+            messages.joinTo(this, separator = "\n\n")
+          }
+          if (similarBindings.isNotEmpty()) {
+            appendLine()
+            appendLine("Similar bindings:")
+            similarBindings.values.map { "  - $it" }.sorted().forEach(::appendLine)
+          }
         }
+
         extraContent()
       }
 

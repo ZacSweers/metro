@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import com.diffplug.gradle.spotless.SpotlessExtension
 import com.diffplug.gradle.spotless.SpotlessExtensionPredeclare
+import com.diffplug.spotless.LineEnding
 import com.vanniktech.maven.publish.MavenPublishBaseExtension
 import kotlinx.validation.ExperimentalBCVApi
 import org.jetbrains.dokka.gradle.DokkaExtension
@@ -70,13 +71,19 @@ spotless { predeclareDeps() }
 configure<SpotlessExtensionPredeclare> {
   kotlin { ktfmt(ktfmtVersion).googleStyle().configure { it.setRemoveUnusedImports(true) } }
   kotlinGradle { ktfmt(ktfmtVersion).googleStyle().configure { it.setRemoveUnusedImports(true) } }
-  java { googleJavaFormat(libs.versions.gjf.get()).reorderImports(true).reflowLongStrings(true) }
+  java {
+    googleJavaFormat(libs.versions.gjf.get())
+      .reorderImports(true)
+      .reflowLongStrings(true)
+      .reorderImports(true)
+  }
 }
 
 // Configure spotless in subprojects
 allprojects {
   apply(plugin = "com.diffplug.spotless")
   configure<SpotlessExtension> {
+    setLineEndings(LineEnding.GIT_ATTRIBUTES_FAST_ALLSAME)
     format("misc") {
       target("*.gradle", "*.md", ".gitignore")
       trimTrailingWhitespace()
@@ -84,6 +91,10 @@ allprojects {
       endWithNewline()
     }
     java {
+      googleJavaFormat(libs.versions.gjf.get())
+        .reorderImports(true)
+        .reflowLongStrings(true)
+        .reorderImports(true)
       target("src/**/*.java")
       trimTrailingWhitespace()
       endWithNewline()
@@ -92,6 +103,7 @@ allprojects {
       targetExclude("**/*Generated.java")
     }
     kotlin {
+      ktfmt(ktfmtVersion).googleStyle().configure { it.setRemoveUnusedImports(true) }
       target("src/**/*.kt")
       trimTrailingWhitespace()
       endWithNewline()
@@ -99,6 +111,7 @@ allprojects {
       targetExclude("**/src/test/data/**")
     }
     kotlinGradle {
+      ktfmt(ktfmtVersion).googleStyle().configure { it.setRemoveUnusedImports(true) }
       target("*.kts")
       trimTrailingWhitespace()
       endWithNewline()
@@ -173,7 +186,7 @@ subprojects {
         progressiveMode.set(true)
         if (this is KotlinJvmCompilerOptions) {
           jvmTarget.set(libs.versions.jvmTarget.map(JvmTarget::fromTarget))
-          freeCompilerArgs.addAll("-Xjvm-default=all")
+          freeCompilerArgs.addAll("-jvm-default=no-compatibility")
         }
       }
     }

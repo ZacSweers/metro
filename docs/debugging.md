@@ -21,3 +21,10 @@ metro {
   reportsDestination.set(layout.buildDirectory.dir("metro/reports"))
 }
 ```
+
+!!! warning
+    The Kotlin Gradle Plugin does _not_ include file inputs like `reportsDestination` as build inputs, so you may need to compile with `--rerun` to force recompilation after adding this flag.
+
+## Decompiled Bytecode
+
+Compiled java class files of Metro-generated types are fairly friendly to the IntelliJ "decompile to Java" action. Simply open the class file in the IDE (usually seen as a Kotlin bytecode class) then run the "decompile to Java" action. For JVM projects they are under `build/classes`. For Android projects, it's `build/tmp/kotlin-classes`.

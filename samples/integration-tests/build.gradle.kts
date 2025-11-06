@@ -1,5 +1,6 @@
 // Copyright (C) 2024 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
@@ -22,23 +23,34 @@ android {
   }
 }
 
+@OptIn(ExperimentalWasmDsl::class, ExperimentalKotlinGradlePluginApi::class)
 kotlin {
   androidTarget()
   jvm()
 
   js { browser() }
-  @OptIn(ExperimentalWasmDsl::class) wasmJs { browser() }
+  wasmJs { browser() }
+  wasmWasi { nodejs() }
+
+  applyDefaultHierarchyTemplate {
+    group("commonWasm") {
+      withWasmJs()
+      withWasmWasi()
+    }
+    group("commonJvm") {
+      withAndroidTarget()
+      withJvm()
+    }
+  }
 
   configureOrCreateNativePlatforms()
 
   sourceSets {
-    commonTest {
-      dependencies {
-        implementation(libs.kotlin.test)
-        // For PlatformUtils use
-        implementation(libs.ktor.client)
-      }
-    }
+    commonTest { dependencies { implementation(libs.kotlin.test) } }
+    maybeCreate("commonJvmMain").apply { dependsOn(commonMain.get()) }
+    maybeCreate("commonWasmMain").apply { dependsOn(commonMain.get()) }
+    maybeCreate("commonJvmTest").apply { dependsOn(commonTest.get()) }
+    maybeCreate("commonWasmTest").apply { dependsOn(commonTest.get()) }
   }
 
   targets.configureEach {

@@ -3,6 +3,7 @@ public final class dev/zacsweers/metro/gradle/DiagnosticSeverity : java/lang/Enu
 	public static final field NONE Ldev/zacsweers/metro/gradle/DiagnosticSeverity;
 	public static final field WARN Ldev/zacsweers/metro/gradle/DiagnosticSeverity;
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public final fun isEnabled ()Z
 	public static fun valueOf (Ljava/lang/String;)Ldev/zacsweers/metro/gradle/DiagnosticSeverity;
 	public static fun values ()[Ldev/zacsweers/metro/gradle/DiagnosticSeverity;
 }
@@ -23,8 +24,8 @@ public final class dev/zacsweers/metro/gradle/MetroGradleSubplugin : org/jetbrai
 
 public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension {
 	public fun <init> (Lorg/gradle/api/file/ProjectLayout;Lorg/gradle/api/model/ObjectFactory;Lorg/gradle/api/provider/ProviderFactory;)V
-	public final fun getAssistedInjectMigrationSeverity ()Lorg/gradle/api/provider/Property;
 	public final fun getChunkFieldInits ()Lorg/gradle/api/provider/Property;
+	public final fun getContributesAsInject ()Lorg/gradle/api/provider/Property;
 	public final fun getDebug ()Lorg/gradle/api/provider/Property;
 	public final fun getEnableFullBindingGraphValidation ()Lorg/gradle/api/provider/Property;
 	public final fun getEnableGraphImplClassAsReturnType ()Lorg/gradle/api/provider/Property;
@@ -37,10 +38,14 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension {
 	public final fun getGenerateContributionHints ()Lorg/gradle/api/provider/Property;
 	public final fun getGenerateJvmContributionHintsInFir ()Lorg/gradle/api/provider/Property;
 	public final fun getInterop ()Ldev/zacsweers/metro/gradle/MetroPluginExtension$InteropHandler;
+	public final fun getInteropAnnotationsNamedArgSeverity ()Lorg/gradle/api/provider/Property;
 	public final fun getMaxIrErrors ()Lorg/gradle/api/provider/Property;
+	public final fun getOptionalBindingBehavior ()Lorg/gradle/api/provider/Property;
+	public final fun getOptionalDependencyBehavior ()Lorg/gradle/api/provider/Property;
 	public final fun getPublicProviderSeverity ()Lorg/gradle/api/provider/Property;
 	public final fun getReportsDestination ()Lorg/gradle/api/file/DirectoryProperty;
 	public final fun getShrinkUnusedBindings ()Lorg/gradle/api/provider/Property;
+	public final fun getStatementsPerInitFun ()Lorg/gradle/api/provider/Property;
 	public final fun getTransformProvidersToPrivate ()Lorg/gradle/api/provider/Property;
 	public final fun getWarnOnInjectAnnotationPlacement ()Lorg/gradle/api/provider/Property;
 	public final fun interop (Lorg/gradle/api/Action;)V
@@ -65,12 +70,19 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension$InteropHan
 	public abstract fun getEnableDaggerRuntimeInterop ()Lorg/gradle/api/provider/Property;
 	public final fun getGraphExtension ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getGraphExtensionFactory ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getIncludeAnvilAnnotations ()Lorg/gradle/api/provider/Property;
+	public final fun getIncludeDaggerAnnotations ()Lorg/gradle/api/provider/Property;
+	public final fun getIncludeJakartaAnnotations ()Lorg/gradle/api/provider/Property;
+	public final fun getIncludeJavaxAnnotations ()Lorg/gradle/api/provider/Property;
+	public final fun getIncludeKotlinInjectAnnotations ()Lorg/gradle/api/provider/Property;
+	public final fun getIncludeKotlinInjectAnvilAnnotations ()Lorg/gradle/api/provider/Property;
 	public final fun getInject ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getIntoMap ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getIntoSet ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getLazy ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getMapKey ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getMultibinds ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getOptionalBinding ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getOrigin ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getProvider ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getProvides ()Lorg/gradle/api/provider/SetProperty;
@@ -80,12 +92,33 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension$InteropHan
 	public final fun includeAnvil (Z)V
 	public final fun includeAnvil (ZZ)V
 	public static synthetic fun includeAnvil$default (Ldev/zacsweers/metro/gradle/MetroPluginExtension$InteropHandler;ZZILjava/lang/Object;)V
-	public final fun includeDagger ()V
-	public final fun includeDagger (Z)V
+	public final fun includeAnvilForDagger ()V
+	public final fun includeAnvilForDagger (Z)V
+	public final fun includeAnvilForDagger (ZZ)V
+	public static synthetic fun includeAnvilForDagger$default (Ldev/zacsweers/metro/gradle/MetroPluginExtension$InteropHandler;ZZILjava/lang/Object;)V
+	public final fun includeAnvilForKotlinInject ()V
 	public final fun includeDagger (ZZ)V
 	public static synthetic fun includeDagger$default (Ldev/zacsweers/metro/gradle/MetroPluginExtension$InteropHandler;ZZILjava/lang/Object;)V
 	public final fun includeJakarta ()V
 	public final fun includeJavax ()V
 	public final fun includeKotlinInject ()V
+}
+
+public final class dev/zacsweers/metro/gradle/OptionalBindingBehavior : java/lang/Enum {
+	public static final field DEFAULT Ldev/zacsweers/metro/gradle/OptionalBindingBehavior;
+	public static final field DISABLED Ldev/zacsweers/metro/gradle/OptionalBindingBehavior;
+	public static final field REQUIRE_OPTIONAL_BINDING Ldev/zacsweers/metro/gradle/OptionalBindingBehavior;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/zacsweers/metro/gradle/OptionalBindingBehavior;
+	public static fun values ()[Ldev/zacsweers/metro/gradle/OptionalBindingBehavior;
+}
+
+public final class dev/zacsweers/metro/gradle/OptionalDependencyBehavior : java/lang/Enum {
+	public static final field DEFAULT Ldev/zacsweers/metro/gradle/OptionalDependencyBehavior;
+	public static final field DISABLED Ldev/zacsweers/metro/gradle/OptionalDependencyBehavior;
+	public static final field REQUIRE_OPTIONAL_DEPENDENCY Ldev/zacsweers/metro/gradle/OptionalDependencyBehavior;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/zacsweers/metro/gradle/OptionalDependencyBehavior;
+	public static fun values ()[Ldev/zacsweers/metro/gradle/OptionalDependencyBehavior;
 }
 

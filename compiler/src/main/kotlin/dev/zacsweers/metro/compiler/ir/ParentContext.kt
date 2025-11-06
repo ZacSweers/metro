@@ -5,34 +5,36 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.decapitalizeUS
+import dev.zacsweers.metro.compiler.ir.graph.DependencyGraphNode
+import dev.zacsweers.metro.compiler.ir.graph.GraphPropertyData
+import dev.zacsweers.metro.compiler.ir.graph.PropertyType
+import dev.zacsweers.metro.compiler.ir.graph.ensureInitialized
+import dev.zacsweers.metro.compiler.ir.graph.graphPropertyData
 import dev.zacsweers.metro.compiler.newName
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.suffixIfNot
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
-import org.jetbrains.kotlin.ir.builders.declarations.buildField
+import org.jetbrains.kotlin.ir.builders.declarations.buildProperty
 import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.declarations.IrField
+import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.types.typeWith
-import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 
-internal class ParentContext(
-  private val metroContext: IrMetroContext
-) {
+internal class ParentContext(private val metroContext: IrMetroContext) {
 
-  // Data for field access tracking
-  internal data class FieldAccess(
+  // Data for property access tracking
+  internal data class PropertyAccess(
     val parentKey: IrTypeKey,
-    val field: IrField,
+    val property: IrProperty,
     val receiverParameter: IrValueParameter,
   )
 
   private data class Level(
     val node: DependencyGraphNode,
-    val fieldNameAllocator: NameAllocator,
+    val propertyNameAllocator: NameAllocator,
     val deltaProvided: MutableSet<IrTypeKey> = mutableSetOf(),
     val usedKeys: MutableSet<IrTypeKey> = mutableSetOf(),
-    val fields: MutableMap<IrTypeKey, IrField> = mutableMapOf(),
+    val properties: MutableMap<IrTypeKey, IrProperty> = mutableMapOf(),
   )
 
   // Stack of parent graphs (root at 0, top is last)
@@ -59,19 +61,22 @@ internal class ParentContext(
   }
 
   // TODO stick a cache in front of this
-  fun mark(key: IrTypeKey, scope: IrAnnotation? = null): FieldAccess? {
+  fun mark(key: IrTypeKey, scope: IrAnnotation? = null): PropertyAccess? {
     // Prefer the nearest provider (deepest level that introduced this key)
     keyIntroStack[key]?.lastOrNull()?.let { providerIdx ->
       val providerLevel = levels[providerIdx]
 
       // Get or create field in the provider level
-      val field = providerLevel.fields.getOrPut(key) {
-        createFieldInLevel(providerLevel, key)
-      }
+      val property =
+        providerLevel.properties.getOrPut(key) { createPropertyInLevel(providerLevel, key) }
 
       // Only mark in the provider level - inner classes can access parent fields directly
       providerLevel.usedKeys.add(key)
-      return FieldAccess(providerLevel.node.typeKey, field, providerLevel.node.metroGraphOrFail.thisReceiverOrFail)
+      return PropertyAccess(
+        providerLevel.node.typeKey,
+        property,
+        providerLevel.node.metroGraphOrFail.thisReceiverOrFail,
+      )
     }
 
     // Not found but is scoped. Treat as constructor-injected with matching scope.
@@ -82,13 +87,15 @@ internal class ParentContext(
           introduceAtLevel(i, key)
 
           // Get or create field
-          val field = level.fields.getOrPut(key) {
-            createFieldInLevel(level, key)
-          }
+          val field = level.properties.getOrPut(key) { createPropertyInLevel(level, key) }
 
           // Only mark in the level that owns the scope
           level.usedKeys.add(key)
-          return FieldAccess(level.node.typeKey, field, level.node.metroGraphOrFail.thisReceiverOrFail)
+          return PropertyAccess(
+            level.node.typeKey,
+            field,
+            level.node.metroGraphOrFail.thisReceiverOrFail,
+          )
         }
       }
     }
@@ -170,28 +177,38 @@ internal class ParentContext(
     }
   }
 
-  private fun createFieldInLevel(level: Level, key: IrTypeKey): IrField {
+  private fun createPropertyInLevel(level: Level, key: IrTypeKey): IrProperty {
     val graphClass = level.node.metroGraphOrFail
     // Build but don't add, order will matter and be handled by the graph generator
-    return graphClass.factory.buildField {
-      name = level.fieldNameAllocator.newName(
-        key.type.rawType().name.asString().decapitalizeUS().suffixIfNot("Provider").asName()
-      )
-      type = metroContext.metroSymbols.metroProvider.typeWith(key.type)
-      // TODO revisit? Can we skip synth accessors? Only if graph has extensions
-      visibility = DescriptorVisibilities.PRIVATE
-    }.apply {
-      parent = graphClass
-      key.qualifier?.let { annotations += it.ir.deepCopyWithSymbols() }
-    }
+    return graphClass.factory
+      .buildProperty {
+        name =
+          level.propertyNameAllocator.newName(
+            key.type.rawType().name.asString().decapitalizeUS().suffixIfNot("Provider").asName()
+          )
+        // TODO revisit? Can we skip synth accessors? Only if graph has extensions
+        visibility = DescriptorVisibilities.PRIVATE
+      }
+      .apply {
+        parent = graphClass
+        graphPropertyData =
+          GraphPropertyData(key, metroContext.metroSymbols.metroProvider.typeWith(key.type))
+
+        // These must always be fields
+        ensureInitialized(PropertyType.FIELD)
+      }
   }
 
-  // Get the field access for a key if it exists
-  fun getFieldAccess(key: IrTypeKey): FieldAccess? {
+  // Get the property access for a key if it exists
+  fun getPropertyAccess(key: IrTypeKey): PropertyAccess? {
     keyIntroStack[key]?.lastOrNull()?.let { providerIdx ->
       val level = levels[providerIdx]
-      level.fields[key]?.let { field ->
-        return FieldAccess(level.node.typeKey, field, level.node.metroGraphOrFail.thisReceiverOrFail)
+      level.properties[key]?.let { property ->
+        return PropertyAccess(
+          level.node.typeKey,
+          property,
+          level.node.metroGraphOrFail.thisReceiverOrFail,
+        )
       }
     }
     return null

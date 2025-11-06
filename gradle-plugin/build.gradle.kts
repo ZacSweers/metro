@@ -69,18 +69,24 @@ dependencies {
   functionalTestImplementation(libs.junit)
   functionalTestImplementation(libs.truth)
   functionalTestImplementation(libs.kotlin.stdlib)
+  functionalTestImplementation(libs.kotlin.test)
   functionalTestImplementation(libs.testkit.support)
   functionalTestImplementation(libs.testkit.truth)
   functionalTestRuntimeOnly(project(":compiler"))
   functionalTestRuntimeOnly(project(":runtime"))
+  functionalTestRuntimeOnly(project(":interop-dagger"))
 }
+
+val testCompilerVersion =
+  providers.gradleProperty("metro.testCompilerVersion").orElse(libs.versions.kotlin).get()
 
 tasks.withType<Test>().configureEach {
   maxParallelForks = Runtime.getRuntime().availableProcessors() * 2
-  jvmArgs(
-    "-Dcom.autonomousapps.plugin-under-test.version=${providers.gradleProperty("VERSION_NAME").get()}",
-    "-Ddev.zacsweers.metro.gradle.test.kotlin-version=${libs.versions.kotlin.get()}",
+  systemProperty(
+    "com.autonomousapps.plugin-under-test.version",
+    providers.gradleProperty("VERSION_NAME").get(),
   )
+  systemProperty("dev.zacsweers.metro.gradle.test.kotlin-version", testCompilerVersion)
 }
 
 tasks

@@ -29,34 +29,34 @@ FILE: ProvidersAreMadePrivate.kt
                 ^shouldNotBePrivate2 String(hello)
             }
 
-            @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/CallableMetadata|(callableName = String(shouldBePrivate), propertyName = String(), startOffset = Int(268), endOffset = Int(321)) public final object ShouldBePrivate$$MetroFactory : R|dev/zacsweers/metro/internal/Factory<kotlin/String>| {
+            @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/CallableMetadata|(callableName = String(shouldBePrivate), propertyName = String(), startOffset = Int(268), endOffset = Int(321)) public final object ShouldBePrivateMetroFactory : R|dev/zacsweers/metro/internal/Factory<kotlin/String>| {
                 public final fun create(): R|dev/zacsweers/metro/internal/Factory<kotlin/String>|
 
                 public final fun shouldBePrivate(): R|kotlin/String|
 
-                private constructor(): R|ExampleProviders.Companion.ShouldBePrivate$$MetroFactory| {
+                private constructor(): R|ExampleProviders.Companion.ShouldBePrivateMetroFactory| {
                     super<R|kotlin/Any|>()
                 }
 
             }
 
-            @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/CallableMetadata|(callableName = String(shouldNotBePrivate1), propertyName = String(), startOffset = Int(327), endOffset = Int(391)) public final object ShouldNotBePrivate1$$MetroFactory : R|dev/zacsweers/metro/internal/Factory<kotlin/String>| {
+            @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/CallableMetadata|(callableName = String(shouldNotBePrivate1), propertyName = String(), startOffset = Int(327), endOffset = Int(391)) public final object ShouldNotBePrivate1MetroFactory : R|dev/zacsweers/metro/internal/Factory<kotlin/String>| {
                 public final fun create(): R|dev/zacsweers/metro/internal/Factory<kotlin/String>|
 
                 public final fun shouldNotBePrivate1(): R|kotlin/String|
 
-                private constructor(): R|ExampleProviders.Companion.ShouldNotBePrivate1$$MetroFactory| {
+                private constructor(): R|ExampleProviders.Companion.ShouldNotBePrivate1MetroFactory| {
                     super<R|kotlin/Any|>()
                 }
 
             }
 
-            @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/CallableMetadata|(callableName = String(shouldNotBePrivate2), propertyName = String(), startOffset = Int(397), endOffset = Int(463)) public final object ShouldNotBePrivate2$$MetroFactory : R|dev/zacsweers/metro/internal/Factory<kotlin/String>| {
+            @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/CallableMetadata|(callableName = String(shouldNotBePrivate2), propertyName = String(), startOffset = Int(397), endOffset = Int(463)) public final object ShouldNotBePrivate2MetroFactory : R|dev/zacsweers/metro/internal/Factory<kotlin/String>| {
                 public final fun create(): R|dev/zacsweers/metro/internal/Factory<kotlin/String>|
 
                 public final fun shouldNotBePrivate2(): R|kotlin/String|
 
-                private constructor(): R|ExampleProviders.Companion.ShouldNotBePrivate2$$MetroFactory| {
+                private constructor(): R|ExampleProviders.Companion.ShouldNotBePrivate2MetroFactory| {
                     super<R|kotlin/Any|>()
                 }
 
@@ -64,8 +64,8 @@ FILE: ProvidersAreMadePrivate.kt
 
         }
 
-        @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/CallableMetadata|(callableName = String(shouldBePrivate), propertyName = String(), startOffset = Int(60), endOffset = Int(111)) public final class ShouldBePrivate$$MetroFactory : R|dev/zacsweers/metro/internal/Factory<kotlin/String>| {
-            private constructor(instance: R|ExampleProviders|): R|ExampleProviders.ShouldBePrivate$$MetroFactory| {
+        @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/CallableMetadata|(callableName = String(shouldBePrivate), propertyName = String(), startOffset = Int(60), endOffset = Int(111)) public final class ShouldBePrivateMetroFactory : R|dev/zacsweers/metro/internal/Factory<kotlin/String>| {
+            private constructor(instance: R|ExampleProviders|): R|ExampleProviders.ShouldBePrivateMetroFactory| {
                 super<R|kotlin/Any|>()
             }
 
@@ -74,7 +74,7 @@ FILE: ProvidersAreMadePrivate.kt
 
                 public final fun shouldBePrivate(instance: R|ExampleProviders|): R|kotlin/String|
 
-                private constructor(): R|ExampleProviders.ShouldBePrivate$$MetroFactory.Companion| {
+                private constructor(): R|ExampleProviders.ShouldBePrivateMetroFactory.Companion| {
                     super<R|kotlin/Any|>()
                 }
 
@@ -82,8 +82,8 @@ FILE: ProvidersAreMadePrivate.kt
 
         }
 
-        @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/CallableMetadata|(callableName = String(shouldNotBePrivate1), propertyName = String(), startOffset = Int(115), endOffset = Int(177)) public final class ShouldNotBePrivate1$$MetroFactory : R|dev/zacsweers/metro/internal/Factory<kotlin/String>| {
-            private constructor(instance: R|ExampleProviders|): R|ExampleProviders.ShouldNotBePrivate1$$MetroFactory| {
+        @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/CallableMetadata|(callableName = String(shouldNotBePrivate1), propertyName = String(), startOffset = Int(115), endOffset = Int(177)) public final class ShouldNotBePrivate1MetroFactory : R|dev/zacsweers/metro/internal/Factory<kotlin/String>| {
+            private constructor(instance: R|ExampleProviders|): R|ExampleProviders.ShouldNotBePrivate1MetroFactory| {
                 super<R|kotlin/Any|>()
             }
 
@@ -92,7 +92,7 @@ FILE: ProvidersAreMadePrivate.kt
 
                 public final fun shouldNotBePrivate1(instance: R|ExampleProviders|): R|kotlin/String|
 
-                private constructor(): R|ExampleProviders.ShouldNotBePrivate1$$MetroFactory.Companion| {
+                private constructor(): R|ExampleProviders.ShouldNotBePrivate1MetroFactory.Companion| {
                     super<R|kotlin/Any|>()
                 }
 
@@ -100,8 +100,8 @@ FILE: ProvidersAreMadePrivate.kt
 
         }
 
-        @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/CallableMetadata|(callableName = String(shouldBePrivate2), propertyName = String(), startOffset = Int(181), endOffset = Int(241)) public final class ShouldBePrivate2$$MetroFactory : R|dev/zacsweers/metro/internal/Factory<kotlin/String>| {
-            private constructor(instance: R|ExampleProviders|): R|ExampleProviders.ShouldBePrivate2$$MetroFactory| {
+        @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/CallableMetadata|(callableName = String(shouldBePrivate2), propertyName = String(), startOffset = Int(181), endOffset = Int(241)) public final class ShouldBePrivate2MetroFactory : R|dev/zacsweers/metro/internal/Factory<kotlin/String>| {
+            private constructor(instance: R|ExampleProviders|): R|ExampleProviders.ShouldBePrivate2MetroFactory| {
                 super<R|kotlin/Any|>()
             }
 
@@ -110,7 +110,7 @@ FILE: ProvidersAreMadePrivate.kt
 
                 public final fun shouldBePrivate2(instance: R|ExampleProviders|): R|kotlin/String|
 
-                private constructor(): R|ExampleProviders.ShouldBePrivate2$$MetroFactory.Companion| {
+                private constructor(): R|ExampleProviders.ShouldBePrivate2MetroFactory.Companion| {
                     super<R|kotlin/Any|>()
                 }
 

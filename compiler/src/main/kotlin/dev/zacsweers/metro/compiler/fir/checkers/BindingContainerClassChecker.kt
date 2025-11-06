@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.BINDING_CONTAINER_ERROR
 import dev.zacsweers.metro.compiler.fir.annotationsIn
+import dev.zacsweers.metro.compiler.fir.bindingContainerErrorMessage
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.resolvedBindingContainersClassIds
@@ -21,6 +22,7 @@ import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
+import org.jetbrains.kotlin.fir.declarations.FirAnonymousObject
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.constructors
 import org.jetbrains.kotlin.fir.declarations.processAllDeclarations
@@ -28,6 +30,7 @@ import org.jetbrains.kotlin.fir.declarations.toAnnotationClass
 import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.declarations.utils.isEnumClass
+import org.jetbrains.kotlin.fir.declarations.utils.isInner
 import org.jetbrains.kotlin.fir.declarations.utils.isInterface
 import org.jetbrains.kotlin.fir.declarations.utils.isLocal
 import org.jetbrains.kotlin.fir.declarations.utils.modality
@@ -46,7 +49,6 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
 
   context(context: CheckerContext, reporter: DiagnosticReporter)
   override fun check(declaration: FirClass) {
-    if (declaration.isLocal) return
     val source = declaration.source ?: return
     val session = context.session
     val classIds = session.classIds
@@ -79,6 +81,15 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
         return
       } else if (declaration.modality == Modality.SEALED) {
         report("Sealed classes")
+        return
+      } else if (declaration.isInner) {
+        report("Inner classes")
+        return
+      } else if (declaration is FirAnonymousObject) {
+        report("Anonymous objects")
+        return
+      } else if (declaration.isLocal) {
+        report("Local classes")
         return
       }
     }
@@ -146,6 +157,16 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
           includedClassCall.source,
           BINDING_CONTAINER_ERROR,
           "Included binding containers must be annotated with @BindingContainer but '${target.classId.asSingleFqName()}' is not.",
+        )
+        continue
+      }
+
+      target.bindingContainerErrorMessage(session, alreadyCheckedAnnotation = true)?.let {
+        bindingContainerErrorMessage ->
+        reporter.reportOn(
+          includedClassCall.source,
+          BINDING_CONTAINER_ERROR,
+          "Invalid binding container argument: $bindingContainerErrorMessage",
         )
         continue
       }

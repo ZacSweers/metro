@@ -24,6 +24,8 @@ open class AbstractDiagnosticTest : AbstractPhasedJvmDiagnosticLightTreeTest() {
     with(builder) {
       configurePlugin()
 
+      useMetaTestConfigurators(::MetroTestConfigurator)
+
       defaultDirectives {
         JVM_TARGET.with(JvmTarget.JVM_11)
         +FULL_JDK

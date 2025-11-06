@@ -161,13 +161,17 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         add(lazyOption("transform-providers-to-private", extension.transformProvidersToPrivate))
         add(lazyOption("shrink-unused-bindings", extension.shrinkUnusedBindings))
         add(lazyOption("chunk-field-inits", extension.chunkFieldInits))
-        add(lazyOption("public-provider-severity", extension.publicProviderSeverity))
+        add(lazyOption("statements-per-init-fun", extension.statementsPerInitFun))
+        @Suppress("DEPRECATION")
         add(
           lazyOption(
-            "assisted-inject-deprecation-severity",
-            extension.assistedInjectMigrationSeverity,
+            "optional-binding-behavior",
+            extension.optionalBindingBehavior.orElse(
+              extension.optionalDependencyBehavior.map { it.mapToOptionalBindingBehavior() }
+            ),
           )
         )
+        add(lazyOption("public-provider-severity", extension.publicProviderSeverity))
         add(
           lazyOption(
             "warn-on-inject-annotation-placement",
@@ -176,10 +180,17 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         )
         add(
           lazyOption(
+            "interop-annotations-named-arg-severity",
+            extension.interopAnnotationsNamedArgSeverity,
+          )
+        )
+        add(
+          lazyOption(
             "enable-top-level-function-injection",
             extension.enableTopLevelFunctionInjection,
           )
         )
+        add(lazyOption("contributes-as-inject", extension.contributesAsInject))
         reportsDir.orNull
           ?.let { FilesSubpluginOption("reports-destination", listOf(it.asFile)) }
           ?.let(::add)
@@ -195,129 +206,147 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
 
         with(extension.interop) {
           provider
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-provider", value = it.joinToString(":")) }
             ?.let(::add)
           lazy
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-lazy", value = it.joinToString(":")) }
             ?.let(::add)
           assisted
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-assisted", value = it.joinToString(":")) }
             ?.let(::add)
           assistedFactory
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-assisted-factory", value = it.joinToString(":")) }
             ?.let(::add)
           assistedInject
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-assisted-inject", value = it.joinToString(":")) }
             ?.let(::add)
           binds
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-binds", value = it.joinToString(":")) }
             ?.let(::add)
           contributesTo
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-contributes-to", value = it.joinToString(":")) }
             ?.let(::add)
           contributesBinding
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-contributes-binding", value = it.joinToString(":")) }
             ?.let(::add)
           contributesIntoSet
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-contributes-into-set", value = it.joinToString(":")) }
             ?.let(::add)
           graphExtension
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-graph-extension", value = it.joinToString(":")) }
             ?.let(::add)
           graphExtensionFactory
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let {
               SubpluginOption("custom-graph-extension-factory", value = it.joinToString(":"))
             }
             ?.let(::add)
           elementsIntoSet
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-elements-into-set", value = it.joinToString(":")) }
             ?.let(::add)
           dependencyGraph
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-dependency-graph", value = it.joinToString(":")) }
             ?.let(::add)
           dependencyGraphFactory
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let {
               SubpluginOption("custom-dependency-graph-factory", value = it.joinToString(":"))
             }
             ?.let(::add)
           inject
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-inject", value = it.joinToString(":")) }
             ?.let(::add)
           intoMap
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-into-map", value = it.joinToString(":")) }
             ?.let(::add)
           intoSet
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-into-set", value = it.joinToString(":")) }
             ?.let(::add)
           mapKey
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-map-key", value = it.joinToString(":")) }
             ?.let(::add)
           multibinds
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-multibinds", value = it.joinToString(":")) }
             ?.let(::add)
           provides
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-provides", value = it.joinToString(":")) }
             ?.let(::add)
           qualifier
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-qualifier", value = it.joinToString(":")) }
             ?.let(::add)
           scope
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-scope", value = it.joinToString(":")) }
             ?.let(::add)
           bindingContainer
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-binding-container", value = it.joinToString(":")) }
             ?.let(::add)
           origin
-            .getOrElse(emptySet())
+            .getOrElse(mutableSetOf())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-origin", value = it.joinToString(":")) }
             ?.let(::add)
+          optionalBinding
+            .getOrElse(mutableSetOf())
+            .takeUnless { it.isEmpty() }
+            ?.let { SubpluginOption("custom-optional-binding", value = it.joinToString(":")) }
+            ?.let(::add)
+          add(lazyOption("interop-include-javax-annotations", includeJavaxAnnotations))
+          add(lazyOption("interop-include-jakarta-annotations", includeJakartaAnnotations))
+          add(lazyOption("interop-include-dagger-annotations", includeDaggerAnnotations))
+          add(
+            lazyOption("interop-include-kotlin-inject-annotations", includeKotlinInjectAnnotations)
+          )
+          add(lazyOption("interop-include-anvil-annotations", includeAnvilAnnotations))
+          add(
+            lazyOption(
+              "interop-include-kotlin-inject-anvil-annotations",
+              includeKotlinInjectAnvilAnnotations,
+            )
+          )
           add(
             SubpluginOption(
               "enable-dagger-anvil-interop",

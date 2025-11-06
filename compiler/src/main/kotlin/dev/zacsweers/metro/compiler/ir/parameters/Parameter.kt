@@ -4,8 +4,8 @@ package dev.zacsweers.metro.compiler.ir.parameters
 
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.NameAllocator
-import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
+import dev.zacsweers.metro.compiler.generatedContextParameterName
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
@@ -13,11 +13,18 @@ import dev.zacsweers.metro.compiler.ir.NOOP_TYPE_REMAPPER
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.constArgumentOfTypeAt
+import dev.zacsweers.metro.compiler.ir.hasMetroDefault
 import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
+import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.ir.remapType
+import dev.zacsweers.metro.compiler.letIf
+import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
-import dev.zacsweers.metro.compiler.unsafeLazy
+import dev.zacsweers.metro.compiler.singleOrNullUnlessMultiple
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrProperty
@@ -29,11 +36,14 @@ import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classId
+import org.jetbrains.kotlin.ir.util.classIdOrFail
+import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.ir.util.remapTypeParameters
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.name.SpecialNames.UNDERSCORE_FOR_UNUSED_VAR
 
 @Poko
 internal class Parameter
@@ -49,7 +59,7 @@ private constructor(
   val isBindsInstance: Boolean,
   val isIncludes: Boolean,
   val isMember: Boolean,
-  ir: IrValueParameter?,
+  val ir: IrDeclarationWithName?,
 ) : Comparable<Parameter> {
   val typeKey: IrTypeKey = contextualTypeKey.typeKey
   val type: IrType = contextualTypeKey.typeKey.type
@@ -58,12 +68,27 @@ private constructor(
   val isLazyWrappedInProvider: Boolean = contextualTypeKey.isLazyWrappedInProvider
   val hasDefault: Boolean = contextualTypeKey.hasDefault
 
-  // TODO just make this nullable
-  private val _ir = ir
-  val ir: IrValueParameter
-    get() = _ir ?: reportCompilerBug("Parameter $name has no backing IR value parameter!")
+  val asValueParameter: IrValueParameter
+    get() {
+      return when (ir) {
+        is IrValueParameter -> ir
+        is IrProperty ->
+          ir.setter?.nonDispatchParameters?.single()
+            ?: reportCompilerBug("No getter for property $ir")
+        is IrFunction ->
+          ir.nonDispatchParameters.singleOrNull()
+            ?: reportCompilerBug("No or too many value parameters for function $ir")
+        else -> reportCompilerBug("Not a value parameter! Was $ir")
+      }
+    }
 
-  private val cachedToString by unsafeLazy {
+  val asFunction: IrFunction
+    get() = ir as? IrFunction ?: reportCompilerBug("Not a function! Was $ir")
+
+  val asProperty: IrProperty
+    get() = ir as? IrProperty ?: reportCompilerBug("Not a property! Was $ir")
+
+  private val cachedToString by memoize {
     buildString {
       contextualTypeKey.typeKey.qualifier?.let {
         append(it)
@@ -91,7 +116,7 @@ private constructor(
     isBindsInstance: Boolean = this.isBindsInstance,
     isIncludes: Boolean = this.isIncludes,
     isMember: Boolean = this.isMember,
-    ir: IrValueParameter? = this._ir,
+    ir: IrDeclarationWithName? = this.ir,
   ) =
     Parameter(
       kind = kind,
@@ -171,7 +196,8 @@ private constructor(
       name: Name,
       contextualTypeKey: IrContextualTypeKey,
       originalName: Name,
-      ir: IrValueParameter,
+      // Can be a property, parameter, or a function
+      ir: IrDeclarationWithName?,
     ): Parameter {
       return Parameter(
         kind = kind,
@@ -196,7 +222,7 @@ internal fun List<IrValueParameter>.mapToConstructorParameters(
   remapper: TypeRemapper = NOOP_TYPE_REMAPPER
 ): List<Parameter> {
   return map { valueParameter ->
-    valueParameter.toConstructorParameter(IrParameterKind.Regular, remapper)
+    valueParameter.toConstructorParameter(valueParameter.kind, remapper)
   }
 }
 
@@ -209,9 +235,19 @@ internal fun IrValueParameter.toConstructorParameter(
   // type mangling
   val declaredType = remapper.remapType(this@toConstructorParameter.type)
 
-  val contextKey = declaredType.asContextualTypeKey(qualifierAnnotation(), defaultValue != null, patchMutableCollections = false)
+  val contextKey =
+    declaredType.asContextualTypeKey(
+      qualifierAnnotation(),
+      hasMetroDefault(),
+      patchMutableCollections = false,
+      declaration = this,
+    )
 
-  val assistedAnnotation = annotationsIn(context.metroSymbols.assistedAnnotations).singleOrNull()
+  val assistedAnnotation =
+    annotationsIn(context.metroSymbols.assistedAnnotations)
+      .singleOrNullUnlessMultiple({
+        reportCompilerBug("Multiple @Assisted annotations on parameter $this")
+      })
 
   var isProvides = false
   var isIncludes = false
@@ -231,9 +267,13 @@ internal fun IrValueParameter.toConstructorParameter(
 
   val assistedIdentifier = assistedAnnotation?.constArgumentOfTypeAt<String>(0).orEmpty()
 
+  val adjustedName =
+    name.letIf(kind == IrParameterKind.Context && name == UNDERSCORE_FOR_UNUSED_VAR) {
+      generatedContextParameterName(type.rawType().classIdOrFail)
+    }
   return Parameter.regular(
     kind = kind,
-    name = name,
+    name = adjustedName,
     contextualTypeKey = contextKey,
     isAssisted = assistedAnnotation != null,
     assistedIdentifier = assistedIdentifier,
@@ -267,8 +307,6 @@ internal fun IrProperty.toMemberInjectParameter(
   val propertyType =
     getter?.returnType ?: backingField?.type ?: reportCompilerBug("No getter or backing field!")
 
-  val setterParam = setter?.regularParameters?.singleOrNull()
-
   // Remap type parameters in underlying types to the new target container. This is important for
   // type mangling
   val declaredType = typeParameterRemapper?.invoke(propertyType) ?: propertyType
@@ -283,14 +321,19 @@ internal fun IrProperty.toMemberInjectParameter(
       getter?.body ?: backingField?.initializer
     }
   val contextKey =
-    declaredType.asContextualTypeKey(with(context) { qualifierAnnotation() }, defaultValue != null, patchMutableCollections = false)
+    declaredType.asContextualTypeKey(
+      with(context) { qualifierAnnotation() },
+      defaultValue != null,
+      patchMutableCollections = false,
+      declaration = this,
+    )
 
   return Parameter.member(
     kind = kind,
     name = uniqueName,
     originalName = name,
     contextualTypeKey = contextKey,
-    ir = setterParam!!,
+    ir = this,
   )
 }
 
@@ -307,7 +350,12 @@ internal fun IrValueParameter.toMemberInjectParameter(
       ?: this@toMemberInjectParameter.type
 
   val contextKey =
-    declaredType.asContextualTypeKey(with(context) { qualifierAnnotation() }, defaultValue != null, patchMutableCollections = false)
+    declaredType.asContextualTypeKey(
+      with(context) { qualifierAnnotation() },
+      defaultValue != null,
+      patchMutableCollections = false,
+      declaration = this,
+    )
 
   return Parameter.member(
     kind = kind,
@@ -365,3 +413,6 @@ internal fun IrFunction.memberInjectParameters(
     ir = this,
   )
 }
+
+internal fun Parameter.remapTypes(remapper: TypeRemapper): Parameter =
+  copy(contextualTypeKey = contextualTypeKey.remapType(remapper))

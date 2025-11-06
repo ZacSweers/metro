@@ -1,6 +1,7 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 import com.diffplug.gradle.spotless.SpotlessExtension
+import com.diffplug.spotless.LineEnding
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmCompilerOptions
 import org.jetbrains.kotlin.gradle.plugin.KotlinBasePlugin
@@ -31,6 +32,7 @@ val ktfmtVersion = libs.versions.ktfmt.get()
 allprojects {
   apply(plugin = "com.diffplug.spotless")
   configure<SpotlessExtension> {
+    setLineEndings(LineEnding.GIT_ATTRIBUTES_FAST_ALLSAME)
     format("misc") {
       target("*.gradle", "*.md", ".gitignore")
       trimTrailingWhitespace()
@@ -80,7 +82,7 @@ subprojects {
         if (this is KotlinJvmCompilerOptions) {
           jvmTarget.set(libs.versions.jvmTarget.map(JvmTarget::fromTarget))
           freeCompilerArgs.addAll(
-            "-Xjvm-default=all",
+            "-jvm-default=no-compatibility",
             // Big yikes in how this was rolled out as noisy compiler warnings
             "-Xannotation-default-target=param-property",
           )

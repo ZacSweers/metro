@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.generators
 
-import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
@@ -26,6 +25,7 @@ import dev.zacsweers.metro.compiler.fir.resolvedReplacedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
 import dev.zacsweers.metro.compiler.singleOrError
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Optional
 import java.util.TreeMap
 import kotlin.jvm.optionals.getOrNull
@@ -89,7 +89,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
       val allSessions =
         sequenceOf(session).plus(session.moduleData.allDependsOnDependencies.map { it.session })
 
-      // Predicates can't see the generated $$MetroContribution classes, but we can access them
+      // Predicates can't see the generated `MetroContribution` classes, but we can access them
       // by first querying the top level @ContributeX-annotated source symbols and then checking
       // their declaration scopes
       val contributingClasses =
@@ -122,8 +122,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
               Visibilities.Internal -> {
                 it.moduleData == session.moduleData ||
                   @OptIn(SymbolInternals::class)
-                  session.moduleVisibilityChecker?.isInFriendModule(it.fir) ==
-                    true
+                  session.moduleVisibilityChecker?.isInFriendModule(it.fir) == true
               }
               else -> true
             }
@@ -196,7 +195,6 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
     }
     val graphAnnotation = declaration.graphAnnotation() ?: return false
 
-    // TODO in an FIR checker, disallow omitting scope but defining additional scopes
     // Can't check the scope class ID here but we'll check in computeAdditionalSupertypes
     return graphAnnotation.scopeArgument() != null
   }
@@ -262,7 +260,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
     val contributions =
       TreeMap<ClassId, ConeClassLikeType>(compareBy(ClassId::asString)).apply {
         for (contribution in contributionClassLikes) {
-          // This is always the $$MetroContribution, the contribution is its parent
+          // This is always the `MetroContribution`, the contribution is its parent
           val classId = contribution.classId?.parentClassId ?: continue
           put(classId, contribution)
         }
@@ -292,6 +290,8 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
     // This maps from an origin class to all contributions that have @Origin pointing to it
     // TODO make this lazily computed?
     val originToContributions = mutableMapOf<ClassId, MutableSet<ClassId>>()
+
+    // Check regular contributions (classes with nested `MetroContribution`)
     for ((parentClassId, _) in contributions) {
       val parentSymbol = parentClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()
       if (parentSymbol != null) {
@@ -299,6 +299,21 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
 
         parentSymbol.originClassId(session, localTypeResolver)?.let { originClassId ->
           originToContributions.getOrPut(originClassId) { mutableSetOf() }.add(parentClassId)
+        }
+      }
+    }
+
+    // Also check binding containers (e.g., @ContributesTo classes)
+    for ((containerClassId, isBindingContainer) in contributionMappingsByClassId) {
+      if (isBindingContainer) {
+        val containerSymbol =
+          containerClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()
+        if (containerSymbol != null) {
+          val localTypeResolver = typeResolverFor(containerSymbol) ?: continue
+
+          containerSymbol.originClassId(session, localTypeResolver)?.let { originClassId ->
+            originToContributions.getOrPut(originClassId) { mutableSetOf() }.add(containerClassId)
+          }
         }
       }
     }

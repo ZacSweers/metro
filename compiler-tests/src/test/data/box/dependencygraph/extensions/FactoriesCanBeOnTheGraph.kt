@@ -38,7 +38,6 @@ fun box(): String {
   val graph = createGraph<AppGraph>()
   val factories = graph.factories
   assertEquals(2, factories.size)
-  println(factories)
   val factory1 = factories.getValue(Activity1Graph.Factory::class)
   assertEquals(3, (factory1 as Activity1Graph.Factory).create().value)
   val factory2 = factories.getValue(Activity2Graph.Factory::class)

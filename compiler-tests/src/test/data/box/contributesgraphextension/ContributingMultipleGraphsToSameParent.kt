@@ -44,7 +44,7 @@ fun box(): String {
   val loggedInGraph1 = graph.createLoggedInGraph()
   val loggedInGraph2 = graph.createLoggedInGraph2()
   assertNotEquals(loggedInGraph1.javaClass.name, loggedInGraph2.javaClass.name)
-  assertEquals("test.ExampleGraph$$\$MetroGraph\$LoggedInGraphImpl", loggedInGraph1.javaClass.name)
-  assertEquals("test.ExampleGraph$$\$MetroGraph\$LoggedInGraphImpl2", loggedInGraph2.javaClass.name)
+  assertEquals("test.ExampleGraph\$Impl\$LoggedInGraphImpl", loggedInGraph1.javaClass.name)
+  assertEquals("test.ExampleGraph\$Impl\$LoggedInGraphImpl2", loggedInGraph2.javaClass.name)
   return "OK"
 }

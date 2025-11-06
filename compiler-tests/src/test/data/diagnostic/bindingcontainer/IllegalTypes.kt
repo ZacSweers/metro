@@ -18,3 +18,19 @@ sealed class SealedClass
 
 <!BINDING_CONTAINER_ERROR!>@BindingContainer<!>
 sealed interface SealedInterface
+
+class Containing {
+  <!BINDING_CONTAINER_ERROR!>@BindingContainer<!>
+  inner class InnerClass
+
+  fun example() {
+    val anonymous =
+    <!BINDING_CONTAINER_ERROR!>@BindingContainer<!>
+      object : Any() {
+
+      }
+
+    <!BINDING_CONTAINER_ERROR!>@BindingContainer<!>
+    class LocalClass
+  }
+}

@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.generators
 
-import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.compat.CompatContext
@@ -22,6 +21,7 @@ import dev.zacsweers.metro.compiler.fir.resolvedClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
 import dev.zacsweers.metro.compiler.joinSimpleNamesAndTruncate
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.fir.FirSession
@@ -71,8 +71,8 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
 
       if (contributionAnnotations.isNotEmpty()) {
         // We create a contribution class for each scope being contributed to. E.g. if there are
-        // contributions for AppScope and LibScope we'll create $$MetroContributionToLibScope and
-        // $$MetroContributionToAppScope
+        // contributions for AppScope and LibScope we'll create `MetroContributionToLibScope` and
+        // `MetroContributionToAppScope`
         // It'll try to use the fully name if possible, but because we really just need these to be
         // disambiguated we can just safely fall back to the short name in the worst case
         contributionAnnotations
@@ -296,7 +296,9 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
               buildAnnotationArgumentMapping {
                 val originalScopeArg =
                   contributingClassToScopedContributions.getValueIfComputed(owner)?.get(name)
-                    ?: reportCompilerBug("Could not find a contribution scope for ${owner.classId}.$name")
+                    ?: reportCompilerBug(
+                      "Could not find a contribution scope for ${owner.classId}.$name"
+                    )
                 this.mapping[Symbols.Names.scope] = originalScopeArg
               }
             )

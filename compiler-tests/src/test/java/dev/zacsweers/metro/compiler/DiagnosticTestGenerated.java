@@ -186,6 +186,18 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("AssistedTypesCannotBeDirectlyQualified.kt")
+    public void testAssistedTypesCannotBeDirectlyQualified() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/AssistedTypesCannotBeDirectlyQualified.kt");
+    }
+
+    @Test
+    @TestMetadata("AssistedTypesCannotBeProvidedWithoutQualifiers.kt")
+    public void testAssistedTypesCannotBeProvidedWithoutQualifiers() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/AssistedTypesCannotBeProvidedWithoutQualifiers.kt");
+    }
+
+    @Test
     @TestMetadata("ConfigurableMaxIrErrors.kt")
     public void testConfigurableMaxIrErrors() {
       runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/ConfigurableMaxIrErrors.kt");
@@ -201,6 +213,40 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("MixedCycleParams.kt")
     public void testMixedCycleParams() {
       runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/MixedCycleParams.kt");
+    }
+
+    @Test
+    @TestMetadata("MultipleMissingDeps.kt")
+    public void testMultipleMissingDeps() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/MultipleMissingDeps.kt");
+    }
+
+    @Test
+    @TestMetadata("UsefulHintsForMissingImplDeps.kt")
+    public void testUsefulHintsForMissingImplDeps() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/UsefulHintsForMissingImplDeps.kt");
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/diagnostic/dependencygraph/dynamic")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Dynamic {
+      @Test
+      public void testAllFilesPresentInDynamic() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/dependencygraph/dynamic"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      }
+
+      @Test
+      @TestMetadata("CreateDynamicGraphArgumentDiagnostics.kt")
+      public void testCreateDynamicGraphArgumentDiagnostics() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/dynamic/CreateDynamicGraphArgumentDiagnostics.kt");
+      }
+
+      @Test
+      @TestMetadata("CreateDynamicGraphCannotBeInLocalClasses.kt")
+      public void testCreateDynamicGraphCannotBeInLocalClasses() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/dynamic/CreateDynamicGraphCannotBeInLocalClasses.kt");
+      }
     }
 
     @Nested
@@ -240,6 +286,76 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
         runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/leniency/SomeUnusedAndSomeUsed.kt");
       }
     }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/diagnostic/dependencygraph/optional")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Optional {
+      @Test
+      public void testAllFilesPresentInOptional() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/dependencygraph/optional"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      }
+
+      @Test
+      @TestMetadata("DisabledResultsInMissingBindingMultiModule.kt")
+      public void testDisabledResultsInMissingBindingMultiModule() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/optional/DisabledResultsInMissingBindingMultiModule.kt");
+      }
+
+      @Test
+      @TestMetadata("DisabledResultsInMissingBindings.kt")
+      public void testDisabledResultsInMissingBindings() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/optional/DisabledResultsInMissingBindings.kt");
+      }
+
+      @Test
+      @TestMetadata("DisabledResultsInMissingBindingsEvenWithAnnotation.kt")
+      public void testDisabledResultsInMissingBindingsEvenWithAnnotation() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/optional/DisabledResultsInMissingBindingsEvenWithAnnotation.kt");
+      }
+
+      @Test
+      @TestMetadata("OptionalAccessorDiagnostics.kt")
+      public void testOptionalAccessorDiagnostics() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/optional/OptionalAccessorDiagnostics.kt");
+      }
+
+      @Test
+      @TestMetadata("OptionalBindingErrorIfDisabled.kt")
+      public void testOptionalBindingErrorIfDisabled() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/optional/OptionalBindingErrorIfDisabled.kt");
+      }
+
+      @Test
+      @TestMetadata("OptionalBindingIsNotAllowedOnInjectors.kt")
+      public void testOptionalBindingIsNotAllowedOnInjectors() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/optional/OptionalBindingIsNotAllowedOnInjectors.kt");
+      }
+
+      @Test
+      @TestMetadata("OptionalBindingParamRequiresDefaultValue.kt")
+      public void testOptionalBindingParamRequiresDefaultValue() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/optional/OptionalBindingParamRequiresDefaultValue.kt");
+      }
+
+      @Test
+      @TestMetadata("OptionalBindingParamWarningIfDefault.kt")
+      public void testOptionalBindingParamWarningIfDefault() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/optional/OptionalBindingParamWarningIfDefault.kt");
+      }
+
+      @Test
+      @TestMetadata("RequiredAnnotationResultsInMissingBindingMultiModule.kt")
+      public void testRequiredAnnotationResultsInMissingBindingMultiModule() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/optional/RequiredAnnotationResultsInMissingBindingMultiModule.kt");
+      }
+
+      @Test
+      @TestMetadata("RequiredAnnotationResultsInMissingBindings.kt")
+      public void testRequiredAnnotationResultsInMissingBindings() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/optional/RequiredAnnotationResultsInMissingBindings.kt");
+      }
+    }
   }
 
   @Nested
@@ -258,12 +374,6 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
-    @TestMetadata("CannotHaveContextParams.kt")
-    public void testCannotHaveContextParams() {
-      runTest("compiler-tests/src/test/data/diagnostic/functioninject/CannotHaveContextParams.kt");
-    }
-
-    @Test
     @TestMetadata("CannotHaveExtensionReceivers.kt")
     public void testCannotHaveExtensionReceivers() {
       runTest("compiler-tests/src/test/data/diagnostic/functioninject/CannotHaveExtensionReceivers.kt");
@@ -273,6 +383,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("CannotHaveTypeArgs.kt")
     public void testCannotHaveTypeArgs() {
       runTest("compiler-tests/src/test/data/diagnostic/functioninject/CannotHaveTypeArgs.kt");
+    }
+
+    @Test
+    @TestMetadata("ContextParamsCannotBeOptional.kt")
+    public void testContextParamsCannotBeOptional() {
+      runTest("compiler-tests/src/test/data/diagnostic/functioninject/ContextParamsCannotBeOptional.kt");
     }
   }
 
@@ -305,6 +421,24 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("CannotMixProviderOfLazyTypes.kt")
     public void testCannotMixProviderOfLazyTypes() {
       runTest("compiler-tests/src/test/data/diagnostic/inject/CannotMixProviderOfLazyTypes.kt");
+    }
+
+    @Test
+    @TestMetadata("ConflictingProvidesAndClassScopes.kt")
+    public void testConflictingProvidesAndClassScopes() {
+      runTest("compiler-tests/src/test/data/diagnostic/inject/ConflictingProvidesAndClassScopes.kt");
+    }
+
+    @Test
+    @TestMetadata("InjectingAPlainObjectIsSus.kt")
+    public void testInjectingAPlainObjectIsSus() {
+      runTest("compiler-tests/src/test/data/diagnostic/inject/InjectingAPlainObjectIsSus.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidingAConstructorInjectedTypeHasASpecificWarning.kt")
+    public void testProvidingAConstructorInjectedTypeHasASpecificWarning() {
+      runTest("compiler-tests/src/test/data/diagnostic/inject/ProvidingAConstructorInjectedTypeHasASpecificWarning.kt");
     }
 
     @Test
@@ -407,12 +541,6 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
-      @TestMetadata("AssistedInjectMigrationsErrors.kt")
-      public void testAssistedInjectMigrationsErrors() {
-        runTest("compiler-tests/src/test/data/diagnostic/inject/assisted/AssistedInjectMigrationsErrors.kt");
-      }
-
-      @Test
       @TestMetadata("InjectingAssistedInjectClassesIsAnError.kt")
       public void testInjectingAssistedInjectClassesIsAnError() {
         runTest("compiler-tests/src/test/data/diagnostic/inject/assisted/InjectingAssistedInjectClassesIsAnError.kt");
@@ -495,9 +623,33 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("BindsOptionalOfDiagnostics.kt")
+      public void testBindsOptionalOfDiagnostics() {
+        runTest("compiler-tests/src/test/data/diagnostic/interop/dagger/BindsOptionalOfDiagnostics.kt");
+      }
+
+      @Test
       @TestMetadata("DoNotSuggestMovingInjectAnnotationToClassWhenUsingJavaxOrJakartaInject.kt")
       public void testDoNotSuggestMovingInjectAnnotationToClassWhenUsingJavaxOrJakartaInject() {
         runTest("compiler-tests/src/test/data/diagnostic/interop/dagger/DoNotSuggestMovingInjectAnnotationToClassWhenUsingJavaxOrJakartaInject.kt");
+      }
+
+      @Test
+      @TestMetadata("MemberInjectionQualifiersAreLookedUp.kt")
+      public void testMemberInjectionQualifiersAreLookedUp() {
+        runTest("compiler-tests/src/test/data/diagnostic/interop/dagger/MemberInjectionQualifiersAreLookedUp.kt");
+      }
+
+      @Test
+      @TestMetadata("PositionalAnnotationArgsError.kt")
+      public void testPositionalAnnotationArgsError() {
+        runTest("compiler-tests/src/test/data/diagnostic/interop/dagger/PositionalAnnotationArgsError.kt");
+      }
+
+      @Test
+      @TestMetadata("PositionalAnnotationArgsWarning.kt")
+      public void testPositionalAnnotationArgsWarning() {
+        runTest("compiler-tests/src/test/data/diagnostic/interop/dagger/PositionalAnnotationArgsWarning.kt");
       }
     }
   }

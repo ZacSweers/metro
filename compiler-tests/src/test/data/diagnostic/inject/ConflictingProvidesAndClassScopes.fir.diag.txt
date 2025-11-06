@@ -1,0 +1,1 @@
+/ConflictingProvidesAndClassScopes.kt:(181,191): warning: Provided type 'Bar' is already constructor-injected but declares a different scope. This is likely a bug.

@@ -3,8 +3,8 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.appendIterableWith
+import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
-import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrConst
@@ -17,8 +17,8 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 
 internal class IrAnnotation(val ir: IrConstructorCall) : Comparable<IrAnnotation> {
-  private val cachedHashKey by unsafeLazy { ir.computeAnnotationHash() }
-  private val cachedToString by unsafeLazy { render(short = true) }
+  private val cachedHashKey by memoize { ir.computeAnnotationHash() }
+  private val cachedToString by memoize { render(short = true) }
 
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
@@ -111,7 +111,9 @@ private fun StringBuilder.renderAsAnnotationArgument(irElement: IrElement?, shor
       append(irElement.symbol.owner.name.asString())
     }
     else ->
-      reportCompilerBug("Unrecognized annotation argument type: $irElement (type ${irElement::class.java})")
+      reportCompilerBug(
+        "Unrecognized annotation argument type: $irElement (type ${irElement::class.java})"
+      )
   }
 }
 

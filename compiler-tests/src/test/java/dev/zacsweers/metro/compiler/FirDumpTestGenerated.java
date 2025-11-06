@@ -56,9 +56,15 @@ public class FirDumpTestGenerated extends AbstractFirDumpTest {
     }
 
     @Test
-    @TestMetadata("FirHintGenerationWorks.kt")
-    public void testFirHintGenerationWorks() {
-      runTest("compiler-tests/src/test/data/dump/fir/aggregation/FirHintGenerationWorks.kt");
+    @TestMetadata("FirHintGenerationWorks_k22x.kt")
+    public void testFirHintGenerationWorks_k22x() {
+      runTest("compiler-tests/src/test/data/dump/fir/aggregation/FirHintGenerationWorks_k22x.kt");
+    }
+
+    @Test
+    @TestMetadata("FirHintGenerationWorks_k23x.kt")
+    public void testFirHintGenerationWorks_k23x() {
+      runTest("compiler-tests/src/test/data/dump/fir/aggregation/FirHintGenerationWorks_k23x.kt");
     }
   }
 

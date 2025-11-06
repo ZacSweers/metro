@@ -21,6 +21,7 @@ import org.jetbrains.kotlin.fir.declarations.builder.buildValueParameter
 import org.jetbrains.kotlin.fir.declarations.builder.buildValueParameterCopy
 import org.jetbrains.kotlin.fir.declarations.impl.FirResolvedDeclarationStatusImpl
 import org.jetbrains.kotlin.fir.declarations.origin
+import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.buildResolvedArgumentList
 import org.jetbrains.kotlin.fir.expressions.builder.buildArgumentList
 import org.jetbrains.kotlin.fir.expressions.builder.buildExpressionStub
@@ -85,9 +86,10 @@ internal fun FirExtension.generateMemberFunction(
     moduleData = session.moduleData
     this.origin = origin
 
-    source = with(session.compatContext) {
-      owner.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
-    }
+    source =
+      with(session.compatContext) {
+        owner.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
+      }
 
     val functionSymbol = FirNamedFunctionSymbol(callableId)
     symbol = functionSymbol
@@ -128,36 +130,46 @@ internal fun FirExtension.copyParameters(
           symbol = FirValueParameterSymbol()
           containingDeclarationSymbol = functionBuilder.symbol
           parameterInit(original)
-          if (!copyParameterDefaults) {
-            if (originalFir.symbol.hasDefaultValue) {
-              defaultValue = buildFunctionCall {
-                this.coneTypeOrNull = session.builtinTypes.nothingType.coneType
-                this.calleeReference = buildResolvedNamedReference {
-                  this.resolvedSymbol = session.metroFirBuiltIns.errorFunctionSymbol
-                  this.name = session.metroFirBuiltIns.errorFunctionSymbol.name
-                }
-                argumentList =
-                  buildResolvedArgumentList(
-                    buildArgumentList {
-                      this.arguments +=
-                        buildLiteralExpression(
-                          source = null,
-                          kind = ConstantValueKind.String,
-                          value = "Replaced in IR",
-                          setType = true,
-                        )
-                    },
-                    LinkedHashMap(),
-                  )
+          if (originalFir.symbol.hasDefaultValue) {
+            if (originalFir.symbol.hasMetroDefault(session)) {
+              if (!copyParameterDefaults) {
+                defaultValue = buildSafeDefaultValueStub(session)
               }
+            } else {
+              defaultValue = null
             }
           }
         }
         .apply {
-          context(session.compatContext) {
-            replaceAnnotationsSafe(original.symbol.annotations)
-          }
+          context(session.compatContext) { replaceAnnotationsSafe(original.symbol.annotations) }
         }
+  }
+}
+
+// Workaround for https://youtrack.jetbrains.com/issue/KT-81808
+internal fun buildSafeDefaultValueStub(
+  session: FirSession,
+  message: String = "Stub!",
+): FirFunctionCall {
+  return buildFunctionCall {
+    this.coneTypeOrNull = session.builtinTypes.nothingType.coneType
+    this.calleeReference = buildResolvedNamedReference {
+      this.resolvedSymbol = session.metroFirBuiltIns.errorFunctionSymbol
+      this.name = session.metroFirBuiltIns.errorFunctionSymbol.name
+    }
+    argumentList =
+      buildResolvedArgumentList(
+        buildArgumentList {
+          this.arguments +=
+            buildLiteralExpression(
+              source = null,
+              kind = ConstantValueKind.String,
+              value = message,
+              setType = true,
+            )
+        },
+        LinkedHashMap(),
+      )
   }
 }
 

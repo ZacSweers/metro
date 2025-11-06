@@ -3,10 +3,12 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.drewhamilton.poko.Poko
-import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.BaseContextualTypeKey
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
+import dev.zacsweers.metro.compiler.symbols.Symbols
+import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.types.IrSimpleType
@@ -14,6 +16,7 @@ import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.types.typeWithArguments
+import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.render
@@ -61,10 +64,12 @@ internal class IrContextualTypeKey(
         val innerType = IrContextualTypeKey(typeKey, wt.innerType, hasDefault).toIrType()
         innerType.wrapInProvider(context.referenceClass(wt.providerType)!!)
       }
+
       is WrappedType.Lazy -> {
         val innerType = IrContextualTypeKey(typeKey, wt.innerType, hasDefault).toIrType()
         innerType.wrapInProvider(context.referenceClass(wt.lazyType)!!)
       }
+
       is WrappedType.Map -> {
         // For Map types, we need to create a Map<K, V> type
         val keyType = wt.keyType
@@ -85,6 +90,7 @@ internal class IrContextualTypeKey(
       type: IrType = function.returnType,
       wrapInProvider: Boolean = false,
       patchMutableCollections: Boolean = false,
+      hasDefaultOverride: Boolean = false,
     ): IrContextualTypeKey {
       val typeToConvert =
         if (wrapInProvider) {
@@ -97,18 +103,21 @@ internal class IrContextualTypeKey(
           function.correspondingPropertySymbol?.owner?.qualifierAnnotation()
             ?: function.qualifierAnnotation()
         },
-        false,
-        patchMutableCollections
+        hasDefaultOverride,
+        patchMutableCollections,
+        declaration = function,
       )
     }
 
     context(context: IrMetroContext)
-    fun from(parameter: IrValueParameter, type: IrType = parameter.type): IrContextualTypeKey =
-      type.asContextualTypeKey(
+    fun from(parameter: IrValueParameter, type: IrType = parameter.type): IrContextualTypeKey {
+      return type.asContextualTypeKey(
         qualifierAnnotation = with(context) { parameter.qualifierAnnotation() },
-        hasDefault = parameter.defaultValue != null,
-        patchMutableCollections = false
+        hasDefault = parameter.hasMetroDefault(),
+        patchMutableCollections = false,
+        declaration = parameter,
       )
+    }
 
     fun create(
       typeKey: IrTypeKey,
@@ -123,24 +132,21 @@ internal class IrContextualTypeKey(
         when {
           isLazyWrappedInProvider -> {
             val lazyType =
-              rawType!!
-                .expectAs<IrSimpleType>()
-                .arguments
-                .single()
-                .typeOrFail
-                .rawType()
-                .classIdOrFail
+              rawType!!.requireSimpleType().arguments.single().typeOrFail.rawType().classIdOrFail
             WrappedType.Provider(
               WrappedType.Lazy(WrappedType.Canonical(typeKey.type), lazyType),
               rawClassId!!,
             )
           }
+
           isWrappedInProvider -> {
             WrappedType.Provider(WrappedType.Canonical(typeKey.type), rawClassId!!)
           }
+
           isWrappedInLazy -> {
             WrappedType.Lazy(WrappedType.Canonical(typeKey.type), rawClassId!!)
           }
+
           else -> {
             WrappedType.Canonical(typeKey.type)
           }
@@ -155,9 +161,51 @@ internal class IrContextualTypeKey(
     }
 
     /** Left for backward compat */
-    operator fun invoke(typeKey: IrTypeKey): IrContextualTypeKey {
-      return create(typeKey)
+    operator fun invoke(typeKey: IrTypeKey, hasDefault: Boolean = false): IrContextualTypeKey {
+      return create(typeKey, hasDefault = hasDefault)
     }
+  }
+}
+
+context(context: IrMetroContext)
+internal fun IrContextualTypeKey.stripLazy(): IrContextualTypeKey {
+  return if (wrappedType !is WrappedType.Lazy) {
+    this
+  } else {
+    IrContextualTypeKey(
+      typeKey,
+      wrappedType.innerType,
+      hasDefault,
+      rawType?.requireSimpleType()?.arguments?.single()?.typeOrFail,
+    )
+  }
+}
+
+context(context: IrMetroContext)
+internal fun IrContextualTypeKey.wrapInProvider(
+  providerType: IrClass = context.metroSymbols.metroProvider.owner
+): IrContextualTypeKey {
+  return if (wrappedType is WrappedType.Provider) {
+    if (wrappedType.providerType == providerType) {
+      this
+    } else {
+      IrContextualTypeKey(
+        typeKey,
+        WrappedType.Provider(wrappedType.innerType, providerType.classIdOrFail),
+        hasDefault,
+        rawType?.let {
+          // New type with the original type's arguments
+          providerType.symbol.typeWithArguments(it.requireSimpleType().arguments)
+        },
+      )
+    }
+  } else {
+    IrContextualTypeKey(
+      typeKey,
+      WrappedType.Provider(wrappedType, providerType.classIdOrFail),
+      hasDefault,
+      rawType?.let { providerType.typeWith(it) },
+    )
   }
 }
 
@@ -166,8 +214,11 @@ internal fun IrType.findProviderSupertype(): IrType? {
   check(this is IrSimpleType) { "Unrecognized IrType '${javaClass}': ${render()}" }
   val rawTypeClass = rawTypeOrNull() ?: return null
   // Get the specific provider type it implements
-  return rawTypeClass.getAllSuperTypes(excludeSelf = false).firstOrNull {
-    it.rawTypeOrNull()?.classId in context.metroSymbols.providerTypes
+  return rawTypeClass.getAllSuperTypes(excludeSelf = false).firstOrNull { type ->
+    type.rawTypeOrNull()?.classId?.let { classId ->
+      classId in context.metroSymbols.providerTypes ||
+        classId in Symbols.ClassIds.commonMetroProviders
+    } ?: false
   }
 }
 
@@ -177,17 +228,25 @@ internal fun IrType.implementsProviderType(): Boolean {
 }
 
 context(context: IrMetroContext)
+internal fun IrType.implementsLazyType(): Boolean {
+  check(this is IrSimpleType) { "Unrecognized IrType '${javaClass}': ${render()}" }
+  val rawTypeClass = rawTypeOrNull() ?: return false
+  return rawTypeClass.classId in context.metroSymbols.lazyTypes
+}
+
+context(context: IrMetroContext)
 internal fun IrType.asContextualTypeKey(
   qualifierAnnotation: IrAnnotation?,
   hasDefault: Boolean,
   patchMutableCollections: Boolean,
+  declaration: IrDeclaration?,
 ): IrContextualTypeKey {
   check(this is IrSimpleType) { "Unrecognized IrType '${javaClass}': ${render()}" }
 
   val declaredType = this
 
   // Analyze the type to determine its wrapped structure
-  val wrappedType = declaredType.asWrappedType(patchMutableCollections)
+  val wrappedType = declaredType.asWrappedType(patchMutableCollections, declaration)
 
   val typeKey =
     IrTypeKey(
@@ -209,7 +268,10 @@ internal fun IrType.asContextualTypeKey(
 }
 
 context(context: IrMetroContext)
-private fun IrSimpleType.asWrappedType(patchMutableCollections: Boolean): WrappedType<IrType> {
+private fun IrSimpleType.asWrappedType(
+  patchMutableCollections: Boolean,
+  declaration: IrDeclaration?,
+): WrappedType<IrType> {
   val rawClassId = rawTypeOrNull()?.classId
 
   // Check if this is a Map type
@@ -218,10 +280,13 @@ private fun IrSimpleType.asWrappedType(patchMutableCollections: Boolean): Wrappe
     val valueType = arguments[1]
 
     // Recursively analyze the value type
-    val valueWrappedType = valueType.typeOrFail.expectAs<IrSimpleType>().asWrappedType(patchMutableCollections)
+    val valueWrappedType =
+      valueType.typeOrFail.requireSimpleType().asWrappedType(patchMutableCollections, declaration)
 
     return WrappedType.Map(keyType.typeOrFail, valueWrappedType) {
-      context.irBuiltIns.mapClass.typeWithArguments(listOf(keyType, valueWrappedType.canonicalType()))
+      context.irBuiltIns.mapClass.typeWithArguments(
+        listOf(keyType, valueWrappedType.canonicalType())
+      )
     }
   }
 
@@ -230,7 +295,8 @@ private fun IrSimpleType.asWrappedType(patchMutableCollections: Boolean): Wrappe
     val innerType = arguments[0].typeOrFail
 
     // Recursively analyze the inner type
-    val innerWrappedType = innerType.expectAs<IrSimpleType>().asWrappedType(patchMutableCollections)
+    val innerWrappedType =
+      innerType.requireSimpleType(declaration).asWrappedType(patchMutableCollections, declaration)
 
     return WrappedType.Provider(innerWrappedType, rawClassId!!)
   }
@@ -240,7 +306,8 @@ private fun IrSimpleType.asWrappedType(patchMutableCollections: Boolean): Wrappe
     val innerType = arguments[0].typeOrFail
 
     // Recursively analyze the inner type
-    val innerWrappedType = innerType.expectAs<IrSimpleType>().asWrappedType(patchMutableCollections)
+    val innerWrappedType =
+      innerType.requireSimpleType(declaration).asWrappedType(patchMutableCollections, declaration)
 
     return WrappedType.Lazy(innerWrappedType, rawClassId!!)
   }
@@ -271,4 +338,32 @@ internal fun WrappedType<IrType>.toIrType(): IrType {
       context.irBuiltIns.mapClass.typeWith(keyIrType, valueIrType)
     }
   }
+}
+
+internal fun WrappedType<IrType>.remapType(remapper: TypeRemapper): WrappedType<IrType> {
+  return when (this) {
+    is WrappedType.Canonical -> WrappedType.Canonical(remapper.remapType(type))
+    is WrappedType.Provider -> {
+      WrappedType.Provider(innerType.remapType(remapper), providerType)
+    }
+
+    is WrappedType.Lazy -> {
+      WrappedType.Lazy(innerType.remapType(remapper), lazyType)
+    }
+
+    is WrappedType.Map -> {
+      WrappedType.Map(remapper.remapType(keyType), valueType.remapType(remapper)) {
+        remapper.remapType(type())
+      }
+    }
+  }
+}
+
+internal fun IrContextualTypeKey.remapType(remapper: TypeRemapper): IrContextualTypeKey {
+  return IrContextualTypeKey(
+    typeKey.remapTypes(remapper),
+    wrappedType.remapType(remapper),
+    hasDefault,
+    rawType?.let { remapper.remapType(it) },
+  )
 }

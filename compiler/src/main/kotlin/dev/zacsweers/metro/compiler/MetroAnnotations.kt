@@ -7,12 +7,15 @@ import dev.zacsweers.metro.compiler.MetroAnnotations.Kind
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.asIrAnnotation
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.EnumSet
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
@@ -47,6 +50,7 @@ internal class MetroAnnotations<T>(
   val isDependencyGraph: Boolean = false,
   val isDependencyGraphFactory: Boolean = false,
   val isInject: Boolean = false,
+  val isAssistedInject: Boolean = false,
   val isProvides: Boolean = false,
   val isBinds: Boolean = false,
   val isBindsInstance: Boolean = false,
@@ -55,6 +59,8 @@ internal class MetroAnnotations<T>(
   val isIntoMap: Boolean = false,
   val isAssistedFactory: Boolean = false,
   val isComposable: Boolean = false,
+  val isBindsOptionalOf: Boolean = false,
+  val isOptionalBinding: Boolean = false,
   val multibinds: T? = null,
   val assisted: T? = null,
   val scope: T? = null,
@@ -83,6 +89,7 @@ internal class MetroAnnotations<T>(
     isDependencyGraph: Boolean = this.isDependencyGraph,
     isDependencyGraphFactory: Boolean = this.isDependencyGraphFactory,
     isInject: Boolean = this.isInject,
+    isAssistedInject: Boolean = this.isAssistedInject,
     isProvides: Boolean = this.isProvides,
     isBinds: Boolean = this.isBinds,
     isBindsInstance: Boolean = this.isBindsInstance,
@@ -91,6 +98,8 @@ internal class MetroAnnotations<T>(
     isIntoMap: Boolean = this.isIntoMap,
     isAssistedFactory: Boolean = this.isAssistedFactory,
     isComposable: Boolean = this.isComposable,
+    isBindsOptionalOf: Boolean = this.isBindsOptionalOf,
+    isOptionalBinding: Boolean = this.isOptionalBinding,
     multibinds: T? = this.multibinds,
     assisted: T? = this.assisted,
     scope: T? = this.scope,
@@ -98,23 +107,26 @@ internal class MetroAnnotations<T>(
     mapKeys: Set<T> = this.mapKeys,
   ): MetroAnnotations<T> {
     return MetroAnnotations(
-      isDependencyGraph,
-      isDependencyGraphFactory,
-      isInject,
-      isProvides,
-      isBinds,
-      isBindsInstance,
-      isIntoSet,
-      isElementsIntoSet,
-      isIntoMap,
-      isAssistedFactory,
-      isComposable,
-      multibinds,
-      assisted,
-      scope,
-      qualifier,
-      mapKeys,
-      symbol,
+      isDependencyGraph = isDependencyGraph,
+      isDependencyGraphFactory = isDependencyGraphFactory,
+      isInject = isInject,
+      isAssistedInject = isAssistedInject,
+      isProvides = isProvides,
+      isBinds = isBinds,
+      isBindsInstance = isBindsInstance,
+      isIntoSet = isIntoSet,
+      isElementsIntoSet = isElementsIntoSet,
+      isIntoMap = isIntoMap,
+      isAssistedFactory = isAssistedFactory,
+      isComposable = isComposable,
+      isBindsOptionalOf = isBindsOptionalOf,
+      isOptionalBinding = isOptionalBinding,
+      multibinds = multibinds,
+      assisted = assisted,
+      scope = scope,
+      qualifier = qualifier,
+      mapKeys = mapKeys,
+      symbol = symbol,
     )
   }
 
@@ -123,6 +135,7 @@ internal class MetroAnnotations<T>(
       isDependencyGraph = isDependencyGraph || other.isDependencyGraph,
       isDependencyGraphFactory = isDependencyGraphFactory || other.isDependencyGraphFactory,
       isInject = isInject || other.isInject,
+      isAssistedInject = isAssistedInject || other.isAssistedInject,
       isProvides = isProvides || other.isProvides,
       isBinds = isBinds || other.isBinds,
       isBindsInstance = isBindsInstance || other.isBindsInstance,
@@ -141,6 +154,7 @@ internal class MetroAnnotations<T>(
     DependencyGraph,
     DependencyGraphFactory,
     Inject,
+    AssistedInject,
     Provides,
     Binds,
     BindsInstance,
@@ -154,14 +168,19 @@ internal class MetroAnnotations<T>(
     Scope,
     Qualifier,
     MapKey,
+    BindsOptionalOf,
+    OptionalBinding,
   }
 
   companion object {
+    internal val ALL_KINDS = EnumSet.allOf(Kind::class.java)
+
     private val NONE =
       MetroAnnotations<Any>(
         isDependencyGraph = false,
         isDependencyGraphFactory = false,
         isInject = false,
+        isAssistedInject = false,
         isProvides = false,
         isBinds = false,
         isBindsInstance = false,
@@ -182,11 +201,9 @@ internal class MetroAnnotations<T>(
   }
 }
 
-private val ALL_KINDS = EnumSet.allOf(Kind::class.java)
-
 private fun kindSetOf(vararg kinds: Kind): Set<Kind> {
   return if (kinds.isEmpty()) {
-    ALL_KINDS
+    MetroAnnotations.ALL_KINDS
   } else if (kinds.size == 1) {
     EnumSet.of(kinds[0])
   } else {
@@ -198,15 +215,12 @@ internal fun IrAnnotationContainer.metroAnnotations(
   ids: ClassIds,
   vararg kinds: Kind,
 ): MetroAnnotations<IrAnnotation> {
-  return metroAnnotations(
-    ids,
-    kindSetOf(*kinds),
-  )
+  return metroAnnotations(ids, kindSetOf(*kinds))
 }
 
 internal fun IrAnnotationContainer.metroAnnotations(
   ids: ClassIds,
-  kinds: Set<Kind> = ALL_KINDS,
+  kinds: Set<Kind> = MetroAnnotations.ALL_KINDS,
 ): MetroAnnotations<IrAnnotation> = metroAnnotations(ids, null, kinds)
 
 private fun IrAnnotationContainer.metroAnnotations(
@@ -217,6 +231,7 @@ private fun IrAnnotationContainer.metroAnnotations(
   var isDependencyGraph = false
   var isDependencyGraphFactory = false
   var isInject = false
+  var isAssistedInject = false
   var isProvides = false
   var isBinds = false
   var isBindsInstance = false
@@ -225,6 +240,8 @@ private fun IrAnnotationContainer.metroAnnotations(
   var isIntoMap = false
   var isAssistedFactory = false
   var isComposable = false
+  var isBindsOptionalOf = false
+  var isOptionalBinding = false
   var multibinds: IrAnnotation? = null
   var assisted: IrAnnotation? = null
   var scope: IrAnnotation? = null
@@ -245,6 +262,10 @@ private fun IrAnnotationContainer.metroAnnotations(
           }
           in ids.assistedAnnotations if (Kind.Assisted in kinds) -> {
             assisted = expectNullAndSet("assisted", assisted, annotation.asIrAnnotation())
+            continue
+          }
+          in ids.optionalBindingAnnotations if (Kind.OptionalBinding in kinds) -> {
+            isOptionalBinding = true
             continue
           }
         }
@@ -282,6 +303,14 @@ private fun IrAnnotationContainer.metroAnnotations(
             isComposable = true
             continue
           }
+          DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF if (Kind.BindsOptionalOf in kinds) -> {
+            isBindsOptionalOf = true
+            continue
+          }
+          in ids.optionalBindingAnnotations if (Kind.OptionalBinding in kinds) -> {
+            isOptionalBinding = true
+            continue
+          }
         }
       }
 
@@ -311,10 +340,17 @@ private fun IrAnnotationContainer.metroAnnotations(
       continue
     }
 
+    if (Kind.AssistedInject in kinds && classId in ids.assistedInjectAnnotations) {
+      isAssistedInject = true
+      continue
+    }
+
     if (Kind.Scope in kinds && annotationClass.isAnnotatedWithAny(ids.scopeAnnotations)) {
       scope = expectNullAndSet("scope", scope, annotation.asIrAnnotation())
       continue
-    } else if (Kind.Qualifier in kinds && annotationClass.isAnnotatedWithAny(ids.qualifierAnnotations)) {
+    } else if (
+      Kind.Qualifier in kinds && annotationClass.isAnnotatedWithAny(ids.qualifierAnnotations)
+    ) {
       qualifier = expectNullAndSet("qualifier", qualifier, annotation.asIrAnnotation())
       continue
     } else if (Kind.MapKey in kinds && annotationClass.isAnnotatedWithAny(ids.mapKeyAnnotations)) {
@@ -328,6 +364,7 @@ private fun IrAnnotationContainer.metroAnnotations(
       isDependencyGraph = isDependencyGraph,
       isDependencyGraphFactory = isDependencyGraphFactory,
       isInject = isInject,
+      isAssistedInject = isAssistedInject,
       isProvides = isProvides,
       isBinds = isBinds,
       isBindsInstance = isBindsInstance,
@@ -336,6 +373,8 @@ private fun IrAnnotationContainer.metroAnnotations(
       isIntoMap = isIntoMap,
       isAssistedFactory = isAssistedFactory,
       isComposable = isComposable,
+      isBindsOptionalOf = isBindsOptionalOf,
+      isOptionalBinding = isOptionalBinding,
       multibinds = multibinds,
       assisted = assisted,
       scope = scope,
@@ -422,15 +461,12 @@ internal fun FirBasedSymbol<*>.metroAnnotations(
   session: FirSession,
   vararg kinds: Kind,
 ): MetroAnnotations<MetroFirAnnotation> {
-  return metroAnnotations(
-    session,
-    kindSetOf(*kinds),
-  )
+  return metroAnnotations(session, kindSetOf(*kinds))
 }
 
 internal fun FirBasedSymbol<*>.metroAnnotations(
   session: FirSession,
-  kinds: Set<Kind> = ALL_KINDS,
+  kinds: Set<Kind> = MetroAnnotations.ALL_KINDS,
 ): MetroAnnotations<MetroFirAnnotation> {
   return metroAnnotations(session, null, kinds)
 }
@@ -444,6 +480,7 @@ private fun FirBasedSymbol<*>.metroAnnotations(
   var isDependencyGraph = false
   var isDependencyGraphFactory = false
   var isInject = false
+  var isAssistedInject = false
   var isProvides = false
   var isBinds = false
   var isBindsInstance = false
@@ -452,6 +489,8 @@ private fun FirBasedSymbol<*>.metroAnnotations(
   var isIntoMap = false
   var isAssistedFactory = false
   var isComposable = false
+  var isBindsOptionalOf = false
+  var isOptionalBinding = false
   var multibinds: MetroFirAnnotation? = null
   var assisted: MetroFirAnnotation? = null
   var scope: MetroFirAnnotation? = null
@@ -475,6 +514,10 @@ private fun FirBasedSymbol<*>.metroAnnotations(
           in ids.assistedAnnotations if (Kind.Assisted in kinds) -> {
             assisted =
               expectNullAndSet("assisted", assisted, MetroFirAnnotation(annotation, session))
+            continue
+          }
+          in ids.optionalBindingAnnotations if (Kind.OptionalBinding in kinds) -> {
+            isOptionalBinding = true
             continue
           }
         }
@@ -514,6 +557,17 @@ private fun FirBasedSymbol<*>.metroAnnotations(
             isComposable = true
             continue
           }
+          DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF if
+            (session.metroFirBuiltIns.options.enableDaggerRuntimeInterop &&
+              Kind.BindsOptionalOf in kinds)
+           -> {
+            isBindsOptionalOf = true
+            continue
+          }
+          in ids.optionalBindingAnnotations if (Kind.OptionalBinding in kinds) -> {
+            isOptionalBinding = true
+            continue
+          }
         }
       }
 
@@ -541,6 +595,11 @@ private fun FirBasedSymbol<*>.metroAnnotations(
       continue
     }
 
+    if (Kind.AssistedInject in kinds && classId in ids.assistedInjectAnnotations) {
+      isAssistedInject = true
+      continue
+    }
+
     if (Kind.Scope in kinds && annotationClass.isAnnotatedWithAny(session, ids.scopeAnnotations)) {
       scope = expectNullAndSet("scope", scope, MetroFirAnnotation(annotation, session))
       continue
@@ -563,6 +622,7 @@ private fun FirBasedSymbol<*>.metroAnnotations(
       isDependencyGraph = isDependencyGraph,
       isDependencyGraphFactory = isDependencyGraphFactory,
       isInject = isInject,
+      isAssistedInject = isAssistedInject,
       isProvides = isProvides,
       isBinds = isBinds,
       isBindsInstance = isBindsInstance,
@@ -571,6 +631,8 @@ private fun FirBasedSymbol<*>.metroAnnotations(
       isIntoMap = isIntoMap,
       isAssistedFactory = isAssistedFactory,
       isComposable = isComposable,
+      isBindsOptionalOf = isBindsOptionalOf,
+      isOptionalBinding = isOptionalBinding,
       multibinds = multibinds,
       assisted = assisted,
       scope = scope,
@@ -638,6 +700,8 @@ internal fun MetroAnnotations<IrAnnotation>.mirrorIrConstructorCalls(
       add(buildAnnotation(symbol, context.metroSymbols.elementsIntoSetConstructor))
     } else if (isIntoMap) {
       add(buildAnnotation(symbol, context.metroSymbols.intoMapConstructor))
+    } else if (isBindsOptionalOf) {
+      add(buildAnnotation(symbol, context.metroSymbols.bindsOptionalConstructor))
     }
     scope?.let { add(it.ir.deepCopyWithSymbols()) }
     qualifier?.let { add(it.ir.deepCopyWithSymbols()) }

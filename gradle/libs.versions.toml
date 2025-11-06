@@ -20,26 +20,26 @@ anvil = "0.4.1"
 atomicfu = "0.29.0"
 autoService = "1.1.1"
 circuit = "0.30.0"
-classgraph = "4.8.181"
-compose-jb = "1.9.0"
+classgraph = "4.8.184"
+compose-jb = "1.9.2"
 dagger = "2.57.2"
-gjf = "1.29.0"
-jdk = "23"
-junit5 = "6.0.0"
+gjf = "1.31.0"
+jdk = "24"
+junit5 = "6.0.1"
 jvmTarget = "11"
-kct = "0.10.0"
+kct = "0.11.0"
 kotlin = "2.2.20"
 kotlinInject = "0.8.0"
 kotlinInject-anvil = "0.1.6"
 kotlinx-coroutines = "1.10.2"
 kotlinx-serialization = "1.9.0"
-ksp = "2.2.20-2.0.3"
-ktfmt = "0.58"
-ktor = "3.3.0"
-okhttp = "5.2.0"
-okio = "3.16.0"
+ksp = "2.3.1"
+ktfmt = "0.59"
+ktor = "3.3.2"
+okhttp = "5.3.0"
+okio = "3.16.2"
 pluginId = "dev.zacsweers.metro.compiler"
-poko = "0.20.0"
+poko = "0.20.1"
 wire = "5.4.0"
 
 [plugins]
@@ -56,32 +56,33 @@ kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
 kotlin-plugin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-plugin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 binaryCompatibilityValidator = { id = "org.jetbrains.kotlinx.binary-compatibility-validator", version = "0.18.1" }
-buildConfig = { id = "com.github.gmazzo.buildconfig", version = "5.6.8" }
-dokka = { id = "org.jetbrains.dokka", version = "2.1.0-Beta" }
+buildConfig = { id = "com.github.gmazzo.buildconfig", version = "5.7.1" }
+dokka = { id = "org.jetbrains.dokka", version = "2.1.0" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.34.0" }
 poko = { id = "dev.drewhamilton.poko", version.ref = "poko" }
 shadow = { id = "com.gradleup.shadow", version = "9.2.2" }
 spotless = { id = "com.diffplug.spotless", version = "8.0.0" }
-testkit = { id = "com.autonomousapps.testkit", version = "0.16" }
+testkit = { id = "com.autonomousapps.testkit", version = "0.17" }
 wire = { id = "com.squareup.wire", version.ref = "wire" }
 
 [libraries]
 androidx-activity = "androidx.activity:activity-compose:1.11.0"
 androidx-appcompat = "androidx.appcompat:appcompat:1.7.1"
 androidx-compose-material3 = "androidx.compose.material3:material3:1.4.0"
-androidx-compose-materialNavigation = "androidx.compose.material:material-navigation:1.9.2"
+androidx-compose-materialNavigation = "androidx.compose.material:material-navigation:1.9.4"
 androidx-core = "androidx.core:core-ktx:1.17.0"
 androidx-fragment = "androidx.fragment:fragment-ktx:1.8.9"
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
 androidx-lint-gradle = { module = "androidx.lint:lint-gradle", version.ref = "androidx-lint-gradle" }
 androidx-material3 = "com.google.android.material:material:1.13.0"
-androidx-navigationCompose = "androidx.navigation:navigation-compose:2.9.5"
+androidx-navigationCompose = "androidx.navigation:navigation-compose:2.9.6"
 androidx-viewmodel = { module = "androidx.lifecycle:lifecycle-viewmodel", version.ref = "androidx-lifecycle" }
-androidx-work = "androidx.work:work-runtime:2.10.5"
+androidx-work = "androidx.work:work-runtime:2.11.0"
 
 anvil-annotations = { module = "dev.zacsweers.anvil:annotations", version.ref = "anvil" }
 anvil-annotations-optional = { module = "dev.zacsweers.anvil:annotations-optional", version.ref = "anvil" }
+anvil-kspCompiler = { module = "dev.zacsweers.anvil:compiler", version.ref = "anvil" }
 
 autoService = { module = "com.google.auto.service:auto-service-annotations", version.ref = "autoService" }
 autoService-ksp = { module = "dev.zacsweers.autoservice:auto-service-ksp", version = "1.2.0" }
@@ -98,7 +99,7 @@ circuit-codegenAnnotations = { module = "com.slack.circuit:circuit-codegen-annot
 
 compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose-jb" }
 compose-materialIcons = { module = "org.jetbrains.compose.material:material-icons-core", version = "1.7.3" }
-compose-material3 = { module = "org.jetbrains.compose.material3:material3", version = "1.9.0-beta06" }
+compose-material3 = { module = "org.jetbrains.compose.material3:material3", version = "1.9.0" }
 compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "compose-jb" }
 compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "compose-jb" }
 
@@ -163,7 +164,7 @@ ksp-symbolProcessing = { module = "com.google.devtools.ksp:symbol-processing", v
 ksp-symbolProcessing-api = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }
 ksp-symbolProcessing-commonDeps = { module = "com.google.devtools.ksp:symbol-processing-common-deps", version.ref = "ksp" }
 ksp-symbolProcessing-aaEmbeddable = { module = "com.google.devtools.ksp:symbol-processing-aa-embeddable", version.ref = "ksp" }
-testkit-support = { module =  "com.autonomousapps:gradle-testkit-support", version = "0.20"}
+testkit-support = { module =  "com.autonomousapps:gradle-testkit-support", version = "0.22"}
 testkit-truth = { module =  "com.autonomousapps:gradle-testkit-truth", version = "1.6.1"}
 truth = { module = "com.google.truth:truth", version = "1.4.5" }
 kct = { module = "dev.zacsweers.kctfork:core", version.ref = "kct" }

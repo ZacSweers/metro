@@ -5,24 +5,24 @@ package dev.zacsweers.metro.compiler.ir.transformers
 import dev.zacsweers.metro.compiler.METRO_VERSION
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
-import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.generatedClass
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
-import dev.zacsweers.metro.compiler.ir.IrBinding
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
+import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.dispatchReceiverFor
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.findAnnotations
+import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.includedClasses
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
@@ -41,6 +41,7 @@ import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
+import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.ir.subcomponentsArgument
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toClassReferences
@@ -49,14 +50,16 @@ import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.isWordPrefixRegex
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.mapToSet
+import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.reportCompilerBug
-import dev.zacsweers.metro.compiler.unsafeLazy
+import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
+import dev.zacsweers.metro.compiler.symbols.Symbols
+import java.util.EnumSet
 import java.util.Optional
 import kotlin.jvm.optionals.getOrNull
-import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.backend.jvm.ir.getJvmNameFromAnnotation
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
@@ -74,7 +77,6 @@ import org.jetbrains.kotlin.ir.declarations.IrTypeAlias
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
-import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.typeOrFail
@@ -89,6 +91,7 @@ import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isPropertyAccessor
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
+import org.jetbrains.kotlin.ir.util.packageFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
@@ -179,7 +182,8 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     val graphAnnotation =
       declaration.annotationsIn(metroSymbols.classIds.graphLikeAnnotations).firstOrNull()
     val isContributedGraph =
-      (graphAnnotation?.annotationClass?.classId in metroSymbols.classIds.graphExtensionAnnotations) &&
+      (graphAnnotation?.annotationClass?.classId in
+        metroSymbols.classIds.graphExtensionAnnotations) &&
         declaration.isAnnotatedWithAny(metroSymbols.classIds.contributesToAnnotations)
     val isGraph = graphAnnotation != null
     val container =
@@ -335,7 +339,6 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     invokeFunction.owner.body =
       pluginContext.createIrBuilder(invokeFunction).run {
         irExprBodySafe(
-          invokeFunction,
           irInvoke(
             dispatchReceiver = dispatchReceiverFor(bytecodeFunction),
             callee = bytecodeFunction.symbol,
@@ -345,7 +348,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
                 receiver = invokeFunction.owner.dispatchReceiverParameter!!,
                 parametersToFields = sourceParametersToFields,
               ),
-          ),
+          )
         )
       }
 
@@ -370,9 +373,14 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
 
     factoryCls.dumpToMetroLog()
 
-    writeDiagnostic("provider-factory-${factoryCls.kotlinFqName.asString()}.kt") {
-      factoryCls.dumpKotlinLike()
-    }
+    val factoryPath =
+      factoryCls.packageFqName?.let { packageName ->
+        val fileName = factoryCls.kotlinFqName.toString().replace("$packageName.", "")
+        "${packageName.pathSegments().joinToString("/")}/$fileName"
+      } ?: factoryCls.kotlinFqName.asString()
+
+    // Relative path example: provider-factories/dev/zac/feature/Outer.Inner$$Factory.kt
+    writeDiagnostic("provider-factories/$factoryPath.kt") { factoryCls.dumpKotlinLike() }
 
     generatedFactories[reference.callableId] = providerFactory
     return providerFactory
@@ -464,7 +472,8 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
       generateStaticNewInstanceFunction(
         parentClass = classToGenerateCreatorsIn,
         targetFunction = reference.callee.owner,
-        sourceParameters = reference.parameters.regularParameters.map { it.ir },
+        sourceMetroParameters = reference.parameters,
+        sourceParameters = reference.parameters.regularParameters.map { it.asValueParameter },
       ) { function ->
         val parameters = function.regularParameters
 
@@ -516,7 +525,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     // omit the `get-` prefix for property names starting with the *word* `is`, like `isProperty`,
     // but not for names which just start with those letters, like `issues`.
     // TODO still necessary in IR?
-    private val useGetPrefix by unsafeLazy {
+    private val useGetPrefix by memoize {
       isPropertyAccessor && !isWordPrefixRegex.matches(name.asString())
     }
 
@@ -699,7 +708,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     // Extract IrTypeKey from Factory supertype
     // Qualifier will be populated in ProviderFactory construction
     val factoryType = factoryCls.superTypes.first { it.classOrNull == metroSymbols.metroFactory }
-    val typeKey = IrTypeKey(factoryType.expectAs<IrSimpleType>().arguments.first().typeOrFail)
+    val typeKey = IrTypeKey(factoryType.requireSimpleType().arguments.first().typeOrFail)
     val mirrorFunction = factoryCls.requireSimpleFunction(Symbols.StringNames.MIRROR_FUNCTION).owner
     return ProviderFactory(
       typeKey,
@@ -725,7 +734,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     if (graphProto == null) {
       if (options.enableDaggerRuntimeInterop) {
         val moduleAnno =
-          declaration.findAnnotations(Symbols.DaggerSymbols.ClassIds.DAGGER_MODULE).firstOrNull()
+          declaration.findAnnotations(DaggerSymbols.ClassIds.DAGGER_MODULE).firstOrNull()
 
         if (moduleAnno != null) {
           // It's a dagger module! Iterate over its Provides and Binds
@@ -736,8 +745,23 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
           for (decl in declaration.declarations) {
             if (decl !is IrSimpleFunction && decl !is IrProperty) continue
 
-            val annotations = decl.metroAnnotations(metroSymbols.classIds)
-            if (annotations.isProvides || annotations.isBinds || annotations.isMultibinds) {
+            val annotations =
+              decl.metroAnnotations(
+                metroSymbols.classIds,
+                kinds =
+                  EnumSet.of(
+                    MetroAnnotations.Kind.Provides,
+                    MetroAnnotations.Kind.Binds,
+                    MetroAnnotations.Kind.Multibinds,
+                    MetroAnnotations.Kind.BindsOptionalOf,
+                  ),
+              )
+            if (
+              annotations.isProvides ||
+                annotations.isBinds ||
+                annotations.isMultibinds ||
+                annotations.isBindsOptionalOf
+            ) {
               val isProperty = decl is IrProperty
               val callableId: CallableId
               val typeKey: IrTypeKey
@@ -786,7 +810,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
                     isPropertyAccessor = isProperty,
                   )
               } else {
-                // binds or multibinds
+                // binds or multibinds or bindsOptionalOf
                 val function = metroFunctionOf(function, annotations)
                 bindsCollector += function
               }
@@ -882,7 +906,7 @@ internal class BindingContainer(
    * Simple classes with a public, no-arg constructor can be managed directly by the consuming
    * graph.
    */
-  val canBeManaged by unsafeLazy { ir.kind == ClassKind.CLASS && ir.modality != Modality.ABSTRACT }
+  val canBeManaged by memoize { ir.kind == ClassKind.CLASS && ir.modality != Modality.ABSTRACT }
 
   fun isEmpty() =
     includes.isEmpty() && providerFactories.isEmpty() && (bindsMirror?.isEmpty() ?: true)

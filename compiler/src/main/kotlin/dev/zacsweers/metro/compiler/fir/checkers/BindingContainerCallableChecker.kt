@@ -2,23 +2,25 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
+import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.MetroOptions
-import dev.zacsweers.metro.compiler.Symbols.DaggerSymbols
+import dev.zacsweers.metro.compiler.fir.FirContextualTypeKey
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.BINDING_CONTAINER_ERROR
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
-import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.compatContext
+import dev.zacsweers.metro.compiler.fir.findInjectConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
-import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
 import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
+import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.reportCompilerBug
-import dev.zacsweers.metro.compiler.unsafeLazy
+import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.isObject
@@ -47,10 +49,12 @@ import org.jetbrains.kotlin.fir.expressions.FirReturnExpression
 import org.jetbrains.kotlin.fir.expressions.FirThisReceiverExpression
 import org.jetbrains.kotlin.fir.propertyIfAccessor
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
+import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.isSubtypeOf
 import org.jetbrains.kotlin.fir.types.renderReadableWithFqNames
+import org.jetbrains.kotlin.fir.types.type
 
 // TODO
 //  What about future Kotlin versions where you can have different get signatures
@@ -62,7 +66,7 @@ internal object BindingContainerCallableChecker :
     val session = context.session
     val classIds = session.classIds
 
-    val containingClassSymbol by unsafeLazy {
+    val containingClassSymbol by memoize {
       with(session.compatContext) { declaration.getContainingClassSymbol() }
     }
     if (declaration is FirConstructor) {
@@ -108,16 +112,35 @@ internal object BindingContainerCallableChecker :
     }
 
     val annotations = declaration.symbol.metroAnnotations(session)
-    if (!annotations.isProvides && !annotations.isBinds) {
+
+    if (
+      session.metroFirBuiltIns.options.enableDaggerRuntimeInterop && annotations.isBindsOptionalOf
+    ) {
+      val contextKey = FirContextualTypeKey.from(session, declaration.symbol)
+      if (!contextKey.isCanonical) {
+        reporter.reportOn(
+          declaration.returnTypeRef.source ?: source,
+          MetroDiagnostics.BINDS_OPTIONAL_OF_ERROR,
+          "@BindsOptionalOf declarations should return the target type (and not wrapped in Provider, Lazy, etc.)",
+        )
+      } else {
+        // If it's wrapped in Optional, report a warning because it's probably not what they mean
+        val isOptional =
+          declaration.returnTypeRef.coneTypeOrNull?.classId == Symbols.ClassIds.JavaOptional
+        if (isOptional) {
+          val genericType =
+            declaration.returnTypeRef.coneType.typeArguments.first().type!!.classId!!.shortClassName
+          reporter.reportOn(
+            declaration.returnTypeRef.source ?: source,
+            MetroDiagnostics.BINDS_OPTIONAL_OF_WARNING,
+            "@BindsOptionalOf declarations usually just return the target type directly (i.e. `$genericType`) but this suspiciously returns `Optional<$genericType>`, which would result callers to use `Optional<Optional<$genericType>>`. If this is really what you intend, you can suppress this warning.",
+          )
+        }
+      }
       return
     }
 
-    if (annotations.isBinds && annotations.scope != null) {
-      reporter.reportOn(
-        annotations.scope.fir.source ?: source,
-        MetroDiagnostics.BINDS_ERROR,
-        "@Binds declarations may not have scopes.",
-      )
+    if (!annotations.isProvides && !annotations.isBinds) {
       return
     }
 
@@ -128,6 +151,16 @@ internal object BindingContainerCallableChecker :
         return
       }
 
+    // After the reusable check because reusable is technically a scope and we don't want to
+    // double-report
+    if (annotations.isBinds && annotations.scope != null) {
+      reporter.reportOn(
+        annotations.scope.fir.source ?: source,
+        MetroDiagnostics.BINDS_ERROR,
+        "@Binds declarations may not have scopes.",
+      )
+    }
+
     if (declaration.typeParameters.isNotEmpty()) {
       val type = if (annotations.isProvides) "Provides" else "Binds"
       reporter.reportOn(
@@ -135,7 +168,6 @@ internal object BindingContainerCallableChecker :
         MetroDiagnostics.METRO_TYPE_PARAMETERS_ERROR,
         "`@$type` declarations may not have type parameters.",
       )
-      return
     }
 
     // Ensure declarations are within a class/companion object/interface
@@ -147,7 +179,6 @@ internal object BindingContainerCallableChecker :
           "If you're seeing this, `${declaration.nameOrSpecialName}` is likely defined as a " +
           "top-level method which isn't supported.",
       )
-      return
     }
 
     if (annotations.isProvides) {
@@ -164,7 +195,6 @@ internal object BindingContainerCallableChecker :
                 "`${declaration.nameOrSpecialName}` appears to be defined directly within a " +
                 "(non-companion) object that is not annotated @BindingContainer.",
             )
-            return
           }
         }
       }
@@ -177,7 +207,6 @@ internal object BindingContainerCallableChecker :
         MetroDiagnostics.PROVIDES_ERROR,
         "@Provides properties cannot be var",
       )
-      return
     }
 
     val returnTypeRef = declaration.propertyIfAccessor.returnTypeRef
@@ -187,7 +216,6 @@ internal object BindingContainerCallableChecker :
         MetroDiagnostics.PROVIDES_ERROR,
         "Implicit return types are not allowed for `@Provides` declarations. Specify the return type explicitly.",
       )
-      return
     }
 
     val returnType = returnTypeRef.coneTypeOrNull ?: return
@@ -306,13 +334,11 @@ internal object BindingContainerCallableChecker :
           MetroDiagnostics.PROVIDES_ERROR,
           "`@Provides` declarations must have bodies.",
         )
-        return
       }
 
       if (returnType.typeArguments.isEmpty()) {
         val returnClass = returnType.toClassSymbol(session) ?: return
-        // TODO after we migrate fully to AssistedInject, allow qualified assisted inject types
-        val injectConstructor = returnClass.findInjectLikeConstructors(session).firstOrNull()
+        val injectConstructor = returnClass.findInjectConstructors(session).firstOrNull()
 
         if (injectConstructor != null) {
           // If the type keys and scope are the same, this is redundant
@@ -334,10 +360,15 @@ internal object BindingContainerCallableChecker :
             if (providerScope == classScope) {
               reporter.reportOn(
                 source,
-                MetroDiagnostics.PROVIDES_WARNING,
+                MetroDiagnostics.REDUNDANT_PROVIDES,
                 "Provided type '${classTypeKey.render(short = false, includeQualifier = true)}' is already constructor-injected and does not need to be provided explicitly. Consider removing this `@Provides` declaration.",
               )
-              return
+            } else if (classScope != null) {
+              reporter.reportOn(
+                source,
+                MetroDiagnostics.CONFLICTING_PROVIDES_SCOPE,
+                "Provided type '${classTypeKey.render(short = false, includeQualifier = true)}' is already constructor-injected but declares a different scope. This is likely a bug.",
+              )
             }
           }
         }
@@ -345,11 +376,18 @@ internal object BindingContainerCallableChecker :
 
       if (declaration is FirSimpleFunction) {
         for (parameter in declaration.valueParameters) {
-          val assistedAnnotation =
-            parameter.annotationsIn(session, classIds.assistedAnnotations).firstOrNull()
+          val annotations =
+            parameter.symbol.metroAnnotations(
+              session,
+              MetroAnnotations.Kind.OptionalBinding,
+              MetroAnnotations.Kind.Assisted,
+              MetroAnnotations.Kind.Qualifier,
+            )
+
+          val assistedAnnotation = annotations.assisted
           if (assistedAnnotation != null) {
             reporter.reportOn(
-              assistedAnnotation.source ?: parameter.source ?: source,
+              assistedAnnotation.fir.source ?: parameter.source ?: source,
               MetroDiagnostics.PROVIDES_ERROR,
               "Assisted parameters are not supported for `@Provides` methods. Create a concrete assisted-injected factory class instead.",
             )
@@ -361,8 +399,10 @@ internal object BindingContainerCallableChecker :
             validateInjectionSiteType(
               session,
               parameter.returnTypeRef,
-              parameter.annotations.qualifierAnnotation(session),
+              annotations.qualifier,
               parameter.source ?: source,
+              isOptionalBinding = annotations.isOptionalBinding,
+              hasDefault = parameter.symbol.hasDefaultValue,
             )
           ) {
             return
