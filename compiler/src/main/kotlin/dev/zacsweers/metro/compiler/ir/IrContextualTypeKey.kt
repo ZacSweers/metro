@@ -20,7 +20,6 @@ import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.render
-import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.StandardClassIds
 
 /** A class that represents a type with contextual information. */
@@ -213,7 +212,8 @@ internal fun IrContextualTypeKey.wrapInProvider(
 context(context: IrMetroContext)
 internal fun IrType.implementsProviderType(): Boolean {
   val supertypeClassIds = getOrComputeSupertypeClassIds()
-  val allProviderClassIds = context.metroSymbols.providerTypes + Symbols.ClassIds.commonMetroProviders
+  val allProviderClassIds =
+    context.metroSymbols.providerTypes + Symbols.ClassIds.commonMetroProviders
   return allProviderClassIds.any { it in supertypeClassIds }
 }
 

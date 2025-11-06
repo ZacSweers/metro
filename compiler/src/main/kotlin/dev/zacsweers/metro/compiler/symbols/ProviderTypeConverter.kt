@@ -38,7 +38,7 @@ internal class ProviderTypeConverter(
   context(_: IrMetroContext, _: IrBuilderWithScope)
   internal fun IrExpression.convertTo(
     targetKey: IrContextualTypeKey,
-    providerType: IrType = type
+    providerType: IrType = type,
   ): IrExpression {
     val provider = this
     val sourceFramework = frameworkFor(providerType)

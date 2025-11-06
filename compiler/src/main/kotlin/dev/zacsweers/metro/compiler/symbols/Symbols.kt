@@ -258,7 +258,8 @@ internal class Symbols(
           val jakartaSymbols = JakartaSymbols(moduleFragment, pluginContext, daggerSymbols)
           val javaxFramework = JavaxProviderFramework(javaxSymbols).also { frameworks += it }
           val jakartaFramework = JakartaProviderFramework(jakartaSymbols).also { frameworks += it }
-          frameworks += DaggerProviderFramework(daggerSymbols, listOf(javaxFramework, jakartaFramework))
+          frameworks +=
+            DaggerProviderFramework(daggerSymbols, listOf(javaxFramework, jakartaFramework))
           jakartaSymbolsAdded = true
           daggerSymbols.jakartaSymbols = jakartaSymbols
         }
@@ -270,13 +271,14 @@ internal class Symbols(
       if (options.enableGuiceRuntimeInterop) {
         GuiceSymbols(moduleFragment, pluginContext, metroFrameworkSymbols).also { guiceSymbols ->
           // Guice dropped javax in 7.x, so we only need jakarta
-          val jakartaFramework = if (!jakartaSymbolsAdded) {
-            val jakartaSymbols = JakartaSymbols(moduleFragment, pluginContext, guiceSymbols)
-            JakartaProviderFramework(jakartaSymbols).also { frameworks += it }
-          } else {
-            // Reuse the already-added jakarta framework (from Dagger)
-            frameworks.filterIsInstance<JakartaProviderFramework>().first()
-          }
+          val jakartaFramework =
+            if (!jakartaSymbolsAdded) {
+              val jakartaSymbols = JakartaSymbols(moduleFragment, pluginContext, guiceSymbols)
+              JakartaProviderFramework(jakartaSymbols).also { frameworks += it }
+            } else {
+              // Reuse the already-added jakarta framework (from Dagger)
+              frameworks.filterIsInstance<JakartaProviderFramework>().first()
+            }
           frameworks += GuiceProviderFramework(guiceSymbols, listOf(jakartaFramework))
         }
       } else {
@@ -292,9 +294,7 @@ internal class Symbols(
     // Check Dagger interop
     if (options.enableDaggerRuntimeInterop) {
       val daggerSymbols = requireDaggerSymbols()
-      if (
-        classId in daggerSymbols.primitives
-      ) {
+      if (classId in daggerSymbols.primitives) {
         return daggerSymbols
       }
     }

@@ -16,7 +16,6 @@ import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
-import org.jetbrains.kotlin.name.StandardClassIds
 
 internal interface FrameworkSymbols {
   val canonicalProviderType: IrClassSymbol
@@ -280,14 +279,14 @@ internal class GuiceSymbols(
       .symbol
   }
 
-  val providerPrimitives = setOf(
-    ClassIds.provider,
-    JakartaSymbols.ClassIds.JAKARTA_PROVIDER_CLASS_ID,
-  )
+  val providerPrimitives =
+    setOf(ClassIds.provider, JakartaSymbols.ClassIds.JAKARTA_PROVIDER_CLASS_ID)
 
   val primitives = providerPrimitives
 
-  override val canonicalProviderType: IrClassSymbol by lazy { pluginContext.referenceClass(ClassIds.provider)!! }
+  override val canonicalProviderType: IrClassSymbol by lazy {
+    pluginContext.referenceClass(ClassIds.provider)!!
+  }
 
   val asGuiceProvider by lazy {
     pluginContext
@@ -369,11 +368,12 @@ internal class DaggerSymbols(
     )!!
   }
 
-  val providerPrimitives = setOf(
-    ClassIds.DAGGER_INTERNAL_PROVIDER_CLASS_ID,
-    JavaxSymbols.ClassIds.JAVAX_PROVIDER_CLASS_ID,
-    JakartaSymbols.ClassIds.JAKARTA_PROVIDER_CLASS_ID,
-  )
+  val providerPrimitives =
+    setOf(
+      ClassIds.DAGGER_INTERNAL_PROVIDER_CLASS_ID,
+      JavaxSymbols.ClassIds.JAVAX_PROVIDER_CLASS_ID,
+      JakartaSymbols.ClassIds.JAKARTA_PROVIDER_CLASS_ID,
+    )
 
   val primitives = providerPrimitives + ClassIds.DAGGER_LAZY_CLASS_ID
 
