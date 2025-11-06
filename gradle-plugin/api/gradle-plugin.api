@@ -68,6 +68,7 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension$InteropHan
 	public final fun getElementsIntoSet ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getEnableDaggerAnvilInterop ()Lorg/gradle/api/provider/Property;
 	public abstract fun getEnableDaggerRuntimeInterop ()Lorg/gradle/api/provider/Property;
+	public abstract fun getEnableGuiceRuntimeInterop ()Lorg/gradle/api/provider/Property;
 	public final fun getGraphExtension ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getGraphExtensionFactory ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getIncludeAnvilAnnotations ()Lorg/gradle/api/provider/Property;
