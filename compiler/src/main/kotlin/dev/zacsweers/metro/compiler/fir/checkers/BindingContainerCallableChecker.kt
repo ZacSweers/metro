@@ -71,8 +71,7 @@ internal object BindingContainerCallableChecker :
       with(session.compatContext) { declaration.getContainingClassSymbol() }
     }
     if (declaration is FirConstructor) {
-      val isInBindingContainer =
-        containingClassSymbol?.isBindingContainer(session) ?: false
+      val isInBindingContainer = containingClassSymbol?.isBindingContainer(session) ?: false
       if (isInBindingContainer) {
         // Check for Provides annotations on constructor params
         for (param in declaration.valueParameters) {
