@@ -340,6 +340,7 @@ internal class GuiceSymbols(
     val assisted =
       ClassId(FqNames.guiceRuntimePackage.child("assistedinject".asName()), Symbols.Names.Assisted)
     val provider = ClassId(FqNames.guiceRuntimePackage, Symbols.Names.ProviderClass)
+    val module = ClassId(FqNames.guiceRuntimePackage, "Module".asName())
   }
 }
 
