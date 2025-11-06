@@ -3,9 +3,10 @@
 plugins {
   alias(libs.plugins.kotlin.jvm)
   alias(libs.plugins.mavenPublish)
+  alias(libs.plugins.testkit)
 }
 
 dependencies {
   api(project(":runtime"))
-  compileOnly(libs.dagger.runtime) // Includes javax.inject
+  api(libs.javaxInject)
 }

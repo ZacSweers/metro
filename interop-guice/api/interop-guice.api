@@ -1,0 +1,20 @@
+public final class dev/zacsweers/metro/interop/guice/GuiceInteropKt {
+	public static final fun asGuiceMembersInjector (Ldev/zacsweers/metro/MembersInjector;)Lcom/google/inject/MembersInjector;
+	public static final fun asGuiceProvider (Ldev/zacsweers/metro/Provider;)Lcom/google/inject/Provider;
+	public static final fun asMetroMembersInjector (Lcom/google/inject/MembersInjector;)Ldev/zacsweers/metro/MembersInjector;
+	public static final fun asMetroProvider (Lcom/google/inject/Provider;)Ldev/zacsweers/metro/Provider;
+}
+
+public final class dev/zacsweers/metro/interop/guice/internal/GuiceInteropDoubleCheck : dev/zacsweers/metro/internal/BaseDoubleCheck, com/google/inject/Provider {
+	public static final field Companion Ldev/zacsweers/metro/interop/guice/internal/GuiceInteropDoubleCheck$Companion;
+	public fun <init> (Ldev/zacsweers/metro/Provider;)V
+	public fun get ()Ljava/lang/Object;
+}
+
+public final class dev/zacsweers/metro/interop/guice/internal/GuiceInteropDoubleCheck$Companion {
+	public final fun fromMetroProvider (Ldev/zacsweers/metro/Provider;)Lcom/google/inject/Provider;
+	public final fun guiceProvider (Lcom/google/inject/Provider;)Lcom/google/inject/Provider;
+	public final fun lazyFromGuiceProvider (Lcom/google/inject/Provider;)Lkotlin/Lazy;
+	public final fun lazyFromMetroProvider (Ldev/zacsweers/metro/Provider;)Lkotlin/Lazy;
+}
+

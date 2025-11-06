@@ -41,9 +41,16 @@ For Dagger and KI specifically, there are convenience helper functions.
 ```kotlin
 metro {
   interop {
+    // Dagger
     includeDagger()
+    includeAnvilForDagger()
+
+    // kotlin-inject
     includeKotlinInject()
-    includeAnvil()
+    includeAnvilForKotlinInject()
+    
+    // Guice
+    includeGuice()
   }
 }
 ```
@@ -114,6 +121,8 @@ abstract class KotlinInjectComponent(
 
 ## Runtime
 
+### Dagger
+
 Enabling dagger interop also enables more advanced _runtime_ interop with Dagger/Javax/Jakarta's `Provider`/`Lazy` types.
 
 ```kotlin
@@ -131,6 +140,23 @@ This specifically enables three features.
 3. Interop with Dagger's `@BindsOptionalOf` annotation.
 
 Note the companion Gradle plugin automatically adds an extra `dev.zacsweers.metro:interop-dagger` runtime dependency to support this interop. If you only want annotation interop, just replace the annotations only.
+
+### Guice
+
+Enabling Guice interop enables _runtime_ interop with Guice's `Provider` type and Jakarta's `Provider` type. This means that you can use Guice's `Provider` type.
+
+```kotlin
+metro {
+  interop {
+    includeGuice()
+  }
+}
+```
+
+Note the companion Gradle plugin automatically adds an extra `dev.zacsweers.metro:interop-guice` runtime dependency to support this interop.
+
+!!! question "Why not javax.inject?"
+    Guice dropped support for javax.inject in 7.0.0.
 
 ## Diagnostics
 

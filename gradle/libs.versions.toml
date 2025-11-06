@@ -112,6 +112,9 @@ dagger-compiler = { module = "com.google.dagger:dagger-compiler", version.ref = 
 guice = "com.google.inject:guice:7.0.0"
 guice-assistedInject = "com.google.inject.extensions:guice-assistedinject:7.0.0"
 
+javaxInject = "javax.inject:javax.inject:1"
+jakartaInject = "jakarta.inject:jakarta.inject-api:2.0.1"
+
 kotlinInject-compiler = { module = "me.tatarka.inject:kotlin-inject-compiler-ksp", version.ref = "kotlinInject" }
 kotlinInject-runtime = { module = "me.tatarka.inject:kotlin-inject-runtime", version.ref = "kotlinInject" }
 kotlinInject-anvil-compiler = { module = "software.amazon.lastmile.kotlin.inject.anvil:compiler", version.ref = "kotlinInject-anvil" }

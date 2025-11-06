@@ -3,6 +3,7 @@
 plugins {
   alias(libs.plugins.kotlin.jvm)
   alias(libs.plugins.mavenPublish)
+  alias(libs.plugins.testkit)
 }
 
 dependencies {
@@ -10,5 +11,4 @@ dependencies {
   // Guice dropped javax.inject in 7.0
   api(project(":interop-jakarta"))
   api(libs.guice)
-  implementation(libs.atomicfu)
 }

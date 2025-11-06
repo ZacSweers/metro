@@ -11,5 +11,4 @@ dependencies {
   api(project(":interop-javax"))
   api(project(":interop-jakarta"))
   api(libs.dagger.runtime)
-  implementation(libs.atomicfu)
 }
