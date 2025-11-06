@@ -1992,7 +1992,11 @@
 <h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
 <h2 id="unreleased"><strong>Unreleased</strong><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>New</strong>: Add Guice interop. This is largely limited to annotations reuse and Guice&rsquo;s <code>Provider</code> type.</li>
+<li><strong>New</strong>: Add Guice interop. This is largely focused on Guice&rsquo;s <code>Provider</code> type plus existing interop with jakarta.inject annotations.<br />
+    <div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">includeGuice</span><span class="p">()</span>
+<span class="p">}</span>
+</code></pre></div></li>
 <li><strong>Enhancement</strong>: Improve IR caching layer with supertype caching.</li>
 <li><strong>Fix</strong>: Don&rsquo;t treat <code>l</code> as an illegal char in name allocating. This was supposed to be <code>;</code>.</li>
 <li>Split <code>javax</code> and <code>jakarta</code> interop APIs into separate artifacts from dagger for reuse.</li>
