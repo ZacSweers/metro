@@ -744,6 +744,30 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Runtime">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dagger" class="md-nav__link">
+    <span class="md-ellipsis">
+      Dagger
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#guice" class="md-nav__link">
+    <span class="md-ellipsis">
+      Guice
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1109,6 +1133,30 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Runtime">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dagger" class="md-nav__link">
+    <span class="md-ellipsis">
+      Dagger
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#guice" class="md-nav__link">
+    <span class="md-ellipsis">
+      Guice
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1174,9 +1222,16 @@
 <p>For Dagger and KI specifically, there are convenience helper functions.</p>
 <div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="n">interop</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Dagger</span>
 <span class="w">    </span><span class="n">includeDagger</span><span class="p">()</span>
+<span class="w">    </span><span class="n">includeAnvilForDagger</span><span class="p">()</span>
+
+<span class="w">    </span><span class="c1">// kotlin-inject</span>
 <span class="w">    </span><span class="n">includeKotlinInject</span><span class="p">()</span>
-<span class="w">    </span><span class="n">includeAnvil</span><span class="p">()</span>
+<span class="w">    </span><span class="n">includeAnvilForKotlinInject</span><span class="p">()</span>
+
+<span class="w">    </span><span class="c1">// Guice</span>
+<span class="w">    </span><span class="n">includeGuice</span><span class="p">()</span>
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
@@ -1235,6 +1290,7 @@
 <span class="p">}</span>
 </code></pre></div>
 <h2 id="runtime">Runtime<a class="headerlink" href="#runtime" title="Permanent link">&para;</a></h2>
+<h3 id="dagger">Dagger<a class="headerlink" href="#dagger" title="Permanent link">&para;</a></h3>
 <p>Enabling dagger interop also enables more advanced <em>runtime</em> interop with Dagger/Javax/Jakarta&rsquo;s <code>Provider</code>/<code>Lazy</code> types.</p>
 <div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="n">interop</span><span class="w"> </span><span class="p">{</span>
@@ -1249,6 +1305,19 @@
 <li>Interop with Dagger&rsquo;s <code>@BindsOptionalOf</code> annotation.</li>
 </ol>
 <p>Note the companion Gradle plugin automatically adds an extra <code>dev.zacsweers.metro:interop-dagger</code> runtime dependency to support this interop. If you only want annotation interop, just replace the annotations only.</p>
+<h3 id="guice">Guice<a class="headerlink" href="#guice" title="Permanent link">&para;</a></h3>
+<p>Enabling Guice interop enables <em>runtime</em> interop with Guice&rsquo;s <code>Provider</code> type and Jakarta&rsquo;s <code>Provider</code> type. This means that you can use Guice&rsquo;s <code>Provider</code> type.</p>
+<div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">interop</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">includeGuice</span><span class="p">()</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Note the companion Gradle plugin automatically adds an extra <code>dev.zacsweers.metro:interop-guice</code> runtime dependency to support this interop.</p>
+<div class="admonition question">
+<p class="admonition-title">Why not javax.inject?</p>
+<p>Guice dropped support for javax.inject in 7.0.0.</p>
+</div>
 <h2 id="diagnostics">Diagnostics<a class="headerlink" href="#diagnostics" title="Permanent link">&para;</a></h2>
 <p>When interoping with annotations that are written in Kotlin and have parameters, it may be unsafe to rely on positional arguments. Metro&rsquo;s own annotations often have the same indices, but not always! If you want to be super safe, you can enable the <code>interopAnnotationsNamedArgSeverity</code> to <code>WARN</code> or <code>ERROR</code> to report diagnostics for positional arguments in any custom annotations that Metro is configured to look at.</p>
 <div class="admonition question">
