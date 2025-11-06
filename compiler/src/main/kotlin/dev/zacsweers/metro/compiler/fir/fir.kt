@@ -1218,6 +1218,17 @@ internal fun FirClassSymbol<*>.implements(supertype: ClassId, session: FirSessio
     .any { it.classId?.let { it == supertype } == true }
 }
 
+internal fun FirClassLikeSymbol<*>.isBindingContainer(session: FirSession): Boolean {
+  return when {
+    isAnnotatedWithAny(session, session.classIds.bindingContainerAnnotations) -> true
+    this is FirClassSymbol<*> && session.metroFirBuiltIns.options.enableGuiceRuntimeInterop -> {
+      // Guice interop
+      implements(GuiceSymbols.ClassIds.module, session)
+    }
+    else -> false
+  }
+}
+
 internal fun ConeKotlinType.render(short: Boolean): String {
   return buildString { renderType(short, this@render) }
 }
@@ -1390,10 +1401,9 @@ internal fun FirClassLikeSymbol<*>.bindingContainerErrorMessage(
   } else if (isInner) {
     "Inner class '${classId.shortClassName}' cannot be a binding container."
   } else if (
-    !alreadyCheckedAnnotation &&
-      !isAnnotatedWithAny(session, session.metroFirBuiltIns.classIds.bindingContainerAnnotations)
+    !alreadyCheckedAnnotation && this is FirClassSymbol<*> && !isBindingContainer(session)
   ) {
-    "'${classId.asFqNameString()}' is not annotated with a `@BindingContainer` annotation."
+    "'${classId.asFqNameString()}' is not a binding container."
   } else {
     null
   }
