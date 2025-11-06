@@ -4,7 +4,7 @@ Changelog
 **Unreleased**
 --------------
 
-- **New**: Add Guice interop. This is largely focused on Guice's `Provider` type plus existing interop with jakarta.inject annotations.
+- **New**: Add Guice interop. This is largely focused on Guice's `Provider` type, annotations, and existing interop with jakarta.inject annotations.
     ```kotlin
     metro {
       includeGuice()

@@ -964,8 +964,7 @@ public data class MetroOptions(
       // TODO only when implemented in runtime
       // customBindingContainerAnnotations.add(guicePackage.classId("Module"))
 
-      // Guice uses javax and jakarta
-      includeJavaxAnnotations()
+      // Guice uses jakarta
       includeJakartaAnnotations()
     }
 
