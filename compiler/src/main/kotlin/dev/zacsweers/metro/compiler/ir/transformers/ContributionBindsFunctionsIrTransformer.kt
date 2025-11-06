@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.findAnnotations
 import dev.zacsweers.metro.compiler.ir.getAllSuperTypes
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.ir.isBindingContainer
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.mapKeyAnnotation
 import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
@@ -77,9 +78,7 @@ internal class ContributionTransformer(private val context: IrMetroContext) :
       return super.visitClass(declaration, data)
     }
 
-    val isBindingContainer by memoize {
-      declaration.isAnnotatedWithAny(metroSymbols.classIds.bindingContainerAnnotations)
-    }
+    val isBindingContainer by memoize { declaration.isBindingContainer() }
 
     // First, perform transformations
     if (declaration.origin == Origins.MetroContributionClassDeclaration) {
@@ -111,8 +110,7 @@ internal class ContributionTransformer(private val context: IrMetroContext) :
   }
 
   private fun collectContributionDataFromContainer(declaration: IrClass, data: IrContributionData) {
-    // @BindingContainer handling
-    if (declaration.isAnnotatedWithAny(metroSymbols.classIds.bindingContainerAnnotations)) {
+    if (declaration.isBindingContainer()) {
       for (contributesToAnno in
         declaration.annotationsIn(metroSymbols.classIds.contributesToAnnotations)) {
         val scope = contributesToAnno.requireScope()

@@ -28,6 +28,7 @@ import dev.zacsweers.metro.compiler.ir.excludedClasses
 import dev.zacsweers.metro.compiler.ir.getAllSuperTypes
 import dev.zacsweers.metro.compiler.ir.isAccessorCandidate
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.ir.isBindingContainer
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.isInheritedFromAny
 import dev.zacsweers.metro.compiler.ir.linkDeclarationsInCompilation
@@ -221,9 +222,8 @@ internal class DependencyGraphNodeCache(
 
             linkDeclarationsInCompilation(graphDeclaration, parameterClass)
 
-            if (
-              parameterClass.isAnnotatedWithAny(metroSymbols.classIds.bindingContainerAnnotations)
-            ) {
+            // Check if the parameter is a binding container
+            if (parameterClass.isBindingContainer()) {
               bindingContainerFields = bindingContainerFields.withSet(i)
             }
           }
