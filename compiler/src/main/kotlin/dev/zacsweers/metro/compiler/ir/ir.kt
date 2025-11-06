@@ -553,9 +553,9 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
 ): IrExpression {
   val symbols = context.metroSymbols
   val irType = bindingCode.type
-  if (!irType.implementsLazyType()) {
+  if (!irType.implementsLazyType() && !irType.implementsProviderType()) {
     // Not a provider, nothing else to do here!
-    bindingCode.type.findProviderSupertype() ?: return bindingCode
+    return bindingCode
   }
 
   val providerTypeConverter = symbols.providerTypeConverter
@@ -1438,9 +1438,7 @@ internal fun IrSimpleFunction.asMemberOf(subtype: IrType): IrSimpleFunction {
 
 context(context: IrMetroContext)
 internal fun IrClass.deepRemapperFor(subtype: IrType): TypeRemapper {
-  // Check cache for existing substitutor
-  val cacheKey = classIdOrFail to subtype
-  return context.typeRemapperCache.getOrPut(cacheKey) {
+  return getOrComputeTypeRemapper(classIdOrFail, subtype) {
     // Build deep substitution map
     val substitutionMap = buildDeepSubstitutionMap(this, subtype)
     if (substitutionMap.isEmpty()) {

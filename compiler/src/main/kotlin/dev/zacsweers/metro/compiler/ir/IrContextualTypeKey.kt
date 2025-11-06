@@ -211,33 +211,10 @@ internal fun IrContextualTypeKey.wrapInProvider(
 }
 
 context(context: IrMetroContext)
-internal fun IrType.findProviderSupertype(): IrType? {
-  check(this is IrSimpleType) { "Unrecognized IrType '${javaClass}': ${render()}" }
-  // Get the specific provider type it implements
-  return matchingSupertype {
-    it.rawTypeOrNull()?.classId?.let { classId ->
-      classId in context.metroSymbols.providerTypes ||
-        classId in Symbols.ClassIds.commonMetroProviders
-    } ?: false
-  }
-}
-
-context(context: IrMetroContext)
-internal fun IrType.implements(classId: ClassId): Boolean {
-  return matchingSupertype { it.rawTypeOrNull()?.classId == classId } != null
-}
-
-context(context: IrMetroContext)
-internal fun IrType.matchingSupertype(predicate: (IrType) -> Boolean): IrType? {
-  check(this is IrSimpleType) { "Unrecognized IrType '${javaClass}': ${render()}" }
-  val rawTypeClass = rawTypeOrNull() ?: return null
-  // Get the type it implements
-  return rawTypeClass.getAllSuperTypes(excludeSelf = false).firstOrNull { type -> predicate(type) }
-}
-
-context(context: IrMetroContext)
 internal fun IrType.implementsProviderType(): Boolean {
-  return findProviderSupertype() != null
+  val supertypeClassIds = getOrComputeSupertypeClassIds()
+  val allProviderClassIds = context.metroSymbols.providerTypes + Symbols.ClassIds.commonMetroProviders
+  return allProviderClassIds.any { it in supertypeClassIds }
 }
 
 context(context: IrMetroContext)

@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.tracer
 import java.io.File
 import java.nio.file.Path
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.io.path.appendText
 import kotlin.io.path.createDirectories
 import kotlin.io.path.createFile
@@ -27,10 +28,12 @@ import org.jetbrains.kotlin.incremental.components.Position
 import org.jetbrains.kotlin.incremental.components.ScopeKind
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContextImpl
 import org.jetbrains.kotlin.ir.util.TypeRemapper
+import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.parentDeclarationsWithSelf
 import org.jetbrains.kotlin.name.ClassId
@@ -60,7 +63,15 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
   val lookupFile: Path?
   val expectActualFile: Path?
 
-  val typeRemapperCache: MutableMap<Pair<ClassId, IrType>, TypeRemapper>
+  /**
+   * Generic caching machinery. Add new caches as extension functions that encapsulate the
+   * [cacheKey] and types.
+   *
+   * @param cacheKey A unique string identifier for this cache
+   * @param key The key to cache under
+   * @param compute The computation to perform if not cached
+   */
+  fun <K : Any, V : Any> getOrComputeCached(cacheKey: String, key: K, compute: () -> V): V
 
   fun onErrorReported()
 
@@ -245,10 +256,84 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
         }
       }
 
-      override val typeRemapperCache: MutableMap<Pair<ClassId, IrType>, TypeRemapper> =
-        mutableMapOf()
+      private val genericCaches: ConcurrentHashMap<String, ConcurrentHashMap<*, *>> =
+        ConcurrentHashMap()
+
+      override fun <K : Any, V : Any> getOrComputeCached(
+        cacheKey: String,
+        key: K,
+        compute: () -> V,
+      ): V {
+        @Suppress("UNCHECKED_CAST")
+        val cache =
+          genericCaches.getOrPut(cacheKey) { ConcurrentHashMap<K, V>() } as MutableMap<K, V>
+        return cache.getOrPut(key, compute)
+      }
     }
   }
+}
+
+// Cache keys for IrMetroContext caches
+private const val CACHE_TYPE_REMAPPERS = "type-remappers"
+private const val CACHE_SUPERTYPES = "ir-type-supertypes"
+private const val CACHE_SUPERTYPE_CLASS_IDS = "ir-type-supertype-class-ids"
+
+/** Gets or computes a cached [TypeRemapper] for the given class and subtype. */
+context(context: IrMetroContext)
+internal fun getOrComputeTypeRemapper(
+  classId: ClassId,
+  subtype: IrType,
+  compute: () -> TypeRemapper,
+): TypeRemapper {
+  val cacheKey = classId to subtype
+  return context.getOrComputeCached(CACHE_TYPE_REMAPPERS, cacheKey, compute)
+}
+
+/**
+ * Retrieves all supertypes of this [IrType], using a cache to avoid expensive recomputation.
+ * Returns an empty set if this is not a simple type or has no raw type.
+ *
+ * This implementation is incremental: it caches at each level of the type hierarchy, so shared
+ * ancestors are only computed once and reused across different types.
+ */
+context(context: IrMetroContext)
+internal fun IrType.getOrComputeSupertypes(): Set<IrType> {
+  return context.getOrComputeCached(CACHE_SUPERTYPES, this) {
+    if (this !is IrSimpleType) return@getOrComputeCached emptySet()
+    val rawTypeClass = rawTypeOrNull() ?: return@getOrComputeCached emptySet()
+
+    // Use a set to avoid duplicates (e.g., from diamond inheritance)
+    val result = mutableSetOf<IrType>()
+
+    // Add this type itself
+    result.add(this)
+
+    // Recursively add supertypes of each immediate supertype
+    // This leverages the cache at each level of the hierarchy
+    for (superType in rawTypeClass.superTypes) {
+      result.addAll(superType.getOrComputeSupertypes())
+    }
+
+    result
+  }
+}
+
+/**
+ * Retrieves all supertype ClassIds of this [IrType], using a cache for O(1) lookups. Computed
+ * lazily from the cached supertypes.
+ */
+context(context: IrMetroContext)
+internal fun IrType.getOrComputeSupertypeClassIds(): Set<ClassId> {
+  return context.getOrComputeCached(CACHE_SUPERTYPE_CLASS_IDS, this) {
+    // Derive ClassIds from the cached supertypes
+    getOrComputeSupertypes().mapNotNullTo(mutableSetOf()) { it.rawTypeOrNull()?.classId }
+  }
+}
+
+/** Checks if this [IrType] implements or extends the given [classId]. */
+context(context: IrMetroContext)
+internal fun IrType.implements(classId: ClassId): Boolean {
+  return classId in getOrComputeSupertypeClassIds()
 }
 
 context(context: IrMetroContext)
