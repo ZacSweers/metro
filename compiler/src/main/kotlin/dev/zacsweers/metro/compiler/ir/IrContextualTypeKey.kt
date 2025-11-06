@@ -211,10 +211,10 @@ internal fun IrContextualTypeKey.wrapInProvider(
 
 context(context: IrMetroContext)
 internal fun IrType.implementsProviderType(): Boolean {
-  val supertypeClassIds = getOrComputeSupertypeClassIds()
+  val rawType = rawTypeOrNull() ?: return false
   val allProviderClassIds =
     context.metroSymbols.providerTypes + Symbols.ClassIds.commonMetroProviders
-  return allProviderClassIds.any { it in supertypeClassIds }
+  return rawType.implementsAny(allProviderClassIds)
 }
 
 context(context: IrMetroContext)

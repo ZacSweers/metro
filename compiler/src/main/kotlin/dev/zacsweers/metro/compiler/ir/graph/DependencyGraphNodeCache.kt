@@ -25,7 +25,7 @@ import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.bindingContainerClasses
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.excludedClasses
-import dev.zacsweers.metro.compiler.ir.getAllSuperTypes
+import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.isAccessorCandidate
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isBindingContainer
@@ -172,7 +172,7 @@ internal class DependencyGraphNodeCache(
     private val aggregationScopes = mutableSetOf<ClassId>()
     private val isGraph = dependencyGraphAnno != null
     private val supertypes =
-      (metroGraph ?: graphDeclaration).getAllSuperTypes(excludeSelf = false).memoized()
+      (metroGraph ?: graphDeclaration).allSupertypesSequence(excludeSelf = false).memoized()
 
     private var hasGraphExtensions = false
 

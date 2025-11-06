@@ -6,7 +6,7 @@ import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
-import dev.zacsweers.metro.compiler.ir.getAllSuperTypes
+import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
@@ -326,7 +326,7 @@ internal class GuiceProviderFramework(
       // Determine which lazy function to use based on the provider type
       val lazyFunction =
         provider.type.rawTypeOrNull()?.let { rawType ->
-          rawType.getAllSuperTypes(excludeSelf = false, excludeAny = true).firstNotNullOfOrNull {
+          rawType.allSupertypesSequence(excludeSelf = false, excludeAny = true).firstNotNullOfOrNull {
             type ->
             when (type.classOrNull?.owner?.classId) {
               GuiceSymbols.ClassIds.provider -> lazyFromGuiceProvider
@@ -499,7 +499,7 @@ internal class DaggerProviderFramework(
       // Determine which lazy function to use based on the provider type
       val lazyFunction =
         provider.type.rawTypeOrNull()?.let { rawType ->
-          rawType.getAllSuperTypes(excludeSelf = false, excludeAny = true).firstNotNullOfOrNull {
+          rawType.allSupertypesSequence(excludeSelf = false, excludeAny = true).firstNotNullOfOrNull {
             type ->
             when (type.classOrNull?.owner?.classId) {
               DaggerSymbols.ClassIds.DAGGER_INTERNAL_PROVIDER_CLASS_ID -> lazyFromDaggerProvider
