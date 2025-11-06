@@ -363,7 +363,12 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
             )
           )
           add(lazyOption("interop-include-guice-annotations", includeGuiceAnnotations))
-          add(lazyOption("enable-guice-runtime-interop", enableGuiceRuntimeInterop))
+          add(
+            SubpluginOption(
+              "enable-guice-runtime-interop",
+              value = enableGuiceRuntimeInterop.getOrElse(false).toString(),
+            )
+          )
         }
       }
     }
