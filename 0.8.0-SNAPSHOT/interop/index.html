@@ -1328,7 +1328,27 @@
 </ol>
 <p>Note the companion Gradle plugin automatically adds an extra <code>dev.zacsweers.metro:interop-dagger</code> runtime dependency to support this interop. If you only want annotation interop, just replace the annotations only.</p>
 <h3 id="guice">Guice<a class="headerlink" href="#guice" title="Permanent link">&para;</a></h3>
-<p>Enabling Guice interop enables <em>runtime</em> interop with Guice&rsquo;s <code>Provider</code> type and Jakarta&rsquo;s <code>Provider</code> type. This means that you can use Guice&rsquo;s <code>Provider</code> type.</p>
+<p>Enabling Guice interop enables annotation interop with the following Guice annotations:</p>
+<ul>
+<li><code>@Inject</code> (but not <code>@Inject.optional</code>)</li>
+<li><code>@Provides</code></li>
+<li><code>@Assisted</code></li>
+<li><code>@AssistedInject</code></li>
+<li><code>@BindingAnnotation</code></li>
+<li><code>@ScopeAnnotation</code></li>
+<li><code>@MapKey</code></li>
+<li><code>@ProvidesIntoMap</code></li>
+<li><code>@ProvidesIntoSet</code></li>
+</ul>
+<p>Enabling this also enables <em>runtime</em> interop with:</p>
+<ul>
+<li>Guice&rsquo;s <code>Provider</code> type. This means that you can use Guice&rsquo;s <code>Provider</code> type interchangeably with Metro&rsquo;s <code>Provider</code> type.</li>
+<li>Jakarta&rsquo;s <code>Provider</code> type.</li>
+<li>Guice modules<ul>
+<li>Only <code>@Provides</code> declarations are supported. <code>configure</code> implementations (including anything that would go in them) are not.</li>
+</ul>
+</li>
+</ul>
 <div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="n">interop</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="n">includeGuice</span><span class="p">()</span>
