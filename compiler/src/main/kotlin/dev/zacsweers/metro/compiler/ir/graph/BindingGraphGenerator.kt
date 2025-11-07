@@ -39,8 +39,7 @@ import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.types.typeOrFail
-import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.types.typeWithArguments
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -407,8 +406,8 @@ internal class BindingGraphGenerator(
           val regularGraph = rawType.sourceGraphIfMetroGraph
           if (regularGraph != rawType) {
             val keyType =
-              regularGraph.typeWith(
-                creatorParam.type.requireSimpleType(creatorParam.ir).arguments.map { it.typeOrFail }
+              regularGraph.symbol.typeWithArguments(
+                creatorParam.type.requireSimpleType(creatorParam.ir).arguments
               )
             val typeKey = IrTypeKey(keyType)
             superTypeToAlias.putIfAbsent(typeKey, paramTypeKey)
@@ -685,8 +684,8 @@ internal class BindingGraphGenerator(
         val regularGraph = parentNode.sourceGraph.sourceGraphIfMetroGraph
         if (regularGraph != parentNode.sourceGraph) {
           val keyType =
-            regularGraph.typeWith(
-              parentNode.typeKey.type.requireSimpleType().arguments.map { it.typeOrFail }
+            regularGraph.symbol.typeWithArguments(
+              parentNode.typeKey.type.requireSimpleType().arguments
             )
           val typeKey = IrTypeKey(keyType)
           superTypeToAlias.putIfAbsent(typeKey, parentKey)

@@ -113,7 +113,6 @@ import org.jetbrains.kotlin.ir.types.IrTypeArgument
 import org.jetbrains.kotlin.ir.types.IrTypeProjection
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.classifierOrNull
-import org.jetbrains.kotlin.ir.types.createType
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.impl.buildSimpleType
 import org.jetbrains.kotlin.ir.types.impl.makeTypeProjection
@@ -121,7 +120,6 @@ import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.makeNotNull
 import org.jetbrains.kotlin.ir.types.mergeNullability
 import org.jetbrains.kotlin.ir.types.removeAnnotations
-import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.types.typeWithArguments
 import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
@@ -280,14 +278,6 @@ internal fun <T> IrConst.valueAs(): T {
   @Suppress("UNCHECKED_CAST")
   return value as T
 }
-
-context(context: IrPluginContext)
-internal fun irType(
-  classId: ClassId,
-  nullable: Boolean = false,
-  arguments: List<IrTypeArgument> = emptyList(),
-): IrType =
-  context.referenceClass(classId)!!.createType(hasQuestionMark = nullable, arguments = arguments)
 
 internal fun IrGeneratorContext.createIrBuilder(symbol: IrSymbol): DeclarationIrBuilder {
   return DeclarationIrBuilder(this, symbol, symbol.owner.startOffset, symbol.owner.endOffset)
@@ -983,7 +973,7 @@ internal fun IrType.canonicalize(
                 is IrStarProjection -> arg
                 is IrTypeProjection -> {
                   makeTypeProjection(
-                    arg.typeOrFail.canonicalize(patchMutableCollections, context),
+                    arg.type.canonicalize(patchMutableCollections, context),
                     arg.variance,
                   )
                 }

@@ -3,11 +3,13 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.ir.cache.IrCache
+import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrTypeParametersContainer
 import org.jetbrains.kotlin.ir.symbols.IrTypeParameterSymbol
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.IrTypeArgument
 import org.jetbrains.kotlin.ir.types.IrTypeProjection
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.classifierOrFail
@@ -217,3 +219,7 @@ internal fun IrClass.allSupertypesSequence(
     }
   }
 }
+
+context(context: IrPluginContext)
+internal val IrTypeArgument.typeOrNullableAny: IrType
+  get() = (this as? IrTypeProjection)?.type ?: context.irBuiltIns.anyNType

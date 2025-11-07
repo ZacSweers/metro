@@ -39,6 +39,7 @@ import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
+import dev.zacsweers.metro.compiler.ir.typeOrNullableAny
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
@@ -755,7 +756,9 @@ internal class IrGraphGenerator(
                 +irInvoke(
                   callee = function.symbol,
                   typeArgs =
-                    targetParam.type.requireSimpleType(targetParam).arguments.map { it.typeOrFail },
+                    targetParam.type.requireSimpleType(targetParam).arguments.map {
+                      it.typeOrNullableAny
+                    },
                   args =
                     buildList {
                       add(irGet(targetParam))
