@@ -1000,6 +1000,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#075" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.7.5
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#074" class="md-nav__link">
     <span class="md-ellipsis">
       0.7.4
@@ -1540,6 +1549,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#075" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.7.5
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#074" class="md-nav__link">
     <span class="md-ellipsis">
       0.7.4
@@ -2013,6 +2031,8 @@
 
 <h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
 <h2 id="unreleased"><strong>Unreleased</strong><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
+<h2 id="075">0.7.5<a class="headerlink" href="#075" title="Permanent link">&para;</a></h2>
+<p><em>2025-11-07</em></p>
 <ul>
 <li><strong>New</strong>: Add Guice interop. This is largely focused on Guice&rsquo;s <code>Provider</code> type, annotations, and existing interop with jakarta.inject annotations.<br />
     <div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="w"> </span><span class="p">{</span>
@@ -2021,14 +2041,16 @@
 </code></pre></div></li>
 <li><strong>Enhancement</strong>: Improve IR caching layer with supertype caching.</li>
 <li><strong>Enhancement</strong>: Add diagnostic to check for <code>Array</code> properties in map key annotations that unwrap values.</li>
-<li><strong>Enhancement</strong>: Add diagnostic to check multibinds map keys are valid (primitives, strings, kclass, annotation classes, not arrays).</li>
+<li><strong>Enhancement</strong>: Add diagnostic to check multibinds map keys are valid (primitives, strings, <code>KClass</code>, annotation classes, not arrays).</li>
 <li><strong>Enhancement</strong>: Improve multibinding star project checks.</li>
 <li><strong>Enhancement</strong>: Nudge <code>@Binds</code> functions toward <code>private</code> visibility like <code>@Provides</code> functions now that it&rsquo;s fully supported.</li>
 <li><strong>Fix</strong>: Don&rsquo;t treat <code>l</code> as an illegal char in name allocating. This was supposed to be <code>;</code>.</li>
 <li><strong>Fix</strong>: Ensure all reserved properties by child graphs get properties in parents. Previously, there were some cases for bindings that were unused in the parent and otherwise did not meet the criteria for having a backing property would get missed in binding property collection.</li>
 <li><strong>Fix</strong>: Fix compiler crash when injecting a target type with star generics.</li>
+<li><strong>Fix</strong>: Fix <code>ClassCastException</code> when accessing a <code>Provider</code> contributed from a <code>dagger.Module</code>.</li>
 <li>Split <code>javax</code> and <code>jakarta</code> interop APIs into separate artifacts from dagger for reuse.</li>
 </ul>
+<p>Special thanks to <a href="https://github.com/jonamireh">@jonamireh</a> for contributing to this release!</p>
 <h2 id="074">0.7.4<a class="headerlink" href="#074" title="Permanent link">&para;</a></h2>
 <p><em>2025-11-04</em></p>
 <ul>
