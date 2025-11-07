@@ -258,7 +258,6 @@ internal object BindingContainerCallableChecker :
     if (
       !isPrivate &&
         bodyExpression != null &&
-        declaration !is FirProperty &&
         !declaration.isExtension &&
         (annotations.isBinds || annotations.isMultibinds)
     ) {
