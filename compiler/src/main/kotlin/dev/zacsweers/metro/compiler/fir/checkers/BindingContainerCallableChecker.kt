@@ -41,6 +41,7 @@ import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
 import org.jetbrains.kotlin.fir.declarations.getAnnotationByClassId
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClass
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
+import org.jetbrains.kotlin.fir.declarations.utils.isExtension
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
 import org.jetbrains.kotlin.fir.declarations.utils.nameOrSpecialName
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
@@ -139,7 +140,7 @@ internal object BindingContainerCallableChecker :
       return
     }
 
-    if (!annotations.isProvides && !annotations.isBinds) {
+    if (!annotations.isProvides && !annotations.isBinds && !annotations.isMultibinds) {
       return
     }
 
@@ -152,16 +153,24 @@ internal object BindingContainerCallableChecker :
 
     // After the reusable check because reusable is technically a scope and we don't want to
     // double-report
-    if (annotations.isBinds && annotations.scope != null) {
+    if ((annotations.isBinds || annotations.isMultibinds) && annotations.scope != null) {
+      val kind = if (annotations.isBinds) "Binds" else "Multibinds"
       reporter.reportOn(
         annotations.scope.fir.source ?: source,
         MetroDiagnostics.BINDS_ERROR,
-        "@Binds declarations may not have scopes.",
+        "@$kind declarations may not have scopes.",
       )
     }
 
     if (declaration.typeParameters.isNotEmpty()) {
-      val type = if (annotations.isProvides) "Provides" else "Binds"
+      val type =
+        if (annotations.isProvides) {
+          "Provides"
+        } else if (annotations.isMultibinds) {
+          "Multibinds"
+        } else {
+          "Binds"
+        }
       reporter.reportOn(
         source,
         MetroDiagnostics.METRO_TYPE_PARAMETERS_ERROR,
@@ -217,7 +226,25 @@ internal object BindingContainerCallableChecker :
       )
     }
 
-    val returnType = returnTypeRef.coneTypeOrNull ?: return
+    val isPrivate = declaration.visibility == Visibilities.Private
+    if (!isPrivate && !annotations.isMultibinds && declaration !is FirProperty) {
+      if (
+        session.metroFirBuiltIns.options.publicProviderSeverity !=
+          MetroOptions.DiagnosticSeverity.NONE
+      ) {
+        val kind = if (annotations.isBinds) "Binds" else "Provides"
+        val message = "`@$kind` declarations should be private."
+        val diagnosticFactory =
+          when (session.metroFirBuiltIns.options.publicProviderSeverity) {
+            MetroOptions.DiagnosticSeverity.NONE -> reportCompilerBug("Not possible")
+            MetroOptions.DiagnosticSeverity.WARN ->
+              MetroDiagnostics.PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_WARNING
+            MetroOptions.DiagnosticSeverity.ERROR ->
+              MetroDiagnostics.PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_ERROR
+          }
+        reporter.reportOn(source, diagnosticFactory, message)
+      }
+    }
 
     val bodyExpression =
       when (declaration) {
@@ -228,30 +255,21 @@ internal object BindingContainerCallableChecker :
         else -> return
       }
 
-    val isPrivate = declaration.visibility == Visibilities.Private
-    if (declaration !is FirProperty) {
-      if (
-        session.metroFirBuiltIns.options.publicProviderSeverity !=
-          MetroOptions.DiagnosticSeverity.NONE
-      ) {
-        if (!isPrivate && (annotations.isProvides || /* isBinds && */ bodyExpression != null)) {
-          val message =
-            if (annotations.isBinds) {
-              "`@Binds` declarations rarely need to have bodies unless they are also private. Consider removing the body or making this private."
-            } else {
-              "`@Provides` declarations should be private."
-            }
-          val diagnosticFactory =
-            when (session.metroFirBuiltIns.options.publicProviderSeverity) {
-              MetroOptions.DiagnosticSeverity.NONE -> reportCompilerBug("Not possible")
-              MetroOptions.DiagnosticSeverity.WARN ->
-                MetroDiagnostics.PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_WARNING
-              MetroOptions.DiagnosticSeverity.ERROR ->
-                MetroDiagnostics.PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_ERROR
-            }
-          reporter.reportOn(source, diagnosticFactory, message)
-        }
-      }
+    if (
+      !isPrivate &&
+        bodyExpression != null &&
+        declaration !is FirProperty &&
+        !declaration.isExtension &&
+        (annotations.isBinds || annotations.isMultibinds)
+    ) {
+      val kind = if (annotations.isBinds) "Binds" else "Multibinds"
+      val factory =
+        if (annotations.isBinds) MetroDiagnostics.BINDS_ERROR else MetroDiagnostics.MULTIBINDS_ERROR
+      reporter.reportOn(
+        returnTypeRef.source ?: source,
+        factory,
+        "Non-private @$kind declarations must be abstract and not have a function or getter body.",
+      )
     }
 
     // TODO support first, non-receiver parameter
@@ -325,6 +343,8 @@ internal object BindingContainerCallableChecker :
         }
       }
     }
+
+    val returnType = returnTypeRef.coneTypeOrNull ?: return
 
     if (annotations.isProvides) {
       if (bodyExpression == null) {

@@ -3,25 +3,34 @@
 package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
+import dev.zacsweers.metro.compiler.fir.annotationsIn
+import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.isOrImplements
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.metroAnnotations
-import org.jetbrains.kotlin.descriptors.Visibilities
+import dev.zacsweers.metro.compiler.symbols.Symbols
+import org.jetbrains.kotlin.descriptors.isAnnotationClass
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
+import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirCallableDeclarationChecker
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirPropertyAccessor
-import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
+import org.jetbrains.kotlin.fir.declarations.getBooleanArgument
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
-import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.types.ConeStarProjection
+import org.jetbrains.kotlin.fir.types.ConeTypeProjection
+import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.classLikeLookupTagIfAny
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
+import org.jetbrains.kotlin.fir.types.isArrayType
+import org.jetbrains.kotlin.fir.types.isKClassType
 import org.jetbrains.kotlin.fir.types.isMarkedNullable
+import org.jetbrains.kotlin.fir.types.isPrimitive
+import org.jetbrains.kotlin.fir.types.isString
 import org.jetbrains.kotlin.fir.types.type
 import org.jetbrains.kotlin.name.StandardClassIds
 
@@ -74,32 +83,12 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
     }
 
     if (annotations.isMultibinds) {
-      // @Multibinds must be abstract unless private
-      if (!declaration.isAbstract && declaration.visibility != Visibilities.Private) {
-        reporter.reportOn(
-          source,
-          MetroDiagnostics.MULTIBINDS_ERROR,
-          "`@Multibinds` declarations must be abstract.",
-        )
-        return
-      }
-
       // Cannot also be Provides/Binds
       if (annotations.isProvides || annotations.isBinds) {
         reporter.reportOn(
           source,
           MetroDiagnostics.MULTIBINDS_ERROR,
           "`@Multibinds` declarations cannot also be annotated with `@Provides` or `@Binds` annotations.",
-        )
-        return
-      }
-
-      val scopeAnnotation = annotations.scope
-      if (scopeAnnotation != null) {
-        reporter.reportOn(
-          scopeAnnotation.fir.source,
-          MetroDiagnostics.MULTIBINDS_ERROR,
-          "@Multibinds declarations cannot be scoped.",
         )
         return
       }
@@ -119,7 +108,7 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
         )
         return
       } else if (returnTypeClassId == StandardClassIds.Map) {
-        when (val keyType = returnType.typeArguments[0]) {
+        when (val keyTypeArg = returnType.typeArguments[0]) {
           ConeStarProjection -> {
             reporter.reportOn(
               declaration.returnTypeRef.source ?: source,
@@ -129,26 +118,63 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
             return
           }
           else -> {
-            if (keyType.type?.isMarkedNullable == true) {
+            if (keyTypeArg.type?.isMarkedNullable == true) {
               reporter.reportOn(
                 declaration.returnTypeRef.source ?: source,
                 MetroDiagnostics.MULTIBINDS_ERROR,
                 "Multibinding map keys cannot be nullable. Use a non-nullable type instead.",
               )
-              return
+            } else {
+              // Keys can only be const-able or annotation classes
+              keyTypeArg.type?.let { keyType ->
+                if (keyType.isPrimitive || keyType.isString || keyType.isKClassType()) {
+                  // ok
+                } else if (keyType.isArrayType) {
+                  // Arrays don't implement hashcode
+                  reporter.reportOn(
+                    declaration.returnTypeRef.source ?: source,
+                    MetroDiagnostics.MULTIBINDS_ERROR,
+                    "Multibinding map keys cannot be arrays.",
+                  )
+                } else {
+                  keyType.toClassSymbol(session)?.let { keyClass ->
+                    if (keyClass.classKind.isAnnotationClass) {
+                      // Ensure this annotation is annotated with MapKey
+                      val mapKey =
+                        keyClass
+                          .annotationsIn(session, session.classIds.mapKeyAnnotations)
+                          .firstOrNull()
+                      if (mapKey == null) {
+                        reporter.reportOn(
+                          declaration.returnTypeRef.source ?: source,
+                          MetroDiagnostics.MULTIBINDS_ERROR,
+                          "Multibinding map key '${keyClass.classId.asFqNameString()}' is not annotated with @MapKey(unwrapValue = false).",
+                        )
+                      } else if (
+                        mapKey.getBooleanArgument(Symbols.Names.unwrapValue, session) != false
+                      ) {
+                        reporter.reportOn(
+                          declaration.returnTypeRef.source ?: source,
+                          MetroDiagnostics.MULTIBINDS_ERROR,
+                          "Multibinding map key '${keyClass.classId.asFqNameString()}' is annotated with @MapKey but does not set MapKey.unwrapValue to false. This is necessary to use wrapped values as multibinding map keys.",
+                        )
+                      }
+                    } else {
+                      reporter.reportOn(
+                        declaration.returnTypeRef.source ?: source,
+                        MetroDiagnostics.MULTIBINDS_ERROR,
+                        "Multibinding map keys must be a primitive, String, KClass, or an annotation class.",
+                      )
+                    }
+                  }
+                }
+              }
             }
           }
         }
 
         val isStar =
-          returnType.typeArguments[1] == ConeStarProjection ||
-            returnType.typeArguments[1].type?.let {
-              // Check if it's a Provider<*>
-              it.typeArguments.isNotEmpty() &&
-                it.classLikeLookupTagIfAny?.classId in
-                  session.metroFirBuiltIns.classIds.providerTypes &&
-                it.typeArguments[0] == ConeStarProjection
-            } ?: false
+          returnType.typeArguments[1].isStarOrProviderOfStar(session, checkProviderOfLazy = true)
         if (isStar) {
           reporter.reportOn(
             declaration.returnTypeRef.source ?: source,
@@ -158,7 +184,9 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
           return
         }
       } else if (returnTypeClassId == StandardClassIds.Set) {
-        if (returnType.typeArguments[0] == ConeStarProjection) {
+        val isStar =
+          returnType.typeArguments[0].isStarOrProviderOfStar(session, checkProviderOfLazy = false)
+        if (isStar) {
           reporter.reportOn(
             declaration.returnTypeRef.source ?: source,
             MetroDiagnostics.MULTIBINDS_ERROR,
@@ -213,5 +241,38 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
       )
       return
     }
+  }
+
+  private fun ConeTypeProjection.isStarOrProviderOfStar(
+    session: FirSession,
+    checkProviderOfLazy: Boolean,
+  ): Boolean {
+    if (this == ConeStarProjection) return true
+
+    type?.let {
+      // Check if it's a Provider<*> or Provider<Lazy<*>>
+      val isProvider =
+        it.typeArguments.isNotEmpty() &&
+          it.classLikeLookupTagIfAny?.classId in session.metroFirBuiltIns.classIds.providerTypes
+      if (isProvider) {
+        val arg = it.typeArguments[0]
+        if (arg == ConeStarProjection) {
+          return true
+        } else if (checkProviderOfLazy) {
+          // Check if it's a Lazy<*>
+          val argType = arg.type ?: return false
+          val isLazyStar =
+            argType.typeArguments.isNotEmpty() &&
+              argType.classLikeLookupTagIfAny?.classId in
+                session.metroFirBuiltIns.classIds.lazyTypes &&
+              argType.typeArguments[0] == ConeStarProjection
+          if (isLazyStar) {
+            return true
+          }
+        }
+      }
+    }
+
+    return false
   }
 }
