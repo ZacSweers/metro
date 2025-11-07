@@ -48,7 +48,7 @@ package dev.zacsweers.metro
  *
  * If `unwrapValue` is true, the annotation's single member can be any type except an array.
  *
- * See [dev.zacsweers.metro.annotations] for standard unwrapped map key annotations for keys that
+ * See [dev.zacsweers.metro] for standard unwrapped map key annotations for keys that
  * are boxed primitives, strings, or classes.
  *
  * ## Annotations as keys
