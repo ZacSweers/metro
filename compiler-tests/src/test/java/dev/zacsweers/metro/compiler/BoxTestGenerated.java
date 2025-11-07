@@ -1404,6 +1404,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     public void testInjectOrderOfParentAndChildDoesNotMatter() {
       runTest("compiler-tests/src/test/data/box/member/InjectOrderOfParentAndChildDoesNotMatter.kt");
     }
+
+    @Test
+    @TestMetadata("InjectingAStarParameterizedType.kt")
+    public void testInjectingAStarParameterizedType() {
+      runTest("compiler-tests/src/test/data/box/member/InjectingAStarParameterizedType.kt");
+    }
   }
 
   @Nested
