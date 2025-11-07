@@ -15,9 +15,12 @@ import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.getBooleanArgument
 import org.jetbrains.kotlin.fir.declarations.primaryConstructorIfAny
+import org.jetbrains.kotlin.fir.types.UnexpandedTypeCheck
+import org.jetbrains.kotlin.fir.types.isArrayType
 
 internal object MapKeyChecker : FirClassChecker(MppCheckerKind.Common) {
 
+  @OptIn(UnexpandedTypeCheck::class)
   context(context: CheckerContext, reporter: DiagnosticReporter)
   override fun check(declaration: FirClass) {
     val session = context.session
@@ -43,12 +46,28 @@ internal object MapKeyChecker : FirClassChecker(MppCheckerKind.Common) {
       )
     } else {
       val unwrapValues = anno.getBooleanArgument(Symbols.Names.unwrapValue, session) ?: true
-      if (unwrapValues && ctor.valueParameterSymbols.size > 1) {
-        reporter.reportOn(
-          ctor.source,
-          MAP_KEY_ERROR,
-          "Map key annotations with unwrapValue set to true (the default) can only have a single constructor parameter.",
-        )
+      if (unwrapValues) {
+        when (ctor.valueParameterSymbols.size) {
+          0 -> {
+            // Handled above
+          }
+          1 -> {
+            if (ctor.valueParameterSymbols[0].resolvedReturnTypeRef.isArrayType) {
+              reporter.reportOn(
+                ctor.valueParameterSymbols[0].resolvedReturnTypeRef.source ?: ctor.source,
+                MAP_KEY_ERROR,
+                "Map key annotations with unwrapValue set to true (the default) cannot have an array parameter.",
+              )
+            }
+          }
+          else -> {
+            reporter.reportOn(
+              ctor.source,
+              MAP_KEY_ERROR,
+              "Map key annotations with unwrapValue set to true (the default) can only have a single constructor parameter.",
+            )
+          }
+        }
       }
     }
   }

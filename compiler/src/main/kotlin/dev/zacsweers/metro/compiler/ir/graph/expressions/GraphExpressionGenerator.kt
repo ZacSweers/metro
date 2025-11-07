@@ -5,7 +5,7 @@ package dev.zacsweers.metro.compiler.ir.graph.expressions
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
-import dev.zacsweers.metro.compiler.ir.getAllSuperTypes
+import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyContext
 import dev.zacsweers.metro.compiler.ir.graph.DependencyGraphNode
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
@@ -489,7 +489,7 @@ private constructor(
         val nameToParam = mutableMapOf<Name, Parameter>()
         val targetClass = pluginContext.referenceClass(binding.targetClassId)?.owner
         targetClass // Look for inject methods in the target class and its ancestors
-          ?.getAllSuperTypes(excludeSelf = false, excludeAny = true)
+          ?.allSupertypesSequence(excludeSelf = false, excludeAny = true)
           ?.forEach { type ->
             val clazz = type.rawType()
             membersInjectorTransformer

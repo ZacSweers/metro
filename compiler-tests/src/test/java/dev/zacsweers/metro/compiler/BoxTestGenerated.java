@@ -711,6 +711,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("FactoryCanBeInjectedInProvider.kt")
+      public void testFactoryCanBeInjectedInProvider() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/FactoryCanBeInjectedInProvider.kt");
+      }
+
+      @Test
       @TestMetadata("FactoryIncludedBindingContainerInstancesPlumbDown.kt")
       public void testFactoryIncludedBindingContainerInstancesPlumbDown() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/FactoryIncludedBindingContainerInstancesPlumbDown.kt");
@@ -1412,6 +1418,34 @@ public class BoxTestGenerated extends AbstractBoxTest {
         }
       }
     }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/box/interop/guice")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Guice {
+      @Test
+      public void testAllFilesPresentInGuice() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/interop/guice"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      }
+
+      @Test
+      @TestMetadata("GuiceSmokeTest.kt")
+      public void testGuiceSmokeTest() {
+        runTest("compiler-tests/src/test/data/box/interop/guice/GuiceSmokeTest.kt");
+      }
+
+      @Test
+      @TestMetadata("InjectedGuiceProviderInteropWorks.kt")
+      public void testInjectedGuiceProviderInteropWorks() {
+        runTest("compiler-tests/src/test/data/box/interop/guice/InjectedGuiceProviderInteropWorks.kt");
+      }
+
+      @Test
+      @TestMetadata("InjectedKotlinLazyFromGuiceProviderWorks.kt")
+      public void testInjectedKotlinLazyFromGuiceProviderWorks() {
+        runTest("compiler-tests/src/test/data/box/interop/guice/InjectedKotlinLazyFromGuiceProviderWorks.kt");
+      }
+    }
   }
 
   @Nested
@@ -1433,6 +1467,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("InjectOrderOfParentAndChildDoesNotMatter.kt")
     public void testInjectOrderOfParentAndChildDoesNotMatter() {
       runTest("compiler-tests/src/test/data/box/member/InjectOrderOfParentAndChildDoesNotMatter.kt");
+    }
+
+    @Test
+    @TestMetadata("InjectingAStarParameterizedType.kt")
+    public void testInjectingAStarParameterizedType() {
+      runTest("compiler-tests/src/test/data/box/member/InjectingAStarParameterizedType.kt");
     }
   }
 

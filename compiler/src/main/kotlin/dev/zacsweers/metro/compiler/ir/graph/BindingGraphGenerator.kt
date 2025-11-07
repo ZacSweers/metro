@@ -16,11 +16,10 @@ import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.allowEmpty
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
-import dev.zacsweers.metro.compiler.ir.concreteTypeArguments
 import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.graph.expressions.IrOptionalExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.expressions.optionalType
-import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.ir.isBindingContainer
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
@@ -40,7 +39,7 @@ import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.types.typeWithArguments
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -380,13 +379,13 @@ internal class BindingGraphGenerator(
     }
 
     node.creator?.parameters?.regularParameters.orEmpty().forEach { creatorParam ->
-      // Only expose the binding if it's a bound instance, extended graph, or target is annotated
-      // @BindingContainer
+      // Only expose the binding if it's a bound instance, extended graph, or target is a binding
+      // container
       val shouldExposeBinding =
         creatorParam.isBindsInstance ||
-          creatorParam.typeKey.type
-            .rawTypeOrNull()
-            ?.isAnnotatedWithAny(metroSymbols.classIds.bindingContainerAnnotations) == true
+          with(this@BindingGraphGenerator) {
+            creatorParam.typeKey.type.rawTypeOrNull()?.isBindingContainer() == true
+          }
       if (shouldExposeBinding) {
         val paramTypeKey = creatorParam.typeKey
 
@@ -407,8 +406,8 @@ internal class BindingGraphGenerator(
           val regularGraph = rawType.sourceGraphIfMetroGraph
           if (regularGraph != rawType) {
             val keyType =
-              regularGraph.typeWith(
-                creatorParam.type.requireSimpleType(creatorParam.ir).concreteTypeArguments()
+              regularGraph.symbol.typeWithArguments(
+                creatorParam.type.requireSimpleType(creatorParam.ir).arguments
               )
             val typeKey = IrTypeKey(keyType)
             superTypeToAlias.putIfAbsent(typeKey, paramTypeKey)
@@ -685,8 +684,8 @@ internal class BindingGraphGenerator(
         val regularGraph = parentNode.sourceGraph.sourceGraphIfMetroGraph
         if (regularGraph != parentNode.sourceGraph) {
           val keyType =
-            regularGraph.typeWith(
-              parentNode.typeKey.type.requireSimpleType().concreteTypeArguments()
+            regularGraph.symbol.typeWithArguments(
+              parentNode.typeKey.type.requireSimpleType().arguments
             )
           val typeKey = IrTypeKey(keyType)
           superTypeToAlias.putIfAbsent(typeKey, parentKey)

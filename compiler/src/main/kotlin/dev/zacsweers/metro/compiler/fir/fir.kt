@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.isPlatformType
 import dev.zacsweers.metro.compiler.mapToArray
 import dev.zacsweers.metro.compiler.memoized
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.symbols.GuiceSymbols
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Objects
 import org.jetbrains.kotlin.GeneratedDeclarationKey
@@ -662,6 +663,10 @@ internal fun List<FirAnnotation>.qualifierAnnotation(
 ): MetroFirAnnotation? =
   asSequence()
     .annotationAnnotatedWithAny(session, session.classIds.qualifierAnnotations, typeResolver)
+    ?.takeIf {
+      // Guice's `@Assisted` annoyingly annotates itself as a qualifier too, so we catch that here
+      it.fir.toAnnotationClassIdSafe(session) != GuiceSymbols.ClassIds.assisted
+    }
 
 internal fun FirBasedSymbol<*>.mapKeyAnnotation(session: FirSession): MetroFirAnnotation? =
   resolvedCompilerAnnotationsWithClassIds.mapKeyAnnotation(session)
@@ -1213,6 +1218,17 @@ internal fun FirClassSymbol<*>.implements(supertype: ClassId, session: FirSessio
     .any { it.classId?.let { it == supertype } == true }
 }
 
+internal fun FirClassLikeSymbol<*>.isBindingContainer(session: FirSession): Boolean {
+  return when {
+    isAnnotatedWithAny(session, session.classIds.bindingContainerAnnotations) -> true
+    this is FirClassSymbol<*> && session.metroFirBuiltIns.options.enableGuiceRuntimeInterop -> {
+      // Guice interop
+      implements(GuiceSymbols.ClassIds.module, session)
+    }
+    else -> false
+  }
+}
+
 internal fun ConeKotlinType.render(short: Boolean): String {
   return buildString { renderType(short, this@render) }
 }
@@ -1385,10 +1401,9 @@ internal fun FirClassLikeSymbol<*>.bindingContainerErrorMessage(
   } else if (isInner) {
     "Inner class '${classId.shortClassName}' cannot be a binding container."
   } else if (
-    !alreadyCheckedAnnotation &&
-      !isAnnotatedWithAny(session, session.metroFirBuiltIns.classIds.bindingContainerAnnotations)
+    !alreadyCheckedAnnotation && this is FirClassSymbol<*> && !isBindingContainer(session)
   ) {
-    "'${classId.asFqNameString()}' is not annotated with a `@BindingContainer` annotation."
+    "'${classId.asFqNameString()}' is not a binding container."
   } else {
     null
   }

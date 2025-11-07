@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.isBindingContainer
 import dev.zacsweers.metro.compiler.fir.isOrImplements
 import dev.zacsweers.metro.compiler.fir.mapKeyAnnotation
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
@@ -350,7 +351,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
   ) {
     if (kind != ContributionKind.CONTRIBUTES_TO) return
     val declaration = (contribution as Contribution.ContributesTo).declaration
-    if (declaration.isAnnotatedWithAny(session, session.classIds.bindingContainerAnnotations)) {
+    if (declaration.symbol.isBindingContainer(session)) {
       return
     }
     if (declaration.classKind != ClassKind.INTERFACE) {

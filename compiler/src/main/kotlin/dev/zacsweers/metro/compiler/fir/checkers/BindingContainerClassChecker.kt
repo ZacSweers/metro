@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.bindingContainerErrorMessage
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.isBindingContainer
 import dev.zacsweers.metro.compiler.fir.resolvedBindingContainersClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedClassId
 import dev.zacsweers.metro.compiler.fir.resolvedIncludesClassIds
@@ -116,7 +117,7 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
       // Binding containers can't extend other binding containers
       for (supertype in declaration.symbol.getSuperTypes(session)) {
         val supertypeClass = supertype.toClassSymbol(session) ?: continue
-        if (supertypeClass.isAnnotatedWithAny(session, classIds.bindingContainerAnnotations)) {
+        if (supertypeClass.isBindingContainer(session)) {
           val directRef = declaration.superTypeRefs.firstOrNull { it.coneType == supertype }
           val source = directRef?.source ?: source
           reporter.reportOn(
@@ -152,11 +153,11 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
         includedClassCall.resolvedClassId()?.toLookupTag()?.toClassSymbol(session) ?: continue
 
       // Target must be a binding container
-      if (!target.isAnnotatedWithAny(session, classIds.bindingContainerAnnotations)) {
+      if (!target.isBindingContainer(session)) {
         reporter.reportOn(
           includedClassCall.source,
           BINDING_CONTAINER_ERROR,
-          "Included binding containers must be annotated with @BindingContainer but '${target.classId.asSingleFqName()}' is not.",
+          "Included classes must be binding containers but '${target.classId.asSingleFqName()}' is not.",
         )
         continue
       }

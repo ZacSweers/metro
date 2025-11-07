@@ -21,13 +21,14 @@ import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.MultibindsCallable
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.allCallableMembers
+import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.bindingContainerClasses
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.excludedClasses
-import dev.zacsweers.metro.compiler.ir.getAllSuperTypes
 import dev.zacsweers.metro.compiler.ir.isAccessorCandidate
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.ir.isBindingContainer
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.isInheritedFromAny
 import dev.zacsweers.metro.compiler.ir.linkDeclarationsInCompilation
@@ -171,7 +172,7 @@ internal class DependencyGraphNodeCache(
     private val aggregationScopes = mutableSetOf<ClassId>()
     private val isGraph = dependencyGraphAnno != null
     private val supertypes =
-      (metroGraph ?: graphDeclaration).getAllSuperTypes(excludeSelf = false).memoized()
+      (metroGraph ?: graphDeclaration).allSupertypesSequence(excludeSelf = false).memoized()
 
     private var hasGraphExtensions = false
 
@@ -221,9 +222,8 @@ internal class DependencyGraphNodeCache(
 
             linkDeclarationsInCompilation(graphDeclaration, parameterClass)
 
-            if (
-              parameterClass.isAnnotatedWithAny(metroSymbols.classIds.bindingContainerAnnotations)
-            ) {
+            // Check if the parameter is a binding container
+            if (parameterClass.isBindingContainer()) {
               bindingContainerFields = bindingContainerFields.withSet(i)
             }
           }

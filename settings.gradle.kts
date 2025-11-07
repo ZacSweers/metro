@@ -38,6 +38,9 @@ include(
   ":compiler-tests",
   ":gradle-plugin",
   ":interop-dagger",
+  ":interop-javax",
+  ":interop-jakarta",
+  ":interop-guice",
   ":runtime",
 )
 

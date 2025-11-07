@@ -5,3 +5,5 @@
 /MapKeyDiagnostics.kt:(198,200): error: Map key annotations must have a primary constructor with at least one parameter.
 
 /MapKeyDiagnostics.kt:(282,312): error: Map key annotations with unwrapValue set to true (the default) can only have a single constructor parameter.
+
+/MapKeyDiagnostics.kt:(358,366): error: Map key annotations with unwrapValue set to true (the default) cannot have an array parameter.

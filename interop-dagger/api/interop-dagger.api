@@ -1,11 +1,7 @@
 public final class dev/zacsweers/metro/interop/dagger/DaggerInteropKt {
 	public static final fun asDaggerLazy (Lkotlin/Lazy;)Ldagger/Lazy;
 	public static final fun asDaggerMembersInjector (Ldev/zacsweers/metro/MembersInjector;)Ldagger/MembersInjector;
-	public static final fun asJakartaProvider (Ldev/zacsweers/metro/Provider;)Ljakarta/inject/Provider;
-	public static final fun asJavaxProvider (Ldev/zacsweers/metro/Provider;)Ljavax/inject/Provider;
 	public static final fun asKotlinLazy (Ldagger/Lazy;)Lkotlin/Lazy;
 	public static final fun asMetroMembersInjector (Ldagger/MembersInjector;)Ldev/zacsweers/metro/MembersInjector;
-	public static final fun asMetroProvider (Ljakarta/inject/Provider;)Ldev/zacsweers/metro/Provider;
-	public static final fun asMetroProvider (Ljavax/inject/Provider;)Ldev/zacsweers/metro/Provider;
 }
 

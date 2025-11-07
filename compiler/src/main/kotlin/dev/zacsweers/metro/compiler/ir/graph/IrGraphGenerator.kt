@@ -11,12 +11,11 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.buildBlockBody
-import dev.zacsweers.metro.compiler.ir.concreteTypeArguments
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.doubleCheck
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
-import dev.zacsweers.metro.compiler.ir.getAllSuperTypes
 import dev.zacsweers.metro.compiler.ir.graph.expressions.BindingExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.expressions.GraphExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.sharding.IrGraphShardGenerator
@@ -43,6 +42,7 @@ import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
+import dev.zacsweers.metro.compiler.ir.typeOrNullableAny
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
@@ -808,7 +808,7 @@ internal class IrGraphGenerator(
               pluginContext
                 .referenceClass(binding.targetClassId)!!
                 .owner
-                .getAllSuperTypes(excludeSelf = false, excludeAny = true)) {
+                .allSupertypesSequence(excludeSelf = false, excludeAny = true)) {
               val clazz = type.rawType()
               val generatedInjector =
                 membersInjectorTransformer.getOrGenerateInjector(clazz) ?: continue
@@ -825,7 +825,9 @@ internal class IrGraphGenerator(
                 +irInvoke(
                   callee = function.symbol,
                   typeArgs =
-                    targetParam.type.requireSimpleType(targetParam).concreteTypeArguments(),
+                    targetParam.type.requireSimpleType(targetParam).arguments.map {
+                      it.typeOrNullableAny
+                    },
                   args =
                     buildList {
                       add(irGet(targetParam))

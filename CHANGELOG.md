@@ -4,7 +4,29 @@ Changelog
 **Unreleased**
 --------------
 
+0.7.5
+-----
+
+_2025-11-07_
+
+- **New**: Add Guice interop. This is largely focused on Guice's `Provider` type, annotations, and existing interop with jakarta.inject annotations.
+    ```kotlin
+    metro {
+      includeGuice()
+    }
+    ```
+- **Enhancement**: Improve IR caching layer with supertype caching.
+- **Enhancement**: Add diagnostic to check for `Array` properties in map key annotations that unwrap values.
+- **Enhancement**: Add diagnostic to check multibinds map keys are valid (primitives, strings, `KClass`, annotation classes, not arrays).
+- **Enhancement**: Improve multibinding star project checks.
+- **Enhancement**: Nudge `@Binds` functions toward `private` visibility like `@Provides` functions now that it's fully supported.
 - **Fix**: Don't treat `l` as an illegal char in name allocating. This was supposed to be `;`.
+- **Fix**: Ensure all reserved properties by child graphs get properties in parents. Previously, there were some cases for bindings that were unused in the parent and otherwise did not meet the criteria for having a backing property would get missed in binding property collection.
+- **Fix**: Fix compiler crash when injecting a target type with star generics.
+- **Fix**: Fix `ClassCastException` when accessing a `Provider` contributed from a `dagger.Module`.
+- Split `javax` and `jakarta` interop APIs into separate artifacts from dagger for reuse.
+
+Special thanks to [@jonamireh](https://github.com/jonamireh) for contributing to this release!
 
 0.7.4
 -----
