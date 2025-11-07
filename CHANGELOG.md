@@ -11,6 +11,7 @@ Changelog
     }
     ```
 - **Enhancement**: Improve IR caching layer with supertype caching.
+- **Enhancement**: Add diagnostic to check for `Array` properties in map key annotations that unwrap values.
 - **Fix**: Don't treat `l` as an illegal char in name allocating. This was supposed to be `;`.
 - **Fix**: Ensure all reserved properties by child graphs get properties in parents. Previously, there were some cases for bindings that were unused in the parent and otherwise did not meet the criteria for having a backing property would get missed in binding property collection.
 - **Fix**: Fix compiler crash when injecting a target type with star generics.
