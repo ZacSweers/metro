@@ -114,7 +114,7 @@ internal open class MutableBindingGraph<
       ) -> Unit =
       { _, _, _, _ -> /* noop */
       },
-  ): TopoSortResult<TypeKey> {
+  ): GraphTopology<TypeKey> {
     val stack = newBindingStack()
 
     // Order matters, prefer roots over matching kees as they have more information in their entries
@@ -247,7 +247,7 @@ internal open class MutableBindingGraph<
     stack: BindingStack,
     parentTracer: Tracer,
     onSortedCycle: (List<TypeKey>) -> Unit,
-  ): TopoSortResult<TypeKey> {
+  ): GraphTopology<TypeKey> {
     val sortedRootKeys =
       TreeSet<TypeKey>().apply {
         roots.keys.forEach { add(it.typeKey) }
