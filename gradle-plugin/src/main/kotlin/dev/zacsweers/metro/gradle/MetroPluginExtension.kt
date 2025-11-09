@@ -115,9 +115,9 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
   public val statementsPerInitFun: Property<Int> =
     objects.property(Int::class.javaObjectType).convention(25)
 
-  /** Enable/disable graph sharding of binding graphs. Enabled by default. */
+  /** Enable/disable graph sharding of binding graphs. Disabled by default. */
   public val enableGraphSharding: Property<Boolean> =
-    objects.property(Boolean::class.javaObjectType).convention(true)
+    objects.property(Boolean::class.javaObjectType).convention(false)
 
   /**
    * Maximum number of binding keys per graph shard when sharding is enabled. Default is 2000, must
