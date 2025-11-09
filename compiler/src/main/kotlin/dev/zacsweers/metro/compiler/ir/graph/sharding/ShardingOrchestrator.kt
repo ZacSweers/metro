@@ -4,7 +4,7 @@ package dev.zacsweers.metro.compiler.ir.graph.sharding
 
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.graph.Component
-import dev.zacsweers.metro.compiler.graph.TopoSortResult
+import dev.zacsweers.metro.compiler.graph.GraphTopology
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.graph.DependencyGraphNode
 import dev.zacsweers.metro.compiler.isInvisibleGeneratedGraph
@@ -29,7 +29,7 @@ internal class ShardingOrchestrator(
    * Returns shard groups in topologically sorted order, or null if sharding isn't needed. Each list
    * contains type keys for the bindings in that shard.
    */
-  fun computeShardGroups(topologyData: TopoSortResult<IrTypeKey>?): List<List<IrTypeKey>>? {
+  fun computeShardGroups(topologyData: GraphTopology<IrTypeKey>?): List<List<IrTypeKey>>? {
     if (topologyData == null) return null
 
     val maxPerShard = options.keysPerGraphShard

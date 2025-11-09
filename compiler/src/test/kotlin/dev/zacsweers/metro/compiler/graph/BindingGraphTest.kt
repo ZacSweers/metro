@@ -368,14 +368,14 @@ private fun newStringBindingGraph(
 
 private fun buildGraph(
   body: StringGraphBuilder.() -> Unit
-): Pair<StringGraph, TopoSortResult<StringTypeKey>> {
+): Pair<StringGraph, GraphTopology<StringTypeKey>> {
   return StringGraphBuilder().apply(body).sealAndReturn()
 }
 
 // Helper method to create a graph with a chain of dependencies
 private fun buildChainedGraph(
   vararg nodes: String
-): Pair<StringGraph, TopoSortResult<StringTypeKey>> {
+): Pair<StringGraph, GraphTopology<StringTypeKey>> {
   return buildGraph {
     for (i in 0 until nodes.size - 1) {
       nodes[i] dependsOn nodes[i + 1]
@@ -445,7 +445,7 @@ internal class StringGraphBuilder {
     constructorInjectedTypes[binding.typeKey] = binding
   }
 
-  fun sealAndReturn(): Pair<StringGraph, TopoSortResult<StringTypeKey>> {
+  fun sealAndReturn(): Pair<StringGraph, GraphTopology<StringTypeKey>> {
     return graph to graph.seal(shrinkUnusedBindings = false)
   }
 }
