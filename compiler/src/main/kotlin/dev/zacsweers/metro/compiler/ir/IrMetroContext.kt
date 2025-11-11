@@ -51,6 +51,7 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
   val irTypeSystemContext: IrTypeSystemContext
 
   val reportsDir: Path?
+  val graphMetadataDir: Path?
 
   fun loggerFor(type: MetroLogger.Type): MetroLogger
 
@@ -196,6 +197,9 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
       private val loggerCache = mutableMapOf<MetroLogger.Type, MetroLogger>()
 
       override val reportsDir: Path? by lazy { options.reportsDestination?.createDirectories() }
+      override val graphMetadataDir: Path? by lazy {
+        options.graphMetadataOutput?.createDirectories()
+      }
 
       override val logFile: Path? by lazy {
         reportsDir?.let {

@@ -63,6 +63,7 @@ dependencies {
   compileOnly(libs.kotlin.gradlePlugin)
   compileOnly(libs.kotlin.gradlePlugin.api)
   compileOnly(libs.kotlin.stdlib)
+  implementation(libs.kotlinx.serialization.json)
 
   lintChecks(libs.androidx.lint.gradle)
 

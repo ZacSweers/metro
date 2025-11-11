@@ -92,6 +92,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       valueMapper = { it },
     )
   ),
+  GRAPH_METADATA_OUTPUT(
+    RawMetroOption(
+      name = "graph-metadata-output",
+      defaultValue = "",
+      valueDescription = "Path to a directory to dump Metro graph metadata reports",
+      description = "Path to a directory to dump Metro graph metadata reports",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it },
+    )
+  ),
   GENERATE_ASSISTED_FACTORIES(
     RawMetroOption.boolean(
       name = "generate-assisted-factories",
@@ -672,6 +683,11 @@ public data class MetroOptions(
       .expectAs<String>()
       .takeUnless(String::isBlank)
       ?.let(Paths::get),
+  val graphMetadataOutput: Path? =
+    MetroOption.GRAPH_METADATA_OUTPUT.raw.defaultValue
+      .expectAs<String>()
+      .takeUnless(String::isBlank)
+      ?.let(Paths::get),
   val generateAssistedFactories: Boolean =
     MetroOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue.expectAs(),
   val enableTopLevelFunctionInjection: Boolean =
@@ -785,6 +801,7 @@ public data class MetroOptions(
     public var debug: Boolean = base.debug
     public var enabled: Boolean = base.enabled
     public var reportsDestination: Path? = base.reportsDestination
+    public var graphMetadataOutput: Path? = base.graphMetadataOutput
     public var generateAssistedFactories: Boolean = base.generateAssistedFactories
     public var enableTopLevelFunctionInjection: Boolean = base.enableTopLevelFunctionInjection
     public var generateContributionHints: Boolean = base.generateContributionHints
@@ -973,6 +990,7 @@ public data class MetroOptions(
         debug = debug,
         enabled = enabled,
         reportsDestination = reportsDestination,
+        graphMetadataOutput = graphMetadataOutput,
         generateAssistedFactories = generateAssistedFactories,
         enableTopLevelFunctionInjection = enableTopLevelFunctionInjection,
         generateContributionHints = generateContributionHints,
@@ -1052,6 +1070,10 @@ public data class MetroOptions(
 
           MetroOption.REPORTS_DESTINATION -> {
             reportsDestination =
+              configuration.getAsString(entry).takeUnless(String::isBlank)?.let(Paths::get)
+          }
+          MetroOption.GRAPH_METADATA_OUTPUT -> {
+            graphMetadataOutput =
               configuration.getAsString(entry).takeUnless(String::isBlank)?.let(Paths::get)
           }
 
