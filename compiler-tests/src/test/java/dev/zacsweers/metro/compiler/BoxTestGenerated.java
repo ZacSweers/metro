@@ -729,6 +729,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("FieldInjectorInGraphExtensionContainer.kt")
+      public void testFieldInjectorInGraphExtensionContainer() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/FieldInjectorInGraphExtensionContainer.kt");
+      }
+
+      @Test
       @TestMetadata("IncludesAcrossIntermediateUnpacking.kt")
       public void testIncludesAcrossIntermediateUnpacking() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/IncludesAcrossIntermediateUnpacking.kt");
