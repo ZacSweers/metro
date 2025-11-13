@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.ir.transformers.ContributionTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.DependencyGraphTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.HintGenerator
+import dev.zacsweers.metro.compiler.ir.transformers.ICReproTransformer
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.trace
 import dev.zacsweers.metro.compiler.tracing.traceNested
@@ -49,6 +50,8 @@ public class MetroIrGenerationExtension(
     try {
       tracer(moduleFragment.name.asString().removePrefix("<").removeSuffix(">"), "Metro compiler")
         .trace { tracer ->
+          moduleFragment.transform(ICReproTransformer(context), null)
+
           // Create contribution data container
           val contributionData = IrContributionData(context)
 

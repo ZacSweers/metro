@@ -2080,4 +2080,95 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
       assertThat(result).isEqualTo("[AppMultibinding]")
     }
   }
+
+  @Test
+  fun simplifiedICReproForRestoredSymbol() {
+    val fixture =
+      object : MetroProject() {
+        val markerContent =
+          """
+          class Marker
+          """
+            .trimIndent()
+
+        val marker = source(markerContent)
+
+        override fun sources() = throw IllegalStateException()
+
+        override val gradleProject: GradleProject
+          get() =
+            newGradleProjectBuilder(DslKind.KOTLIN)
+              .withRootProject {
+                withBuildScript {
+                  sources = listOf(collector, main)
+                  applyMetroDefault()
+                  dependencies(Dependency.implementation(":lib"))
+                }
+              }
+              .withSubproject("lib") {
+                sources.add(marker)
+                withBuildScript { applyMetroDefault() }
+              }
+              .write()
+
+        private val collector =
+          source(
+            """
+            class ICReproCollector {
+              fun getReproStatus(): String {
+                return "unreplaced"
+              }
+            }
+            """
+          )
+
+        val main =
+          source(
+            """
+            fun main(): String {
+              return ICReproCollector().getReproStatus()
+            }
+            """
+          )
+      }
+
+    val project = fixture.gradleProject
+    val libProject = project.subprojects.first { it.name == "lib" }
+
+    // First build should succeed with marker present
+    println("BEGIN: build 1")
+    val firstBuildResult = build(project.rootDir, "compileKotlin", "--quiet")
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    with(project.classLoader().loadClass("test.MainKt")) {
+      val result = declaredMethods.first { it.name == "main" }.invoke(null) as String
+      assertThat(result).isEqualTo("present")
+    }
+
+    // Remove Marker from lib
+    println("Deleting Marker")
+    libProject.delete(project.rootDir, fixture.marker)
+
+    // Second build should succeed with marker absent
+    println("BEGIN: build 2")
+    val secondBuildResult = build(project.rootDir, "compileKotlin", "--quiet")
+    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    with(project.classLoader().loadClass("test.MainKt")) {
+      val result = declaredMethods.first { it.name == "main" }.invoke(null) as String
+      assertThat(result).isEqualTo("absent")
+    }
+
+    // Restore Marker to lib
+    println("Restoring Marker")
+    libProject.modify(project.rootDir, fixture.marker, fixture.markerContent)
+
+    // Third build should succeed with marker present again (but will fail due to IC bug)
+    println("BEGIN: build 3")
+    val thirdBuildResult = build(project.rootDir, "compileKotlin", DEBUGGING_ARGS)
+    assertThat(thirdBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    with(project.classLoader().loadClass("test.MainKt")) {
+      val result = declaredMethods.first { it.name == "main" }.invoke(null) as String
+      // This assertion will fail due to the IC bug - the result will still be "absent"
+      assertThat(result).isEqualTo("present")
+    }
+  }
 }
