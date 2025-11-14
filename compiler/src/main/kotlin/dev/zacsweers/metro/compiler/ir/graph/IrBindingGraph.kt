@@ -767,6 +767,9 @@ internal class IrBindingGraph(
     roots: Map<IrContextualTypeKey, IrBindingStack.Entry>,
     adjacency: Map<IrTypeKey, Set<IrTypeKey>>,
   ): List<IrBindingStack.Entry> {
+    // No need to walk through the tree without roots
+    if (roots.isEmpty()) return emptyList()
+
     // Build who depends on what
     val dependents = mutableMapOf<IrTypeKey, MutableSet<IrTypeKey>>()
     for ((key, deps) in adjacency) {
