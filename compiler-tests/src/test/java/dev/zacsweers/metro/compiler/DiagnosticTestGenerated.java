@@ -641,6 +641,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("ModulesWithConstructorInjectedFields.kt")
+      public void testModulesWithConstructorInjectedFields() {
+        runTest("compiler-tests/src/test/data/diagnostic/interop/dagger/ModulesWithConstructorInjectedFields.kt");
+      }
+
+      @Test
       @TestMetadata("PositionalAnnotationArgsError.kt")
       public void testPositionalAnnotationArgsError() {
         runTest("compiler-tests/src/test/data/diagnostic/interop/dagger/PositionalAnnotationArgsError.kt");
