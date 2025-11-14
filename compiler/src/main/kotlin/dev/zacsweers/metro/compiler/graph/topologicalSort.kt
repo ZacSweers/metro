@@ -120,11 +120,19 @@ internal fun <TypeKey : Comparable<TypeKey>, Binding> buildFullAdjacency(
  * @param sortedKeys Topologically sorted list of keys.
  * @param deferredTypes Vertices that sit inside breakable cycles.
  * @param reachableKeys Vertices that were deemed reachable by any input roots.
+ * @param adjacency The reachable adjacency map used for topological sorting.
+ * @param components The strongly connected components computed during sorting.
+ * @param componentOf Mapping from vertex to component ID.
+ * @param componentDag The DAG of components (edges between component IDs).
  */
 internal data class TopoSortResult<T>(
   val sortedKeys: List<T>,
   val deferredTypes: Set<T>,
   val reachableKeys: Set<T>,
+  val adjacency: SortedMap<T, SortedSet<T>>,
+  val components: List<Component<T>>,
+  val componentOf: Map<T, Int>,
+  val componentDag: Map<Int, Set<Int>>,
 )
 
 /**
@@ -253,6 +261,10 @@ internal fun <V : Comparable<V>> topologicalSort(
     sortedKeys,
     deferredTypes,
     reachableKeys.keys,
+    reachableKeys,
+    components,
+    componentOf,
+    componentDag,
   )
 }
 

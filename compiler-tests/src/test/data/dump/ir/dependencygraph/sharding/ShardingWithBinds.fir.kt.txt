@@ -1,0 +1,213 @@
+// FILE: ShardingWithBinds.kt
+
+@SingleIn(scope = AppScope::class)
+@Inject
+class RepositoryImpl : Repository {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<RepositoryImpl> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    fun create(): Factory<RepositoryImpl> {
+      return MetroFactory
+    }
+
+    fun newInstance(): RepositoryImpl {
+      return RepositoryImpl()
+    }
+
+    override operator fun invoke(): RepositoryImpl {
+      return MetroFactory.newInstance()
+    }
+
+    @SingleIn(scope = AppScope::class)
+    fun mirrorFunction(): RepositoryImpl {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@SingleIn(scope = AppScope::class)
+@Inject
+class Service {
+  val repo: Repository
+    field = repo
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<Service> {
+    private /* final field */ val repo: Provider<Repository> = repo
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(repo: Provider<Repository>): Factory<Service> {
+        return MetroFactory(repo = repo)
+      }
+
+      fun newInstance(repo: Repository): Service {
+        return Service(repo = repo)
+      }
+
+    }
+
+    private constructor(repo: Provider<Repository>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): Service {
+      return Companion.newInstance(repo = <this>.#repo.invoke())
+    }
+
+    @SingleIn(scope = AppScope::class)
+    fun mirrorFunction(repo: Repository): Service {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(repo: Repository) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@BindingContainer
+@ContributesTo(scope = AppScope::class)
+interface AppModule {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  abstract class BindsMirror {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Binds
+    @CallableMetadata(callableName = "bindRepository", propertyName = "", startOffset = 458, endOffset = 510)
+    abstract fun bindRepository(impl: RepositoryImpl): Repository
+
+  }
+
+  @Binds
+  abstract fun bindRepository(impl: RepositoryImpl): Repository
+
+}
+
+interface Repository {
+}
+
+@DependencyGraph(scope = AppScope::class)
+interface TestGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : TestGraph {
+    private val repositoryImplProvider: Provider<RepositoryImpl>
+
+    private val serviceProvider: Provider<Service>
+
+    private val shard1: Shard1
+      get(): Shard1 {
+        return <this>.#shard1
+      }
+
+    private val shard2: Shard2
+      get(): Shard2 {
+        return <this>.#shard2
+      }
+
+    private inner class Shard1 {
+      constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun initialize(graphInstance: Impl) {
+        graphInstance.#repositoryImplProvider = Companion.provider<Provider<RepositoryImpl>, RepositoryImpl>(delegate = MetroFactory.create())
+      }
+
+    }
+
+    private inner class Shard2 {
+      constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun initialize(graphInstance: Impl) {
+        graphInstance.#serviceProvider = Companion.provider<Provider<Service>, Service>(delegate = Companion.create(repo = graphInstance.#repositoryImplProvider))
+      }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+      <this>.#shard1 = <this>.Shard1()
+      <this>.#shard2 = <this>.Shard2()
+      <this>.#shard1.initialize(graphInstance = <this>)
+      <this>.#shard2.initialize(graphInstance = <this>)
+    }
+
+    override val repository: Repository
+      override get(): Repository {
+        return <this>.#repositoryImplProvider.invoke()
+      }
+
+    override val service: Service
+      override get(): Service {
+        return <this>.#serviceProvider.invoke()
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): TestGraph {
+      return Impl()
+    }
+
+  }
+
+  abstract val repository: Repository
+    abstract get
+
+  abstract val service: Service
+    abstract get
+
+}
+
+// FILE: appModuleAppScope.kt
+package metro.hints
+
+fun AppScope(contributed: AppModule) {
+  return error(message = "Never called")
+}
+

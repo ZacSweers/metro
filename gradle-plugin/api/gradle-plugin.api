@@ -29,6 +29,7 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension {
 	public final fun getDebug ()Lorg/gradle/api/provider/Property;
 	public final fun getEnableFullBindingGraphValidation ()Lorg/gradle/api/provider/Property;
 	public final fun getEnableGraphImplClassAsReturnType ()Lorg/gradle/api/provider/Property;
+	public final fun getEnableGraphSharding ()Lorg/gradle/api/provider/Property;
 	public final fun getEnableKotlinVersionCompatibilityChecks ()Lorg/gradle/api/provider/Property;
 	public final fun getEnableScopedInjectClassHints ()Lorg/gradle/api/provider/Property;
 	public final fun getEnableStrictValidation ()Lorg/gradle/api/provider/Property;
@@ -39,6 +40,7 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension {
 	public final fun getGenerateJvmContributionHintsInFir ()Lorg/gradle/api/provider/Property;
 	public final fun getInterop ()Ldev/zacsweers/metro/gradle/MetroPluginExtension$InteropHandler;
 	public final fun getInteropAnnotationsNamedArgSeverity ()Lorg/gradle/api/provider/Property;
+	public final fun getKeysPerGraphShard ()Lorg/gradle/api/provider/Property;
 	public final fun getMaxIrErrors ()Lorg/gradle/api/provider/Property;
 	public final fun getOptionalBindingBehavior ()Lorg/gradle/api/provider/Property;
 	public final fun getOptionalDependencyBehavior ()Lorg/gradle/api/provider/Property;

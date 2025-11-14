@@ -1,0 +1,632 @@
+// FILE: ShardedGraphWithChainedExtensions.kt
+
+@SingleIn(scope = AppScope::class)
+@Inject
+class AppService1 {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<AppService1> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    fun create(): Factory<AppService1> {
+      return MetroFactory
+    }
+
+    fun newInstance(): AppService1 {
+      return AppService1()
+    }
+
+    override operator fun invoke(): AppService1 {
+      return MetroFactory.newInstance()
+    }
+
+    @SingleIn(scope = AppScope::class)
+    fun mirrorFunction(): AppService1 {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@SingleIn(scope = AppScope::class)
+@Inject
+class AppService2 {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<AppService2> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    fun create(): Factory<AppService2> {
+      return MetroFactory
+    }
+
+    fun newInstance(): AppService2 {
+      return AppService2()
+    }
+
+    override operator fun invoke(): AppService2 {
+      return MetroFactory.newInstance()
+    }
+
+    @SingleIn(scope = AppScope::class)
+    fun mirrorFunction(): AppService2 {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@SingleIn(scope = AppScope::class)
+@Inject
+class AppService3 {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<AppService3> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    fun create(): Factory<AppService3> {
+      return MetroFactory
+    }
+
+    fun newInstance(): AppService3 {
+      return AppService3()
+    }
+
+    override operator fun invoke(): AppService3 {
+      return MetroFactory.newInstance()
+    }
+
+    @SingleIn(scope = AppScope::class)
+    fun mirrorFunction(): AppService3 {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+abstract class ChildScope {
+  private constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@SingleIn(scope = ChildScope::class)
+@Inject
+class ChildService1 {
+  val app1: AppService1
+    field = app1
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<ChildService1> {
+    private /* final field */ val app1: Provider<AppService1> = app1
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(app1: Provider<AppService1>): Factory<ChildService1> {
+        return MetroFactory(app1 = app1)
+      }
+
+      fun newInstance(app1: AppService1): ChildService1 {
+        return ChildService1(app1 = app1)
+      }
+
+    }
+
+    private constructor(app1: Provider<AppService1>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): ChildService1 {
+      return Companion.newInstance(app1 = <this>.#app1.invoke())
+    }
+
+    @SingleIn(scope = ChildScope::class)
+    fun mirrorFunction(app1: AppService1): ChildService1 {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(app1: AppService1) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@SingleIn(scope = ChildScope::class)
+@Inject
+class ChildService2 {
+  val child1: ChildService1
+    field = child1
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<ChildService2> {
+    private /* final field */ val child1: Provider<ChildService1> = child1
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(child1: Provider<ChildService1>): Factory<ChildService2> {
+        return MetroFactory(child1 = child1)
+      }
+
+      fun newInstance(child1: ChildService1): ChildService2 {
+        return ChildService2(child1 = child1)
+      }
+
+    }
+
+    private constructor(child1: Provider<ChildService1>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): ChildService2 {
+      return Companion.newInstance(child1 = <this>.#child1.invoke())
+    }
+
+    @SingleIn(scope = ChildScope::class)
+    fun mirrorFunction(child1: ChildService1): ChildService2 {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(child1: ChildService1) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@SingleIn(scope = ChildScope::class)
+@Inject
+class ChildService3 {
+  val child2: ChildService2
+    field = child2
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<ChildService3> {
+    private /* final field */ val child2: Provider<ChildService2> = child2
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(child2: Provider<ChildService2>): Factory<ChildService3> {
+        return MetroFactory(child2 = child2)
+      }
+
+      fun newInstance(child2: ChildService2): ChildService3 {
+        return ChildService3(child2 = child2)
+      }
+
+    }
+
+    private constructor(child2: Provider<ChildService2>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): ChildService3 {
+      return Companion.newInstance(child2 = <this>.#child2.invoke())
+    }
+
+    @SingleIn(scope = ChildScope::class)
+    fun mirrorFunction(child2: ChildService2): ChildService3 {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(child2: ChildService2) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+abstract class GrandchildScope {
+  private constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@SingleIn(scope = GrandchildScope::class)
+@Inject
+class GrandchildService1 {
+  val app2: AppService2
+    field = app2
+    get
+
+  val child3: ChildService3
+    field = child3
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<GrandchildService1> {
+    private /* final field */ val app2: Provider<AppService2> = app2
+    private /* final field */ val child3: Provider<ChildService3> = child3
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(app2: Provider<AppService2>, child3: Provider<ChildService3>): Factory<GrandchildService1> {
+        return MetroFactory(app2 = app2, child3 = child3)
+      }
+
+      fun newInstance(app2: AppService2, child3: ChildService3): GrandchildService1 {
+        return GrandchildService1(app2 = app2, child3 = child3)
+      }
+
+    }
+
+    private constructor(app2: Provider<AppService2>, child3: Provider<ChildService3>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): GrandchildService1 {
+      return Companion.newInstance(app2 = <this>.#app2.invoke(), child3 = <this>.#child3.invoke())
+    }
+
+    @SingleIn(scope = GrandchildScope::class)
+    fun mirrorFunction(app2: AppService2, child3: ChildService3): GrandchildService1 {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(app2: AppService2, child3: ChildService3) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@SingleIn(scope = GrandchildScope::class)
+@Inject
+class GrandchildService2 {
+  val gc1: GrandchildService1
+    field = gc1
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<GrandchildService2> {
+    private /* final field */ val gc1: Provider<GrandchildService1> = gc1
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(gc1: Provider<GrandchildService1>): Factory<GrandchildService2> {
+        return MetroFactory(gc1 = gc1)
+      }
+
+      fun newInstance(gc1: GrandchildService1): GrandchildService2 {
+        return GrandchildService2(gc1 = gc1)
+      }
+
+    }
+
+    private constructor(gc1: Provider<GrandchildService1>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): GrandchildService2 {
+      return Companion.newInstance(gc1 = <this>.#gc1.invoke())
+    }
+
+    @SingleIn(scope = GrandchildScope::class)
+    fun mirrorFunction(gc1: GrandchildService1): GrandchildService2 {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(gc1: GrandchildService1) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@DependencyGraph(scope = AppScope::class)
+interface AppGraph : MetroContributionToAppScope {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val thisGraphInstance: AppGraph
+      field = <this>
+
+    private val appGraphProvider: Provider<AppGraph>
+      field = Companion.invoke<AppGraph>(value = <this>.#thisGraphInstance)
+
+    private val appService1Provider: Provider<AppService1>
+
+    private val appService2Provider: Provider<AppService2>
+
+    private val appService3Provider: Provider<AppService3>
+
+    private val shard1: Shard1
+      get(): Shard1 {
+        return <this>.#shard1
+      }
+
+    private val shard2: Shard2
+      get(): Shard2 {
+        return <this>.#shard2
+      }
+
+    private inner class Shard1 {
+      constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun initialize(graphInstance: Impl) {
+        graphInstance.#appService1Provider = Companion.provider<Provider<AppService1>, AppService1>(delegate = MetroFactory.create())
+      }
+
+    }
+
+    private inner class Shard2 {
+      constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun initialize(graphInstance: Impl) {
+        graphInstance.#appService2Provider = Companion.provider<Provider<AppService2>, AppService2>(delegate = MetroFactory.create())
+        graphInstance.#appService3Provider = Companion.provider<Provider<AppService3>, AppService3>(delegate = MetroFactory.create())
+      }
+
+    }
+
+    @DependencyGraph(scope = ChildScope::class)
+    inner class ChildGraphImpl : ChildGraph, MetroContributionToChildScope {
+      private val thisGraphInstance: ChildGraphImpl
+        field = <this>
+
+      private val childGraphImplProvider: Provider<ChildGraphImpl>
+        field = Companion.invoke<ChildGraphImpl>(value = <this>.#thisGraphInstance)
+
+      private val childService1Provider: Provider<ChildService1>
+        field = Companion.provider<Provider<ChildService1>, ChildService1>(delegate = Companion.create(app1 = <this>.#appService1Provider))
+
+      private val childService2Provider: Provider<ChildService2>
+        field = Companion.provider<Provider<ChildService2>, ChildService2>(delegate = Companion.create(child1 = <this>.#childService1Provider))
+
+      private val childService3Provider: Provider<ChildService3>
+        field = Companion.provider<Provider<ChildService3>, ChildService3>(delegate = Companion.create(child2 = <this>.#childService2Provider))
+
+      @DependencyGraph(scope = GrandchildScope::class)
+      inner class GrandchildGraphImpl : GrandchildGraph {
+        private val grandchildService1Provider: Provider<GrandchildService1>
+          field = Companion.provider<Provider<GrandchildService1>, GrandchildService1>(delegate = Companion.create(app2 = <this>.#appService2Provider, child3 = <this>.#childService3Provider))
+
+        private val grandchildService2Provider: Provider<GrandchildService2>
+          field = Companion.provider<Provider<GrandchildService2>, GrandchildService2>(delegate = Companion.create(gc1 = <this>.#grandchildService1Provider))
+
+        constructor() /* primary */ {
+          super/*Any*/()
+          /* <init>() */
+
+        }
+
+        override val grandchildService2: GrandchildService2
+          override get(): GrandchildService2 {
+            return <this>.#grandchildService2Provider.invoke()
+          }
+
+      }
+
+      constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      override fun createGrandchild(): GrandchildGraph {
+        return <this>.GrandchildGraphImpl()
+      }
+
+      override val childService3: ChildService3
+        override get(): ChildService3 {
+          return <this>.#childService3Provider.invoke()
+        }
+
+      override val grandchildFactory: Factory
+        override get(): Factory {
+          return <this>.#childGraphImplProvider.invoke()
+        }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+      <this>.#shard1 = <this>.Shard1()
+      <this>.#shard2 = <this>.Shard2()
+      <this>.#shard1.initialize(graphInstance = <this>)
+      <this>.#shard2.initialize(graphInstance = <this>)
+    }
+
+    override fun createChild(): ChildGraph {
+      return <this>.ChildGraphImpl()
+    }
+
+    override val appService1: AppService1
+      override get(): AppService1 {
+        return <this>.#appService1Provider.invoke()
+      }
+
+    override val appService2: AppService2
+      override get(): AppService2 {
+        return <this>.#appService2Provider.invoke()
+      }
+
+    override val appService3: AppService3
+      override get(): AppService3 {
+        return <this>.#appService3Provider.invoke()
+      }
+
+    override val childFactory: Factory
+      override get(): Factory {
+        return <this>.#appGraphProvider.invoke()
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  abstract val appService1: AppService1
+    abstract get
+
+  abstract val appService2: AppService2
+    abstract get
+
+  abstract val appService3: AppService3
+    abstract get
+
+  abstract val childFactory: Factory
+    abstract get
+
+}
+
+@GraphExtension(scope = ChildScope::class)
+interface ChildGraph {
+  @Factory
+  @ContributesTo(scope = AppScope::class)
+  fun interface Factory {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @MetroContribution(scope = AppScope::class)
+    interface MetroContributionToAppScope : Factory {
+    }
+
+    abstract fun createChild(): ChildGraph
+
+  }
+
+  abstract val childService3: ChildService3
+    abstract get
+
+  abstract val grandchildFactory: Factory
+    abstract get
+
+}
+
+@GraphExtension(scope = GrandchildScope::class)
+interface GrandchildGraph {
+  @Factory
+  @ContributesTo(scope = ChildScope::class)
+  fun interface Factory {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @MetroContribution(scope = ChildScope::class)
+    interface MetroContributionToChildScope : Factory {
+    }
+
+    abstract fun createGrandchild(): GrandchildGraph
+
+  }
+
+  abstract val grandchildService2: GrandchildService2
+    abstract get
+
+}
+
+// FILE: childGraphFactoryAppScope.kt
+package metro.hints
+
+fun AppScope(contributed: Factory) {
+  return error(message = "Never called")
+}
+
+// FILE: grandchildGraphFactoryChildScope.kt
+package metro.hints
+
+fun ChildScope(contributed: Factory) {
+  return error(message = "Never called")
+}
+
