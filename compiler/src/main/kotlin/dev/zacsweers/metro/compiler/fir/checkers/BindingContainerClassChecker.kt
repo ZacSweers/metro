@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.fir.bindingContainerErrorMessage
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
+import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.resolvedBindingContainersClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedClassId
 import dev.zacsweers.metro.compiler.fir.resolvedIncludesClassIds
@@ -131,7 +132,9 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
 
     val includesToCheck =
       bindingContainerAnno?.resolvedIncludesClassIds()
-        ?: graphLikeAnno?.resolvedBindingContainersClassIds()
+        ?: graphLikeAnno?.resolvedBindingContainersClassIds(
+          includeModulesArg = session.metroFirBuiltIns.options.enableDaggerRuntimeInterop
+        )
         ?: emptyList()
     val seen = mutableMapOf<ClassId, FirGetClassCall>()
     for (includedClassCall in includesToCheck) {

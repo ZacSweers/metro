@@ -874,6 +874,12 @@ internal fun FirAnnotation.additionalScopesArgument() =
 internal fun FirAnnotation.bindingContainersArgument() =
   arrayArgument(Symbols.Names.bindingContainers, index = 4)
 
+internal fun FirAnnotation.modulesArgument() = arrayArgument(Symbols.Names.modules, index = 1)
+
+internal fun FirAnnotation.bindingContainerClasses(includeModulesArg: Boolean): FirCall? {
+  return bindingContainersArgument() ?: if (includeModulesArg) modulesArgument() else null
+}
+
 internal fun FirAnnotation.includesArgument() = arrayArgument(Symbols.Names.includes, index = 0)
 
 internal fun FirAnnotation.allScopeClassIds(): Set<ClassId> =
@@ -943,8 +949,8 @@ internal fun FirAnnotation.resolvedAdditionalScopesClassIds() =
     it.expectAsOrNull<FirGetClassCall>()?.resolvedClassId()
   }
 
-internal fun FirAnnotation.resolvedBindingContainersClassIds() =
-  bindingContainersArgument()?.argumentList?.arguments?.mapNotNull {
+internal fun FirAnnotation.resolvedBindingContainersClassIds(includeModulesArg: Boolean) =
+  bindingContainerClasses(includeModulesArg)?.argumentList?.arguments?.mapNotNull {
     it.expectAsOrNull<FirGetClassCall>()
   }
 

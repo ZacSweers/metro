@@ -14,7 +14,7 @@
 
 /BindingCallableMultibindingDiagnostics.kt:(809,818): error: Multibinding Map keys cannot be star projections. Use a concrete type instead.
 
-/BindingCallableMultibindingDiagnostics.kt:(874,902): error: Multibinding map keys must be a primitive, String, KClass, or an annotation class.
+/BindingCallableMultibindingDiagnostics.kt:(874,902): error: Multibinding map keys must be a primitive, String, KClass, enum, or an annotation class.
 
 /BindingCallableMultibindingDiagnostics.kt:(936,962): error: Multibinding map keys cannot be arrays.
 
