@@ -9,9 +9,11 @@ import org.jetbrains.kotlin.incremental.components.LocationInfo
 import org.jetbrains.kotlin.incremental.components.LookupTracker
 import org.jetbrains.kotlin.incremental.components.Position
 import org.jetbrains.kotlin.incremental.components.ScopeKind
+import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
+import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -37,8 +39,25 @@ internal fun linkDeclarationsInCompilation(
   callingDeclaration: IrDeclaration,
   calleeDeclaration: IrClass,
 ) {
+  linkDeclarationsInCompilation(callingDeclaration.fileOrNull, calleeDeclaration)
+}
+
+context(context: IrMetroContext)
+internal fun linkDeclarationsInCompilation(
+  callingElement: IrElement,
+  calleeDeclaration: IrClass,
+) {
+  val file = callingElement as? IrFile ?: (calleeDeclaration as IrDeclaration).fileOrNull
+  linkDeclarationsInCompilation(file, calleeDeclaration)
+}
+
+context(context: IrMetroContext)
+internal fun linkDeclarationsInCompilation(
+  callingFile: IrFile?,
+  calleeDeclaration: IrClass,
+) {
   val expectedFile = calleeDeclaration.fileOrNull?.getIoFile() ?: return
-  val actualFile = callingDeclaration.fileOrNull?.getIoFile() ?: return
+  val actualFile = callingFile?.getIoFile() ?: return
   if (expectedFile == actualFile) return
   context.expectActualTracker.report(expectedFile = expectedFile, actualFile = actualFile)
 }
