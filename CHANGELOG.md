@@ -4,6 +4,7 @@ Changelog
 **Unreleased**
 --------------
 
+- **Fix**: Optimise `checkScope()` diagnostics in errors by checking if roots are empty first.
 - **Fix**: Fix diagnostic when an `@Multibinds`-annotated Map uses an enum as a key.
 
 0.7.5
