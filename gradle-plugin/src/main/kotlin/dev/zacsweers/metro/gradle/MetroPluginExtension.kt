@@ -197,6 +197,12 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
       )
 
   /**
+   * Directory where the Metro compiler will dump machine-readable graph metadata reports. This is
+   * primarily used by the [GenerateGraphMetadataTask] for CI validation.
+   */
+  public val graphMetadataOutput: DirectoryProperty = objects.directoryProperty()
+
+  /**
    * Configures interop to support in generated code, usually from another DI framework.
    *
    * This is primarily for supplying custom annotations and custom runtime intrinsic types (i.e.

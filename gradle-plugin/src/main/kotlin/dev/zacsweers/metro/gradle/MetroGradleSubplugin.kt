@@ -14,8 +14,11 @@ import org.jetbrains.kotlin.gradle.plugin.SubpluginOption
 import org.jetbrains.kotlin.gradle.plugin.getKotlinPluginVersion
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 
+private const val GRAPH_METADATA_TASK_NAME = "generateMetroGraphMetadata"
+
 public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
   private companion object {
+
     val gradleMetroKotlinVersion by
       lazy(LazyThreadSafetyMode.NONE) {
         KotlinVersion.fromVersion(BASE_KOTLIN_VERSION.substringBeforeLast('.'))
@@ -23,7 +26,24 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
   }
 
   override fun apply(target: Project) {
-    target.extensions.create("metro", MetroPluginExtension::class.java, target.layout)
+    val extension =
+      target.extensions.create("metro", MetroPluginExtension::class.java, target.layout)
+
+    val graphMetadataTask =
+      target.tasks.register(GRAPH_METADATA_TASK_NAME, GenerateGraphMetadataTask::class.java)
+    graphMetadataTask.configure { task ->
+      task.group = "verification"
+      task.description = "Generates Metro graph metadata for ${target.path}"
+      task.projectPath.convention(target.path)
+      task.outputFile.convention(
+        target.layout.buildDirectory.file("reports/metro/graphMetadata.json")
+      )
+    }
+
+    extension.graphMetadataOutput.convention(
+      target.layout.buildDirectory.dir("metro/graphMetadata/raw")
+    )
+
   }
 
   override fun getCompilerPluginId(): String = PLUGIN_ID
@@ -135,6 +155,19 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
     }
 
     val reportsDir = extension.reportsDestination.map { it.dir(kotlinCompilation.name) }
+    val graphMetadataBaseDir = extension.graphMetadataOutput.orNull?.asFile
+    val graphMetadataDir =
+      graphMetadataBaseDir?.resolve(kotlinCompilation.name)?.also { dir ->
+        val fileTree = project.fileTree(dir)
+        fileTree.include("**/*.json")
+        project
+          .tasks
+          .named(GRAPH_METADATA_TASK_NAME, GenerateGraphMetadataTask::class.java)
+          .configure { task ->
+            task.metadataFiles.from(fileTree)
+            task.dependsOn(kotlinCompilation.compileTaskProvider)
+          }
+      }
 
     return project.provider {
       buildList {
@@ -202,6 +235,9 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         add(lazyOption("contributes-as-inject", extension.contributesAsInject))
         reportsDir.orNull
           ?.let { FilesSubpluginOption("reports-destination", listOf(it.asFile)) }
+          ?.let(::add)
+        graphMetadataDir
+          ?.let { FilesSubpluginOption("graph-metadata-output", listOf(it)) }
           ?.let(::add)
 
         if (isJvmTarget) {
@@ -374,6 +410,7 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
     }
   }
 }
+
 
 @JvmName("booleanPluginOptionOf")
 private fun lazyOption(key: String, value: Provider<Boolean>): SubpluginOption =
