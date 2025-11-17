@@ -4,7 +4,7 @@ Changelog
 **Unreleased**
 --------------
 
-- **Fix**: Optimise `checkScope()` diagnostics in errors by checking if roots are empty first.
+- **Fix**: Optimize `checkScope()` diagnostics in errors by checking if roots are empty first.
 - **Fix**: Fix diagnostic when an `@Multibinds`-annotated Map uses an enum as a key.
 - **Fix**: Fix Dagger interop error messages when validating `@Module`s with constructor-injected fields to match errors for `@BindingContainer`s.
 - **Fix**: Catch `IrErrorType` error types earlier when generating missing binding hints.
