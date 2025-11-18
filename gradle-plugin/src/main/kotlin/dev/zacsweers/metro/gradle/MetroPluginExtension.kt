@@ -180,7 +180,8 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
 
   /**
    * If set, the Metro compiler will dump verbose report diagnostics about resolved dependency
-   * graphs to the given destination. Outputs are per-compilation granularity (i.e. `build/metro/main/...`).
+   * graphs to the given destination. Outputs are per-compilation granularity (i.e.
+   * `build/metro/main/...`).
    *
    * This behaves similar to the compose-compiler's option of the same name.
    *

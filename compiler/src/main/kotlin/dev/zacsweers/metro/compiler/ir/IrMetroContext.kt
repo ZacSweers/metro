@@ -201,13 +201,12 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
 
       @OptIn(ExperimentalPathApi::class)
       override val reportsDir: Path? by lazy {
-        options.reportsDestination
-          ?.run {
-            if (exists()) {
-              deleteRecursively()
-            }
-            createDirectories()
+        options.reportsDestination?.run {
+          if (exists()) {
+            deleteRecursively()
           }
+          createDirectories()
+        }
       }
 
       override val logFile: Path? by lazy {
