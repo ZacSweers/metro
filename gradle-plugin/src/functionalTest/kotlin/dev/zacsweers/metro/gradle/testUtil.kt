@@ -30,6 +30,9 @@ private val DEFAULT_IMPORTS =
   )
 private val FILE_PATH_REGEX = Regex("file://.*?/(?=[^/]+\\.kt)")
 
+const val DEBUGGING_ARGS =
+  """-Dkotlin.daemon.jvm.options="-agentlib:jdwp=transport=dt_socket\,server=n\,suspend=y\,address=5005""""
+
 fun String.cleanOutputLine(): String = FILE_PATH_REGEX.replace(trimEnd(), "")
 
 fun GradleProject.classLoader(): ClassLoader {

@@ -1921,4 +1921,142 @@ class ICTests : BaseIncrementalCompilationTest() {
     val secondBuildResult = build(project.rootDir, "compileKotlin")
     assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
   }
+
+  @Test
+  fun changingScopeForContributedInterfaceInGraphExtensionIsDetected() {
+    val fixture =
+      object : MetroProject() {
+        override fun sources() = throw IllegalStateException()
+
+        override val gradleProject: GradleProject
+          get() =
+            newGradleProjectBuilder(DslKind.KOTLIN)
+              .withRootProject {
+                withBuildScript {
+                  sources = listOf(main, appGraph, stringProvider)
+                  applyMetroDefault()
+                  dependencies(Dependency.implementation(":lib"))
+                }
+              }
+              .withSubproject("lib") {
+                sources.add(myActivity)
+                sources.add(myActivityInjector)
+                withBuildScript { applyMetroDefault() }
+              }
+              .write()
+
+        private val appGraph =
+          source(
+            """
+                        @DependencyGraph(Unit::class)
+                        interface RootGraph {
+                          val appGraph: AppGraph
+                        }
+
+                        @GraphExtension(AppScope::class)
+                        interface AppGraph {
+                          val featureGraph: FeatureGraph
+                        }
+
+                        @GraphExtension(String::class)
+                        interface FeatureGraph
+                    """
+          )
+
+        private val stringProvider =
+          source(
+            """
+            @ContributesTo(AppScope::class)
+            interface StringProvider {
+              @Provides
+              fun provideString(
+                @Named("Feature") featureString: String? = null
+              ) : String = featureString ?: "App"
+            }
+
+            @ContributesTo(String::class)
+            interface FeatureStringProvider {
+              @Provides @Named("Feature")
+              fun provideFeatureString() : String = "Feature"
+
+              @Binds @Named("Feature")
+              fun bindAsNullable(@Named("Feature") featureString: String): String?
+            }
+            """
+              .trimIndent()
+          )
+
+        val main =
+          source(
+            """
+            fun main(): String {
+                val rootGraph = createGraph<RootGraph>()
+                val injector = listOf(rootGraph, rootGraph.appGraph, rootGraph.appGraph.featureGraph)
+                  .filterIsInstance<MyActivityInjector>().first()
+                val myActivity = MyActivity().apply {
+                    injector.inject(this)
+                }
+                return myActivity.string
+            }
+            """
+              .trimIndent()
+          )
+
+        val myActivity =
+          source(
+            """
+            class MyActivity {
+              @Inject
+              lateinit var string: String
+            }
+            """
+              .trimIndent()
+          )
+
+        val myActivityInjector =
+          source(
+            """
+            @ContributesTo(String::class)
+            interface MyActivityInjector {
+              fun inject(whatever: MyActivity)
+            }
+            """
+              .trimIndent()
+          )
+      }
+
+    val project = fixture.gradleProject
+    val libProject = project.subprojects.first { it.name == "lib" }
+
+    // First build should succeed
+    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    with(project.classLoader()) {
+      val mainClass = loadClass("test.MainKt")
+      val result = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as String
+      assertThat(result).isEqualTo("Feature")
+    }
+
+    // Modify the MyActivityInjector to contribute itself to the AppScope
+    libProject.modify(
+      project.rootDir,
+      fixture.myActivityInjector,
+      """
+      @ContributesTo(AppScope::class)
+      interface MyActivityInjector {
+        fun inject(whatever: MyActivity)
+      }
+      """
+        .trimIndent(),
+    )
+
+    // Second build is still marked as success so we have to check the output
+    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    with(project.classLoader()) {
+      val mainClass = loadClass("test.MainKt")
+      val result = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as String
+      assertThat(result).isEqualTo("App")
+    }
+  }
 }

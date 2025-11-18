@@ -4,8 +4,21 @@ Changelog
 **Unreleased**
 --------------
 
+0.7.6
+-----
+
+_2025-11-17_
+
+- **Fix**: Record IC lookups for merged supertypes to graph extensions.
+- **Fix**: Optimize `checkScope()` diagnostics in errors by checking if roots are empty first.
 - **Fix**: Fix diagnostic when an `@Multibinds`-annotated Map uses an enum as a key.
 - **Fix**: Fix Dagger interop error messages when validating `@Module`s with constructor-injected fields to match errors for `@BindingContainer`s.
+- **Fix**: Catch `IrErrorType` error types earlier when generating missing binding hints.
+- **Fix**: Fix IC edge case when restoring a deleted contributed binding container.
+- Update shaded Okio to `3.16.3`.
+- Build against Gradle `9.2.1`.
+
+Special thanks to [@jonamireh](https://github.com/jonamireh), [@neworld](https://github.com/neworld), and [@JoelWilcox](https://github.com/JoelWilcox) for contributing to this release!
 
 0.7.5
 -----

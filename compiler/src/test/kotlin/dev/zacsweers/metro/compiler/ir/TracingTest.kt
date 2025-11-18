@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir
 
 import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.metro.compiler.MetroCompilerTest
+import kotlin.io.path.listDirectoryEntries
 import kotlin.io.path.readText
 import org.junit.Test
 
@@ -36,7 +37,7 @@ class TracingTest : MetroCompilerTest() {
       ),
       options = metroOptions.copy(reportsDestination = reportsDir),
     ) {
-      val timings = reportsDir.resolve("timings.csv").readText()
+      val timings = reportsDir.listDirectoryEntries().single().resolve("timings.csv").readText()
       val withoutTime = timings.lines().drop(1).joinToString("\n") { it.substringBeforeLast(",") }
       assertThat(withoutTime)
         .isEqualTo(
@@ -72,7 +73,7 @@ class TracingTest : MetroCompilerTest() {
             .trimIndent()
         )
 
-      val traceLog = reportsDir.resolve("traceLog.txt").readText()
+      val traceLog = reportsDir.listDirectoryEntries().single().resolve("traceLog.txt").readText()
       val cleanedLog = traceLog.replace("\\((\\d+) ms\\)".toRegex(), "(xx ms)")
       assertThat(cleanedLog.trim())
         .isEqualTo(
@@ -171,7 +172,7 @@ class TracingTest : MetroCompilerTest() {
       ),
       options = metroOptions.copy(reportsDestination = reportsDir),
     ) {
-      val timings = reportsDir.resolve("timings.csv").readText()
+      val timings = reportsDir.listDirectoryEntries().single().resolve("timings.csv").readText()
       val withoutTime = timings.lines().drop(1).joinToString("\n") { it.substringBeforeLast(",") }
       assertThat(withoutTime)
         .isEqualTo(
@@ -231,7 +232,7 @@ class TracingTest : MetroCompilerTest() {
             .trimIndent()
         )
 
-      val traceLog = reportsDir.resolve("traceLog.txt").readText()
+      val traceLog = reportsDir.listDirectoryEntries().single().resolve("traceLog.txt").readText()
       val cleanedLog = traceLog.replace("\\((\\d+) ms\\)".toRegex(), "(xx ms)")
       assertThat(cleanedLog.trim())
         .isEqualTo(
@@ -378,7 +379,7 @@ class TracingTest : MetroCompilerTest() {
       ),
       options = metroOptions.copy(reportsDestination = reportsDir),
     ) {
-      val timings = reportsDir.resolve("timings.csv").readText()
+      val timings = reportsDir.listDirectoryEntries().single().resolve("timings.csv").readText()
       val withoutTime = timings.lines().drop(1).joinToString("\n") { it.substringBeforeLast(",") }
       assertThat(withoutTime)
         .isEqualTo(
@@ -438,7 +439,7 @@ class TracingTest : MetroCompilerTest() {
             .trimIndent()
         )
 
-      val traceLog = reportsDir.resolve("traceLog.txt").readText()
+      val traceLog = reportsDir.listDirectoryEntries().single().resolve("traceLog.txt").readText()
       val cleanedLog = traceLog.replace("\\((\\d+) ms\\)".toRegex(), "(xx ms)")
       assertThat(cleanedLog.trim())
         .isEqualTo(

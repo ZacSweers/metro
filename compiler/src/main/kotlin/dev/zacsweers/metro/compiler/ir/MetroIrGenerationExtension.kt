@@ -46,6 +46,7 @@ public class MetroIrGenerationExtension(
 
   context(context: IrMetroContext)
   private fun generateInner(moduleFragment: IrModuleFragment) {
+    context.log("Starting IR processing of ${moduleFragment.name.asString()}")
     try {
       tracer(moduleFragment.name.asString().removePrefix("<").removeSuffix(">"), "Metro compiler")
         .trace { tracer ->

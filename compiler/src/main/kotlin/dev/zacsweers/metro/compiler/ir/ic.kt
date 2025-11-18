@@ -9,15 +9,19 @@ import org.jetbrains.kotlin.incremental.components.LocationInfo
 import org.jetbrains.kotlin.incremental.components.LookupTracker
 import org.jetbrains.kotlin.incremental.components.Position
 import org.jetbrains.kotlin.incremental.components.ScopeKind
+import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
+import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.resolveFakeOverrideMaybeAbstract
+import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.doNotAnalyze
 
@@ -37,8 +41,19 @@ internal fun linkDeclarationsInCompilation(
   callingDeclaration: IrDeclaration,
   calleeDeclaration: IrClass,
 ) {
+  linkDeclarationsInCompilation(callingDeclaration.fileOrNull, calleeDeclaration)
+}
+
+context(context: IrMetroContext)
+internal fun linkDeclarationsInCompilation(callingElement: IrElement, calleeDeclaration: IrClass) {
+  val file = callingElement as? IrFile ?: (calleeDeclaration as IrDeclaration).fileOrNull
+  linkDeclarationsInCompilation(file, calleeDeclaration)
+}
+
+context(context: IrMetroContext)
+internal fun linkDeclarationsInCompilation(callingFile: IrFile?, calleeDeclaration: IrClass) {
   val expectedFile = calleeDeclaration.fileOrNull?.getIoFile() ?: return
-  val actualFile = callingDeclaration.fileOrNull?.getIoFile() ?: return
+  val actualFile = callingFile?.getIoFile() ?: return
   if (expectedFile == actualFile) return
   context.expectActualTracker.report(expectedFile = expectedFile, actualFile = actualFile)
 }
@@ -48,10 +63,33 @@ internal fun linkDeclarationsInCompilation(
  */
 context(context: IrMetroContext)
 internal fun trackClassLookup(callingDeclaration: IrDeclaration, calleeClass: IrClass) {
+  trackClassLookup(callingDeclaration, calleeClass.classId!!)
+}
+
+/**
+ * Tracks a call from one [callingDeclaration] to a [calleeClassId] to inform incremental
+ * compilation.
+ */
+context(context: IrMetroContext)
+internal fun trackClassLookup(callingDeclaration: IrDeclaration, calleeClassId: ClassId) {
+  val container = calleeClassId.outerClassId?.asSingleFqName() ?: calleeClassId.packageFqName
+  trackClassLookup(callingDeclaration, container, calleeClassId.shortClassName.asString())
+}
+
+/**
+ * Tracks a call from one [callingDeclaration] to a [declarationName] in [container] to inform
+ * incremental compilation.
+ */
+context(context: IrMetroContext)
+internal fun trackClassLookup(
+  callingDeclaration: IrDeclaration,
+  container: FqName,
+  declarationName: String,
+) {
   callingDeclaration.withAnalyzableKtFile { filePath ->
     trackLookup(
-      container = calleeClass.parent.kotlinFqName,
-      declarationName = calleeClass.name.asString(),
+      container = container,
+      declarationName = declarationName,
       scopeKind = ScopeKind.PACKAGE,
       location =
         object : LocationInfo {
@@ -80,6 +118,7 @@ internal fun trackFunctionCall(callingDeclaration: IrDeclaration, calleeFunction
       }
     val declaration: IrDeclarationWithName =
       (callee as? IrSimpleFunction)?.correspondingPropertySymbol?.owner ?: callee
+
     trackLookup(
       container = callee.parent.kotlinFqName,
       declarationName = declaration.name.asString(),
