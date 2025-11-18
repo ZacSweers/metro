@@ -1,6 +1,18 @@
 // KEYS_PER_GRAPH_SHARD: 2
 // ENABLE_GRAPH_SHARDING: true
 
+/*
+ * This test verifies that graph sharding works with chained (nested) graph extensions.
+ *
+ * Graph structure: Parent (AppGraph) → Child (ChildGraph) → Grandchild (GrandchildGraph)
+ * Expected shards: Only parent graph sharded, child and grandchild extensions NOT sharded
+ * - AppGraph sharded: AppService1, AppService2, AppService3
+ * - ChildGraph: ChildService1, ChildService2, ChildService3 (accesses AppGraph)
+ * - GrandchildGraph: GrandchildService1, GrandchildService2 (accesses both parent and child)
+ *
+ * Validation: Multi-level extension hierarchy works with sharded parent graph
+ */
+
 abstract class ChildScope private constructor()
 abstract class GrandchildScope private constructor()
 
