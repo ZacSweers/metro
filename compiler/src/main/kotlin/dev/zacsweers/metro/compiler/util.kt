@@ -202,6 +202,7 @@ internal fun <T : Comparable<T>> List<T>.compareTo(other: List<T>): Int {
 internal fun String.suffixIfNot(suffix: String) =
   if (this.endsWith(suffix)) this else "$this$suffix"
 
+// TODO this doesn't include the package name, should we include it
 internal fun ClassId.scopeHintFunctionName(): Name = joinSimpleNames().shortClassName
 
 internal fun reportCompilerBug(message: String): Nothing {

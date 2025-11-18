@@ -27,12 +27,14 @@ import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.kClassReference
 import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.metro.compiler.ir.rawType
+import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.scopeClassOrNull
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toIrVararg
+import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -260,7 +262,12 @@ internal class IrGraphExtensionGenerator(
           superTypes += sourceGraph.defaultType
 
           // Add only non-binding-container contributions as supertypes
-          contributions?.let { superTypes += it.supertypes }
+          contributions?.let {
+            superTypes += it.supertypes
+            it.supertypes.forEach { contribution ->
+              contribution.rawTypeOrNull()?.let { trackClassLookup(parentGraph, it) }
+            }
+          }
 
           val ctor =
             addConstructor {

@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir
 
 import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.metro.compiler.MetroCompilerTest
+import kotlin.io.path.listDirectoryEntries
 import kotlin.io.path.readText
 import org.junit.Test
 
@@ -69,7 +70,12 @@ class RenderingTest : MetroCompilerTest() {
       options =
         metroOptions.copy(reportsDestination = reportsDir, enableFullBindingGraphValidation = true),
     ) {
-      val keysFile = reportsDir.resolve("keys-populated-ExampleGraph.txt").readText()
+      val keysFile =
+        reportsDir
+          .listDirectoryEntries()
+          .single()
+          .resolve("keys-populated-ExampleGraph.txt")
+          .readText()
       assertThat(keysFile)
         .isEqualTo(
           """
