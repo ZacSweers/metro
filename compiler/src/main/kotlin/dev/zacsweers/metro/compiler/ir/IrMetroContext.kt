@@ -198,7 +198,7 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
 
       override val reportsDir: Path? by lazy { options.reportsDestination?.createDirectories() }
       override val graphMetadataDir: Path? by lazy {
-        options.graphMetadataOutput?.createDirectories()
+        reportsDir?.resolve("graphMetadata")?.createDirectories()
       }
 
       override val logFile: Path? by lazy {
