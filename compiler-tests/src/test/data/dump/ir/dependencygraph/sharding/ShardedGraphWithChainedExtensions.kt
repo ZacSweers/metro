@@ -1,11 +1,17 @@
 // KEYS_PER_GRAPH_SHARD: 2
 // ENABLE_GRAPH_SHARDING: true
 
-// This test verifies:
-// 1. Parent graph IS sharded
-// 2. Child extension is NOT sharded (even with many bindings)
-// 3. Grandchild extension is NOT sharded
-// 4. Nested extensions can access parent and grandparent bindings
+/*
+ * This test verifies that graph sharding works with chained (nested) graph extensions.
+ *
+ * Graph structure: Parent (AppGraph) → Child (ChildGraph) → Grandchild (GrandchildGraph)
+ * Expected shards: Only parent graph sharded, child and grandchild extensions NOT sharded
+ * - AppGraph sharded: AppService1, AppService2, AppService3
+ * - ChildGraph: ChildService1, ChildService2, ChildService3 (accesses AppGraph)
+ * - GrandchildGraph: GrandchildService1, GrandchildService2 (accesses both parent and child)
+ *
+ * Validation: Generated IR shows parent sharded, nested extensions not sharded, multi-level access works
+ */
 
 abstract class ChildScope private constructor()
 abstract class GrandchildScope private constructor()

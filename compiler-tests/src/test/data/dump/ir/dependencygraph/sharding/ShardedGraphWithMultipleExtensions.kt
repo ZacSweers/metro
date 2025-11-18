@@ -1,10 +1,16 @@
 // KEYS_PER_GRAPH_SHARD: 2
 // ENABLE_GRAPH_SHARDING: true
 
-// This test verifies that:
-// 1. Parent graph gets sharded when it has many bindings
-// 2. Graph extensions (subcomponents) are NOT sharded regardless of binding count
-// 3. Multiple extensions can coexist with a sharded parent
+/*
+ * This test verifies that graph sharding works with multiple graph extensions.
+ *
+ * Graph structure: Parent graph (AppGraph) with 4 bindings, 2 extension graphs (Feature1, Feature2)
+ * Expected shards: Parent graph sharded into 2 shards, extension graphs NOT sharded
+ * - AppGraph Shard1: AppService1, AppService2
+ * - AppGraph Shard2: AppService3, AppService4
+ *
+ * Validation: Generated IR shows parent sharded, extensions not sharded, cross-graph access works
+ */
 
 abstract class Feature1Scope private constructor()
 abstract class Feature2Scope private constructor()

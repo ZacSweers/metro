@@ -1,8 +1,14 @@
 // KEYS_PER_GRAPH_SHARD: 2
 // ENABLE_GRAPH_SHARDING: true
 
-// This test verifies @Binds works correctly across shards
-// Tests that alias resolution finds the actual implementation
+/*
+ * This test verifies that @Binds bindings work correctly with sharding.
+ *
+ * Graph structure: @Binds binding from RepositoryImpl to Repository interface, used by Service
+ * Expected shards: @Binds bindings distributed across shards
+ *
+ * Validation: Generated IR shows @Binds type aliasing and alias resolution working across shards
+ */
 
 interface Repository
 

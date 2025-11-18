@@ -1,6 +1,15 @@
 // KEYS_PER_GRAPH_SHARD: 2
 // ENABLE_GRAPH_SHARDING: true
 
+/*
+ * This test verifies that @Binds bindings work correctly with sharding.
+ *
+ * Graph structure: @Binds binding from RepositoryImpl to Repository interface, used by Service
+ * Expected shards: @Binds bindings distributed across shards
+ *
+ * Validation: @Binds type aliasing works across shard boundaries
+ */
+
 interface Repository
 
 @SingleIn(AppScope::class) @Inject class RepositoryImpl : Repository

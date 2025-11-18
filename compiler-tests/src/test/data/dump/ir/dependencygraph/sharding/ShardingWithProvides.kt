@@ -1,6 +1,14 @@
 // KEYS_PER_GRAPH_SHARD: 2
 // ENABLE_GRAPH_SHARDING: true
-// This test verifies sharding works with mix of @Inject classes and @Provides methods
+
+/*
+ * This test verifies that @Provides bindings work correctly with sharding.
+ *
+ * Graph structure: @Provides methods providing Service2, used by Service3
+ * Expected shards: Mix of @Inject classes and @Provides methods distributed across shards
+ *
+ * Validation: Generated IR shows @Provides methods accessible across shard boundaries
+ */
 
 @SingleIn(AppScope::class) @Inject class Service1
 

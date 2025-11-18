@@ -1,7 +1,14 @@
 // KEYS_PER_GRAPH_SHARD: 3
 // ENABLE_GRAPH_SHARDING: true
 
-// This test verifies multibinding sets work across shards
+/*
+ * This test verifies that multibindings work correctly with graph sharding.
+ *
+ * Graph structure: Set<Any> multibinding with 2 contributions (Service1, Service2) collected by Collector
+ * Expected shards: Bindings distributed across shards, multibinding properly assembled
+ *
+ * Validation: Generated IR shows proper multibinding collection across shard boundaries
+ */
 
 @SingleIn(AppScope::class) @Inject class Service1
 

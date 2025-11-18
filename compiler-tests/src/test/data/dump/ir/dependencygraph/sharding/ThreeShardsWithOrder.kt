@@ -1,11 +1,17 @@
 // KEYS_PER_GRAPH_SHARD: 2
 // ENABLE_GRAPH_SHARDING: true
 
-// This test verifies initialization order with 3 shards
-// Shard1: S1, S2
-// Shard2: S3, S4 (S4 depends on S1 from Shard1)
-// Shard3: S5 (depends on S4 from Shard2)
-// Order must be: Shard1 → Shard2 → Shard3
+/*
+ * This test verifies correct initialization order with multiple shards.
+ *
+ * Graph structure: S1 → S4 → S5 (dependency chain), plus S2 and S3 (isolated)
+ * Expected shards: 3 shards
+ * - Shard1: S1, S2
+ * - Shard2: S3, S4 (S4 depends on S1 from Shard1)
+ * - Shard3: S5 (depends on S4 from Shard2)
+ *
+ * Validation: Generated IR shows shards initialize in correct order (Shard1 → Shard2 → Shard3)
+ */
 
 @SingleIn(AppScope::class) @Inject class S1
 
