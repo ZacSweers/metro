@@ -153,6 +153,7 @@ internal class IrGraphGenerator(
       parentTracer = parentTracer,
       getterPropertyFor = ::getOrCreateLazyProperty,
     )
+
   private val graphMetadataReporter = GraphMetadataReporter(this)
 
   fun IrProperty.withInit(typeKey: IrTypeKey, init: PropertyInitializer): IrProperty = apply {

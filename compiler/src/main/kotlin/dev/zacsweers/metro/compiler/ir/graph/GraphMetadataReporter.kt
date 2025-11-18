@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.ir.render
 import kotlin.io.path.createDirectories
 import kotlin.io.path.createParentDirectories
 import kotlin.io.path.writeText
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
@@ -17,16 +18,20 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 
 internal class GraphMetadataReporter(
   private val context: IrMetroContext,
-  private val json: Json = Json { prettyPrint = true },
+  private val json: Json = Json {
+    prettyPrint = true
+    @OptIn(ExperimentalSerializationApi::class)
+    prettyPrintIndent = "  "
+  },
 ) {
 
   fun write(node: DependencyGraphNode, bindingGraph: IrBindingGraph) {
-    val outputDir = context.graphMetadataDir ?: return
+    val reportsDir = context.reportsDir ?: return
+    val outputDir = reportsDir.resolve("graph-metadata")
     outputDir.createDirectories()
     val bindings =
       bindingGraph
@@ -37,9 +42,14 @@ internal class GraphMetadataReporter(
           buildJsonObject {
             put(
               "key",
-              JsonPrimitive(binding.contextualTypeKey.render(short = false, includeQualifier = true))
+              JsonPrimitive(
+                binding.contextualTypeKey.render(short = false, includeQualifier = true)
+              ),
             )
-            put("bindingKind", JsonPrimitive(binding.javaClass.simpleName ?: binding.javaClass.name))
+            put(
+              "bindingKind",
+              JsonPrimitive(binding.javaClass.simpleName ?: binding.javaClass.name),
+            )
             binding.scope?.let { put("scope", JsonPrimitive(it.render(short = false))) }
             put("isScoped", JsonPrimitive(binding.isScoped()))
             put("nameHint", JsonPrimitive(binding.nameHint))
@@ -64,19 +74,17 @@ internal class GraphMetadataReporter(
           }
         }
 
-    val graphJson =
-      buildJsonObject {
-        put("graph", JsonPrimitive(node.sourceGraph.kotlinFqName.asString()))
-        put("scopes", buildAnnotationArray(node.scopes))
-        put(
-          "aggregationScopes",
-          JsonArray(node.aggregationScopes.map { JsonPrimitive(it.asSingleFqName().asString()) })
-        )
-        put("bindings", JsonArray(bindings))
-      }
+    val graphJson = buildJsonObject {
+      put("graph", JsonPrimitive(node.sourceGraph.kotlinFqName.asString()))
+      put("scopes", buildAnnotationArray(node.scopes))
+      put(
+        "aggregationScopes",
+        JsonArray(node.aggregationScopes.map { JsonPrimitive(it.asSingleFqName().asString()) }),
+      )
+      put("bindings", JsonArray(bindings))
+    }
 
-    val fileName =
-      "graph-${node.sourceGraph.kotlinFqName.asString().replace('.', '-')}.json"
+    val fileName = "graph-${node.sourceGraph.kotlinFqName.asString().replace('.', '-')}.json"
     val outputFile = outputDir.resolve(fileName)
     outputFile.createParentDirectories()
     outputFile.writeText(json.encodeToString(JsonObject.serializer(), graphJson))
@@ -105,14 +113,19 @@ internal class GraphMetadataReporter(
       put("allowEmpty", JsonPrimitive(allowEmpty))
       put(
         "sources",
-        JsonArray(sourceBindings.map { JsonPrimitive(it.render(short = false, includeQualifier = true)) })
+        JsonArray(
+          sourceBindings.map { JsonPrimitive(it.render(short = false, includeQualifier = true)) }
+        ),
       )
     }
   }
 
   private fun IrBinding.CustomWrapper.toJson(): JsonObject {
     return buildJsonObject {
-      put("wrappedType", JsonPrimitive(wrappedContextKey.render(short = false, includeQualifier = true)))
+      put(
+        "wrappedType",
+        JsonPrimitive(wrappedContextKey.render(short = false, includeQualifier = true)),
+      )
       put("allowsAbsent", JsonPrimitive(allowsAbsent))
       put("wrapperKey", JsonPrimitive(wrapperKey))
     }

@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.gradle
 
+import dev.zacsweers.metro.gradle.artifacts.GenerateGraphMetadataTask
+import dev.zacsweers.metro.gradle.artifacts.MetroArtifactCopyTask
 import org.gradle.api.Project
 import org.gradle.api.provider.Provider
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
@@ -14,11 +16,8 @@ import org.jetbrains.kotlin.gradle.plugin.SubpluginOption
 import org.jetbrains.kotlin.gradle.plugin.getKotlinPluginVersion
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 
-private const val GRAPH_METADATA_TASK_NAME = "generateMetroGraphMetadata"
-
 public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
   private companion object {
-
     val gradleMetroKotlinVersion by
       lazy(LazyThreadSafetyMode.NONE) {
         KotlinVersion.fromVersion(BASE_KOTLIN_VERSION.substringBeforeLast('.'))
@@ -26,21 +25,17 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
   }
 
   override fun apply(target: Project) {
-    val extension =
-      target.extensions.create("metro", MetroPluginExtension::class.java, target.layout)
+    target.extensions.create("metro", MetroPluginExtension::class.java, target.layout)
 
-    target.tasks
-      .register(GRAPH_METADATA_TASK_NAME, GenerateGraphMetadataTask::class.java)
-      .configure { task ->
-        task.group = "verification"
-        task.description = "Generates Metro graph metadata for ${target.path}"
-        task.projectPath.convention(target.path)
-        task.outputFile.convention(
-          target.layout.buildDirectory.file("reports/metro/graphMetadata.json")
-        )
-        task.onlyIf { !task.metadataFiles.isEmpty }
-      }
-
+    val graphMetadataTask =
+      target.tasks.register(GenerateGraphMetadataTask.NAME, GenerateGraphMetadataTask::class.java)
+    graphMetadataTask.configure { task ->
+      task.description = "Generates Metro graph metadata for ${target.path}"
+      task.projectPath.convention(target.path)
+      task.outputFile.convention(
+        target.layout.buildDirectory.file("reports/metro/graphMetadata.json")
+      )
+    }
   }
 
   override fun getCompilerPluginId(): String = PLUGIN_ID
@@ -104,8 +99,7 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
   ): Provider<List<SubpluginOption>> {
     val project = kotlinCompilation.target.project
     val extension = project.extensions.getByType(MetroPluginExtension::class.java)
-    val graphMetadataTaskProvider =
-      project.tasks.named(GRAPH_METADATA_TASK_NAME, GenerateGraphMetadataTask::class.java)
+
     val platformCanGenerateContributionHints =
       when (kotlinCompilation.platformType) {
         KotlinPlatformType.common,
@@ -154,20 +148,20 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
     }
 
     val reportsDir = extension.reportsDestination.map { it.dir(kotlinCompilation.name) }
-    reportsDir.orNull
-      ?.asFile
-      ?.resolve("graphMetadata")
-      ?.also { metadataDir ->
-        val fileTree = project.fileTree(metadataDir)
-        fileTree.include("**/*.json")
-        graphMetadataTaskProvider.configure { task ->
-          task.metadataFiles.from(fileTree)
-          task.dependsOn(kotlinCompilation.compileTaskProvider)
-        }
-        kotlinCompilation.compileTaskProvider.configure { compileTask ->
-          compileTask.finalizedBy(graphMetadataTaskProvider)
-        }
+
+    if (extension.reportsDestination.isPresent) {
+      val artifactsTask = MetroArtifactCopyTask.register(project, reportsDir, kotlinCompilation)
+
+      project.tasks.withType(GenerateGraphMetadataTask::class.java).configureEach { task ->
+        task.projectPath.set(project.path)
+        task.compilationName.set(kotlinCompilation.name)
+        task.graphJsonFiles.from(
+          artifactsTask
+            .flatMap { it.reportsDir.dir("graph-metadata") }
+            .map { it.asFileTree.matching { it.include("*.json") } }
+        )
       }
+    }
 
     return project.provider {
       buildList {
@@ -407,7 +401,6 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
     }
   }
 }
-
 
 @JvmName("booleanPluginOptionOf")
 private fun lazyOption(key: String, value: Provider<Boolean>): SubpluginOption =
