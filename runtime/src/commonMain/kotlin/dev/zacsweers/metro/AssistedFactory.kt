@@ -16,8 +16,8 @@
 package dev.zacsweers.metro
 
 /**
- * Annotates an abstract class or interface used to create an instance of a type via an assisted
- * [Inject] constructor.
+ * Annotates an abstract class or interface used to create an instance of a type via an
+ * [AssistedInject] constructor.
  *
  * An [AssistedFactory]-annotated type must obey the following constraints:
  * - The type must be an abstract class or interface,
@@ -31,7 +31,7 @@ package dev.zacsweers.metro
  * Metro will automatically generate a default factory as a nested class within the injected type.
  *
  * ```
- * @Inject
+ * @AssistedInject
  * class HttpClient(
  *   @Assisted timeoutDuration: Duration,
  *   cache: Cache,
@@ -60,7 +60,7 @@ package dev.zacsweers.metro
  * ```
  *
  * @see Assisted
- * @see Inject
+ * @see AssistedInject
  * @see <a href="https://zacsweers.github.io/metro/latest/installation/#ide-support">Docs for how to
  *   enable IDE support</a>
  */

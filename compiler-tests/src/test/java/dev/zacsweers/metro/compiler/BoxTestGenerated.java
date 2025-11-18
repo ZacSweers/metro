@@ -729,6 +729,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("FieldInjectorInGraphExtensionContainer.kt")
+      public void testFieldInjectorInGraphExtensionContainer() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/FieldInjectorInGraphExtensionContainer.kt");
+      }
+
+      @Test
       @TestMetadata("IncludesAcrossIntermediateUnpacking.kt")
       public void testIncludesAcrossIntermediateUnpacking() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/IncludesAcrossIntermediateUnpacking.kt");
@@ -1443,6 +1449,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("MultibindingGraphWithWithScopedMapProviderDeps.kt")
     public void testMultibindingGraphWithWithScopedMapProviderDeps() {
       runTest("compiler-tests/src/test/data/box/multibindings/MultibindingGraphWithWithScopedMapProviderDeps.kt");
+    }
+
+    @Test
+    @TestMetadata("PrimeMultibindingMapEnumKey.kt")
+    public void testPrimeMultibindingMapEnumKey() {
+      runTest("compiler-tests/src/test/data/box/multibindings/PrimeMultibindingMapEnumKey.kt");
     }
   }
 

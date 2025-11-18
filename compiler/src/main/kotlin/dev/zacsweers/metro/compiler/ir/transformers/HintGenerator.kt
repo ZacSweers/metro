@@ -6,10 +6,10 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
-import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
+import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.joinSimpleNames
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import kotlin.io.path.Path
@@ -62,11 +62,7 @@ import org.jetbrains.kotlin.name.Name
 internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModuleFragment) :
   IrMetroContext by context {
 
-  fun generateHint(
-    sourceClass: IrClass,
-    hintName: Name,
-    hintAnnotations: List<IrAnnotation> = emptyList(),
-  ): IrSimpleFunction {
+  fun generateHint(sourceClass: IrClass, hintName: Name): IrSimpleFunction {
     val function =
       pluginContext.irFactory
         .buildFun {
@@ -83,7 +79,6 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
               kind = IrParameterKind.Regular
             }
           body = stubExpressionBody()
-          annotations += hintAnnotations.map { it.ir }
         }
 
     val fileName = hintFileName(sourceClass.classIdOrFail, hintName)
@@ -128,6 +123,9 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
     moduleFragment.addFile(hintFile)
     hintFile.addChild(function)
     pluginContext.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(function)
+    // Link the hint back to the source class so source class changes in IC also mark this hint
+    // https://github.com/ZacSweers/metro/pull/1349
+    trackClassLookup(function, sourceClass)
     hintFile.dumpToMetroLog(fakeNewPath.name)
     return function
   }
