@@ -59,6 +59,8 @@ gradlePlugin {
   }
 }
 
+kotlin.compilerOptions.optIn.add("dev.zacsweers.metro.gradle.DelicateMetroGradleApi")
+
 dependencies {
   compileOnly(libs.kotlin.gradlePlugin)
   compileOnly(libs.kotlin.gradlePlugin.api)
