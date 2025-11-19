@@ -122,7 +122,10 @@ case "$1" in
        rm -rf samples/kotlin-js-store
        ./gradlew clean --quiet
        ./gradlew spotlessApply apiDump kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks --no-build-cache --no-configuration-cache --quiet
-       ./gradlew -p samples spotlessApply kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --no-configuration-cache --quiet
+       cd samples
+       ./gradlew clean --quiet
+       ./gradlew spotlessApply kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --no-configuration-cache --quiet
+       cd ..
        ;;
 
    "gen-compat")
