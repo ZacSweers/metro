@@ -70,7 +70,7 @@ wire = { id = "com.squareup.wire", version.ref = "wire" }
 androidx-activity = "androidx.activity:activity-compose:1.11.0"
 androidx-appcompat = "androidx.appcompat:appcompat:1.7.1"
 androidx-compose-material3 = "androidx.compose.material3:material3:1.4.0"
-androidx-compose-materialNavigation = "androidx.compose.material:material-navigation:1.9.4"
+androidx-compose-materialNavigation = "androidx.compose.material:material-navigation:1.9.5"
 androidx-core = "androidx.core:core-ktx:1.17.0"
 androidx-fragment = "androidx.fragment:fragment-ktx:1.8.9"
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
