@@ -8,7 +8,6 @@ import dev.zacsweers.metro.compiler.graph.GraphTopology
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.graph.DependencyGraphNode
 import dev.zacsweers.metro.compiler.isInvisibleGeneratedGraph
-import java.util.SortedMap
 import java.util.SortedSet
 
 /**

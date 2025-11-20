@@ -565,11 +565,7 @@ internal class IrGraphGenerator(
       val propertyBindings =
         propertyInitializers.map { (property, initializer) ->
           PropertyBinding(
-            property =
-              property.apply {
-                // Make backing fields internal to prevent property access errors from shards.
-                backingField?.visibility = DescriptorVisibilities.INTERNAL
-              },
+            property = property,
             typeKey = propertiesToTypeKeys.getValue(property),
             initializer = initializer,
           )

@@ -133,15 +133,15 @@ interface TestGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : TestGraph {
-    private val service1Provider: Provider<Service1>
+    private lateinit var service1Provider: Provider<Service1>
 
-    private val provideService1Provider: Provider<Any>
+    private lateinit var provideService1Provider: Provider<Any>
 
-    private val service2Provider: Provider<Service2>
+    private lateinit var service2Provider: Provider<Service2>
 
-    private val provideService2Provider: Provider<Any>
+    private lateinit var provideService2Provider: Provider<Any>
 
-    private val collectorProvider: Provider<Collector>
+    private lateinit var collectorProvider: Provider<Collector>
 
     private val shard1: Shard1
       get(): Shard1 {

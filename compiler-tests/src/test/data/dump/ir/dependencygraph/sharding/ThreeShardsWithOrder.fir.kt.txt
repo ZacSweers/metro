@@ -221,15 +221,15 @@ interface TestGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : TestGraph {
-    private val s1Provider: Provider<S1>
+    private lateinit var s1Provider: Provider<S1>
 
-    private val s2Provider: Provider<S2>
+    private lateinit var s2Provider: Provider<S2>
 
-    private val s3Provider: Provider<S3>
+    private lateinit var s3Provider: Provider<S3>
 
-    private val s4Provider: Provider<S4>
+    private lateinit var s4Provider: Provider<S4>
 
-    private val s5Provider: Provider<S5>
+    private lateinit var s5Provider: Provider<S5>
 
     private val shard1: Shard1
       get(): Shard1 {
