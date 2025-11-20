@@ -125,7 +125,7 @@ internal fun <TypeKey : Comparable<TypeKey>, Binding> buildFullAdjacency(
  * @param componentOf Mapping from vertex to component ID.
  * @param componentDag The DAG of components (edges between component IDs).
  */
-internal data class TopoSortResult<T>(
+internal data class GraphTopology<T>(
   val sortedKeys: List<T>,
   val deferredTypes: Set<T>,
   val reachableKeys: Set<T>,
@@ -183,7 +183,7 @@ internal fun <V : Comparable<V>> topologicalSort(
   parentTracer: Tracer = Tracer.NONE,
   isImplicitlyDeferrable: (V) -> Boolean = { false },
   onSortedCycle: (List<V>) -> Unit = {},
-): TopoSortResult<V> {
+): GraphTopology<V> {
   val deferredTypes = mutableSetOf<V>()
 
   // Collapse the graph into strongly‑connected components
@@ -256,7 +256,7 @@ internal fun <V : Comparable<V>> topologicalSort(
       }
     }
 
-  return TopoSortResult(
+  return GraphTopology(
     // Expand each component back to its original vertices
     sortedKeys,
     deferredTypes,

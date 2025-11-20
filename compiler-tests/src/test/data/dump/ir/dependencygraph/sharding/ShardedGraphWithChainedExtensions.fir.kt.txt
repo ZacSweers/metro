@@ -408,11 +408,11 @@ interface AppGraph : MetroContributionToAppScope {
     private val appGraphProvider: Provider<AppGraph>
       field = Companion.invoke<AppGraph>(value = <this>.#thisGraphInstance)
 
-    private val appService1Provider: Provider<AppService1>
+    private lateinit var appService1Provider: Provider<AppService1>
 
-    private val appService2Provider: Provider<AppService2>
+    private lateinit var appService2Provider: Provider<AppService2>
 
-    private val appService3Provider: Provider<AppService3>
+    private lateinit var appService3Provider: Provider<AppService3>
 
     private val shard1: Shard1
       get(): Shard1 {

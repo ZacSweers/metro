@@ -1,6 +1,15 @@
 // KEYS_PER_GRAPH_SHARD: 2
 // ENABLE_GRAPH_SHARDING: true
 
+/*
+ * This test verifies that @Provides bindings work correctly with sharding.
+ *
+ * Graph structure: @Provides methods providing String and Int, consumed by Service3
+ * Expected shards: @Provides bindings distributed across shards
+ *
+ * Validation: @Provides bindings are accessible across shard boundaries
+ */
+
 @SingleIn(AppScope::class) @Inject class Service1
 
 class Service2(val s1: Service1)
