@@ -63,9 +63,8 @@ internal sealed interface ProviderFactory : IrMetroFactory, IrBindingContainerCa
       clazz: IrClass,
       mirrorFunction: IrSimpleFunction,
       sourceAnnotations: MetroAnnotations<IrAnnotation>?,
+      callableMetadata: IrCallableMetadata,
     ): Metro {
-      val callableMetadata =
-        clazz.irCallableMetadata(mirrorFunction, sourceAnnotations, isInterop = false)
       val typeKey = sourceTypeKey.copy(qualifier = callableMetadata.annotations.qualifier)
 
       return Metro(
