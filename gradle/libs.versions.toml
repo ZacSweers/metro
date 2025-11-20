@@ -67,7 +67,7 @@ testkit = { id = "com.autonomousapps.testkit", version = "0.17" }
 wire = { id = "com.squareup.wire", version.ref = "wire" }
 
 [libraries]
-androidx-activity = "androidx.activity:activity-compose:1.11.0"
+androidx-activity = "androidx.activity:activity-compose:1.12.0"
 androidx-appcompat = "androidx.appcompat:appcompat:1.7.1"
 androidx-compose-material3 = "androidx.compose.material3:material3:1.4.0"
 androidx-compose-materialNavigation = "androidx.compose.material:material-navigation:1.9.5"
