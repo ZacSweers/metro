@@ -18,6 +18,7 @@ import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.bindingTypeOrNull
 import dev.zacsweers.metro.compiler.ir.graph.sharding.ShardingOrchestrator
+import dev.zacsweers.metro.compiler.ir.hasErrorTypes
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.locationOrNull
@@ -60,7 +61,6 @@ import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
-import org.jetbrains.kotlin.types.model.isError
 
 internal class IrBindingGraph(
   private val metroContext: IrMetroContext,
@@ -410,15 +410,13 @@ internal class IrBindingGraph(
 
   private fun missingBindingHints(key: IrTypeKey, stack: IrBindingStack): List<String> {
     return buildList {
-      context(metroContext.irTypeSystemContext) {
-        // Error types we can't do anything with
-        if (key.type.isError()) {
-          add(
-            "Binding '${key.render(short = false, includeQualifier = true)}' is an error type and appears to be missing from the compile classpath."
-          )
-          return@buildList
-        }
+      if (key.type.hasErrorTypes()) {
+        add(
+          "Binding '${key.render(short = false, includeQualifier = true)}' is an error type and appears to be missing from the compile classpath."
+        )
+        return@buildList
       }
+
       key.type.rawTypeOrNull()?.let { klass ->
         if (
           klass.origin == IrDeclarationOrigin.IR_EXTERNAL_DECLARATION_STUB &&
@@ -458,11 +456,9 @@ internal class IrBindingGraph(
       // Use a map to avoid reporting duplicates
       val similarBindings = mutableMapOf<IrTypeKey, SimilarBinding>()
 
-      context(metroContext.irTypeSystemContext) {
-        // Error types we can't do anything with
-        if (key.type.isError()) {
-          return similarBindings
-        }
+      // Error types we can't do anything with
+      if (key.type.hasErrorTypes()) {
+        return similarBindings
       }
 
       // Same type with different qualifier
@@ -504,6 +500,9 @@ internal class IrBindingGraph(
 
       // Iterate through all bindings to find similar ones
       allBindings.forEach { (bindingKey, binding) ->
+        if (bindingKey.type.hasErrorTypes()) {
+          error("wtf")
+        }
         when {
           bindingKey.type == key.type && key.qualifier != bindingKey.qualifier -> {
             similarBindings.putIfAbsent(

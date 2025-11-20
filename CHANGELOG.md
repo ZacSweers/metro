@@ -4,6 +4,15 @@ Changelog
 **Unreleased**
 --------------
 
+- **Fix**: Catch more `IrErrorType` error types cases and report context/advice where possible.
+
+0.7.7
+-----
+
+_2025-11-19_
+
+- Add `MetroCompilerPluginRegistrar.pluginId` for forward compatibility with Kotlin `2.3.0`'s new API.
+
 0.7.6
 -----
 

@@ -7,6 +7,7 @@ import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrTypeParametersContainer
 import org.jetbrains.kotlin.ir.symbols.IrTypeParameterSymbol
+import org.jetbrains.kotlin.ir.types.IrErrorType
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeArgument
@@ -223,3 +224,34 @@ internal fun IrClass.allSupertypesSequence(
 context(context: IrPluginContext)
 internal val IrTypeArgument.typeOrNullableAny: IrType
   get() = (this as? IrTypeProjection)?.type ?: context.irBuiltIns.anyNType
+
+internal fun IrType.hasErrorTypes(): Boolean {
+  // Quick base checks
+  if (this is IrErrorType) return true
+  if (this !is IrSimpleType) return false
+
+  val visited = hashSetOf<IrType>()
+
+  val stack = ArrayDeque<IrType>()
+  stack.add(this)
+
+  while (stack.isNotEmpty()) {
+    val current = stack.removeLast()
+
+    // fail-fast
+    if (current is IrErrorType) return true
+
+    if (!visited.add(current)) continue
+
+    // recurse
+    if (current is IrSimpleType) {
+      for (arg in current.arguments) {
+        if (arg is IrTypeProjection) {
+          stack.add(arg.type)
+        }
+      }
+    }
+  }
+
+  return false
+}
