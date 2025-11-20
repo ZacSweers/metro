@@ -207,7 +207,7 @@ interface TestGraph {
 @ContributesTo(scope = AppScope::class)
 object AppModule {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideService2", propertyName = "", startOffset = 400, endOffset = 499)
+  @CallableMetadata(callableName = "provideService2", propertyName = "", startOffset = 656, endOffset = 755)
   class ProvideService2MetroFactory : Factory<Service2> {
     private /* final field */ val s1: Provider<Service1> = s1
     companion object Companion {
