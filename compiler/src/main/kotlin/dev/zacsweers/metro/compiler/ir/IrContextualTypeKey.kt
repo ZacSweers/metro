@@ -231,9 +231,7 @@ internal fun IrType.asContextualTypeKey(
   patchMutableCollections: Boolean,
   declaration: IrDeclaration?,
 ): IrContextualTypeKey {
-  check(this is IrSimpleType) { "Unrecognized IrType '${javaClass}': ${render()}" }
-
-  val declaredType = this
+  val declaredType = requireSimpleType(declaration)
 
   // Analyze the type to determine its wrapped structure
   val wrappedType = declaredType.asWrappedType(patchMutableCollections, declaration)

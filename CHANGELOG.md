@@ -4,6 +4,8 @@ Changelog
 **Unreleased**
 --------------
 
+- **Fix**: Catch more `IrErrorType` error types cases and report context/advice where possible.
+
 0.7.7
 -----
 

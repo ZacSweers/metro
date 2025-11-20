@@ -1600,25 +1600,51 @@ internal fun IrDeclarationWithVisibility.isVisibleAsInternal(file: IrFile): Bool
 }
 
 context(context: IrMetroContext)
-internal fun IrType.requireSimpleType(declaration: IrDeclaration? = null): IrSimpleType {
-  return requireSimpleType(declaration, context)
+internal fun IrType.requireSimpleType(
+  declaration: IrDeclaration? = null,
+  extraContext: StringBuilder.() -> Unit = {},
+): IrSimpleType {
+  return requireSimpleType(declaration, context, extraContext)
 }
 
 internal fun IrType.requireSimpleType(
   declaration: IrDeclaration? = null,
   context: IrMetroContext? = null,
+  extraContext: StringBuilder.() -> Unit = {},
 ): IrSimpleType {
-  if (this is IrSimpleType) return this
-
-  if (this is IrErrorType) {
+  // Check for error types in any type args and error early if so
+  // This can happen if an upstream factory exposes a type that is not visible in the public API
+  if (hasErrorTypes()) {
+    val isExternalStub =
+      declaration?.origin == IrDeclarationOrigin.IR_EXTERNAL_DECLARATION_STUB ||
+        declaration?.origin == IrDeclarationOrigin.IR_EXTERNAL_JAVA_DECLARATION_STUB
     val message =
-      "Unexpected IR error type. Make sure you don't have any missing dependencies or imports."
-    if (declaration != null && context != null) {
-      context.reportCompat(declaration, MetroDiagnostics.METRO_ERROR, message)
+      buildString {
+          appendLine(
+            "Encountered an unexpected error while processing type: '${render(short = false)}'"
+          )
+          if (isExternalStub) {
+            appendLine(
+              "- Note: the IR compiler may be omitting required generic arguments from the render"
+            )
+          }
+          appendLine("- Make sure you don't have any missing dependencies or imports")
+          if (isExternalStub) {
+            appendLine(
+              "- This type appears to be from a library. If so, make sure the library exposes this type as a visible dependency (i.e. \"api\" dependency in Gradle)."
+            )
+          }
+        }
+        .trimEnd()
+    if (context != null) {
+      context.reportCompat(declaration, MetroDiagnostics.METRO_ERROR, message, extraContext)
+      // Bomb out early because we don't wanna poison the binding graph construction later
       exitProcessing()
     } else {
       error(message)
     }
+  } else if (this is IrSimpleType) {
+    return this
   } else {
     reportCompilerBug(
       "Expected $this to be an ${IrSimpleType::class.qualifiedName} but was ${this::class.qualifiedName}"

@@ -24,6 +24,7 @@ import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.findAnnotations
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.includedClasses
+import dev.zacsweers.metro.compiler.ir.irCallableMetadata
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
@@ -40,6 +41,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.ir.render
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
@@ -370,6 +372,8 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
         clazz = factoryCls,
         mirrorFunction = mirrorFunction,
         sourceAnnotations = reference.annotations,
+        callableMetadata =
+          factoryCls.irCallableMetadata(mirrorFunction, reference.annotations, isInterop = false),
       )
 
     factoryCls.dumpToMetroLog()
@@ -708,15 +712,33 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
   private fun externalProviderFactoryFor(factoryCls: IrClass): ProviderFactory.Metro {
     // Extract IrTypeKey from Factory supertype
     // Qualifier will be populated in ProviderFactory construction
-    val factoryType = factoryCls.superTypes.first { it.classOrNull == metroSymbols.metroFactory }
-    val typeKey = IrTypeKey(factoryType.requireSimpleType().arguments.first().typeOrFail)
     val mirrorFunction = factoryCls.requireSimpleFunction(Symbols.StringNames.MIRROR_FUNCTION).owner
-    return ProviderFactory(
-      typeKey,
-      factoryCls,
-      mirrorFunction,
-      mirrorFunction.metroAnnotations(metroSymbols.classIds),
-    )
+    val sourceAnnotations = mirrorFunction.metroAnnotations(metroSymbols.classIds)
+    val callableMetadata =
+      factoryCls.irCallableMetadata(mirrorFunction, sourceAnnotations, isInterop = false)
+    val factoryType =
+      factoryCls.superTypes
+        .first { it.classOrNull == metroSymbols.metroFactory }
+        .requireSimpleType(factoryCls) {
+          appendLine()
+          appendLine("(hint)")
+          val shortPath = buildString {
+            append(callableMetadata.callableId.classId!!.shortClassName)
+            append(".")
+            append(callableMetadata.callableId.callableName)
+            if (!callableMetadata.isPropertyAccessor) {
+              append("(...)")
+            }
+            append(": ")
+            append(callableMetadata.function.returnType.render(short = true))
+          }
+          appendLine(
+            "This is a generated factory class for the '$shortPath' @Provides declaration, which is likely where the missing type is originally exposed."
+          )
+        }
+
+    val typeKey = IrTypeKey(factoryType.requireSimpleType(factoryCls).arguments.first().typeOrFail)
+    return ProviderFactory(typeKey, factoryCls, mirrorFunction, sourceAnnotations, callableMetadata)
   }
 
   private fun loadExternalBindingContainer(
