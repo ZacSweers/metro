@@ -1048,6 +1048,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#can-metro-do-hilts-automatic-aggregation-of-transitive-dependencies-aggregated-bindings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Can Metro do Hilt&rsquo;s automatic aggregation of transitive dependencies&rsquo; aggregated bindings?
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1381,6 +1392,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#can-metro-do-hilts-automatic-aggregation-of-transitive-dependencies-aggregated-bindings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Can Metro do Hilt&rsquo;s automatic aggregation of transitive dependencies&rsquo; aggregated bindings?
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1466,6 +1488,13 @@
 <p>Hilt&rsquo;s <code>@HiltAndroidTest</code> and associated rule allow tests to &ldquo;replace&rdquo; bindings in a target graph even if it&rsquo;s compiled in another project.</p>
 </div>
 <p>Metro supports dynamic replacements via a similar feature called <a href="https://zacsweers.github.io/metro/latest/dependency-graphs/#dynamic-graphs">dynamic graphs</a>.</p>
+<h3 id="can-metro-do-hilts-automatic-aggregation-of-transitive-dependencies-aggregated-bindings">Can Metro do Hilt&rsquo;s automatic aggregation of transitive dependencies&rsquo; aggregated bindings?<a class="headerlink" href="#can-metro-do-hilts-automatic-aggregation-of-transitive-dependencies-aggregated-bindings" title="Permanent link">&para;</a></h3>
+<div class="admonition tip">
+<p class="admonition-title">Some technical context</p>
+<p>Hilt can automatically aggregate transitive dependencies&rsquo; contributed bindings even if they are not explicitly visible to the consuming project.</p>
+</div>
+<p>In short: no. The fact that Hilt does this is a bad thing in my opinion. It essentially defeats the purpose of incremental compilation because you have to write your own version in a dedicated classpath scanning Gradle task that then generates stub sources for all the stuff you were trying to hide upstream.</p>
+<p>In Metro, you must play by kotlinc&rsquo;s native incremental compilation rules. If you want to aggregate bindings from transitive dependencies, you must expose them in that project (i.e. Gradle <code>api</code> dependencies) or explicitly declare those dependencies in the consuming project.</p>
 
 
 
