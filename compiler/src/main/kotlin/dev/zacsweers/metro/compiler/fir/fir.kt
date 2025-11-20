@@ -1414,3 +1414,6 @@ internal fun FirClassLikeSymbol<*>.bindingContainerErrorMessage(
     null
   }
 }
+
+internal inline val FirClassSymbol<*>.isLocalClassOrAnonymousObject: Boolean
+  get() = classId.isLocal || this is FirAnonymousObjectSymbol
