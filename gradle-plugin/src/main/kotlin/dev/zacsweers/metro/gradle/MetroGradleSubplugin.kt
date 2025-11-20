@@ -141,7 +141,12 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         KotlinPlatformType.wasm -> false
       }
 
-    // Ensure that the languageVersion is 2.x
+    // Order before compose-compiler
+      task.compilerOptions.freeCompilerArgs.add(
+        "-Xcompiler-plugin-order=${PLUGIN_ID}>androidx.compose.compiler.plugins.kotlin"
+      )
+
+      // Ensure that the languageVersion is 2.x
     kotlinCompilation.compileTaskProvider.configure { task ->
       task.doFirst { innerTask ->
         val compilerOptions = (innerTask as KotlinCompilationTask<*>).compilerOptions
