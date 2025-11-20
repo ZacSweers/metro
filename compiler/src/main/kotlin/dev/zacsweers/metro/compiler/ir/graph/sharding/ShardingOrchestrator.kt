@@ -77,8 +77,8 @@ internal class ShardingOrchestrator(
     val isolatedKeys = sortedKeys.filter { componentOf[it] == null && adjacency.containsKey(it) }
 
     // Append components to shards, respecting size limits
-    for (cid in orderedComponents) {
-      val component = components[cid]
+    for (componentId in orderedComponents) {
+      val component = components[componentId]
       val validKeys = component.vertices.filter(adjacency::containsKey)
       if (validKeys.isEmpty()) continue
 
