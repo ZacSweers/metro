@@ -1416,6 +1416,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     public void testInjectingAStarParameterizedType() {
       runTest("compiler-tests/src/test/data/box/member/InjectingAStarParameterizedType.kt");
     }
+
+    @Test
+    @TestMetadata("MembersInjectorRespectMultibindingQualifier.kt")
+    public void testMembersInjectorRespectMultibindingQualifier() {
+      runTest("compiler-tests/src/test/data/box/member/MembersInjectorRespectMultibindingQualifier.kt");
+    }
   }
 
   @Nested
