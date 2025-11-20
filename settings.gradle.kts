@@ -42,6 +42,7 @@ include(
   ":interop-jakarta",
   ":interop-guice",
   ":runtime",
+  ":metrox:android",
 )
 
 // Include compiler-compat versions
