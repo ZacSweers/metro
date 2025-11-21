@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.gradle.artifacts
 
 import kotlin.io.path.bufferedWriter
-import kotlin.io.path.createDirectories
 import kotlin.io.path.deleteIfExists
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
@@ -68,6 +67,9 @@ public abstract class GenerateGraphMetadataTask : DefaultTask() {
   // TODO sort outputs further?
   @TaskAction
   public fun generate() {
+    val output = outputFile.get().asFile.toPath()
+    output.deleteIfExists()
+
     val graphJsonElements =
       graphJsonFiles
         .asSequence()
@@ -91,9 +93,6 @@ public abstract class GenerateGraphMetadataTask : DefaultTask() {
       put("graphs", JsonArray(graphJsonElements))
     }
 
-    val output = outputFile.get().asFile.toPath()
-    output.parent?.createDirectories()
-    output.deleteIfExists()
     output.bufferedWriter().use { writer ->
       writer.write(json.encodeToString(JsonObject.serializer(), result))
     }
