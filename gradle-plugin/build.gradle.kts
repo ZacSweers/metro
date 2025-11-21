@@ -1,6 +1,7 @@
 // Copyright (C) 2024 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 import java.util.Locale
+import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
@@ -90,8 +91,22 @@ tasks.withType<Test>().configureEach {
     providers.gradleProperty("VERSION_NAME").get(),
   )
   systemProperty("dev.zacsweers.metro.gradle.test.kotlin-version", testCompilerVersion)
+  systemProperty("metro.agpVersion", libs.versions.agp.get())
+  systemProperty("metro.androidHome", androidHomeOrNull()?.absolutePath)
 }
 
 tasks
   .named { it == "publishTestKitSupportForJavaPublicationToFunctionalTestRepository" }
   .configureEach { mustRunAfter("signPluginMavenPublication") }
+
+fun androidHomeOrNull(): File? {
+  val localProps = rootProject.file("local.properties")
+  if (localProps.exists()) {
+    val properties = Properties()
+    localProps.inputStream().use { properties.load(it) }
+    val sdkHome = properties.getProperty("sdk.dir")?.let(::File)
+    if (sdkHome?.exists() == true) return sdkHome
+  }
+  val androidHome = System.getenv("ANDROID_HOME")?.let(::File)
+  return if (androidHome?.exists() == true) androidHome else null
+}
