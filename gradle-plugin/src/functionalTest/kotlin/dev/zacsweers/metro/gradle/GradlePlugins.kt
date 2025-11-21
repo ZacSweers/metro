@@ -10,8 +10,14 @@ object GradlePlugins {
 
   val metro = Plugin("dev.zacsweers.metro", pluginVersion)
 
+  val agpKmp =
+    Plugin("com.android.kotlin.multiplatform.library", System.getProperty("metro.agpVersion"))
+
   object Kotlin {
     fun jvm(version: String? = null) =
       Plugin("org.jetbrains.kotlin.jvm", version ?: getTestCompilerVersion())
+
+    fun multiplatform(version: String? = null) =
+      Plugin("org.jetbrains.kotlin.multiplatform", version ?: getTestCompilerVersion())
   }
 }
