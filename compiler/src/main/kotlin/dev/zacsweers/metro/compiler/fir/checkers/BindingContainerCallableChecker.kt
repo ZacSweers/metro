@@ -286,7 +286,6 @@ internal object BindingContainerCallableChecker :
               when (declaration) {
                 is FirSimpleFunction -> FirTypeKey.from(session, declaration)
                 is FirProperty -> FirTypeKey.from(session, declaration)
-                else -> return
               }
             val receiverTypeKey =
               FirTypeKey.from(session, declaration.receiverParameter!!, declaration)
