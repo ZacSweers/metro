@@ -66,3 +66,12 @@ The rest of Hilt's features focus on gluing these pieces together and also suppo
     Hilt's `@HiltAndroidTest` and associated rule allow tests to "replace" bindings in a target graph even if it's compiled in another project.
 
 Metro supports dynamic replacements via a similar feature called [dynamic graphs](https://zacsweers.github.io/metro/latest/dependency-graphs/#dynamic-graphs).
+
+### Can Metro do Hilt's automatic aggregation of transitive dependencies' aggregated bindings?
+
+!!! tip "Some technical context"
+    Hilt can automatically aggregate transitive dependencies' contributed bindings even if they are not explicitly visible to the consuming project.
+
+In short: no. The fact that Hilt does this is a bad thing in my opinion. It essentially defeats the purpose of incremental compilation because you have to write your own version in a dedicated classpath scanning Gradle task that then generates stub sources for all the stuff you were trying to hide upstream.
+
+In Metro, you must play by kotlinc's native incremental compilation rules. If you want to aggregate bindings from transitive dependencies, you must expose them in that project (i.e. Gradle `api` dependencies) or explicitly declare those dependencies in the consuming project.
