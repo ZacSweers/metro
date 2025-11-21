@@ -320,8 +320,6 @@ Any assisted context parameters will be carried as context parameters to the gen
 
 ### Why opt-in?
 
-There are two reasons this is behind an opt-in option at the moment.
-
 There are three reasons this is behind an opt-in option at the moment.
 
 1. Generating top-level declarations in Kotlin compiler plugins (in FIR specifically) is not
