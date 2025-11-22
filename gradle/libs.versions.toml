@@ -16,7 +16,7 @@
 agp = "8.13.1"
 androidx-lifecycle = "2.10.0"
 androidx-lint-gradle = "1.0.0-alpha05"
-anvil = "0.4.1"
+anvil = "0.5.0"
 atomicfu = "0.29.0"
 autoService = "1.1.1"
 circuit = "0.30.0"
