@@ -110,8 +110,13 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         KotlinPlatformType.wasm -> false
       }
 
-    // Ensure that the languageVersion is 2.x
     kotlinCompilation.compileTaskProvider.configure { task ->
+      // Order before compose-compiler
+      task.compilerOptions.freeCompilerArgs.add(
+        "-Xcompiler-plugin-order=${PLUGIN_ID}>androidx.compose.compiler.plugins.kotlin"
+      )
+
+      // Ensure that the languageVersion is 2.x
       task.doFirst { innerTask ->
         val compilerOptions = (innerTask as KotlinCompilationTask<*>).compilerOptions
         val languageVersion = compilerOptions.languageVersion.orNull ?: return@doFirst
@@ -122,10 +127,13 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
     }
 
     project.dependencies.add(
-      kotlinCompilation.implementationConfigurationName,
+      kotlinCompilation.defaultSourceSet.implementationConfigurationName,
       "dev.zacsweers.metro:runtime:$VERSION",
     )
-    if (kotlinCompilation.implementationConfigurationName == "metadataCompilationImplementation") {
+    if (
+      kotlinCompilation.defaultSourceSet.implementationConfigurationName ==
+        "metadataCompilationImplementation"
+    ) {
       project.dependencies.add("commonMainImplementation", "dev.zacsweers.metro:runtime:$VERSION")
     }
 
@@ -135,13 +143,13 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
     if (isJvmTarget) {
       if (extension.interop.enableDaggerRuntimeInterop.getOrElse(false)) {
         project.dependencies.add(
-          kotlinCompilation.implementationConfigurationName,
+          kotlinCompilation.defaultSourceSet.implementationConfigurationName,
           "dev.zacsweers.metro:interop-dagger:$VERSION",
         )
       }
       if (extension.interop.enableGuiceRuntimeInterop.getOrElse(false)) {
         project.dependencies.add(
-          kotlinCompilation.implementationConfigurationName,
+          kotlinCompilation.defaultSourceSet.implementationConfigurationName,
           "dev.zacsweers.metro:interop-guice:$VERSION",
         )
       }

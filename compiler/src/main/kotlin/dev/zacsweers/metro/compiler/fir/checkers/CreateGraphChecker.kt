@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CREATE_DYNAMIC_GRAPH_ER
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CREATE_GRAPH_ERROR
 import dev.zacsweers.metro.compiler.fir.bindingContainerErrorMessage
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.isLocalClassOrAnonymousObject
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.nestedClasses
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
@@ -14,7 +15,6 @@ import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirFunctionCallChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.findClosestClassOrObject
-import org.jetbrains.kotlin.fir.declarations.utils.isLocalClassOrAnonymousObject
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.FirSpreadArgumentExpression

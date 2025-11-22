@@ -18,7 +18,7 @@ import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
 
 public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
 
-  public val pluginId: String = PLUGIN_ID
+  override val pluginId: String = PLUGIN_ID
 
   override val supportsK2: Boolean
     get() = true
