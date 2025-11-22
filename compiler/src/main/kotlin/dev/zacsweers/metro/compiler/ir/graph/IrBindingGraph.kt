@@ -17,6 +17,7 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.bindingTypeOrNull
+import dev.zacsweers.metro.compiler.ir.graph.sharding.ShardingOrchestrator
 import dev.zacsweers.metro.compiler.ir.hasErrorTypes
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
@@ -100,6 +101,8 @@ internal class IrBindingGraph(
   private val injectors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
   private val extraKeeps = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
   private val reservedProperties = mutableMapOf<IrTypeKey, ParentContext.PropertyAccess>()
+  private val shardingOrchestrator =
+    ShardingOrchestrator(node = node, options = metroContext.options)
 
   // Thin immutable view over the internal bindings
   fun bindingsSnapshot(): Map<IrTypeKey, IrBinding> = realGraph.bindings
@@ -224,6 +227,7 @@ internal class IrBindingGraph(
     val sortedKeys: List<IrTypeKey>,
     val deferredTypes: Set<IrTypeKey>,
     val reachableKeys: Set<IrTypeKey>,
+    val shardGroups: List<List<IrTypeKey>>?,
     val hasErrors: Boolean,
   )
 
@@ -231,7 +235,7 @@ internal class IrBindingGraph(
 
   fun seal(parentTracer: Tracer, onError: (List<GraphError>) -> Unit): BindingGraphResult =
     context(metroContext) {
-      val (sortedKeys, deferredTypes, reachableKeys) =
+      val topologyResult =
         parentTracer.traceNested("seal graph") { tracer ->
           val roots = buildMap {
             putAll(accessors)
@@ -259,8 +263,12 @@ internal class IrBindingGraph(
           )
         }
 
+      val sortedKeys = topologyResult.sortedKeys
+      val deferredTypes = topologyResult.deferredTypes
+      val reachableKeys = topologyResult.reachableKeys
+
       if (hasErrors) {
-        return BindingGraphResult(emptyList(), emptySet(), emptySet(), true)
+        return BindingGraphResult(emptyList(), emptySet(), emptySet(), emptyList(), true)
       }
 
       writeDiagnostic("keys-validated-${parentTracer.tag}.txt") {
@@ -285,7 +293,13 @@ internal class IrBindingGraph(
           "Found absent bindings in the binding graph: ${dumpGraph("Absent bindings", short = true)}"
         }
       }
-      return BindingGraphResult(sortedKeys, deferredTypes, reachableKeys, false)
+
+      val shardGroups =
+        parentTracer.traceNested("compute shard groups") {
+          shardingOrchestrator.computeShardGroups(topologyResult)
+        }
+
+      return BindingGraphResult(sortedKeys, deferredTypes, reachableKeys, shardGroups, false)
     }
 
   fun reportDuplicateBinding(
