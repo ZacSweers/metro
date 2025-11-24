@@ -403,7 +403,8 @@ internal class InjectConstructorTransformer(
       // If compose compiler has already run, the looked up function may be the _old_ function
       // and we need to update the reference to the newly transformed one
       val hasComposeCompilerRun =
-        invokeFunction.regularParameters.lastOrNull()?.name?.asString() == "\$changed"
+        options.pluginOrderSet?.let { !it }
+          ?: (invokeFunction.regularParameters.lastOrNull()?.name?.asString() == $$"$changed")
       if (hasComposeCompilerRun) {
         val originalParent = targetCallable.owner.file
         targetCallable =
