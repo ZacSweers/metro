@@ -16,7 +16,9 @@ import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 import org.jetbrains.kotlin.gradle.plugin.SubpluginArtifact
 import org.jetbrains.kotlin.gradle.plugin.SubpluginOption
 import org.jetbrains.kotlin.gradle.plugin.getKotlinPluginVersion
+import org.jetbrains.kotlin.gradle.plugin.kotlinToolingVersion
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
+import org.jetbrains.kotlin.tooling.core.KotlinToolingVersion
 
 public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
   private companion object {
@@ -141,10 +143,15 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         KotlinPlatformType.wasm -> false
       }
 
-    // Order before compose-compiler
-      task.compilerOptions.freeCompilerArgs.add(
-        "-Xcompiler-plugin-order=${PLUGIN_ID}>androidx.compose.compiler.plugins.kotlin"
-      )
+    val kotlinVersion = project.kotlinToolingVersion
+    val orderComposePlugin = kotlinVersion >= KotlinToolingVersion(2, 3, 0, null)
+    kotlinCompilation.compileTaskProvider.configure { task ->
+      if (orderComposePlugin) {
+        // Order before compose-compiler
+        task.compilerOptions.freeCompilerArgs.add(
+          "-Xcompiler-plugin-order=${PLUGIN_ID}>androidx.compose.compiler.plugins.kotlin"
+        )
+      }
 
       // Ensure that the languageVersion is 2.x
     kotlinCompilation.compileTaskProvider.configure { task ->
@@ -262,6 +269,8 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
           )
         )
         add(lazyOption("contributes-as-inject", extension.contributesAsInject))
+        // Track whether we ordered the plugin before compose-compiler
+        add(SubpluginOption("plugin-order-set", orderComposePlugin.toString()))
         reportsDir.orNull
           ?.let { FilesSubpluginOption("reports-destination", listOf(it.asFile)) }
           ?.let(::add)
