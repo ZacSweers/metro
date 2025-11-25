@@ -299,6 +299,12 @@ abstract class MetroCompilerTest {
               MetroOption.INTEROP_INCLUDE_GUICE_ANNOTATIONS -> {
                 processor.option(entry.raw.cliOption, false)
               }
+              MetroOption.ENABLE_GRAPH_SHARDING -> {
+                processor.option(entry.raw.cliOption, enableGraphSharding)
+              }
+              MetroOption.KEYS_PER_GRAPH_SHARD -> {
+                processor.option(entry.raw.cliOption, keysPerGraphShard)
+              }
             }
           yield(option)
         }

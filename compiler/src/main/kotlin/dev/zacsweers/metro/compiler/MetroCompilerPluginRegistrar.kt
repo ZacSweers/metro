@@ -46,6 +46,14 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
       return
     }
 
+    if (options.keysPerGraphShard < 1) {
+      messageCollector.report(
+        CompilerMessageSeverity.ERROR,
+        "keysPerGraphShard must be greater than zero but was ${options.keysPerGraphShard}",
+      )
+      return
+    }
+
     if (options.debug) {
       messageCollector.report(CompilerMessageSeverity.INFO, "Metro options:\n$options")
     }
