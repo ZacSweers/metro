@@ -169,6 +169,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
   @TestDataPath("$PROJECT_ROOT")
   public class Dependencygraph {
     @Test
+    @TestMetadata("AllDuplicateBindingsAreReported.kt")
+    public void testAllDuplicateBindingsAreReported() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/AllDuplicateBindingsAreReported.kt");
+    }
+
+    @Test
     public void testAllFilesPresentInDependencygraph() {
       KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/dependencygraph"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
     }
