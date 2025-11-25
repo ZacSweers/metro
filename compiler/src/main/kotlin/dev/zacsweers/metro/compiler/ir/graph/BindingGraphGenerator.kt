@@ -120,6 +120,21 @@ internal class BindingGraphGenerator(
       superTypeToAlias.putIfAbsent(superTypeKey, node.typeKey)
     }
 
+    // Collect current node's transformed typeKeys for deduplication
+    // We need to use transformed keys because multibinding contributions use transformed qualifiers
+    val currentNodeProviderTypeKeys =
+      node.providerFactories.mapTo(mutableSetOf()) { (typeKey, factory) ->
+        if (factory.annotations.isIntoMultibinding) {
+          factory.typeKey.transformMultiboundQualifier(factory.annotations)
+        } else {
+          typeKey
+        }
+      }
+    val currentNodeBindsTypeKeys =
+      node.bindsCallables.mapTo(mutableSetOf()) { callable ->
+        callable.target.transformMultiboundQualifier(callable.callableMetadata.annotations)
+      }
+
     val inheritedProviderFactories =
       node.allExtendedNodes
         .flatMap { (_, extendedNode) ->
@@ -129,9 +144,27 @@ internal class BindingGraphGenerator(
             it.second.annotations.isScoped
           }
         }
+        // Filter out inherited providers whose transformed typeKey is already in the current node
+        .filterNot { (_, factory) ->
+          val transformedKey =
+            if (factory.annotations.isIntoMultibinding) {
+              factory.typeKey.transformMultiboundQualifier(factory.annotations)
+            } else {
+              factory.typeKey
+            }
+          transformedKey in currentNodeProviderTypeKeys
+        }
         .associateBy { it.second }
 
-    val inheritedBindsCallables = node.allExtendedNodes.values.flatMapToSet { it.bindsCallables }
+    val inheritedBindsCallables =
+      node.allExtendedNodes.values
+        .flatMapToSet { it.bindsCallables }
+        // Filter out inherited binds callables whose transformed typeKey is already in the current node
+        .filterNotTo(mutableSetOf()) { callable ->
+          val transformedKey =
+            callable.target.transformMultiboundQualifier(callable.callableMetadata.annotations)
+          transformedKey in currentNodeBindsTypeKeys
+        }
 
     val providerFactoriesToAdd = buildList {
       addAll(node.providerFactories)
