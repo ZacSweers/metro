@@ -286,6 +286,8 @@ jobs:
   publish:
     runs-on: macos-latest
     if: github.ref == 'refs/heads/main' && github.repository == 'zacsweers/metro'
+    # Sonatype keeps giving 429 errors lately, so no need to mark this as failure for now
+    continue-on-error: true
     needs:
       - final-status
 
