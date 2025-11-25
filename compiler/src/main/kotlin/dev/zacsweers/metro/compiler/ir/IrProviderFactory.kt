@@ -11,7 +11,16 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.name.CallableId
 
 internal sealed interface ProviderFactory : IrMetroFactory, IrBindingContainerCallable {
+  /**
+   * The canonical typeKey for this provider. For `@IntoSet`/`@IntoMap` bindings, this includes the
+   * unique `@MultibindingElement` qualifier. For non-multibinding providers, this equals
+   * [rawTypeKey].
+   */
   override val typeKey: IrTypeKey
+
+  /** The raw return type key without multibinding transformation. Used for diagnostics. */
+  val rawTypeKey: IrTypeKey
+
   val callableId: CallableId
   val annotations: MetroAnnotations<IrAnnotation>
   val parameters: Parameters
@@ -21,6 +30,7 @@ internal sealed interface ProviderFactory : IrMetroFactory, IrBindingContainerCa
   class Metro(
     override val factoryClass: IrClass,
     override val typeKey: IrTypeKey,
+    override val rawTypeKey: IrTypeKey,
     private val callableMetadata: IrCallableMetadata,
     parametersLazy: Lazy<Parameters>,
   ) : ProviderFactory {
@@ -47,6 +57,7 @@ internal sealed interface ProviderFactory : IrMetroFactory, IrBindingContainerCa
   class Dagger(
     override val factoryClass: IrClass,
     override val typeKey: IrTypeKey,
+    override val rawTypeKey: IrTypeKey,
     override val callableId: CallableId,
     override val annotations: MetroAnnotations<IrAnnotation>,
     override val parameters: Parameters,
@@ -65,11 +76,13 @@ internal sealed interface ProviderFactory : IrMetroFactory, IrBindingContainerCa
       sourceAnnotations: MetroAnnotations<IrAnnotation>?,
       callableMetadata: IrCallableMetadata,
     ): Metro {
-      val typeKey = sourceTypeKey.copy(qualifier = callableMetadata.annotations.qualifier)
+      val rawTypeKey = sourceTypeKey.copy(qualifier = callableMetadata.annotations.qualifier)
+      val typeKey = rawTypeKey.transformMultiboundQualifier(callableMetadata.annotations)
 
       return Metro(
         factoryClass = clazz,
         typeKey = typeKey,
+        rawTypeKey = rawTypeKey,
         callableMetadata = callableMetadata,
         parametersLazy = memoize { callableMetadata.function.parameters() },
       )

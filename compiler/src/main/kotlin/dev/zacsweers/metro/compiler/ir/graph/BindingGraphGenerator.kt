@@ -33,7 +33,6 @@ import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.trackMemberDeclarationCall
-import dev.zacsweers.metro.compiler.ir.transformMultiboundQualifier
 import dev.zacsweers.metro.compiler.ir.transformers.InjectConstructorTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -120,55 +119,29 @@ internal class BindingGraphGenerator(
       superTypeToAlias.putIfAbsent(superTypeKey, node.typeKey)
     }
 
-    // Collect current node's transformed typeKeys for deduplication
-    // We need to use transformed keys because multibinding contributions use transformed qualifiers
-    val currentNodeProviderTypeKeys =
-      node.providerFactories.mapTo(mutableSetOf()) { (typeKey, factory) ->
-        if (factory.annotations.isIntoMultibinding) {
-          factory.typeKey.transformMultiboundQualifier(factory.annotations)
-        } else {
-          typeKey
-        }
-      }
-    val currentNodeBindsTypeKeys =
-      node.bindsCallables.mapTo(mutableSetOf()) { callable ->
-        callable.target.transformMultiboundQualifier(callable.callableMetadata.annotations)
-      }
-
     val inheritedProviderFactories =
       node.allExtendedNodes
         .flatMap { (_, extendedNode) ->
-          extendedNode.providerFactories.filterNot {
+          extendedNode.providerFactories.entries.filterNot { (_, factory) ->
             // Do not include scoped providers as these should _only_ come from this graph
             // instance
-            it.second.annotations.isScoped
+            factory.annotations.isScoped
           }
         }
-        // Filter out inherited providers whose transformed typeKey is already in the current node
-        .filterNot { (_, factory) ->
-          val transformedKey =
-            if (factory.annotations.isIntoMultibinding) {
-              factory.typeKey.transformMultiboundQualifier(factory.annotations)
-            } else {
-              factory.typeKey
-            }
-          transformedKey in currentNodeProviderTypeKeys
-        }
-        .associateBy { it.second }
+        // Filter out inherited providers whose typeKey is already in the current node
+        .filterNot { (typeKey, _) -> typeKey in node.providerFactories }
+        .associate { it.toPair() }
 
     val inheritedBindsCallables =
       node.allExtendedNodes.values
-        .flatMapToSet { it.bindsCallables }
-        // Filter out inherited binds callables whose transformed typeKey is already in the current node
-        .filterNotTo(mutableSetOf()) { callable ->
-          val transformedKey =
-            callable.target.transformMultiboundQualifier(callable.callableMetadata.annotations)
-          transformedKey in currentNodeBindsTypeKeys
-        }
+        .flatMap { it.bindsCallables.entries }
+        // Filter out inherited binds callables whose typeKey is already in the current node
+        .filterNot { (typeKey, _) -> typeKey in node.bindsCallables }
+        .associate { it.toPair() }
 
     val providerFactoriesToAdd = buildList {
-      addAll(node.providerFactories)
-      addAll(inheritedProviderFactories.values)
+      addAll(node.providerFactories.entries)
+      addAll(inheritedProviderFactories.entries)
     }
 
     for ((typeKey, providerFactory) in providerFactoriesToAdd) {
@@ -182,18 +155,14 @@ internal class BindingGraphGenerator(
       if (
         !providerFactory.annotations.isIntoMultibinding &&
           typeKey in graph &&
-          providerFactory in inheritedProviderFactories
+          typeKey in inheritedProviderFactories
       ) {
         // If we already have a binding provisioned in this scenario, ignore the parent's version
         continue
       }
 
-      val targetTypeKey =
-        if (providerFactory.annotations.isIntoMultibinding) {
-          providerFactory.typeKey.transformMultiboundQualifier(providerFactory.annotations)
-        } else {
-          providerFactory.typeKey
-        }
+      // typeKey is already the transformed multibinding key
+      val targetTypeKey = providerFactory.typeKey
       val contextKey = IrContextualTypeKey(targetTypeKey)
 
       val binding =
@@ -211,9 +180,9 @@ internal class BindingGraphGenerator(
 
       if (existingProvider != null && existingProvider != binding) {
         // Check if the existing one is from an inherited graph
-        val isExistingInherited = existingProvider.providerFactory in inheritedProviderFactories
+        val isExistingInherited = existingProvider.typeKey in inheritedProviderFactories
         val isExistingDynamic = existingProvider.providerFactory.isDynamic
-        val isCurrentInherited = providerFactory in inheritedProviderFactories
+        val isCurrentInherited = typeKey in inheritedProviderFactories
 
         if (isDynamic || (isExistingInherited && !isCurrentInherited)) {
           // Current graph's binding replaces the inherited one
@@ -235,9 +204,9 @@ internal class BindingGraphGenerator(
         val existingAlias = bindingLookup.getStaticBinding(targetTypeKey) as? IrBinding.Alias
         if (existingAlias != null) {
           // Check if the existing provider is from an inherited graph
-          val isAliasInherited = existingAlias.bindsCallable in inheritedBindsCallables
+          val isAliasInherited = existingAlias.typeKey in inheritedBindsCallables
           val isAliasDynamic = existingAlias.bindsCallable?.isDynamic == true
-          val isCurrentInherited = providerFactory in inheritedProviderFactories
+          val isCurrentInherited = typeKey in inheritedProviderFactories
 
           if (isDynamic || (isAliasInherited && !isCurrentInherited)) {
             // Current graph's @Binds replaces the inherited @Provides
@@ -283,8 +252,8 @@ internal class BindingGraphGenerator(
     }
 
     val bindsFunctionsToAdd = buildList {
-      addAll(node.bindsCallables)
-      addAll(inheritedBindsCallables)
+      addAll(node.bindsCallables.values)
+      addAll(inheritedBindsCallables.values)
     }
 
     for (bindsCallable in bindsFunctionsToAdd) {
@@ -299,15 +268,16 @@ internal class BindingGraphGenerator(
 
       if (
         !bindsCallable.callableMetadata.annotations.isIntoMultibinding &&
-          bindsCallable.target in graph &&
-          bindsCallable in inheritedBindsCallables
+          bindsCallable.typeKey in graph &&
+          bindsCallable.typeKey in inheritedBindsCallables
       ) {
         // If we already have a binding provisioned in this scenario, ignore the parent's version
         continue
       }
 
       val annotations = bindsCallable.callableMetadata.annotations
-      val targetTypeKey = bindsCallable.target.transformMultiboundQualifier(annotations)
+      // typeKey is already the transformed multibinding key
+      val targetTypeKey = bindsCallable.typeKey
       val parameters = bindsCallable.function.parameters()
       val bindsImplType =
         parameters.extensionOrFirstParameter?.contextualTypeKey
@@ -332,9 +302,9 @@ internal class BindingGraphGenerator(
 
       if (existingBinding != null && existingBinding.bindsCallable != bindsCallable) {
         // Check if the existing one is from an inherited graph
-        val isExistingInherited = existingBinding.bindsCallable in inheritedBindsCallables
+        val isExistingInherited = existingBinding.typeKey in inheritedBindsCallables
         val isExistingDynamic = existingBinding.bindsCallable?.isDynamic == true
-        val isCurrentInherited = bindsCallable in inheritedBindsCallables
+        val isCurrentInherited = targetTypeKey in inheritedBindsCallables
 
         if (isDynamic || (isExistingInherited && !isCurrentInherited)) {
           // Current graph's binding replaces the inherited one
@@ -357,9 +327,9 @@ internal class BindingGraphGenerator(
         val existingProvider = bindingLookup.getStaticBinding(targetTypeKey) as? IrBinding.Provided
         if (existingProvider != null) {
           // Check if the existing provider is from an inherited graph
-          val isProviderInherited = existingProvider.providerFactory in inheritedProviderFactories
+          val isProviderInherited = existingProvider.typeKey in inheritedProviderFactories
           val isProviderDynamic = existingProvider.providerFactory.isDynamic
-          val isCurrentInherited = bindsCallable in inheritedBindsCallables
+          val isCurrentInherited = targetTypeKey in inheritedBindsCallables
 
           if (isDynamic || (isProviderInherited && !isCurrentInherited)) {
             // Current graph's @Binds replaces the inherited @Provides
