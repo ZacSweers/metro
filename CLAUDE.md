@@ -97,8 +97,6 @@ To create a new test, add a source file under the appropriate directory and then
 3. Test integration with samples in `samples/` directory
 4. Run `./metrow check` to validate all tests and API compatibility
 
-compiler-tests may occasionally OOM, in which case you can just retry the failed test.
-
 ### Important Notes
 
 - Kotlin compiler plugins are not stable APIs - Metro tracks Kotlin releases closely
