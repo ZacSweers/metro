@@ -938,9 +938,13 @@ internal class DependencyGraphNodeCache(
           // Dynamic containers should override non-dynamic ones with the same typeKey
           val existingIsDynamic = typeKey in dynamicTypeKeys
           val existingFactory = providerFactories[typeKey]
-          if (existingFactory != null && !isDynamicContainer && !existingIsDynamic) {
-            // Duplicate binding detected - report error
-            reportDuplicateProviderFactory(typeKey, existingFactory, factory)
+          if (existingFactory != null) {
+            // Report duplicate if both are non-dynamic OR both are dynamic
+            val bothNonDynamic = !isDynamicContainer && !existingIsDynamic
+            val bothDynamic = isDynamicContainer && existingIsDynamic
+            if (bothNonDynamic || bothDynamic) {
+              reportDuplicateProviderFactory(typeKey, existingFactory, factory)
+            }
           }
           if (isDynamicContainer || !existingIsDynamic) {
             providerFactories[typeKey] = factory
@@ -955,9 +959,13 @@ internal class DependencyGraphNodeCache(
             // Dynamic containers should override non-dynamic ones with the same typeKey
             val existingIsDynamic = typeKey in dynamicTypeKeys
             val existingCallable = bindsCallables[typeKey]
-            if (existingCallable != null && !isDynamicContainer && !existingIsDynamic) {
-              // Duplicate binding detected - report error
-              reportDuplicateBindsCallable(typeKey, existingCallable, callable)
+            if (existingCallable != null) {
+              // Report duplicate if both are non-dynamic OR both are dynamic
+              val bothNonDynamic = !isDynamicContainer && !existingIsDynamic
+              val bothDynamic = isDynamicContainer && existingIsDynamic
+              if (bothNonDynamic || bothDynamic) {
+                reportDuplicateBindsCallable(typeKey, existingCallable, callable)
+              }
             }
             if (isDynamicContainer || !existingIsDynamic) {
               bindsCallables[typeKey] = callable
