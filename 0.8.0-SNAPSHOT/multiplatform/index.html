@@ -1198,8 +1198,8 @@
 
 
 <h1 id="multiplatform">Multiplatform<a class="headerlink" href="#multiplatform" title="Permanent link">&para;</a></h1>
-<p>Should Just Work™️! The runtime and code gen have been implemented to be entirely platform-agnostic so far.</p>
-<p>There is one issue in the repo right now where the compiler appears to have a bug with generated FIR declarations where it doesn’t deserialize them correctly on non-JVM targets. Waiting for feedback from JB.</p>
+<p>The runtime and code gen have been implemented to be entirely platform-agnostic so far.</p>
+<p>Cross-platform aggregation features are only supported on JVM and Android at the moment but should be available in Kotlin 2.3.30+. Follow <a href="https://github.com/ZacSweers/metro/issues/460">this issue</a>.</p>
 <p>When mixing contributions between common and platform-specific source sets, you must define your final <code>@DependencyGraph</code> in the platform-specific code. This is because a graph defined in commonMain wouldn’t have full visibility of contributions from platform-specific types. A good pattern for this is to define your canonical graph in commonMain <em>without</em> a <code>@DependencyGraph</code> annotation and then a <code>{Platform}{Graph}</code> type in the platform source set that extends it and does have the <code>@DependencyGraph</code>. Metro automatically exposes bindings of the base graph type on the graph for any injections that need it.</p>
 <div class="highlight"><pre><span></span><code><span class="c1">// In commonMain</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
