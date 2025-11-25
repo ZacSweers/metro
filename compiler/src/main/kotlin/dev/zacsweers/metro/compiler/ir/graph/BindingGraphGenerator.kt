@@ -230,20 +230,6 @@ internal class BindingGraphGenerator(
         }
       }
 
-      // Handle multibinding setup (but don't add the binding itself)
-      if (providerFactory.annotations.isIntoMultibinding) {
-        val originalQualifier = providerFactory.function.qualifierAnnotation()
-        graph
-          .getOrCreateMultibinding(
-            annotations = providerFactory.annotations,
-            contextKey = contextKey,
-            declaration = providerFactory.function,
-            originalQualifier = originalQualifier,
-            bindingStack = bindingStack,
-          )
-          .addSourceBinding(contextKey.typeKey)
-      }
-
       if (options.enableFullBindingGraphValidation) {
         graph.addBinding(binding.typeKey, binding, bindingStack)
       } else {
@@ -353,19 +339,6 @@ internal class BindingGraphGenerator(
         }
       }
 
-      // Handle multibinding setup (but don't add the binding itself)
-      if (annotations.isIntoMultibinding) {
-        graph
-          .getOrCreateMultibinding(
-            annotations = annotations,
-            contextKey = contextKey,
-            declaration = bindsCallable.function,
-            originalQualifier = annotations.qualifier,
-            bindingStack = bindingStack,
-          )
-          .addSourceBinding(targetTypeKey)
-      }
-
       if (options.enableFullBindingGraphValidation) {
         val bindings =
           bindingLookup.lookup(
@@ -438,23 +411,13 @@ internal class BindingGraphGenerator(
       }
     }
 
-    fun addOrUpdateMultibinding(
+    fun registerMultibindsDeclaration(
       contextualTypeKey: IrContextualTypeKey,
       getter: IrSimpleFunction,
       multibinds: IrAnnotation,
     ) {
-      if (contextualTypeKey.typeKey !in graph) {
-        val multibinding =
-          IrBinding.Multibinding.fromMultibindsDeclaration(getter, multibinds, contextualTypeKey)
-        graph.addBinding(contextualTypeKey.typeKey, multibinding, bindingStack)
-      } else {
-        // If it's already in the graph, ensure its allowEmpty is up to date and update its
-        // location
-        graph.requireBinding(contextualTypeKey.typeKey).expectAs<IrBinding.Multibinding>().let {
-          it.allowEmpty = multibinds.allowEmpty()
-          it.declaration = getter
-        }
-      }
+      // Register the @Multibinds declaration for lazy creation
+      bindingLookup.registerMultibindsDeclaration(contextualTypeKey.typeKey, getter, multibinds)
 
       // Record an IC lookup
       trackClassLookup(node.sourceGraph, getter.propertyIfAccessor.parentAsClass)
@@ -475,7 +438,7 @@ internal class BindingGraphGenerator(
       )
 
       val contextKey = IrContextualTypeKey(multibindsCallable.typeKey)
-      addOrUpdateMultibinding(
+      registerMultibindsDeclaration(
         contextKey,
         multibindsCallable.callableMetadata.mirrorFunction,
         multibindsCallable.callableMetadata.annotations.multibinds!!,
@@ -567,7 +530,7 @@ internal class BindingGraphGenerator(
           contextualTypeKey,
           IrBindingStack.Entry.requestedAt(contextualTypeKey, getter.ir),
         )
-        addOrUpdateMultibinding(contextualTypeKey, getter.ir, multibinds)
+        registerMultibindsDeclaration(contextualTypeKey, getter.ir, multibinds)
       } else {
         graph.addAccessor(
           contextualTypeKey,
