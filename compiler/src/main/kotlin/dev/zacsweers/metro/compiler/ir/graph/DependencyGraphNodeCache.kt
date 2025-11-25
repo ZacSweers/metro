@@ -32,6 +32,7 @@ import dev.zacsweers.metro.compiler.ir.isBindingContainer
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.isInheritedFromAny
 import dev.zacsweers.metro.compiler.ir.linkDeclarationsInCompilation
+import dev.zacsweers.metro.compiler.ir.locationOrNull
 import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
@@ -44,7 +45,6 @@ import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
-import dev.zacsweers.metro.compiler.ir.locationOrNull
 import dev.zacsweers.metro.compiler.ir.render
 import dev.zacsweers.metro.compiler.ir.renderForDiagnostic
 import dev.zacsweers.metro.compiler.ir.reportCompat
@@ -366,7 +366,9 @@ internal class DependencyGraphNodeCache(
 
       fun StringBuilder.appendFactory(factory: ProviderFactory) {
         append("  ")
-        appendLine(factory.function.locationOrNull()?.render(short = true) ?: factory.callableId.toString())
+        appendLine(
+          factory.function.locationOrNull()?.render(short = true) ?: factory.callableId.toString()
+        )
         append("    ")
         renderForDiagnostic(
           declaration = factory.function,
@@ -390,11 +392,7 @@ internal class DependencyGraphNodeCache(
         appendFactory(duplicate)
         appendBindingStack(bindingStack, short = false)
       }
-      reportCompat(
-        graphDeclaration.sourceGraphIfMetroGraph,
-        MetroDiagnostics.METRO_ERROR,
-        message,
-      )
+      reportCompat(graphDeclaration.sourceGraphIfMetroGraph, MetroDiagnostics.METRO_ERROR, message)
     }
 
     private fun reportDuplicateBindsCallable(
@@ -403,8 +401,10 @@ internal class DependencyGraphNodeCache(
       duplicate: BindsCallable,
     ) {
       hasDuplicateBindingErrors = true
-      val existingDiagnostic = existing.renderLocationDiagnostic(short = false, existing.function.parameters())
-      val duplicateDiagnostic = duplicate.renderLocationDiagnostic(short = false, duplicate.function.parameters())
+      val existingDiagnostic =
+        existing.renderLocationDiagnostic(short = false, existing.function.parameters())
+      val duplicateDiagnostic =
+        duplicate.renderLocationDiagnostic(short = false, duplicate.function.parameters())
       val message = buildString {
         appendLine(
           "[Metro/DuplicateBinding] Multiple bindings found for ${typeKey.render(short = false, includeQualifier = true)}"
@@ -430,11 +430,7 @@ internal class DependencyGraphNodeCache(
         }
         appendBindingStack(bindingStack, short = false)
       }
-      reportCompat(
-        graphDeclaration.sourceGraphIfMetroGraph,
-        MetroDiagnostics.METRO_ERROR,
-        message,
-      )
+      reportCompat(graphDeclaration.sourceGraphIfMetroGraph, MetroDiagnostics.METRO_ERROR, message)
     }
 
     private fun reportQualifierMismatch(
