@@ -80,9 +80,7 @@ dependencies {
 
   // 2.3.0 changed the test gen APIs around into different packages
   "generator220CompileOnly"("org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.2.20")
-  "generator230CompileOnly"(
-    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.3.0-RC"
-  )
+  "generator230CompileOnly"("org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.3.0-RC")
 
   testImplementation(sourceSets.named(generatorConfigToUse).map { it.output })
   testImplementation(
