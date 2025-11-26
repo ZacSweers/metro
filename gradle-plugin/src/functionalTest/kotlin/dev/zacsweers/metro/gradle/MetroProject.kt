@@ -35,9 +35,13 @@ abstract class MetroProject(
       appendLine("  reportsDestination.set(layout.buildDirectory.dir(\"metro\"))")
     }
     with(metroOptions) {
-      enableFullBindingGraphValidation?.let { appendLine("  enableFullBindingGraphValidation.set($it)") }
+      enableFullBindingGraphValidation?.let {
+        appendLine("  enableFullBindingGraphValidation.set($it)")
+      }
       generateContributionHints?.let { appendLine("  generateContributionHints.set($it)") }
-      generateJvmContributionHintsInFir?.let { appendLine("  generateJvmContributionHintsInFir.set($it)") }
+      generateJvmContributionHintsInFir?.let {
+        appendLine("  generateJvmContributionHintsInFir.set($it)")
+      }
     }
     appendLine("}")
   }

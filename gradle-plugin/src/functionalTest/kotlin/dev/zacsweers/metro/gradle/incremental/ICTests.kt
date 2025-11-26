@@ -2128,23 +2128,26 @@ class ICTests : BaseIncrementalCompilationTest() {
 
   @Test
   fun generateJvmContributionHintsInFir() {
-    val options = MetroOptionOverrides(
-      generateContributionHints = true,
-      generateJvmContributionHintsInFir = true,
-    )
-    val binding = source(
-      """
+    val options =
+      MetroOptionOverrides(
+        generateContributionHints = true,
+        generateJvmContributionHintsInFir = true,
+      )
+    val binding =
+      source(
+        """
         interface Interface
 
-        @Inject 
-        @ContributesBinding(AppScope::class) 
+        @Inject
+        @ContributesBinding(AppScope::class)
         class Implementation : Interface
-      """
-      .trimIndent(),
-    )
-    val fixture = object : MetroProject(metroOptions = options) {
-      override fun sources() = listOf(binding)
-    }
+        """
+          .trimIndent()
+      )
+    val fixture =
+      object : MetroProject(metroOptions = options) {
+        override fun sources() = listOf(binding)
+      }
 
     build(fixture.gradleProject.rootDir, "compileKotlin")
   }
