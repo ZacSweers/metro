@@ -97,6 +97,6 @@ public abstract class MetroViewModelFactory : ViewModelProvider.Factory {
       @Suppress("UNCHECKED_CAST")
       return provider as Provider<FactoryType>
     }
-    error("No manual viewModel provider found for ${factoryClass.qualifiedName}")
+    error("No manual viewModel provider found for $factoryClass")
   }
 }

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JsModuleKind.MODULE_UMD
+import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 
 plugins {
   alias(libs.plugins.kotlin.multiplatform)
@@ -53,6 +54,20 @@ kotlin {
     commonMain.dependencies {
       api(project(":runtime"))
       api(libs.jetbrains.lifecycle.viewmodel)
+    }
+  }
+
+  targets.configureEach {
+    val target = this
+    compilations.configureEach {
+      compileTaskProvider.configure {
+        if (target.platformType == KotlinPlatformType.js) {
+          compilerOptions.freeCompilerArgs.add(
+            // These are all read at compile-time
+            "-Xwarning-level=RUNTIME_ANNOTATION_NOT_SUPPORTED:disabled"
+          )
+        }
+      }
     }
   }
 }
