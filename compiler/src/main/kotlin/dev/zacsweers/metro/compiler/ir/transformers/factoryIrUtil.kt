@@ -63,6 +63,7 @@ internal fun generateStaticCreateFunction(
   parameters: Parameters,
   providerFunction: IrFunction?,
   patchCreationParams: Boolean = true,
+  copyQualifiers: Boolean = false,
 ): IrSimpleFunction {
   val function = parentClass.functions.first { it.origin == Origins.FactoryCreateFunction }
 
@@ -80,6 +81,19 @@ internal fun generateStaticCreateFunction(
         targetGraphParameter = instanceParam,
         wrapInProvider = true,
       )
+    }
+
+    // Copy qualifier annotations from source parameters to function parameters
+    if (copyQualifiers) {
+      for ((i, param) in regularParameters.withIndex()) {
+        val sourceParam = parameters.regularParameters[i]
+        sourceParam.typeKey.qualifier?.let { qualifier ->
+          context.pluginContext.metadataDeclarationRegistrar.addMetadataVisibleAnnotationsToElement(
+            param,
+            qualifier.ir.deepCopyWithSymbols(),
+          )
+        }
+      }
     }
 
     body =
