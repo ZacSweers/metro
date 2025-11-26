@@ -11,6 +11,7 @@ import com.autonomousapps.kit.GradleProject.DslKind
 import com.autonomousapps.kit.gradle.Dependency
 import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.metro.gradle.GradlePlugins
+import dev.zacsweers.metro.gradle.MetroOptionOverrides
 import dev.zacsweers.metro.gradle.MetroProject
 import dev.zacsweers.metro.gradle.buildAndAssertThat
 import dev.zacsweers.metro.gradle.classLoader
@@ -2123,5 +2124,28 @@ class ICTests : BaseIncrementalCompilationTest() {
       println("Running build ${i+1}/$numRuns...")
       build(project.rootDir, "assemble", "--no-configuration-cache", "--rerun-tasks")
     }
+  }
+
+  @Test
+  fun generateJvmContributionHintsInFir() {
+    val options = MetroOptionOverrides(
+      generateContributionHints = true,
+      generateJvmContributionHintsInFir = true,
+    )
+    val binding = source(
+      """
+          interface Interface
+
+          @Inject 
+          @ContributesBinding(AppScope::class) 
+          class Implementation : Interface
+        """
+        .trimIndent(),
+    )
+    val fixture = object : MetroProject(metroOptions = options) {
+      override fun sources() = listOf(binding)
+    }
+
+    build(fixture.gradleProject.rootDir, "compileKotlin")
   }
 }

@@ -34,13 +34,10 @@ abstract class MetroProject(
     if (reportsEnabled) {
       appendLine("  reportsDestination.set(layout.buildDirectory.dir(\"metro\"))")
     }
-    val options = buildList {
-      metroOptions.enableFullBindingGraphValidation?.let {
-        add("enableFullBindingGraphValidation.set($it)")
-      }
-    }
-    if (options.isNotEmpty()) {
-      options.joinTo(this, separator = "\n", prefix = "  ")
+    with(metroOptions) {
+      enableFullBindingGraphValidation?.let { appendLine("  enableFullBindingGraphValidation.set($it)") }
+      generateContributionHints?.let { appendLine("  generateContributionHints.set($it)") }
+      generateJvmContributionHintsInFir?.let { appendLine("  generateJvmContributionHintsInFir.set($it)") }
     }
     appendLine("}")
   }
