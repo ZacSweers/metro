@@ -5,6 +5,8 @@ import org.jetbrains.kotlin.gradle.dsl.JsModuleKind.MODULE_UMD
 
 plugins {
   alias(libs.plugins.kotlin.multiplatform)
+  alias(libs.plugins.kotlin.plugin.compose)
+  alias(libs.plugins.compose)
   alias(libs.plugins.mavenPublish)
 }
 
@@ -30,29 +32,18 @@ kotlin {
     browser {}
   }
 
-  // Native targets supported by lifecycle-viewmodel
-  // Tier 1
-  linuxX64()
+  // Compose-supported native targets
   macosX64()
   macosArm64()
   iosSimulatorArm64()
   iosX64()
-
-  // Tier 2
-  linuxArm64()
-  watchosSimulatorArm64()
-  watchosX64()
-  watchosArm32()
-  watchosArm64()
-  tvosSimulatorArm64()
-  tvosX64()
-  tvosArm64()
   iosArm64()
 
   sourceSets {
     commonMain.dependencies {
-      api(project(":runtime"))
-      api(libs.jetbrains.lifecycle.viewmodel)
+      api(project(":metrox-viewmodel"))
+      api(libs.jetbrains.lifecycle.viewmodel.compose)
+      api(compose.runtime)
     }
   }
 }

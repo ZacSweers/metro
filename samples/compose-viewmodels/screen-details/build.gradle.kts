@@ -12,7 +12,7 @@ kotlin {
 
   sourceSets {
     commonMain.dependencies {
-      api("dev.zacsweers.metro:metrox-viewmodel")
+      api("dev.zacsweers.metro:metrox-viewmodel-compose")
       implementation(compose.material3)
       implementation(compose.runtime)
     }

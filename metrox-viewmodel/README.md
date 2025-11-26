@@ -1,7 +1,8 @@
 # MetroX ViewModel
 
-Compose ViewModel integration for Metro. This artifact provides utilities for injecting ViewModels in Compose
-applications using Metro's dependency injection.
+ViewModel integration for Metro. This artifact provides core utilities for injecting ViewModels using Metro's dependency injection.
+
+For Compose-specific APIs (`LocalMetroViewModelFactory`, `metroViewModel()`, etc.), see the [`metrox-viewmodel-compose`](../metrox-viewmodel-compose) artifact.
 
 ## Usage
 
@@ -13,32 +14,42 @@ dependencies {
 }
 ```
 
-There are two primary approaches to using this library:
+## Core Components
 
-1. **Standard Usage**: Uses `metroViewModel()` and `assistedMetroViewModel()` functions that work entirely within the
-   native ViewModel APIs via `ViewModelProvider.Factory`.
-2. **Advanced Usage**: Uses `ManualViewModelAssistedFactory` for cases requiring more control over ViewModel creation.
+### ViewModelGraph
 
-## Standard Usage
-
-This is the recommended approach for most use cases. It integrates natively with Compose's `viewModel()` function and
-the standard `ViewModelProvider.Factory` API.
-
-### 1. Set up your graph with ViewModelGraph
-
-Create a graph interface that extends `ViewModelGraph`:
+Create a graph interface that extends `ViewModelGraph` to get multibindings for ViewModel providers:
 
 ```kotlin
 @DependencyGraph(AppScope::class)
 interface AppGraph : ViewModelGraph
 ```
 
-`ViewModelGraph` includes map multibindings for the common ViewModel providers and provides a `metroViewModelFactory`
-property that you'll use to create ViewModels.
+`ViewModelGraph` includes map multibindings for:
+- `viewModelProviders` - Standard ViewModel providers
+- `assistedFactoryProviders` - Assisted ViewModel factory providers
+- `manualAssistedFactoryProviders` - Manual assisted factory providers
 
-### 2. Contribute ViewModels to the graph
+It also provides a `metroViewModelFactory` property for creating ViewModels.
 
-Use the `@ViewModelKey` annotation with `@ContributesIntoMap` to contribute ViewModels via multibinding:
+### MetroViewModelFactory
+
+A `ViewModelProvider.Factory` implementation that uses injected maps to create ViewModels. Subclass it to provide your own bindings:
+
+```kotlin
+@Inject
+@ContributesBinding(AppScope::class)
+@SingleIn(AppScope::class)
+class MyViewModelFactory(
+  override val viewModelProviders: Map<KClass<out ViewModel>, Provider<ViewModel>>,
+  override val assistedFactoryProviders: Map<KClass<out ViewModel>, Provider<ViewModelAssistedFactory<*>>>,
+  override val manualAssistedFactoryProviders: Map<KClass<out ManualViewModelAssistedFactory<*>>, Provider<ManualViewModelAssistedFactory<*>>>,
+) : MetroViewModelFactory()
+```
+
+### Contributing ViewModels
+
+Use `@ViewModelKey` with `@ContributesIntoMap` to contribute ViewModels:
 
 ```kotlin
 @Inject
@@ -49,93 +60,35 @@ class HomeViewModel : ViewModel() {
 }
 ```
 
-### 3. Provide the LocalMetroViewModelFactory in Compose
+### Assisted Injection
 
-At the root of your Compose hierarchy, provide the factory via `CompositionLocalProvider`:
-
-```kotlin
-@Composable
-fun App(metroVmf: MetroViewModelFactory) {
-  CompositionLocalProvider(LocalMetroViewModelFactory provides metroVmf) {
-    // Your app content
-  }
-}
-```
-
-On Android, you can inject the factory into your Activity:
-
-```kotlin
-@Inject
-class MainActivity(private val metroVmf: MetroViewModelFactory) : ComponentActivity() {
-  override fun onCreate(savedInstanceState: Bundle?) {
-    super.onCreate(savedInstanceState)
-    setContent {
-      CompositionLocalProvider(LocalMetroViewModelFactory provides metroVmf) {
-        App()
-      }
-    }
-  }
-}
-```
-
-### 4. Use ViewModels in Composables
-
-```kotlin
-@Composable
-fun HomeScreen(viewModel: HomeViewModel = metroViewModel()) {
-  // ...
-}
-```
-
-## Assisted Injection (Standard Route)
-
-For ViewModels that require runtime parameters, use assisted injection with `ViewModelAssistedFactory`. This approach
-uses `CreationExtras` to pass parameters, integrating with the native ViewModel creation APIs.
-
-### 1. Create an assisted ViewModel with a factory
+For ViewModels requiring runtime parameters, use `ViewModelAssistedFactory`:
 
 ```kotlin
 @AssistedInject
-class DetailsViewModel(@Assisted val data: String) : ViewModel() {
+class DetailsViewModel(@Assisted val id: String) : ViewModel() {
   // ...
 
   @AssistedFactory
   @ViewModelAssistedFactoryKey(Factory::class)
   @ContributesIntoMap(ViewModelScope::class, binding<ViewModelAssistedFactory<*>>())
   fun interface Factory : ViewModelAssistedFactory<DetailsViewModel> {
-    fun create(@Assisted data: String): DetailsViewModel
+    fun create(@Assisted id: String): DetailsViewModel
   }
 }
 ```
 
-The factory must extend `ViewModelAssistedFactory<VM>`, which provides integration with `CreationExtras`.
+### Manual Assisted Injection
 
-### 2. Use in Composables
-
-```kotlin
-@Composable
-fun DetailsScreen(
-  data: String,
-  viewModel: DetailsViewModel = assistedMetroViewModel()
-) {
-  // ...
-}
-```
-
-## Advanced Route: Manual Assisted Injection
-
-For cases requiring more control over ViewModel creation (such as custom factory patterns or non-Compose contexts), you
-can use `ManualViewModelAssistedFactory`.
-
-### 1. Define a manual assisted factory
+For full control over ViewModel creation, use `ManualViewModelAssistedFactory`:
 
 ```kotlin
 @AssistedInject
-class CustomViewModel @AssistedInject constructor(@Assisted val param1: String, @Assisted val param2: Int) :
-  ViewModel() {
+class CustomViewModel(@Assisted val param1: String, @Assisted val param2: Int) : ViewModel() {
   // ...
+
   @AssistedFactory
-  @ManualViewModelAssistedFactoryKey(CustomViewModel.Factory::class)
+  @ManualViewModelAssistedFactoryKey(Factory::class)
   @ContributesIntoMap(AppScope::class, binding<ManualViewModelAssistedFactory<*>>())
   interface Factory : ManualViewModelAssistedFactory<CustomViewModel> {
     fun create(param1: String, param2: Int): CustomViewModel
@@ -143,23 +96,7 @@ class CustomViewModel @AssistedInject constructor(@Assisted val param1: String, 
 }
 ```
 
-Unlike `ViewModelAssistedFactory`, `ManualViewModelAssistedFactory` doesn't receive `CreationExtras` automatically - you
-have full control over what parameters are passed.
-
-### 2. Use in Composables
-
-```kotlin
-@Composable
-fun CustomScreen(
-  viewModel: CustomViewModel = assistedMetroViewModel<CustomViewModel, CustomViewModel.Factory> {
-    create("param1", 42)
-  }
-) {
-  // ...
-}
-```
-
-## Android Framework Integrations
+## Android Framework Integration
 
 ```kotlin
 // Activity
