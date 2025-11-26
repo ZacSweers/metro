@@ -7,6 +7,8 @@ Core Android support for Metro. This artifact specifically focuses on integratio
 For simple cases, all you need to do is
 
 1. Depend on this artifact
+
+    [![Maven Central](https://img.shields.io/maven-central/v/dev.zacsweers.metro/metrox-android.svg)](https://central.sonatype.com/artifact/dev.zacsweers.metro/metrox-android)
     ```kotlin
     dependencies {
       implementation("dev.zacsweers.metrox:metrox-android:x.y.z")
