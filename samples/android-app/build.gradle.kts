@@ -25,6 +25,7 @@ android {
 }
 
 dependencies {
+  implementation("dev.zacsweers.metro:metrox-android")
   implementation(libs.androidx.appcompat)
   implementation(libs.androidx.core)
   implementation(libs.androidx.fragment)

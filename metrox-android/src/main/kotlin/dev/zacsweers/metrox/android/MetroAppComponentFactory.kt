@@ -22,7 +22,7 @@ import kotlin.reflect.KClass
  */
 @RequiresApi(28)
 @Keep
-public class MetroAppComponentFactory : AppComponentFactory() {
+public open class MetroAppComponentFactory : AppComponentFactory() {
 
   private inline fun <reified T : Any> getInstance(
     cl: ClassLoader,

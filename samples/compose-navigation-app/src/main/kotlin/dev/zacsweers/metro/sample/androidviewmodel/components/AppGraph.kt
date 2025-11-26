@@ -9,7 +9,7 @@ import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.sample.androidviewmodel.viewmodel.ViewModelGraph
-import dev.zacsweers.metrox.android.MetroAndroidAppGraph
+import dev.zacsweers.metrox.android.MetroAppComponentProviders
 import kotlin.concurrent.atomics.AtomicInt
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 

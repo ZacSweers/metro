@@ -10,7 +10,6 @@
     android:label="Metro Android Sample"
     android:supportsRtl="true"
     android:theme="@style/Theme.Material3.DayNight"
-    tools:replace="android:appComponentFactory"
   >
     <activity
       android:name=".MainActivity"
