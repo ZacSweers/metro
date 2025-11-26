@@ -5,6 +5,7 @@ Changelog
 --------------
 
 - **New**: New `dev.zacsweers.metro:metrox-android` artifact for Android `AppComponentFactory` support. See the [docs](https://zacsweers.github.io/metro/latest/metrox-android) for more information.
+- **New**: New `dev.zacsweers.metro:metrox-viewmodel` and `metrox-viewmodel-compose` artifacts for AndroidX `ViewModel` support. See the [docs](https://zacsweers.github.io/metro/latest/metrox-viewmodel) ([compose docs](https://zacsweers.github.io/metro/latest/metrox-viewmodel-compose) ) for more information.
 - **Enhancement**: Lazily validate multibindings. Previously, multibindings were validated eagerly even if they were unused in a graph.
 - **Enhancement**: Report all duplicate bindings errors during graph construction rather than failing at first.
 - **Fix**: Catch more `IrErrorType` error types cases and report context/advice where possible.
