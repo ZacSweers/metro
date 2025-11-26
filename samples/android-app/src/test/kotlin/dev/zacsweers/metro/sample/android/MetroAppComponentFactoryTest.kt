@@ -17,7 +17,6 @@ import dev.zacsweers.metro.createGraph
 import dev.zacsweers.metrox.android.ActivityKey
 import dev.zacsweers.metrox.android.BroadcastReceiverKey
 import dev.zacsweers.metrox.android.ContentProviderKey
-import dev.zacsweers.metrox.android.MetroAppComponentFactory
 import dev.zacsweers.metrox.android.MetroAppComponentProviders
 import dev.zacsweers.metrox.android.MetroApplication
 import dev.zacsweers.metrox.android.ServiceKey
