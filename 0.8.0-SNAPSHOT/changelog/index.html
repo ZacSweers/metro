@@ -2430,6 +2430,7 @@
 <li><strong>Fix</strong>: Catch more <code>IrErrorType</code> error types cases and report context/advice where possible.</li>
 <li><strong>Fix</strong>: Dedupe binding containers contributed to both parent and child graphs.</li>
 <li><strong>Fix</strong>: Fix support for Anvil&rsquo;s <code>exclude</code> argument in dependency graph annotations when Anvil interop is enabled.</li>
+<li><strong>Fix</strong>: Fix colliding reports destinations in KMP projects by disambiguating with the target path as another subdir indirection.</li>
 <li>[gradle] Add <code>generateMetroGraphMetadata</code> task that writes a merged JSON dump of all binding graphs in the project. This can be chained from the <code>GenerateGraphMetadataTask</code> for further processing.</li>
 <li>[gradle] Add <code>MetroArtifacts</code> API for accessing Metro reports and graph metadata directories.</li>
 <li>[gradle] Mark <code>metro.reportsDestination</code> as delicate/opt-in.</li>
