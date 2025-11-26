@@ -7,7 +7,6 @@ import com.tschuchort.compiletesting.KotlinCompilation.ExitCode
 import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.compiler.ExampleGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
-import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.assertDiagnostics
 import dev.zacsweers.metro.compiler.callFunction
 import dev.zacsweers.metro.compiler.callProperty
@@ -18,6 +17,7 @@ import dev.zacsweers.metro.compiler.generatedImpl
 import dev.zacsweers.metro.compiler.invokeInstanceMethod
 import dev.zacsweers.metro.compiler.invokeMain
 import dev.zacsweers.metro.compiler.newInstanceStrict
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.internal.MapFactory
 import dev.zacsweers.metro.internal.MapProviderFactory
 import java.util.concurrent.Callable

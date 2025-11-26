@@ -1796,7 +1796,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           @GraphExtension(LoginScope::class)
           interface LoginGraph {
             @Multibinds
-            fun multibinds(): Map<Class<*>, Any>
+            fun multibinds(): Map<KClass<*>, Any>
 
             @GraphExtension.Factory @ContributesTo(AppScope::class)
             interface Factory {
@@ -1804,7 +1804,8 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
             }
           }
           """
-            .trimIndent()
+            .trimIndent(),
+          extraImports = arrayOf("kotlin.reflect.KClass"),
         )
       )
 
@@ -1821,7 +1822,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: MainGraph.kt [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Map<java.lang.Class<*>, kotlin.Any>' was unexpectedly empty.
+        e: MainGraph.kt [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Map<kotlin.reflect.KClass<*>, kotlin.Any>' was unexpectedly empty.
 
         If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
         """

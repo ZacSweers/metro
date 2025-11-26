@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.generators
 
-import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
@@ -12,6 +11,7 @@ import dev.zacsweers.metro.compiler.fir.argumentAsOrNull
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.isBindingContainer
 import dev.zacsweers.metro.compiler.fir.memoizedAllSessionsSequence
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.originClassId
@@ -26,6 +26,7 @@ import dev.zacsweers.metro.compiler.fir.resolvedReplacedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
 import dev.zacsweers.metro.compiler.singleOrError
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Optional
 import java.util.TreeMap
 import kotlin.jvm.optionals.getOrNull
@@ -150,7 +151,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
   ): Map<ClassId, Boolean> {
     return buildMap {
       for (originClass in contributingClasses) {
-        if (originClass.isAnnotatedWithAny(session, session.classIds.bindingContainerAnnotations)) {
+        if (originClass.isBindingContainer(session)) {
           val hasMatchingScope =
             originClass.annotationsIn(session, session.classIds.contributesToAnnotations).any {
               it.resolvedScopeClassId(typeResolver) == scopeClassId
@@ -266,7 +267,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
         }
       }
 
-    val excluded = graphAnnotation.resolvedExcludedClassIds(typeResolver)
+    val excluded = graphAnnotation.resolvedExcludedClassIds(session, typeResolver)
     if (contributions.isEmpty() && excluded.isEmpty()) {
       return emptyList()
     }

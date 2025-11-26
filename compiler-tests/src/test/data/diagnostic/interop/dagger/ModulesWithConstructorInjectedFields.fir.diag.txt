@@ -1,0 +1,1 @@
+/ModulesWithConstructorInjectedFields.kt:(782,804): error: Included binding container 'ProvidersModule's does not have a no-arg constructor and thus cannot be included via annotation. Add a no-arg constructor or declare it as a graph factory parameter instead.

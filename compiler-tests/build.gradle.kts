@@ -53,6 +53,10 @@ val kiAnvilRuntimeClasspath: Configuration by configurations.creating { isTransi
 // include transitive in this case to grab jakarta and javax
 val daggerRuntimeClasspath: Configuration by configurations.creating {}
 val daggerInteropClasspath: Configuration by configurations.creating { isTransitive = false }
+// include transitive in this case to grab jakarta and javax
+val guiceClasspath: Configuration by configurations.creating {}
+val javaxInteropClasspath: Configuration by configurations.creating { isTransitive = false }
+val jakartaInteropClasspath: Configuration by configurations.creating { isTransitive = false }
 
 dependencies {
   // IntelliJ maven repo doesn't carry compiler test framework versions, so we'll pull from that as
@@ -95,11 +99,14 @@ dependencies {
   testImplementation(libs.ksp.symbolProcessing.aaEmbeddable)
   testImplementation(libs.ksp.symbolProcessing.commonDeps)
   testImplementation(libs.ksp.symbolProcessing.api)
-  testImplementation(libs.classgraph)
   testImplementation(libs.dagger.compiler)
 
   metroRuntimeClasspath(project(":runtime"))
   daggerInteropClasspath(project(":interop-dagger"))
+  guiceClasspath(project(":interop-guice"))
+  guiceClasspath(libs.guice)
+  javaxInteropClasspath(project(":interop-javax"))
+  jakartaInteropClasspath(project(":interop-jakarta"))
   anvilRuntimeClasspath(libs.anvil.annotations)
   anvilRuntimeClasspath(libs.anvil.annotations.optional)
   daggerRuntimeClasspath(libs.dagger.runtime)
@@ -143,6 +150,9 @@ tasks.withType<Test> {
   outputs.upToDateWhen { false }
   dependsOn(metroRuntimeClasspath)
   dependsOn(daggerInteropClasspath)
+  dependsOn(guiceClasspath)
+  dependsOn(javaxInteropClasspath)
+  dependsOn(jakartaInteropClasspath)
   inputs
     .dir(layout.projectDirectory.dir("src/test/data"))
     .withPropertyName("testData")
@@ -164,6 +174,10 @@ tasks.withType<Test> {
   systemProperty("kiAnvilRuntime.classpath", kiAnvilRuntimeClasspath.asPath)
   systemProperty("daggerRuntime.classpath", daggerRuntimeClasspath.asPath)
   systemProperty("daggerInterop.classpath", daggerInteropClasspath.asPath)
+  systemProperty("guice.classpath", guiceClasspath.asPath)
+  systemProperty("javaxInterop.classpath", javaxInteropClasspath.asPath)
+  systemProperty("jakartaInterop.classpath", jakartaInteropClasspath.asPath)
+  systemProperty("ksp.testRuntimeClasspath", configurations.testRuntimeClasspath.get().asPath)
 
   // Properties required to run the internal test framework.
   systemProperty("idea.ignore.disabled.plugins", "true")

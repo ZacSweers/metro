@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.gradle
 
+import dev.zacsweers.metro.gradle.artifacts.GenerateGraphMetadataTask
+import dev.zacsweers.metro.gradle.artifacts.MetroArtifactCopyTask
 import org.gradle.api.Project
 import org.gradle.api.provider.Provider
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
@@ -24,6 +26,16 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
 
   override fun apply(target: Project) {
     target.extensions.create("metro", MetroPluginExtension::class.java, target.layout)
+
+    val graphMetadataTask =
+      target.tasks.register(GenerateGraphMetadataTask.NAME, GenerateGraphMetadataTask::class.java)
+    graphMetadataTask.configure { task ->
+      task.description = "Generates Metro graph metadata for ${target.path}"
+      task.projectPath.convention(target.path)
+      task.outputFile.convention(
+        target.layout.buildDirectory.file("reports/metro/graphMetadata.json")
+      )
+    }
   }
 
   override fun getCompilerPluginId(): String = PLUGIN_ID
@@ -87,6 +99,7 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
   ): Provider<List<SubpluginOption>> {
     val project = kotlinCompilation.target.project
     val extension = project.extensions.getByType(MetroPluginExtension::class.java)
+
     val platformCanGenerateContributionHints =
       when (kotlinCompilation.platformType) {
         KotlinPlatformType.common,
@@ -119,13 +132,36 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
     val isJvmTarget =
       kotlinCompilation.target.platformType == KotlinPlatformType.jvm ||
         kotlinCompilation.target.platformType == KotlinPlatformType.androidJvm
-    if (isJvmTarget && extension.interop.enableDaggerRuntimeInterop.getOrElse(false)) {
-      project.dependencies.add(
-        kotlinCompilation.implementationConfigurationName,
-        "dev.zacsweers.metro:interop-dagger:$VERSION",
-      )
+    if (isJvmTarget) {
+      if (extension.interop.enableDaggerRuntimeInterop.getOrElse(false)) {
+        project.dependencies.add(
+          kotlinCompilation.implementationConfigurationName,
+          "dev.zacsweers.metro:interop-dagger:$VERSION",
+        )
+      }
+      if (extension.interop.enableGuiceRuntimeInterop.getOrElse(false)) {
+        project.dependencies.add(
+          kotlinCompilation.implementationConfigurationName,
+          "dev.zacsweers.metro:interop-guice:$VERSION",
+        )
+      }
     }
+
     val reportsDir = extension.reportsDestination.map { it.dir(kotlinCompilation.name) }
+
+    if (extension.reportsDestination.isPresent) {
+      val artifactsTask = MetroArtifactCopyTask.register(project, reportsDir, kotlinCompilation)
+
+      project.tasks.withType(GenerateGraphMetadataTask::class.java).configureEach { task ->
+        task.projectPath.set(project.path)
+        task.compilationName.set(kotlinCompilation.name)
+        task.graphJsonFiles.from(
+          artifactsTask
+            .flatMap { it.reportsDir.dir("graph-metadata") }
+            .map { it.asFileTree.matching { it.include("*.json") } }
+        )
+      }
+    }
 
     return project.provider {
       buildList {
@@ -351,6 +387,13 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
             SubpluginOption(
               "enable-dagger-anvil-interop",
               value = enableDaggerAnvilInterop.getOrElse(false).toString(),
+            )
+          )
+          add(lazyOption("interop-include-guice-annotations", includeGuiceAnnotations))
+          add(
+            SubpluginOption(
+              "enable-guice-runtime-interop",
+              value = enableGuiceRuntimeInterop.getOrElse(false).toString(),
             )
           )
         }

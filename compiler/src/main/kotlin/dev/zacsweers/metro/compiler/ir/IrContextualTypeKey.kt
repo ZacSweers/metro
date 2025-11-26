@@ -3,10 +3,10 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.drewhamilton.poko.Poko
-import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.graph.BaseContextualTypeKey
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -210,21 +210,11 @@ internal fun IrContextualTypeKey.wrapInProvider(
 }
 
 context(context: IrMetroContext)
-internal fun IrType.findProviderSupertype(): IrType? {
-  check(this is IrSimpleType) { "Unrecognized IrType '${javaClass}': ${render()}" }
-  val rawTypeClass = rawTypeOrNull() ?: return null
-  // Get the specific provider type it implements
-  return rawTypeClass.getAllSuperTypes(excludeSelf = false).firstOrNull { type ->
-    type.rawTypeOrNull()?.classId?.let { classId ->
-      classId in context.metroSymbols.providerTypes ||
-        classId in Symbols.ClassIds.commonMetroProviders
-    } ?: false
-  }
-}
-
-context(context: IrMetroContext)
 internal fun IrType.implementsProviderType(): Boolean {
-  return findProviderSupertype() != null
+  val rawType = rawTypeOrNull() ?: return false
+  val allProviderClassIds =
+    context.metroSymbols.providerTypes + Symbols.ClassIds.commonMetroProviders
+  return rawType.implementsAny(allProviderClassIds)
 }
 
 context(context: IrMetroContext)
@@ -241,9 +231,7 @@ internal fun IrType.asContextualTypeKey(
   patchMutableCollections: Boolean,
   declaration: IrDeclaration?,
 ): IrContextualTypeKey {
-  check(this is IrSimpleType) { "Unrecognized IrType '${javaClass}': ${render()}" }
-
-  val declaredType = this
+  val declaredType = requireSimpleType(declaration)
 
   // Analyze the type to determine its wrapped structure
   val wrappedType = declaredType.asWrappedType(patchMutableCollections, declaration)

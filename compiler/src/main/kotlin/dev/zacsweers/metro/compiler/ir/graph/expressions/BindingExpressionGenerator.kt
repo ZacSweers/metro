@@ -20,6 +20,8 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.classOrNull
+import org.jetbrains.kotlin.ir.util.classId
 
 internal abstract class BindingExpressionGenerator<T : IrBinding>(context: IrMetroContext) :
   IrMetroContext by context {
@@ -36,7 +38,7 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(context: IrMet
   context(scope: IrBuilderWithScope)
   abstract fun generateBindingCode(
     binding: T,
-    contextualTypeKey: IrContextualTypeKey = binding.contextualTypeKey,
+    contextualTypeKey: IrContextualTypeKey,
     accessType: AccessType =
       if (contextualTypeKey.requiresProviderInstance) {
         AccessType.PROVIDER
@@ -46,28 +48,70 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(context: IrMet
     fieldInitKey: IrTypeKey? = null,
   ): IrExpression
 
-  // TODO move transformMetroProvider into this too
+  /**
+   * Transforms an expression to match the target contextual type.
+   *
+   * This handles both:
+   * 1. Access type transformation (INSTANCE <-> PROVIDER)
+   * 2. Provider framework conversion (e.g., Metro Provider -> Dagger Lazy)
+   *
+   * Both `actual` and `requested` are inferred by default:
+   * - `actual` is inferred from the expression's type (Provider/Lazy = PROVIDER, else INSTANCE)
+   * - `requested` is inferred from contextualTypeKey.requiresProviderInstance
+   *
+   * @param contextualTypeKey The target type with framework information
+   * @param actual The current access type (inferred from expression type by default)
+   * @param requested The desired access type (inferred from contextualTypeKey by default)
+   * @param useInstanceFactory Whether to use InstanceFactory for INSTANCE->PROVIDER (vs lambda)
+   */
   context(scope: IrBuilderWithScope)
-  protected fun IrExpression.transformAccessIfNeeded(
-    requested: AccessType,
-    actual: AccessType,
-    type: IrType,
+  protected fun IrExpression.toTargetType(
+    contextualTypeKey: IrContextualTypeKey,
+    actual: AccessType = run {
+      val classId = type.classOrNull?.owner?.classId
+      val isProviderType =
+        classId in metroSymbols.providerTypes || classId in metroSymbols.lazyTypes
+      if (isProviderType) {
+        AccessType.PROVIDER
+      } else {
+        AccessType.INSTANCE
+      }
+    },
+    requested: AccessType =
+      if (contextualTypeKey.requiresProviderInstance) {
+        AccessType.PROVIDER
+      } else {
+        AccessType.INSTANCE
+      },
     useInstanceFactory: Boolean = true,
   ): IrExpression {
-    return when (requested) {
-      actual -> this
-      AccessType.PROVIDER -> {
-        if (useInstanceFactory) {
-          // actual is an instance, wrap it
-          wrapInInstanceFactory(type)
-        } else {
-          scope.wrapInProviderFunction(type) { this@transformAccessIfNeeded }
+    // Step 1: Transform access type (INSTANCE <-> PROVIDER)
+    val accessTransformed =
+      when (requested) {
+        actual -> this
+        AccessType.PROVIDER -> {
+          if (useInstanceFactory) {
+            // actual is an instance, wrap it
+            wrapInInstanceFactory(contextualTypeKey.typeKey.type)
+          } else {
+            scope.wrapInProviderFunction(contextualTypeKey.typeKey.type) { this@toTargetType }
+          }
+        }
+        AccessType.INSTANCE -> {
+          // actual is a provider but we want instance
+          unwrapProvider(contextualTypeKey.typeKey.type)
         }
       }
-      AccessType.INSTANCE -> {
-        // actual is a provider but we want instance
-        unwrapProvider(type)
+
+    // Step 2: Convert provider if needed (e.g., Metro -> Dagger)
+    // Only do this if we're in PROVIDER mode (or transformed to it)
+    val finalAccessType = if (requested == AccessType.PROVIDER) requested else actual
+    return if (finalAccessType == AccessType.PROVIDER) {
+      with(scope) {
+        with(metroSymbols.providerTypeConverter) { accessTransformed.convertTo(contextualTypeKey) }
       }
+    } else {
+      accessTransformed
     }
   }
 

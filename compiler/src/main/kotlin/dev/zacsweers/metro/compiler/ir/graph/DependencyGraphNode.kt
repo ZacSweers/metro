@@ -42,11 +42,11 @@ internal data class DependencyGraphNode(
   val graphExtensions: Map<IrTypeKey, List<GraphExtensionAccessor>>,
   val scopes: Set<IrAnnotation>,
   val aggregationScopes: Set<ClassId>,
-  val providerFactories: List<Pair<IrTypeKey, ProviderFactory>>,
+  val providerFactories: Map<IrTypeKey, ProviderFactory>,
   // Types accessible via this graph (includes inherited)
   // Dagger calls these "provision methods", but that's a bit vague IMO
   val accessors: List<GraphAccessor>,
-  val bindsCallables: Set<BindsCallable>,
+  val bindsCallables: Map<IrTypeKey, BindsCallable>,
   val multibindsCallables: Set<MultibindsCallable>,
   val optionalKeys: Map<IrTypeKey, Set<BindsOptionalOfCallable>>,
   /** Binding containers that need a managed instance. */
@@ -107,7 +107,7 @@ internal data class DependencyGraphNode(
   val multibindingAccessors by memoize {
     proto
       ?.let {
-        val bitfield = BitField(it.multibinding_accessor_indices)
+        val bitfield = BitField.fromIntList(it.multibinding_accessor_indices)
         val multibindingCallableIds =
           it.accessor_callable_names.filterIndexedTo(mutableSetOf()) { index, _ ->
             bitfield.isSet(index)

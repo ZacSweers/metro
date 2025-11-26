@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir
 
-import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.computeMetroDefault
 import dev.zacsweers.metro.compiler.expectAsOrNull
@@ -11,6 +10,8 @@ import dev.zacsweers.metro.compiler.isPlatformType
 import dev.zacsweers.metro.compiler.mapToArray
 import dev.zacsweers.metro.compiler.memoized
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.symbols.GuiceSymbols
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Objects
 import org.jetbrains.kotlin.GeneratedDeclarationKey
 import org.jetbrains.kotlin.KtSourceElement
@@ -662,6 +663,10 @@ internal fun List<FirAnnotation>.qualifierAnnotation(
 ): MetroFirAnnotation? =
   asSequence()
     .annotationAnnotatedWithAny(session, session.classIds.qualifierAnnotations, typeResolver)
+    ?.takeIf {
+      // Guice's `@Assisted` annoyingly annotates itself as a qualifier too, so we catch that here
+      it.fir.toAnnotationClassIdSafe(session) != GuiceSymbols.ClassIds.assisted
+    }
 
 internal fun FirBasedSymbol<*>.mapKeyAnnotation(session: FirSession): MetroFirAnnotation? =
   resolvedCompilerAnnotationsWithClassIds.mapKeyAnnotation(session)
@@ -869,6 +874,12 @@ internal fun FirAnnotation.additionalScopesArgument() =
 internal fun FirAnnotation.bindingContainersArgument() =
   arrayArgument(Symbols.Names.bindingContainers, index = 4)
 
+internal fun FirAnnotation.modulesArgument() = arrayArgument(Symbols.Names.modules, index = 1)
+
+internal fun FirAnnotation.bindingContainerClasses(includeModulesArg: Boolean): FirCall? {
+  return bindingContainersArgument() ?: if (includeModulesArg) modulesArgument() else null
+}
+
 internal fun FirAnnotation.includesArgument() = arrayArgument(Symbols.Names.includes, index = 0)
 
 internal fun FirAnnotation.allScopeClassIds(): Set<ClassId> =
@@ -878,7 +889,15 @@ internal fun FirAnnotation.allScopeClassIds(): Set<ClassId> =
     }
     .filterNotTo(mutableSetOf()) { it == StandardClassIds.Nothing }
 
-internal fun FirAnnotation.excludesArgument() = arrayArgument(Symbols.Names.excludes, index = 2)
+internal fun FirAnnotation.excludesArgument(session: FirSession) =
+  arrayArgument(Symbols.Names.excludes, index = 2)
+    ?: run {
+      if (session.metroFirBuiltIns.options.enableDaggerAnvilInterop) {
+        arrayArgument(Symbols.Names.exclude, index = 3)
+      } else {
+        null
+      }
+    }
 
 internal fun FirAnnotation.replacesArgument() = arrayArgument(Symbols.Names.replaces, index = 2)
 
@@ -938,8 +957,8 @@ internal fun FirAnnotation.resolvedAdditionalScopesClassIds() =
     it.expectAsOrNull<FirGetClassCall>()?.resolvedClassId()
   }
 
-internal fun FirAnnotation.resolvedBindingContainersClassIds() =
-  bindingContainersArgument()?.argumentList?.arguments?.mapNotNull {
+internal fun FirAnnotation.resolvedBindingContainersClassIds(includeModulesArg: Boolean) =
+  bindingContainerClasses(includeModulesArg)?.argumentList?.arguments?.mapNotNull {
     it.expectAsOrNull<FirGetClassCall>()
   }
 
@@ -960,11 +979,13 @@ internal fun FirAnnotation.resolvedAdditionalScopesClassIds(
 }
 
 internal fun FirAnnotation.resolvedExcludedClassIds(
-  typeResolver: TypeResolveService
+  session: FirSession,
+  typeResolver: TypeResolveService,
 ): Set<ClassId> {
   val excludesArgument =
-    excludesArgument()?.argumentList?.arguments?.mapNotNull { it.expectAsOrNull<FirGetClassCall>() }
-      ?: return emptySet()
+    excludesArgument(session)?.argumentList?.arguments?.mapNotNull {
+      it.expectAsOrNull<FirGetClassCall>()
+    } ?: return emptySet()
   // Try to resolve it normally first. If this fails, try to resolve within the enclosing scope
   val excluded =
     excludesArgument.mapNotNull { it.resolvedClassId() }.takeUnless { it.isEmpty() }
@@ -1213,6 +1234,17 @@ internal fun FirClassSymbol<*>.implements(supertype: ClassId, session: FirSessio
     .any { it.classId?.let { it == supertype } == true }
 }
 
+internal fun FirClassLikeSymbol<*>.isBindingContainer(session: FirSession): Boolean {
+  return when {
+    isAnnotatedWithAny(session, session.classIds.bindingContainerAnnotations) -> true
+    this is FirClassSymbol<*> && session.metroFirBuiltIns.options.enableGuiceRuntimeInterop -> {
+      // Guice interop
+      implements(GuiceSymbols.ClassIds.module, session)
+    }
+    else -> false
+  }
+}
+
 internal fun ConeKotlinType.render(short: Boolean): String {
   return buildString { renderType(short, this@render) }
 }
@@ -1385,10 +1417,9 @@ internal fun FirClassLikeSymbol<*>.bindingContainerErrorMessage(
   } else if (isInner) {
     "Inner class '${classId.shortClassName}' cannot be a binding container."
   } else if (
-    !alreadyCheckedAnnotation &&
-      !isAnnotatedWithAny(session, session.metroFirBuiltIns.classIds.bindingContainerAnnotations)
+    !alreadyCheckedAnnotation && this is FirClassSymbol<*> && !isBindingContainer(session)
   ) {
-    "'${classId.asFqNameString()}' is not annotated with a `@BindingContainer` annotation."
+    "'${classId.asFqNameString()}' is not a binding container."
   } else {
     null
   }

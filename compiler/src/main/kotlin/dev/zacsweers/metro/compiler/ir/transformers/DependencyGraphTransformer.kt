@@ -6,7 +6,6 @@ import dev.zacsweers.metro.compiler.ExitProcessingException
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
-import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
@@ -44,10 +43,10 @@ import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.scopeAnnotations
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
-import dev.zacsweers.metro.compiler.ir.transformMultiboundQualifier
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.backend.common.IrElementTransformerVoidWithContext
@@ -309,14 +308,7 @@ internal class DependencyGraphTransformer(
       // @Provides
       for ((_, providerFactory) in node.providerFactories) {
         if (providerFactory.annotations.isScoped) {
-          // TODO this lookup is getting duplicated a few places, would be good to isolated
-          val targetKey =
-            if (providerFactory.annotations.isIntoMultibinding) {
-              providerFactory.typeKey.transformMultiboundQualifier(providerFactory.annotations)
-            } else {
-              providerFactory.typeKey
-            }
-          localParentContext.add(targetKey)
+          localParentContext.add(providerFactory.typeKey)
         }
       }
 
@@ -533,7 +525,7 @@ internal class DependencyGraphTransformer(
         node.accessors
           .map { it.metroFunction.ir }
           .plus(node.injectors.map { it.metroFunction.ir })
-          .plus(node.bindsCallables.map { it.callableMetadata.function })
+          .plus(node.bindsCallables.values.map { it.callableMetadata.function })
           .plus(node.graphExtensions.flatMap { it.value }.map { it.accessor.ir })
           .filterNot { it.isExternalParent }
           .forEach { function ->

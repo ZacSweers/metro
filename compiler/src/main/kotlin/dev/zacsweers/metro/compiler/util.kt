@@ -30,7 +30,7 @@ internal fun ClassId.isPlatformType(): Boolean {
 internal const val LOG_PREFIX = "[METRO]"
 
 internal const val REPORT_METRO_MESSAGE =
-  "This is a bug in the Metro compiler, please report it to https://github.com/zacsweers/metro."
+  "This is possibly a bug in the Metro compiler, please report it with details and/or a reproducer to https://github.com/zacsweers/metro."
 
 internal fun <T> memoize(initializer: () -> T) = lazy(LazyThreadSafetyMode.NONE, initializer)
 
@@ -202,6 +202,7 @@ internal fun <T : Comparable<T>> List<T>.compareTo(other: List<T>): Int {
 internal fun String.suffixIfNot(suffix: String) =
   if (this.endsWith(suffix)) this else "$this$suffix"
 
+// TODO this doesn't include the package name, should we include it
 internal fun ClassId.scopeHintFunctionName(): Name = joinSimpleNames().shortClassName
 
 internal fun reportCompilerBug(message: String): Nothing {

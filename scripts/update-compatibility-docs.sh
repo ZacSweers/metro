@@ -6,9 +6,11 @@
 set -euo pipefail
 
 # Updates docs/compatibility.md with tested versions from compiler-compat/version-aliases.txt
+# Also updates the Kotlin version badge in README.md
 
 ALIASES_FILE="compiler-compat/version-aliases.txt"
 DOCS_FILE="docs/compatibility.md"
+README_FILE="README.md"
 
 if [ ! -f "$ALIASES_FILE" ]; then
     echo "❌ Error: $ALIASES_FILE not found"
@@ -17,6 +19,11 @@ fi
 
 if [ ! -f "$DOCS_FILE" ]; then
     echo "❌ Error: $DOCS_FILE not found"
+    exit 1
+fi
+
+if [ ! -f "$README_FILE" ]; then
+    echo "❌ Error: $README_FILE not found"
     exit 1
 fi
 
@@ -92,5 +99,25 @@ mv "$tmpfile" "$DOCS_FILE"
 rm "$tested_tmpfile"
 
 echo "✅ Updated $DOCS_FILE with $(echo "$versions" | wc -l | tr -d ' ') tested versions"
+
+# Update README.md Kotlin version badge
+echo ""
+echo "🔄 Updating $README_FILE Kotlin version badge..."
+
+# Get min and max versions (sorted ascending for min, descending for max)
+min_version=$(echo "$versions" | sort -V | head -n 1)
+max_version=$(echo "$versions" | sort -V | tail -n 1)
+
+# Escape dots and hyphens for the badge URL (shields.io uses -- for hyphen, . is ok)
+# The badge format is: Kotlin-MIN--MAX where -- represents a hyphen in the version
+badge_min=$(echo "$min_version" | sed 's/-/--/g')
+badge_max=$(echo "$max_version" | sed 's/-/--/g')
+badge_text="Kotlin-${badge_min}--${badge_max}"
+
+# Update the Kotlin badge in README.md
+# Match the pattern: [![Kotlin](...badge/Kotlin-...-blue.svg...)]
+sed -i '' "s|\[!\[Kotlin\](https://img.shields.io/badge/Kotlin-[^]]*-blue.svg?logo=kotlin)\]|\[![Kotlin](https://img.shields.io/badge/${badge_text}-blue.svg?logo=kotlin)]|g" "$README_FILE"
+
+echo "✅ Updated $README_FILE with Kotlin version range: $min_version - $max_version"
 echo ""
 echo "📝 Review the changes to ensure formatting is correct"

@@ -11,11 +11,11 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.buildBlockBody
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.doubleCheck
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
-import dev.zacsweers.metro.compiler.ir.getAllSuperTypes
 import dev.zacsweers.metro.compiler.ir.graph.expressions.BindingExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.expressions.GraphExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.instanceFactory
@@ -39,7 +39,9 @@ import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
+import dev.zacsweers.metro.compiler.ir.typeOrNullableAny
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
+import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.isInvisibleGeneratedGraph
 import dev.zacsweers.metro.compiler.letIf
@@ -151,6 +153,8 @@ internal class IrGraphGenerator(
       parentTracer = parentTracer,
       getterPropertyFor = ::getOrCreateLazyProperty,
     )
+
+  private val graphMetadataReporter = GraphMetadataReporter(this)
 
   fun IrProperty.withInit(typeKey: IrTypeKey, init: PropertyInitializer): IrProperty = apply {
     // Only necessary for fields
@@ -501,7 +505,12 @@ internal class IrGraphGenerator(
           property.withInit(key) { thisReceiver, typeKey ->
             expressionGeneratorFactory
               .create(thisReceiver)
-              .generateBindingCode(binding, accessType = accessType, fieldInitKey = typeKey)
+              .generateBindingCode(
+                binding,
+                contextualTypeKey = binding.contextualTypeKey.wrapInProvider(),
+                accessType = accessType,
+                fieldInitKey = typeKey,
+              )
               .letIf(binding.isScoped() && isProviderType) {
                 // If it's scoped, wrap it in double-check
                 // DoubleCheck.provider(<provider>)
@@ -535,6 +544,7 @@ internal class IrGraphGenerator(
                       .create(thisReceiver)
                       .generateBindingCode(
                         binding,
+                        contextualTypeKey = binding.contextualTypeKey.wrapInProvider(),
                         accessType = BindingExpressionGenerator.AccessType.PROVIDER,
                         fieldInitKey = deferredTypeKey,
                       )
@@ -635,6 +645,7 @@ internal class IrGraphGenerator(
         parentTracer.traceNested("Generate Metro metadata") {
           // Finally, generate metadata
           val graphProto = node.toProto(bindingGraph = bindingGraph)
+          graphMetadataReporter.write(node, bindingGraph)
           val metroMetadata = MetroMetadata(METRO_VERSION, dependency_graph = graphProto)
 
           writeDiagnostic({
@@ -731,7 +742,7 @@ internal class IrGraphGenerator(
               pluginContext
                 .referenceClass(binding.targetClassId)!!
                 .owner
-                .getAllSuperTypes(excludeSelf = false, excludeAny = true)) {
+                .allSupertypesSequence(excludeSelf = false, excludeAny = true)) {
               val clazz = type.rawType()
               val generatedInjector =
                 membersInjectorTransformer.getOrGenerateInjector(clazz) ?: continue
@@ -748,7 +759,9 @@ internal class IrGraphGenerator(
                 +irInvoke(
                   callee = function.symbol,
                   typeArgs =
-                    targetParam.type.requireSimpleType(targetParam).arguments.map { it.typeOrFail },
+                    targetParam.type.requireSimpleType(targetParam).arguments.map {
+                      it.typeOrNullableAny
+                    },
                   args =
                     buildList {
                       add(irGet(targetParam))

@@ -179,14 +179,23 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     objects.property(Boolean::class.javaObjectType).convention(false)
 
   /**
-   * If set, the Metro compiler will dump report diagnostics about resolved dependency graphs to the
-   * given destination.
+   * If set, the Metro compiler will dump verbose report diagnostics about resolved dependency
+   * graphs to the given destination. Outputs are per-compilation granularity (i.e.
+   * `build/metro/main/...`).
    *
    * This behaves similar to the compose-compiler's option of the same name.
+   *
+   * This also enables the `generateMetroGraphMetadata` task, which will dump JSON representations
+   * of all graphs per compilation in this project.
+   *
+   * This enables a nontrivial amount of logging and overhead and should only be used for debugging.
    *
    * Optionally, you can specify a `metro.reportsDestination` gradle property whose value is a
    * _relative_ path from the project's **build** directory.
    */
+  @DelicateMetroGradleApi(
+    "This should only be used for debugging purposes and is not intended to be always enabled."
+  )
   public val reportsDestination: DirectoryProperty =
     objects
       .directoryProperty()
@@ -212,6 +221,7 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
   @MetroExtensionMarker
   public abstract class InteropHandler @Inject constructor(objects: ObjectFactory) {
     public abstract val enableDaggerRuntimeInterop: Property<Boolean>
+    public abstract val enableGuiceRuntimeInterop: Property<Boolean>
 
     // Interop mode flags
     public val includeJavaxAnnotations: Property<Boolean> =
@@ -225,6 +235,8 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     public val includeAnvilAnnotations: Property<Boolean> =
       objects.property(Boolean::class.java).convention(false)
     public val includeKotlinInjectAnvilAnnotations: Property<Boolean> =
+      objects.property(Boolean::class.java).convention(false)
+    public val includeGuiceAnnotations: Property<Boolean> =
       objects.property(Boolean::class.java).convention(false)
 
     // Intrinsics
@@ -329,6 +341,12 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     public fun includeAnvilForKotlinInject() {
       includeKotlinInject()
       includeKotlinInjectAnvilAnnotations.set(true)
+    }
+
+    /** Includes Guice annotations support. */
+    public fun includeGuice() {
+      enableGuiceRuntimeInterop.set(true)
+      includeGuiceAnnotations.set(true)
     }
   }
 }

@@ -12,6 +12,7 @@ import com.tschuchort.compiletesting.JvmCompilationResult
 import dev.zacsweers.metro.MembersInjector
 import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.Provides
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.internal.Factory
 import dev.zacsweers.metro.internal.MetroImplMarker
 import dev.zacsweers.metro.provider

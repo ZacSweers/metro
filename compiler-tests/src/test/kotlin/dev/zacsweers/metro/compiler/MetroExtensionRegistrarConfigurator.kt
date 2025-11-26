@@ -8,7 +8,9 @@ import dev.zacsweers.metro.compiler.interop.Ksp2AdditionalSourceProvider
 import dev.zacsweers.metro.compiler.interop.configureAnvilAnnotations
 import dev.zacsweers.metro.compiler.interop.configureDaggerAnnotations
 import dev.zacsweers.metro.compiler.interop.configureDaggerInterop
+import dev.zacsweers.metro.compiler.interop.configureGuiceInterop
 import dev.zacsweers.metro.compiler.ir.MetroIrGenerationExtension
+import kotlin.io.path.Path
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
@@ -21,6 +23,7 @@ import org.jetbrains.kotlin.test.directives.model.singleOrZeroValue
 import org.jetbrains.kotlin.test.model.TestModule
 import org.jetbrains.kotlin.test.services.EnvironmentConfigurator
 import org.jetbrains.kotlin.test.services.TestServices
+import org.jetbrains.kotlin.test.services.temporaryDirectoryManager
 
 fun TestConfigurationBuilder.configurePlugin() {
   useConfigurators(::MetroExtensionRegistrarConfigurator, ::MetroRuntimeEnvironmentConfigurator)
@@ -34,6 +37,7 @@ fun TestConfigurationBuilder.configurePlugin() {
   configureAnvilAnnotations()
   configureDaggerAnnotations()
   configureDaggerInterop()
+  configureGuiceInterop()
   useAdditionalSourceProviders(::Ksp2AdditionalSourceProvider)
 }
 
@@ -81,6 +85,10 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         module.directives.singleOrZeroValue(MetroDirectives.MAX_IR_ERRORS_COUNT)?.let {
           maxIrErrorsCount = it
         }
+        module.directives.singleOrZeroValue(MetroDirectives.REPORTS_DESTINATION)?.let {
+          reportsDestination =
+            Path("${testServices.temporaryDirectoryManager.rootDir.absolutePath}/$it")
+        }
         contributesAsInject = MetroDirectives.CONTRIBUTES_AS_INJECT in module.directives
 
         // Configure interop annotations using builder helper methods
@@ -91,7 +99,9 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
             MetroDirectives.ENABLE_ANVIL_KSP in module.directives
         ) {
           includeAnvilAnnotations()
-        } else if (
+        }
+
+        if (
           MetroDirectives.WITH_DAGGER in module.directives ||
             MetroDirectives.ENABLE_DAGGER_INTEROP in module.directives ||
             MetroDirectives.ENABLE_DAGGER_KSP in module.directives
@@ -99,9 +109,18 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
           includeDaggerAnnotations()
         }
 
+        if (MetroDirectives.enableGuiceAnnotations(module.directives)) {
+          includeGuiceAnnotations()
+        }
+
         // Override enableDaggerRuntimeInterop if needed
         if (MetroDirectives.enableDaggerRuntimeInterop(module.directives)) {
           enableDaggerRuntimeInterop = true
+        }
+
+        // Override enableGuiceRuntimeInterop if needed
+        if (MetroDirectives.enableGuiceInterop(module.directives)) {
+          enableGuiceRuntimeInterop = true
         }
       }
 

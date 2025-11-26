@@ -3,9 +3,19 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.drewhamilton.poko.Poko
+import dev.zacsweers.metro.compiler.appendLineWithUnderlinedContent
+import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
+import dev.zacsweers.metro.compiler.ir.parameters.Parameters
+import dev.zacsweers.metro.compiler.symbols.Symbols
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.util.hasAnnotation
+import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
+import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.name.CallableId
 
 internal sealed interface BindsLikeCallable : IrBindingContainerCallable {
@@ -21,9 +31,63 @@ internal sealed interface BindsLikeCallable : IrBindingContainerCallable {
 internal class BindsCallable(
   override val callableMetadata: IrCallableMetadata,
   val source: IrTypeKey,
-  val target: IrTypeKey,
+  /**
+   * The canonical typeKey for this binding. For `@IntoSet`/`@IntoMap` bindings, this includes the
+   * unique `@MultibindingElement` qualifier. For non-multibinding binds, this equals [rawTarget].
+   */
+  override val typeKey: IrTypeKey,
+  /** The raw target type key without multibinding transformation. Used for diagnostics. */
+  val rawTarget: IrTypeKey,
 ) : BindsLikeCallable {
-  override val typeKey: IrTypeKey = target
+
+  /**
+   * Resolves the source declaration for this callable.
+   *
+   * @return A pair of (declaration, isContributed) or null if the function is null. If
+   *   isContributed is true, the declaration is the source class that contributed this binding.
+   */
+  fun resolveSourceDeclaration(): Pair<IrDeclarationWithName, Boolean> {
+    val ir = function
+    val resolvedIr = ir.overriddenSymbolsSequence().lastOrNull()?.owner ?: ir
+    val isMetroContribution =
+      resolvedIr.parentClassOrNull?.hasAnnotation(Symbols.ClassIds.metroContribution) == true
+    return if (isMetroContribution) {
+      // If it's a contribution, the source is
+      // SourceClass.MetroContributionScopeName.bindingFunction
+      //                                        ^^^
+      resolvedIr.parentAsClass.parentAsClass to true
+    } else {
+      ir to false
+    }
+  }
+
+  /** Renders a [LocationDiagnostic] for this callable. */
+  fun renderLocationDiagnostic(short: Boolean, parameters: Parameters): LocationDiagnostic {
+    val (sourceDeclaration, isContributed) = resolveSourceDeclaration()
+
+    val location =
+      sourceDeclaration.locationOrNull()?.render(short)
+        ?: "<unknown location, likely a separate compilation>"
+
+    val description = buildString {
+      if (isContributed) {
+        append((sourceDeclaration as IrDeclarationParent).kotlinFqName)
+        append(" contributes a binding of ")
+        appendLineWithUnderlinedContent(typeKey.render(short = short, includeQualifier = true))
+      } else {
+        renderForDiagnostic(
+          declaration = function,
+          short = short,
+          typeKey = rawTarget,
+          annotations = callableMetadata.annotations,
+          parameters = parameters,
+          isProperty = callableMetadata.isPropertyAccessor,
+          underlineTypeKey = true,
+        )
+      }
+    }
+    return LocationDiagnostic(location, description)
+  }
 }
 
 @Poko
@@ -40,10 +104,14 @@ internal class BindsOptionalOfCallable(
 
 context(context: IrMetroContext)
 internal fun MetroSimpleFunction.toBindsCallable(isInterop: Boolean): BindsCallable {
+  val callableMetadata = ir.irCallableMetadata(annotations, isInterop)
+  val rawTarget = IrContextualTypeKey.from(ir).typeKey
+  val typeKey = rawTarget.transformMultiboundQualifier(callableMetadata.annotations)
   return BindsCallable(
-    ir.irCallableMetadata(annotations, isInterop),
-    IrContextualTypeKey.from(ir.nonDispatchParameters.single()).typeKey,
-    IrContextualTypeKey.from(ir).typeKey,
+    callableMetadata = callableMetadata,
+    source = IrContextualTypeKey.from(ir.nonDispatchParameters.single()).typeKey,
+    typeKey = typeKey,
+    rawTarget = rawTarget,
   )
 }
 

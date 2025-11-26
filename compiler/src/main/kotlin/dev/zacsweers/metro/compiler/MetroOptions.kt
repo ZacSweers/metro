@@ -124,6 +124,16 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  ENABLE_GUICE_RUNTIME_INTEROP(
+    RawMetroOption.boolean(
+      name = "enable-guice-runtime-interop",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description = "Enable/disable interop with Guice's runtime (Provider and MembersInjector).",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   GENERATE_CONTRIBUTION_HINTS(
     RawMetroOption.boolean(
       name = "generate-contribution-hints",
@@ -637,6 +647,16 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       required = false,
       allowMultipleOccurrences = false,
     )
+  ),
+  INTEROP_INCLUDE_GUICE_ANNOTATIONS(
+    RawMetroOption.boolean(
+      name = "interop-include-guice-annotations",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description = "Interop with Guice annotations (automatically includes javax annotations)",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
   );
 
   companion object {
@@ -702,6 +722,8 @@ public data class MetroOptions(
     },
   val enableDaggerRuntimeInterop: Boolean =
     MetroOption.ENABLE_DAGGER_RUNTIME_INTEROP.raw.defaultValue.expectAs(),
+  val enableGuiceRuntimeInterop: Boolean =
+    MetroOption.ENABLE_GUICE_RUNTIME_INTEROP.raw.defaultValue.expectAs(),
   val maxIrErrorsCount: Int = MetroOption.MAX_IR_ERRORS_COUNT.raw.defaultValue.expectAs(),
   // Intrinsics
   val customProviderTypes: Set<ClassId> = MetroOption.CUSTOM_PROVIDER.raw.defaultValue.expectAs(),
@@ -778,6 +800,7 @@ public data class MetroOptions(
       base.interopAnnotationsNamedArgSeverity
     public var enabledLoggers: MutableSet<MetroLogger.Type> = base.enabledLoggers.toMutableSet()
     public var enableDaggerRuntimeInterop: Boolean = base.enableDaggerRuntimeInterop
+    public var enableGuiceRuntimeInterop: Boolean = base.enableGuiceRuntimeInterop
     public var maxIrErrorsCount: Int = base.maxIrErrorsCount
     public var customProviderTypes: MutableSet<ClassId> = base.customProviderTypes.toMutableSet()
     public var customLazyTypes: MutableSet<ClassId> = base.customLazyTypes.toMutableSet()
@@ -920,6 +943,28 @@ public data class MetroOptions(
       includeKotlinInjectAnnotations()
     }
 
+    public fun includeGuiceAnnotations() {
+      enableGuiceRuntimeInterop = true
+      // TODO
+      //  Injector (members injector)
+      //  ProvidesIntoOptional. Different than `@BindsOptionalOf`, provides a value
+
+      customInjectAnnotations.add(guicePackage.classId("Inject"))
+      customProvidesAnnotations.add(guicePackage.classId("Provides"))
+      customProviderTypes.add(guicePackage.classId("Provider"))
+      customAssistedAnnotations.add(guiceAssistedInjectPackage.classId("Assisted"))
+      customAssistedInjectAnnotations.add(guiceAssistedInjectPackage.classId("AssistedInject"))
+      // Guice has no AssistedFactory
+      customQualifierAnnotations.add(guicePackage.classId("BindingAnnotation"))
+      customScopeAnnotations.add(guicePackage.classId("ScopeAnnotation"))
+      customMapKeyAnnotations.add(guiceMultibindingsPackage.classId("MapKey"))
+      customIntoMapAnnotations.add(guiceMultibindingsPackage.classId("ProvidesIntoMap"))
+      customIntoSetAnnotations.add(guiceMultibindingsPackage.classId("ProvidesIntoSet"))
+
+      // Guice uses jakarta
+      includeJakartaAnnotations()
+    }
+
     public fun build(): MetroOptions {
       if (debug) {
         enabledLoggers += MetroLogger.Type.entries
@@ -942,6 +987,7 @@ public data class MetroOptions(
         interopAnnotationsNamedArgSeverity = interopAnnotationsNamedArgSeverity,
         enabledLoggers = enabledLoggers,
         enableDaggerRuntimeInterop = enableDaggerRuntimeInterop,
+        enableGuiceRuntimeInterop = enableGuiceRuntimeInterop,
         maxIrErrorsCount = maxIrErrorsCount,
         customProviderTypes = customProviderTypes,
         customLazyTypes = customLazyTypes,
@@ -984,6 +1030,10 @@ public data class MetroOptions(
       val kotlinInjectPackage = FqName("me.tatarka.inject.annotations")
       val anvilPackage = FqName("com.squareup.anvil.annotations")
       val kotlinInjectAnvilPackage = FqName("software.amazon.lastmile.kotlin.inject.anvil")
+      val guicePackage = FqName("com.google.inject")
+      val guiceMultibindingsPackage = FqName("com.google.inject.multibindings")
+      val guiceAssistedInjectPackage = FqName("com.google.inject.assistedinject")
+      val guiceNamePackage = FqName("com.google.inject.name")
       val internalName = Name.identifier("internal")
     }
   }
@@ -1050,6 +1100,9 @@ public data class MetroOptions(
 
           MetroOption.ENABLE_DAGGER_RUNTIME_INTEROP ->
             enableDaggerRuntimeInterop = configuration.getAsBoolean(entry)
+
+          MetroOption.ENABLE_GUICE_RUNTIME_INTEROP ->
+            enableGuiceRuntimeInterop = configuration.getAsBoolean(entry)
 
           MetroOption.MAX_IR_ERRORS_COUNT -> maxIrErrorsCount = configuration.getAsInt(entry)
 
@@ -1136,6 +1189,9 @@ public data class MetroOptions(
           }
           MetroOption.INTEROP_INCLUDE_KOTLIN_INJECT_ANVIL_ANNOTATIONS -> {
             if (configuration.getAsBoolean(entry)) includeKotlinInjectAnvilAnnotations()
+          }
+          MetroOption.INTEROP_INCLUDE_GUICE_ANNOTATIONS -> {
+            if (configuration.getAsBoolean(entry)) includeGuiceAnnotations()
           }
         }
       }

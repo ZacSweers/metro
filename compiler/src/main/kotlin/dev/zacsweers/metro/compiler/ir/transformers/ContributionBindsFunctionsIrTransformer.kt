@@ -3,17 +3,17 @@
 package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.compiler.Origins
-import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.bindingTypeOrNull
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.findAnnotations
-import dev.zacsweers.metro.compiler.ir.getAllSuperTypes
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.ir.isBindingContainer
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.mapKeyAnnotation
 import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
@@ -24,6 +24,7 @@ import dev.zacsweers.metro.compiler.ir.requireScope
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.joinSimpleNames
 import dev.zacsweers.metro.compiler.memoize
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
@@ -77,9 +78,7 @@ internal class ContributionTransformer(private val context: IrMetroContext) :
       return super.visitClass(declaration, data)
     }
 
-    val isBindingContainer by memoize {
-      declaration.isAnnotatedWithAny(metroSymbols.classIds.bindingContainerAnnotations)
-    }
+    val isBindingContainer by memoize { declaration.isBindingContainer() }
 
     // First, perform transformations
     if (declaration.origin == Origins.MetroContributionClassDeclaration) {
@@ -111,8 +110,7 @@ internal class ContributionTransformer(private val context: IrMetroContext) :
   }
 
   private fun collectContributionDataFromContainer(declaration: IrClass, data: IrContributionData) {
-    // @BindingContainer handling
-    if (declaration.isAnnotatedWithAny(metroSymbols.classIds.bindingContainerAnnotations)) {
+    if (declaration.isBindingContainer()) {
       for (contributesToAnno in
         declaration.annotationsIn(metroSymbols.classIds.contributesToAnnotations)) {
         val scope = contributesToAnno.requireScope()
@@ -141,7 +139,7 @@ internal class ContributionTransformer(private val context: IrMetroContext) :
     // Transform them if necessary
     // and add new fake overrides
     declaration
-      .getAllSuperTypes()
+      .allSupertypesSequence()
       .filterNot { it.rawTypeOrNull()?.isExternalParent == true }
       .mapNotNull { it.rawTypeOrNull() }
       .forEach {

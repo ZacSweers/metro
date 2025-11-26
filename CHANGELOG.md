@@ -4,6 +4,80 @@ Changelog
 **Unreleased**
 --------------
 
+- **Enhancement**: Lazily validate multibindings. Previously, multibindings were validated eagerly even if they were unused in a graph.
+- **Enhancement**: Report all duplicate bindings errors during graph construction rather than failing at first.
+- **Fix**: Catch more `IrErrorType` error types cases and report context/advice where possible.
+- **Fix**: Dedupe binding containers contributed to both parent and child graphs.
+- **Fix**: Fix support for Anvil's `exclude` argument in dependency graph annotations when Anvil interop is enabled.
+- [gradle] Add `generateMetroGraphMetadata` task that writes a merged JSON dump of all binding graphs in the project. This can be chained from the `GenerateGraphMetadataTask` for further processing.
+- [gradle] Add `MetroArtifacts` API for accessing Metro reports and graph metadata directories.
+- [gradle] Mark `metro.reportsDestination` as delicate/opt-in.
+
+0.7.7
+-----
+
+_2025-11-19_
+
+- Add `MetroCompilerPluginRegistrar.pluginId` for forward compatibility with Kotlin `2.3.0`'s new API.
+
+0.7.6
+-----
+
+_2025-11-17_
+
+- **Fix**: Record IC lookups for merged supertypes to graph extensions.
+- **Fix**: Optimize `checkScope()` diagnostics in errors by checking if roots are empty first.
+- **Fix**: Fix diagnostic when an `@Multibinds`-annotated Map uses an enum as a key.
+- **Fix**: Fix Dagger interop error messages when validating `@Module`s with constructor-injected fields to match errors for `@BindingContainer`s.
+- **Fix**: Catch `IrErrorType` error types earlier when generating missing binding hints.
+- **Fix**: Fix IC edge case when restoring a deleted contributed binding container.
+- Update shaded Okio to `3.16.3`.
+- Build against Gradle `9.2.1`.
+
+Special thanks to [@jonamireh](https://github.com/jonamireh), [@neworld](https://github.com/neworld), and [@JoelWilcox](https://github.com/JoelWilcox) for contributing to this release!
+
+0.7.5
+-----
+
+_2025-11-07_
+
+- **New**: Add Guice interop. This is largely focused on Guice's `Provider` type, annotations, and existing interop with jakarta.inject annotations.
+    ```kotlin
+    metro {
+      includeGuice()
+    }
+    ```
+- **Enhancement**: Improve IR caching layer with supertype caching.
+- **Enhancement**: Add diagnostic to check for `Array` properties in map key annotations that unwrap values.
+- **Enhancement**: Add diagnostic to check multibinds map keys are valid (primitives, strings, `KClass`, annotation classes, not arrays).
+- **Enhancement**: Improve multibinding star project checks.
+- **Enhancement**: Nudge `@Binds` functions toward `private` visibility like `@Provides` functions now that it's fully supported.
+- **Fix**: Don't treat `l` as an illegal char in name allocating. This was supposed to be `;`.
+- **Fix**: Ensure all reserved properties by child graphs get properties in parents. Previously, there were some cases for bindings that were unused in the parent and otherwise did not meet the criteria for having a backing property would get missed in binding property collection.
+- **Fix**: Fix compiler crash when injecting a target type with star generics.
+- **Fix**: Fix `ClassCastException` when accessing a `Provider` contributed from a `dagger.Module`.
+- Split `javax` and `jakarta` interop APIs into separate artifacts from dagger for reuse.
+
+Special thanks to [@jonamireh](https://github.com/jonamireh) for contributing to this release!
+
+0.7.4
+-----
+
+_2025-11-04_
+
+- **Fix**: Support more than 32 parameters to Graph factories.
+- **Fix**: Support more than 32 accessors in Graphs.
+- **Fix**: Transform `INSTANCE` access types for `GraphDependency` bindings.
+- **Fix**: Fix ordering of setter member injection parameters when reading injectors across modules.
+- [change] When generating reports, create directory structures matching packages rather than generating all to one top-level dir.
+
+Special thanks to [@jonamireh](https://github.com/jonamireh), [@kevinguitar](https://github.com/kevinguitar), and [@JoelWilcox](https://github.com/JoelWilcox) for contributing to this release!
+
+0.7.3
+-----
+
+_2025-11-02_
+
 - **New**: Support interop with Dagger/Anvil-generated member injector classes.
 - **Enhancement**: Skip reading members when loading externally compiled member injector classes. Parameters are now computed from their static `inject*` functions.
 - **Enhancement**: Improve logic for avoiding reserved keywords or illegal character for names in more platforms.
@@ -12,11 +86,16 @@ Changelog
 - **Enhancement**: Cache members injector binding lookups.
 - **Enhancement**: Don't double-lookup members injectors already computed from roots.
 - **Enhancement**: Support Kotlin `2.3.0-Beta2`.
+- **Enhancement**: Test against Kotlin `2.2.21`.
 - **Enhancement**: Improve generated graph impl declaration checks.
 - **Fix**: Work around "LookupSymbols are not yet converted to ProgramSymbols" issue ([KT-80412](https://youtrack.jetbrains.com/issue/KT-80412)) in incremental compilation by avoiding using `$$` prefixes in generated class names.
 - **Fix**: Fix interop support for two layers of `Provider` interop in map multibindings (i.e. `Provider<Map<Key, Provider<Value>>`).
 - Deprecate `includeAnvil()` Gradle DSL function in favor of more specific `includeAnvilForDagger()` and `includeAnvilForKotlinInject()` functions.
 - Move interop annotations controls to compiler. For Gradle users, there's mostly no change (other than the above). For users of any other build system, this makes it a bit easier to reuse the interop annotations logic.
+- [docs] Add compatibility docs: https://zacsweers.github.io/metro/latest/compatibility/. Metro supports a moving range of Kotlin versions, this page captures the tested versions for each release.
+- [docs] Add stability docs: https://zacsweers.github.io/metro/latest/stability/
+
+Special thanks to [@jonamireh](https://github.com/jonamireh), [@hossain-khan](https://github.com/hossain-khan), and [@l2hyunwoo](https://github.com/l2hyunwoo) for contributing to this release!
 
 0.7.2
 -----

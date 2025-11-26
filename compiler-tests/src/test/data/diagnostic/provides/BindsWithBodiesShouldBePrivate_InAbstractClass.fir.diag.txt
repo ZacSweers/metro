@@ -1,1 +1,1 @@
-/BindsWithBodiesShouldBePrivate_InAbstractClass.kt:(252,265): warning: `@Binds` declarations rarely need to have bodies unless they are also private. Consider removing the body or making this private.
+/BindsWithBodiesShouldBePrivate_InAbstractClass.kt:(252,265): warning: `@Binds` declarations should be private.

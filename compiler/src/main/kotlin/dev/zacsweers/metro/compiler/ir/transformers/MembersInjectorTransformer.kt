@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
-import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
@@ -13,13 +12,13 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.generatedClass
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.declaredCallableMembers
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
-import dev.zacsweers.metro.compiler.ir.getAllSuperTypes
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
@@ -30,7 +29,6 @@ import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.memberInjectParameters
-import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.remapTypes
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInMembersInjector
 import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
@@ -48,6 +46,8 @@ import dev.zacsweers.metro.compiler.newName
 import dev.zacsweers.metro.compiler.proto.InjectedClassProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Optional
 import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
@@ -118,7 +118,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
 
   fun getOrGenerateAllInjectorsFor(declaration: IrClass): List<MemberInjectClass> {
     return declaration
-      .getAllSuperTypes(excludeSelf = false, excludeAny = true)
+      .allSupertypesSequence(excludeSelf = false, excludeAny = true)
       .mapNotNull { it.classOrNull?.owner }
       .filterNot { it.isInterface }
       .mapNotNull { getOrGenerateInjector(it) }
@@ -349,7 +349,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
   ): Map<ClassId, List<Parameters>> {
     // Compute supertypes once - we'll need them for either cached lookup or fresh computation
     val allTypes =
-      getAllSuperTypes(excludeSelf = false, excludeAny = true)
+      allSupertypesSequence(excludeSelf = false, excludeAny = true)
         .mapNotNull { it.rawTypeOrNull() }
         .filterNot { it.isInterface }
         .memoized()
@@ -494,8 +494,42 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
 
     val companionObject = injectorClass.companionObject() ?: return emptyList()
 
-    return injectFunctionNames.mapNotNull { functionName ->
-      // Find the inject function by name
+    // Try to get create() function to determine the correct parameter order
+    val createFunction = companionObject.requireSimpleFunction(Symbols.StringNames.CREATE).owner
+
+    val allCreateParams = createFunction.regularParameters
+
+    // Match each inject function to its position in create() params by parameter name
+    data class MatchedFunction(val functionName: String, val startPosition: Int)
+
+    // TODO what about overloads of the same name?
+    val matchedFunctions =
+      injectFunctionNames.mapNotNull { functionName ->
+        // Extract member name from inject function name (e.g., "injectMessage" -> "message")
+        val memberName = functionName.removePrefix("inject").decapitalizeUS()
+
+        // Find the position of this member in create() params by matching parameter names
+        val foundPosition =
+          allCreateParams.indexOfFirst { param -> param.name.asString() == memberName }
+
+        if (foundPosition >= 0) {
+          MatchedFunction(functionName, foundPosition)
+        } else {
+          null
+        }
+      }
+
+    // If we successfully matched all functions, sort by create() order
+    val sortedFunctionNames =
+      if (matchedFunctions.size == injectFunctionNames.size) {
+        matchedFunctions.sortedBy { it.startPosition }.map { it.functionName }
+      } else {
+        // Fallback to the original sorted order if matching failed
+        injectFunctionNames
+      }
+
+    // Extract parameters in the determined order
+    return sortedFunctionNames.mapNotNull { functionName ->
       val injectFunction =
         companionObject.declarations.filterIsInstance<IrSimpleFunction>().find {
           it.name.asString() == functionName
@@ -535,7 +569,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
           if (sourceMemberParametersMap != null) {
             // Dagger context: check if this is a field injection (has @InjectedFieldSignature)
             val isFieldInjection =
-              function.hasAnnotation(Symbols.DaggerSymbols.ClassIds.DAGGER_INJECTED_FIELD_SIGNATURE)
+              function.hasAnnotation(DaggerSymbols.ClassIds.DAGGER_INJECTED_FIELD_SIGNATURE)
 
             if (isFieldInjection) {
               // Field injection: qualifier is on the inject function itself

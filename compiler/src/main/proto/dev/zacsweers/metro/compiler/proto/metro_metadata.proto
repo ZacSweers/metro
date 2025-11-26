@@ -17,7 +17,8 @@ message DependencyGraphProto {
   repeated string accessor_callable_names = 3;
 
   // Bit field to represent which accessor indices are multibindings
-  int32 multibinding_accessor_indices = 4;
+  // Stored as multiple 32-bit integers to support >32 accessors
+  repeated int32 multibinding_accessor_indices = 4;
 
   // Set of all transitively included binding container class IDs (strings)
   repeated string included_binding_containers = 5;
