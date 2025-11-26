@@ -2134,13 +2134,13 @@ class ICTests : BaseIncrementalCompilationTest() {
     )
     val binding = source(
       """
-          interface Interface
+        interface Interface
 
-          @Inject 
-          @ContributesBinding(AppScope::class) 
-          class Implementation : Interface
-        """
-        .trimIndent(),
+        @Inject 
+        @ContributesBinding(AppScope::class) 
+        class Implementation : Interface
+      """
+      .trimIndent(),
     )
     val fixture = object : MetroProject(metroOptions = options) {
       override fun sources() = listOf(binding)
