@@ -17,7 +17,9 @@ public interface MetroArtifacts {
    * Directory containing all Metro reports for this compilation.
    *
    * This is the base directory for all Metro reports (graph metadata, cycle reports, logs, etc.)
-   * The structure is: `{reportsDestination}/{compilationName}/`
+   *
+   * The structure is: `{reportsDestination}/{targetName}/{compilationName}/`
+   * - `targetName` subdir may be skipped if blank/not applicable.
    */
   public val reportsDir: Provider<Directory>
 }
@@ -29,7 +31,7 @@ public interface MetroArtifacts {
  * bindings, dependencies, scopes, and more. Each file follows the naming pattern
  * `graph-{fully.qualified.GraphName}.json`.
  *
- * The directory structure is: `{reportsDestination}/{compilationName}/graph-metadata/`
+ * The directory structure is: `{reportsDestination}/{targetName}/{compilationName}/graph-metadata/`
  *
  * This artifact is primarily intended for CI validation, automated analysis, and tooling that needs
  * programmatic access to Metro's dependency graph structure.

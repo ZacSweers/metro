@@ -147,7 +147,16 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
       }
     }
 
-    val reportsDir = extension.reportsDestination.map { it.dir(kotlinCompilation.name) }
+    val reportsDir =
+      extension.reportsDestination.map {
+        // Include target name to avoid collisions in KMP projects where multiple targets
+        // may have compilations with the same name (e.g., both jvm and android have "main")
+        val subdir =
+          listOf(kotlinCompilation.target.name, kotlinCompilation.name)
+            .filter(String::isNotBlank)
+            .joinToString("/")
+        it.dir(subdir)
+      }
 
     if (extension.reportsDestination.isPresent) {
       val artifactsTask = MetroArtifactCopyTask.register(project, reportsDir, kotlinCompilation)
