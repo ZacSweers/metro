@@ -90,6 +90,13 @@ jobs:
           path: |
             **/build/reports/**
 
+      - name: Publish Test Report
+        uses: mikepenz/action-junit-report@v5
+        if: always()
+        with:
+          report_paths: '**/build/test-results/**/TEST-*.xml'
+          check_name: 'Test Report - core / ${{ matrix.kotlin-compiler }}'
+
   samples:
     name: "samples"
     runs-on: ubuntu-latest
@@ -144,6 +151,13 @@ jobs:
           name: reports-samples-${{ runner.os }}
           path: |
             **/build/reports/**
+
+      - name: Publish Test Report
+        uses: mikepenz/action-junit-report@v5
+        if: always()
+        with:
+          report_paths: 'samples/**/build/test-results/**/TEST-*.xml'
+          check_name: 'Test Report - samples'
 
   # Runt multiplatform tests on main only to reduce PR time
   multiplatform-tests:
@@ -209,6 +223,15 @@ jobs:
           name: reports-multiplatform-${{ matrix.os }}
           path: |
             **/build/reports/**
+
+      - name: Publish Test Report
+        uses: mikepenz/action-junit-report@v5
+        if: always()
+        with:
+          report_paths: |
+            **/build/test-results/**/TEST-*.xml
+            samples/**/build/test-results/**/TEST-*.xml
+          check_name: 'Test Report - multiplatform / ${{ matrix.os }}'
 
   benchmarks:
     runs-on: ubuntu-latest
