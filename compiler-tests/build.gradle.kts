@@ -177,7 +177,7 @@ tasks.withType<Test> {
   systemProperty("guice.classpath", guiceClasspath.asPath)
   systemProperty("javaxInterop.classpath", javaxInteropClasspath.asPath)
   systemProperty("jakartaInterop.classpath", jakartaInteropClasspath.asPath)
-  systemProperty("ksp.testRuntimeClasspath", configurations.testRuntimeClasspath.map { it.asPath })
+  systemProperty("ksp.testRuntimeClasspath", configurations.testRuntimeClasspath.get().asPath)
 
   // Properties required to run the internal test framework.
   systemProperty("idea.ignore.disabled.plugins", "true")
