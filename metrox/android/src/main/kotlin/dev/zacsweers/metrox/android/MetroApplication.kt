@@ -9,7 +9,7 @@ import android.app.Application
  * [MetroAppComponentProviders] instance and automatic component creation via
  * [MetroAppComponentFactory].
  */
-interface MetroApplication {
+public interface MetroApplication {
   /**
    * A [MetroAppComponentProviders] instance to access
    *
@@ -28,5 +28,5 @@ interface MetroApplication {
    * }
    * ```
    */
-  val appComponentProviders: MetroAppComponentProviders
+  public val appComponentProviders: MetroAppComponentProviders
 }

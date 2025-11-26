@@ -11,4 +11,4 @@ import kotlin.reflect.KClass
  */
 @MapKey
 @Target(AnnotationTarget.CLASS)
-annotation class ContentProviderKey(val value: KClass<out ContentProvider>)
+public annotation class ContentProviderKey(val value: KClass<out ContentProvider>)

@@ -22,7 +22,7 @@ import kotlin.reflect.KClass
  */
 @RequiresApi(28)
 @Keep
-class MetroAppComponentFactory : AppComponentFactory() {
+public class MetroAppComponentFactory : AppComponentFactory() {
 
   private inline fun <reified T : Any> getInstance(
     cl: ClassLoader,
@@ -73,7 +73,7 @@ class MetroAppComponentFactory : AppComponentFactory() {
   }
 
   // AppComponentFactory can be created multiple times
-  companion object {
+  internal companion object {
     private lateinit var appComponentFactoryBindings: MetroAppComponentProviders
   }
 }

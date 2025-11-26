@@ -7,4 +7,6 @@ import dev.zacsweers.metro.MapKey
 import kotlin.reflect.KClass
 
 /** A [MapKey] annotation for binding a Service in a multibinding map. */
-@MapKey @Target(AnnotationTarget.CLASS) annotation class ServiceKey(val value: KClass<out Service>)
+@MapKey
+@Target(AnnotationTarget.CLASS)
+public annotation class ServiceKey(val value: KClass<out Service>)

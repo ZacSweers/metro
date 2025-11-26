@@ -18,31 +18,32 @@ import kotlin.reflect.KClass
  * @see MetroAppComponentFactory
  * @see MetroApplication
  */
-interface MetroAppComponentProviders {
+public interface MetroAppComponentProviders {
   /**
    * A multibinding map of [Activity] classes to their providers accessible for
    * [MetroAppComponentFactory].
    */
   @Multibinds(allowEmpty = true)
-  val activityProviders: Map<KClass<out Activity>, Provider<Activity>>
+  public val activityProviders: Map<KClass<out Activity>, Provider<Activity>>
 
   /**
    * A multibinding map of [ContentProvider] classes to their providers accessible for
    * [MetroAppComponentFactory].
    */
   @Multibinds(allowEmpty = true)
-  val providerProviders: Map<KClass<out ContentProvider>, Provider<ContentProvider>>
+  public val providerProviders: Map<KClass<out ContentProvider>, Provider<ContentProvider>>
 
   /**
    * A multibinding map of [BroadcastReceiver] classes to their providers accessible for
    * [MetroAppComponentFactory].
    */
   @Multibinds(allowEmpty = true)
-  val receiverProviders: Map<KClass<out BroadcastReceiver>, Provider<BroadcastReceiver>>
+  public val receiverProviders: Map<KClass<out BroadcastReceiver>, Provider<BroadcastReceiver>>
 
   /**
    * A multibinding map of [Service] classes to their providers accessible for
    * [MetroAppComponentFactory].
    */
-  @Multibinds(allowEmpty = true) val serviceProviders: Map<KClass<out Service>, Provider<Service>>
+  @Multibinds(allowEmpty = true)
+  public val serviceProviders: Map<KClass<out Service>, Provider<Service>>
 }

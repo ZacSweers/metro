@@ -14,6 +14,6 @@ import kotlin.concurrent.atomics.AtomicInt
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 @DependencyGraph(AppScope::class)
-interface AppGraph : ViewModelGraph.Factory, MetroAndroidAppGraph {
+interface AppGraph : ViewModelGraph.Factory, MetroAppComponentProviders {
   @Provides @SingleIn(AppScope::class) fun provideViewModelCounter(): AtomicInt = AtomicInt(0)
 }

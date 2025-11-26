@@ -9,4 +9,4 @@ import kotlin.reflect.KClass
 /** A [MapKey] annotation for binding an Activity in a multibinding map. */
 @MapKey
 @Target(AnnotationTarget.CLASS)
-annotation class ActivityKey(val value: KClass<out Activity>)
+public annotation class ActivityKey(val value: KClass<out Activity>)
