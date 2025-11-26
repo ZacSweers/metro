@@ -11,9 +11,9 @@ import dev.zacsweers.metro.Includes
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.createGraphFactory
-import dev.zacsweers.metro.sample.composeviewmodels.core.ViewModelGraphProviderHolder
 import dev.zacsweers.metro.sample.composeviewmodels.core.ViewModelGraph
 import dev.zacsweers.metro.sample.composeviewmodels.core.ViewModelGraphProvider
+import dev.zacsweers.metro.sample.composeviewmodels.core.ViewModelGraphProviderHolder
 import dev.zacsweers.metro.sample.composeviewmodels.core.ViewModelScope
 import kotlin.reflect.KClass
 import kotlin.reflect.cast
@@ -24,10 +24,7 @@ import kotlin.reflect.cast
 interface MetroViewModelGraph : ViewModelGraph {
   @DependencyGraph.Factory
   fun interface Factory {
-    fun create(
-      @Includes appGraph: AppGraph,
-      @Provides extras: CreationExtras,
-    ): MetroViewModelGraph
+    fun create(@Includes appGraph: AppGraph, @Provides extras: CreationExtras): MetroViewModelGraph
   }
 }
 

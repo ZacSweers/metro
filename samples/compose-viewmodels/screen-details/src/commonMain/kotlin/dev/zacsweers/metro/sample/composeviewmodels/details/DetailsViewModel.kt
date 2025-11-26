@@ -5,8 +5,8 @@ package dev.zacsweers.metro.sample.composeviewmodels.details
 import androidx.lifecycle.ViewModel
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
-import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metro.AssistedInject
+import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metro.sample.composeviewmodels.core.AssistedFactoryKey
 import dev.zacsweers.metro.sample.composeviewmodels.core.ViewModelAssistedFactory
 import dev.zacsweers.metro.sample.composeviewmodels.core.ViewModelScope
