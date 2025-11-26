@@ -117,6 +117,7 @@ nav:
   - 'Samples': samples.md
   - 'MetroX':
       - 'Android': metrox-android.md
+      - 'ViewModel': metrox-viewmodel.md
   - 'API': api/index.html
   - 'Design Doc': designdoc.html
   - 'Discussions ⏏': https://github.com/ZacSweers/metro/discussions

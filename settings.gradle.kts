@@ -42,6 +42,7 @@ include(
   ":interop-jakarta",
   ":interop-guice",
   ":metrox-android",
+  ":metrox-viewmodel",
   ":runtime",
 )
 
