@@ -11,6 +11,8 @@ android {
 
   compileSdk = 36
 
+  defaultConfig { minSdk = 28 }
+
   compileOptions {
     val javaVersion = libs.versions.jvmTarget.get().let(JavaVersion::toVersion)
     sourceCompatibility = javaVersion

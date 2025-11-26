@@ -22,6 +22,8 @@ android {
     sourceCompatibility = javaVersion
     targetCompatibility = javaVersion
   }
+
+  testOptions { unitTests.isIncludeAndroidResources = true }
 }
 
 dependencies {
@@ -32,4 +34,9 @@ dependencies {
   implementation(libs.androidx.material3)
   implementation(libs.androidx.viewmodel)
   implementation(libs.androidx.work)
+
+  testImplementation(libs.junit)
+  testImplementation(libs.truth)
+  testImplementation(libs.robolectric)
+  testImplementation(libs.androidx.test)
 }

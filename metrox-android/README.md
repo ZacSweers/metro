@@ -27,7 +27,7 @@ For simple cases, all you need to do is
         get() = appGraph
     }
     ```
-   
+
 ## Advanced
 
 If you have your own custom `AppComponentFactory`, you will need to exclude the MetroX implementation in your `AndroidManifest.xml` via `tools:replace` attribute.
