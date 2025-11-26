@@ -43,7 +43,7 @@ internal fun DependencyGraphNode.toProto(bindingGraph: IrBindingGraph): Dependen
 
   return createGraphProto(
     isGraph = true,
-    providerFactories = providerFactories,
+    providerFactories = providerFactories.values,
     accessorNames = accessorNames,
     multibindingAccessorIndices = multibindingAccessors.toIntList(),
   )
@@ -52,7 +52,7 @@ internal fun DependencyGraphNode.toProto(bindingGraph: IrBindingGraph): Dependen
 internal fun BindingContainer.toProto(): DependencyGraphProto {
   return createGraphProto(
     isGraph = false,
-    providerFactories = providerFactories.values.map { it.typeKey to it },
+    providerFactories = providerFactories.values,
     includedBindingContainers = includes.map { it.asString() },
   )
 }
@@ -61,7 +61,7 @@ internal fun BindingContainer.toProto(): DependencyGraphProto {
 //  these
 private fun createGraphProto(
   isGraph: Boolean,
-  providerFactories: Collection<Pair<IrTypeKey, ProviderFactory>> = emptyList(),
+  providerFactories: Collection<ProviderFactory> = emptyList(),
   accessorNames: Collection<String> = emptyList(),
   multibindingAccessorIndices: List<Int> = emptyList(),
   includedBindingContainers: Collection<String> = emptyList(),
@@ -69,9 +69,7 @@ private fun createGraphProto(
   return DependencyGraphProto(
     is_graph = isGraph,
     provider_factory_classes =
-      providerFactories
-        .map { (_, factory) -> factory.factoryClass.classIdOrFail.protoString }
-        .sorted(),
+      providerFactories.map { factory -> factory.factoryClass.classIdOrFail.protoString }.sorted(),
     accessor_callable_names = accessorNames.sorted(),
     multibinding_accessor_indices = multibindingAccessorIndices,
     included_binding_containers = includedBindingContainers.sorted(),

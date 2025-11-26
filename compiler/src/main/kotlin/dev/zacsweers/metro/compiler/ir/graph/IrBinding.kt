@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler.ir.graph
 
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.MetroAnnotations
-import dev.zacsweers.metro.compiler.appendLineWithUnderlinedContent
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.BaseBinding
@@ -24,7 +23,6 @@ import dev.zacsweers.metro.compiler.ir.createMapBindingId
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.locationOrNull
 import dev.zacsweers.metro.compiler.ir.multibindingId
-import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.rawType
@@ -40,7 +38,6 @@ import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.TreeSet
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationContainer
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrPackageFragment
@@ -52,10 +49,7 @@ import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classId
-import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isPropertyAccessor
-import org.jetbrains.kotlin.ir.util.kotlinFqName
-import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.parentDeclarationsWithSelf
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
@@ -303,53 +297,15 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val nameHint: String = ir?.name?.asString() ?: typeKey.type.rawType().name.asString()
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
 
-    private fun resolveSourceDeclaration(
-      ir: IrSimpleFunction?
-    ): Pair<IrDeclarationWithName, Boolean>? {
-      if (ir == null) return null
-      return (ir.overriddenSymbolsSequence().lastOrNull()?.owner ?: ir).let {
-        val isMetroContribution =
-          it.parentClassOrNull?.hasAnnotation(Symbols.ClassIds.metroContribution) == true
-        if (isMetroContribution) {
-          // If it's a contribution, the source is
-          // SourceClass.MetroContributionScopeName.bindingFunction
-          //                                        ^^^
-          it.parentAsClass.parentAsClass to true
-        } else {
-          it to false
-        }
-      }
-    }
-
     override val reportableDeclaration: IrDeclarationWithName?
-      get() {
-        return resolveSourceDeclaration(ir)?.first
-      }
+      get() = bindsCallable?.resolveSourceDeclaration()?.first
 
     override fun renderLocationDiagnostic(short: Boolean): LocationDiagnostic {
-      if ((annotations.isIntoMultibinding || annotations.isBinds) && ir != null) {
-        val declarationData = resolveSourceDeclaration(ir)
-        if (declarationData != null) {
-          val (contributionSourceDeclaration, isContributed) = declarationData
-
-          val location =
-            contributionSourceDeclaration.locationOrNull()?.render(short)
-              ?: "<unknown location, likely a separate compilation>"
-          val description = buildString {
-            if (isContributed) {
-              append(contributionSourceDeclaration.expectAs<IrDeclarationParent>().kotlinFqName)
-              append(" contributes a binding of ")
-              appendLineWithUnderlinedContent(
-                typeKey.render(short = short, includeQualifier = true)
-              )
-            } else {
-              append(renderDescriptionDiagnostic(short = short, underlineTypeKey = true))
-            }
-          }
-          return LocationDiagnostic(location, description)
-        }
+      return if ((annotations.isIntoMultibinding || annotations.isBinds) && bindsCallable != null) {
+        bindsCallable.renderLocationDiagnostic(short, parameters)
+      } else {
+        super.renderLocationDiagnostic(short)
       }
-      return super.renderLocationDiagnostic(short)
     }
 
     override fun renderDescriptionDiagnostic(short: Boolean, underlineTypeKey: Boolean) =

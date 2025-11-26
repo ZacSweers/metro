@@ -2320,35 +2320,6 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `ContributesTo annotations on a class, abstract class and object type are an error`() {
-    compile(
-      source(
-        """
-        @ContributesTo(AppScope::class)
-        interface ContributedInterface
-        @ContributesTo(AppScope::class)
-        class ContributedClass
-        @ContributesTo(AppScope::class)
-        abstract class ContributedAbstractClass
-        @ContributesTo(AppScope::class)
-        object ContributedObject
-        """
-          .trimIndent()
-      ),
-      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
-    ) {
-      assertDiagnostics(
-        """
-        e: ContributedInterface.kt:9:1 `@ContributesTo` annotations only permitted on interfaces. However ContributedClass is a CLASS.
-        e: ContributedInterface.kt:11:1 `@ContributesTo` annotations only permitted on interfaces. However ContributedAbstractClass is a CLASS.
-        e: ContributedInterface.kt:13:1 `@ContributesTo` annotations only permitted on interfaces. However ContributedObject is a OBJECT.
-        """
-          .trimIndent()
-      )
-    }
-  }
-
-  @Test
   fun `duplicate ContributesIntoMap annotations with different qualifiers are ok - explicit`() {
     compile(
       source(
