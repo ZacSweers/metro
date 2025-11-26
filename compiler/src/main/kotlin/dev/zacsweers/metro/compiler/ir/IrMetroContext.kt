@@ -5,17 +5,24 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.LOG_PREFIX
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.MetroOptions
-import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.exitProcessing
+import dev.zacsweers.metro.compiler.ir.cache.IrCache
+import dev.zacsweers.metro.compiler.ir.cache.IrCachesFactory
+import dev.zacsweers.metro.compiler.ir.cache.IrThreadUnsafeCachesFactory
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.tracer
 import java.io.File
 import java.nio.file.Path
+import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.appendText
 import kotlin.io.path.createDirectories
 import kotlin.io.path.createFile
+import kotlin.io.path.createParentDirectories
 import kotlin.io.path.deleteIfExists
+import kotlin.io.path.deleteRecursively
+import kotlin.io.path.exists
 import kotlin.io.path.writeText
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
@@ -26,15 +33,10 @@ import org.jetbrains.kotlin.incremental.components.Position
 import org.jetbrains.kotlin.incremental.components.ScopeKind
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContextImpl
-import org.jetbrains.kotlin.ir.util.KotlinLikeDumpOptions
-import org.jetbrains.kotlin.ir.util.TypeRemapper
-import org.jetbrains.kotlin.ir.util.VisibilityPrintingStrategy
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.parentDeclarationsWithSelf
-import org.jetbrains.kotlin.name.ClassId
 
 internal interface IrMetroContext : IrPluginContext, CompatContext {
   val metroContext
@@ -61,7 +63,16 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
   val lookupFile: Path?
   val expectActualFile: Path?
 
-  val typeRemapperCache: MutableMap<Pair<ClassId, IrType>, TypeRemapper>
+  /**
+   * Generic caching machinery. Add new caches as extension functions that encapsulate the [key] and
+   * types.
+   *
+   * @param key A unique string identifier for this cache
+   */
+  fun <K : Any, V : Any, C> getOrCreateIrCache(
+    key: Any,
+    createCache: (IrCachesFactory) -> IrCache<K, V, C>,
+  ): IrCache<K, V, C>
 
   fun onErrorReported()
 
@@ -114,10 +125,7 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
 
   fun IrElement.dumpToMetroLog(name: String) {
     loggerFor(MetroLogger.Type.GeneratedFactories).log {
-      val irSrc =
-        dumpKotlinLike(
-          KotlinLikeDumpOptions(visibilityPrintingStrategy = VisibilityPrintingStrategy.ALWAYS)
-        )
+      val irSrc = dumpKotlinLike()
       buildString {
         append("IR source dump for ")
         appendLine(name)
@@ -188,9 +196,18 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
 
       override val irTypeSystemContext: IrTypeSystemContext =
         IrTypeSystemContextImpl(pluginContext.irBuiltIns)
+
       private val loggerCache = mutableMapOf<MetroLogger.Type, MetroLogger>()
 
-      override val reportsDir: Path? by lazy { options.reportsDestination?.createDirectories() }
+      @OptIn(ExperimentalPathApi::class)
+      override val reportsDir: Path? by lazy {
+        options.reportsDestination?.run {
+          if (exists()) {
+            deleteRecursively()
+          }
+          createDirectories()
+        }
+      }
 
       override val logFile: Path? by lazy {
         reportsDir?.let {
@@ -249,8 +266,16 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
         }
       }
 
-      override val typeRemapperCache: MutableMap<Pair<ClassId, IrType>, TypeRemapper> =
-        mutableMapOf()
+      private val genericCaches: HashMap<Any, IrCache<*, *, *>> = HashMap()
+
+      override fun <K : Any, V : Any, C> getOrCreateIrCache(
+        key: Any,
+        createCache: (IrCachesFactory) -> IrCache<K, V, C>,
+      ): IrCache<K, V, C> {
+        @Suppress("UNCHECKED_CAST")
+        return genericCaches.getOrPut(key) { createCache(IrThreadUnsafeCachesFactory) }
+          as IrCache<K, V, C>
+      }
     }
   }
 }
@@ -262,7 +287,14 @@ internal fun writeDiagnostic(fileName: String, text: () -> String) {
 
 context(context: IrMetroContext)
 internal fun writeDiagnostic(fileName: () -> String, text: () -> String) {
-  context.reportsDir?.resolve(fileName())?.apply { deleteIfExists() }?.writeText(text())
+  context.reportsDir
+    ?.resolve(fileName())
+    ?.apply {
+      // Ensure that the path leading up to the file has been created
+      createParentDirectories()
+      deleteIfExists()
+    }
+    ?.writeText(text())
 }
 
 context(context: IrMetroContext)

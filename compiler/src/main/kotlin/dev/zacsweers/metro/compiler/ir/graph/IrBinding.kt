@@ -4,15 +4,13 @@ package dev.zacsweers.metro.compiler.ir.graph
 
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.MetroAnnotations
-import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.appendLineWithUnderlinedContent
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.expectAs
-import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.graph.BaseBinding
 import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
 import dev.zacsweers.metro.compiler.ir.BindsCallable
 import dev.zacsweers.metro.compiler.ir.ClassFactory
+import dev.zacsweers.metro.compiler.ir.Format
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -25,45 +23,38 @@ import dev.zacsweers.metro.compiler.ir.createMapBindingId
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.locationOrNull
 import dev.zacsweers.metro.compiler.ir.multibindingId
-import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.render
+import dev.zacsweers.metro.compiler.ir.renderForDiagnostic
 import dev.zacsweers.metro.compiler.ir.reportableDeclaration
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
-import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.isWordPrefixRegex
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.TreeSet
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationContainer
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
-import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrPackageFragment
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
+import org.jetbrains.kotlin.ir.types.IrErrorType
 import org.jetbrains.kotlin.ir.types.IrType
-import org.jetbrains.kotlin.ir.types.isUnit
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classId
-import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isPropertyAccessor
-import org.jetbrains.kotlin.ir.util.kotlinFqName
-import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.parentDeclarationsWithSelf
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
-import org.jetbrains.kotlin.name.Name
 
 internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextualTypeKey> {
   override val typeKey: IrTypeKey
@@ -215,6 +206,13 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val contextualTypeKey: IrContextualTypeKey,
     override val parameters: Parameters,
   ) : StaticBinding {
+
+    init {
+      if (contextualTypeKey.typeKey.type is IrErrorType) {
+        error("wtf")
+      }
+    }
+
     override val dependencies: List<IrContextualTypeKey> by memoize {
       parameters.allParameters.map { it.contextualTypeKey }
     }
@@ -299,53 +297,15 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val nameHint: String = ir?.name?.asString() ?: typeKey.type.rawType().name.asString()
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
 
-    private fun resolveSourceDeclaration(
-      ir: IrSimpleFunction?
-    ): Pair<IrDeclarationWithName, Boolean>? {
-      if (ir == null) return null
-      return (ir.overriddenSymbolsSequence().lastOrNull()?.owner ?: ir).let {
-        val isMetroContribution =
-          it.parentClassOrNull?.hasAnnotation(Symbols.ClassIds.metroContribution) == true
-        if (isMetroContribution) {
-          // If it's a contribution, the source is
-          // SourceClass.$$MetroContributionScopeName.bindingFunction
-          //                                          ^^^
-          it.parentAsClass.parentAsClass to true
-        } else {
-          it to false
-        }
-      }
-    }
-
     override val reportableDeclaration: IrDeclarationWithName?
-      get() {
-        return resolveSourceDeclaration(ir)?.first
-      }
+      get() = bindsCallable?.resolveSourceDeclaration()?.first
 
     override fun renderLocationDiagnostic(short: Boolean): LocationDiagnostic {
-      if ((annotations.isIntoMultibinding || annotations.isBinds) && ir != null) {
-        val declarationData = resolveSourceDeclaration(ir)
-        if (declarationData != null) {
-          val (contributionSourceDeclaration, isContributed) = declarationData
-
-          val location =
-            contributionSourceDeclaration.locationOrNull()?.render(short)
-              ?: "<unknown location, likely a separate compilation>"
-          val description = buildString {
-            if (isContributed) {
-              append(contributionSourceDeclaration.expectAs<IrDeclarationParent>().kotlinFqName)
-              append(" contributes a binding of ")
-              appendLineWithUnderlinedContent(
-                typeKey.render(short = short, includeQualifier = true)
-              )
-            } else {
-              append(renderDescriptionDiagnostic(short = short, underlineTypeKey = true))
-            }
-          }
-          return LocationDiagnostic(location, description)
-        }
+      return if ((annotations.isIntoMultibinding || annotations.isBinds) && bindsCallable != null) {
+        bindsCallable.renderLocationDiagnostic(short, parameters)
+      } else {
+        super.renderLocationDiagnostic(short)
       }
-      return super.renderLocationDiagnostic(short)
     }
 
     override fun renderDescriptionDiagnostic(short: Boolean, underlineTypeKey: Boolean) =
@@ -855,199 +815,6 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
       }
 
     override fun toString() = renderDescriptionDiagnostic(short = true, underlineTypeKey = false)
-  }
-}
-
-context(builder: StringBuilder)
-private fun IrClass.renderForDiagnostic(
-  short: Boolean,
-  annotations: MetroAnnotations<IrAnnotation>,
-  underlineTypeKey: Boolean,
-) {
-  with(builder) {
-    renderAnnotations(annotations, short, isClass = false)
-    append(kind.codeRepresentation)
-    append(' ')
-    if (underlineTypeKey) {
-      appendLineWithUnderlinedContent(name.asString())
-    } else {
-      append(name.asString())
-    }
-  }
-}
-
-private enum class Format {
-  DECLARATION,
-  CALL;
-
-  val isDeclaration: Boolean
-    get() = this == DECLARATION
-
-  val isCall: Boolean
-    get() = this == CALL
-}
-
-private fun StringBuilder.renderForDiagnostic(
-  declaration: IrDeclarationParent,
-  short: Boolean,
-  typeKey: IrTypeKey,
-  annotations: MetroAnnotations<IrAnnotation>?,
-  parameters: Parameters,
-  isProperty: Boolean?,
-  underlineTypeKey: Boolean,
-  format: Format = Format.DECLARATION,
-) {
-  val property: IrProperty?
-  val name: Name
-  val type: IrType
-  when (declaration) {
-    is IrField -> {
-      property = null
-      name = declaration.name
-      type = declaration.type
-    }
-    is IrFunction -> {
-      property = declaration.propertyIfAccessor.expectAsOrNull<IrProperty>()
-      name = (property ?: declaration).name
-      type = declaration.returnType
-    }
-    is IrProperty -> {
-      property = declaration
-      name = declaration.name
-      type =
-        declaration.getter?.returnType
-          ?: declaration.backingField?.type
-          ?: reportCompilerBug("No getter or backing field")
-    }
-    else -> {
-      reportCompilerBug("Unsupported declaration type: ${declaration.dumpKotlinLike()}")
-    }
-  }
-
-  val isProperty = isProperty == true || property != null
-
-  if (format.isDeclaration) {
-    annotations?.let { renderAnnotations(it, short, isClass = false) }
-    if (isProperty) {
-      if (property != null) {
-        if (property.isVar) {
-          if (property.isLateinit) {
-            append("lateinit ")
-          }
-          append("var ")
-        } else {
-          append("val ")
-        }
-      } else {
-        append("val ")
-      }
-    } else {
-      append("fun ")
-    }
-
-    if (parameters.contextParameters.isNotEmpty()) {
-      parameters.contextParameters.joinTo(this, ", ", prefix = "context(", postfix = ")\n") {
-        it.name.asString() + ": " + it.typeKey.render(short = short)
-      }
-    }
-  }
-
-  val dispatchReceiverName =
-    declaration.parentClassOrNull?.sourceGraphIfMetroGraph?.name?.asString()
-  var hasReceiver = false
-
-  if (format.isCall) {
-    dispatchReceiverName?.let {
-      append(it)
-      hasReceiver = true
-    }
-  }
-
-  parameters.extensionReceiverParameter?.let {
-    if (format.isCall) {
-      // Put the receiver in parens for context
-      append('(')
-    }
-    it.typeKey.qualifier?.let { qualifier ->
-      append(qualifier.render(short = short, "receiver"))
-      append(' ')
-    }
-    append(it.typeKey.render(short = short))
-    if (format.isCall) {
-      // Put the receiver in parens for context
-      append(')')
-    }
-    hasReceiver = true
-  }
-
-  if (hasReceiver) {
-    append('.')
-  }
-
-  append(name.asString())
-
-  val paramsToDisplay =
-    if (format.isCall) {
-      // Likely member inject() call
-      parameters.regularParameters.filterNot { it.isAssisted }
-    } else {
-      parameters.regularParameters
-    }
-  if (paramsToDisplay.isNotEmpty()) {
-    paramsToDisplay.joinTo(this, ", ", prefix = "(", postfix = ")\n") {
-      it.name.asString() + ": " + it.typeKey.render(short = short, includeQualifier = true)
-    }
-  } else if (!isProperty) {
-    append("()")
-  }
-
-  if (!(declaration is IrFunction && type.isUnit())) {
-    append(": ")
-    val returnTypeString = typeKey.render(short = short, includeQualifier = false)
-    if (underlineTypeKey) {
-      appendLineWithUnderlinedContent(returnTypeString)
-    } else {
-      append(returnTypeString)
-    }
-  }
-}
-
-private fun StringBuilder.renderAnnotations(
-  annotations: MetroAnnotations<IrAnnotation>,
-  short: Boolean,
-  isClass: Boolean,
-) {
-  val annotationStrings =
-    with(annotations) {
-      buildList {
-        qualifier?.let { add(it.render(short = short)) }
-        if (isBinds) add("@Binds")
-        if (isProvides) add("@Provides")
-        if (isIntoSet) add("@IntoSet")
-        if (isElementsIntoSet) add("@ElementsIntoSet")
-        if (isMultibinds) add("@Multibinds")
-        if (isBindsOptionalOf) add("@BindsOptionalOf")
-        scope?.let { add(it.render(short = short)) }
-        if (isIntoMap) add("@IntoMap")
-        mapKeys.forEach { add(it.render(short = short)) }
-        if (isClass) {
-          if (isInject) add("@Inject")
-        }
-      }
-    }
-  when (annotationStrings.size) {
-    0 -> {
-      // do nothing
-    }
-    1,
-    2 -> {
-      annotationStrings.joinTo(this, " ")
-      append(' ')
-    }
-    else -> {
-      annotationStrings.joinTo(this, "\n")
-      appendLine()
-    }
   }
 }
 

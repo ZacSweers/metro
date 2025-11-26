@@ -5,7 +5,7 @@ class Bar : Foo {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<Bar> {
+  class MetroFactory : Factory<Bar> {
     private /* final field */ val fooProvider: Provider<Foo> = fooProvider
     companion object Companion {
       private constructor() /* primary */ {
@@ -15,7 +15,7 @@ class Bar : Foo {
       }
 
       fun create(fooProvider: Provider<Foo>): Factory<Bar> {
-        return $$MetroFactory(fooProvider = fooProvider)
+        return MetroFactory(fooProvider = fooProvider)
       }
 
       fun newInstance(fooProvider: Provider<Foo>): Bar {
@@ -51,7 +51,7 @@ class Bar : Foo {
 @DependencyGraph
 interface BindsCycleGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  abstract class $$BindsMirror {
+  abstract class BindsMirror {
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -64,22 +64,9 @@ interface BindsCycleGraph {
 
   }
 
-  companion object Companion {
-    private constructor() /* primary */ {
-      super/*Any*/()
-      /* <init>() */
-
-    }
-
-    @GraphFactoryInvokeFunctionMarker
-    operator fun invoke(): BindsCycleGraph {
-      return $$MetroGraph()
-    }
-
-  }
-
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroGraph : BindsCycleGraph {
+  @MetroImplMarker
+  class Impl : BindsCycleGraph {
     private val barProvider: Provider<Bar>
       field = DelegateFactory<Bar>()
 
@@ -97,6 +84,20 @@ interface BindsCycleGraph {
     @Binds
     override fun foo(bar: Bar): Foo {
       return error(message = "Never called")
+    }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): BindsCycleGraph {
+      return Impl()
     }
 
   }

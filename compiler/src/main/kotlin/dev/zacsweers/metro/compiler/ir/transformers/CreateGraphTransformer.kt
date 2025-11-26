@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
-import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -16,6 +15,7 @@ import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.withIrBuilder
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irGetObject
@@ -62,7 +62,7 @@ internal class CreateGraphTransformer(
         val parentDeclaration = rawType.parentAsClass
         val companion = parentDeclaration.companionObject()!!
 
-        val factoryImpl = rawType.nestedClasses.find { it.name == Symbols.Names.MetroImpl }
+        val factoryImpl = rawType.nestedClasses.find { it.name == Symbols.Names.Impl }
         if (factoryImpl != null) {
           // Replace it with a call directly to the factory creator
           return withIrBuilder(expression.symbol) {

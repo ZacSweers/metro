@@ -29,7 +29,7 @@ val testCompilerVersionProvider = providers.gradleProperty("metro.testCompilerVe
 
 val testCompilerVersion = testCompilerVersionProvider.orElse(libs.versions.kotlin).get()
 
-val kotlinVersion =
+val testKotlinVersion =
   testCompilerVersion.substringBefore('-').split('.').let { (major, minor, patch) ->
     KotlinVersion(major.toInt(), minor.toInt(), patch.toInt())
   }
@@ -54,7 +54,7 @@ buildConfig {
     buildConfigField(
       "kotlin.KotlinVersion",
       "COMPILER_VERSION",
-      "KotlinVersion(${kotlinVersion.major}, ${kotlinVersion.minor}, ${kotlinVersion.patch})",
+      "KotlinVersion(${testKotlinVersion.major}, ${testKotlinVersion.minor}, ${testKotlinVersion.patch})",
     )
   }
 }
@@ -65,26 +65,37 @@ val kiAnvilRuntimeClasspath: Configuration by configurations.creating { isTransi
 // include transitive in this case to grab jakarta and javax
 val daggerRuntimeClasspath: Configuration by configurations.creating {}
 val daggerInteropClasspath: Configuration by configurations.creating { isTransitive = false }
+// include transitive in this case to grab jakarta and javax
+val guiceClasspath: Configuration by configurations.creating {}
+val javaxInteropClasspath: Configuration by configurations.creating { isTransitive = false }
+val jakartaInteropClasspath: Configuration by configurations.creating { isTransitive = false }
 
 dependencies {
   // IntelliJ maven repo doesn't carry compiler test framework versions, so we'll pull from that as
   // needed for those tests
   val compilerTestFrameworkVersion: String
 
-  // 2.3.0 changed the test gen APIs around into different packages
-  "generator220CompileOnly"(libs.kotlin.compilerTestFramework)
-  "generator230CompileOnly"(
-    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.3.0-Beta1"
-  )
   val generatorConfigToUse: String
 
-  if (kotlinVersion >= KotlinVersion(2, 3)) {
+  if (testKotlinVersion >= KotlinVersion(2, 3)) {
     generatorConfigToUse = "generator230"
-    compilerTestFrameworkVersion = "2.3.0-Beta1"
+    compilerTestFrameworkVersion =
+      if (testCompilerVersion.contains("-dev")) {
+        "2.3.0-Beta2"
+      } else {
+        testCompilerVersion
+      }
   } else {
     generatorConfigToUse = "generator220"
     compilerTestFrameworkVersion = libs.versions.kotlin.get()
   }
+
+  // 2.3.0 changed the test gen APIs around into different packages
+  "generator220CompileOnly"(libs.kotlin.compilerTestFramework)
+  "generator230CompileOnly"(
+    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$compilerTestFrameworkVersion"
+  )
+
   testImplementation(sourceSets.named(generatorConfigToUse).map { it.output })
   testImplementation(
     "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$compilerTestFrameworkVersion"
@@ -100,11 +111,14 @@ dependencies {
   testImplementation(libs.ksp.symbolProcessing.aaEmbeddable)
   testImplementation(libs.ksp.symbolProcessing.commonDeps)
   testImplementation(libs.ksp.symbolProcessing.api)
-  testImplementation(libs.classgraph)
   testImplementation(libs.dagger.compiler)
 
   metroRuntimeClasspath(project(":runtime"))
   daggerInteropClasspath(project(":interop-dagger"))
+  guiceClasspath(project(":interop-guice"))
+  guiceClasspath(libs.guice)
+  javaxInteropClasspath(project(":interop-javax"))
+  jakartaInteropClasspath(project(":interop-jakarta"))
   anvilRuntimeClasspath(libs.anvil.annotations)
   anvilRuntimeClasspath(libs.anvil.annotations.optional)
   daggerRuntimeClasspath(libs.dagger.runtime)
@@ -148,6 +162,9 @@ tasks.withType<Test> {
   outputs.upToDateWhen { false }
   dependsOn(metroRuntimeClasspath)
   dependsOn(daggerInteropClasspath)
+  dependsOn(guiceClasspath)
+  dependsOn(javaxInteropClasspath)
+  dependsOn(jakartaInteropClasspath)
   inputs
     .dir(layout.projectDirectory.dir("src/test/data"))
     .withPropertyName("testData")
@@ -169,6 +186,10 @@ tasks.withType<Test> {
   systemProperty("kiAnvilRuntime.classpath", kiAnvilRuntimeClasspath.asPath)
   systemProperty("daggerRuntime.classpath", daggerRuntimeClasspath.asPath)
   systemProperty("daggerInterop.classpath", daggerInteropClasspath.asPath)
+  systemProperty("guice.classpath", guiceClasspath.asPath)
+  systemProperty("javaxInterop.classpath", javaxInteropClasspath.asPath)
+  systemProperty("jakartaInterop.classpath", jakartaInteropClasspath.asPath)
+  systemProperty("ksp.testRuntimeClasspath", configurations.testRuntimeClasspath.get().asPath)
 
   // Properties required to run the internal test framework.
   systemProperty("idea.ignore.disabled.plugins", "true")

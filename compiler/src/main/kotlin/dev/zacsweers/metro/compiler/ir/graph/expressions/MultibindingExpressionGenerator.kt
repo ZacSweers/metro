@@ -16,6 +16,8 @@ import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.irLambda
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.rawType
+import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.ir.shouldUnwrapMapKeyValues
 import dev.zacsweers.metro.compiler.ir.stripLazy
 import dev.zacsweers.metro.compiler.ir.toIrType
@@ -23,6 +25,7 @@ import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.symbols.FrameworkSymbols
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irCall
@@ -36,9 +39,12 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.classOrFail
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.types.typeWithArguments
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
+import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 
 private typealias MultibindingExpression =
   IrBuilderWithScope.(MultibindingExpressionGenerator) -> IrExpression
@@ -66,9 +72,9 @@ internal class MultibindingExpressionGenerator(
     accessType: AccessType,
     fieldInitKey: IrTypeKey?,
   ): IrExpression {
+    // need to change this to a Metro Provider for our generation
     val transformedContextKey =
-      contextualTypeKey.letIf(contextualTypeKey.isWrappedInLazy) {
-        // need to change this to a Provider for our generation
+      contextualTypeKey.letIf(contextualTypeKey.requiresProviderInstance) {
         contextualTypeKey.stripLazy().wrapInProvider()
       }
     return if (binding.isSet) {
@@ -139,11 +145,7 @@ internal class MultibindingExpressionGenerator(
         actualAccessType = AccessType.INSTANCE
         generateSetBuilderExpression(binding, elementType, fieldInitKey)
       }
-    return instance.transformAccessIfNeeded(
-      requested = accessType,
-      actual = actualAccessType,
-      type = contextualTypeKey.toIrType(),
-    )
+    return instance.toTargetType(actual = actualAccessType, contextualTypeKey = contextualTypeKey)
   }
 
   context(scope: IrBuilderWithScope)
@@ -320,6 +322,11 @@ internal class MultibindingExpressionGenerator(
 
       // Used to unpack the right provider type
       val valueProviderSymbols = metroSymbols.providerSymbolsFor(elementType)
+      val providerClass =
+        valueProviderSymbols.setFactoryBuilderAddProviderFunction.owner.regularParameters[0]
+          .type
+          .classOrFail
+          .owner
 
       // SetFactory.<String>builder(1, 1)
       val builder: IrExpression =
@@ -340,6 +347,7 @@ internal class MultibindingExpressionGenerator(
               listOf(
                 parentGenerator.generateBindingCode(
                   provider,
+                  provider.contextualTypeKey.wrapInProvider(providerClass),
                   accessType = AccessType.PROVIDER,
                   fieldInitKey = fieldInitKey,
                 )
@@ -358,6 +366,7 @@ internal class MultibindingExpressionGenerator(
               listOf(
                 parentGenerator.generateBindingCode(
                   provider,
+                  provider.contextualTypeKey.wrapInProvider(providerClass),
                   accessType = AccessType.PROVIDER,
                   fieldInitKey = fieldInitKey,
                 )
@@ -373,8 +382,10 @@ internal class MultibindingExpressionGenerator(
           typeHint =
             irBuiltIns.setClass.typeWith(elementType).wrapInProvider(metroSymbols.metroProvider),
         )
-      return with(valueProviderSymbols) {
-        transformToMetroProvider(instance, irBuiltIns.setClass.typeWith(elementType))
+      return with(metroSymbols.providerTypeConverter) {
+        instance.convertTo(
+          IrContextualTypeKey(IrTypeKey(irBuiltIns.setClass.typeWith(elementType))).wrapInProvider()
+        )
       }
     }
 
@@ -466,68 +477,89 @@ internal class MultibindingExpressionGenerator(
           .typeWith(
             keyType,
             if (valueIsWrappedInProvider) {
-              rawValueType.wrapInProvider(metroSymbols.metroProvider)
+              rawValueType.wrapInProvider(originalValueType.rawType().symbol)
             } else {
               rawValueType
             },
           )
-          .wrapInProvider(metroSymbols.metroProvider)
+          .let {
+            val providerType =
+              if (contextualTypeKey.isWrappedInProvider) {
+                contextualTypeKey.toIrType().classOrFail
+              } else {
+                metroSymbols.metroProvider
+              }
+            it.wrapInProvider(providerType)
+          }
+
+      /*
+      There are different code paths this may travel depending on
+      - number of elements
+      - access type
+      - value type
+
+      ┌──────────────────┐          ┌──────────────────┐
+      │      Empty?      ├────Yes───►    AccessType?   │
+      └────────┬─────────┘          └────────┬─────────┘
+               │                             │
+               No                      ┌─────┴─────┐
+               │               ┌─INST──┤AccessType?├───PROV─┐
+               │               │       └───────────┘        │
+               │               │                      ┌─────┴───┐
+               │               │                   Yes│         │No
+               │               ▼                      ▼         ▼
+               │        ┌────────────┐  ┌────────────────────┐  │
+               │        │ emptyMap() │  │ MapProviderFactory │  │
+               │        └────────────┘  └────────────────────┘  │
+               │                                                │
+               │                                        ┌───────┘
+               │                                        ▼
+               │                                 ┌────────────┐
+      ┌────────┴──────┐                          │ MapFactory │
+      │   Non-Empty   ├─┐                        └────────────┘
+      └───────────────┘ │
+                        │       ┌──────────────────┐
+                        └──────►│    AccessType    │
+                                └───────┬──────────┘
+                                        │
+                                ┌───────┴──────┐
+                                │              │
+                                ▼              ▼
+                          ┌──────────┐    ┌──────────┐
+                          │ INSTANCE │    │ PROVIDER │
+                          └─────┬────┘    └────┬─────┘
+                                │              │
+                                ▼              ▼
+                        ┌────────────┐   ┌─────────────┐
+                        │ buildMap() │   │ Map*Factory │
+                        └────────────┘   └─────────────┘
+      */
 
       val instance =
         if (size == 0) {
-          if (accessType == AccessType.INSTANCE) {
-            // Just return emptyMap() for instance access
-            return irInvoke(
-              callee = metroSymbols.emptyMap,
-              typeHint = irBuiltIns.mapClass.typeWith(keyType, rawValueType),
-              typeArgs = listOf(keyType, rawValueType),
-            )
-          } else if (valueIsWrappedInProvider) {
-            // MapProviderFactory.empty()
-            val emptyCallee = valueProviderSymbols.mapProviderFactoryEmptyFunction
-            if (emptyCallee != null) {
-              irInvoke(
-                callee = emptyCallee,
-                typeHint = mapProviderType,
-                typeArgs = listOf(keyType, rawValueType),
-              )
-            } else {
-              // Call builder().build()
-              // build()
-              irInvoke(
-                callee = valueProviderSymbols.mapProviderFactoryBuilderBuildFunction,
-                typeHint = mapProviderType,
-                // builder()
-                dispatchReceiver =
-                  irInvoke(
-                    callee = valueProviderSymbols.mapProviderFactoryBuilderFunction,
-                    typeHint = mapProviderType,
-                    args = listOf(irInt(0)),
-                  ),
-              )
-            }
-          } else {
-            // MapFactory.empty()
-            irInvoke(
-              callee = valueProviderSymbols.mapFactoryEmptyFunction,
-              typeHint = mapProviderType,
-              typeArgs = listOf(keyType, rawValueType),
-            )
-          }
-        } else {
-          // Multiple elements
-          if (accessType == AccessType.INSTANCE) {
-            return generateMapBuilderExpression(
-              binding,
-              size,
-              keyType,
-              valueWrappedType.toIrType(),
-              originalValueContextKey,
+          return generateEmptyMapExpression(
+            keyType,
+            rawValueType,
+            mapProviderType,
+            valueIsWrappedInProvider,
+            valueProviderSymbols,
+            accessType,
+          )
+        } else if (accessType == AccessType.INSTANCE) {
+          // Multiple elements but only needs a Map<Key, Value> type
+          // Even if the value type is Provider<Value>, we'll denote it with `valueAccessType`
+          return generateMapBuilderExpression(
+            binding = binding,
+            size = size,
+            keyType = keyType,
+            valueType = valueWrappedType.toIrType(),
+            originalValueContextKey = originalValueContextKey,
+            valueAccessType =
               if (valueIsWrappedInProvider) AccessType.PROVIDER else AccessType.INSTANCE,
-              fieldInitKey,
-            )
-          }
-
+            fieldInitKey = fieldInitKey,
+          )
+        } else {
+          // Multiple elements and it's a Provider type
           val builderFunction =
             if (valueIsWrappedInProvider) {
               valueProviderSymbols.mapProviderFactoryBuilderFunction
@@ -583,6 +615,9 @@ internal class MultibindingExpressionGenerator(
                     // .put(1, FileSystemModule_Companion_ProvideMapInt1Factory.create())
                     putFunction
                   }
+
+                // Ensure we match the expected parameter type of the put() function we're calling
+                val providerType = putter.owner.nonDispatchParameters[1].type.rawType()
                 irInvoke(
                   dispatchReceiver = receiver,
                   callee = putter,
@@ -592,7 +627,7 @@ internal class MultibindingExpressionGenerator(
                       generateMapKeyLiteral(sourceBinding),
                       generateMultibindingArgument(
                         sourceBinding,
-                        originalValueContextKey.wrapInProvider(),
+                        originalValueContextKey.wrapInProvider(providerType),
                         fieldInitKey,
                         accessType = AccessType.PROVIDER,
                       ),
@@ -611,15 +646,76 @@ internal class MultibindingExpressionGenerator(
           irInvoke(
             dispatchReceiver = withProviders,
             callee = buildFunction,
-            typeHint = mapProviderType,
+            // Wrap in the appropriate Provider type for the symbols we're using
+            typeHint =
+              valueProviderSymbols.canonicalProviderType.typeWithArguments(
+                mapProviderType.requireSimpleType().arguments
+              ),
           )
         }
 
       // Always a provider instance in this branch, no need to transform access type
-      val providerInstance =
-        with(valueProviderSymbols) { transformToMetroProvider(instance, mapProviderType) }
+      val providerTypeConverter = metroSymbols.providerTypeConverter
+      val providerInstance = with(providerTypeConverter) { instance.convertTo(contextualTypeKey) }
 
       return providerInstance
+    }
+
+  context(scope: IrBuilderWithScope)
+  private fun generateEmptyMapExpression(
+    keyType: IrType,
+    rawValueType: IrType,
+    mapProviderType: IrType,
+    valueIsWrappedInProvider: Boolean,
+    valueFrameworkSymbols: FrameworkSymbols,
+    accessType: AccessType,
+  ): IrExpression =
+    with(scope) {
+      if (accessType == AccessType.INSTANCE) {
+        // Type: Map<Key, Value>
+        // Returns: emptyMap()
+        irInvoke(
+          callee = metroSymbols.emptyMap,
+          typeHint = irBuiltIns.mapClass.typeWith(keyType, rawValueType),
+          typeArgs = listOf(keyType, rawValueType),
+        )
+      } else if (valueIsWrappedInProvider) {
+        // Type: Map<Key, Provider<Value>>
+
+        // Returns:
+        //   - MapProviderFactory.empty() (if the API exists)
+        //   - MapProviderFactory.builder().build() (if no empty() API exists)
+        val emptyCallee = valueFrameworkSymbols.mapProviderFactoryEmptyFunction
+        if (emptyCallee != null) {
+          irInvoke(
+            callee = emptyCallee,
+            typeHint = mapProviderType,
+            typeArgs = listOf(keyType, rawValueType),
+          )
+        } else {
+          // Call builder().build()
+          irInvoke(
+            // build()
+            callee = valueFrameworkSymbols.mapProviderFactoryBuilderBuildFunction,
+            typeHint = mapProviderType,
+            dispatchReceiver =
+              irInvoke(
+                // builder()
+                callee = valueFrameworkSymbols.mapProviderFactoryBuilderFunction,
+                typeHint = mapProviderType,
+                args = listOf(irInt(0)),
+              ),
+          )
+        }
+      } else {
+        // Type: Provider<Map<Key, Value>>
+        // Returns: MapFactory.empty()
+        irInvoke(
+          callee = valueFrameworkSymbols.mapFactoryEmptyFunction,
+          typeHint = mapProviderType,
+          typeArgs = listOf(keyType, rawValueType),
+        )
+      }
     }
 
   context(scope: IrBuilderWithScope)
@@ -633,6 +729,7 @@ internal class MultibindingExpressionGenerator(
       val bindingCode =
         parentGenerator.generateBindingCode(
           provider,
+          contextKey,
           accessType = accessType,
           fieldInitKey = fieldInitKey,
         )

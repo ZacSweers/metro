@@ -8,7 +8,7 @@ class ChildDependency {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<ChildDependency> {
+  class MetroFactory : Factory<ChildDependency> {
     private /* final field */ val dep: Provider<Dependency> = dep
     companion object Companion {
       private constructor() /* primary */ {
@@ -18,7 +18,7 @@ class ChildDependency {
       }
 
       fun create(dep: Provider<Dependency>): Factory<ChildDependency> {
-        return $$MetroFactory(dep = dep)
+        return MetroFactory(dep = dep)
       }
 
       fun newInstance(dep: Dependency): ChildDependency {
@@ -55,7 +55,7 @@ class ChildDependency {
 @SingleIn(scope = AppScope::class)
 class Dependency {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  object $$MetroFactory : Factory<Dependency> {
+  object MetroFactory : Factory<Dependency> {
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -63,7 +63,7 @@ class Dependency {
     }
 
     fun create(): Factory<Dependency> {
-      return $$MetroFactory
+      return MetroFactory
     }
 
     fun newInstance(): Dependency {
@@ -71,7 +71,7 @@ class Dependency {
     }
 
     override operator fun invoke(): Dependency {
-      return $$MetroFactory.newInstance()
+      return MetroFactory.newInstance()
     }
 
     @SingleIn(scope = AppScope::class)
@@ -91,23 +91,10 @@ class Dependency {
 }
 
 @DependencyGraph(scope = AppScope::class)
-interface ExampleGraph : $$MetroContributionToAppScope {
-  companion object Companion {
-    private constructor() /* primary */ {
-      super/*Any*/()
-      /* <init>() */
-
-    }
-
-    @GraphFactoryInvokeFunctionMarker
-    operator fun invoke(): ExampleGraph {
-      return $$MetroGraph()
-    }
-
-  }
-
+interface ExampleGraph : MetroContributionToAppScope {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroGraph : ExampleGraph {
+  @MetroImplMarker
+  class Impl : ExampleGraph {
     private val thisGraphInstance: ExampleGraph
       field = <this>
 
@@ -115,7 +102,7 @@ interface ExampleGraph : $$MetroContributionToAppScope {
       field = Companion.invoke<ExampleGraph>(value = <this>.#thisGraphInstance)
 
     private val dependencyProvider: Provider<Dependency>
-      field = Companion.provider<Provider<Dependency>, Dependency>(delegate = $$MetroFactory.create())
+      field = Companion.provider<Provider<Dependency>, Dependency>(delegate = MetroFactory.create())
 
     @DependencyGraph(scope = LoggedInScope::class)
     inner class LoggedInGraphImpl : LoggedInGraph {
@@ -147,6 +134,20 @@ interface ExampleGraph : $$MetroContributionToAppScope {
 
   }
 
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): ExampleGraph {
+      return Impl()
+    }
+
+  }
+
 }
 
 @GraphExtension(scope = LoggedInScope::class)
@@ -156,7 +157,7 @@ interface LoggedInGraph {
   interface Factory {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
     @MetroContribution(scope = AppScope::class)
-    interface $$MetroContributionToAppScope : Factory {
+    interface MetroContributionToAppScope : Factory {
     }
 
     abstract fun createLoggedInGraph(): LoggedInGraph

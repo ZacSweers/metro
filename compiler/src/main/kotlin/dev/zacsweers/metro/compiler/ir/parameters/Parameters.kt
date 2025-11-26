@@ -22,7 +22,9 @@ import org.jetbrains.kotlin.ir.declarations.isPropertyAccessor
 import org.jetbrains.kotlin.ir.types.isUnit
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.callableId
+import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
+import org.jetbrains.kotlin.ir.util.remapTypes
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.CallableId.Companion.PACKAGE_FQ_NAME_FOR_LOCAL
 import org.jetbrains.kotlin.name.Name
@@ -238,5 +240,17 @@ internal fun IrFunction.parameters(remapper: TypeRemapper = NOOP_TYPE_REMAPPER):
     regularParameters = regularParameters.mapToConstructorParameters(remapper),
     contextParameters = contextParameters.mapToConstructorParameters(remapper),
     ir = this,
+  )
+}
+
+internal fun Parameters.remapTypes(remapper: TypeRemapper): Parameters {
+  if (remapper == NOOP_TYPE_REMAPPER) return this
+  return Parameters(
+    callableId = callableId,
+    instance = dispatchReceiverParameter?.remapTypes(remapper),
+    extensionReceiver = extensionReceiverParameter?.remapTypes(remapper),
+    regularParameters = regularParameters.map { it.remapTypes(remapper) },
+    contextParameters = contextParameters.map { it.remapTypes(remapper) },
+    ir = ir?.let { it.deepCopyWithSymbols(it.parent) { remapper } },
   )
 }

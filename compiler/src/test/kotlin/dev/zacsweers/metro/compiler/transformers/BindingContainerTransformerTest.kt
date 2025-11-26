@@ -13,7 +13,7 @@ import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.captureStandardOut
 import dev.zacsweers.metro.compiler.companionObjectClass
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
-import dev.zacsweers.metro.compiler.generatedMetroGraphClass
+import dev.zacsweers.metro.compiler.generatedImpl
 import dev.zacsweers.metro.compiler.invokeCreateAs
 import dev.zacsweers.metro.compiler.provideValueAs
 import dev.zacsweers.metro.compiler.providesFactoryClass
@@ -41,7 +41,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
         )
       )
 
-    val graph = result.ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+    val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
     val providesFactoryClass = result.ExampleGraph.providesFactoryClass()
     // Exercise calling the static provideValue function directly
     val providedValue = providesFactoryClass.provideValueAs<String>("provideValue", graph)
@@ -68,7 +68,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
         )
       )
 
-    val graph = result.ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+    val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
     val providesFactoryClass = result.ExampleGraph.providesFactoryClass()
     // Exercise calling the static provideValue function directly
     val providedValue = providesFactoryClass.provideValueAs<String>("getValue", graph)
@@ -160,7 +160,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
         )
       )
 
-    val graph = result.ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+    val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
     val providesFactoryClass = result.ExampleGraph.providesFactoryClass("provideStringValue")
 
     // Exercise calling the static provideValue function directly
@@ -224,7 +224,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
         )
       )
 
-    val graph = result.ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+    val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
     val providesFactoryClass = result.ExampleGraph.providesFactoryClass("provideStringValue")
 
     // Exercise calling the static provideValue function directly
@@ -260,7 +260,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
         )
       )
 
-    val graph = result.ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+    val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
     val providesFactoryClass = result.ExampleGraph.providesFactoryClass("provideStringValue")
 
     // Exercise calling the static provideValue function directly
@@ -300,7 +300,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
         )
       )
 
-    val graph = result.ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+    val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
     val providesFactoryClass = result.ExampleGraph.providesFactoryClass("provideStringValue")
 
     // Exercise calling the static provideValue function directly
@@ -365,7 +365,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       ),
       previousCompilationResult = otherModuleResult,
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertThat(graph.callProperty<Int>("int")).isEqualTo(2)
     }
   }
@@ -397,7 +397,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       ),
       previousCompilationResult = otherModuleResult,
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertThat(graph.callProperty<Int>("int")).isEqualTo(2)
     }
   }
@@ -428,7 +428,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       ),
       previousCompilationResult = otherModuleResult,
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertThat(graph.callProperty<String>("string")).isEqualTo("2")
     }
   }
@@ -459,7 +459,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       ),
       previousCompilationResult = otherModuleResult,
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertThat(graph.callProperty<Int>("int")).isEqualTo(2)
     }
   }
@@ -488,7 +488,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
         )
       )
       .apply {
-        val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+        val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
         val out = captureStandardOut { graph.callProperty<() -> Unit>("unitFunction").invoke() }
         assertThat(out).isEqualTo("Hello, world!")
         assertThat(graph.callProperty<() -> Int>("intFunction").invoke()).isEqualTo(2)
@@ -559,7 +559,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertThat(graph.callProperty<Int>("int")).isEqualTo(2)
       assertThat(graph.callProperty<Int?>("nullableInt")).isEqualTo(null)
       assertThat(graph.callProperty<String>("string")).isEqualTo("Hello")
@@ -615,7 +615,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       previousCompilationResult = firstCompilation,
       options = metroOptions.withDaggerInterop(),
     ) {
-      ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertDiagnostics(
         "w: Included Dagger module 'ExampleModule' declares a `subcomponents` parameter but this will be ignored by Metro in interop."
       )

@@ -3,7 +3,7 @@
 package dev.zacsweers.metro.compiler.graph
 
 import dev.drewhamilton.poko.Poko
-import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.symbols.Symbols
 
 @Poko
 internal class StringContextualTypeKey

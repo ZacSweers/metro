@@ -1,22 +1,9 @@
 @SingleIn(scope = AppScope::class)
 @DependencyGraph
 interface AppGraph {
-  companion object Companion : Factory {
-    private constructor() /* primary */ {
-      super/*Any*/()
-      /* <init>() */
-
-    }
-
-    @GraphFactoryInvokeFunctionMarker
-    override fun create(@Provides string: String): AppGraph {
-      return $$MetroGraph(string = string)
-    }
-
-  }
-
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroGraph : AppGraph {
+  @MetroImplMarker
+  class Impl : AppGraph {
     private val thisGraphInstance: AppGraph
       field = <this>
 
@@ -36,9 +23,23 @@ interface AppGraph {
 
   }
 
+  companion object Companion : Factory {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    override fun create(@Provides string: String): AppGraph {
+      return Impl(string = string)
+    }
+
+  }
+
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 96, endOffset = 139)
-  class ProvideInt$$MetroFactory : Factory<Int> {
+  class ProvideIntMetroFactory : Factory<Int> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
       private constructor() /* primary */ {
@@ -48,7 +49,7 @@ interface AppGraph {
       }
 
       fun create(instance: AppGraph): Factory<Int> {
-        return ProvideInt$$MetroFactory(instance = instance)
+        return ProvideIntMetroFactory(instance = instance)
       }
 
       fun provideInt(instance: AppGraph): Int {
@@ -76,7 +77,8 @@ interface AppGraph {
   @Factory
   interface Factory {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-    object $$Impl : Factory {
+    @MetroImplMarker
+    object Impl : Factory {
       private constructor() /* primary */ {
         super/*Any*/()
         /* <init>() */
@@ -85,7 +87,7 @@ interface AppGraph {
 
       @GraphFactoryInvokeFunctionMarker
       override fun create(@Provides string: String): AppGraph {
-        return $$MetroGraph(string = string)
+        return Impl(string = string)
       }
 
     }

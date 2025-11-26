@@ -30,7 +30,7 @@ internal fun ClassId.isPlatformType(): Boolean {
 internal const val LOG_PREFIX = "[METRO]"
 
 internal const val REPORT_METRO_MESSAGE =
-  "This is a bug in the Metro compiler, please report it to https://github.com/zacsweers/metro."
+  "This is possibly a bug in the Metro compiler, please report it with details and/or a reproducer to https://github.com/zacsweers/metro."
 
 internal fun <T> memoize(initializer: () -> T) = lazy(LazyThreadSafetyMode.NONE, initializer)
 
@@ -134,6 +134,11 @@ internal inline fun <T> T.letIf(condition: Boolean, block: (T) -> T): T {
   return if (condition) block(this) else this
 }
 
+internal inline fun <T> T?.escapeIfNull(block: () -> Nothing): T {
+  if (this == null) block()
+  return this
+}
+
 // omit the `get-` prefix for property names starting with the *word* `is`, like `isProperty`,
 // but not for names which just start with those letters, like `issues`.
 internal val isWordPrefixRegex = "^is([^a-z].*)".toRegex()
@@ -197,6 +202,7 @@ internal fun <T : Comparable<T>> List<T>.compareTo(other: List<T>): Int {
 internal fun String.suffixIfNot(suffix: String) =
   if (this.endsWith(suffix)) this else "$this$suffix"
 
+// TODO this doesn't include the package name, should we include it
 internal fun ClassId.scopeHintFunctionName(): Name = joinSimpleNames().shortClassName
 
 internal fun reportCompilerBug(message: String): Nothing {

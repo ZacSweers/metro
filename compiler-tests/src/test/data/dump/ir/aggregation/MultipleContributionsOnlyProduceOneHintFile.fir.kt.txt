@@ -18,7 +18,7 @@ interface Base3 {
 @Inject
 class Base1Impl : Base1, Base2, Base3 {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  object $$MetroFactory : Factory<Base1Impl> {
+  object MetroFactory : Factory<Base1Impl> {
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -26,7 +26,7 @@ class Base1Impl : Base1, Base2, Base3 {
     }
 
     fun create(): Factory<Base1Impl> {
-      return $$MetroFactory
+      return MetroFactory
     }
 
     fun newInstance(): Base1Impl {
@@ -34,7 +34,7 @@ class Base1Impl : Base1, Base2, Base3 {
     }
 
     override operator fun invoke(): Base1Impl {
-      return $$MetroFactory.newInstance()
+      return MetroFactory.newInstance()
     }
 
     @SingleIn(scope = AppScope::class)
@@ -46,9 +46,9 @@ class Base1Impl : Base1, Base2, Base3 {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroContribution(scope = AppScope::class)
-  interface $$MetroContributionToAppScope {
+  interface MetroContributionToAppScope {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-    abstract class $$BindsMirror {
+    abstract class BindsMirror {
       private constructor() /* primary */ {
         super/*Any*/()
         /* <init>() */
@@ -95,25 +95,12 @@ class Base1Impl : Base1, Base2, Base3 {
 // FILE: file2.kt
 
 @DependencyGraph(scope = AppScope::class)
-interface ExampleGraph : $$MetroContributionToAppScope {
-  companion object Companion {
-    private constructor() /* primary */ {
-      super/*Any*/()
-      /* <init>() */
-
-    }
-
-    @GraphFactoryInvokeFunctionMarker
-    operator fun invoke(): ExampleGraph {
-      return $$MetroGraph()
-    }
-
-  }
-
+interface ExampleGraph : MetroContributionToAppScope {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroGraph : ExampleGraph {
+  @MetroImplMarker
+  class Impl : ExampleGraph {
     private val base1ImplProvider: Provider<Base1Impl>
-      field = Companion.provider<Provider<Base1Impl>, Base1Impl>(delegate = $$MetroFactory.create())
+      field = Companion.provider<Provider<Base1Impl>, Base1Impl>(delegate = MetroFactory.create())
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -162,6 +149,20 @@ interface ExampleGraph : $$MetroContributionToAppScope {
       private get(): Set<Base3> {
         return setOf<Base3>(element = <this>.#base1ImplProvider.invoke())
       }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): ExampleGraph {
+      return Impl()
+    }
 
   }
 

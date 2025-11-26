@@ -1,0 +1,5 @@
+public final class dev/zacsweers/metro/interop/jakarta/JakartaInteropKt {
+	public static final fun asJakartaProvider (Ldev/zacsweers/metro/Provider;)Ljakarta/inject/Provider;
+	public static final fun asMetroProvider (Ljakarta/inject/Provider;)Ldev/zacsweers/metro/Provider;
+}
+

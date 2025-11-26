@@ -85,8 +85,8 @@ class MultibindsErrorsTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:7:19 `@Multibinds` declarations must be abstract.
-        e: ExampleGraph.kt:8:19 `@Multibinds` declarations must be abstract.
+        e: ExampleGraph.kt:7:27 Non-private @Multibinds declarations must be abstract and not have a function or getter body.
+        e: ExampleGraph.kt:8:29 Non-private @Multibinds declarations must be abstract and not have a function or getter body.
         """
           .trimIndent()
       )
@@ -109,8 +109,8 @@ class MultibindsErrorsTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleGraph.kt:7:15 @Multibinds declarations cannot be scoped.
-        e: ExampleGraph.kt:8:15 @Multibinds declarations cannot be scoped.
+        e: ExampleGraph.kt:7:15 @Multibinds declarations may not have scopes.
+        e: ExampleGraph.kt:8:15 @Multibinds declarations may not have scopes.
         """
           .trimIndent()
       )

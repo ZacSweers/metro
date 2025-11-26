@@ -12,7 +12,7 @@ import dev.zacsweers.metro.compiler.assertDiagnostics
 import dev.zacsweers.metro.compiler.callFunction
 import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
-import dev.zacsweers.metro.compiler.generatedMetroGraphClass
+import dev.zacsweers.metro.compiler.generatedImpl
 import dev.zacsweers.metro.compiler.invokeInstanceMethod
 import org.junit.Test
 
@@ -40,7 +40,7 @@ class GraphExtensionTest : MetroCompilerTest() {
         """
       )
     ) {
-      val parentGraph = ParentGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val parentGraph = ParentGraph.generatedImpl().createGraphWithNoArgs()
       val childGraph = parentGraph.invokeInstanceMethod<Any>("create")
       assertThat(childGraph.callProperty<Int>("int")).isEqualTo(1)
     }
@@ -76,7 +76,7 @@ class GraphExtensionTest : MetroCompilerTest() {
       ),
       previousCompilationResult = firstCompilation,
     ) {
-      val parentGraph = ParentGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val parentGraph = ParentGraph.generatedImpl().createGraphWithNoArgs()
       val childGraph = parentGraph.callFunction<Any>("create")
       assertThat(childGraph.callProperty<Int>("int")).isEqualTo(1)
     }
@@ -106,7 +106,7 @@ class GraphExtensionTest : MetroCompilerTest() {
         """
       )
     ) {
-      val parentGraph = ParentGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val parentGraph = ParentGraph.generatedImpl().createGraphWithNoArgs()
       val childGraph = parentGraph.callFunction<Any>("create")
       assertThat(childGraph.callProperty<Int>("int")).isEqualTo(0)
       assertThat(childGraph.callProperty<Int>("int")).isEqualTo(1)
@@ -142,7 +142,7 @@ class GraphExtensionTest : MetroCompilerTest() {
         """
       )
     ) {
-      val parentGraph = ParentGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val parentGraph = ParentGraph.generatedImpl().createGraphWithNoArgs()
       val childGraph = parentGraph.callFunction<Any>("create")
       assertThat(childGraph.callProperty<Int>("int")).isEqualTo(0)
       assertThat(childGraph.callProperty<Int>("int")).isEqualTo(0)
@@ -177,7 +177,7 @@ class GraphExtensionTest : MetroCompilerTest() {
         """
       )
     ) {
-      val parentGraph = ParentGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val parentGraph = ParentGraph.generatedImpl().createGraphWithNoArgs()
       val childGraph = parentGraph.callFunction<Any>("create")
       assertThat(childGraph.callProperty<Provider<Int>>("int"))
         .isSameInstanceAs(childGraph.callProperty<Provider<Int>>("int"))
@@ -211,7 +211,7 @@ class GraphExtensionTest : MetroCompilerTest() {
         """
       )
     ) {
-      val parentGraph = ParentGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val parentGraph = ParentGraph.generatedImpl().createGraphWithNoArgs()
       val childGraph = parentGraph.callFunction<Any>("create")
       assertThat(childGraph.callProperty<Int>("int")).isEqualTo(0)
       assertThat(childGraph.callProperty<Int>("int")).isEqualTo(0)
@@ -252,7 +252,7 @@ class GraphExtensionTest : MetroCompilerTest() {
         fileNameWithoutExtension = "Graphs",
       )
     ) {
-      val grandParentGraph = GrandParentGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val grandParentGraph = GrandParentGraph.generatedImpl().createGraphWithNoArgs()
       val parentGraph = grandParentGraph.callFunction<Any>("create")
       val childGraph = parentGraph.callFunction<Any>("create")
       assertThat(childGraph.callProperty<String>("string")).isEqualTo("grandparent")
@@ -302,7 +302,7 @@ class GraphExtensionTest : MetroCompilerTest() {
       ),
       previousCompilationResult = firstCompilation,
     ) {
-      val grandParentGraph = GrandParentGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val grandParentGraph = GrandParentGraph.generatedImpl().createGraphWithNoArgs()
       val parentGraph = grandParentGraph.callFunction<Any>("create")
       val childGraph = parentGraph.callFunction<Any>("create")
       assertThat(childGraph.callProperty<String>("string")).isEqualTo("grandparent")
@@ -339,7 +339,7 @@ class GraphExtensionTest : MetroCompilerTest() {
         """
       )
     ) {
-      val parentGraph = ParentGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val parentGraph = ParentGraph.generatedImpl().createGraphWithNoArgs()
       val childGraph = parentGraph.callFunction<Any>("create")
       assertThat(childGraph.callProperty<String>("string")).isEqualTo("companion")
       assertThat(childGraph.callProperty<Int>("int")).isEqualTo(1)
@@ -372,7 +372,7 @@ class GraphExtensionTest : MetroCompilerTest() {
         """
       )
     ) {
-      val parentGraph = ParentGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val parentGraph = ParentGraph.generatedImpl().createGraphWithNoArgs()
       val childGraph = parentGraph.callFunction<Any>("create")
       assertThat(childGraph.callProperty<Any>("base").javaClass.simpleName).isEqualTo("Impl")
     }
@@ -408,7 +408,7 @@ class GraphExtensionTest : MetroCompilerTest() {
         """
       )
     ) {
-      val parentGraph = ParentGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val parentGraph = ParentGraph.generatedImpl().createGraphWithNoArgs()
       val childGraph = parentGraph.callFunction<Any>("create")
 
       assertThat(parentGraph.callProperty<Set<String>>("parentSet")).containsExactly("parent")
@@ -563,7 +563,7 @@ class GraphExtensionTest : MetroCompilerTest() {
       ),
       options = metroOptions.copy(enableFullBindingGraphValidation = true),
     ) {
-      val parentGraph = ParentGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val parentGraph = ParentGraph.generatedImpl().createGraphWithNoArgs()
       val childGraph = parentGraph.callFunction<Any>("create")
       assertThat(childGraph.callProperty<Int>("int")).isEqualTo(1)
       assertThat(childGraph.callProperty<Int>("qualifiedInt")).isEqualTo(2)
@@ -596,7 +596,7 @@ class GraphExtensionTest : MetroCompilerTest() {
         """
       )
     ) {
-      val parentGraph = ParentGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val parentGraph = ParentGraph.generatedImpl().createGraphWithNoArgs()
       val childGraph = parentGraph.callFunction<Any>("create")
       assertThat(childGraph.callProperty<Int>("int")).isEqualTo(1)
     }

@@ -57,7 +57,7 @@ interface ExampleInjector {
 @DependencyGraph(AppScope::class)
 interface ExampleGraph {
   @Provides fun provideString(): String = "Hello"
-  @Provides @javax.inject.Named("qualified") fun provideQualifiedString(): String = "Hello"
+  @Provides @javax.inject.Named("qualified") fun provideQualifiedString(): String = "Hello qualified"
   @Binds @javax.inject.Named("qualified") fun Dependency.bind(): Dependency
 }
 
@@ -73,6 +73,6 @@ fun box(): String {
   assertNotNull(example.qualified)
   assertNotNull(example.setterDepQualified)
   assertNotNull(example.setterDep2Qualified)
-  assertEquals("Hello", example.setterDep3Qualified)
+  assertEquals("Hello qualified", example.setterDep3Qualified)
   return "OK"
 }

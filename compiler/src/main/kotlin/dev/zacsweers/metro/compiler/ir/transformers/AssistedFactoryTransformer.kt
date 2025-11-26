@@ -3,10 +3,10 @@
 package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.compiler.Origins
-import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.generatedClass
+import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
@@ -25,6 +25,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameter.AssistedParameterKey
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.ir.remapTypes
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
@@ -36,6 +37,7 @@ import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.proto.AssistedFactoryImplProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
@@ -56,13 +58,11 @@ import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeProjection
 import org.jetbrains.kotlin.ir.types.defaultType
-import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
-import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
@@ -73,6 +73,7 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.simpleFunctions
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
 
 internal class AssistedFactoryTransformer(
@@ -102,29 +103,33 @@ internal class AssistedFactoryTransformer(
       // Check if Metro generated an impl by looking at metadata
       val metadata = declaration.metroMetadata?.assisted_factory_impl
       if (metadata != null) {
-        // Metro impl exists - look for the Metro-generated impl class
-        val metroImplClass =
-          declaration.declarations.filterIsInstance<IrClass>().singleOrNull {
-            it.name == Symbols.Names.MetroImpl
-          }
+        val name = metadata.impl_class_name.asName()
+        // Metro impl data exists in metadata - generate header stub
+        // Since impl classes are generated in IR only, they won't show up in metadata,
+        // so we need to generate the header stub rather than look up a nested class
+        val samFunction = declaration.singleAbstractFunction()
 
-        if (metroImplClass != null) {
-          // Found Metro impl - use it
-          val companionObject = metroImplClass.companionObject()
-          val createFunction =
-            companionObject?.declarations?.filterIsInstance<IrSimpleFunction>()?.singleOrNull {
-              it.name.asString() == "create"
-            }
+        val implClass = generateImplClassHeader(declaration, name, isExternal = true)
 
-          if (createFunction != null) {
-            val metroImpl = AssistedFactoryImpl.Metro(createFunction)
-            implsCache[classId] = metroImpl
-            return metroImpl
-          }
-        }
+        val returnType = samFunction.returnType
+        val targetType = returnType.rawType()
+
+        // Generate companion + create() stubs
+        val companionDeclarations =
+          generateCompanionDeclarations(
+            implClass,
+            declaration,
+            targetType,
+            isExternal = true,
+            samFunction,
+          )
+
+        val metroImpl = AssistedFactoryImpl.Metro(companionDeclarations.createFunction)
+        implsCache[classId] = metroImpl
+        return metroImpl
       } else if (options.enableDaggerRuntimeInterop) {
-        // Fall back to Dagger if enabled and Metro impl not found
-        // Don't gate on Java source because anvil may have generated this too
+        // Fall back to Dagger (if enabled) and Metro impl not found
+        // Don't gate on Java source because Anvil may have generated this in Kotlin too
         val daggerImplClassId = classId.generatedClass("_Impl")
         val daggerImplClass = pluginContext.referenceClass(daggerImplClassId)?.owner
         if (daggerImplClass != null) {
@@ -149,7 +154,7 @@ internal class AssistedFactoryTransformer(
     val samFunction = declaration.singleAbstractFunction()
 
     // Generate impl class header (same for both external and in-compilation)
-    val implClass = generateImplClassHeader(declaration, isExternal)
+    val implClass = generateImplClassHeader(declaration, name = Symbols.Names.Impl, isExternal)
 
     val returnType = samFunction.returnType
     val targetType = returnType.rawType()
@@ -198,11 +203,15 @@ internal class AssistedFactoryTransformer(
     return implementation
   }
 
-  private fun generateImplClassHeader(declaration: IrClass, isExternal: Boolean): IrClass {
+  private fun generateImplClassHeader(
+    declaration: IrClass,
+    name: Name,
+    isExternal: Boolean,
+  ): IrClass {
     val implClass =
       pluginContext.irFactory
         .buildClass {
-          name = Symbols.Names.MetroImpl
+          this.name = name
           kind = ClassKind.CLASS
           visibility = DescriptorVisibilities.PUBLIC
         }
@@ -398,14 +407,18 @@ internal class AssistedFactoryTransformer(
     }
 
     // Write metadata to indicate Metro generated this impl
-    cacheAssistedFactoryInMetadata(declaration, samFunction.name.asString())
+    writeMetadata(declaration, implClass, samFunction.name.asString())
 
     implClass.dumpToMetroLog()
   }
 
-  private fun cacheAssistedFactoryInMetadata(factoryClass: IrClass, samFunctionName: String) {
+  private fun writeMetadata(factoryClass: IrClass, implClass: IrClass, samFunctionName: String) {
     if (factoryClass.isExternalParent) return
-    val assistedFactoryImpl = AssistedFactoryImplProto(sam_function_name = samFunctionName)
+    val assistedFactoryImpl =
+      AssistedFactoryImplProto(
+        sam_function_name = samFunctionName,
+        impl_class_name = implClass.name.asString(),
+      )
 
     // Store the metadata for this factory class
     factoryClass.metroMetadata = MetroMetadata(assisted_factory_impl = assistedFactoryImpl)
@@ -476,16 +489,14 @@ internal sealed interface AssistedFactoryImpl {
 
     context(context: IrMetroContext)
     override fun IrBuilderWithScope.invokeCreate(delegateFactory: IrExpression): IrExpression {
-      return with(context.metroSymbols.daggerSymbols) {
-        val targetType = (createFunction.returnType as IrSimpleType).arguments[0].typeOrFail
-        transformToMetroProvider(
-          irInvoke(
+      return with(context.metroSymbols.providerTypeConverter) {
+        val targetType = IrContextualTypeKey.from(createFunction)
+        irInvoke(
             callee = createFunction.symbol,
             args = listOf(delegateFactory),
             typeHint = createFunction.returnType,
-          ),
-          targetType,
-        )
+          )
+          .convertTo(targetType)
       }
     }
   }

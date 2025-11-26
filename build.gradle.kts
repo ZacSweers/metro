@@ -157,6 +157,7 @@ allprojects {
         "**/StringKey.kt",
         "**/topologicalSort.kt",
         "**/TopologicalSortTest.kt",
+        "**/ir/cache/*.kt",
       )
     }
     format("licenseJava") {
@@ -199,7 +200,9 @@ subprojects {
     if (project.path != ":compiler") {
       apply(plugin = "org.jetbrains.dokka")
     }
-    configure<MavenPublishBaseExtension> { publishToMavenCentral(automaticRelease = true) }
+    configure<MavenPublishBaseExtension> {
+      publishToMavenCentral(automaticRelease = true, validateDeployment = false)
+    }
 
     // configuration required to produce unique META-INF/*.kotlin_module file names
     tasks.withType<KotlinCompile>().configureEach {

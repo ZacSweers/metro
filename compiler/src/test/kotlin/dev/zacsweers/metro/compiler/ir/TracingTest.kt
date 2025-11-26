@@ -373,7 +373,7 @@ class TracingTest : MetroCompilerTest() {
       val withoutTime = timings.lines().drop(1).joinToString("\n") { it.substringBeforeLast(",") }
       assertThat(withoutTime)
         .isEqualTo(
-          $$"""
+          """
           main,Transform contributions
           ExampleGraph,Build DependencyGraphNode
           ExampleGraph,Implement creator functions
@@ -431,7 +431,7 @@ class TracingTest : MetroCompilerTest() {
       val cleanedLog = traceLog.replace("\\((\\d+) ms\\)".toRegex(), "(xx ms)")
       assertThat(cleanedLog.trim())
         .isEqualTo(
-          $$"""
+          """
           [main] ▶ Metro compiler
             ▶ Transform contributions
             ◀ Transform contributions (xx ms)

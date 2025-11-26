@@ -9,7 +9,7 @@ class A {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<A> {
+  class MetroFactory : Factory<A> {
     private /* final field */ val b: Provider<B> = b
     private /* final field */ val e: Provider<E> = e
     companion object Companion {
@@ -20,7 +20,7 @@ class A {
       }
 
       fun create(b: Provider<B>, e: Provider<E>): Factory<A> {
-        return $$MetroFactory(b = b, e = e)
+        return MetroFactory(b = b, e = e)
       }
 
       fun newInstance(b: B, e: E): A {
@@ -60,7 +60,7 @@ class B {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<B> {
+  class MetroFactory : Factory<B> {
     private /* final field */ val c: Provider<C> = c
     companion object Companion {
       private constructor() /* primary */ {
@@ -70,7 +70,7 @@ class B {
       }
 
       fun create(c: Provider<C>): Factory<B> {
-        return $$MetroFactory(c = c)
+        return MetroFactory(c = c)
       }
 
       fun newInstance(c: C): B {
@@ -119,7 +119,7 @@ class C {
     set
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<C> {
+  class MetroFactory : Factory<C> {
     private /* final field */ val aProvider: Provider<A> = aProvider
     private /* final field */ val aLazy: Provider<A> = aLazy
     private /* final field */ val aLazyProvider: Provider<A> = aLazyProvider
@@ -131,7 +131,7 @@ class C {
       }
 
       fun create(aProvider: Provider<A>, aLazy: Provider<A>, aLazyProvider: Provider<A>): Factory<C> {
-        return $$MetroFactory(aProvider = aProvider, aLazy = aLazy, aLazyProvider = aLazyProvider)
+        return MetroFactory(aProvider = aProvider, aLazy = aLazy, aLazyProvider = aLazyProvider)
       }
 
       fun newInstance(aProvider: Provider<A>): C {
@@ -160,7 +160,7 @@ class C {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroMembersInjector : MembersInjector<C> {
+  class MetroMembersInjector : MembersInjector<C> {
     private /* final field */ val aLazy: Provider<A> = aLazy
     private /* final field */ val aLazyProvider: Provider<A> = aLazyProvider
     companion object Companion {
@@ -171,7 +171,7 @@ class C {
       }
 
       fun create(aLazy: Provider<A>, aLazyProvider: Provider<A>): MembersInjector<C> {
-        return $$MetroMembersInjector(aLazy = aLazy, aLazyProvider = aLazyProvider)
+        return MetroMembersInjector(aLazy = aLazy, aLazyProvider = aLazyProvider)
       }
 
       fun injectALazy(@Assisted instance: C, aLazy: Lazy<A>) {
@@ -212,7 +212,7 @@ class D {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<D> {
+  class MetroFactory : Factory<D> {
     private /* final field */ val b: Provider<B> = b
     companion object Companion {
       private constructor() /* primary */ {
@@ -222,7 +222,7 @@ class D {
       }
 
       fun create(b: Provider<B>): Factory<D> {
-        return $$MetroFactory(b = b)
+        return MetroFactory(b = b)
       }
 
       fun newInstance(b: B): D {
@@ -262,7 +262,7 @@ class E {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<E> {
+  class MetroFactory : Factory<E> {
     private /* final field */ val d: Provider<D> = d
     companion object Companion {
       private constructor() /* primary */ {
@@ -272,7 +272,7 @@ class E {
       }
 
       fun create(d: Provider<D>): Factory<E> {
-        return $$MetroFactory(d = d)
+        return MetroFactory(d = d)
       }
 
       fun newInstance(d: D): E {
@@ -323,22 +323,9 @@ interface ChildCycleGraph {
 
 @DependencyGraph
 interface CycleGraph {
-  companion object Companion {
-    private constructor() /* primary */ {
-      super/*Any*/()
-      /* <init>() */
-
-    }
-
-    @GraphFactoryInvokeFunctionMarker
-    operator fun invoke(): CycleGraph {
-      return $$MetroGraph()
-    }
-
-  }
-
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroGraph : CycleGraph {
+  @MetroImplMarker
+  class Impl : CycleGraph {
     private val thisGraphInstance: CycleGraph
       field = <this>
 
@@ -372,8 +359,8 @@ interface CycleGraph {
         field = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider)))
 
       private class FactoryImpl : Factory {
-        private /* final field */ val parentInstance: $$MetroGraph = parentInstance
-        constructor(parentInstance: $$MetroGraph) /* primary */ {
+        private /* final field */ val parentInstance: Impl = parentInstance
+        constructor(parentInstance: Impl) /* primary */ {
           super/*Any*/()
           /* <init>() */
 
@@ -432,9 +419,23 @@ interface CycleGraph {
 
   }
 
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): CycleGraph {
+      return Impl()
+    }
+
+  }
+
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @CallableMetadata(callableName = "provideObjectWithCycle", propertyName = "", startOffset = 497, endOffset = 594)
-  class ProvideObjectWithCycle$$MetroFactory : Factory<Any> {
+  class ProvideObjectWithCycleMetroFactory : Factory<Any> {
     private /* final field */ val instance: CycleGraph = instance
     private /* final field */ val obj: Provider<Any> = obj
     companion object Companion {
@@ -445,7 +446,7 @@ interface CycleGraph {
       }
 
       fun create(instance: CycleGraph, obj: Provider<Any>): Factory<Any> {
-        return ProvideObjectWithCycle$$MetroFactory(instance = instance, obj = obj)
+        return ProvideObjectWithCycleMetroFactory(instance = instance, obj = obj)
       }
 
       fun provideObjectWithCycle(instance: CycleGraph, obj: Provider<Any>): Any {

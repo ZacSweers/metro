@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir.graph
 
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.reportCompilerBug
 
 private const val INITIAL_VALUE = 512
 
@@ -64,7 +65,16 @@ internal class BindingPropertyCollector(private val graph: IrBindingGraph) {
     // Decide which bindings actually need provider fields
     return buildMap(nodes.size) {
       for ((key, node) in nodes) {
-        val propertyType = node.propertyType ?: continue
+        val propertyType =
+          // If we've reserved a property for this key already, defer to that because some extension
+          // is expecting it
+          graph.reservedProperty(key)?.let {
+            when {
+              it.property.getter != null -> PropertyType.GETTER
+              it.property.backingField != null -> PropertyType.FIELD
+              else -> reportCompilerBug("No getter or backing field for reserved property")
+            }
+          } ?: node.propertyType ?: continue
         put(key, CollectedProperty(node.binding, propertyType))
       }
     }

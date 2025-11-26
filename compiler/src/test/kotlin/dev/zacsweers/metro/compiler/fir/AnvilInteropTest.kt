@@ -10,7 +10,7 @@ import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.assertDiagnostics
 import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
-import dev.zacsweers.metro.compiler.generatedMetroGraphClass
+import dev.zacsweers.metro.compiler.generatedImpl
 import kotlin.test.Test
 import org.jetbrains.kotlin.name.ClassId
 import org.junit.Ignore
@@ -49,7 +49,7 @@ class AnvilInteropTest : MetroCompilerTest() {
       previousCompilationResult = previousCompilation,
       options = metroOptions.withAnvilInterop(),
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
       assertThat(contributedInterface).isNotNull()
       assertThat(contributedInterface.javaClass.name).isEqualTo("test.LibImpl")
@@ -88,7 +88,7 @@ class AnvilInteropTest : MetroCompilerTest() {
       previousCompilationResult = libCompilation,
       options = metroOptions.withAnvilInterop(),
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
       assertThat(contributedInterface).isNotNull()
       assertThat(contributedInterface.javaClass.name).isEqualTo("test.AppImpl")
@@ -120,7 +120,7 @@ class AnvilInteropTest : MetroCompilerTest() {
       ),
       options = metroOptions.withAnvilInterop(),
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
       assertThat(contributedInterface).isNotNull()
       assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl3")
@@ -157,7 +157,7 @@ class AnvilInteropTest : MetroCompilerTest() {
       ),
       options = metroOptions.withAnvilInterop(),
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
       assertThat(contributedInterface).isNotNull()
       assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl2")
@@ -205,7 +205,7 @@ class AnvilInteropTest : MetroCompilerTest() {
       previousCompilationResult = libCompilation,
       options = metroOptions.withAnvilInterop(),
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
       assertThat(contributedInterface).isNotNull()
       assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl2")
@@ -234,7 +234,7 @@ class AnvilInteropTest : MetroCompilerTest() {
       ),
       options = metroOptions.withAnvilInterop(),
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
       assertThat(contributedInterface).isNotNull()
       assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl2")
@@ -263,7 +263,7 @@ class AnvilInteropTest : MetroCompilerTest() {
       ),
       options = metroOptions.withAnvilInterop(),
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
       assertThat(contributedInterface).isNotNull()
       assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl1")
@@ -297,7 +297,7 @@ class AnvilInteropTest : MetroCompilerTest() {
       ),
       options = metroOptions.withAnvilInterop(),
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
       assertThat(contributedInterface).isNotNull()
       assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl2")
@@ -357,7 +357,7 @@ class AnvilInteropTest : MetroCompilerTest() {
           .withAnvilInterop()
           .copy(customQualifierAnnotations = setOf(ClassId.fromString("test/ThirdPartyQualifier"))),
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
       assertThat(contributedInterface).isNotNull()
       assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl2")
@@ -390,7 +390,7 @@ class AnvilInteropTest : MetroCompilerTest() {
       ),
       options = metroOptions.withAnvilInterop(),
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
       assertThat(contributedInterface).isNotNull()
       assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl1")

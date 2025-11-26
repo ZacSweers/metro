@@ -29,8 +29,8 @@ internal object Keys {
     override fun toString() = "InjectConstructorFactoryCompanionDeclaration"
   }
 
-  data object MetroGraphDeclaration : GeneratedDeclarationKey() {
-    override fun toString() = "MetroGraphDeclaration"
+  data object GraphImplClassDeclaration : GeneratedDeclarationKey() {
+    override fun toString() = "GraphImplClassDeclaration"
   }
 
   data object MetroGraphAccessorCallableOverride : GeneratedDeclarationKey() {
@@ -53,8 +53,8 @@ internal object Keys {
     override fun toString() = "MetroGraphFactoryCompanionGetter"
   }
 
-  data object MetroGraphFactoryImplDeclaration : GeneratedDeclarationKey() {
-    override fun toString() = "MetroGraphFactoryImplDeclaration"
+  data object GraphFactoryImplClassDeclaration : GeneratedDeclarationKey() {
+    override fun toString() = "GraphFactoryImplClassDeclaration"
   }
 
   data object MetroContributionClassDeclaration : GeneratedDeclarationKey() {

@@ -5,7 +5,6 @@ package dev.zacsweers.metro.compiler.ir.transformers
 import dev.zacsweers.metro.compiler.METRO_VERSION
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
-import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
@@ -25,9 +24,11 @@ import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.findAnnotations
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.includedClasses
+import dev.zacsweers.metro.compiler.ir.irCallableMetadata
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.ir.isBindingContainer
 import dev.zacsweers.metro.compiler.ir.isCompanionObject
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
@@ -40,6 +41,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.ir.render
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
@@ -47,6 +49,7 @@ import dev.zacsweers.metro.compiler.ir.subcomponentsArgument
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toClassReferences
 import dev.zacsweers.metro.compiler.ir.toProto
+import dev.zacsweers.metro.compiler.ir.transformMultiboundQualifier
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.isWordPrefixRegex
 import dev.zacsweers.metro.compiler.mapNotNullToSet
@@ -56,6 +59,8 @@ import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.EnumSet
 import java.util.Optional
 import kotlin.jvm.optionals.getOrNull
@@ -90,6 +95,7 @@ import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isPropertyAccessor
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
+import org.jetbrains.kotlin.ir.util.packageFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
@@ -367,13 +373,20 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
         clazz = factoryCls,
         mirrorFunction = mirrorFunction,
         sourceAnnotations = reference.annotations,
+        callableMetadata =
+          factoryCls.irCallableMetadata(mirrorFunction, reference.annotations, isInterop = false),
       )
 
     factoryCls.dumpToMetroLog()
 
-    writeDiagnostic("provider-factory-${factoryCls.kotlinFqName.asString()}.kt") {
-      factoryCls.dumpKotlinLike()
-    }
+    val factoryPath =
+      factoryCls.packageFqName?.let { packageName ->
+        val fileName = factoryCls.kotlinFqName.toString().replace("$packageName.", "")
+        "${packageName.pathSegments().joinToString("/")}/$fileName"
+      } ?: factoryCls.kotlinFqName.asString()
+
+    // Relative path example: provider-factories/dev/zac/feature/Outer.Inner$$Factory.kt
+    writeDiagnostic("provider-factories/$factoryPath.kt") { factoryCls.dumpKotlinLike() }
 
     generatedFactories[reference.callableId] = providerFactory
     return providerFactory
@@ -700,15 +713,33 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
   private fun externalProviderFactoryFor(factoryCls: IrClass): ProviderFactory.Metro {
     // Extract IrTypeKey from Factory supertype
     // Qualifier will be populated in ProviderFactory construction
-    val factoryType = factoryCls.superTypes.first { it.classOrNull == metroSymbols.metroFactory }
-    val typeKey = IrTypeKey(factoryType.requireSimpleType().arguments.first().typeOrFail)
     val mirrorFunction = factoryCls.requireSimpleFunction(Symbols.StringNames.MIRROR_FUNCTION).owner
-    return ProviderFactory(
-      typeKey,
-      factoryCls,
-      mirrorFunction,
-      mirrorFunction.metroAnnotations(metroSymbols.classIds),
-    )
+    val sourceAnnotations = mirrorFunction.metroAnnotations(metroSymbols.classIds)
+    val callableMetadata =
+      factoryCls.irCallableMetadata(mirrorFunction, sourceAnnotations, isInterop = false)
+    val factoryType =
+      factoryCls.superTypes
+        .first { it.classOrNull == metroSymbols.metroFactory }
+        .requireSimpleType(factoryCls) {
+          appendLine()
+          appendLine("(hint)")
+          val shortPath = buildString {
+            append(callableMetadata.callableId.classId!!.shortClassName)
+            append(".")
+            append(callableMetadata.callableId.callableName)
+            if (!callableMetadata.isPropertyAccessor) {
+              append("(...)")
+            }
+            append(": ")
+            append(callableMetadata.function.returnType.render(short = true))
+          }
+          appendLine(
+            "This is a generated factory class for the '$shortPath' @Provides declaration, which is likely where the missing type is originally exposed."
+          )
+        }
+
+    val typeKey = IrTypeKey(factoryType.requireSimpleType(factoryCls).arguments.first().typeOrFail)
+    return ProviderFactory(typeKey, factoryCls, mirrorFunction, sourceAnnotations, callableMetadata)
   }
 
   private fun loadExternalBindingContainer(
@@ -727,7 +758,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     if (graphProto == null) {
       if (options.enableDaggerRuntimeInterop) {
         val moduleAnno =
-          declaration.findAnnotations(Symbols.DaggerSymbols.ClassIds.DAGGER_MODULE).firstOrNull()
+          declaration.findAnnotations(DaggerSymbols.ClassIds.DAGGER_MODULE).firstOrNull()
 
         if (moduleAnno != null) {
           // It's a dagger module! Iterate over its Provides and Binds
@@ -792,10 +823,12 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
                   )
                   return null
                 }
+                val transformedTypeKey = typeKey.transformMultiboundQualifier(annotations)
                 providerFactories[callableId] =
                   ProviderFactory.Dagger(
                     factoryClass = factoryClass.owner,
-                    typeKey = typeKey,
+                    typeKey = transformedTypeKey,
+                    rawTypeKey = typeKey,
                     callableId = callableId,
                     annotations = annotations,
                     parameters = parameters,
@@ -841,7 +874,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
 
       val requireMetadata =
         declaration.isAnnotatedWithAny(metroSymbols.classIds.dependencyGraphAnnotations) ||
-          declaration.isAnnotatedWithAny(metroSymbols.classIds.bindingContainerAnnotations)
+          declaration.isBindingContainer()
       if (requireMetadata) {
         val message =
           "No metadata found for ${metadataDeclaration.kotlinFqName} from " +

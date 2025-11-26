@@ -38,7 +38,9 @@ class ExampleClass {
 import javax.inject.Named
 
 @ContributesBinding(AppScope::class)
-class DependencyImpl @Inject constructor() : Dependency
+@Inject
+@Named("dependency")
+class DependencyImpl : Dependency
 
 // FILE: ExampleInjector.kt
 @ContributesTo(AppScope::class)
@@ -50,7 +52,6 @@ interface ExampleInjector {
 @DependencyGraph(AppScope::class)
 interface ExampleGraph {
   @Provides fun provideString(): String = "Hello"
-  @Binds @Named("dependency") fun Dependency.bind(): Dependency
 }
 
 fun box(): String {

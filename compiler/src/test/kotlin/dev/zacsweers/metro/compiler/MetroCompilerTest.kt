@@ -11,6 +11,7 @@ import com.tschuchort.compiletesting.SourceFile
 import com.tschuchort.compiletesting.SourceFile.Companion.java
 import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
 import com.tschuchort.compiletesting.addPreviousResultToClasspath
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.nio.file.Path
 import java.nio.file.Paths
 import kotlin.io.path.absolutePathString
@@ -273,6 +274,30 @@ abstract class MetroCompilerTest {
               }
               MetroOption.CONTRIBUTES_AS_INJECT -> {
                 processor.option(entry.raw.cliOption, contributesAsInject)
+              }
+              MetroOption.INTEROP_INCLUDE_JAVAX_ANNOTATIONS -> {
+                processor.option(entry.raw.cliOption, false)
+              }
+              MetroOption.INTEROP_INCLUDE_JAKARTA_ANNOTATIONS -> {
+                processor.option(entry.raw.cliOption, false)
+              }
+              MetroOption.INTEROP_INCLUDE_DAGGER_ANNOTATIONS -> {
+                processor.option(entry.raw.cliOption, false)
+              }
+              MetroOption.INTEROP_INCLUDE_KOTLIN_INJECT_ANNOTATIONS -> {
+                processor.option(entry.raw.cliOption, false)
+              }
+              MetroOption.INTEROP_INCLUDE_ANVIL_ANNOTATIONS -> {
+                processor.option(entry.raw.cliOption, false)
+              }
+              MetroOption.INTEROP_INCLUDE_KOTLIN_INJECT_ANVIL_ANNOTATIONS -> {
+                processor.option(entry.raw.cliOption, false)
+              }
+              MetroOption.ENABLE_GUICE_RUNTIME_INTEROP -> {
+                processor.option(entry.raw.cliOption, enableGuiceRuntimeInterop)
+              }
+              MetroOption.INTEROP_INCLUDE_GUICE_ANNOTATIONS -> {
+                processor.option(entry.raw.cliOption, false)
               }
             }
           yield(option)

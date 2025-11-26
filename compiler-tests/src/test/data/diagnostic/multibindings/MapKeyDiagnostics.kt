@@ -10,6 +10,10 @@ annotation class MissingCtor2<!MAP_KEY_ERROR!>()<!> // Empty but technically pre
 @MapKey
 annotation class NotOneArgButUnwrapping<!MAP_KEY_ERROR!>(val arg1: Int, val arg2: Int)<!>
 
+@MapKey
+annotation class ArrayArg(val arg1: <!MAP_KEY_ERROR!>IntArray<!>)
+
+// ok
 @MapKey(unwrapValue = false)
 annotation class UnwrapFalseWithMultipleParamsIsOk(val arg1: Int, val arg2: Int)
 

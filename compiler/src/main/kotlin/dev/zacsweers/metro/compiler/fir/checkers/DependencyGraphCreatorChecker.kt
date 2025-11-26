@@ -9,7 +9,7 @@ import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.bindingContainerErrorMessage
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
-import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.isBindingContainer
 import dev.zacsweers.metro.compiler.fir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.fir.validateApiDeclaration
 import dev.zacsweers.metro.compiler.flatMapToSet
@@ -200,8 +200,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
 
       when {
         isIncludes -> {
-          val isBindingContainer =
-            type.isAnnotatedWithAny(session, classIds.bindingContainerAnnotations)
+          val isBindingContainer = type.isBindingContainer(session)
           if (isBindingContainer) {
             type.bindingContainerErrorMessage(session, alreadyCheckedAnnotation = true)?.let {
               bindingContainerErrorMessage ->

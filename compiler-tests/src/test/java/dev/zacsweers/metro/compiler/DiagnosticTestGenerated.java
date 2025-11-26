@@ -32,6 +32,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ContributesToOnlyPermittedOnInterfacesOrBindingContainers.kt")
+    public void testContributesToOnlyPermittedOnInterfacesOrBindingContainers() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/ContributesToOnlyPermittedOnInterfacesOrBindingContainers.kt");
+    }
+
+    @Test
     @TestMetadata("InternalContributionMissingHint.kt")
     public void testInternalContributionMissingHint() {
       runTest("compiler-tests/src/test/data/diagnostic/aggregation/InternalContributionMissingHint.kt");
@@ -168,6 +174,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
   @TestMetadata("compiler-tests/src/test/data/diagnostic/dependencygraph")
   @TestDataPath("$PROJECT_ROOT")
   public class Dependencygraph {
+    @Test
+    @TestMetadata("AllDuplicateBindingsAreReported.kt")
+    public void testAllDuplicateBindingsAreReported() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/AllDuplicateBindingsAreReported.kt");
+    }
+
     @Test
     public void testAllFilesPresentInDependencygraph() {
       KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/dependencygraph"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
@@ -635,6 +647,18 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("MemberInjectionQualifiersAreLookedUp.kt")
+      public void testMemberInjectionQualifiersAreLookedUp() {
+        runTest("compiler-tests/src/test/data/diagnostic/interop/dagger/MemberInjectionQualifiersAreLookedUp.kt");
+      }
+
+      @Test
+      @TestMetadata("ModulesWithConstructorInjectedFields.kt")
+      public void testModulesWithConstructorInjectedFields() {
+        runTest("compiler-tests/src/test/data/diagnostic/interop/dagger/ModulesWithConstructorInjectedFields.kt");
+      }
+
+      @Test
       @TestMetadata("PositionalAnnotationArgsError.kt")
       public void testPositionalAnnotationArgsError() {
         runTest("compiler-tests/src/test/data/diagnostic/interop/dagger/PositionalAnnotationArgsError.kt");
@@ -655,6 +679,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @Test
     public void testAllFilesPresentInMultibindings() {
       KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/multibindings"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    }
+
+    @Test
+    @TestMetadata("BindingCallableMultibindingDiagnostics.kt")
+    public void testBindingCallableMultibindingDiagnostics() {
+      runTest("compiler-tests/src/test/data/diagnostic/multibindings/BindingCallableMultibindingDiagnostics.kt");
     }
 
     @Test

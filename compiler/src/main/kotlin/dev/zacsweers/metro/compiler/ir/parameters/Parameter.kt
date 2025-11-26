@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler.ir.parameters
 
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.NameAllocator
-import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.generatedContextParameterName
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
@@ -18,10 +17,12 @@ import dev.zacsweers.metro.compiler.ir.hasMetroDefault
 import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.ir.remapType
 import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.singleOrNullUnlessMultiple
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
@@ -412,3 +413,6 @@ internal fun IrFunction.memberInjectParameters(
     ir = this,
   )
 }
+
+internal fun Parameter.remapTypes(remapper: TypeRemapper): Parameter =
+  copy(contextualTypeKey = contextualTypeKey.remapType(remapper))

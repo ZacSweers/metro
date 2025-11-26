@@ -8,10 +8,11 @@
     * There is no Producers support.
     * There is no Hilt support, though some features are similar in the same way that Anvil’s features are similar.
     * There is no `@Reusable`.
-    * There is no `@BindsOptionalOf`. Instead, Metro supports default [optional dependencies](bindings.md#optional-dependencies).
+    * There is no `@BindsOptionalOf`. Instead, Metro supports default [optional bindings](bindings.md#optional-bindings).
+        * Metro does does support [interop](interop.md) with Dagger's `@BindsOptionalOf` annotation.
     * Metro can inject private properties, functions, and constructors.
-    * There is no `@BindsInstance`. Use `@Provides` on `@DependencyGraph.Factory` function parameters instead
-    * Component dependencies must be annotated with `@Includes`.
+    * There is no `@BindsInstance` annotation. Use `@Provides` on `@DependencyGraph.Factory` function parameters instead.
+    * Included dependencies ("component dependencies" in Dagger) must be annotated with `@Includes` in graph creators.
     * Metro does not process Java code.
     * `@Multibinds` declarations are implemented in Metro graphs to return the declared multibinding.
     * Empty multibindings are an error by default in Metro. To allow a multibinding to be empty, it must be declared with `@Multibinds(allowEmpty = true)`.

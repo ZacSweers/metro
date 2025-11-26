@@ -14,6 +14,8 @@ import dev.zacsweers.metro.compiler.ir.asIrAnnotation
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.EnumSet
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
@@ -301,9 +303,7 @@ private fun IrAnnotationContainer.metroAnnotations(
             isComposable = true
             continue
           }
-          Symbols.DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF if
-            (Kind.BindsOptionalOf in kinds)
-           -> {
+          DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF if (Kind.BindsOptionalOf in kinds) -> {
             isBindsOptionalOf = true
             continue
           }
@@ -557,7 +557,7 @@ private fun FirBasedSymbol<*>.metroAnnotations(
             isComposable = true
             continue
           }
-          Symbols.DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF if
+          DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF if
             (session.metroFirBuiltIns.options.enableDaggerRuntimeInterop &&
               Kind.BindsOptionalOf in kinds)
            -> {

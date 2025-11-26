@@ -15,7 +15,7 @@ import dev.zacsweers.metro.compiler.ir.MultibindsCallable
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.metroGraphOrNull
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
-import dev.zacsweers.metro.compiler.isGraphImpl
+import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.memoize
@@ -42,11 +42,11 @@ internal data class DependencyGraphNode(
   val graphExtensions: Map<IrTypeKey, List<GraphExtensionAccessor>>,
   val scopes: Set<IrAnnotation>,
   val aggregationScopes: Set<ClassId>,
-  val providerFactories: List<Pair<IrTypeKey, ProviderFactory>>,
+  val providerFactories: Map<IrTypeKey, ProviderFactory>,
   // Types accessible via this graph (includes inherited)
   // Dagger calls these "provision methods", but that's a bit vague IMO
   val accessors: List<GraphAccessor>,
-  val bindsCallables: Set<BindsCallable>,
+  val bindsCallables: Map<IrTypeKey, BindsCallable>,
   val multibindsCallables: Set<MultibindsCallable>,
   val optionalKeys: Map<IrTypeKey, Set<BindsOptionalOfCallable>>,
   /** Binding containers that need a managed instance. */
@@ -95,7 +95,10 @@ internal data class DependencyGraphNode(
 
   val reportableSourceGraphDeclaration by memoize {
     generateSequence(sourceGraph) { it.parentAsClass }
-      .firstOrNull { !it.origin.isGraphImpl && it.fileOrNull != null }
+      .firstOrNull {
+        // Skip impl graphs
+        it.sourceGraphIfMetroGraph == it && it.fileOrNull != null
+      }
       ?: reportCompilerBug(
         "Could not find a reportable source graph declaration for ${sourceGraph.kotlinFqName}"
       )
@@ -104,7 +107,7 @@ internal data class DependencyGraphNode(
   val multibindingAccessors by memoize {
     proto
       ?.let {
-        val bitfield = BitField(it.multibinding_accessor_indices)
+        val bitfield = BitField.fromIntList(it.multibinding_accessor_indices)
         val multibindingCallableIds =
           it.accessor_callable_names.filterIndexedTo(mutableSetOf()) { index, _ ->
             bitfield.isSet(index)

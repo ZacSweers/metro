@@ -6,7 +6,7 @@ package test1
 interface ContributedInterface {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroContribution(scope = AppScope::class)
-  interface $$MetroContributionToAppScope : ContributedInterface {
+  interface MetroContributionToAppScope : ContributedInterface {
   }
 
 }
@@ -18,7 +18,7 @@ package test2
 interface ContributedInterface {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroContribution(scope = AppScope::class)
-  interface $$MetroContributionToAppScope : ContributedInterface {
+  interface MetroContributionToAppScope : ContributedInterface {
   }
 
 }
@@ -41,7 +41,18 @@ fun AppScope(contributed: ContributedInterface) {
 // FILE: module_main_ContributorsWithSameSimpleNames.kt
 
 @DependencyGraph(scope = AppScope::class)
-interface ExampleGraph : $$MetroContributionToAppScope, $$MetroContributionToAppScope {
+interface ExampleGraph : MetroContributionToAppScope, MetroContributionToAppScope {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : ExampleGraph {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+  }
+
   companion object Companion {
     private constructor() /* primary */ {
       super/*Any*/()
@@ -51,17 +62,7 @@ interface ExampleGraph : $$MetroContributionToAppScope, $$MetroContributionToApp
 
     @GraphFactoryInvokeFunctionMarker
     operator fun invoke(): ExampleGraph {
-      return $$MetroGraph()
-    }
-
-  }
-
-  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroGraph : ExampleGraph {
-    private constructor() /* primary */ {
-      super/*Any*/()
-      /* <init>() */
-
+      return Impl()
     }
 
   }

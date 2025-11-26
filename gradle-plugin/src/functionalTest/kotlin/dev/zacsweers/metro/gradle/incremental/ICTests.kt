@@ -10,7 +10,15 @@ import com.autonomousapps.kit.GradleProject
 import com.autonomousapps.kit.GradleProject.DslKind
 import com.autonomousapps.kit.gradle.Dependency
 import com.google.common.truth.Truth.assertThat
+import dev.zacsweers.metro.gradle.GradlePlugins
+import dev.zacsweers.metro.gradle.MetroProject
+import dev.zacsweers.metro.gradle.buildAndAssertThat
+import dev.zacsweers.metro.gradle.classLoader
+import dev.zacsweers.metro.gradle.cleanOutputLine
+import dev.zacsweers.metro.gradle.source
+import kotlin.collections.plus
 import org.gradle.testkit.runner.TaskOutcome
+import org.junit.Assume.assumeTrue
 import org.junit.Ignore
 import org.junit.Test
 
@@ -246,9 +254,9 @@ class ICTests : BaseIncrementalCompilationTest() {
         AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
             kotlin.String is injected at
-                [test.AppGraph.$${'$'}MetroGraph.ChildGraphImpl] test.Target(…, string)
+                [test.AppGraph.Impl.ChildGraphImpl] test.Target(…, string)
             test.Target is requested at
-                [test.AppGraph.$${'$'}MetroGraph.ChildGraphImpl] test.ChildGraph.target
+                [test.AppGraph.Impl.ChildGraphImpl] test.ChildGraph.target
         """
           .trimIndent()
       )
@@ -439,7 +447,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val classLoader = project.classLoader()
     val exampleGraph = classLoader.loadClass("test.ExampleGraph")
     assertThat(exampleGraph.interfaces.map { it.name })
-      .contains("test.NewContribution$$\$MetroContributionToUnit")
+      .contains("test.NewContribution\$MetroContributionToUnit")
   }
 
   @Test
@@ -484,7 +492,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     with(project.classLoader()) {
       val exampleGraph = loadClass("test.ExampleGraph")
       assertThat(exampleGraph.interfaces.map { it.name })
-        .contains("test.Impl2$$\$MetroContributionToUnit")
+        .contains("test.Impl2\$MetroContributionToUnit")
     }
 
     project.modify(
@@ -504,7 +512,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val classLoader = project.classLoader()
     val exampleGraph = classLoader.loadClass("test.ExampleGraph")
     assertThat(exampleGraph.interfaces.map { it.name })
-      .doesNotContain("test.Impl2$$\$MetroContributionToUnit")
+      .doesNotContain("test.Impl2\$MetroContributionToUnit")
   }
 
   @Test
@@ -557,7 +565,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val classLoader = project.classLoader()
     val exampleGraph = classLoader.loadClass("test.ExampleGraph")
     assertThat(exampleGraph.interfaces.map { it.name })
-      .contains("test.ContributedInterface2$$\$MetroContributionToUnit")
+      .contains("test.ContributedInterface2\$MetroContributionToUnit")
   }
 
   @Test
@@ -597,7 +605,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     with(project.classLoader()) {
       val exampleGraph = loadClass("test.ExampleGraph")
       assertThat(exampleGraph.interfaces.map { it.name })
-        .contains("test.ContributedInterface2$$\$MetroContributionToUnit")
+        .contains("test.ContributedInterface2\$MetroContributionToUnit")
     }
 
     project.modify(
@@ -616,7 +624,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val classLoader = project.classLoader()
     val exampleGraph = classLoader.loadClass("test.ExampleGraph")
     assertThat(exampleGraph.interfaces.map { it.name })
-      .doesNotContain("test.ContributedInterface2$$\$MetroContributionToUnit")
+      .doesNotContain("test.ContributedInterface2\$MetroContributionToUnit")
   }
 
   @Test
@@ -817,7 +825,7 @@ class ICTests : BaseIncrementalCompilationTest() {
   @Test
   fun scopingChangeOnNonContributedClassIsDetected() {
     val fixture =
-      object : MetroProject(metroOptions = MetroOptionOverrides()) {
+      object : MetroProject() {
         override fun sources() =
           listOf(unusedScope, exampleClass, exampleGraph, loggedInGraph, main)
 
@@ -886,10 +894,10 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(firstBuildResult.output.cleanOutputLine())
       .contains(
         """
-        e: LoggedInScope.kt:9:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
+        e: LoggedInScope.kt:9:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph.Impl.LoggedInGraphImpl (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
             test.ExampleClass (scoped to '@SingleIn(UnusedScope::class)')
             test.ExampleClass is requested at
-                [test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl] test.LoggedInGraph.exampleClass
+                [test.ExampleGraph.Impl.LoggedInGraphImpl] test.LoggedInGraph.exampleClass
 
 
         (Hint)
@@ -948,10 +956,10 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(fourthBuildResult.output.cleanOutputLine())
       .contains(
         """
-        [Metro/IncompatiblyScopedBindings] test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
+        [Metro/IncompatiblyScopedBindings] test.ExampleGraph.Impl.LoggedInGraphImpl (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
             test.ExampleClass (scoped to '@SingleIn(UnusedScope::class)')
             test.ExampleClass is requested at
-                [test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl] test.LoggedInGraph.exampleClass
+                [test.ExampleGraph.Impl.LoggedInGraphImpl] test.LoggedInGraph.exampleClass
 
 
         (Hint)
@@ -1172,7 +1180,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         e: LoggedInScope.kt:10:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Foo
 
             test.Foo is requested at
-                [test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl] test.LoggedInGraph.childDependenc
+                [test.ExampleGraph.Impl.LoggedInGraphImpl] test.LoggedInGraph.childDependenc
         """
           .trimIndent()
       )
@@ -1217,7 +1225,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Foo
 
             test.Foo is requested at
-                [test.ExampleGraph.$${'$'}MetroGraph.LoggedInGraphImpl] test.LoggedInGraph.childDependency
+                [test.ExampleGraph.Impl.LoggedInGraphImpl] test.LoggedInGraph.childDependency
         """
           .trimIndent()
       )
@@ -1314,7 +1322,7 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     buildAndAssertOutput()
 
-    // Adding a bar param to FooImpl, FooImpl.$$MetroFactory should be regenerated with member field
+    // Adding a bar param to FooImpl, FooImpl.MetroFactory should be regenerated with member field
     libProject.modify(
       project.rootDir,
       fixture.foo,
@@ -1425,7 +1433,7 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     buildAndAssertOutput()
 
-    // Adding a bar param to FooImpl, FooImpl.$$MetroFactory should be regenerated with member field
+    // Adding a bar param to FooImpl, FooImpl.MetroFactory should be regenerated with member field
     libProject.modify(
       project.rootDir,
       fixture.foo,
@@ -1723,5 +1731,397 @@ class ICTests : BaseIncrementalCompilationTest() {
     )
 
     buildAndAssertOutput()
+  }
+
+  @Test
+  fun graphExtensionFactoryContributionExternalChangeIsDetected() {
+    val fixture =
+      object : MetroProject() {
+        override fun sources() = throw IllegalStateException()
+
+        override val gradleProject: GradleProject
+          get() =
+            newGradleProjectBuilder(DslKind.KOTLIN)
+              .withRootProject {
+                withBuildScript {
+                  sources = listOf(main)
+                  applyMetroDefault()
+                  dependencies(Dependency.implementation(":lib"))
+                }
+              }
+              .withSubproject("lib") {
+                sources.add(appGraph)
+                sources.add(featureGraph)
+                withBuildScript { applyMetroDefault() }
+              }
+              .write()
+
+        private val appGraph =
+          source(
+            """
+      @DependencyGraph(Unit::class)
+      interface AppGraph
+      """
+          )
+
+        val main =
+          source(
+            """
+                    fun main() {
+                        val appGraph = createGraph<AppGraph>()
+                        val featureGraph = appGraph.asContribution<FeatureGraph.ParentBindings>().featureGraphFactory.create()
+                    }
+                """
+          )
+
+        val featureGraph =
+          source(
+            """
+      @GraphExtension(String::class)
+      interface FeatureGraph {
+          @GraphExtension.Factory
+          interface Factory {
+              fun create(): FeatureGraph
+          }
+
+          @ContributesTo(Unit::class)
+          interface ParentBindings {
+              val featureGraphFactory: FeatureGraph.Factory
+          }
+      }
+      """
+          )
+      }
+
+    val project = fixture.gradleProject
+    val libProject = project.subprojects.first { it.name == "lib" }
+
+    // First build should succeed
+    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    // Modify the FeatureGraph class to contribute the factory directly but leave ParentBindings
+    libProject.modify(
+      project.rootDir,
+      fixture.featureGraph,
+      """
+      @GraphExtension(String::class)
+      interface FeatureGraph {
+          @GraphExtension.Factory
+          @ContributesTo(Unit::class)
+          interface Factory {
+              fun create(): FeatureGraph
+          }
+
+          interface ParentBindings {
+              val featureGraphFactory: FeatureGraph.Factory
+          }
+      }
+      """
+        .trimIndent(),
+    )
+
+    // Update asContribution type argument
+    project.modify(
+      fixture.main,
+      """
+      fun main() {
+          val appGraph = createGraph<AppGraph>()
+          val featureGraph = appGraph.asContribution<FeatureGraph.Factory>().create()
+      }
+      """
+        .trimIndent(),
+    )
+
+    // Second build is still marked as success so we have to check the output
+    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(secondBuildResult.output).doesNotContain("Incremental compilation failed")
+  }
+
+  @Test
+  fun graphExtensionFactoryContributionInternalChangeIsDetected() {
+    val fixture =
+      object : MetroProject() {
+        override fun sources() = listOf(main, appGraph, featureGraph)
+
+        private val appGraph =
+          source(
+            """
+      @DependencyGraph(Unit::class)
+      interface AppGraph
+      """
+          )
+
+        val main =
+          source(
+            """
+                    fun main() {
+                        val appGraph = createGraph<AppGraph>()
+                        val featureGraph = appGraph.asContribution<FeatureGraph.ParentBindings>().featureGraphFactory.create()
+                    }
+                """
+          )
+
+        val featureGraph =
+          source(
+            """
+      @GraphExtension(String::class)
+      interface FeatureGraph {
+          @GraphExtension.Factory
+          interface Factory {
+              fun create(): FeatureGraph
+          }
+
+          @ContributesTo(Unit::class)
+          interface ParentBindings {
+              val featureGraphFactory: FeatureGraph.Factory
+          }
+      }
+      """
+          )
+      }
+
+    val project = fixture.gradleProject
+
+    // First build should succeed
+    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    // Modify the FeatureGraph class to contribute the factory directly but leave ParentBindings
+    project.modify(
+      fixture.featureGraph,
+      """
+      @GraphExtension(String::class)
+      interface FeatureGraph {
+          @GraphExtension.Factory
+          @ContributesTo(Unit::class)
+          interface Factory {
+              fun create(): FeatureGraph
+          }
+
+          interface ParentBindings {
+              val featureGraphFactory: FeatureGraph.Factory
+          }
+      }
+      """
+        .trimIndent(),
+    )
+
+    // Update asContribution type argument
+    project.modify(
+      fixture.main,
+      """
+      fun main() {
+          val appGraph = createGraph<AppGraph>()
+          val featureGraph = appGraph.asContribution<FeatureGraph.Factory>().create()
+      }
+      """
+        .trimIndent(),
+    )
+
+    // Second build is still marked as success so we have to check the output
+    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+  }
+
+  @Test
+  fun changingScopeForContributedInterfaceInGraphExtensionIsDetected() {
+    val fixture =
+      object : MetroProject() {
+        override fun sources() = throw IllegalStateException()
+
+        override val gradleProject: GradleProject
+          get() =
+            newGradleProjectBuilder(DslKind.KOTLIN)
+              .withRootProject {
+                withBuildScript {
+                  sources = listOf(main, appGraph, stringProvider)
+                  applyMetroDefault()
+                  dependencies(Dependency.implementation(":lib"))
+                }
+              }
+              .withSubproject("lib") {
+                sources.add(myActivity)
+                sources.add(myActivityInjector)
+                withBuildScript { applyMetroDefault() }
+              }
+              .write()
+
+        private val appGraph =
+          source(
+            """
+                        @DependencyGraph(Unit::class)
+                        interface RootGraph {
+                          val appGraph: AppGraph
+                        }
+
+                        @GraphExtension(AppScope::class)
+                        interface AppGraph {
+                          val featureGraph: FeatureGraph
+                        }
+
+                        @GraphExtension(String::class)
+                        interface FeatureGraph
+                    """
+          )
+
+        private val stringProvider =
+          source(
+            """
+            @ContributesTo(AppScope::class)
+            interface StringProvider {
+              @Provides
+              fun provideString(
+                @Named("Feature") featureString: String? = null
+              ) : String = featureString ?: "App"
+            }
+
+            @ContributesTo(String::class)
+            interface FeatureStringProvider {
+              @Provides @Named("Feature")
+              fun provideFeatureString() : String = "Feature"
+
+              @Binds @Named("Feature")
+              fun bindAsNullable(@Named("Feature") featureString: String): String?
+            }
+            """
+              .trimIndent()
+          )
+
+        val main =
+          source(
+            """
+            fun main(): String {
+                val rootGraph = createGraph<RootGraph>()
+                val injector = listOf(rootGraph, rootGraph.appGraph, rootGraph.appGraph.featureGraph)
+                  .filterIsInstance<MyActivityInjector>().first()
+                val myActivity = MyActivity().apply {
+                    injector.inject(this)
+                }
+                return myActivity.string
+            }
+            """
+              .trimIndent()
+          )
+
+        val myActivity =
+          source(
+            """
+            class MyActivity {
+              @Inject
+              lateinit var string: String
+            }
+            """
+              .trimIndent()
+          )
+
+        val myActivityInjector =
+          source(
+            """
+            @ContributesTo(String::class)
+            interface MyActivityInjector {
+              fun inject(whatever: MyActivity)
+            }
+            """
+              .trimIndent()
+          )
+      }
+
+    val project = fixture.gradleProject
+    val libProject = project.subprojects.first { it.name == "lib" }
+
+    // First build should succeed
+    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    with(project.classLoader()) {
+      val mainClass = loadClass("test.MainKt")
+      val result = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as String
+      assertThat(result).isEqualTo("Feature")
+    }
+
+    // Modify the MyActivityInjector to contribute itself to the AppScope
+    libProject.modify(
+      project.rootDir,
+      fixture.myActivityInjector,
+      """
+      @ContributesTo(AppScope::class)
+      interface MyActivityInjector {
+        fun inject(whatever: MyActivity)
+      }
+      """
+        .trimIndent(),
+    )
+
+    // Second build is still marked as success so we have to check the output
+    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    with(project.classLoader()) {
+      val mainClass = loadClass("test.MainKt")
+      val result = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as String
+      assertThat(result).isEqualTo("App")
+    }
+  }
+
+  @Test
+  fun multiplatformAndroidPluginWithReportsEnabledShouldNotFailWithFileExistsException() {
+    val fixture =
+      object : MetroProject(reportsEnabled = true) {
+        override fun sources() =
+          listOf(
+            source(
+              """
+              data class DummyClass(val abc: Int, val xyz: String)
+              """
+                .trimIndent(),
+              packageName = "com.example.test",
+              sourceSet = "commonMain",
+            )
+          )
+
+        override val gradleProject: GradleProject
+          get() {
+            val projectSources = sources()
+            return newGradleProjectBuilder(DslKind.KOTLIN)
+              .withRootProject {
+                sources = projectSources
+                withBuildScript {
+                  plugins(
+                    GradlePlugins.Kotlin.multiplatform(),
+                    GradlePlugins.agpKmp,
+                    GradlePlugins.metro,
+                  )
+                  withKotlin(
+                    """
+                    kotlin {
+                      jvm()
+
+                      android {
+                        namespace = "com.example.test"
+                        minSdk = 36
+                        compileSdk = 36
+                      }
+                    }
+
+                    ${buildMetroBlock()}
+                    """
+                      .trimIndent()
+                  )
+                }
+
+                val androidHome = System.getProperty("metro.androidHome")
+                assumeTrue(androidHome != null) // skip if environment not set up for Android
+                withFile("local.properties", "sdk.dir=$androidHome")
+              }
+              .write()
+          }
+      }
+
+    val project = fixture.gradleProject
+    val numRuns = 10
+
+    repeat(numRuns) { i ->
+      println("Running build ${i+1}/$numRuns...")
+      build(project.rootDir, "assemble", "--no-configuration-cache", "--rerun-tasks")
+    }
   }
 }

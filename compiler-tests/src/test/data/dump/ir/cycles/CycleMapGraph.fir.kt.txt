@@ -5,7 +5,7 @@ class X {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<X> {
+  class MetroFactory : Factory<X> {
     private /* final field */ val y: Provider<Y> = y
     companion object Companion {
       private constructor() /* primary */ {
@@ -15,7 +15,7 @@ class X {
       }
 
       fun create(y: Provider<Y>): Factory<X> {
-        return $$MetroFactory(y = y)
+        return MetroFactory(y = y)
       }
 
       fun newInstance(y: Y): X {
@@ -59,7 +59,7 @@ class Y {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<Y> {
+  class MetroFactory : Factory<Y> {
     private /* final field */ val mapOfProvidersOfX: Provider<Map<String, Provider<X>>> = mapOfProvidersOfX
     private /* final field */ val mapOfProvidersOfY: Provider<Map<String, Provider<Y>>> = mapOfProvidersOfY
     companion object Companion {
@@ -70,7 +70,7 @@ class Y {
       }
 
       fun create(mapOfProvidersOfX: Provider<Map<String, Provider<X>>>, mapOfProvidersOfY: Provider<Map<String, Provider<Y>>>): Factory<Y> {
-        return $$MetroFactory(mapOfProvidersOfX = mapOfProvidersOfX, mapOfProvidersOfY = mapOfProvidersOfY)
+        return MetroFactory(mapOfProvidersOfX = mapOfProvidersOfX, mapOfProvidersOfY = mapOfProvidersOfY)
       }
 
       fun newInstance(mapOfProvidersOfX: Map<String, X>, mapOfProvidersOfY: Map<String, Y>): Y {
@@ -106,7 +106,7 @@ class Y {
 @DependencyGraph
 interface CycleMapGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  abstract class $$BindsMirror {
+  abstract class BindsMirror {
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -127,22 +127,9 @@ interface CycleMapGraph {
 
   }
 
-  companion object Companion {
-    private constructor() /* primary */ {
-      super/*Any*/()
-      /* <init>() */
-
-    }
-
-    @GraphFactoryInvokeFunctionMarker
-    operator fun invoke(): CycleMapGraph {
-      return $$MetroGraph()
-    }
-
-  }
-
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroGraph : CycleMapGraph {
+  @MetroImplMarker
+  class Impl : CycleMapGraph {
     private val yProvider: Provider<Y>
       field = DelegateFactory<Y>()
 
@@ -182,6 +169,20 @@ interface CycleMapGraph {
       override get(): Y {
         return error(message = "Never called")
       }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): CycleMapGraph {
+      return Impl()
+    }
 
   }
 
