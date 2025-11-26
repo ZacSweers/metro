@@ -13,6 +13,6 @@ kotlin {
 }
 
 dependencies {
-  compileOnly(libs.kotlin.compilerEmbeddable)
+  compileOnly(libs.kotlin.compiler)
   compileOnly(libs.kotlin.stdlib)
 }

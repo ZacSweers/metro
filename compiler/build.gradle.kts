@@ -124,7 +124,7 @@ for (c in arrayOf("apiElements", "runtimeElements")) {
 }
 
 dependencies {
-  compileOnly(libs.kotlin.compilerEmbeddable)
+  compileOnly(libs.kotlin.compiler)
   compileOnly(libs.kotlin.stdlib)
   compileOnly(libs.poko.annotations)
 
