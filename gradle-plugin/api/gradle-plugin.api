@@ -1,3 +1,7 @@
+public abstract interface annotation class dev/zacsweers/metro/gradle/DelicateMetroGradleApi : java/lang/annotation/Annotation {
+	public abstract fun message ()Ljava/lang/String;
+}
+
 public final class dev/zacsweers/metro/gradle/DiagnosticSeverity : java/lang/Enum {
 	public static final field ERROR Ldev/zacsweers/metro/gradle/DiagnosticSeverity;
 	public static final field NONE Ldev/zacsweers/metro/gradle/DiagnosticSeverity;
@@ -123,5 +127,23 @@ public final class dev/zacsweers/metro/gradle/OptionalDependencyBehavior : java/
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
 	public static fun valueOf (Ljava/lang/String;)Ldev/zacsweers/metro/gradle/OptionalDependencyBehavior;
 	public static fun values ()[Ldev/zacsweers/metro/gradle/OptionalDependencyBehavior;
+}
+
+public abstract class dev/zacsweers/metro/gradle/artifacts/GenerateGraphMetadataTask : org/gradle/api/DefaultTask {
+	public static final field NAME Ljava/lang/String;
+	public fun <init> ()V
+	public final fun generate ()V
+	public abstract fun getCompilationName ()Lorg/gradle/api/provider/Property;
+	public abstract fun getGraphJsonFiles ()Lorg/gradle/api/file/ConfigurableFileCollection;
+	public abstract fun getOutputFile ()Lorg/gradle/api/file/RegularFileProperty;
+	public abstract fun getProjectPath ()Lorg/gradle/api/provider/Property;
+}
+
+public abstract interface class dev/zacsweers/metro/gradle/artifacts/MetroArtifacts {
+	public abstract fun getReportsDir ()Lorg/gradle/api/provider/Provider;
+}
+
+public final class dev/zacsweers/metro/gradle/artifacts/MetroArtifactsKt {
+	public static final fun getGraphMetadataDir (Ldev/zacsweers/metro/gradle/artifacts/MetroArtifacts;)Lorg/gradle/api/provider/Provider;
 }
 

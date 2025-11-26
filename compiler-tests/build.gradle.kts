@@ -99,7 +99,6 @@ dependencies {
   testImplementation(libs.ksp.symbolProcessing.aaEmbeddable)
   testImplementation(libs.ksp.symbolProcessing.commonDeps)
   testImplementation(libs.ksp.symbolProcessing.api)
-  testImplementation(libs.classgraph)
   testImplementation(libs.dagger.compiler)
 
   metroRuntimeClasspath(project(":runtime"))
@@ -178,6 +177,7 @@ tasks.withType<Test> {
   systemProperty("guice.classpath", guiceClasspath.asPath)
   systemProperty("javaxInterop.classpath", javaxInteropClasspath.asPath)
   systemProperty("jakartaInterop.classpath", jakartaInteropClasspath.asPath)
+  systemProperty("ksp.testRuntimeClasspath", configurations.testRuntimeClasspath.get().asPath)
 
   // Properties required to run the internal test framework.
   systemProperty("idea.ignore.disabled.plugins", "true")

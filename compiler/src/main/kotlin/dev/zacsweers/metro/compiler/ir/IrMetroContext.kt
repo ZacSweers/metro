@@ -15,9 +15,6 @@ import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.tracer
 import java.io.File
 import java.nio.file.Path
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatterBuilder
-import java.time.temporal.ChronoField
 import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.appendText
 import kotlin.io.path.createDirectories
@@ -138,21 +135,6 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
   }
 
   companion object {
-    private val reportsDirNameFormatter =
-      DateTimeFormatterBuilder()
-        .appendValue(ChronoField.YEAR, 4)
-        .appendValue(ChronoField.MONTH_OF_YEAR, 2)
-        .appendValue(ChronoField.DAY_OF_MONTH, 2)
-        .appendLiteral('T')
-        .appendValue(ChronoField.HOUR_OF_DAY, 2)
-        .appendValue(ChronoField.MINUTE_OF_HOUR, 2)
-        .optionalStart()
-        .appendValue(ChronoField.SECOND_OF_MINUTE, 2)
-        .optionalStart()
-        .appendLiteral('_')
-        .appendFraction(ChronoField.NANO_OF_SECOND, 1, 1, false)
-        .toFormatter()
-
     operator fun invoke(
       pluginContext: IrPluginContext,
       messageCollector: MessageCollector,
@@ -219,14 +201,12 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
 
       @OptIn(ExperimentalPathApi::class)
       override val reportsDir: Path? by lazy {
-        options.reportsDestination
-          ?.resolve(reportsDirNameFormatter.format(LocalDateTime.now()))
-          ?.run {
-            if (exists()) {
-              deleteRecursively()
-            }
-            createDirectories()
+        options.reportsDestination?.run {
+          if (exists()) {
+            deleteRecursively()
           }
+          createDirectories()
+        }
       }
 
       override val logFile: Path? by lazy {

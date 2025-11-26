@@ -10,6 +10,7 @@ import org.jetbrains.kotlin.diagnostics.InternalDiagnosticFactoryMethod
 import org.jetbrains.kotlin.diagnostics.KtDiagnostic
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.sourceElement
 
@@ -39,6 +40,7 @@ internal fun <A : Any> IrMetroContext.reportCompat(
   irDeclaration: IrDeclaration?,
   factory: KtDiagnosticFactory1<A>,
   a: A,
+  extraContext: StringBuilder.() -> Unit = {},
 ) {
   val sourceElement = irDeclaration?.sourceElement()
   if (irDeclaration?.fileOrNull == null || sourceElement == null) {
@@ -55,7 +57,28 @@ internal fun <A : Any> IrMetroContext.reportCompat(
       return
     }
     val severity = AnalyzerWithCompilerReport.convertSeverity(factory.severity)
-    messageCollector.report(severity, a.toString(), irDeclaration?.locationOrNull())
+    val location = irDeclaration?.locationOrNull()
+    val message =
+      if (
+        location == null &&
+          irDeclaration != null &&
+          // Java stubs have nothing useful for us here
+          irDeclaration.origin != IrDeclarationOrigin.IR_EXTERNAL_JAVA_DECLARATION_STUB
+      ) {
+        buildString {
+          appendLine(a)
+          appendLine()
+          appendLine("(context)")
+          append("Encountered while processing declaration '")
+          append(irDeclaration.humanReadableDiagnosticLocation())
+          append("'")
+          appendLine(" (no source location available)")
+          extraContext()
+        }
+      } else {
+        a.toString()
+      }
+    messageCollector.report(severity, message, location)
   } else {
     diagnosticReporter.at(irDeclaration).report(factory, a)
   }

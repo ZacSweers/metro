@@ -4,6 +4,23 @@ Changelog
 **Unreleased**
 --------------
 
+- **Enhancement**: Lazily validate multibindings. Previously, multibindings were validated eagerly even if they were unused in a graph.
+- **Enhancement**: Report all duplicate bindings errors during graph construction rather than failing at first.
+- **Fix**: Catch more `IrErrorType` error types cases and report context/advice where possible.
+- **Fix**: Dedupe binding containers contributed to both parent and child graphs.
+- **Fix**: Fix support for Anvil's `exclude` argument in dependency graph annotations when Anvil interop is enabled.
+- **Fix**: Fix colliding reports destinations in KMP projects by disambiguating with the target path as another subdir indirection.
+- [gradle] Add `generateMetroGraphMetadata` task that writes a merged JSON dump of all binding graphs in the project. This can be chained from the `GenerateGraphMetadataTask` for further processing.
+- [gradle] Add `MetroArtifacts` API for accessing Metro reports and graph metadata directories.
+- [gradle] Mark `metro.reportsDestination` as delicate/opt-in.
+
+0.7.7
+-----
+
+_2025-11-19_
+
+- Add `MetroCompilerPluginRegistrar.pluginId` for forward compatibility with Kotlin `2.3.0`'s new API.
+
 0.7.6
 -----
 

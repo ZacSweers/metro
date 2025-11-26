@@ -5,6 +5,7 @@ package dev.zacsweers.metro.gradle
 import com.autonomousapps.kit.GradleBuilder.build
 import com.autonomousapps.kit.GradleProject
 import com.autonomousapps.kit.Source
+import com.autonomousapps.kit.Source.Companion.DEFAULT_SOURCE_SET
 import com.autonomousapps.kit.Source.Companion.kotlin
 import com.autonomousapps.kit.SourceType
 import com.autonomousapps.kit.truth.BuildResultSubject
@@ -64,6 +65,7 @@ fun source(
   @Language("kotlin") source: String,
   fileNameWithoutExtension: String? = null,
   packageName: String = "test",
+  sourceSet: String = DEFAULT_SOURCE_SET,
   vararg extraImports: String,
 ): Source {
   @Suppress("DEPRECATION")
@@ -87,6 +89,7 @@ fun source(
         appendLine(source.trimIndent())
       }
     )
+    .withSourceSet(sourceSet)
     .withPath(packageName, fileName)
     .build()
 }

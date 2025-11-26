@@ -12,7 +12,7 @@ import com.autonomousapps.kit.gradle.Dependency
 import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.metro.gradle.MetroOptionOverrides
 import dev.zacsweers.metro.gradle.MetroProject
-import dev.zacsweers.metro.gradle.assertOutputContainsOnDifferentKotlinVersions
+import dev.zacsweers.metro.gradle.assertOutputContains
 import dev.zacsweers.metro.gradle.classLoader
 import dev.zacsweers.metro.gradle.source
 import org.gradle.testkit.runner.TaskOutcome
@@ -1934,33 +1934,18 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     // Third build should fail - duplicate String binding
     val thirdBuildResult = buildAndFail(project.rootDir, "compileKotlin")
 
-    thirdBuildResult.assertOutputContainsOnDifferentKotlinVersions(
-      mapOf(
-        "2.2.20" to
-          """
-          AppTest.kt:6:7 [Metro/DuplicateBinding] Multiple bindings found for kotlin.String
+    thirdBuildResult.assertOutputContains(
+      """
+      [Metro/DuplicateBinding] Multiple bindings found for kotlin.String
 
-            test.AppGraph
-              fun provideString(): kotlin.String
-                                   ~~~~~~~~~~~~~
-            test.BindingContainerA
-              fun provideString(): kotlin.String
-                                   ~~~~~~~~~~~~~
-          """
-            .trimIndent(),
-        "2.3.0" to
-          """
-          e: AppTest.kt:6:7 [Metro/DuplicateBinding] Multiple bindings found for kotlin.String
-
-            AppGraph.kt:10:3
-              @Provides fun provideString(): kotlin.String
-                                             ~~~~~~~~~~~~~
-            test.BindingContainerA
-              fun provideString(): kotlin.String
-                                   ~~~~~~~~~~~~~
-          """
-            .trimIndent(),
-      )
+        test/BindingContainerA.provideString
+          fun provideString(): kotlin.String
+                               ~~~~~~~~~~~~~
+        test/BindingContainerB.provideString
+          fun provideString(): kotlin.String
+                               ~~~~~~~~~~~~~
+      """
+        .trimIndent()
     )
   }
 
