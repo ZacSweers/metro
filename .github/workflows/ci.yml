@@ -166,7 +166,6 @@ jobs:
   # Runt multiplatform tests on main only to reduce PR time
   multiplatform-tests:
     name: "multiplatform / ${{ matrix.os }}"
-    if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ${{ matrix.os }}
     permissions:
       checks: write
