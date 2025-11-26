@@ -695,6 +695,24 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multiplatform
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -711,6 +729,36 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#supported-targets-for-artifactsfeatures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supported Targets for artifacts/features
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -1179,6 +1227,25 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#supported-targets-for-artifactsfeatures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supported Targets for artifacts/features
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -1199,7 +1266,119 @@
 
 <h1 id="multiplatform">Multiplatform<a class="headerlink" href="#multiplatform" title="Permanent link">&para;</a></h1>
 <p>The runtime and code gen have been implemented to be entirely platform-agnostic so far.</p>
-<p>Cross-platform aggregation features are only supported on JVM and Android at the moment but should be available in Kotlin 2.3.30+. Follow <a href="https://github.com/ZacSweers/metro/issues/460">this issue</a>.</p>
+<h2 id="supported-targets-for-artifactsfeatures">Supported Targets for artifacts/features<a class="headerlink" href="#supported-targets-for-artifactsfeatures" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Artifact/feature</th>
+<th style="text-align: center;">JVM</th>
+<th>Android</th>
+<th style="text-align: center;">JS</th>
+<th style="text-align: center;">WASM</th>
+<th style="text-align: center;">Apple</th>
+<th style="text-align: center;">Linux</th>
+<th style="text-align: center;">Windows</th>
+<th style="text-align: center;">Android Native</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>runtime</td>
+<td style="text-align: center;">✅</td>
+<td>✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td>interop-javax</td>
+<td style="text-align: center;">✅</td>
+<td>✅</td>
+<td style="text-align: center;">―</td>
+<td style="text-align: center;">―</td>
+<td style="text-align: center;">―</td>
+<td style="text-align: center;">―</td>
+<td style="text-align: center;">―</td>
+<td style="text-align: center;">―</td>
+</tr>
+<tr>
+<td>interop-jakarta</td>
+<td style="text-align: center;">✅</td>
+<td>✅</td>
+<td style="text-align: center;">―</td>
+<td style="text-align: center;">―</td>
+<td style="text-align: center;">―</td>
+<td style="text-align: center;">―</td>
+<td style="text-align: center;">―</td>
+<td style="text-align: center;">―</td>
+</tr>
+<tr>
+<td>interop-dagger</td>
+<td style="text-align: center;">✅</td>
+<td>✅</td>
+<td style="text-align: center;">―</td>
+<td style="text-align: center;">―</td>
+<td style="text-align: center;">―</td>
+<td style="text-align: center;">―</td>
+<td style="text-align: center;">―</td>
+<td style="text-align: center;">―</td>
+</tr>
+<tr>
+<td>interop-guice</td>
+<td style="text-align: center;">✅</td>
+<td>✅</td>
+<td style="text-align: center;">―</td>
+<td style="text-align: center;">―</td>
+<td style="text-align: center;">―</td>
+<td style="text-align: center;">―</td>
+<td style="text-align: center;">―</td>
+<td style="text-align: center;">―</td>
+</tr>
+<tr>
+<td>&mdash;</td>
+<td style="text-align: center;">-</td>
+<td>-</td>
+<td style="text-align: center;">-</td>
+<td style="text-align: center;">-</td>
+<td style="text-align: center;">-</td>
+<td style="text-align: center;">-</td>
+<td style="text-align: center;">-</td>
+<td style="text-align: center;">-</td>
+</tr>
+<tr>
+<td>Multi-module aggregation</td>
+<td style="text-align: center;">✅</td>
+<td>✅</td>
+<td style="text-align: center;">Kotlin <code>2.3.20</code></td>
+<td style="text-align: center;">Kotlin <code>2.3.20</code></td>
+<td style="text-align: center;">Kotlin <code>2.3.20</code></td>
+<td style="text-align: center;">Kotlin <code>2.3.20</code></td>
+<td style="text-align: center;">Kotlin <code>2.3.20</code></td>
+<td style="text-align: center;">Kotlin <code>2.3.20</code></td>
+</tr>
+<tr>
+<td>Top-level function injection</td>
+<td style="text-align: center;">✅</td>
+<td>✅</td>
+<td style="text-align: center;">Kotlin <code>2.3.20</code></td>
+<td style="text-align: center;">Kotlin <code>2.3.20</code></td>
+<td style="text-align: center;">Kotlin <code>2.3.20</code></td>
+<td style="text-align: center;">Kotlin <code>2.3.20</code></td>
+<td style="text-align: center;">Kotlin <code>2.3.20</code></td>
+<td style="text-align: center;">Kotlin <code>2.3.20</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Legend:</strong><br />
+- <strong>WASM</strong>: wasmJs, wasmWasi<br />
+- <strong>Apple</strong>: macOS (x64, arm64), iOS (x64, arm64, simulatorArm64), watchOS (x64, arm32, arm64, deviceArm64, simulatorArm64), tvOS (x64, arm64, simulatorArm64)<br />
+- <strong>Linux</strong>: linuxX64, linuxArm64<br />
+- <strong>Windows</strong>: mingwX64<br />
+- <strong>Android Native</strong>: androidNativeArm32, androidNativeArm64, androidNativeX86, androidNativeX64</p>
+<p>Cross-platform aggregation features are only supported on JVM and Android at the moment but should be available in Kotlin 2.3.20+. Follow <a href="https://github.com/ZacSweers/metro/issues/460">this issue</a>.</p>
 <p>When mixing contributions between common and platform-specific source sets, you must define your final <code>@DependencyGraph</code> in the platform-specific code. This is because a graph defined in commonMain wouldn’t have full visibility of contributions from platform-specific types. A good pattern for this is to define your canonical graph in commonMain <em>without</em> a <code>@DependencyGraph</code> annotation and then a <code>{Platform}{Graph}</code> type in the platform source set that extends it and does have the <code>@DependencyGraph</code>. Metro automatically exposes bindings of the base graph type on the graph for any injections that need it.</p>
 <div class="highlight"><pre><span></span><code><span class="c1">// In commonMain</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
