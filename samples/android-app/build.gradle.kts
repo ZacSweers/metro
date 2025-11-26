@@ -22,13 +22,21 @@ android {
     sourceCompatibility = javaVersion
     targetCompatibility = javaVersion
   }
+
+  testOptions { unitTests.isIncludeAndroidResources = true }
 }
 
 dependencies {
+  implementation("dev.zacsweers.metro:metrox-android")
   implementation(libs.androidx.appcompat)
   implementation(libs.androidx.core)
   implementation(libs.androidx.fragment)
   implementation(libs.androidx.material3)
-  implementation(libs.androidx.viewmodel)
+  implementation(libs.androidx.viewmodelKtx)
   implementation(libs.androidx.work)
+
+  testImplementation(libs.junit)
+  testImplementation(libs.truth)
+  testImplementation(libs.robolectric)
+  testImplementation(libs.androidx.test)
 }

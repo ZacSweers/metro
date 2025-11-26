@@ -1,0 +1,35 @@
+/AllDuplicateBindingsAreReported.kt:(121,129): error: [Metro/DuplicateBinding] Multiple bindings found for kotlin.String
+
+  AllDuplicateBindingsAreReported.kt:10:3
+    @Provides fun provideString4(): kotlin.String
+                                    ~~~~~~~~~~~~~
+  AllDuplicateBindingsAreReported.kt:11:3
+    @Provides fun provideString5(): kotlin.String
+                                    ~~~~~~~~~~~~~
+
+/AllDuplicateBindingsAreReported.kt:(121,129): error: [Metro/DuplicateBinding] Multiple bindings found for kotlin.String
+
+  AllDuplicateBindingsAreReported.kt:7:3
+    @Provides fun provideString1(): kotlin.String
+                                    ~~~~~~~~~~~~~
+  AllDuplicateBindingsAreReported.kt:8:3
+    @Provides fun provideString2(): kotlin.String
+                                    ~~~~~~~~~~~~~
+
+/AllDuplicateBindingsAreReported.kt:(121,129): error: [Metro/DuplicateBinding] Multiple bindings found for kotlin.String
+
+  AllDuplicateBindingsAreReported.kt:8:3
+    @Provides fun provideString2(): kotlin.String
+                                    ~~~~~~~~~~~~~
+  AllDuplicateBindingsAreReported.kt:9:3
+    @Provides fun provideString3(): kotlin.String
+                                    ~~~~~~~~~~~~~
+
+/AllDuplicateBindingsAreReported.kt:(121,129): error: [Metro/DuplicateBinding] Multiple bindings found for kotlin.String
+
+  AllDuplicateBindingsAreReported.kt:9:3
+    @Provides fun provideString3(): kotlin.String
+                                    ~~~~~~~~~~~~~
+  AllDuplicateBindingsAreReported.kt:10:3
+    @Provides fun provideString4(): kotlin.String
+                                    ~~~~~~~~~~~~~

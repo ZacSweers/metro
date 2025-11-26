@@ -32,6 +32,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ContributesToOnlyPermittedOnInterfacesOrBindingContainers.kt")
+    public void testContributesToOnlyPermittedOnInterfacesOrBindingContainers() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/ContributesToOnlyPermittedOnInterfacesOrBindingContainers.kt");
+    }
+
+    @Test
     @TestMetadata("InternalContributionMissingHint.kt")
     public void testInternalContributionMissingHint() {
       runTest("compiler-tests/src/test/data/diagnostic/aggregation/InternalContributionMissingHint.kt");
@@ -169,6 +175,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
   @TestDataPath("$PROJECT_ROOT")
   public class Dependencygraph {
     @Test
+    @TestMetadata("AllDuplicateBindingsAreReported.kt")
+    public void testAllDuplicateBindingsAreReported() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/AllDuplicateBindingsAreReported.kt");
+    }
+
+    @Test
     public void testAllFilesPresentInDependencygraph() {
       KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/dependencygraph"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
     }
@@ -207,6 +219,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("GraphsCannotDirectlyExtendOtherGraphs.kt")
     public void testGraphsCannotDirectlyExtendOtherGraphs() {
       runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/GraphsCannotDirectlyExtendOtherGraphs.kt");
+    }
+
+    @Test
+    @TestMetadata("MissingBindingHintsShouldReportInternalOnlyIfInternal.kt")
+    public void testMissingBindingHintsShouldReportInternalOnlyIfInternal() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/MissingBindingHintsShouldReportInternalOnlyIfInternal.kt");
     }
 
     @Test

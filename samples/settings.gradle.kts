@@ -35,8 +35,11 @@ rootProject.name = "metro-samples"
 
 include(
   ":android-app",
-  ":compose-navigation-app",
   ":circuit-app",
+  ":compose-viewmodels:app",
+  ":compose-viewmodels:core",
+  ":compose-viewmodels:screen-details",
+  ":compose-viewmodels:screen-home",
   ":integration-tests",
   ":interop:customAnnotations-dagger",
   ":interop:customAnnotations-guice",

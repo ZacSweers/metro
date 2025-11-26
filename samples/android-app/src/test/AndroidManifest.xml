@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:tools="http://schemas.android.com/tools">
+
+  <application
+    android:name=".MetroApp"
+    android:allowBackup="true"
+    android:icon="@mipmap/ic_launcher"
+    android:label="Metro Android Sample"
+    android:supportsRtl="true"
+    android:theme="@style/Theme.Material3.DayNight"
+  >
+    <activity
+      android:name=".MetroAppComponentFactoryTest$TestActivity"
+      android:exported="true"
+      tools:ignore="Instantiatable">
+    </activity>
+    <service android:name=".MetroAppComponentFactoryTest$TestService"/>
+    <receiver android:name=".MetroAppComponentFactoryTest$TestReceiver"/>
+    <provider android:authorities="dev.zacsweers.metro.test.MyProvider"
+              android:name=".MetroAppComponentFactoryTest$TestProvider"/>
+  </application>
+</manifest>

@@ -267,7 +267,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
         }
       }
 
-    val excluded = graphAnnotation.resolvedExcludedClassIds(typeResolver)
+    val excluded = graphAnnotation.resolvedExcludedClassIds(session, typeResolver)
     if (contributions.isEmpty() && excluded.isEmpty()) {
       return emptyList()
     }

@@ -365,7 +365,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
       reporter.reportOn(
         annotation.source,
         MetroDiagnostics.AGGREGATION_ERROR,
-        "`@${kind}` annotations only permitted on interfaces. However ${declaration.nameOrSpecialName} is a ${declaration.classKind}.",
+        "`@${kind}` annotations only permitted on interfaces or binding containers. However ${declaration.nameOrSpecialName} is a ${declaration.classKind}.",
       )
       onError()
     }

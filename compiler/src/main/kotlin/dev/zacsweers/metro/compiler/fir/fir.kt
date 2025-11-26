@@ -889,7 +889,15 @@ internal fun FirAnnotation.allScopeClassIds(): Set<ClassId> =
     }
     .filterNotTo(mutableSetOf()) { it == StandardClassIds.Nothing }
 
-internal fun FirAnnotation.excludesArgument() = arrayArgument(Symbols.Names.excludes, index = 2)
+internal fun FirAnnotation.excludesArgument(session: FirSession) =
+  arrayArgument(Symbols.Names.excludes, index = 2)
+    ?: run {
+      if (session.metroFirBuiltIns.options.enableDaggerAnvilInterop) {
+        arrayArgument(Symbols.Names.exclude, index = 3)
+      } else {
+        null
+      }
+    }
 
 internal fun FirAnnotation.replacesArgument() = arrayArgument(Symbols.Names.replaces, index = 2)
 
@@ -971,11 +979,13 @@ internal fun FirAnnotation.resolvedAdditionalScopesClassIds(
 }
 
 internal fun FirAnnotation.resolvedExcludedClassIds(
-  typeResolver: TypeResolveService
+  session: FirSession,
+  typeResolver: TypeResolveService,
 ): Set<ClassId> {
   val excludesArgument =
-    excludesArgument()?.argumentList?.arguments?.mapNotNull { it.expectAsOrNull<FirGetClassCall>() }
-      ?: return emptySet()
+    excludesArgument(session)?.argumentList?.arguments?.mapNotNull {
+      it.expectAsOrNull<FirGetClassCall>()
+    } ?: return emptySet()
   // Try to resolve it normally first. If this fails, try to resolve within the enclosing scope
   val excluded =
     excludesArgument.mapNotNull { it.resolvedClassId() }.takeUnless { it.isEmpty() }

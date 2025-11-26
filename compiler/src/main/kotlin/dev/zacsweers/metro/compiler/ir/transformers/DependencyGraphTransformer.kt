@@ -43,7 +43,6 @@ import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.scopeAnnotations
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
-import dev.zacsweers.metro.compiler.ir.transformMultiboundQualifier
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -309,14 +308,7 @@ internal class DependencyGraphTransformer(
       // @Provides
       for ((_, providerFactory) in node.providerFactories) {
         if (providerFactory.annotations.isScoped) {
-          // TODO this lookup is getting duplicated a few places, would be good to isolated
-          val targetKey =
-            if (providerFactory.annotations.isIntoMultibinding) {
-              providerFactory.typeKey.transformMultiboundQualifier(providerFactory.annotations)
-            } else {
-              providerFactory.typeKey
-            }
-          localParentContext.add(targetKey)
+          localParentContext.add(providerFactory.typeKey)
         }
       }
 
@@ -533,7 +525,7 @@ internal class DependencyGraphTransformer(
         node.accessors
           .map { it.metroFunction.ir }
           .plus(node.injectors.map { it.metroFunction.ir })
-          .plus(node.bindsCallables.map { it.callableMetadata.function })
+          .plus(node.bindsCallables.values.map { it.callableMetadata.function })
           .plus(node.graphExtensions.flatMap { it.value }.map { it.accessor.ir })
           .filterNot { it.isExternalParent }
           .forEach { function ->

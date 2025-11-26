@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.gradle
 
+import dev.zacsweers.metro.gradle.artifacts.GenerateGraphMetadataTask
+import dev.zacsweers.metro.gradle.artifacts.MetroArtifactCopyTask
 import org.gradle.api.Project
 import org.gradle.api.provider.Provider
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
@@ -26,6 +28,16 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
 
   override fun apply(target: Project) {
     target.extensions.create("metro", MetroPluginExtension::class.java, target.layout)
+
+    val graphMetadataTask =
+      target.tasks.register(GenerateGraphMetadataTask.NAME, GenerateGraphMetadataTask::class.java)
+    graphMetadataTask.configure { task ->
+      task.description = "Generates Metro graph metadata for ${target.path}"
+      task.projectPath.convention(target.path)
+      task.outputFile.convention(
+        target.layout.buildDirectory.file("reports/metro/graphMetadata.json")
+      )
+    }
   }
 
   override fun getCompilerPluginId(): String = PLUGIN_ID
@@ -89,6 +101,7 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
   ): Provider<List<SubpluginOption>> {
     val project = kotlinCompilation.target.project
     val extension = project.extensions.getByType(MetroPluginExtension::class.java)
+
     val platformCanGenerateContributionHints =
       when (kotlinCompilation.platformType) {
         KotlinPlatformType.common,
@@ -148,7 +161,30 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
       }
     }
 
-    val reportsDir = extension.reportsDestination.map { it.dir(kotlinCompilation.name) }
+    val reportsDir =
+      extension.reportsDestination.map {
+        // Include target name to avoid collisions in KMP projects where multiple targets
+        // may have compilations with the same name (e.g., both jvm and android have "main")
+        val subdir =
+          listOf(kotlinCompilation.target.name, kotlinCompilation.name)
+            .filter(String::isNotBlank)
+            .joinToString("/")
+        it.dir(subdir)
+      }
+
+    if (extension.reportsDestination.isPresent) {
+      val artifactsTask = MetroArtifactCopyTask.register(project, reportsDir, kotlinCompilation)
+
+      project.tasks.withType(GenerateGraphMetadataTask::class.java).configureEach { task ->
+        task.projectPath.set(project.path)
+        task.compilationName.set(kotlinCompilation.name)
+        task.graphJsonFiles.from(
+          artifactsTask
+            .flatMap { it.reportsDir.dir("graph-metadata") }
+            .map { it.asFileTree.matching { it.include("*.json") } }
+        )
+      }
+    }
 
     return project.provider {
       buildList {

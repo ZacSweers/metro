@@ -27,7 +27,7 @@ abstract class BaseIncrementalCompilationTest {
     get() = buildDir.resolve("metro")
 
   protected fun MetroGradleProject.reports(compilation: String): Reports =
-    metroDir.resolve(compilation).listFiles().maxByOrNull { it.lastModified() }!!.let(::Reports)
+    metroDir.resolve(compilation).let(::Reports)
 
   protected val MetroGradleProject.mainReports: Reports
     get() = reports("main")

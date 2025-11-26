@@ -8,7 +8,6 @@ import com.google.devtools.ksp.processing.SymbolProcessorProvider
 import dagger.internal.codegen.KspComponentProcessor
 import dev.zacsweers.metro.compiler.MetroDirectives
 import dev.zacsweers.metro.compiler.test.JVM_TARGET
-import io.github.classgraph.ClassGraph
 import java.io.File
 import java.util.EnumSet
 import java.util.ServiceLoader
@@ -133,7 +132,7 @@ class Ksp2AdditionalSourceProvider(testServices: TestServices) :
           moduleName = module.name
           sourceRoots = listOf(kotlinInput)
           javaSourceRoots = listOf(javaInput)
-          libraries = getHostClasspaths()
+          libraries = hostClasspaths
 
           projectBaseDir = projectBase
           outputBaseDir = outputBase
@@ -174,14 +173,16 @@ class Ksp2AdditionalSourceProvider(testServices: TestServices) :
     return kotlinKspTestFiles + javaKspTestFiles
   }
 
-  // TODO remove this in favor of explicit Gradle configuration?
-  //  - or is there a way to extract the classpath from the test framework?
-  private fun getHostClasspaths(): List<File> {
-    val classGraph = ClassGraph().enableSystemJarsAndModules().removeTemporaryFilesAfterScan()
-
-    val classpaths = classGraph.classpathFiles
-    val modules = classGraph.modules.mapNotNull { it.locationFile }
-
-    return (classpaths + modules).distinctBy(File::getAbsolutePath)
+  private companion object {
+    /** Classpath passed from Gradle via system property, cached for reuse across tests. */
+    private val hostClasspaths: List<File> by lazy {
+      val classpathProperty =
+        System.getProperty("ksp.testRuntimeClasspath")
+          ?: error(
+            "ksp.testRuntimeClasspath system property not set. " +
+              "Make sure to run tests via Gradle."
+          )
+      classpathProperty.split(File.pathSeparator).map(::File)
+    }
   }
 }

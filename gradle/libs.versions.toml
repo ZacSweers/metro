@@ -16,7 +16,8 @@
 agp = "8.13.1"
 androidx-lifecycle = "2.10.0"
 androidx-lint-gradle = "1.0.0-alpha05"
-anvil = "0.4.1"
+annotation = "1.9.1"
+anvil = "0.5.0"
 atomicfu = "0.29.0"
 autoService = "1.1.1"
 circuit = "0.30.0"
@@ -26,6 +27,7 @@ dagger = "2.57.2"
 gjf = "1.32.0"
 jdk = "24"
 junit5 = "6.0.1"
+robolectric = "4.16"
 jvmTarget = "11"
 kct = "0.11.1"
 kotlin = "2.3.0-RC"
@@ -56,7 +58,7 @@ kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
 kotlin-plugin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-plugin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 binaryCompatibilityValidator = { id = "org.jetbrains.kotlinx.binary-compatibility-validator", version = "0.18.1" }
-buildConfig = { id = "com.github.gmazzo.buildconfig", version = "6.0.0" }
+buildConfig = { id = "com.github.gmazzo.buildconfig", version = "6.0.5" }
 dokka = { id = "org.jetbrains.dokka", version = "2.1.0" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.35.0" }
@@ -68,6 +70,7 @@ wire = { id = "com.squareup.wire", version.ref = "wire" }
 
 [libraries]
 androidx-activity = "androidx.activity:activity-compose:1.12.0"
+androidx-annotation = { module = "androidx.annotation:annotation", version.ref = "annotation" }
 androidx-appcompat = "androidx.appcompat:appcompat:1.7.1"
 androidx-compose-material3 = "androidx.compose.material3:material3:1.4.0"
 androidx-compose-materialNavigation = "androidx.compose.material:material-navigation:1.9.5"
@@ -78,7 +81,10 @@ androidx-lint-gradle = { module = "androidx.lint:lint-gradle", version.ref = "an
 androidx-material3 = "com.google.android.material:material:1.13.0"
 androidx-navigationCompose = "androidx.navigation:navigation-compose:2.9.6"
 androidx-viewmodel = { module = "androidx.lifecycle:lifecycle-viewmodel", version.ref = "androidx-lifecycle" }
+androidx-viewmodelCompose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "androidx-lifecycle" }
+androidx-viewmodelKtx = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "androidx-lifecycle" }
 androidx-work = "androidx.work:work-runtime:2.11.0"
+androidx-test = "androidx.test:core-ktx:1.7.0"
 
 anvil-annotations = { module = "dev.zacsweers.anvil:annotations", version.ref = "anvil" }
 anvil-annotations-optional = { module = "dev.zacsweers.anvil:annotations-optional", version.ref = "anvil" }
@@ -104,6 +110,7 @@ compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.re
 compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "compose-jb" }
 
 coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
+coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
 coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
 
 dagger-runtime = { module = "com.google.dagger:dagger", version.ref = "dagger" }
@@ -114,6 +121,8 @@ guice-assistedInject = "com.google.inject.extensions:guice-assistedinject:7.0.0"
 
 javaxInject = "javax.inject:javax.inject:1"
 jakartaInject = "jakarta.inject:jakarta.inject-api:2.0.1"
+
+jetbrains-navigation-desktop = "org.jetbrains.androidx.navigation:navigation-compose:2.9.1"
 
 kotlinInject-compiler = { module = "me.tatarka.inject:kotlin-inject-compiler-ksp", version.ref = "kotlinInject" }
 kotlinInject-runtime = { module = "me.tatarka.inject:kotlin-inject-runtime", version.ref = "kotlinInject" }
@@ -159,6 +168,8 @@ okio-fakefilesystem = { module = "com.squareup.okio:okio-fakefilesystem", versio
 picnic = "com.jakewharton.picnic:picnic:0.7.0"
 
 poko-annotations = { module = "dev.drewhamilton.poko:poko-annotations", version.ref = "poko" }
+
+robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 
 slf4jNop = "org.slf4j:slf4j-nop:2.0.17"
 

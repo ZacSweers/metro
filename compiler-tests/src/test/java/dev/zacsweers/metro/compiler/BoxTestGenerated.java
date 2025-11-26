@@ -173,6 +173,18 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("ContributedBindingContainerExclusions.kt")
+      public void testContributedBindingContainerExclusions() {
+        runTest("compiler-tests/src/test/data/box/aggregation/interop/ContributedBindingContainerExclusions.kt");
+      }
+
+      @Test
+      @TestMetadata("ContributedGraphBindingContainerExclusions.kt")
+      public void testContributedGraphBindingContainerExclusions() {
+        runTest("compiler-tests/src/test/data/box/aggregation/interop/ContributedGraphBindingContainerExclusions.kt");
+      }
+
+      @Test
       @TestMetadata("ContributedGraphsSupportIgnoreQualifier.kt")
       public void testContributedGraphsSupportIgnoreQualifier() {
         runTest("compiler-tests/src/test/data/box/aggregation/interop/ContributedGraphsSupportIgnoreQualifier.kt");
@@ -247,6 +259,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("DedupeContainersContributedToMultipleScopes.kt")
     public void testDedupeContainersContributedToMultipleScopes() {
       runTest("compiler-tests/src/test/data/box/bindingcontainers/DedupeContainersContributedToMultipleScopes.kt");
+    }
+
+    @Test
+    @TestMetadata("DuplicateContainersAcrossExtensions.kt")
+    public void testDuplicateContainersAcrossExtensions() {
+      runTest("compiler-tests/src/test/data/box/bindingcontainers/DuplicateContainersAcrossExtensions.kt");
     }
 
     @Test
@@ -1416,6 +1434,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     public void testInjectingAStarParameterizedType() {
       runTest("compiler-tests/src/test/data/box/member/InjectingAStarParameterizedType.kt");
     }
+
+    @Test
+    @TestMetadata("MembersInjectorRespectMultibindingQualifier.kt")
+    public void testMembersInjectorRespectMultibindingQualifier() {
+      runTest("compiler-tests/src/test/data/box/member/MembersInjectorRespectMultibindingQualifier.kt");
+    }
   }
 
   @Nested
@@ -1455,6 +1479,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("PrimeMultibindingMapEnumKey.kt")
     public void testPrimeMultibindingMapEnumKey() {
       runTest("compiler-tests/src/test/data/box/multibindings/PrimeMultibindingMapEnumKey.kt");
+    }
+
+    @Test
+    @TestMetadata("UnusedMultibindingsDoNotGetValidated.kt")
+    public void testUnusedMultibindingsDoNotGetValidated() {
+      runTest("compiler-tests/src/test/data/box/multibindings/UnusedMultibindingsDoNotGetValidated.kt");
     }
   }
 

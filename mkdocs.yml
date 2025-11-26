@@ -115,6 +115,8 @@ nav:
   - 'FAQ': faq.md
   - 'Adoption Strategies': adoption.md
   - 'Samples': samples.md
+  - 'MetroX':
+      - 'Android': metrox-android.md
   - 'API': api/index.html
   - 'Design Doc': designdoc.html
   - 'Discussions ⏏': https://github.com/ZacSweers/metro/discussions

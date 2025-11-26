@@ -256,6 +256,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
           },
       providerFunction = null,
       patchCreationParams = false, // TODO when we support absent
+      copyQualifiers = true,
     )
 
     // Implement static inject{name}() for each declared callable in this class

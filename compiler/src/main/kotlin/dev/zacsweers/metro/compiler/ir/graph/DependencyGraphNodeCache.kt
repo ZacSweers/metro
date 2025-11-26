@@ -32,6 +32,7 @@ import dev.zacsweers.metro.compiler.ir.isBindingContainer
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.isInheritedFromAny
 import dev.zacsweers.metro.compiler.ir.linkDeclarationsInCompilation
+import dev.zacsweers.metro.compiler.ir.locationOrNull
 import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
@@ -44,6 +45,8 @@ import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.ir.render
+import dev.zacsweers.metro.compiler.ir.renderForDiagnostic
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.scopeAnnotations
 import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
@@ -149,11 +152,11 @@ internal class DependencyGraphNodeCache(
       nodeCache.bindingContainerTransformer
     private val accessors = mutableListOf<GraphAccessor>()
     private val bindsFunctions = mutableListOf<Pair<MetroSimpleFunction, IrContextualTypeKey>>()
-    private val bindsCallables = mutableSetOf<BindsCallable>()
+    private val bindsCallables = mutableMapOf<IrTypeKey, BindsCallable>()
     private val multibindsCallables = mutableSetOf<MultibindsCallable>()
     private val optionalKeys = mutableMapOf<IrTypeKey, MutableSet<BindsOptionalOfCallable>>()
     private val scopes = mutableSetOf<IrAnnotation>()
-    private val providerFactories = mutableListOf<Pair<IrTypeKey, ProviderFactory>>()
+    private val providerFactories = mutableMapOf<IrTypeKey, ProviderFactory>()
     private val extendedGraphNodes = mutableMapOf<IrTypeKey, DependencyGraphNode>()
     private val graphExtensions = mutableMapOf<IrTypeKey, MutableList<GraphExtensionAccessor>>()
     private val injectors = mutableListOf<InjectorFunction>()
@@ -350,6 +353,84 @@ internal class DependencyGraphNodeCache(
         )
         exitProcessing()
       }
+    }
+
+    private var hasDuplicateBindingErrors = false
+
+    private fun reportDuplicateProviderFactory(
+      typeKey: IrTypeKey,
+      existing: ProviderFactory,
+      duplicate: ProviderFactory,
+    ) {
+      hasDuplicateBindingErrors = true
+
+      fun StringBuilder.appendFactory(factory: ProviderFactory) {
+        append("  ")
+        appendLine(
+          factory.function.locationOrNull()?.render(short = true) ?: factory.callableId.toString()
+        )
+        append("    ")
+        renderForDiagnostic(
+          declaration = factory.function,
+          short = false,
+          typeKey = factory.rawTypeKey,
+          annotations = factory.annotations,
+          parameters = factory.parameters,
+          isProperty = factory.isPropertyAccessor,
+          underlineTypeKey = true,
+        )
+      }
+
+      val message = buildString {
+        appendLine(
+          "[Metro/DuplicateBinding] Multiple bindings found for ${typeKey.render(short = false, includeQualifier = true)}"
+        )
+        appendLine()
+        // Render each location with its signature (indented with 4 spaces)
+        appendFactory(existing)
+        appendLine()
+        appendFactory(duplicate)
+        appendBindingStack(bindingStack, short = false)
+      }
+      reportCompat(graphDeclaration.sourceGraphIfMetroGraph, MetroDiagnostics.METRO_ERROR, message)
+    }
+
+    private fun reportDuplicateBindsCallable(
+      typeKey: IrTypeKey,
+      existing: BindsCallable,
+      duplicate: BindsCallable,
+    ) {
+      hasDuplicateBindingErrors = true
+      val existingDiagnostic =
+        existing.renderLocationDiagnostic(short = false, existing.function.parameters())
+      val duplicateDiagnostic =
+        duplicate.renderLocationDiagnostic(short = false, duplicate.function.parameters())
+      val message = buildString {
+        appendLine(
+          "[Metro/DuplicateBinding] Multiple bindings found for ${typeKey.render(short = false, includeQualifier = true)}"
+        )
+        appendLine()
+        append("  ")
+        appendLine(existingDiagnostic.location)
+        // Indent each line of the description (content line + underline line)
+        existingDiagnostic.description?.lines()?.forEach { line ->
+          append("    ")
+          appendLine(line)
+        }
+        append("  ")
+        appendLine(duplicateDiagnostic.location)
+        // Indent each line of the description (content line + underline line)
+        duplicateDiagnostic.description?.lines()?.forEachIndexed { index, line ->
+          append("    ")
+          if (index < (duplicateDiagnostic.description.lines().size - 1)) {
+            appendLine(line)
+          } else {
+            append(line)
+          }
+        }
+        appendBindingStack(bindingStack, short = false)
+      }
+      reportCompat(graphDeclaration.sourceGraphIfMetroGraph, MetroDiagnostics.METRO_ERROR, message)
     }
 
     private fun reportQualifierMismatch(
@@ -853,16 +934,44 @@ internal class DependencyGraphNodeCache(
       for (container in allMergedContainers) {
         val isDynamicContainer = container.ir in dynamicBindingContainers
         for ((_, factory) in container.providerFactories) {
-          providerFactories += factory.typeKey to factory
+          val typeKey = factory.typeKey
+          // Dynamic containers should override non-dynamic ones with the same typeKey
+          val existingIsDynamic = typeKey in dynamicTypeKeys
+          val existingFactory = providerFactories[typeKey]
+          if (existingFactory != null) {
+            // Report duplicate if both are non-dynamic OR both are dynamic
+            val bothNonDynamic = !isDynamicContainer && !existingIsDynamic
+            val bothDynamic = isDynamicContainer && existingIsDynamic
+            if (bothNonDynamic || bothDynamic) {
+              reportDuplicateProviderFactory(typeKey, existingFactory, factory)
+            }
+          }
+          if (isDynamicContainer || !existingIsDynamic) {
+            providerFactories[typeKey] = factory
+          }
           if (isDynamicContainer) {
-            dynamicTypeKeys[factory.typeKey] = factory
+            dynamicTypeKeys[typeKey] = factory
           }
         }
         container.bindsMirror?.let { bindsMirror ->
           for (callable in bindsMirror.bindsCallables) {
-            bindsCallables += callable
+            val typeKey = callable.typeKey
+            // Dynamic containers should override non-dynamic ones with the same typeKey
+            val existingIsDynamic = typeKey in dynamicTypeKeys
+            val existingCallable = bindsCallables[typeKey]
+            if (existingCallable != null) {
+              // Report duplicate if both are non-dynamic OR both are dynamic
+              val bothNonDynamic = !isDynamicContainer && !existingIsDynamic
+              val bothDynamic = isDynamicContainer && existingIsDynamic
+              if (bothNonDynamic || bothDynamic) {
+                reportDuplicateBindsCallable(typeKey, existingCallable, callable)
+              }
+            }
+            if (isDynamicContainer || !existingIsDynamic) {
+              bindsCallables[typeKey] = callable
+            }
             if (isDynamicContainer) {
-              dynamicTypeKeys[callable.typeKey] = callable
+              dynamicTypeKeys[typeKey] = callable
             }
           }
           for (callable in bindsMirror.multibindsCallables) {
@@ -939,6 +1048,11 @@ internal class DependencyGraphNodeCache(
         exitProcessing()
       }
 
+      // Exit after collecting all duplicate binding errors
+      if (hasDuplicateBindingErrors) {
+        exitProcessing()
+      }
+
       return dependencyGraphNode
     }
 
@@ -994,10 +1108,12 @@ internal class DependencyGraphNodeCache(
           // Skip the metrograph, it won't have custom nested factories
           if (declaration == metroGraph) continue
           bindingContainerTransformer.findContainer(declaration)?.let { bindingContainer ->
-            providerFactories += bindingContainer.providerFactories.values.map { it.typeKey to it }
+            for ((_, factory) in bindingContainer.providerFactories) {
+              providerFactories[factory.typeKey] = factory
+            }
 
             bindingContainer.bindsMirror?.let { bindsMirror ->
-              bindsCallables += bindsMirror.bindsCallables
+              bindsCallables.putAll(bindsMirror.bindsCallables.associateBy { it.typeKey })
               multibindsCallables += bindsMirror.multibindsCallables
               for (callable in bindsMirror.optionalKeys) {
                 optionalKeys.getOrPut(callable.typeKey) { mutableSetOf() } += callable
@@ -1006,8 +1122,9 @@ internal class DependencyGraphNodeCache(
           }
         }
       } else {
-        providerFactories +=
+        providerFactories.putAll(
           bindingContainerTransformer.factoryClassesFor(metroGraph ?: graphDeclaration)
+        )
       }
 
       // TODO split DependencyGraphNode into sealed interface with external/internal variants?

@@ -1,0 +1,5 @@
+/ContributesToOnlyPermittedOnInterfacesOrBindingContainers.kt:(652,683): error: `@ContributesTo` annotations only permitted on interfaces or binding containers. However ContributedClass is a CLASS.
+
+/ContributesToOnlyPermittedOnInterfacesOrBindingContainers.kt:(708,739): error: `@ContributesTo` annotations only permitted on interfaces or binding containers. However ContributedAbstractClass is a CLASS.
+
+/ContributesToOnlyPermittedOnInterfacesOrBindingContainers.kt:(781,812): error: `@ContributesTo` annotations only permitted on interfaces or binding containers. However ContributedObject is a OBJECT.
