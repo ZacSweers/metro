@@ -26,8 +26,5 @@ class InjectedViewModelFactory(
   override val assistedFactoryProviders:
     Map<KClass<out ViewModel>, Provider<ViewModelAssistedFactory<*>>>,
   override val manualAssistedFactoryProviders:
-    Map<
-      KClass<out ManualViewModelAssistedFactory<*>>,
-      Provider<ManualViewModelAssistedFactory<*>>,
-    >,
+    Map<KClass<out ManualViewModelAssistedFactory<*>>, Provider<ManualViewModelAssistedFactory<*>>>,
 ) : MetroViewModelFactory()
