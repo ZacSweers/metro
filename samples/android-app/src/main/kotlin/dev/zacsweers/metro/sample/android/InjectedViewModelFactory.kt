@@ -24,7 +24,7 @@ import kotlin.reflect.KClass
 class InjectedViewModelFactory(
   override val viewModelProviders: Map<KClass<out ViewModel>, Provider<ViewModel>>,
   override val assistedFactoryProviders:
-    Map<KClass<out ViewModel>, Provider<ViewModelAssistedFactory<*>>>,
+    Map<KClass<out ViewModel>, Provider<ViewModelAssistedFactory>>,
   override val manualAssistedFactoryProviders:
     Map<KClass<out ManualViewModelAssistedFactory<*>>, Provider<ManualViewModelAssistedFactory<*>>>,
 ) : MetroViewModelFactory()

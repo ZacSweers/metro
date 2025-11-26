@@ -27,7 +27,7 @@ import kotlin.reflect.KClass
  * @SingleIn(AppScope::class)
  * class MyViewModelFactory(
  *   override val viewModelProviders: Map<KClass<out ViewModel>, Provider<ViewModel>>,
- *   override val assistedFactoryProviders: Map<KClass<out ViewModel>, Provider<ViewModelAssistedFactory<*>>>,
+ *   override val assistedFactoryProviders: Map<KClass<out ViewModel>, Provider<ViewModelAssistedFactory>>,
  *   override val manualAssistedFactoryProviders: Map<KClass<out ManualViewModelAssistedFactory<*>>, Provider<ManualViewModelAssistedFactory<*>>>,
  * ): MetroViewModelFactory()
  *
@@ -69,7 +69,7 @@ public abstract class MetroViewModelFactory : ViewModelProvider.Factory {
   protected open val viewModelProviders: Map<KClass<out ViewModel>, Provider<ViewModel>> =
     emptyMap()
   protected open val assistedFactoryProviders:
-    Map<KClass<out ViewModel>, Provider<ViewModelAssistedFactory<*>>> =
+    Map<KClass<out ViewModel>, Provider<ViewModelAssistedFactory>> =
     emptyMap()
   protected open val manualAssistedFactoryProviders:
     Map<

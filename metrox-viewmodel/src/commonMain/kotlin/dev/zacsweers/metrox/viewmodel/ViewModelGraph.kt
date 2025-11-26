@@ -24,7 +24,7 @@ public interface MetroViewModelMultibindings {
 
   @Multibinds(allowEmpty = true)
   public val assistedFactoryProviders:
-    Map<KClass<out ViewModel>, Provider<ViewModelAssistedFactory<*>>>
+    Map<KClass<out ViewModel>, Provider<ViewModelAssistedFactory>>
 
   @Multibinds(allowEmpty = true)
   public val manualAssistedFactoryProviders:

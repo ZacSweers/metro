@@ -20,9 +20,7 @@ public annotation class ViewModelKey(val value: KClass<out ViewModel>)
 @MapKey
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.RUNTIME)
-public annotation class ViewModelAssistedFactoryKey(
-  val value: KClass<out ViewModelAssistedFactory<*>>
-)
+public annotation class ViewModelAssistedFactoryKey(val value: KClass<out ViewModelAssistedFactory>)
 
 /**
  * A [MapKey] annotation for binding
@@ -46,20 +44,24 @@ public annotation class ManualViewModelAssistedFactoryKey(
  * Example:
  * ```kotlin
  * @AssistedInject
- * class MyViewModel(@Assisted val id: String) : ViewModel()
+ * class DetailsViewModel(@Assisted val id: String) : ViewModel() {
+ *   // ...
  *
- * @AssistedFactory
- * @ViewModelAssistedFactoryKey(MyViewModel.Factory::class)
- * @ContributesIntoMap(ViewModelScope::class)
- * fun interface Factory : ViewModelAssistedFactory<MyViewModel> {
- *   fun create(@Assisted id: String): MyViewModel
+ *   @AssistedFactory
+ *   @ViewModelAssistedFactoryKey(Factory::class)
+ *   @ContributesIntoMap(AppScope::class)
+ *   fun interface Factory : ViewModelAssistedFactory {
+ *     override fun create(params: CreationParams): DetailsViewModel {
+ *       return create(params.get<String>(KEY_ID))
+ *     }
+ *
+ *     fun create(@Assisted id: String): DetailsViewModel
+ *   }
  * }
  * ```
- *
- * @param VM The type of ViewModel this factory creates.
  */
-public interface ViewModelAssistedFactory<VM : ViewModel> {
-  public fun create(extras: CreationExtras): VM
+public interface ViewModelAssistedFactory {
+  public fun create(extras: CreationExtras): ViewModel
 }
 
 /**
@@ -75,7 +77,7 @@ public interface ViewModelAssistedFactory<VM : ViewModel> {
  * val viewModel = factory().create("param1", 42)
  * ```
  *
- * Or in Compose with [assistedMetroViewModel] overload that accepts a reified
+ * Or in Compose with the `assistedMetroViewModel` overload that accepts a reified
  * [ManualViewModelAssistedFactory] type:
  * ```kotlin
  * val viewModel = assistedMetroViewModel<MyViewModel, MyViewModel.Factory> {

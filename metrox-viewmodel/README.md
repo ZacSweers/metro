@@ -42,7 +42,7 @@ A `ViewModelProvider.Factory` implementation that uses injected maps to create V
 @SingleIn(AppScope::class)
 class MyViewModelFactory(
   override val viewModelProviders: Map<KClass<out ViewModel>, Provider<ViewModel>>,
-  override val assistedFactoryProviders: Map<KClass<out ViewModel>, Provider<ViewModelAssistedFactory<*>>>,
+  override val assistedFactoryProviders: Map<KClass<out ViewModel>, Provider<ViewModelAssistedFactory>>,
   override val manualAssistedFactoryProviders: Map<KClass<out ManualViewModelAssistedFactory<*>>, Provider<ManualViewModelAssistedFactory<*>>>,
 ) : MetroViewModelFactory()
 ```
@@ -60,9 +60,9 @@ class HomeViewModel : ViewModel() {
 }
 ```
 
-### Assisted Injection
+### Assisted ViewModel Creation
 
-For ViewModels requiring runtime parameters, use `ViewModelAssistedFactory`:
+For ViewModels requiring runtime parameters and only using `CreationParams` can use `ViewModelAssistedFactory`:
 
 ```kotlin
 @AssistedInject
@@ -71,8 +71,12 @@ class DetailsViewModel(@Assisted val id: String) : ViewModel() {
 
   @AssistedFactory
   @ViewModelAssistedFactoryKey(Factory::class)
-  @ContributesIntoMap(ViewModelScope::class, binding<ViewModelAssistedFactory<*>>())
-  fun interface Factory : ViewModelAssistedFactory<DetailsViewModel> {
+  @ContributesIntoMap(AppScope::class)
+  fun interface Factory : ViewModelAssistedFactory {
+    override fun create(params: CreationParams): DetailsViewModel {
+      return create(params.get<String>(KEY_ID))
+    }
+
     fun create(@Assisted id: String): DetailsViewModel
   }
 }
