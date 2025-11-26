@@ -16,7 +16,7 @@ import dev.zacsweers.metro.gradle.buildAndAssertThat
 import dev.zacsweers.metro.gradle.classLoader
 import dev.zacsweers.metro.gradle.cleanOutputLine
 import dev.zacsweers.metro.gradle.source
-import kotlin.collections.plus
+import java.io.File
 import org.gradle.testkit.runner.TaskOutcome
 import org.junit.Assume.assumeTrue
 import org.junit.Ignore
@@ -2109,8 +2109,11 @@ class ICTests : BaseIncrementalCompilationTest() {
                 }
 
                 val androidHome = System.getProperty("metro.androidHome")
+                println("android home is $androidHome")
                 assumeTrue(androidHome != null) // skip if environment not set up for Android
-                withFile("local.properties", "sdk.dir=$androidHome")
+                // Use invariantSeparatorsPath for cross-platform .properties file compatibility
+                val sdkDir = File(androidHome).invariantSeparatorsPath
+                withFile("local.properties", "sdk.dir=$sdkDir")
               }
               .write()
           }
