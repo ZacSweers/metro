@@ -11,6 +11,7 @@ import com.autonomousapps.kit.gradle.BuildScript
 abstract class MetroProject(
   private val debug: Boolean = false,
   private val metroOptions: MetroOptionOverrides = MetroOptionOverrides(),
+  private val reportsEnabled: Boolean = true,
   private val kotlinVersion: String? = null,
 ) : AbstractGradleProject() {
   protected abstract fun sources(): List<Source>
@@ -26,31 +27,32 @@ abstract class MetroProject(
         }
         .write()
 
+  /** Generates just the `metro { ... }` block content for use in custom build scripts. */
+  fun buildMetroBlock(): String = buildString {
+    appendLine("metro {")
+    appendLine("  debug.set($debug)")
+    if (reportsEnabled) {
+      appendLine("  reportsDestination.set(layout.buildDirectory.dir(\"metro\"))")
+    }
+    val options = buildList {
+      metroOptions.enableFullBindingGraphValidation?.let {
+        add("enableFullBindingGraphValidation.set($it)")
+      }
+    }
+    if (options.isNotEmpty()) {
+      options.joinTo(this, separator = "\n", prefix = "  ")
+    }
+    appendLine("}")
+  }
+
+  /** Default setup for simple JVM projects. For KMP or custom setups, override [gradleProject]. */
   fun BuildScript.Builder.applyMetroDefault() = apply {
     plugins(GradlePlugins.Kotlin.jvm(kotlinVersion), GradlePlugins.metro)
 
     withKotlin(
       buildString {
         onBuildScript()
-
-        // Metro config
-        appendLine("metro {")
-        appendLine(
-          """
-            debug.set($debug)
-            reportsDestination.set(layout.buildDirectory.dir("metro"))
-          """
-            .trimIndent()
-        )
-        val metroOptions = buildList {
-          metroOptions.enableFullBindingGraphValidation?.let {
-            add("enableFullBindingGraphValidation.set($it)")
-          }
-        }
-        if (metroOptions.isNotEmpty()) {
-          metroOptions.joinTo(this, separator = "\n", prefix = "  ")
-        }
-        appendLine("}")
+        append(buildMetroBlock())
       }
     )
   }

@@ -8,18 +8,14 @@ import com.autonomousapps.kit.GradleBuilder.build
 import com.autonomousapps.kit.GradleBuilder.buildAndFail
 import com.autonomousapps.kit.GradleProject
 import com.autonomousapps.kit.GradleProject.DslKind
-import com.autonomousapps.kit.Source
 import com.autonomousapps.kit.gradle.Dependency
 import com.google.common.truth.Truth.assertThat
-import dev.zacsweers.metro.gradle.GradlePlugins
 import dev.zacsweers.metro.gradle.MetroOptionOverrides
 import dev.zacsweers.metro.gradle.MetroProject
 import dev.zacsweers.metro.gradle.assertOutputContains
 import dev.zacsweers.metro.gradle.classLoader
 import dev.zacsweers.metro.gradle.source
-import kotlin.collections.plus
 import org.gradle.testkit.runner.TaskOutcome
-import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class BindingContainerICTests : BaseIncrementalCompilationTest() {
@@ -2061,71 +2057,6 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     with(project.classLoader().loadClass("test.MainKt")) {
       val result = declaredMethods.first { it.name == "main" }.invoke(null) as String
       assertThat(result).isEqualTo("[AppMultibinding]")
-    }
-  }
-
-  @Test
-  fun multiplatformAndroidPluginWithReportsEnabled() {
-    val buildFile =
-      """
-      kotlin {
-        jvm()
-
-        android {
-          namespace = "com.example.test"
-          minSdk = 36
-          compileSdk = 36
-        }
-      }
-
-      metro {
-        reportsDestination = layout.buildDirectory.dir("metro")
-      }
-      """
-        .trimIndent()
-    val fixture =
-      object : MetroProject() {
-        override fun sources() = error("UNUSED")
-
-        override val gradleProject: GradleProject
-          get() =
-            newGradleProjectBuilder(DslKind.KOTLIN)
-              .withRootProject {
-                withBuildScript {
-                  plugins(
-                    GradlePlugins.Kotlin.multiplatform(),
-                    GradlePlugins.agpKmp,
-                    GradlePlugins.metro,
-                  )
-                  withKotlin(buildFile)
-                }
-
-                withFile("gradle.properties", "org.gradle.jvmargs=-Xmx4096M -XX:+UseParallelGC")
-                val androidHome = System.getProperty("metro.androidHome")
-                assumeTrue(androidHome != null) // skip if environment not set up for Android
-                withFile("local.properties", "sdk.dir=$androidHome")
-
-                sources +=
-                  Source.kotlin(
-                      """
-                      package com.example.test
-                      data class DummyClass(val abc: Int, val xyz: String)
-                      """
-                        .trimIndent()
-                    )
-                    .withSourceSet("commonMain")
-                    .withPath("com.example.test", "DummyClass")
-                    .build()
-              }
-              .write()
-      }
-
-    val project = fixture.gradleProject
-    val numRuns = 10
-
-    repeat(numRuns) { i ->
-      println("Running build ${i+1}/$numRuns...")
-      build(project.rootDir, "assemble", "--no-configuration-cache", "--rerun-tasks")
     }
   }
 }

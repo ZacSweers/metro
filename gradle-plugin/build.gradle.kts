@@ -84,6 +84,18 @@ dependencies {
 val testCompilerVersion =
   providers.gradleProperty("metro.testCompilerVersion").orElse(libs.versions.kotlin).get()
 
+fun androidHomeOrNull(): File? {
+  val localProps = rootProject.isolated.projectDirectory.file("local.properties").asFile
+  if (localProps.exists()) {
+    val properties = Properties()
+    localProps.inputStream().use { properties.load(it) }
+    val sdkHome = properties.getProperty("sdk.dir")?.let(::File)
+    if (sdkHome?.exists() == true) return sdkHome
+  }
+  val androidHome = System.getenv("ANDROID_HOME")?.let(::File)
+  return if (androidHome?.exists() == true) androidHome else null
+}
+
 tasks.withType<Test>().configureEach {
   maxParallelForks = Runtime.getRuntime().availableProcessors() * 2
   systemProperty(
@@ -98,15 +110,3 @@ tasks.withType<Test>().configureEach {
 tasks
   .named { it == "publishTestKitSupportForJavaPublicationToFunctionalTestRepository" }
   .configureEach { mustRunAfter("signPluginMavenPublication") }
-
-fun androidHomeOrNull(): File? {
-  val localProps = rootProject.file("local.properties")
-  if (localProps.exists()) {
-    val properties = Properties()
-    localProps.inputStream().use { properties.load(it) }
-    val sdkHome = properties.getProperty("sdk.dir")?.let(::File)
-    if (sdkHome?.exists() == true) return sdkHome
-  }
-  val androidHome = System.getenv("ANDROID_HOME")?.let(::File)
-  return if (androidHome?.exists() == true) androidHome else null
-}
