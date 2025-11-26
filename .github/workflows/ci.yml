@@ -35,6 +35,8 @@ jobs:
     strategy:
       matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
       fail-fast: false
+    permissions:
+      checks: write
 
     steps:
       - name: Checkout
@@ -100,6 +102,8 @@ jobs:
   samples:
     name: "samples"
     runs-on: ubuntu-latest
+    permissions:
+      checks: write
 
     steps:
       - name: Checkout
