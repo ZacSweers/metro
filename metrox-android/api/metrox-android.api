@@ -1,0 +1,36 @@
+public abstract interface annotation class dev/zacsweers/metrox/android/ActivityKey : java/lang/annotation/Annotation {
+	public abstract fun value ()Ljava/lang/Class;
+}
+
+public abstract interface annotation class dev/zacsweers/metrox/android/BroadcastReceiverKey : java/lang/annotation/Annotation {
+	public abstract fun value ()Ljava/lang/Class;
+}
+
+public abstract interface annotation class dev/zacsweers/metrox/android/ContentProviderKey : java/lang/annotation/Annotation {
+	public abstract fun value ()Ljava/lang/Class;
+}
+
+public class dev/zacsweers/metrox/android/MetroAppComponentFactory : androidx/core/app/AppComponentFactory {
+	public fun <init> ()V
+	public fun instantiateActivityCompat (Ljava/lang/ClassLoader;Ljava/lang/String;Landroid/content/Intent;)Landroid/app/Activity;
+	public fun instantiateApplicationCompat (Ljava/lang/ClassLoader;Ljava/lang/String;)Landroid/app/Application;
+	public fun instantiateProviderCompat (Ljava/lang/ClassLoader;Ljava/lang/String;)Landroid/content/ContentProvider;
+	public fun instantiateReceiverCompat (Ljava/lang/ClassLoader;Ljava/lang/String;Landroid/content/Intent;)Landroid/content/BroadcastReceiver;
+	public fun instantiateServiceCompat (Ljava/lang/ClassLoader;Ljava/lang/String;Landroid/content/Intent;)Landroid/app/Service;
+}
+
+public abstract interface class dev/zacsweers/metrox/android/MetroAppComponentProviders {
+	public abstract fun getActivityProviders ()Ljava/util/Map;
+	public abstract fun getProviderProviders ()Ljava/util/Map;
+	public abstract fun getReceiverProviders ()Ljava/util/Map;
+	public abstract fun getServiceProviders ()Ljava/util/Map;
+}
+
+public abstract interface class dev/zacsweers/metrox/android/MetroApplication {
+	public abstract fun getAppComponentProviders ()Ldev/zacsweers/metrox/android/MetroAppComponentProviders;
+}
+
+public abstract interface annotation class dev/zacsweers/metrox/android/ServiceKey : java/lang/annotation/Annotation {
+	public abstract fun value ()Ljava/lang/Class;
+}
+
