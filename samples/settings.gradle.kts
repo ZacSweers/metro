@@ -35,8 +35,11 @@ rootProject.name = "metro-samples"
 
 include(
   ":android-app",
-  ":compose-navigation-app",
   ":circuit-app",
+  ":compose-viewmodels:app",
+  ":compose-viewmodels:core",
+  ":compose-viewmodels:screen-details",
+  ":compose-viewmodels:screen-home",
   ":integration-tests",
   ":interop:customAnnotations-dagger",
   ":interop:customAnnotations-guice",
@@ -44,10 +47,6 @@ include(
   ":interop:dependencies-dagger",
   ":interop:dependencies-kotlinInject",
   ":weather-app",
-  ":multi-module-viewmodels:app",
-  ":multi-module-viewmodels:core",
-  ":multi-module-viewmodels:screen-details",
-  ":multi-module-viewmodels:screen-home",
 )
 
 includeBuild("..")
