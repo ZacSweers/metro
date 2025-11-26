@@ -28,6 +28,7 @@ android {
 
 dependencies {
   implementation("dev.zacsweers.metro:metrox-android")
+  implementation("dev.zacsweers.metro:metrox-viewmodel")
   implementation(libs.androidx.appcompat)
   implementation(libs.androidx.core)
   implementation(libs.androidx.fragment)

@@ -13,22 +13,21 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.binding
-import dev.zacsweers.metro.sample.composeviewmodels.core.LocalViewModelGraphProvider
-import dev.zacsweers.metro.sample.composeviewmodels.core.ViewModelGraphProvider
+import dev.zacsweers.metrox.viewmodel.LocalMetroViewModelFactory
 import dev.zacsweers.metrox.android.ActivityKey
+import dev.zacsweers.metrox.viewmodel.MetroViewModelFactory
+import dev.zacsweers.metrox.viewmodel.ViewModelGraph
 
 @ContributesIntoMap(AppScope::class, binding<Activity>())
 @ActivityKey(MainActivity::class)
 @Inject
-class MainActivity(private val viewModelGraphProvider: ViewModelGraphProvider) :
+class MainActivity(private val metroVmf: MetroViewModelFactory) :
   ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
 
     setContent {
-      CompositionLocalProvider(LocalViewModelGraphProvider provides viewModelGraphProvider) {
-        ComposeApp(modifier = Modifier.safeContentPadding())
-      }
+      ComposeApp(metroVmf, modifier = Modifier.safeContentPadding())
     }
   }
 }
