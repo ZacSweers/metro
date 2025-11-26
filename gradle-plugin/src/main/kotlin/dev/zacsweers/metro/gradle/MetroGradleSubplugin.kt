@@ -148,14 +148,13 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
     }
 
     val reportsDir =
-      extension.reportsDestination.map {
+      extension.reportsDestination.map { baseDir ->
         // Include target name to avoid collisions in KMP projects where multiple targets
         // may have compilations with the same name (e.g., both jvm and android have "main")
-        val subdir =
-          listOf(kotlinCompilation.target.name, kotlinCompilation.name)
-            .filter(String::isNotBlank)
-            .joinToString("/")
-        it.dir(subdir)
+        // Use chained dir() calls instead of joining with "/" to avoid Windows path issues
+        listOf(kotlinCompilation.target.name, kotlinCompilation.name)
+          .filter(String::isNotBlank)
+          .fold(baseDir) { dir, segment -> dir.dir(segment) }
       }
 
     if (extension.reportsDestination.isPresent) {
