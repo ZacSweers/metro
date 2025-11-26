@@ -2109,7 +2109,6 @@ class ICTests : BaseIncrementalCompilationTest() {
                 }
 
                 val androidHome = System.getProperty("metro.androidHome")
-                println("android home is $androidHome")
                 assumeTrue(androidHome != null) // skip if environment not set up for Android
                 // Use invariantSeparatorsPath for cross-platform .properties file compatibility
                 val sdkDir = File(androidHome).invariantSeparatorsPath
