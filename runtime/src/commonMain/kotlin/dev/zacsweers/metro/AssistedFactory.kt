@@ -16,8 +16,8 @@
 package dev.zacsweers.metro
 
 /**
- * Annotates an abstract class or interface used to create an instance of a type via an assisted
- * [Inject] constructor.
+ * Annotates an abstract class or interface used to create an instance of a type via an
+ * [AssistedInject] constructor.
  *
  * An [AssistedFactory]-annotated type must obey the following constraints:
  * - The type must be an abstract class or interface,
@@ -31,7 +31,7 @@ package dev.zacsweers.metro
  * Metro will automatically generate a default factory as a nested class within the injected type.
  *
  * ```
- * @Inject
+ * @AssistedInject
  * class HttpClient(
  *   @Assisted timeoutDuration: Duration,
  *   cache: Cache,
@@ -49,10 +49,9 @@ package dev.zacsweers.metro
  * ### Why opt-in?
  *
  * The main reason this is behind an opt-in option at the moment is because compiler plugin IDE
- * support is rudimentary at best and currently requires enabling a custom registry flag.
+ * support requires some rudimentary configuration to work.
  *
- * Because of this, it's likely better for now to just hand-write the equivalent class that Metro
- * generates. If you still wish to proceed with using this, it can be enabled via the Gradle DSL.
+ * If you still wish to proceed with using this, it can be enabled via the Gradle DSL.
  *
  * ```
  * metro {
@@ -61,9 +60,9 @@ package dev.zacsweers.metro
  * ```
  *
  * @see Assisted
- * @see Inject
- * @see <a href="https://zacsweers.github.io/metro/installation/#ide-support">Docs for how to enable
- *   IDE support</a>
+ * @see AssistedInject
+ * @see <a href="https://zacsweers.github.io/metro/latest/installation/#ide-support">Docs for how to
+ *   enable IDE support</a>
  */
 @MustBeDocumented
 @Retention(AnnotationRetention.RUNTIME)

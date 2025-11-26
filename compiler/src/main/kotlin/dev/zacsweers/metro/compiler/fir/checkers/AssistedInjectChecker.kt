@@ -2,17 +2,20 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
-import dev.zacsweers.metro.compiler.fir.FirMetroErrors.ASSISTED_INJECTION_ERROR
+import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ASSISTED_INJECTION_ERROR
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.checkers.AssistedInjectChecker.FirAssistedParameterKey.Companion.toAssistedParameterKey
 import dev.zacsweers.metro.compiler.fir.classIds
-import dev.zacsweers.metro.compiler.fir.findInjectConstructor
+import dev.zacsweers.metro.compiler.fir.findAssistedInjectConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.fir.validateApiDeclaration
 import dev.zacsweers.metro.compiler.mapToSetWithDupes
-import dev.zacsweers.metro.compiler.unsafeLazy
+import dev.zacsweers.metro.compiler.memoize
+import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
@@ -22,9 +25,11 @@ import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.getStringArgument
+import org.jetbrains.kotlin.fir.declarations.processAllDeclarations
 import org.jetbrains.kotlin.fir.resolve.firClassLike
 import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
 import org.jetbrains.kotlin.fir.scopes.impl.toConeType
+import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
@@ -43,9 +48,34 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
     val isAssistedFactory =
       declaration.isAnnotatedWithAny(session, classIds.assistedFactoryAnnotations)
 
-    if (!isAssistedFactory) return
+    if (isAssistedFactory) {
+      checkAssistedFactory(declaration, source, session, classIds)
+      return
+    }
 
-    declaration.validateApiDeclaration("@Assisted.Factory declarations", checkConstructor = true) {
+    val isAssistedInject =
+      declaration.symbol.findAssistedInjectConstructors(session, checkClass = true).isNotEmpty()
+    if (isAssistedInject) {
+      val qualifier = declaration.symbol.qualifierAnnotation(session)
+      if (qualifier != null) {
+        reporter.reportOn(
+          source,
+          ASSISTED_INJECTION_ERROR,
+          "@AssistedInject-annotated classes cannot be annotated with qualifier annotations.",
+        )
+      }
+    }
+  }
+
+  // TODO validate the assisted injection here too?
+  context(context: CheckerContext, reporter: DiagnosticReporter)
+  private fun checkAssistedFactory(
+    declaration: FirClass,
+    source: KtSourceElement,
+    session: FirSession,
+    classIds: ClassIds,
+  ) {
+    declaration.validateApiDeclaration("@AssistedFactory declarations", checkConstructor = true) {
       return
     }
 
@@ -70,17 +100,15 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
       return
     }
 
-    // Ensure target type has an inject constructor
+    // Ensure target type has an assisted inject constructor
     val targetType = function.resolvedReturnTypeRef.firClassLike(session) as? FirClass? ?: return
     val injectConstructor =
-      targetType.symbol.findInjectConstructor(session, checkClass = true) {
-        return
-      }
+      targetType.symbol.findAssistedInjectConstructors(session, checkClass = true).firstOrNull()
     if (injectConstructor == null) {
       reporter.reportOn(
-        function.source ?: source,
+        function.resolvedReturnTypeRef.source ?: function.source ?: source,
         ASSISTED_INJECTION_ERROR,
-        "Invalid return type: ${targetType.symbol.classId.asSingleFqName()}. `@AssistedFactory` target classes must have a single `@Inject`-annotated constructor or be annotated `@Inject` with only a primary constructor.",
+        "Invalid return type: ${targetType.symbol.classId.asSingleFqName()}. `@AssistedFactory` target classes must have a single `@AssistedInject`-annotated constructor or be annotated `@AssistedInject` with only a primary constructor.",
       )
       return
     }
@@ -90,19 +118,9 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
 
     val functionParams = function.valueParameterSymbols
     val constructorAssistedParams =
-      injectConstructor.valueParameterSymbols.filter {
+      injectConstructor.constructor?.valueParameterSymbols.orEmpty().filter {
         it.isAnnotatedWithAny(session, classIds.assistedAnnotations)
       }
-
-    // ensure assisted params match
-    if (functionParams.size != constructorAssistedParams.size) {
-      reporter.reportOn(
-        targetType.source,
-        ASSISTED_INJECTION_ERROR,
-        "Assisted parameter mismatch. Expected ${functionParams.size} assisted parameters but found ${constructorAssistedParams.size}.",
-      )
-      return
-    }
 
     // Extract concrete type arguments from the factory's return type
     val returnType = function.resolvedReturnTypeRef.coneType
@@ -161,15 +179,15 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
       return
     }
 
-    //    for (parameters in listOf(factoryKeys, constructorKeys)) {
-    //      // no qualifiers on assisted params
-    //      // TODO error + test. Or just just ignore them?
-    //    }
+    // for (parameters in listOf(factoryKeys, constructorKeys)) {
+    //   // no qualifiers on assisted params
+    //   // TODO error + test. Or just just ignore them?
+    // }
 
     // check non-matching keys
     if (factoryKeys != constructorKeys) {
-      val missingFromFactory = factoryKeys.subtract(constructorKeys).joinToString()
-      val missingFromConstructor = constructorKeys.subtract(factoryKeys).joinToString()
+      val missingFromFactory = constructorKeys.subtract(factoryKeys).joinToString()
+      val missingFromConstructor = factoryKeys.subtract(constructorKeys).joinToString()
       reporter.reportOn(
         targetType.source,
         ASSISTED_INJECTION_ERROR,
@@ -191,10 +209,25 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
     }
   }
 
+  private fun findAssistedFactories(
+    declaration: FirClass,
+    session: FirSession,
+    classIds: ClassIds,
+  ): List<FirClassSymbol<*>> = buildList {
+    declaration.processAllDeclarations(session) { declaration ->
+      if (
+        declaration is FirClassSymbol<*> &&
+          declaration.isAnnotatedWithAny(session, classIds.assistedFactoryAnnotations)
+      ) {
+        add(declaration)
+      }
+    }
+  }
+
   // @Assisted parameters are equal, if the type and the identifier match. This subclass makes
   // diffing the parameters easier.
   data class FirAssistedParameterKey(val typeKey: FirTypeKey, val assistedIdentifier: String) {
-    private val cachedToString by unsafeLazy {
+    private val cachedToString by memoize {
       buildString {
         append(typeKey)
         if (assistedIdentifier.isNotEmpty()) {

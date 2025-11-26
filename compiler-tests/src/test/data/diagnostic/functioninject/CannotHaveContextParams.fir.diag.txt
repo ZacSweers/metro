@@ -1,5 +1,0 @@
-/CannotHaveContextParams.kt:(146,168): error: The feature "context parameters" is experimental and should be enabled explicitly. This can be done by supplying the compiler argument '-Xcontext-parameters', but note that no stability guarantees are provided.
-
-/CannotHaveContextParams.kt:(154,159): error: Injected functions cannot have context parameters.
-
-/CannotHaveContextParams.kt:(173,179): error: Injected functions cannot have receiver parameters.

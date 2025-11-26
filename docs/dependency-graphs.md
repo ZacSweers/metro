@@ -32,7 +32,7 @@ Graphs are relatively cheap and should be used freely.
 
 ## Inputs
 
-Runtime inputs can be provided via a `@DependencyGraph.Factory` interface that returns the target graph. These parameters must be annotated with exactly one of `@Provides`, `@Includes`, or `@Extends`.
+Runtime inputs can be provided via a `@DependencyGraph.Factory` interface that returns the target graph. These parameters must be annotated with either `@Provides` or `@Includes`.
 
 ### Provides
 
@@ -101,10 +101,6 @@ interface AppGraph {
     Includes parameters cannot be injected from the graph.
 
 [Binding Containers](#binding-containers) are a special type of `@Includes` type, see more in its section below.
-
-### Extends
-
-`@Extends`-annotated parameters are for extending parent graphs. See _Graph Extensions_ at the bottom of this doc for more information.
 
 ### Creating factories
 
@@ -489,7 +485,52 @@ interface AppGraph {
 - Binding containers may also be [contributed](aggregation.md#contributing-binding-containers).
 - See [#172](https://github.com/ZacSweers/metro/issues/172) for more details.
 
-## Implementation Notes
+## Dynamic Graphs
+
+Dynamic graphs are a powerful feature of the Metro compiler that allow for dynamically replacing bindings in a given graph. To use them, you can pass in a vararg set of _binding containers_ to the `createDynamicGraph()` and `createDynamicGraphFactory()` intrinsics.
+
+```kotlin
+@DependencyGraph
+interface AppGraph {
+  val message: String
+  
+  @Provides fun provideMessage(): String = "real"
+}
+
+class AppTest {
+  val testGraph = createDynamicGraph<AppGraph>(FakeBindings)
+  
+  @Test
+  fun test() {
+    assertEquals("fake", testGraph.message)
+  }
+
+  @BindingContainer
+  object FakeBindings {
+    @Provides fun provideMessage(): String = "fake"
+  }
+}
+```
+
+The compiler will dynamically generate a hidden graph impl _within the enclosing class or file_ that is unique to the combination of input [containers] and target type [T].
+
+**Constraints**
+
+- All containers must be instances (or objects) of _binding containers_.
+- It's an error to pass no containers.
+- All containers must be non-local, canonical classes. i.e., they must be something with a name!
+- This overload may be called in a member function body, top-level function body, or property
+  initializer.
+- The target [T] graph _must_ be annotated with `@DependencyGraph` and must be a
+  valid graph on its own.
+
+??? note "Implementation Notes"
+
+    - The bulk of this implementation is in `IrDynamicGraphGenerator`.
+    - The generated graph impl is a private nested (static) class of the enclosing class or file.
+    - This doesn't swap bindings in a real graph or use a real graph at all, instead tracking available dynamic bindings and preferring them when constructing a graph in `BindingGraphGenerator`.
+
+## General Implementation Notes
 
 Dependency graph code gen is designed to largely match how Dagger components are generated.
 
@@ -500,7 +541,7 @@ Dependency graph code gen is designed to largely match how Dagger components are
 * Dependencies are traversed from public accessors and `inject()` functions.
 * Metro generates Provider Factory classes for each provider. These should be generated at the same time that the provider is compiled so that their factory classes. This is for two primary purposes:
     * They can be reused to avoid code duplication
-    * Metro can copy default values for provider values over to the generated factory to support optional bindings. Since default values may refer to private references, we must generate these factories as nested classes.
+    * Metro can copy default values for provider values over to the generated factory to support optional dependencies. Since default values may refer to private references, we must generate these factories as nested classes.
 * Metro generates a graph *impl* class that holds all aggregated bindings and manages scoping.
 * Scoped bindings are stored in provider fields backed by `DoubleCheck`.
 * Reused unscoped providers instances are stored in reusable fields.

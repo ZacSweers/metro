@@ -2,18 +2,26 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
+import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.MetroOptions
-import dev.zacsweers.metro.compiler.Symbols.DaggerSymbols
-import dev.zacsweers.metro.compiler.fir.FirMetroErrors
-import dev.zacsweers.metro.compiler.fir.FirMetroErrors.BINDING_CONTAINER_ERROR
+import dev.zacsweers.metro.compiler.fir.FirContextualTypeKey
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.BINDING_CONTAINER_ERROR
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
+import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.findInjectConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.isBindingContainer
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
+import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
+import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.metroAnnotations
+import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.isObject
@@ -24,7 +32,6 @@ import org.jetbrains.kotlin.fir.analysis.checkers.classKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirCallableDeclarationChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.directOverriddenSymbolsSafe
-import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.containingClassLookupTag
 import org.jetbrains.kotlin.fir.correspondingProperty
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
@@ -34,6 +41,7 @@ import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
 import org.jetbrains.kotlin.fir.declarations.getAnnotationByClassId
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClass
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
+import org.jetbrains.kotlin.fir.declarations.utils.isExtension
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
 import org.jetbrains.kotlin.fir.declarations.utils.nameOrSpecialName
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
@@ -43,10 +51,12 @@ import org.jetbrains.kotlin.fir.expressions.FirReturnExpression
 import org.jetbrains.kotlin.fir.expressions.FirThisReceiverExpression
 import org.jetbrains.kotlin.fir.propertyIfAccessor
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
+import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.isSubtypeOf
 import org.jetbrains.kotlin.fir.types.renderReadableWithFqNames
+import org.jetbrains.kotlin.fir.types.type
 
 // TODO
 //  What about future Kotlin versions where you can have different get signatures
@@ -58,11 +68,11 @@ internal object BindingContainerCallableChecker :
     val session = context.session
     val classIds = session.classIds
 
+    val containingClassSymbol by memoize {
+      with(session.compatContext) { declaration.getContainingClassSymbol() }
+    }
     if (declaration is FirConstructor) {
-      val isInBindingContainer =
-        declaration
-          .getContainingClassSymbol()
-          ?.isAnnotatedWithAny(session, classIds.bindingContainerAnnotations) ?: false
+      val isInBindingContainer = containingClassSymbol?.isBindingContainer(session) ?: false
       if (isInBindingContainer) {
         // Check for Provides annotations on constructor params
         for (param in declaration.valueParameters) {
@@ -93,72 +103,106 @@ internal object BindingContainerCallableChecker :
     // If we ever wanted to allow providers in the future, this is the check to remove
     if (declaration.isOverride) {
       val overridesAProvider =
-        declaration.symbol.directOverriddenSymbolsSafe(context).any {
+        declaration.symbol.directOverriddenSymbolsSafe().any {
           it.isAnnotatedWithAny(session, classIds.providesAnnotations)
         }
       if (overridesAProvider) {
-        reporter.reportOn(source, FirMetroErrors.PROVIDER_OVERRIDES)
+        reporter.reportOn(source, MetroDiagnostics.PROVIDER_OVERRIDES)
       }
     }
 
     val annotations = declaration.symbol.metroAnnotations(session)
-    if (!annotations.isProvides && !annotations.isBinds) {
+
+    if (
+      session.metroFirBuiltIns.options.enableDaggerRuntimeInterop && annotations.isBindsOptionalOf
+    ) {
+      val contextKey = FirContextualTypeKey.from(session, declaration.symbol)
+      if (!contextKey.isCanonical) {
+        reporter.reportOn(
+          declaration.returnTypeRef.source ?: source,
+          MetroDiagnostics.BINDS_OPTIONAL_OF_ERROR,
+          "@BindsOptionalOf declarations should return the target type (and not wrapped in Provider, Lazy, etc.)",
+        )
+      } else {
+        // If it's wrapped in Optional, report a warning because it's probably not what they mean
+        val isOptional =
+          declaration.returnTypeRef.coneTypeOrNull?.classId == Symbols.ClassIds.JavaOptional
+        if (isOptional) {
+          val genericType =
+            declaration.returnTypeRef.coneType.typeArguments.first().type!!.classId!!.shortClassName
+          reporter.reportOn(
+            declaration.returnTypeRef.source ?: source,
+            MetroDiagnostics.BINDS_OPTIONAL_OF_WARNING,
+            "@BindsOptionalOf declarations usually just return the target type directly (i.e. `$genericType`) but this suspiciously returns `Optional<$genericType>`, which would result callers to use `Optional<Optional<$genericType>>`. If this is really what you intend, you can suppress this warning.",
+          )
+        }
+      }
       return
     }
 
-    if (annotations.isBinds && annotations.scope != null) {
-      reporter.reportOn(
-        annotations.scope.fir.source ?: source,
-        FirMetroErrors.BINDS_ERROR,
-        "@Binds declarations may not have scopes.",
-      )
+    if (!annotations.isProvides && !annotations.isBinds && !annotations.isMultibinds) {
       return
     }
 
     declaration
       .getAnnotationByClassId(DaggerSymbols.ClassIds.DAGGER_REUSABLE_CLASS_ID, session)
       ?.let {
-        reporter.reportOn(it.source ?: source, FirMetroErrors.DAGGER_REUSABLE_ERROR)
+        reporter.reportOn(it.source ?: source, MetroDiagnostics.DAGGER_REUSABLE_ERROR)
         return
       }
 
+    // After the reusable check because reusable is technically a scope and we don't want to
+    // double-report
+    if ((annotations.isBinds || annotations.isMultibinds) && annotations.scope != null) {
+      val kind = if (annotations.isBinds) "Binds" else "Multibinds"
+      reporter.reportOn(
+        annotations.scope.fir.source ?: source,
+        MetroDiagnostics.BINDS_ERROR,
+        "@$kind declarations may not have scopes.",
+      )
+    }
+
     if (declaration.typeParameters.isNotEmpty()) {
-      val type = if (annotations.isProvides) "Provides" else "Binds"
+      val type =
+        if (annotations.isProvides) {
+          "Provides"
+        } else if (annotations.isMultibinds) {
+          "Multibinds"
+        } else {
+          "Binds"
+        }
       reporter.reportOn(
         source,
-        FirMetroErrors.METRO_TYPE_PARAMETERS_ERROR,
+        MetroDiagnostics.METRO_TYPE_PARAMETERS_ERROR,
         "`@$type` declarations may not have type parameters.",
       )
-      return
     }
 
     // Ensure declarations are within a class/companion object/interface
     if (declaration.symbol.containingClassLookupTag() == null) {
       reporter.reportOn(
         source,
-        FirMetroErrors.PROVIDES_ERROR,
+        MetroDiagnostics.PROVIDES_ERROR,
         "@Provides/@Binds declarations must be within an interface, class, or companion object. " +
           "If you're seeing this, `${declaration.nameOrSpecialName}` is likely defined as a " +
           "top-level method which isn't supported.",
       )
-      return
     }
 
     if (annotations.isProvides) {
-      declaration.symbol.getContainingClassSymbol()?.let { containingClass ->
-        if (!containingClass.isAnnotatedWithAny(session, classIds.bindingContainerAnnotations)) {
+      containingClassSymbol?.let { containingClass ->
+        if (!containingClass.isBindingContainer(session)) {
           if (containingClass.classKind?.isObject == true && !containingClass.isCompanion) {
             // @Provides declarations can't live in non-@BindingContainer objects, this is a common
             // case hit when migrating from Dagger/Anvil and you have a non-contributed @Module,
             // e.g. `@Module object MyModule { /* provides */ }`
             reporter.reportOn(
               source,
-              FirMetroErrors.PROVIDES_ERROR,
+              MetroDiagnostics.PROVIDES_ERROR,
               "@Provides declarations must be within an either a @BindingContainer-annotated class XOR interface, class, or companion object. " +
                 "`${declaration.nameOrSpecialName}` appears to be defined directly within a " +
                 "(non-companion) object that is not annotated @BindingContainer.",
             )
-            return
           }
         }
       }
@@ -166,21 +210,41 @@ internal object BindingContainerCallableChecker :
 
     // Check property is not var
     if (declaration is FirProperty && declaration.isVar) {
-      reporter.reportOn(source, FirMetroErrors.PROVIDES_ERROR, "@Provides properties cannot be var")
-      return
+      reporter.reportOn(
+        source,
+        MetroDiagnostics.PROVIDES_ERROR,
+        "@Provides properties cannot be var",
+      )
     }
 
     val returnTypeRef = declaration.propertyIfAccessor.returnTypeRef
     if (returnTypeRef.source?.kind is KtFakeSourceElementKind.ImplicitTypeRef) {
       reporter.reportOn(
         source,
-        FirMetroErrors.PROVIDES_ERROR,
+        MetroDiagnostics.PROVIDES_ERROR,
         "Implicit return types are not allowed for `@Provides` declarations. Specify the return type explicitly.",
       )
-      return
     }
 
-    val returnType = returnTypeRef.coneTypeOrNull ?: return
+    val isPrivate = declaration.visibility == Visibilities.Private
+    if (!isPrivate && !annotations.isMultibinds && declaration !is FirProperty) {
+      if (
+        session.metroFirBuiltIns.options.publicProviderSeverity !=
+          MetroOptions.DiagnosticSeverity.NONE
+      ) {
+        val kind = if (annotations.isBinds) "Binds" else "Provides"
+        val message = "`@$kind` declarations should be private."
+        val diagnosticFactory =
+          when (session.metroFirBuiltIns.options.publicProviderSeverity) {
+            MetroOptions.DiagnosticSeverity.NONE -> reportCompilerBug("Not possible")
+            MetroOptions.DiagnosticSeverity.WARN ->
+              MetroDiagnostics.PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_WARNING
+            MetroOptions.DiagnosticSeverity.ERROR ->
+              MetroDiagnostics.PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_ERROR
+          }
+        reporter.reportOn(source, diagnosticFactory, message)
+      }
+    }
 
     val bodyExpression =
       when (declaration) {
@@ -191,38 +255,20 @@ internal object BindingContainerCallableChecker :
         else -> return
       }
 
-    val isPrivate = declaration.visibility == Visibilities.Private
-    if (declaration !is FirProperty) {
-      if (
-        session.metroFirBuiltIns.options.publicProviderSeverity !=
-          MetroOptions.DiagnosticSeverity.NONE
-      ) {
-        if (!isPrivate && (annotations.isProvides || /* isBinds && */ bodyExpression != null)) {
-          val message =
-            if (annotations.isBinds) {
-              "`@Binds` declarations rarely need to have bodies unless they are also private. Consider removing the body or making this private."
-            } else {
-              "`@Provides` declarations should be private."
-            }
-          val diagnosticFactory =
-            when (session.metroFirBuiltIns.options.publicProviderSeverity) {
-              MetroOptions.DiagnosticSeverity.NONE -> error("Not possible")
-              MetroOptions.DiagnosticSeverity.WARN ->
-                FirMetroErrors.PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_WARNING
-              MetroOptions.DiagnosticSeverity.ERROR ->
-                FirMetroErrors.PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_ERROR
-            }
-          reporter.reportOn(source, diagnosticFactory, message)
-        }
-      }
-    } else if (isPrivate /* && is FirProperty */) {
-      val annotationName = if (annotations.isProvides) "Provides" else "Binds"
+    if (
+      !isPrivate &&
+        bodyExpression != null &&
+        !declaration.isExtension &&
+        (annotations.isBinds || annotations.isMultibinds)
+    ) {
+      val kind = if (annotations.isBinds) "Binds" else "Multibinds"
+      val factory =
+        if (annotations.isBinds) MetroDiagnostics.BINDS_ERROR else MetroDiagnostics.MULTIBINDS_ERROR
       reporter.reportOn(
-        source,
-        FirMetroErrors.PROVIDES_PROPERTIES_CANNOT_BE_PRIVATE,
-        "`@$annotationName` properties cannot be private yet.",
+        returnTypeRef.source ?: source,
+        factory,
+        "Non-private @$kind declarations must be abstract and not have a function or getter body.",
       )
-      return
     }
 
     // TODO support first, non-receiver parameter
@@ -249,14 +295,14 @@ internal object BindingContainerCallableChecker :
             if (returnTypeKey == receiverTypeKey && !annotations.isIntoMultibinding) {
               reporter.reportOn(
                 source,
-                FirMetroErrors.PROVIDES_ERROR,
+                MetroDiagnostics.PROVIDES_ERROR,
                 "Binds receiver type `${receiverTypeKey.render(short = false)}` is the same type and qualifier as the bound type `${returnTypeKey.render(short = false)}`.",
               )
             }
           } else if (!implType.isSubtypeOf(boundType, session)) {
             reporter.reportOn(
               source,
-              FirMetroErrors.PROVIDES_ERROR,
+              MetroDiagnostics.PROVIDES_ERROR,
               "Binds receiver type `${implType.renderReadableWithFqNames()}` is not a subtype of bound type `${boundType.renderReadableWithFqNames()}`.",
             )
           }
@@ -273,15 +319,15 @@ internal object BindingContainerCallableChecker :
         if (returnsThis && annotations.isProvides) {
           reporter.reportOn(
             source,
-            FirMetroErrors.PROVIDES_COULD_BE_BINDS,
-            "`@Provides` extension $name just returning `this` should be annotated with `@Binds` instead for these. See https://zacsweers.github.io/metro/bindings/#binds for more information.",
+            MetroDiagnostics.PROVIDES_COULD_BE_BINDS,
+            "`@Provides` extension $name just returning `this` should be annotated with `@Binds` instead for these. See https://zacsweers.github.io/metro/latest/bindings/#binds for more information.",
           )
           return
         } else if (!returnsThis && annotations.isBinds) {
           reporter.reportOn(
             source,
-            FirMetroErrors.BINDS_ERROR,
-            "`@Binds` declarations with bodies should just return `this`. See https://zacsweers.github.io/metro/bindings/#binds for more information.",
+            MetroDiagnostics.BINDS_ERROR,
+            "`@Binds` declarations with bodies should just return `this`. See https://zacsweers.github.io/metro/latest/bindings/#binds for more information.",
           )
           return
         }
@@ -289,22 +335,23 @@ internal object BindingContainerCallableChecker :
         if (annotations.isProvides) {
           reporter.reportOn(
             source,
-            FirMetroErrors.PROVIDES_ERROR,
-            "`@Provides` $name may not be extension $name. Use `@Binds` instead for these. See https://zacsweers.github.io/metro/bindings/#binds for more information.",
+            MetroDiagnostics.PROVIDES_ERROR,
+            "`@Provides` $name may not be extension $name. Use `@Binds` instead for these. See https://zacsweers.github.io/metro/latest/bindings/#binds for more information.",
           )
           return
         }
       }
     }
 
+    val returnType = returnTypeRef.coneTypeOrNull ?: return
+
     if (annotations.isProvides) {
       if (bodyExpression == null) {
         reporter.reportOn(
           source,
-          FirMetroErrors.PROVIDES_ERROR,
+          MetroDiagnostics.PROVIDES_ERROR,
           "`@Provides` declarations must have bodies.",
         )
-        return
       }
 
       if (returnType.typeArguments.isEmpty()) {
@@ -331,10 +378,15 @@ internal object BindingContainerCallableChecker :
             if (providerScope == classScope) {
               reporter.reportOn(
                 source,
-                FirMetroErrors.PROVIDES_WARNING,
+                MetroDiagnostics.REDUNDANT_PROVIDES,
                 "Provided type '${classTypeKey.render(short = false, includeQualifier = true)}' is already constructor-injected and does not need to be provided explicitly. Consider removing this `@Provides` declaration.",
               )
-              return
+            } else if (classScope != null) {
+              reporter.reportOn(
+                source,
+                MetroDiagnostics.CONFLICTING_PROVIDES_SCOPE,
+                "Provided type '${classTypeKey.render(short = false, includeQualifier = true)}' is already constructor-injected but declares a different scope. This is likely a bug.",
+              )
             }
           }
         }
@@ -342,14 +394,37 @@ internal object BindingContainerCallableChecker :
 
       if (declaration is FirSimpleFunction) {
         for (parameter in declaration.valueParameters) {
-          val assistedAnnotation =
-            parameter.annotationsIn(session, classIds.assistedAnnotations).firstOrNull() ?: continue
-          reporter.reportOn(
-            assistedAnnotation.source ?: parameter.source ?: source,
-            FirMetroErrors.PROVIDES_ERROR,
-            "Assisted parameters are not supported for `@Provides` methods. Create a concrete assisted-injected factory class instead.",
-          )
-          return
+          val annotations =
+            parameter.symbol.metroAnnotations(
+              session,
+              MetroAnnotations.Kind.OptionalBinding,
+              MetroAnnotations.Kind.Assisted,
+              MetroAnnotations.Kind.Qualifier,
+            )
+
+          val assistedAnnotation = annotations.assisted
+          if (assistedAnnotation != null) {
+            reporter.reportOn(
+              assistedAnnotation.fir.source ?: parameter.source ?: source,
+              MetroDiagnostics.PROVIDES_ERROR,
+              "Assisted parameters are not supported for `@Provides` methods. Create a concrete assisted-injected factory class instead.",
+            )
+            return
+          }
+
+          // Check for lazy-wrapped assisted factories in provides function parameters
+          if (
+            validateInjectionSiteType(
+              session,
+              parameter.returnTypeRef,
+              annotations.qualifier,
+              parameter.source ?: source,
+              isOptionalBinding = annotations.isOptionalBinding,
+              hasDefault = parameter.symbol.hasDefaultValue,
+            )
+          ) {
+            return
+          }
         }
       }
     }

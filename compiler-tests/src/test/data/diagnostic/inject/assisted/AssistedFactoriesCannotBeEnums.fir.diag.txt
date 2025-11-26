@@ -1,0 +1,1 @@
+/AssistedFactoriesCannotBeEnums.kt:(161,168): error: @AssistedFactory declarations should be non-sealed abstract classes or interfaces.

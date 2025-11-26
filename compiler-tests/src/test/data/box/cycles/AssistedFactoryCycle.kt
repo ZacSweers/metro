@@ -1,4 +1,4 @@
-@Inject
+@AssistedInject
 class Foo(
   @Assisted nested: Boolean,
   factoryProvider: Provider<Factory>,

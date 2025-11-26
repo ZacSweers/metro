@@ -11,6 +11,8 @@ See @README.md, @docs, and @.github/CONTRIBUTING.md for project overview.
 - `./gradlew -p samples check` - Run sample project tests
 - `./metrow check` - Runs _all_ validation and tests in the project (tests, linting, API validation). This is expensive.
 
+Generally you should run with `--quiet` to reduce noise. Failures would be reported to the console as needed.
+
 ### Code Quality
 Don't bother running code formatting, I'll handle that in commits.
 
@@ -103,3 +105,4 @@ To create a new test, add a source file under the appropriate directory and then
 - Use existing test infrastructure patterns rather than creating new test types
 - Don't run gradle commands with unnecessary flags like `--info`, `--no-daemon`, etc.
 - Don't cd into a module directory and run gradle commands - use `./gradlew` instead from the directory that wrapper is in.
+- Do not run tests automatically, prompt first.

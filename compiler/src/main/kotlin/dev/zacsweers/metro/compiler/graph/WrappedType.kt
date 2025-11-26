@@ -54,7 +54,7 @@ internal sealed interface WrappedType<T : Any> {
 
   fun findMapValueType(): WrappedType<T>? {
     return when (this) {
-      is Canonical -> null
+      is Canonical -> this
       is Provider -> innerType.findMapValueType()
       is Lazy -> innerType.findMapValueType()
       is Map -> valueType

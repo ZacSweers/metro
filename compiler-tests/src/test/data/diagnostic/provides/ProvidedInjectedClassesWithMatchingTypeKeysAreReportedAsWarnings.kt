@@ -4,7 +4,7 @@
 interface ExampleGraph {
   val exampleClass: ExampleClass
 
-  @Provides fun <!PROVIDES_WARNING!>provideExampleClass<!>(): ExampleClass = ExampleClass()
+  @Provides fun <!REDUNDANT_PROVIDES!>provideExampleClass<!>(): ExampleClass = ExampleClass()
 }
 
 @Inject

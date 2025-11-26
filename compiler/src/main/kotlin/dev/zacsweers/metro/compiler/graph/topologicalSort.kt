@@ -123,7 +123,7 @@ internal fun <TypeKey : Comparable<TypeKey>, Binding> buildFullAdjacency(
  */
 internal data class TopoSortResult<T>(
   val sortedKeys: List<T>,
-  val deferredTypes: List<T>,
+  val deferredTypes: Set<T>,
   val reachableKeys: Set<T>,
 )
 
@@ -170,7 +170,7 @@ internal data class TopoSortResult<T>(
 internal fun <V : Comparable<V>> topologicalSort(
   fullAdjacency: SortedMap<V, SortedSet<V>>,
   isDeferrable: (from: V, to: V) -> Boolean,
-  onCycle: (List<V>) -> Nothing,
+  onCycle: (List<V>) -> Unit,
   roots: SortedSet<V>? = null,
   parentTracer: Tracer = Tracer.NONE,
   isImplicitlyDeferrable: (V) -> Boolean = { false },
@@ -230,6 +230,7 @@ internal fun <V : Comparable<V>> topologicalSort(
       topologicallySortComponentDag(componentDag, components.size)
     }
 
+  // Expand each component back to its original vertices
   val sortedKeys =
     parentTracer.traceNested("Expand components") {
       componentOrder.flatMap { id ->
@@ -246,10 +247,11 @@ internal fun <V : Comparable<V>> topologicalSort(
         }
       }
     }
+
   return TopoSortResult(
     // Expand each component back to its original vertices
     sortedKeys,
-    deferredTypes.toList(),
+    deferredTypes,
     reachableKeys.keys,
   )
 }
@@ -317,8 +319,22 @@ private fun <V : Comparable<V>> findMinimalDeferralSet(
     }
   }
 
-  // If no single candidate works, fall back to all candidates
-  return potentialCandidates
+  // If no single candidate works, try all candidates together
+  val wouldBreakAllCycles =
+    wouldBreakAllCycles(
+      potentialCandidates,
+      vertices,
+      fullAdjacency,
+      componentOf,
+      componentId,
+      isDeferrable,
+    )
+  if (wouldBreakAllCycles) {
+    return potentialCandidates
+  }
+
+  // No combination of deferrable edges can break the cycle
+  return emptySet()
 }
 
 /** Checks if deferring the given set of nodes breaks all cycles in the SCC. */
@@ -330,7 +346,7 @@ private fun <V> wouldBreakAllCycles(
   componentId: Int,
   isDeferrable: (V, V) -> Boolean,
 ): Boolean {
-  // Build a reduced adjacency list without deferrable edges involving deferred nodes
+  // Build a reduced adjacency list without edges involving deferred nodes
   val reducedAdjacency = mutableMapOf<V, MutableSet<V>>()
 
   for (from in vertices) {
@@ -338,14 +354,17 @@ private fun <V> wouldBreakAllCycles(
     for (to in fullAdjacency[from].orEmpty()) {
       // stays inside SCC
       if (componentOf[to] == componentId) {
-        // Skip deferrable edges where either source or target is deferred
-        if (isDeferrable(from, to) && (from in deferredNodes || to in deferredNodes)) continue
+        /**
+         * Skip deferrable edges where the source is deferred This matches what [sortVerticesInSCC]
+         * will do
+         */
+        if (isDeferrable(from, to) && from in deferredNodes) continue
         targets.add(to)
       }
     }
-    if (targets.isNotEmpty()) {
-      reducedAdjacency[from] = targets
-    }
+    // Always add the node to the adjacency, even if it has no targets
+    // This ensures all vertices are checked for cycles
+    reducedAdjacency[from] = targets
   }
 
   // Check if the reduced graph is acyclic
@@ -399,10 +418,9 @@ private fun <V : Comparable<V>> sortVerticesInSCC(
   if (vertices.size <= 1) return vertices
   val inScc = vertices.toSet()
 
-  // An edge is "soft" inside this SCC only if it's deferrable *and* it touches a chosen deferred
-  // node.
+  // An edge is "soft" inside this SCC only if it's deferrable and the source is deferred
   fun isSoftEdge(from: V, to: V): Boolean {
-    return isDeferrable(from, to) && (from in deferredInScc || to in deferredInScc)
+    return isDeferrable(from, to) && from in deferredInScc
   }
 
   // v -> hard prereqs (non-soft edges)

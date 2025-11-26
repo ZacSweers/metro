@@ -1,0 +1,9 @@
+/CannotMixProviderOfLazyTypes.kt:(170,196): error: Cannot mix intrinsic types across libraries for Provider<Lazy<T>> types. They must be dev.zacsweers.metro.Provider and kotlin.Lazy but found dev/zacsweers/metro/Provider and dagger/Lazy.
+
+/CannotMixProviderOfLazyTypes.kt:(211,243): error: Cannot mix intrinsic types across libraries for Provider<Lazy<T>> types. They must be dev.zacsweers.metro.Provider and kotlin.Lazy but found javax/inject/Provider and kotlin/Lazy.
+
+/CannotMixProviderOfLazyTypes.kt:(257,291): error: Cannot mix intrinsic types across libraries for Provider<Lazy<T>> types. They must be dev.zacsweers.metro.Provider and kotlin.Lazy but found jakarta/inject/Provider and kotlin/Lazy.
+
+/CannotMixProviderOfLazyTypes.kt:(305,346): error: Cannot mix intrinsic types across libraries for Provider<Lazy<T>> types. They must be dev.zacsweers.metro.Provider and kotlin.Lazy but found jakarta/inject/Provider and dagger/Lazy.
+
+/CannotMixProviderOfLazyTypes.kt:(359,398): error: Cannot mix intrinsic types across libraries for Provider<Lazy<T>> types. They must be dev.zacsweers.metro.Provider and kotlin.Lazy but found javax/inject/Provider and dagger/Lazy.

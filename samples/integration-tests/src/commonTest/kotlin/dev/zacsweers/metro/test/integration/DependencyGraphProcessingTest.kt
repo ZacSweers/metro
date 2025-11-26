@@ -5,6 +5,7 @@ package dev.zacsweers.metro.test.integration
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
+import dev.zacsweers.metro.AssistedInject
 import dev.zacsweers.metro.Binds
 import dev.zacsweers.metro.ClassKey
 import dev.zacsweers.metro.DependencyGraph
@@ -23,7 +24,6 @@ import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.StringKey
 import dev.zacsweers.metro.createGraph
 import dev.zacsweers.metro.createGraphFactory
-import io.ktor.util.PlatformUtils
 import kotlin.reflect.KClass
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -395,7 +395,7 @@ class DependencyGraphProcessingTest {
       fun create(@Provides message: String): AssistedInjectGraph
     }
 
-    @Inject
+    @AssistedInject
     class ExampleClass(@Assisted val intValue: Int, val message: String) {
       @AssistedFactory
       fun interface Factory {
@@ -423,7 +423,7 @@ class DependencyGraphProcessingTest {
   interface AssistedInjectGraphWithCustomAssistedKeys {
     val factory: ExampleClass.Factory
 
-    @Inject
+    @AssistedInject
     class ExampleClass(@Assisted("1") val intValue1: Int, @Assisted("2") val intValue2: Int) {
       @AssistedFactory
       fun interface Factory {
@@ -444,7 +444,7 @@ class DependencyGraphProcessingTest {
   interface AssistedInjectGraphWithGenericFactorySupertype {
     val factory: ExampleClass.Factory
 
-    @Inject
+    @AssistedInject
     class ExampleClass(@Assisted val intValue: Int) {
       fun interface BaseFactory<T> {
         fun create(intValue: Int): T
@@ -469,7 +469,7 @@ class DependencyGraphProcessingTest {
   interface AssistedInjectGraphDiamondInheritance {
     val factory: ExampleClass.Factory
 
-    @Inject
+    @AssistedInject
     class ExampleClass(@Assisted val intValue: Int) {
       fun interface GrandParentBaseFactory<T> {
         fun create(intValue: Int): T
@@ -483,8 +483,7 @@ class DependencyGraphProcessingTest {
         override fun create(intValue: Int): T
       }
 
-      @AssistedFactory
-      fun interface Factory : BaseFactory<ExampleClass>, BaseFactory2<ExampleClass>
+      @AssistedFactory fun interface Factory : BaseFactory<ExampleClass>, BaseFactory2<ExampleClass>
     }
   }
 
@@ -499,7 +498,7 @@ class DependencyGraphProcessingTest {
     // Ensure we return immutable types
     // TODO on the JVM we get Collections.singleton() but other platforms just us HashSet. Maybe we
     //  should use our own? Or use buildSet
-    if (PlatformUtils.IS_JVM) {
+    if (isJvm()) {
       assertFailsWith<UnsupportedOperationException> { (graph.ints as MutableSet<Int>).clear() }
     }
   }
@@ -748,7 +747,7 @@ class DependencyGraphProcessingTest {
     assertEquals(mapOf(1 to 1, 2 to 2), graph.ints)
     assertEquals(mapOf("1" to 1, "2" to 2), graph.strings)
     // TODO WASM annotation classes don't implement equals correctly
-    if (!PlatformUtils.IS_WASM_JS) {
+    if (!isWasm()) {
       assertEquals(
         mapOf(
           MultibindingGraphWithMultipleOtherMapKeyTypes.WrappedSeasoningKey(Seasoning.SPICY) to 1,
@@ -1141,7 +1140,7 @@ class DependencyGraphProcessingTest {
 
     @Inject @SingleIn(AppScope::class) class ExampleSingleton
 
-    @Inject
+    @AssistedInject
     class ExampleClass(@Assisted val intValue: Int, val singleton: ExampleSingleton) {
       @AssistedFactory
       fun interface Factory {

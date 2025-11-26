@@ -5,7 +5,7 @@ class X {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<X> {
+  class MetroFactory : Factory<X> {
     private /* final field */ val y: Provider<Y> = y
     companion object Companion {
       private constructor() /* primary */ {
@@ -15,7 +15,7 @@ class X {
       }
 
       fun create(y: Provider<Y>): Factory<X> {
-        return $$MetroFactory(y = y)
+        return MetroFactory(y = y)
       }
 
       fun newInstance(y: Y): X {
@@ -59,7 +59,7 @@ class Y {
     get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroFactory : Factory<Y> {
+  class MetroFactory : Factory<Y> {
     private /* final field */ val mapOfProvidersOfX: Provider<Map<String, Provider<X>>> = mapOfProvidersOfX
     private /* final field */ val mapOfProvidersOfY: Provider<Map<String, Provider<Y>>> = mapOfProvidersOfY
     companion object Companion {
@@ -70,7 +70,7 @@ class Y {
       }
 
       fun create(mapOfProvidersOfX: Provider<Map<String, Provider<X>>>, mapOfProvidersOfY: Provider<Map<String, Provider<Y>>>): Factory<Y> {
-        return $$MetroFactory(mapOfProvidersOfX = mapOfProvidersOfX, mapOfProvidersOfY = mapOfProvidersOfY)
+        return MetroFactory(mapOfProvidersOfX = mapOfProvidersOfX, mapOfProvidersOfY = mapOfProvidersOfY)
       }
 
       fun newInstance(mapOfProvidersOfX: Map<String, X>, mapOfProvidersOfY: Map<String, Y>): Y {
@@ -106,7 +106,7 @@ class Y {
 @DependencyGraph
 interface CycleMapGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  abstract class $$BindsMirror {
+  abstract class BindsMirror {
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -116,44 +116,43 @@ interface CycleMapGraph {
     @Binds
     @IntoMap
     @StringKey(value = "X")
-    @CallableMetadata(callableName = "<get-x>", isPropertyAccessor = true, startOffset = 263, endOffset = 305)
+    @CallableMetadata(callableName = "<get-x>", propertyName = "x", startOffset = 295, endOffset = 305)
     abstract fun X.x3540965534_intomap(): X
 
     @Binds
     @IntoMap
     @StringKey(value = "Y")
-    @CallableMetadata(callableName = "<get-y>", isPropertyAccessor = true, startOffset = 309, endOffset = 351)
+    @CallableMetadata(callableName = "<get-y>", propertyName = "y", startOffset = 341, endOffset = 351)
     abstract fun Y.y3540965535_intomap(): Y
 
   }
 
-  companion object Companion {
-    private constructor() /* primary */ {
-      super/*Any*/()
-      /* <init>() */
-
-    }
-
-    @GraphFactoryInvokeFunctionMarker
-    operator fun invoke(): CycleMapGraph {
-      return $$MetroGraph()
-    }
-
-  }
-
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroGraph : CycleMapGraph {
-    private /* final field */ val yProvider: Provider<Y> = DelegateFactory<Y>()
+  @MetroImplMarker
+  class Impl : CycleMapGraph {
+    private val yProvider: Provider<Y>
+      field = DelegateFactory<Y>()
+
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 
-      Companion.setDelegate<Y>(delegateFactory = <this>.#yProvider, delegate = Companion.create(mapOfProvidersOfX = Companion.builder<String, X>(size = 1).put(key = "X", providerOfValue = Companion.create(y = <this>.#yProvider)).build(), mapOfProvidersOfY = Companion.builder<String, Y>(size = 1).put(key = "Y", providerOfValue = <this>.#yProvider).build()))
+      Companion.setDelegate<Y>(delegateFactory = <this>.#yProvider, delegate = Companion.create(mapOfProvidersOfX = <this>.<get-mapOfStringToX>(), mapOfProvidersOfY = <this>.<get-mapOfStringToY>()))
     }
 
     override fun y(): Y {
       return <this>.#yProvider.invoke()
     }
+
+    private val mapOfStringToX: Provider<Map<String, Provider<X>>>
+      private get(): Provider<Map<String, Provider<X>>> {
+        return Companion.builder<String, X>(size = 1).put(key = "X", providerOfValue = Companion.create(y = <this>.#yProvider)).build()
+      }
+
+    private val mapOfStringToY: Provider<Map<String, Provider<Y>>>
+      private get(): Provider<Map<String, Provider<Y>>> {
+        return Companion.builder<String, Y>(size = 1).put(key = "Y", providerOfValue = <this>.#yProvider).build()
+      }
 
     @Binds
     @IntoMap
@@ -170,6 +169,20 @@ interface CycleMapGraph {
       override get(): Y {
         return error(message = "Never called")
       }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): CycleMapGraph {
+      return Impl()
+    }
 
   }
 

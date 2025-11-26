@@ -3,10 +3,10 @@
 package dev.zacsweers.metro.compiler.fir
 
 import dev.drewhamilton.poko.Poko
-import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.letIf
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
@@ -34,6 +34,9 @@ internal class FirContextualTypeKey(
 
   val isLazyWrappedInProvider: Boolean
     get() = wrappedType is WrappedType.Provider && wrappedType.innerType is WrappedType.Lazy
+
+  val isCanonical: Boolean
+    get() = wrappedType is WrappedType.Canonical
 
   fun originalType(session: FirSession): ConeKotlinType {
     return when (val wt = wrappedType) {
@@ -89,7 +92,7 @@ internal class FirContextualTypeKey(
           session = session,
           qualifierAnnotation =
             callable.findAnnotation(session, FirBasedSymbol<*>::qualifierAnnotation),
-          hasDefault = callable is FirValueParameterSymbol && callable.hasDefaultValue,
+          hasDefault = callable is FirValueParameterSymbol && callable.hasMetroDefault(session),
         )
     }
   }

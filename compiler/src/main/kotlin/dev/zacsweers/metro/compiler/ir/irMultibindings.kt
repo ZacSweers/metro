@@ -3,23 +3,20 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
-import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import java.util.Objects
-import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
-import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.primaryConstructor
-import org.jetbrains.kotlin.ir.util.render
 
 context(context: IrMetroContext)
 internal fun IrTypeKey.transformMultiboundQualifier(
@@ -29,10 +26,13 @@ internal fun IrTypeKey.transformMultiboundQualifier(
     return this
   }
 
-  val rawSymbol = annotations.symbol ?: error("No symbol found for multibinding annotation")
+  val rawSymbol =
+    annotations.symbol ?: reportCompilerBug("No symbol found for multibinding annotation")
   val declaration =
     rawSymbol.expectAsOrNull<IrSymbol>()?.owner?.expectAsOrNull<IrOverridableDeclaration<*>>()
-      ?: error("Expected symbol to be an IrSymbol but was ${rawSymbol::class.simpleName}")
+      ?: reportCompilerBug(
+        "Expected symbol to be an IrSymbol but was ${rawSymbol::class.simpleName}"
+      )
 
   val elementId = declaration.multibindingElementId
   val bindingId =
@@ -41,7 +41,7 @@ internal fun IrTypeKey.transformMultiboundQualifier(
       val mapKeyType = mapKeyType(mapKey)
       createMapBindingId(mapKeyType, this)
     } else if (annotations.isElementsIntoSet) {
-      val elementType = type.expectAs<IrSimpleType>().arguments.first().typeOrFail
+      val elementType = type.requireSimpleType().arguments.first().typeOrFail
       val elementTypeKey = copy(type = elementType)
       elementTypeKey.multibindingId
     } else {
@@ -49,7 +49,7 @@ internal fun IrTypeKey.transformMultiboundQualifier(
     }
 
   val newQualifier =
-    buildAnnotation(rawSymbol, context.symbols.multibindingElement) {
+    buildAnnotation(rawSymbol, context.metroSymbols.multibindingElement) {
       it.arguments[0] = irString(bindingId)
       it.arguments[1] = irString(elementId)
     }
@@ -90,7 +90,7 @@ internal val IrTypeKey.multibindingId: String
   get() = render(short = false, includeQualifier = true)
 
 internal fun createMapBindingId(mapKey: IrType, elementTypeKey: IrTypeKey): String {
-  return "${mapKey.render()}_${elementTypeKey.multibindingId}"
+  return "${mapKey.render(short = false)}_${elementTypeKey.multibindingId}"
 }
 
 context(context: IrMetroContext)
@@ -101,14 +101,10 @@ internal fun shouldUnwrapMapKeyValues(mapKey: IrAnnotation): Boolean {
 context(context: IrMetroContext)
 internal fun shouldUnwrapMapKeyValues(mapKey: IrConstructorCall): Boolean {
   val mapKeyMapKeyAnnotation = mapKey.annotationClass.explicitMapKeyAnnotation()!!.ir
-  // TODO FIR check valid MapKey
-  //  - single arg
-  //  - no generics
   val unwrapValue = mapKeyMapKeyAnnotation.getSingleConstBooleanArgumentOrNull() != false
   return unwrapValue
 }
 
-// TODO this is probably not robust enough
 context(context: IrMetroContext)
 internal fun mapKeyType(mapKey: IrAnnotation): IrType {
   val unwrapValues = shouldUnwrapMapKeyValues(mapKey)

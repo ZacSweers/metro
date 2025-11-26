@@ -1,32 +1,7 @@
 public final class dev/zacsweers/metro/interop/dagger/DaggerInteropKt {
 	public static final fun asDaggerLazy (Lkotlin/Lazy;)Ldagger/Lazy;
 	public static final fun asDaggerMembersInjector (Ldev/zacsweers/metro/MembersInjector;)Ldagger/MembersInjector;
-	public static final fun asJakartaProvider (Ldev/zacsweers/metro/Provider;)Ljakarta/inject/Provider;
-	public static final fun asJavaxProvider (Ldev/zacsweers/metro/Provider;)Ljavax/inject/Provider;
 	public static final fun asKotlinLazy (Ldagger/Lazy;)Lkotlin/Lazy;
 	public static final fun asMetroMembersInjector (Ldagger/MembersInjector;)Ldev/zacsweers/metro/MembersInjector;
-	public static final fun asMetroProvider (Ljakarta/inject/Provider;)Ldev/zacsweers/metro/Provider;
-	public static final fun asMetroProvider (Ljavax/inject/Provider;)Ldev/zacsweers/metro/Provider;
-}
-
-public final class dev/zacsweers/metro/interop/dagger/internal/DaggerInteropDoubleCheck : dev/zacsweers/metro/internal/BaseDoubleCheck, dagger/Lazy, dagger/internal/Provider {
-	public static final field Companion Ldev/zacsweers/metro/interop/dagger/internal/DaggerInteropDoubleCheck$Companion;
-	public fun <init> (Ldev/zacsweers/metro/Provider;)V
-	public fun get ()Ljava/lang/Object;
-}
-
-public final class dev/zacsweers/metro/interop/dagger/internal/DaggerInteropDoubleCheck$Companion {
-	public final fun daggerProvider (Ljavax/inject/Provider;)Ldagger/internal/Provider;
-	public final fun jakartaProvider (Ljavax/inject/Provider;)Ljakarta/inject/Provider;
-	public final fun javaxProvider (Ljavax/inject/Provider;)Ljavax/inject/Provider;
-	public final fun lazyFromDaggerProvider (Ldagger/internal/Provider;)Ldagger/Lazy;
-	public final fun lazyFromJakartaProvider (Ljakarta/inject/Provider;)Ldagger/Lazy;
-	public final fun lazyFromJavaxProvider (Ljavax/inject/Provider;)Ldagger/Lazy;
-	public final fun lazyFromMetroProvider (Ldev/zacsweers/metro/Provider;)Ldagger/Lazy;
-}
-
-public final class dev/zacsweers/metro/interop/dagger/internal/InternalDaggerInteropKt {
-	public static final fun asDaggerInternalProvider (Ldev/zacsweers/metro/Provider;)Ldagger/internal/Provider;
-	public static final fun asMetroFactory (Ldagger/internal/Factory;)Ldev/zacsweers/metro/internal/Factory;
 }
 

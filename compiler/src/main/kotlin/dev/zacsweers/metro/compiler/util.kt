@@ -8,15 +8,36 @@ import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
+// As of Kotlin 2.3, context parameters always have a mapped name of
+// "$context-<simple name>"
+internal const val CONTEXT_PARAMETER_NAME_PREFIX = $$"$context-"
+
+internal fun generatedContextParameterName(classId: ClassId): Name {
+  return "$CONTEXT_PARAMETER_NAME_PREFIX${classId.shortClassName.capitalizeUS()}".asName()
+}
+
+private val PLATFORM_TYPE_PACKAGES =
+  setOf("android", "androidx", "java", "javax", "kotlin", "kotlinx", "scala")
+
+internal fun ClassId.isPlatformType(): Boolean {
+  return packageFqName.asString().let { packageName ->
+    PLATFORM_TYPE_PACKAGES.any { platformPackage ->
+      packageName == platformPackage || packageName.startsWith("$platformPackage.")
+    }
+  }
+}
+
 internal const val LOG_PREFIX = "[METRO]"
 
-internal const val REPORT_METRO_MESSAGE = "This is a bug in the Metro compiler, please report it to https://github.com/zacsweers/metro."
+internal const val REPORT_METRO_MESSAGE =
+  "This is possibly a bug in the Metro compiler, please report it with details and/or a reproducer to https://github.com/zacsweers/metro."
 
-internal fun <T> unsafeLazy(initializer: () -> T) = lazy(LazyThreadSafetyMode.NONE, initializer)
+internal fun <T> memoize(initializer: () -> T) = lazy(LazyThreadSafetyMode.NONE, initializer)
 
 internal inline fun <reified T : Any> Any.expectAs(): T {
   contract { returns() implies (this@expectAs is T) }
-  return expectAsOrNull<T>() ?: error("Expected $this to be of type ${T::class.qualifiedName}")
+  return expectAsOrNull<T>()
+    ?: reportCompilerBug("Expected $this to be of type ${T::class.qualifiedName}")
 }
 
 internal inline fun <reified T : Any> Any.expectAsOrNull(): T? {
@@ -113,6 +134,11 @@ internal inline fun <T> T.letIf(condition: Boolean, block: (T) -> T): T {
   return if (condition) block(this) else this
 }
 
+internal inline fun <T> T?.escapeIfNull(block: () -> Nothing): T {
+  if (this == null) block()
+  return this
+}
+
 // omit the `get-` prefix for property names starting with the *word* `is`, like `isProperty`,
 // but not for names which just start with those letters, like `issues`.
 internal val isWordPrefixRegex = "^is([^a-z].*)".toRegex()
@@ -140,7 +166,7 @@ internal fun String.split(index: Int): Pair<String, String> {
  */
 internal fun <T> Collection<T>.singleOrError(errorMessage: Collection<T>.() -> String): T {
   if (size != 1) {
-    error(errorMessage())
+    reportCompilerBug(errorMessage())
   }
   return single()
 }
@@ -176,8 +202,99 @@ internal fun <T : Comparable<T>> List<T>.compareTo(other: List<T>): Int {
 internal fun String.suffixIfNot(suffix: String) =
   if (this.endsWith(suffix)) this else "$this$suffix"
 
+// TODO this doesn't include the package name, should we include it
 internal fun ClassId.scopeHintFunctionName(): Name = joinSimpleNames().shortClassName
 
 internal fun reportCompilerBug(message: String): Nothing {
   error("${message.suffixIfNot(".")} $REPORT_METRO_MESSAGE ")
+}
+
+internal fun StringBuilder.appendLineWithUnderlinedContent(
+  content: String,
+  target: String = content,
+  char: Char = '~',
+) {
+  appendLine(content)
+  val lines = lines()
+  val index = lines[lines.lastIndex - 1].lastIndexOf(target)
+  if (index == -1) return
+  repeat(index) { append(' ') }
+  repeat(target.length) { append(char) }
+}
+
+/**
+ * Copied from [kotlin.collections.joinTo] with the support for dynamically choosing a [separator].
+ */
+public fun <T, A : Appendable> Iterable<T>.joinWithDynamicSeparatorTo(
+  buffer: A,
+  separator: (prev: T, next: T) -> CharSequence,
+  prefix: CharSequence = "",
+  postfix: CharSequence = "",
+  limit: Int = -1,
+  truncated: CharSequence = "...",
+  transform: ((T) -> CharSequence)? = null,
+): A {
+  buffer.append(prefix)
+  var count = 0
+  var prev: T? = null
+  for (element in this) {
+    if (++count > 1) {
+      buffer.append(separator(prev!!, element))
+    }
+    prev = element
+    if (limit !in 0..<count) {
+      buffer.appendElement(element, transform)
+    } else break
+  }
+  if (limit in 0..<count) buffer.append(truncated)
+  buffer.append(postfix)
+  return buffer
+}
+
+private fun <T> Appendable.appendElement(element: T, transform: ((T) -> CharSequence)?) {
+  when {
+    transform != null -> append(transform(element))
+    element is CharSequence? -> append(element)
+    element is Char -> append(element)
+    else -> append(element.toString())
+  }
+}
+
+internal fun computeMetroDefault(
+  behavior: OptionalBindingBehavior,
+  isAnnotatedOptionalDep: () -> Boolean,
+  hasDefaultValue: () -> Boolean,
+): Boolean {
+  return if (behavior == OptionalBindingBehavior.DISABLED) {
+    false
+  } else if (hasDefaultValue()) {
+    if (behavior.requiresAnnotatedParameters) {
+      isAnnotatedOptionalDep()
+    } else {
+      true
+    }
+  } else {
+    false
+  }
+}
+
+/**
+ * [singleOrNull] but if there are multiple elements it will throw an error instead of returning
+ * null
+ */
+public fun <T> Sequence<T>.singleOrNullUnlessMultiple(
+  onError: (T) -> Nothing,
+  predicate: (T) -> Boolean = { true },
+): T? {
+  var found: T? = null
+  for (element in this) {
+    if (predicate(element)) {
+      if (found != null) {
+        onError(found)
+      } else {
+        found = element
+      }
+    }
+  }
+  return found
 }

@@ -92,8 +92,8 @@ import kotlin.reflect.KClass
  * }
  * ```
  *
- * @property scope The scope this graph extension aggregates.
- * @property additionalScopes Additional scopes this graph extension aggregates. [scope] must be
+ * @property scope The scope this dependency graph aggregates.
+ * @property additionalScopes Additional scopes this dependency graph aggregates. [scope] must be
  *   defined if this is defined, as this property is purely for convenience.
  * @property excludes Optional list of excluded contributing classes (requires a [scope] to be
  *   defined).
@@ -183,7 +183,7 @@ public annotation class DependencyGraph(
    * ## Using generated declarations directly
    *
    * If you
-   * [enable third party FIR plugins in the IDE](https://zacsweers.github.io/metro/installation/#ide-support),
+   * [enable third party FIR plugins in the IDE](https://zacsweers.github.io/metro/latest/installation/#ide-support),
    * these will be visible and directly linkable. However, your mileage may vary and it's
    * recommended to stick with the graph creator intrinsics for now until the IDE support is
    * improved.

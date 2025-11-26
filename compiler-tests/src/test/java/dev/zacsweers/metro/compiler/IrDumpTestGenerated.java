@@ -29,6 +29,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
   }
 
   @Test
+  @TestMetadata("MultibindingsWithComplexDependenciesGetProperties.kt")
+  public void testMultibindingsWithComplexDependenciesGetProperties() {
+    runTest("compiler-tests/src/test/data/dump/ir/MultibindingsWithComplexDependenciesGetProperties.kt");
+  }
+
+  @Test
   @TestMetadata("scratch.kt")
   public void testScratch() {
     runTest("compiler-tests/src/test/data/dump/ir/scratch.kt");
@@ -106,15 +112,57 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("EmptyMapMultibindingsUseEmptyMap.kt")
+    public void testEmptyMapMultibindingsUseEmptyMap() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/EmptyMapMultibindingsUseEmptyMap.kt");
+    }
+
+    @Test
+    @TestMetadata("ExtensionsAreInnerClasses.kt")
+    public void testExtensionsAreInnerClasses() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/ExtensionsAreInnerClasses.kt");
+    }
+
+    @Test
     @TestMetadata("GraphAccessors.kt")
     public void testGraphAccessors() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/GraphAccessors.kt");
     }
 
     @Test
+    @TestMetadata("GraphImplClassAsReturnType.kt")
+    public void testGraphImplClassAsReturnType() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/GraphImplClassAsReturnType.kt");
+    }
+
+    @Test
     @TestMetadata("InitsAreChunked.kt")
     public void testInitsAreChunked() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/InitsAreChunked.kt");
+    }
+
+    @Test
+    @TestMetadata("LazyPropertiesHaveDeterministicOrder.kt")
+    public void testLazyPropertiesHaveDeterministicOrder() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/LazyPropertiesHaveDeterministicOrder.kt");
+    }
+
+    @Test
+    @TestMetadata("MapsUseMapBuilderIfNoProvider.kt")
+    public void testMapsUseMapBuilderIfNoProvider() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/MapsUseMapBuilderIfNoProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("MultipleRefsGetProviderFields.kt")
+    public void testMultipleRefsGetProviderFields() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/MultipleRefsGetProviderFields.kt");
+    }
+
+    @Test
+    @TestMetadata("OptionalBindingsHaveValidFieldNames.kt")
+    public void testOptionalBindingsHaveValidFieldNames() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/OptionalBindingsHaveValidFieldNames.kt");
     }
 
     @Test
@@ -133,6 +181,38 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     @TestMetadata("UnusedScopedConstructorInjectedClassWithConstructorAnnotatedIsDiscovered.kt")
     public void testUnusedScopedConstructorInjectedClassWithConstructorAnnotatedIsDiscovered() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/UnusedScopedConstructorInjectedClassWithConstructorAnnotatedIsDiscovered.kt");
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/dump/ir/dependencygraph/dynamic")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Dynamic {
+      @Test
+      public void testAllFilesPresentInDynamic() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph/dynamic"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      }
+
+      @Test
+      @TestMetadata("SimpleDynamicGraph.kt")
+      public void testSimpleDynamicGraph() {
+        runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/dynamic/SimpleDynamicGraph.kt");
+      }
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/dump/ir/dependencygraph/interop")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Interop {
+      @Test
+      public void testAllFilesPresentInInterop() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph/interop"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      }
+
+      @Test
+      @TestMetadata("BindsOptionalOfUsesLazyProviders.kt")
+      public void testBindsOptionalOfUsesLazyProviders() {
+        runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/interop/BindsOptionalOfUsesLazyProviders.kt");
+      }
     }
   }
 

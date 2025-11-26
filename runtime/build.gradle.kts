@@ -64,6 +64,12 @@ kotlin {
     browser {}
   }
 
+  @OptIn(ExperimentalWasmDsl::class)
+  wasmWasi {
+    binaries.executable()
+    nodejs()
+  }
+
   configureOrCreateNativePlatforms()
 
   @Suppress("OPT_IN_USAGE")

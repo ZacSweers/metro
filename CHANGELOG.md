@@ -4,6 +4,436 @@ Changelog
 **Unreleased**
 --------------
 
+- **New**: New `dev.zacsweers.metro:metrox-android` artifact for Android `AppComponentFactory` support. See the [docs](https://zacsweers.github.io/metro/latest/metrox-android) for more information.
+- **Enhancement**: Lazily validate multibindings. Previously, multibindings were validated eagerly even if they were unused in a graph.
+- **Enhancement**: Report all duplicate bindings errors during graph construction rather than failing at first.
+- **Fix**: Catch more `IrErrorType` error types cases and report context/advice where possible.
+- **Fix**: Dedupe binding containers contributed to both parent and child graphs.
+- **Fix**: Fix support for Anvil's `exclude` argument in dependency graph annotations when Anvil interop is enabled.
+- **Fix**: Fix colliding reports destinations in KMP projects by disambiguating with the target path as another subdir indirection.
+- **Fix**: Fix qualifiers not being propagated to generated `MembersInjector` classes for multibindings.
+- [gradle] Add `generateMetroGraphMetadata` task that writes a merged JSON dump of all binding graphs in the project. This can be chained from the `GenerateGraphMetadataTask` for further processing.
+- [gradle] Add `MetroArtifacts` API for accessing Metro reports and graph metadata directories.
+- [gradle] Mark `metro.reportsDestination` as delicate/opt-in.
+
+0.7.7
+-----
+
+_2025-11-19_
+
+- Add `MetroCompilerPluginRegistrar.pluginId` for forward compatibility with Kotlin `2.3.0`'s new API.
+
+0.7.6
+-----
+
+_2025-11-17_
+
+- **Fix**: Record IC lookups for merged supertypes to graph extensions.
+- **Fix**: Optimize `checkScope()` diagnostics in errors by checking if roots are empty first.
+- **Fix**: Fix diagnostic when an `@Multibinds`-annotated Map uses an enum as a key.
+- **Fix**: Fix Dagger interop error messages when validating `@Module`s with constructor-injected fields to match errors for `@BindingContainer`s.
+- **Fix**: Catch `IrErrorType` error types earlier when generating missing binding hints.
+- **Fix**: Fix IC edge case when restoring a deleted contributed binding container.
+- Update shaded Okio to `3.16.3`.
+- Build against Gradle `9.2.1`.
+
+Special thanks to [@jonamireh](https://github.com/jonamireh), [@neworld](https://github.com/neworld), and [@JoelWilcox](https://github.com/JoelWilcox) for contributing to this release!
+
+0.7.5
+-----
+
+_2025-11-07_
+
+- **New**: Add Guice interop. This is largely focused on Guice's `Provider` type, annotations, and existing interop with jakarta.inject annotations.
+    ```kotlin
+    metro {
+      includeGuice()
+    }
+    ```
+- **Enhancement**: Improve IR caching layer with supertype caching.
+- **Enhancement**: Add diagnostic to check for `Array` properties in map key annotations that unwrap values.
+- **Enhancement**: Add diagnostic to check multibinds map keys are valid (primitives, strings, `KClass`, annotation classes, not arrays).
+- **Enhancement**: Improve multibinding star project checks.
+- **Enhancement**: Nudge `@Binds` functions toward `private` visibility like `@Provides` functions now that it's fully supported.
+- **Fix**: Don't treat `l` as an illegal char in name allocating. This was supposed to be `;`.
+- **Fix**: Ensure all reserved properties by child graphs get properties in parents. Previously, there were some cases for bindings that were unused in the parent and otherwise did not meet the criteria for having a backing property would get missed in binding property collection.
+- **Fix**: Fix compiler crash when injecting a target type with star generics.
+- **Fix**: Fix `ClassCastException` when accessing a `Provider` contributed from a `dagger.Module`.
+- Split `javax` and `jakarta` interop APIs into separate artifacts from dagger for reuse.
+
+Special thanks to [@jonamireh](https://github.com/jonamireh) for contributing to this release!
+
+0.7.4
+-----
+
+_2025-11-04_
+
+- **Fix**: Support more than 32 parameters to Graph factories.
+- **Fix**: Support more than 32 accessors in Graphs.
+- **Fix**: Transform `INSTANCE` access types for `GraphDependency` bindings.
+- **Fix**: Fix ordering of setter member injection parameters when reading injectors across modules.
+- [change] When generating reports, create directory structures matching packages rather than generating all to one top-level dir.
+
+Special thanks to [@jonamireh](https://github.com/jonamireh), [@kevinguitar](https://github.com/kevinguitar), and [@JoelWilcox](https://github.com/JoelWilcox) for contributing to this release!
+
+0.7.3
+-----
+
+_2025-11-02_
+
+- **New**: Support interop with Dagger/Anvil-generated member injector classes.
+- **Enhancement**: Skip reading members when loading externally compiled member injector classes. Parameters are now computed from their static `inject*` functions.
+- **Enhancement**: Improve logic for avoiding reserved keywords or illegal character for names in more platforms.
+- **Enhancement**: Inline empty multibinding expressions in code gen.
+- **Enhancement**: Better detect static-ish functions in generated Kotlin factories from Dagger/Anvil interop.
+- **Enhancement**: Cache members injector binding lookups.
+- **Enhancement**: Don't double-lookup members injectors already computed from roots.
+- **Enhancement**: Support Kotlin `2.3.0-Beta2`.
+- **Enhancement**: Test against Kotlin `2.2.21`.
+- **Enhancement**: Improve generated graph impl declaration checks.
+- **Fix**: Work around "LookupSymbols are not yet converted to ProgramSymbols" issue ([KT-80412](https://youtrack.jetbrains.com/issue/KT-80412)) in incremental compilation by avoiding using `$$` prefixes in generated class names.
+- **Fix**: Fix interop support for two layers of `Provider` interop in map multibindings (i.e. `Provider<Map<Key, Provider<Value>>`).
+- Deprecate `includeAnvil()` Gradle DSL function in favor of more specific `includeAnvilForDagger()` and `includeAnvilForKotlinInject()` functions.
+- Move interop annotations controls to compiler. For Gradle users, there's mostly no change (other than the above). For users of any other build system, this makes it a bit easier to reuse the interop annotations logic.
+- [docs] Add compatibility docs: https://zacsweers.github.io/metro/latest/compatibility/. Metro supports a moving range of Kotlin versions, this page captures the tested versions for each release.
+- [docs] Add stability docs: https://zacsweers.github.io/metro/latest/stability/
+
+Special thanks to [@jonamireh](https://github.com/jonamireh), [@hossain-khan](https://github.com/hossain-khan), and [@l2hyunwoo](https://github.com/l2hyunwoo) for contributing to this release!
+
+0.7.2
+-----
+
+_2025-10-22_
+
+- **Fix**: Fix eager initialization of some bindings going into multibindings.
+- **Fix**: Fix injection of `Lazy`-wrapped multibindings.
+
+0.7.1
+-----
+
+_2025-10-21_
+
+**🚨 This release has a severe bug in multibinding code gen, please use 0.7.2 instead!**
+
+- **New**: Add missing dependency hints for missing bindings errors
+    ```
+    [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: FooImpl
+
+        FooImpl is injected at
+            [AppGraph] Bindings.bind: FooImpl
+        Base is requested at
+            [AppGraph] AppGraph.base
+
+    (Hint)
+    'FooImpl' doesn't appear to be visible to this compilation. This can happen when a binding references a type from an 'implementation' dependency that isn't exposed to the consuming graph's module.
+    Possible fixes:
+    - Mark the module containing 'FooImpl' as an 'api' dependency in the module that defines 'Bindings' (which is requesting it).
+    - Add the module containing 'FooImpl' as an explicit dependency to the module that defines 'AppGraph'.
+    ```
+
+- **Enhancement**: Improve code generation around multibinding collection builders and contributors, using more lazy getters in graph code gen.
+- **Enhancement**: Short-circuit empty map providers to `emptyMap()`.
+- **Enhancement**: Support default values for assisted parameter arguments in top-level function injection.
+- **Enhancement**: Allow using `@Contributes*` annotations on assisted factories with `contributesAsInject` enabled.
+- **Enhancement**: Allow `@OptionalBinding` annotation to be customizable/replaceable.
+- **Change**: Deprecate `@OptionalDependency` in favor of `@OptionalBinding`. Same behavior, just a slightly more consistent name.
+- **Fix**: Compute `Optional` instance lazily when requested as a `Provider<Optional<T>>` and the underlying optional is not empty. Only applies to `@BindsOptionalOf` interop.
+- **Fix**: Don't generate duplicate `init()` functions when chunking initializers if graphs already have an explicit `init()` function.
+- **Fix**: Fix support for assisted inject with no assisted params.
+- **Fix**: Detect platform types in just the `kotlin` package. Previously it missed any that didn't have multiple package segments.
+- **Fix**: Align unused context parameter special names on Kotlin 2.3.x.
+- Remove `2.3.0-dev-7984` compat (superseded by `2.3.0-Beta1`).
+
+Special thanks to [@Lavmee](https://github.com/Lavmee), [@kevinguitar](https://github.com/kevinguitar), and [@jackwilsdon](https://github.com/jackwilsdon) for contributing to this release!
+
+0.7.0
+-----
+
+_2025-10-17_
+
+### Dynamic Graphs
+
+Dynamic graphs are a powerful new feature of the Metro compiler that allows for dynamically replacing bindings in a given graph. To use them, you can pass in a vararg set of _binding containers_ to the `createDynamicGraph()` and `createDynamicGraphFactory()` intrinsics.
+
+```kotlin
+@DependencyGraph
+interface AppGraph {
+  val message: String
+
+  @Provides fun provideMessage(): String = "real"
+}
+
+class AppTest {
+  val testGraph = createDynamicGraph<AppGraph>(FakeBindings)
+
+  @Test
+  fun test() {
+    assertEquals("fake", testGraph.message)
+  }
+
+  @BindingContainer
+  object FakeBindings {
+    @Provides fun provideMessage(): String = "fake"
+  }
+}
+```
+
+This is particularly useful for tests. See their docs for more information: [Dynamic Graphs](https://zacsweers.github.io/metro/latest/dependency-graphs/#dynamic-graphs).
+
+This API is experimental and may change in the future, please report any issues you encounter!
+
+### Implicit `@Inject` behavior on (most) `@Contributes*`-annotated types
+
+Up to this point, Metro has always required you to use `@Inject` on most `@Contributes*` annotated types. However, this can feel a bit repetitive and tedious. In this release, there is a new `contributesAsInject` option that can be enabled that will treat all `@Contributes*` annotated types as `@Inject` by default. You can still use `@Inject` on classes to be explicit, and if you have multiple constructors you must still use `@Inject` on the constructor you want to be used.
+
+_The only exception to this is `@ContributesTo`, which isn't applicable to injected types._
+
+This is disabled by default to start but will likely become the default in a future release.
+
+```kotlin
+@ContributesBinding(AppScope::class)
+// @Inject // <-- now implicit!
+class TacoImpl(...) : Taco
+```
+
+### Other Changes
+
+- **Behavior change**: Remove `assistedInjectMigrationSeverity` DSL. You must now move fully to using `@AssistedInject` annotations for assisted types.
+- **New**: Allow exposing assisted-injected classes on a graph with qualifier annotations via `@Provides` declarations. This means you could, for example, write a provider like so:
+    ```kotlin
+    @Provides @Named("qualified")
+    fun provideTaco(factory: Taco.Factory): Taco = factory.create("spicy")
+    ```
+- **New**: Add diagnostic disallowing qualifier annotations directly on `@AssistedInject`-annotated classes.
+- **New**: Add `wasmWasi` targets to Metro's runtime.
+- **New**: Add diagnostic to report positional arguments use in custom interop annotations. See the [interop docs](https://zacsweers.github.io/metro/latest/interop#diagnostics) for more information. This is disabled by default but can be configured via the `interopAnnotationsNamedArgSeverity` option.
+- **New**: Support context parameters on top-level injected functions. See the [docs](https://zacsweers.github.io/metro/latest/injection-types/#context-parameters) for more information.
+- **New**: Improve diagnostic checks around binding container arguments to annotations and graph creators.
+- **New**: Add a diagnostic to warn on suspicious injection of unqualified object classes.
+- **Enhancement**: Add diagnostic for providing a constructor-injected class with a different scope than the class (if the class has a scope).
+- **Enhancement**: Allow replacing/excluding binding containers by `@Origin` annotations.
+- **Fix**: Don't use interoped annotation arguments at matching indices if their name does not match the requested name.
+- **Fix**: Trace all member injection dependencies from supertypes in graph reachability computation.
+- **Fix**: Use compat `getContainingClassSymbol()` (fixes Kotlin 2.3.0-x compatibility).
+- **Fix**: Better escape field names to be valid in JVM.
+- **Fix**: Don't double-invoke `Optional` binding fields.
+- **Fix**: Don't report duplicate bindings if injectors for both a parent and child class are present on a graph.
+- **Fix**: Look up correct target class ID for computed member injectors in `BindingLookup`.
+- **Fix**: Don't allow binding containers to be `inner` classes.
+- **Fix**: Don't allow binding containers to be local classes.
+- **Fix**: Don't allow binding containers to be anonymous objects.
+- **Fix**: Fix wrong parent graph name in `IncompatiblyScopedBindings` hint.
+- **Fix**: Fix replacements for regular contributed types not getting processed in graph extensions.
+- **Fix**: Don't re-process contribution merging for generated graph extension impls during graph node creation.
+- **Fix**: Don't reserve provider fields for custom wrapper types like interoped `Optional` types, avoiding accidental eager initialization in cycles.
+- Change the warning key for redundant provides to more specific `REDUNDANT_PROVIDES`.
+
+Special thanks to [@erawhctim](https://github.com/erawhctim) and [@CharlieTap](https://github.com/CharlieTap) for contributing to this release!
+
+0.6.10
+------
+
+_2025-10-11_
+
+### Optional Dependency Behaviors
+
+Graph accessors can now expose optional dependencies, just use `@OptionalDependency` on the accessor. Note that the accessor _must_ declare a default body that Metro will use if the dependency is absent.
+
+```kotlin
+@DependencyGraph
+interface AppGraph {
+  @OptionalDependency
+  val message: String
+    get() = "Absent!"
+}
+```
+
+There are a couple of optional configuration for Metro's optional dependency support that can be configured via the `optionalDependencyBehavior` Gradle DSL:
+
+- `DISABLED` - Disallows optional dependencies entirely.
+- `REQUIRE_OPTIONAL_DEPENDENCY` - Requires optional dependency _parameters_ to also be annotated with `@OptionalDependency`. This may be preferable for consistency with accessors and/or explicitness.
+- `DEFAULT` - The default behavior as described above — accessors must be annotated with `@OptionalDependency` with default bodies and parameters just use default value expressions.
+
+### Other changes
+
+- **New**: Add interop for Dagger `@BindsOptionalOf`. Note this is currently only limited to `java.util.Optional`.
+- **Enhancement**: Improve error messages for unexpected `IrErrorType` encounters.
+- **Enhancement**: Add configurable `statementsPerInitFun` to option to control the number of statements per init function. Only for advanced/debugging use.
+- **Fix**: Allow `@Includes` types themselves (i.e., not their accessors) to be dependencies in generated graphs.
+- **Fix**: Allow multiple graph extension factory accessors of the same factory type on parent graphs.
+- **Fix**: Report all missing `@Provides` body diagnostics rather than returning early.
+- **Fix**: Allow `open` members from abstract graph class superclasses to be accessors.
+- **Fix**: When detecting default function/property getter bodies in graph accessors, check for `open` modality as well.
+- **Fix**: Don't duplicate includes accessor keys across multiple parent context levels.
+- **Fix**: Fix not respecting ref counting when allocating provider fields for constructor-injected class providers. This should reduce generated graph code size quite a bit.
+
+Special thanks to [@ChristianKatzmann](https://github.com/ChristianKatzmann) for contributing to this release!
+
+0.6.9
+-----
+
+_2025-10-07_
+
+This release introduces new experimental support for multiple compiler and IDE versions. The primary goal of this is to better support running Metro's FIR extensions across different IntelliJ Kotlin Plugin versions and make IDE support more robust, and general compiler compatibility falls out of that more or less for free. This is experimental and only going to target _forward_ compatibility.
+
+- **New**: Report more IR errors up to a maximum. The default is `20`, but is configurable via the `maxIrErrors` Gradle DSL option. If you want to restore the previous "fail-fast" behavior, you can set this value to `1`.
+- **New**: Generate specific containing names in Kotlin 2.3.0+ when generating top-level functions for hint gen.
+- **Behavior change**: Assisted-inject types can only be directly exposed on a graph if qualified.
+- **Behavior change**: Update the Gradle plugin to target Kotlin 2.0, which requires Gradle `8.11` or later.
+- **Enhancement**: Improve compatibility across 2.2.20 and 2.3.0+ releases. This release _should_ be compatible with both!
+- **Enhancement**: Add diagnostic for directly injecting unqualified assisted-injected classes rather than using their factories.
+- **Enhancement**: Add diagnostic mixing `Provider` and `Lazy` types for `Provider<Lazy<T>>` injections.
+- **Enhancement**: Add diagnostics for custom map keys.
+- **Enhancement**: Fully allow exposing `Provider<Lazy<T>>` accessor types.
+- **Enhancement**: Significantly improve duplicate binding error message rendering.
+- **Enhancement**: Inline internal `trace` functions to reduce overhead.
+- **Enhancement**: Don't always generate fields for `MembersInjector` bindings.
+- **Enhancement**: Improve formatting of long cycles in `DependencyCycle` error messages.
+- **Enhancement**: Improve formatting of aliases in `DependencyCycle` error messages. Aliases are now indicated with `~~>` arrows instead of `-->`.
+- **Enhancement**: Improve formatting of member declarations in error messages for better IDE linking (if in the IDE terminal/console output) by using `.` separators instead of `#`.
+- **Fix**: Avoid obscure `UnsupportedOperationException` failures when reporting missing bindings.
+- **Fix**: Only generate assisted factories if `@AssistedInject` annotations are used on the target class.
+- **Fix**: Remove `PsiElement` shading workaround when reporting diagnostics.
+- **Fix**: Treat `MembersInjector` types as implicitly deferrable in binding graph validation.
+- **Fix**: Report cycles in form of `binding --> dependency` rather than the reverse for better readability.
+
+Special thanks to [@kevinguitar](https://github.com/kevinguitar), [@hossain-khan](https://github.com/hossain-khan), and [@vRallev](https://github.com/vRallev) for contributing to this release!
+
+0.6.8
+-----
+
+_2025-09-26_
+
+- **Fix**: Preserve original nullability when canonicalizing generic types.
+
+0.6.7
+-----
+
+_2025-09-25_
+
+### New `@AssistedInject` annotation
+
+Assisted-injected classes must now use `@AssistedInject` instead of `@Inject`.
+
+This is for multiple reasons:
+  - It's more explicit at the source declaration site that this uses assisted injection and cannot be requested directly on the DI graph. This is particularly useful for scenarios where there no assisted parameters but you still want to use assisted injection.
+  - This will allow adding more granular checks at compile-time to validate use-sites.
+  - This will allow providing assisted types directly on the graph.
+  - Will simplify some of Metro's internal logic.
+
+Note that not all internal changes are implemented yet to allow for a migration period. In this release, use of `@Inject` with `@Assisted` parameters is a compiler _warning_ and will become an error in the future. This diagnostic is configurable via the `assistedInjectMigrationSeverity` Gradle DSL option.
+
+### Other changes
+
+- **New**: Support for interop with externally generated Dagger modules.
+- **Enhancement**: Always check for available assisted factories when reporting `InvalidBinding` errors about misused assisted injects.
+- **Enhancement**: Always specifically report mismatched assisted parameter mismatches.
+- **Enhancement**: Validate `Lazy` assisted factory injections in more places.
+- **Enhancement**: Allow private `@Binds` properties.
+- **Enhancement**: Better canonicalize flexible mutability from Dagger interop in collections and flexible nullability.
+- **Enhancement**: Better canonicalize flexible nullability from Dagger interop in generic type arguments.
+- **Enhancement**: Simplify assisted factory impl class generation by moving it entirely to IR.
+- **Enhancement**: Allow qualifier narrowing but not widening on graph accessor types. Essentially, you can have a base interface with an unqualified accessor and then override that to add a qualifier in a subtype, but not the other way around.
+- **Fix**: Register `MetroDiagnostics` in FIR.
+- **Fix**: Use correct severity when reporting warnings to `MessageCollector` from newer IR diagnostics factories.
+- **Fix**: When transforming FIR override statuses, check all supertypes and not just immediate supertype.
+- **Fix**: Carry qualifiers over from Dagger inject constructors when interoping with dagger factories.
+- If Dagger runtime interop is enabled, do not run status transformation on `@Provides` declarations in dagger modules.
+
+Special thanks to [@kevinguitar](https://github.com/kevinguitar), [@ChristianKatzmann](https://github.com/ChristianKatzmann), and [@hossain-khan](https://github.com/hossain-khan) for contributing to this release!
+
+0.6.6
+-----
+
+_2025-09-11_
+
+- **Enhancement:** Optimize annotation lookups in some places in IR.
+- **Fix:** If a graph declares an overridable declaration that matches one of a contributed supertype, transform it to add the requisite `override` modifier.
+    - All that is to say, this code now works
+      ```kotlin
+      @ContributesTo(AppScope::class)
+      interface StringRequester {
+        val string: String
+      }
+
+      @DependencyGraph(AppScope::class)
+      interface AppGraph {
+        val string: String // <-- previously failed to compile due to missing override
+      }
+      ```
+- Update to Kotlin `2.2.20`. This release requires `2.2.20` or later. See the compatibility [docs](https://zacsweers.github.io/metro/latest/compatibility).
+
+Special thanks to [@kevinguitar](https://github.com/kevinguitar) for contributing to this release!
+
+0.6.5
+-----
+
+_2025-09-11_
+
+* **New**: Add `@Origin` annotation for custom code generators to link origin classes. See the [docs](https://zacsweers.github.io/metro/latest/generating-metro-code.html#origin-annotations).
+* **Fix**: Fix wrong `IrType` for default value expressions wrapped in `Provider`.
+
+Special thanks to [@ChristianKatzmann](https://github.com/ChristianKatzmann), [@KevinGuitar](https://github.com/KevinGuitar), and [@hossain-khan](https://github.com/hossain-khan) for contributing to this release!
+
+0.6.4
+-----
+
+_2025-09-01_
+
+* **Enhancement**: Transform and collect contribution data in a single pass during IR.
+* **Fix**: Ensure contributed binding containers' included containers are available in root dependency graphs.
+* **Fix**: Make `@Includes` parameter keys available to extensions.
+* **Fix**: Fix an edge case where an included binding container that's transitively included by another container is seen to have zero bindings.
+* **Fix**: Report diagnostic errors to check that binding containers don't extend other binding containers.
+* **Fix**: Report diagnostic errors if accessors or injectors have conflicting qualifiers in overridden functions.
+* **Fix**: Report diagnostic errors if an injector function does not return `Unit`.
+
+Special thanks to [@joelwilcox](https://github.com/joelwilcox), [@vRallev](https://github.com/vRallev), [@kevinguitar](https://github.com/kevinguitar), and [@erawhctim](https://github.com/erawhctim) for contributing to this release!
+
+0.6.3
+-----
+
+_2025-08-23_
+
+* **Enhancement**: Allow `@Includes` parameters that are binding containers to transitively include other binding containers.
+* **Fix**: Ensure provider fields for graph instances when needed by extensions.
+
+Special thanks to [@hossain-khan](https://github.com/hossain-khan), [@vRallev](https://github.com/vRallev), and [@erawhctim](https://github.com/erawhctim) for contributing to this release!
+
+0.6.2
+-----
+
+_2025-08-22_
+
+* **Enhancement**: Add diagnostic for contributed binding containers with no (visible) no-arg constructor.
+* **Enhancement**: Add hint for missing bindings if the binding appears to be contributed by an `internal` type in another, non-friend module.
+* **Fix**: Don't allocate new fields for deferred bindings reserved by extension graphs.
+* **Fix**: Allow graph extensions to expose their own factories if inherited from parents.
+
+Special thanks to [@KevinGuitar](https://github.com/KevinGuitar), [@hossain-khan](https://github.com/@hossain-khan) and [@ChrisBanes](https://github.com/ChrisBanes) for contributing to this release!
+
+0.6.1
+-----
+
+_2025-08-20_
+
+* **New**: Add a diagnostic to report parent keys used by graph extensions `parent-keys-used-*.txt`.
+* **Enhancement**: Graph extensions are now generated as `inner` classes, reducing much of the necessary generated code in parent graphs and allowing them to access parent binding fields directly.
+* **Enhancement**: Allow graph extensions to depend on other graph extensions within the context of their parent graph.
+* **Enhancement**: Add a diagnostic for graph factories with vararg parameters.
+* **Enhancement**: Allow graph extension factories to participate in the binding graph, which then allows injecting or binding them like any other dependency.
+* **Enhancement**: Improve error message location accuracy for missing bindings when reporting from a `@Binds` declaration.
+* **Fix**: Don't override graph extension factories' default functions.
+* **Fix**: Fix Kotlin internal error overriding Metro error when there's a missing factory for a Java `@Inject` class.
+* [Docs] The project website is now versioned. This means you can read the documentation at different versions:
+  * Latest release: https://zacsweers.github.io/metro/latest/
+  * Snapshots (example): https://zacsweers.github.io/metro/0.7.0-SNAPSHOT/
+  * Past release (example): https://zacsweers.github.io/metro/0.6.0/
+* Deprecate the `enableStrictValidation` Gradle property in favor of `enableFullBindingGraphValidation`, which aligns with [Dagger's (better) name for the same functionality](https://dagger.dev/dev-guide/compiler-options#full-binding-graph-validation).
+* Update Wire to `5.3.11`.
+
+Special thanks to [@hossain-khan](https://github.com/hossain-khan) and [@JoelWilcox](https://github.com/JoelWilcox) for contributing to this release!
+
 0.6.0
 -----
 

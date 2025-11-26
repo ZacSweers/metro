@@ -3,14 +3,15 @@
 package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.compiler.Origins
-import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
-import dev.zacsweers.metro.compiler.ir.IrAnnotation
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
-import dev.zacsweers.metro.compiler.ir.MetroIrErrors
+import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
+import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.joinSimpleNames
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.name
@@ -34,6 +35,7 @@ import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.fileEntry
+import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
 /**
@@ -60,11 +62,7 @@ import org.jetbrains.kotlin.name.Name
 internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModuleFragment) :
   IrMetroContext by context {
 
-  fun generateHint(
-    sourceClass: IrClass,
-    hintName: Name,
-    hintAnnotations: List<IrAnnotation> = emptyList(),
-  ): IrSimpleFunction {
+  fun generateHint(sourceClass: IrClass, hintName: Name): IrSimpleFunction {
     val function =
       pluginContext.irFactory
         .buildFun {
@@ -81,29 +79,18 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
               kind = IrParameterKind.Regular
             }
           body = stubExpressionBody()
-          annotations += hintAnnotations.map { it.ir }
         }
 
-    val fileNameWithoutExtension =
-      sequence {
-          val classId = sourceClass.classIdOrFail
-          yieldAll(classId.packageFqName.pathSegments())
-          yield(classId.joinSimpleNames(separator = "", camelCase = true).shortClassName)
-          yield(hintName)
-        }
-        .joinToString(separator = "") { it.asString().capitalizeUS() }
-        .decapitalizeUS()
+    val fileName = hintFileName(sourceClass.classIdOrFail, hintName)
 
-    val fileName = "${fileNameWithoutExtension}.kt"
     val firFile = buildFile {
       val metadataSource = sourceClass.metadata as? FirMetadataSource.Class
       if (metadataSource == null) {
-        diagnosticReporter
-          .at(sourceClass)
-          .report(
-            MetroIrErrors.METRO_ERROR,
-            "Class ${sourceClass.classId} does not have a valid metadata source. Found ${sourceClass.metadata?.javaClass?.canonicalName}.",
-          )
+        reportCompat(
+          sourceClass,
+          MetroDiagnostics.METRO_ERROR,
+          "Class ${sourceClass.classId} does not have a valid metadata source. Found ${sourceClass.metadata?.javaClass?.canonicalName}.",
+        )
       }
       moduleData = (sourceClass.metadata as FirMetadataSource.Class).fir.moduleData
       origin = FirDeclarationOrigin.Synthetic.PluginFile
@@ -136,7 +123,24 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
     moduleFragment.addFile(hintFile)
     hintFile.addChild(function)
     pluginContext.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(function)
+    // Link the hint back to the source class so source class changes in IC also mark this hint
+    // https://github.com/ZacSweers/metro/pull/1349
+    trackClassLookup(function, sourceClass)
     hintFile.dumpToMetroLog(fakeNewPath.name)
     return function
+  }
+
+  companion object {
+    fun hintFileName(sourceClassId: ClassId, hintName: Name): String {
+      val fileNameWithoutExtension =
+        sequence {
+            yieldAll(sourceClassId.packageFqName.pathSegments())
+            yield(sourceClassId.joinSimpleNames(separator = "", camelCase = true).shortClassName)
+            yield(hintName)
+          }
+          .joinToString(separator = "") { it.asString().capitalizeUS() }
+          .decapitalizeUS()
+      return "$fileNameWithoutExtension.kt"
+    }
   }
 }

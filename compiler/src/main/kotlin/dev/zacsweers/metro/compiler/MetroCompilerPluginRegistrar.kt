@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroFirExtensionRegistrar
 import dev.zacsweers.metro.compiler.ir.MetroIrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
@@ -16,6 +17,8 @@ import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrarAdapter
 import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
 
 public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
+
+  public val pluginId: String = PLUGIN_ID
 
   override val supportsK2: Boolean
     get() = true
@@ -35,11 +38,22 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
         configuration.messageCollector
       }
 
+    if (options.maxIrErrorsCount < 1) {
+      messageCollector.report(
+        CompilerMessageSeverity.ERROR,
+        "maxIrErrorsCount must be greater than zero but was ${options.maxIrErrorsCount}",
+      )
+      return
+    }
+
     if (options.debug) {
       messageCollector.report(CompilerMessageSeverity.INFO, "Metro options:\n$options")
     }
 
-    FirExtensionRegistrarAdapter.registerExtension(MetroFirExtensionRegistrar(classIds, options))
+    val compatContext = CompatContext.getInstance()
+    FirExtensionRegistrarAdapter.registerExtension(
+      MetroFirExtensionRegistrar(classIds, options, compatContext)
+    )
     val lookupTracker = configuration.get(CommonConfigurationKeys.LOOKUP_TRACKER)
     val expectActualTracker: ExpectActualTracker =
       configuration.get(
@@ -48,11 +62,12 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
       )
     IrGenerationExtension.registerExtension(
       MetroIrGenerationExtension(
-        messageCollector,
-        classIds,
-        options,
-        lookupTracker,
-        expectActualTracker,
+        messageCollector = configuration.messageCollector,
+        classIds = classIds,
+        options = options,
+        lookupTracker = lookupTracker,
+        expectActualTracker = expectActualTracker,
+        compatContext = compatContext,
       )
     )
   }

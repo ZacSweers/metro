@@ -3,18 +3,19 @@
 package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.drewhamilton.poko.Poko
-import dev.zacsweers.metro.compiler.fir.FirMetroErrors
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.classIds
-import dev.zacsweers.metro.compiler.fir.findInjectConstructors
+import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.isBindingContainer
 import dev.zacsweers.metro.compiler.fir.isOrImplements
 import dev.zacsweers.metro.compiler.fir.mapKeyAnnotation
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.resolvedBindingArgument
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
-import dev.zacsweers.metro.compiler.unsafeLazy
+import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.isObject
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
@@ -67,7 +68,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
       if (classId in classIds.allContributesAnnotations) {
         val scope = annotation.resolvedScopeClassId() ?: continue
         val replaces = emptySet<ClassId>() // TODO implement
-        val checkIntoSet by unsafeLazy {
+        val checkIntoSet by memoize {
           checkBindingContribution(
             session,
             ContributionKind.CONTRIBUTES_INTO_SET,
@@ -82,7 +83,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
             Contribution.ContributesIntoSet(declaration, annotation, scope, replaces, bindingType)
           }
         }
-        val checkIntoMap by unsafeLazy {
+        val checkIntoMap by memoize {
           checkBindingContribution(
             session,
             ContributionKind.CONTRIBUTES_INTO_MAP,
@@ -179,16 +180,17 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
     isMapBinding: Boolean,
     createBinding: (FirTypeKey, mapKey: MetroFirAnnotation?) -> T,
   ): Boolean {
-    val injectConstructor = declaration.symbol.findInjectConstructors(session).singleOrNull()
     val isAssistedFactory =
       declaration.symbol.isAnnotatedWithAny(session, session.classIds.assistedFactoryAnnotations)
     // Ensure the class is injected or an object. Objects are ok IFF they are not @ContributesTo
-    val isNotInjectedOrFactory = !isAssistedFactory && injectConstructor == null
+    val isNotInjectedOrFactory =
+      !isAssistedFactory &&
+        declaration.symbol.findInjectLikeConstructors(session).singleOrNull() == null
     val isValidObject = declaration.classKind.isObject && kind != ContributionKind.CONTRIBUTES_TO
     if (isNotInjectedOrFactory && !isValidObject) {
       reporter.reportOn(
         annotation.source,
-        FirMetroErrors.AGGREGATION_ERROR,
+        MetroDiagnostics.AGGREGATION_ERROR,
         "`@$kind` is only applicable to constructor-injected classes, assisted factories, or objects. Ensure ${declaration.symbol.classId.asSingleFqName()} is injectable or a bindable object.",
       )
       return false
@@ -206,7 +208,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
         if (explicitBindingType.isNothing) {
           reporter.reportOn(
             explicitBindingType.source ?: annotation.source,
-            FirMetroErrors.AGGREGATION_ERROR,
+            MetroDiagnostics.AGGREGATION_ERROR,
             "Explicit bound types should not be `Nothing` or `Nothing?`.",
           )
           return false
@@ -218,7 +220,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
         if (refClassId == declaration.symbol.classId) {
           reporter.reportOn(
             explicitBindingType.source ?: annotation.source,
-            FirMetroErrors.AGGREGATION_ERROR,
+            MetroDiagnostics.AGGREGATION_ERROR,
             "Redundant explicit bound type ${refClassId.asSingleFqName()} is the same as the annotated class ${refClassId.asSingleFqName()}.",
           )
           return false
@@ -227,7 +229,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
         if (!hasSupertypes) {
           reporter.reportOn(
             annotation.source,
-            FirMetroErrors.AGGREGATION_ERROR,
+            MetroDiagnostics.AGGREGATION_ERROR,
             "`@$kind`-annotated class ${declaration.symbol.classId.asSingleFqName()} has no supertypes to bind to.",
           )
           return false
@@ -238,7 +240,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
         if (!implementsBindingType) {
           reporter.reportOn(
             explicitBindingType.source,
-            FirMetroErrors.AGGREGATION_ERROR,
+            MetroDiagnostics.AGGREGATION_ERROR,
             "Class ${declaration.classId.asSingleFqName()} does not implement explicit bound type ${refClassId.asSingleFqName()}",
           )
           return false
@@ -249,14 +251,14 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
         if (!hasSupertypes) {
           reporter.reportOn(
             annotation.source,
-            FirMetroErrors.AGGREGATION_ERROR,
+            MetroDiagnostics.AGGREGATION_ERROR,
             "`@$kind`-annotated class ${declaration.symbol.classId.asSingleFqName()} has no supertypes to bind to.",
           )
           return false
         } else if (supertypesExcludingAny.size != 1) {
           reporter.reportOn(
             annotation.source,
-            FirMetroErrors.AGGREGATION_ERROR,
+            MetroDiagnostics.AGGREGATION_ERROR,
             "`@$kind`-annotated class @${classId.asSingleFqName()} doesn't declare an explicit `bindingType` but has multiple supertypes. You must define an explicit bound type in this scenario.",
           )
           return false
@@ -274,7 +276,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
               if (it == null) {
                 reporter.reportOn(
                   annotation.source,
-                  FirMetroErrors.AGGREGATION_ERROR,
+                  MetroDiagnostics.AGGREGATION_ERROR,
                   "`@$kind`-annotated class ${declaration.classId.asSingleFqName()} must declare a map key on the class or an explicit bound type but doesn't.",
                 )
               }
@@ -284,7 +286,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
               if (it == null) {
                 reporter.reportOn(
                   explicitBindingType.source,
-                  FirMetroErrors.AGGREGATION_ERROR,
+                  MetroDiagnostics.AGGREGATION_ERROR,
                   "`@$kind`-annotated class @${declaration.symbol.classId.asSingleFqName()} must declare a map key but doesn't. Add one on the explicit bound type or the class.",
                 )
               }
@@ -324,14 +326,14 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
     if (!added) {
       reporter.reportOn(
         annotation.source,
-        FirMetroErrors.AGGREGATION_ERROR,
+        MetroDiagnostics.AGGREGATION_ERROR,
         "Duplicate `@${kind}` annotations contributing to scope `${scope.shortClassName}`.",
       )
 
       val existing = collection.first { it == contribution }
       reporter.reportOn(
         existing.annotation.source,
-        FirMetroErrors.AGGREGATION_ERROR,
+        MetroDiagnostics.AGGREGATION_ERROR,
         "Duplicate `@${kind}` annotations contributing to scope `${scope.shortClassName}`.",
       )
 
@@ -349,18 +351,21 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
   ) {
     if (kind != ContributionKind.CONTRIBUTES_TO) return
     val declaration = (contribution as Contribution.ContributesTo).declaration
-    if (declaration.isAnnotatedWithAny(session, session.classIds.bindingContainerAnnotations)) {
+    if (declaration.symbol.isBindingContainer(session)) {
       return
     }
     if (declaration.classKind != ClassKind.INTERFACE) {
-      // Special-case: if this is a contributed graph extension factory, don't report here because it has its own (more specific) error.
-      if (declaration.isAnnotatedWithAny(session, session.classIds.graphExtensionFactoryAnnotations)) {
+      // Special-case: if this is a contributed graph extension factory, don't report here because
+      // it has its own (more specific) error.
+      if (
+        declaration.isAnnotatedWithAny(session, session.classIds.graphExtensionFactoryAnnotations)
+      ) {
         return
       }
       reporter.reportOn(
         annotation.source,
-        FirMetroErrors.AGGREGATION_ERROR,
-        "`@${kind}` annotations only permitted on interfaces. However ${declaration.nameOrSpecialName} is a ${declaration.classKind}.",
+        MetroDiagnostics.AGGREGATION_ERROR,
+        "`@${kind}` annotations only permitted on interfaces or binding containers. However ${declaration.nameOrSpecialName} is a ${declaration.classKind}.",
       )
       onError()
     }

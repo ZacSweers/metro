@@ -23,6 +23,92 @@ import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.renderer.KeywordStringsGenerated.KEYWORDS
 
 /**
+ * Cross-platform reserved keywords that must be avoided in generated identifiers.
+ *
+ * This set contains reserved keywords from JavaScript (ES5/ES6), C99, and Objective-C that are NOT
+ * already included in Kotlin's KEYWORDS constant. By pre-allocating these keywords, we ensure
+ * generated code compiles successfully on all Kotlin multiplatform targets (JVM, JS, Native).
+ *
+ * Sources:
+ * - JavaScript: ECMAScript 5.1 spec (https://262.ecma-international.org/5.1/#sec-7.6)
+ * - C99: ISO/IEC 9899:1999 C Standard
+ * - Objective-C: Apple Objective-C Documentation + Clang keywords
+ *
+ * Many keywords overlap across platforms (e.g., `break`, `case`, `for`), so this set only contains
+ * platform-specific keywords not already blocked by Kotlin.
+ */
+private val CROSS_PLATFORM_RESERVED_KEYWORDS =
+  setOf(
+    // JavaScript-specific keywords and special identifiers
+    // (not already in Kotlin KEYWORDS)
+    "arguments",
+    "await",
+    "debugger",
+    "delete",
+    "eval",
+    "function",
+    "in",
+    "instanceof",
+    "let",
+    "typeof",
+    "var",
+    "void",
+    "with",
+    "yield",
+
+    // C99-specific keywords (not already in Kotlin KEYWORDS)
+    "auto",
+    "char",
+    "double",
+    "extern",
+    "float",
+    "goto",
+    "inline",
+    "int",
+    "long",
+    "register",
+    "restrict",
+    "short",
+    "signed",
+    "sizeof",
+    "struct",
+    "typedef",
+    "union",
+    "unsigned",
+    "volatile",
+    "_Bool",
+    "_Complex",
+    "_Imaginary",
+
+    // Objective-C-specific keywords (not already in Kotlin KEYWORDS)
+    "id",
+    "nil",
+    "Nil",
+    "YES",
+    "NO",
+    "SEL",
+    "IMP",
+    "BOOL",
+    "instancetype",
+    "required",
+    "optional",
+    "synthesize",
+    "dynamic",
+    "readonly",
+    "readwrite",
+    "assign",
+    "retain",
+    "copy",
+    "nonatomic",
+    "atomic",
+    "strong",
+    "weak",
+  )
+
+private const val SAFE_CODE = '_'.code
+private val RESERVED_KEYWORDS = KEYWORDS + CROSS_PLATFORM_RESERVED_KEYWORDS
+
+/**
  * Assigns Kotlin identifier names to avoid collisions, keywords, and invalid characters. To use,
  * first create an instance and allocate all of the names that you need. Typically this is a mix of
  * user-supplied names and constants:
@@ -113,7 +199,12 @@ private constructor(
     preallocateKeywords: Boolean = true,
     mode: Mode = Mode.UNDERSCORE,
   ) : this(
-    allocatedNames = if (preallocateKeywords) KEYWORDS.toMutableSet() else mutableSetOf(),
+    allocatedNames =
+      if (preallocateKeywords) {
+        RESERVED_KEYWORDS.toMutableSet()
+      } else {
+        mutableSetOf()
+      },
     tagToName = mutableMapOf(),
     mode = mode,
   )
@@ -124,11 +215,19 @@ private constructor(
    * [NameAllocator.get].
    */
   fun newName(suggestion: String, tag: Any = Uuid.random().toString()): String {
-    var result = buildString { append(toJavaIdentifier(suggestion)) }
-    var count = 1
-    while (!allocatedNames.add(result)) {
-      count++
-      result = result.suffix(suggestion, count)
+    val cleanedSuggestion = toSafeIdentifier(suggestion)
+    val result = buildString {
+      append(cleanedSuggestion)
+      var count = 1
+      while (!allocatedNames.add(toString())) {
+        when (mode) {
+          Mode.UNDERSCORE -> append('_')
+          Mode.COUNT -> {
+            deleteRange(cleanedSuggestion.length, length)
+            append(++count)
+          }
+        }
+      }
     }
 
     val replaced = tagToName.put(tag, result)
@@ -139,12 +238,6 @@ private constructor(
 
     return result
   }
-
-  private fun String.suffix(name: String, count: Int) =
-    when (mode) {
-      Mode.UNDERSCORE -> "${this}_"
-      Mode.COUNT -> "$name$count"
-    }
 
   /** Retrieve a name created with [NameAllocator.newName]. */
   operator fun get(tag: Any): String = requireNotNull(tagToName[tag]) { "unknown tag: $tag" }
@@ -166,10 +259,28 @@ private constructor(
   }
 }
 
-private fun toJavaIdentifier(suggestion: String) = buildString {
+/**
+ * Sanitizes a suggestion string to be a valid cross-platform identifier.
+ *
+ * Sanitization rules (applied in order):
+ * 1. Replaces dangerous characters (`.`, `;`, `/`, `<`, `>`, `[`, `]`) with `_`
+ * 2. Replaces non-ASCII characters (codePoint > 127) with `_` for cross-platform safety
+ * 3. Replaces other invalid identifier characters with `_`
+ * 4. Prepends `_` if the identifier starts with a digit or other invalid start character
+ *
+ * Examples:
+ * - `foo.bar` → `foo_bar` (dangerous character)
+ * - `café` → `caf_` (non-ASCII)
+ * - `123abc` → `_123abc` (starts with digit)
+ * - `foo<T>` → `foo_T_` (dangerous characters)
+ */
+// TODO would be nice to handle `foo<*>` -> `foo_star_`
+internal fun toSafeIdentifier(suggestion: String) = buildString {
   var i = 0
   while (i < suggestion.length) {
     val codePoint = suggestion.codePointAt(i)
+
+    // Check if we need to prepend underscore at the start
     if (
       i == 0 &&
         !Character.isJavaIdentifierStart(codePoint) &&
@@ -178,12 +289,31 @@ private fun toJavaIdentifier(suggestion: String) = buildString {
       append("_")
     }
 
+    // Determine the valid code point to use
     val validCodePoint: Int =
-      if (Character.isJavaIdentifierPart(codePoint)) {
-        codePoint
-      } else {
-        '_'.code
+      when {
+        // Block non-ASCII for cross-platform compatibility (code point > 127)
+        codePoint > 127 -> SAFE_CODE
+        // Explicitly block dangerous characters before checking java identifier allowances
+        else ->
+          when (codePoint) {
+            46, // .
+            59, // ;
+            47, // /
+            60, // <
+            62, // >
+            91, // [
+            93 // ]
+            -> SAFE_CODE
+            else ->
+              if (Character.isJavaIdentifierPart(codePoint)) {
+                codePoint
+              } else {
+                SAFE_CODE
+              }
+          }
       }
+
     appendCodePoint(validCodePoint)
     i += Character.charCount(codePoint)
   }

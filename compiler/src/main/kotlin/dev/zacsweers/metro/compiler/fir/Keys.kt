@@ -21,18 +21,6 @@ internal object Keys {
     override fun toString() = "RegularParameter"
   }
 
-  data object AssistedFactoryImplClassDeclaration : GeneratedDeclarationKey() {
-    override fun toString() = "AssistedFactoryImplClassDeclaration"
-  }
-
-  data object AssistedFactoryImplCompanionDeclaration : GeneratedDeclarationKey() {
-    override fun toString() = "AssistedFactoryImplCompanionDeclaration"
-  }
-
-  data object AssistedFactoryImplCreatorFunctionDeclaration : GeneratedDeclarationKey() {
-    override fun toString() = "AssistedFactoryImplCreatorFunctionDeclaration"
-  }
-
   data object InjectConstructorFactoryClassDeclaration : GeneratedDeclarationKey() {
     override fun toString() = "InjectConstructorFactoryClassDeclaration"
   }
@@ -41,8 +29,8 @@ internal object Keys {
     override fun toString() = "InjectConstructorFactoryCompanionDeclaration"
   }
 
-  data object MetroGraphDeclaration : GeneratedDeclarationKey() {
-    override fun toString() = "MetroGraphDeclaration"
+  data object GraphImplClassDeclaration : GeneratedDeclarationKey() {
+    override fun toString() = "GraphImplClassDeclaration"
   }
 
   data object MetroGraphAccessorCallableOverride : GeneratedDeclarationKey() {
@@ -65,8 +53,8 @@ internal object Keys {
     override fun toString() = "MetroGraphFactoryCompanionGetter"
   }
 
-  data object MetroGraphFactoryImplDeclaration : GeneratedDeclarationKey() {
-    override fun toString() = "MetroGraphFactoryImplDeclaration"
+  data object GraphFactoryImplClassDeclaration : GeneratedDeclarationKey() {
+    override fun toString() = "GraphFactoryImplClassDeclaration"
   }
 
   data object MetroContributionClassDeclaration : GeneratedDeclarationKey() {
@@ -127,5 +115,13 @@ internal object Keys {
 
   data object BindingMirrorClassDeclaration : GeneratedDeclarationKey() {
     override fun toString() = "BindingMirrorClassDeclaration"
+  }
+
+  data object GeneratedDynamicGraph : GeneratedDeclarationKey() {
+    override fun toString() = "GeneratedDynamicGraph"
+  }
+
+  data object DynamicContainerParam : GeneratedDeclarationKey() {
+    override fun toString() = "DynamicContainerParam"
   }
 }

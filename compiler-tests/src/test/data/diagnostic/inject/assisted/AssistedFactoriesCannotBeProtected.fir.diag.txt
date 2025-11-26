@@ -1,0 +1,1 @@
+/AssistedFactoriesCannotBeProtected.kt:(150,159): error: @AssistedFactory declarations must be public or internal.

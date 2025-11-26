@@ -5,9 +5,9 @@ package dev.zacsweers.metro.test.integration
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
+import dev.zacsweers.metro.AssistedInject
 import dev.zacsweers.metro.ContributesTo
 import dev.zacsweers.metro.DependencyGraph
-import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.createGraph
 import dev.zacsweers.metro.test.integration.android.databinding.ActivityMainBinding
 import kotlin.test.Test
@@ -28,7 +28,7 @@ interface TestRendererGraph {
   val factory: TestRenderer.Factory
 }
 
-@Inject
+@AssistedInject
 class TestRenderer(@Assisted private val binding: ActivityMainBinding) {
   @AssistedFactory abstract class Factory : BaseFactory<ActivityMainBinding, TestRenderer>
 }

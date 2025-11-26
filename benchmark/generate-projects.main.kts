@@ -843,6 +843,31 @@ interface Initializer {
 }
 """
     sourceFile.writeText(sourceCode.trimIndent())
+
+    // Create plain Kotlin file without any DI annotations
+    val plainFile = File(srcDir, "PlainKotlinFile.kt")
+    val plainSourceCode =
+      """
+package dev.zacsweers.metro.benchmark.core.foundation
+
+/**
+ * A simple plain Kotlin class without any dependency injection annotations.
+ * Used for benchmarking compiler plugin overhead on non-DI files.
+ */
+class PlainDataProcessor {
+  private var counter = 0
+  
+  fun processData(input: String): String {
+    counter++
+    return "Processed: ${'$'}input (#${'$'}counter)"
+  }
+  
+  fun getProcessedCount(): Int {
+    return counter
+  }
+}
+"""
+    plainFile.writeText(plainSourceCode.trimIndent())
   }
 
   fun generateAppComponent(
@@ -879,7 +904,7 @@ application {
 }
 
 metro {
-  reportsDestination.set(layout.buildDirectory.dir("metro"))
+  // reportsDestination.set(layout.buildDirectory.dir("metro"))
   interop {
     includeJavax()
     includeAnvil()

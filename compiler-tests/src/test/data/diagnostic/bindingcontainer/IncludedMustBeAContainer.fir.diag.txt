@@ -1,3 +1,3 @@
-/IncludedMustBeAContainer.kt:(150,169): error: Included binding containers must be annotated with @BindingContainer but 'SomeBindings' is not.
+/IncludedMustBeAContainer.kt:(150,169): error: Included classes must be binding containers but 'SomeBindings' is not.
 
-/IncludedMustBeAContainer.kt:(240,259): error: Included binding containers must be annotated with @BindingContainer but 'SomeBindings' is not.
+/IncludedMustBeAContainer.kt:(240,259): error: Included classes must be binding containers but 'SomeBindings' is not.

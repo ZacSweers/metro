@@ -2,21 +2,18 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
-import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.mapToSet
+import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithVisibility
-import org.jetbrains.kotlin.ir.declarations.IrFile
-import org.jetbrains.kotlin.ir.declarations.moduleDescriptor
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrFail
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.defaultType
-import org.jetbrains.kotlin.ir.util.file
-import org.jetbrains.kotlin.ir.util.getPackageFragment
+import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.name.ClassId
 
@@ -48,13 +45,17 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
     addAll(findExternalBindingContainerContributions(scope))
   }
 
-  private fun findVisibleContributionClassesForScopeInHints(scope: Scope): Set<IrClass> {
+  fun findVisibleContributionClassesForScopeInHints(
+    scope: Scope,
+    includeNonFriendInternals: Boolean = false,
+  ): Set<IrClass> {
     val functionsInPackage = metroContext.referenceFunctions(Symbols.CallableIds.scopeHint(scope))
     val contributingClasses =
       functionsInPackage
         .filter {
           if (it.owner.visibility == Visibilities.Internal) {
-            it.owner.isVisibleAsInternal(it.owner.file)
+            includeNonFriendInternals ||
+              it.owner.fileOrNull?.let { file -> it.owner.isVisibleAsInternal(file) } ?: false
           } else {
             true
           }
@@ -82,8 +83,8 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
       val contributingClasses = findVisibleContributionClassesForScopeInHints(scope)
       getScopedContributions(contributingClasses, scope, bindingContainersOnly = true)
         .mapNotNullToSet {
-          it.classOrNull?.owner?.takeIf {
-            it.isAnnotatedWithAny(metroContext.symbols.classIds.bindingContainerAnnotations)
+          it.classOrNull?.owner?.takeIf { irClass ->
+            with(metroContext) { irClass.isBindingContainer() }
           }
         }
     }
@@ -100,7 +101,7 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
     contributingClasses
       .flatMap { contributingType ->
         contributingType
-          .annotationsIn(metroContext.symbols.classIds.allContributesAnnotations)
+          .annotationsIn(metroContext.metroSymbols.classIds.allContributesAnnotations)
           .filter { it.scopeOrNull() == scope }
           .flatMap { annotation -> annotation.replacedClasses() }
       }
@@ -112,42 +113,31 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
     return filteredContributions
       .let { contributions ->
         if (bindingContainersOnly) {
-          contributions.filter {
-            it.isAnnotatedWithAny(metroContext.symbols.classIds.bindingContainerAnnotations)
-          }
+          contributions.filter { irClass -> with(metroContext) { irClass.isBindingContainer() } }
         } else {
-          contributions.filterNot {
-            it.isAnnotatedWithAny(metroContext.symbols.classIds.bindingContainerAnnotations)
-          }
+          contributions.filterNot { irClass -> with(metroContext) { irClass.isBindingContainer() } }
         }
       }
-      .flatMapToSet {
-        if (it.isAnnotatedWithAny(metroContext.symbols.classIds.bindingContainerAnnotations)) {
-          setOf(it.defaultType)
-        } else {
-          it.nestedClasses.mapNotNullToSet { nestedClass ->
-            val metroContribution =
-              nestedClass.findAnnotations(Symbols.ClassIds.metroContribution).singleOrNull()
-                ?: return@mapNotNullToSet null
-            val contributionScope =
-              metroContribution.scopeOrNull()
-                ?: error("No scope found for @MetroContribution annotation")
-            if (contributionScope == scope) {
-              nestedClass.defaultType
-            } else {
-              null
+      .flatMapToSet { irClass ->
+        with(metroContext) {
+          if (irClass.isBindingContainer()) {
+            setOf(irClass.defaultType)
+          } else {
+            irClass.nestedClasses.mapNotNullToSet { nestedClass ->
+              val metroContribution =
+                nestedClass.findAnnotations(Symbols.ClassIds.metroContribution).singleOrNull()
+                  ?: return@mapNotNullToSet null
+              val contributionScope =
+                metroContribution.scopeOrNull()
+                  ?: reportCompilerBug("No scope found for @MetroContribution annotation")
+              if (contributionScope == scope) {
+                nestedClass.defaultType
+              } else {
+                null
+              }
             }
           }
         }
       }
-  }
-
-  // Copied from CheckerUtils.kt
-  private fun IrDeclarationWithVisibility.isVisibleAsInternal(file: IrFile): Boolean {
-    val referencedDeclarationPackageFragment = getPackageFragment()
-    val module = file.module
-    return module.descriptor.shouldSeeInternalsOf(
-      referencedDeclarationPackageFragment.moduleDescriptor
-    )
   }
 }

@@ -15,8 +15,8 @@ package dev.zacsweers.metro
  * function as their generated class is definitionally contextual and the compiler cannot infer that
  * from callsites of this function alone.
  *
- * @see <a href="https://zacsweers.github.io/metro/installation/#ide-support">Docs for how to enable
- *   IDE support</a>
+ * @see <a href="https://zacsweers.github.io/metro/latest/installation/#ide-support">Docs for how to
+ *   enable IDE support</a>
  */
 @Suppress("UnusedReceiverParameter")
 public inline fun <reified T : Any> Any.asContribution(): T {

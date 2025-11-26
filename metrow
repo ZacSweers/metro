@@ -1,6 +1,21 @@
 #!/usr/bin/env bash
 
-set -e
+set -euo pipefail
+
+# Function to run checks with optional compiler version
+run_checks() {
+    local compiler_version="$1"
+    local version_flag=""
+
+    if [[ -n "$compiler_version" ]]; then
+        version_flag="-Pmetro.testCompilerVersion=$compiler_version"
+        echo "Running checks with Kotlin version $compiler_version..."
+    else
+        echo "Running checks..."
+    fi
+
+    ./gradlew check -x dokkaGeneratePublicationHtml $version_flag
+}
 
 case "$1" in
    "publish")
@@ -40,8 +55,49 @@ case "$1" in
        ;;
 
    "check")
-       echo "Running checks..."
-       ./gradlew check -x dokkaGeneratePublicationHtml
+       all=false
+       version=""
+
+       while [[ $# -gt 1 ]]; do
+           case "$2" in
+               --all)
+                   all=true
+                   shift
+                   ;;
+               --version)
+                   version="$3"
+                   shift 2
+                   ;;
+               *)
+                   echo "Unknown check argument: $2"
+                   exit 1
+                   ;;
+           esac
+       done
+
+       if [[ "$all" = true ]]; then
+           echo "Running checks against all compiler versions..."
+
+           # Get all available versions using the CI script
+           if [[ ! -f "scripts/generate-ci-matrix.sh" ]]; then
+               echo "Error: scripts/generate-ci-matrix.sh not found"
+               exit 1
+           fi
+
+           # Get versions using the script's --versions-only mode
+           versions=$(./scripts/generate-ci-matrix.sh --versions-only | tr '\n' ' ')
+
+           echo "Testing against versions: $versions"
+
+           for ver in $versions; do
+               echo "=== Testing with Kotlin $ver ==="
+               run_checks "$ver" || exit 1
+           done
+       else
+           run_checks "$version"
+       fi
+
+       # Run samples last
        ./gradlew -p samples check
        ;;
 
@@ -59,22 +115,37 @@ case "$1" in
 
    "regen")
        echo "Applying formatting and API gen..."
-       # Annoyingly, the apiDump task has some caching issues
-       ./gradlew spotlessApply apiDump --rerun-tasks --no-build-cache --no-configuration-cache
-       ./gradlew -p samples spotlessApply --no-configuration-cache
+       # Annoyingly, the apiDump and package lock tasks have caching issues
        # https://youtrack.jetbrains.com/issue/KT-69684
-       ./gradlew clean
+       find . -type d -name "api" -exec find {} -name "*.api" -delete \;
        rm -rf kotlin-js-store
        rm -rf samples/kotlin-js-store
-       ./gradlew kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks --no-build-cache
-       ./gradlew -p samples kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks --no-build-cache
+       ./gradlew clean --quiet
+       ./gradlew spotlessApply apiDump kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks --no-build-cache --no-configuration-cache --quiet
+       cd samples
+       ./gradlew clean --quiet
+       ./gradlew spotlessApply kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --no-configuration-cache --quiet
+       cd ..
+       ;;
+
+   "gen-compat")
+       if [[ $# -lt 2 ]]; then
+           echo "Usage: metrow gen-compat <kotlin-version>"
+           exit 1
+       fi
+       ./compiler-compat/generate-compat-module.sh "$2"
        ;;
 
    *)
-       echo "Usage: metrow (publish|check|clean|format|regen)"
+       echo "Usage: metrow (publish|check|clean|format|regen|gen-compat)"
+       echo ""
        echo "publish options:"
        echo "  --version <version>  Specify version for publishing"
        echo "  --local              Publish locally"
+       echo ""
+       echo "check options:"
+       echo "  --all                Test against all available compiler versions"
+       echo "  --version <version>  Test against specific compiler version"
        exit 1
        ;;
 esac

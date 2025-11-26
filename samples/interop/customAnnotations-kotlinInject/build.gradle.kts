@@ -22,6 +22,6 @@ kotlin {
 metro {
   interop {
     includeKotlinInject()
-    includeAnvil()
+    includeAnvilForKotlinInject()
   }
 }

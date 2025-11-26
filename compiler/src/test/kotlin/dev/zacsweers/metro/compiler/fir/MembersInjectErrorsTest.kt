@@ -15,12 +15,12 @@ class MembersInjectErrorsTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass {
-              @Inject suspend fun setValue(value: Int) {
+        class ExampleClass {
+          @Inject suspend fun setValue(value: Int) {
 
-              }
-            }
-          """
+          }
+        }
+        """
           .trimIndent()
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
@@ -44,7 +44,7 @@ class MembersInjectErrorsTest : MetroCompilerTest() {
 
               }
             }
-          """
+            """
               .trimIndent()
           ),
         ),
@@ -68,7 +68,7 @@ class MembersInjectErrorsTest : MetroCompilerTest() {
               @Inject var value: Int = 0
                 @Composable get
             }
-          """
+            """
               .trimIndent()
           ),
         )
@@ -88,7 +88,7 @@ class MembersInjectErrorsTest : MetroCompilerTest() {
             class ExampleClass {
               @Inject @get:Composable var value: Int = 0
             }
-          """
+            """
               .trimIndent()
           ),
         )
@@ -100,11 +100,11 @@ class MembersInjectErrorsTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @Inject
-            class ExampleClass {
-              @Inject lateinit var value: String
-            }
-          """
+        @Inject
+        class ExampleClass {
+          @Inject lateinit var value: String
+        }
+        """
           .trimIndent()
       )
     ) {
@@ -119,11 +119,11 @@ class MembersInjectErrorsTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @Inject
-            class ExampleClass {
-              @Inject var value: Int = 0
-            }
-          """
+        @Inject
+        class ExampleClass {
+          @Inject var value: Int = 0
+        }
+        """
           .trimIndent()
       )
     ) {
@@ -138,11 +138,11 @@ class MembersInjectErrorsTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @Inject
-            class ExampleClass {
-              @Inject var value: Int? = 0
-            }
-          """
+        @Inject
+        class ExampleClass {
+          @Inject var value: Int? = 0
+        }
+        """
           .trimIndent()
       )
     ) {
@@ -155,20 +155,20 @@ class MembersInjectErrorsTest : MetroCompilerTest() {
     compile(
       source(
         """
-            class ExampleClass {
-              // ok
-              @Inject fun set1(value: Int) {
+        class ExampleClass {
+          // ok
+          @Inject fun set1(value: Int) {
 
-              }
-              // ok
-              @Inject fun set2(value: Int): Unit {
+          }
+          // ok
+          @Inject fun set2(value: Int): Unit {
 
-              }
-              @Inject fun set3(value: Int): Nothing {
-                TODO()
-              }
-            }
-          """
+          }
+          @Inject fun set3(value: Int): Nothing {
+            TODO()
+          }
+        }
+        """
           .trimIndent()
       )
     ) {
@@ -183,19 +183,19 @@ class MembersInjectErrorsTest : MetroCompilerTest() {
     compile(
       source(
         """
-            abstract class ExampleClass {
-              @set:Inject abstract var intSetter: Int
-              @Inject abstract fun intFunction(int: Int)
-            }
-          """
+        abstract class ExampleClass {
+          @set:Inject abstract var intSetter: Int
+          @Inject abstract fun intFunction(int: Int)
+        }
+        """
           .trimIndent()
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
         """
-          e: ExampleClass.kt:7:15 Injected members cannot be abstract.
-          e: ExampleClass.kt:8:11 Injected members cannot be abstract.
+        e: ExampleClass.kt:7:15 Injected members cannot be abstract.
+        e: ExampleClass.kt:8:11 Injected members cannot be abstract.
         """
           .trimIndent()
       )
@@ -209,20 +209,20 @@ class MembersInjectErrorsTest : MetroCompilerTest() {
         fileNameWithoutExtension = "NonClasses",
         source =
           """
-            enum class EnumClass {
-              INSTANCE;
-              @Inject fun intFunction(int: Int) {
+          enum class EnumClass {
+            INSTANCE;
+            @Inject fun intFunction(int: Int) {
 
-              }
             }
-            object ObjectClass {
-              @Inject fun intFunction(int: Int) {
+          }
+          object ObjectClass {
+            @Inject fun intFunction(int: Int) {
 
-              }
             }
-            interface InterfaceClass {
-              @Inject fun intFunction(int: Int)
-            }
+          }
+          interface InterfaceClass {
+            @Inject fun intFunction(int: Int)
+          }
           """
             .trimIndent(),
       ),
@@ -230,9 +230,9 @@ class MembersInjectErrorsTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: NonClasses.kt:8:15 Only regular classes can have member injections but containing class was ENUM_CLASS.
-          e: NonClasses.kt:13:15 Only regular classes can have member injections but containing class was OBJECT.
-          e: NonClasses.kt:18:15 Only regular classes can have member injections but containing class was INTERFACE.
+        e: NonClasses.kt:8:15 Only regular classes can have member injections but containing class was ENUM_CLASS.
+        e: NonClasses.kt:13:15 Only regular classes can have member injections but containing class was OBJECT.
+        e: NonClasses.kt:18:15 Only regular classes can have member injections but containing class was INTERFACE.
         """
           .trimIndent()
       )
@@ -245,10 +245,10 @@ class MembersInjectErrorsTest : MetroCompilerTest() {
       source(
         source =
           """
-            class ExampleClass(
-              @Inject val int: Int,
-              @set:Inject var int2: Int,
-            )
+          class ExampleClass(
+            @Inject val int: Int,
+            @set:Inject var int2: Int,
+          )
           """
             .trimIndent()
       ),
@@ -256,8 +256,8 @@ class MembersInjectErrorsTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleClass.kt:7:15 Constructor property parameters should not be annotated with `@Inject`. Annotate the constructor or class instead.
-          e: ExampleClass.kt:8:19 Constructor property parameters should not be annotated with `@Inject`. Annotate the constructor or class instead.
+        e: ExampleClass.kt:7:15 Constructor property parameters should not be annotated with `@Inject`. Annotate the constructor or class instead.
+        e: ExampleClass.kt:8:19 Constructor property parameters should not be annotated with `@Inject`. Annotate the constructor or class instead.
         """
           .trimIndent()
       )

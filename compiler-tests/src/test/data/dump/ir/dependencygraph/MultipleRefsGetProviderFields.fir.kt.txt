@@ -1,0 +1,180 @@
+@Inject
+class IntHolder {
+  val int: Int
+    field = 3
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<IntHolder> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    fun create(): Factory<IntHolder> {
+      return MetroFactory
+    }
+
+    fun newInstance(): IntHolder {
+      return IntHolder()
+    }
+
+    override operator fun invoke(): IntHolder {
+      return MetroFactory.newInstance()
+    }
+
+    fun mirrorFunction(): IntHolder {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@DependencyGraph
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val thisGraphInstance: AppGraph
+      field = <this>
+
+    private val thisGraphInstanceProvider: Provider<AppGraph>
+      field = Companion.invoke<AppGraph>(value = <this>.#thisGraphInstance)
+
+    private val intHolderProvider: Provider<IntHolder>
+      field = MetroFactory.create()
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val long: Long
+      override get(): Long {
+        return Companion.create(instance = <this>.#thisGraphInstance, holder = <this>.#intHolderProvider).invoke()
+      }
+
+    override val string: String
+      override get(): String {
+        return Companion.create(instance = <this>.#thisGraphInstance, holder = <this>.#intHolderProvider).invoke()
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideLong", propertyName = "", startOffset = 108, endOffset = 180)
+  class ProvideLongMetroFactory : Factory<Long> {
+    private /* final field */ val instance: AppGraph = instance
+    private /* final field */ val holder: Provider<IntHolder> = holder
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(instance: AppGraph, holder: Provider<IntHolder>): Factory<Long> {
+        return ProvideLongMetroFactory(instance = instance, holder = holder)
+      }
+
+      fun provideLong(instance: AppGraph, holder: IntHolder): Long {
+        return instance.provideLong(holder = holder)
+      }
+
+    }
+
+    private constructor(instance: AppGraph, holder: Provider<IntHolder>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): Long {
+      return Companion.provideLong(instance = <this>.#instance, holder = <this>.#holder.invoke())
+    }
+
+    fun mirrorFunction(holder: IntHolder): Long {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 183, endOffset = 261)
+  class ProvideStringMetroFactory : Factory<String> {
+    private /* final field */ val instance: AppGraph = instance
+    private /* final field */ val holder: Provider<IntHolder> = holder
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(instance: AppGraph, holder: Provider<IntHolder>): Factory<String> {
+        return ProvideStringMetroFactory(instance = instance, holder = holder)
+      }
+
+      fun provideString(instance: AppGraph, holder: IntHolder): String {
+        return instance.provideString(holder = holder)
+      }
+
+    }
+
+    private constructor(instance: AppGraph, holder: Provider<IntHolder>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): String {
+      return Companion.provideString(instance = <this>.#instance, holder = <this>.#holder.invoke())
+    }
+
+    fun mirrorFunction(holder: IntHolder): String {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Provides
+  private fun provideLong(holder: IntHolder): Long {
+    return holder.<get-int>().toLong()
+  }
+
+  @Provides
+  private fun provideString(holder: IntHolder): String {
+    return holder.<get-int>().toString()
+  }
+
+  abstract val long: Long
+    abstract get
+
+  abstract val string: String
+    abstract get
+
+}
+

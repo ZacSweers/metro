@@ -2,13 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.generators
 
-import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
 import dev.zacsweers.metro.compiler.fir.classIds
+import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
@@ -17,13 +18,14 @@ import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.metro.compiler.isWordPrefixRegex
 import dev.zacsweers.metro.compiler.mapNotNullToSet
+import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.metroAnnotations
-import dev.zacsweers.metro.compiler.unsafeLazy
+import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.builtins.functions.FunctionTypeKind
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.isObject
 import org.jetbrains.kotlin.fir.FirSession
-import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.computeTypeAttributes
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
@@ -48,10 +50,12 @@ import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.resolve.withParameterNameAnnotation
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
+import org.jetbrains.kotlin.fir.symbols.impl.FirBackingFieldSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirFieldSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertyAccessorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
@@ -80,8 +84,8 @@ import org.jetbrains.kotlin.name.SpecialNames
 import org.jetbrains.kotlin.types.ConstantValueKind
 
 /** Generates factory declarations for `@Provides`-annotated members. */
-internal class ProvidesFactoryFirGenerator(session: FirSession) :
-  FirDeclarationGenerationExtension(session) {
+internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: CompatContext) :
+  FirDeclarationGenerationExtension(session), CompatContext by compatContext {
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(session.predicates.providesAnnotationPredicate)
@@ -283,34 +287,49 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
             setType = true,
             prefix = null,
           )
-        mapping[Name.identifier("isPropertyAccessor")] =
+
+        val symbolToMap =
+          when (val symbol = sourceCallable.symbol) {
+            is FirPropertyAccessorSymbol -> symbol.propertySymbol
+            is FirPropertySymbol -> symbol
+            is FirNamedFunctionSymbol -> symbol
+            is FirBackingFieldSymbol -> symbol.propertySymbol
+            is FirFieldSymbol -> symbol
+            else -> reportCompilerBug("Unexpected callable symbol type: $symbol")
+          }
+
+        // Only set propertyName if it's a property
+        val propertyName =
+          if (symbolToMap !is FirNamedFunctionSymbol) {
+            symbolToMap.name.asString()
+          } else {
+            ""
+          }
+        mapping[Name.identifier("propertyName")] =
           buildLiteralExpression(
             source = null,
-            kind = ConstantValueKind.Boolean,
-            value =
-              when (sourceCallable.symbol) {
-                is FirPropertyAccessorSymbol,
-                is FirPropertySymbol -> true
-                else -> false
-              },
+            kind = ConstantValueKind.String,
+            value = propertyName,
             annotations = null,
             setType = true,
             prefix = null,
           )
+
         mapping[Name.identifier("startOffset")] =
           buildLiteralExpression(
             source = null,
             kind = ConstantValueKind.Int,
-            value = sourceCallable.symbol.source?.startOffset ?: UNDEFINED_OFFSET,
+            value = symbolToMap.source?.startOffset ?: UNDEFINED_OFFSET,
             annotations = null,
             setType = true,
             prefix = null,
           )
+
         mapping[Name.identifier("endOffset")] =
           buildLiteralExpression(
             source = null,
             kind = ConstantValueKind.Int,
-            value = sourceCallable.symbol.source?.endOffset ?: UNDEFINED_OFFSET,
+            value = symbolToMap.source?.endOffset ?: UNDEFINED_OFFSET,
             annotations = null,
             setType = true,
             prefix = null,
@@ -327,7 +346,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
   ) {
     val callableId = CallableId(owner.classId, symbol.name)
     val name = symbol.name
-    val shouldGenerateObject by unsafeLazy {
+    val shouldGenerateObject by memoize {
       instanceReceiver == null && (isProperty || valueParameters.isEmpty())
     }
     private val isProperty
@@ -336,9 +355,9 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
     val returnType
       get() = symbol.resolvedReturnType
 
-    val useGetPrefix by unsafeLazy { isProperty && !isWordPrefixRegex.matches(name.asString()) }
+    val useGetPrefix by memoize { isProperty && !isWordPrefixRegex.matches(name.asString()) }
 
-    val bytecodeName: Name by unsafeLazy {
+    val bytecodeName: Name by memoize {
       buildString {
           when {
             useGetPrefix -> {
@@ -354,7 +373,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
 }
 
 internal class ProvidesFactorySupertypeGenerator(session: FirSession) :
-  FirSupertypeGenerationExtension(session) {
+  FirSupertypeGenerationExtension(session), CompatContext by session.compatContext {
 
   override fun needTransformSupertypes(declaration: FirClassLikeDeclaration): Boolean {
     return declaration.symbol.hasOrigin(Keys.ProviderFactoryClassDeclaration)
@@ -409,7 +428,7 @@ internal class ProvidesFactorySupertypeGenerator(session: FirSession) :
               """
                     .trimIndent()
                 if (session is FirCliSession) {
-                  error(message)
+                  reportCompilerBug(message)
                 } else {
                   // TODO TypeResolveService appears to be unimplemented in the IDE
                   //  https://youtrack.jetbrains.com/issue/KT-74553/
@@ -463,7 +482,7 @@ internal class ProvidesFactorySupertypeGenerator(session: FirSession) :
       val message =
         "Could not resolve function type parameters for function type: ${typeRef.render()}"
       if (session is FirCliSession) {
-        error(message)
+        reportCompilerBug(message)
       } else {
         // TODO TypeResolveService appears to be unimplemented in the IDE
         //  https://youtrack.jetbrains.com/issue/KT-74553/

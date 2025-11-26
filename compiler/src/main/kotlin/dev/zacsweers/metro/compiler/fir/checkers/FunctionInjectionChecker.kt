@@ -2,10 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
-import dev.zacsweers.metro.compiler.fir.FirMetroErrors.FUNCTION_INJECT_ERROR
-import dev.zacsweers.metro.compiler.fir.FirMetroErrors.FUNCTION_INJECT_TYPE_PARAMETERS_ERROR
+import dev.zacsweers.metro.compiler.MetroAnnotations
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FUNCTION_INJECT_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FUNCTION_INJECT_TYPE_PARAMETERS_ERROR
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
 import dev.zacsweers.metro.compiler.metroAnnotations
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
@@ -32,7 +34,6 @@ internal object FunctionInjectionChecker : FirSimpleFunctionChecker(MppCheckerKi
       )
     }
 
-    // TODO eventually check context receivers too
     declaration.symbol.receiverParameterSymbol?.let { param ->
       reporter.reportOn(
         param.source ?: source,
@@ -41,13 +42,12 @@ internal object FunctionInjectionChecker : FirSimpleFunctionChecker(MppCheckerKi
       )
     }
 
-    val contextParams = declaration.symbol.contextParameterSymbols
-    if (contextParams.isNotEmpty()) {
-      for (param in contextParams) {
+    for (contextParam in declaration.symbol.contextParameterSymbols) {
+      if (contextParam.isAnnotatedWithAny(session, session.classIds.optionalBindingAnnotations)) {
         reporter.reportOn(
-          param.source ?: source,
+          contextParam.source ?: source,
           FUNCTION_INJECT_ERROR,
-          "Injected functions cannot have context parameters.",
+          "Context parameters cannot be annotated @OptionalBinding.",
         )
       }
     }
@@ -59,6 +59,25 @@ internal object FunctionInjectionChecker : FirSimpleFunctionChecker(MppCheckerKi
         scope.fir.source ?: source,
         FUNCTION_INJECT_ERROR,
         "Injected functions are stateless and should not be scoped.",
+      )
+    }
+
+    for (param in declaration.valueParameters) {
+      val annotations =
+        param.symbol.metroAnnotations(
+          session,
+          MetroAnnotations.Kind.OptionalBinding,
+          MetroAnnotations.Kind.Assisted,
+          MetroAnnotations.Kind.Qualifier,
+        )
+      if (annotations.isAssisted) continue
+      validateInjectionSiteType(
+        session,
+        param.returnTypeRef,
+        annotations.qualifier,
+        param.source ?: source,
+        annotations.isOptionalBinding,
+        param.symbol.hasDefaultValue,
       )
     }
   }

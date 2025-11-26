@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.fir
 
 import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.asFqNames
+import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
 import org.jetbrains.kotlin.fir.extensions.predicate.DeclarationPredicate
 import org.jetbrains.kotlin.fir.extensions.predicate.LookupPredicate.BuilderContext.annotated
 import org.jetbrains.kotlin.fir.extensions.predicate.LookupPredicate.BuilderContext.parentAnnotated
@@ -26,6 +27,7 @@ internal class ExtensionPredicates(private val classIds: ClassIds) {
 
   internal val bindingContainerPredicate =
     annotated(classIds.bindingContainerAnnotations.asFqNames())
+  internal val originPredicate = annotated(classIds.originAnnotations.asFqNames())
   internal val dependencyGraphPredicate = annotated(classIds.dependencyGraphAnnotations.asFqNames())
   internal val graphExtensionFactoryPredicate =
     annotated(classIds.graphExtensionFactoryAnnotations.asFqNames())
@@ -45,10 +47,10 @@ internal class ExtensionPredicates(private val classIds: ClassIds) {
 
   internal val injectAnnotationPredicate = annotated(classIds.injectAnnotations.asFqNames())
 
-  internal val assistedAnnotationPredicate = annotated(classIds.assistedAnnotations.asFqNames())
+  internal val injectLikeAnnotationsPredicate =
+    annotated(classIds.injectLikeAnnotations.asFqNames())
 
-  internal val injectAndAssistedAnnotationPredicate =
-    annotated((classIds.injectAnnotations + classIds.assistedAnnotations).asFqNames())
+  internal val assistedAnnotationPredicate = annotated(classIds.assistedAnnotations.asFqNames())
 
   internal val assistedFactoryAnnotationPredicate =
     annotated(classIds.assistedFactoryAnnotations.asFqNames())
@@ -56,4 +58,7 @@ internal class ExtensionPredicates(private val classIds: ClassIds) {
   internal val bindsAnnotationPredicate = annotated(classIds.bindsAnnotations.asFqNames())
 
   internal val multibindsAnnotationPredicate = annotated(classIds.multibindsAnnotations.asFqNames())
+
+  internal val bindsOptionalOfAnnotationPredicate =
+    annotated(DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF.asSingleFqName())
 }

@@ -1,0 +1,1 @@
+/AssistedFactoriesCannotBeLocal.kt:(133,152): error: @AssistedFactory declarations cannot be local classes.

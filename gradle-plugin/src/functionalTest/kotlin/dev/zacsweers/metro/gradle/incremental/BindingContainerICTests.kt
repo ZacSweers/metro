@@ -6,9 +6,16 @@ package dev.zacsweers.metro.gradle.incremental
 
 import com.autonomousapps.kit.GradleBuilder.build
 import com.autonomousapps.kit.GradleBuilder.buildAndFail
+import com.autonomousapps.kit.GradleProject
+import com.autonomousapps.kit.GradleProject.DslKind
+import com.autonomousapps.kit.gradle.Dependency
 import com.google.common.truth.Truth.assertThat
+import dev.zacsweers.metro.gradle.MetroOptionOverrides
+import dev.zacsweers.metro.gradle.MetroProject
+import dev.zacsweers.metro.gradle.assertOutputContains
+import dev.zacsweers.metro.gradle.classLoader
+import dev.zacsweers.metro.gradle.source
 import org.gradle.testkit.runner.TaskOutcome
-import org.junit.Ignore
 import org.junit.Test
 
 class BindingContainerICTests : BaseIncrementalCompilationTest() {
@@ -20,9 +27,9 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
         MetroProject(
           metroOptions =
             MetroOptionOverrides(
-              // Enable strict validation for this case to ensure we pick up and store the unused B
+              // Enable full validation for this case to ensure we pick up and store the unused B
               // binding
-              enableStrictValidation = true
+              enableFullBindingGraphValidation = true
             )
         ) {
         override fun sources() = listOf(appGraph, bindingContainer, implementations, target)
@@ -101,12 +108,12 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
       """
         .trimIndent(),
     )
-    assertThat(project.appGraphReports.keysPopulated).doesNotContain("InterfaceB")
+    assertThat(project.asMetroProject.appGraphReports.keysPopulated).doesNotContain("InterfaceB")
 
     // Second build should succeed with the new binding available
     val secondBuildResult = build(project.rootDir, "compileKotlin")
     assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    assertThat(project.appGraphReports.keysPopulated)
+    assertThat(project.asMetroProject.appGraphReports.keysPopulated)
       .containsAtLeastElementsIn(setOf("test.InterfaceB", "test.ImplB"))
   }
 
@@ -203,7 +210,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             test.InterfaceB is injected at
                 [test.AppGraph] test.Target(…, b)
             test.Target is requested at
-                [test.AppGraph] test.AppGraph#target
+                [test.AppGraph] test.AppGraph.target
         """
           .trimIndent()
       )
@@ -270,7 +277,8 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     // First build should succeed
     val firstBuildResult = build(project.rootDir, "compileKotlin")
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    assertThat(project.appGraphReports.keysPopulated).doesNotContain("test.InterfaceB")
+    assertThat(project.asMetroProject.appGraphReports.keysPopulated)
+      .doesNotContain("test.InterfaceB")
 
     // Change the binding return type
     project.modify(
@@ -295,7 +303,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             test.InterfaceA is injected at
                 [test.AppGraph] test.Target(…, a)
             test.Target is requested at
-                [test.AppGraph] test.AppGraph#target
+                [test.AppGraph] test.AppGraph.target
         """
           .trimIndent()
       )
@@ -449,7 +457,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             test.InterfaceA is injected at
                 [test.AppGraph] test.Target(…, a)
             test.Target is requested at
-                [test.AppGraph] test.AppGraph#target
+                [test.AppGraph] test.AppGraph.target
         """
           .trimIndent()
       )
@@ -504,7 +512,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     // First build should succeed
     val firstBuildResult = build(project.rootDir, "compileKotlin")
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    assertThat(project.appGraphReports.scopedProviderFieldKeys).isEmpty()
+    assertThat(project.asMetroProject.appGraphReports.scopedProviderPropertyKeys).isEmpty()
 
     // Add scope to the provider method
     project.modify(
@@ -523,11 +531,10 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     // Second build should succeed with the scoped provider
     val secondBuildResult = build(project.rootDir, "compileKotlin")
     assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    assertThat(project.appGraphReports.scopedProviderFieldKeys).contains("kotlin.String")
+    assertThat(project.asMetroProject.appGraphReports.scopedProviderPropertyKeys)
+      .contains("kotlin.String")
   }
 
-  // TODO
-  @Ignore("@ContributesTo with @BindingContainer not yet supported")
   @Test
   fun bindingContainerWithContributesTo() {
     val fixture =
@@ -602,13 +609,27 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.output).contains("Cannot find an @Inject constructor")
   }
 
-  // TODO
-  @Ignore("These tests don't support multi-module yet")
   @Test
   fun multiModuleBindingContainerChanges() {
     val fixture =
       object : MetroProject() {
-        override fun sources() = listOf(appGraph, featureGraph, bindingContainer, target)
+        override fun sources() = listOf(appGraph, featureGraph, target)
+
+        override val gradleProject: GradleProject
+          get() =
+            newGradleProjectBuilder(DslKind.KOTLIN)
+              .withRootProject {
+                withBuildScript {
+                  sources = sources()
+                  applyMetroDefault()
+                  dependencies(Dependency.implementation(":lib"))
+                }
+              }
+              .withSubproject("lib") {
+                sources.add(bindingContainer)
+                withBuildScript { applyMetroDefault() }
+              }
+              .write()
 
         private val appGraph =
           source(
@@ -622,14 +643,14 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
         private val featureGraph =
           source(
             """
-            @DependencyGraph
+            @GraphExtension
             interface FeatureGraph {
               val target: Target
 
-              @DependencyGraph.Factory
+              @ContributesTo(Unit::class)
+              @GraphExtension.Factory
               interface Factory {
                 fun create(
-                  @Extends appGraph: AppGraph,
                   @Includes bindings: MyBindingContainer
                 ): FeatureGraph
               }
@@ -648,10 +669,10 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             }
 
             interface InterfaceA
+            interface InterfaceB
 
             @Inject
-            @ContributesBinding(Unit::class)
-            class ImplA : InterfaceA
+            class ImplA : InterfaceA, InterfaceB
             """
               .trimIndent()
           )
@@ -667,27 +688,29 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
       }
 
     val project = fixture.gradleProject
+    val libProject = project.subprojects.first { it.name == "lib" }
 
     // First build should succeed
     val firstBuildResult = build(project.rootDir, "compileKotlin")
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Change the binding in the container
-    project.modify(
+    libProject.modify(
+      project.rootDir,
       fixture.bindingContainer,
       """
       @BindingContainer
       interface MyBindingContainer {
         // Changed: now binds to a different interface
         @Binds
-        fun ImplA.bindA(): ImplA
+        fun ImplA.bindA(): InterfaceB
       }
 
       interface InterfaceA
+      interface InterfaceB
 
       @Inject
-      @ContributesBinding(Unit::class)
-      class ImplA : InterfaceA
+      class ImplA : InterfaceA, InterfaceB
       """
         .trimIndent(),
     )
@@ -697,12 +720,12 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.output)
       .contains(
         """
-        FeatureGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
+        AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
 
             test.InterfaceA is injected at
-                [test.FeatureGraph] test.Target(…, a)
+                [test.AppGraph.Impl.FeatureGraphImpl] test.Target(…, a)
             test.Target is requested at
-                [test.FeatureGraph] test.FeatureGraph#target
+                [test.AppGraph.Impl.FeatureGraphImpl] test.FeatureGraph.target
         """
           .trimIndent()
       )
@@ -802,7 +825,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             test.InterfaceA is injected at
                 [test.AppGraph] test.Target(…, a)
             test.Target is requested at
-                [test.AppGraph] test.AppGraph#target
+                [test.AppGraph] test.AppGraph.target
         """
           .trimIndent()
       )
@@ -901,7 +924,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             kotlin.String is injected at
                 [test.AppGraph] test.Target(…, string)
             test.Target is requested at
-                [test.AppGraph] test.AppGraph#target
+                [test.AppGraph] test.AppGraph.target
         """
           .trimIndent()
       )
@@ -1017,7 +1040,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             test.InterfaceA is injected at
                 [test.AppGraph] test.Target(…, a)
             test.Target is requested at
-                [test.AppGraph] test.AppGraph#target
+                [test.AppGraph] test.AppGraph.target
         """
           .trimIndent()
       )
@@ -1152,7 +1175,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             test.InterfaceA is injected at
                 [test.AppGraph] test.Target(…, a)
             test.Target is requested at
-                [test.AppGraph] test.AppGraph#target
+                [test.AppGraph] test.AppGraph.target
         """
           .trimIndent()
       )
@@ -1284,7 +1307,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             test.InterfaceB is injected at
                 [test.AppGraph] test.Target(…, b)
             test.Target is requested at
-                [test.AppGraph] test.AppGraph#target
+                [test.AppGraph] test.AppGraph.target
         """
           .trimIndent()
       )
@@ -1401,7 +1424,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             test.InterfaceC is injected at
                 [test.AppGraph] test.Target(…, c)
             test.Target is requested at
-                [test.AppGraph] test.AppGraph#target
+                [test.AppGraph] test.AppGraph.target
         """
           .trimIndent()
       )
@@ -1490,7 +1513,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             kotlin.collections.Set<kotlin.String> is injected at
                 [test.AppGraph] test.Target(…, strings)
             test.Target is requested at
-                [test.AppGraph] test.AppGraph#target
+                [test.AppGraph] test.AppGraph.target
         """
           .trimIndent()
       )
@@ -1545,7 +1568,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             kotlin.collections.Set<kotlin.String> is injected at
                 [test.AppGraph] test.Target(…, strings)
             test.Target is requested at
-                [test.AppGraph] test.AppGraph#target
+                [test.AppGraph] test.AppGraph.target
         """
           .trimIndent()
       )
@@ -1637,7 +1660,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             kotlin.collections.Set<kotlin.String> is injected at
                 [test.AppGraph] test.Target(…, strings)
             test.Target is requested at
-                [test.AppGraph] test.AppGraph#target
+                [test.AppGraph] test.AppGraph.target
         """
           .trimIndent()
       )
@@ -1706,11 +1729,334 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.output)
       .contains(
         """
-        MyBindingContainer.kt:8:3 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.String>' was unexpectedly empty.
+        MyBindingContainer.kt:9:3 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.String>' was unexpectedly empty.
 
         If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
         """
           .trimIndent()
       )
+  }
+
+  @Test
+  fun dynamicGraphWithScopeChangeInDynamicBindingContainer() {
+    val fixture =
+      object : MetroProject() {
+        override fun sources() = listOf(appGraph, testBindingContainer, target, testClass)
+
+        private val appGraph =
+          source(
+            """
+            @DependencyGraph(AppScope::class)
+            interface AppGraph {
+              val target: Target
+
+              @Provides
+              fun provideString(): String = "default"
+            }
+            """
+              .trimIndent()
+          )
+
+        val testBindingContainer =
+          source(
+            """
+            @BindingContainer
+            class TestBindingContainer {
+              @Provides
+              fun provideString(): String = "test"
+            }
+            """
+              .trimIndent()
+          )
+
+        private val target =
+          source(
+            """
+            @Inject
+            class Target(val string: String)
+            """
+              .trimIndent()
+          )
+
+        private val testClass =
+          source(
+            """
+            class AppTest {
+              val testGraph = createDynamicGraph<AppGraph>(TestBindingContainer())
+            }
+            """
+              .trimIndent()
+          )
+      }
+
+    val project = fixture.gradleProject
+
+    // First build should succeed with unscoped provider
+    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    // Add scope to the provider in the binding container
+    project.modify(
+      fixture.testBindingContainer,
+      """
+      @BindingContainer
+      class TestBindingContainer {
+        @SingleIn(AppScope::class)
+        @Provides
+        fun provideString(): String = "test"
+      }
+      """
+        .trimIndent(),
+    )
+
+    // Second build should succeed with scoped provider
+    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    // Remove scope from the provider
+    project.modify(
+      fixture.testBindingContainer,
+      """
+      @BindingContainer
+      class TestBindingContainer {
+        @Provides
+        fun provideString(): String = "test"
+      }
+      """
+        .trimIndent(),
+    )
+
+    // Third build should succeed with unscoped provider again
+    val thirdBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(thirdBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+  }
+
+  @Test
+  fun dynamicGraphWithChangingArguments() {
+    val fixture =
+      object : MetroProject() {
+        override fun sources() =
+          listOf(appGraph, bindingContainerA, bindingContainerB, target, testClass)
+
+        private val appGraph =
+          source(
+            """
+            @DependencyGraph
+            interface AppGraph {
+              val target: Target
+
+              @Provides
+              fun provideString(): String = "default"
+            }
+            """
+              .trimIndent()
+          )
+
+        private val bindingContainerA =
+          source(
+            """
+            @BindingContainer
+            class BindingContainerA {
+              @Provides
+              fun provideString(): String = "A"
+            }
+            """
+              .trimIndent()
+          )
+
+        private val bindingContainerB =
+          source(
+            """
+            @BindingContainer
+            class BindingContainerB {
+              @Provides
+              fun provideString(): String = "B"
+
+              @Provides
+              fun provideInt(): Int = 42
+            }
+            """
+              .trimIndent()
+          )
+
+        private val target =
+          source(
+            """
+            @Inject
+            class Target(val string: String)
+            """
+              .trimIndent()
+          )
+
+        val testClass =
+          source(
+            """
+            class AppTest {
+              val testGraph = createDynamicGraph<AppGraph>(BindingContainerA())
+            }
+            """
+              .trimIndent()
+          )
+      }
+
+    val project = fixture.gradleProject
+
+    // First build should succeed with BindingContainerA
+    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    // Change to use BindingContainerB
+    project.modify(
+      fixture.testClass,
+      """
+      class AppTest {
+        val testGraph = createDynamicGraph<AppGraph>(BindingContainerB())
+      }
+      """
+        .trimIndent(),
+    )
+
+    // Second build should succeed with BindingContainerB
+    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    // Change to use both containers (should fail due to duplicate String binding)
+    project.modify(
+      fixture.testClass,
+      """
+      class AppTest {
+        val testGraph = createDynamicGraph<AppGraph>(BindingContainerA(), BindingContainerB())
+      }
+      """
+        .trimIndent(),
+    )
+
+    // Third build should fail - duplicate String binding
+    val thirdBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+
+    thirdBuildResult.assertOutputContains(
+      """
+      [Metro/DuplicateBinding] Multiple bindings found for kotlin.String
+
+        test/BindingContainerA.provideString
+          fun provideString(): kotlin.String
+                               ~~~~~~~~~~~~~
+        test/BindingContainerB.provideString
+          fun provideString(): kotlin.String
+                               ~~~~~~~~~~~~~
+      """
+        .trimIndent()
+    )
+  }
+
+  @Test
+  fun restoredMultibindingContributionFromExternalModuleIsDetected() {
+    val fixture =
+      object : MetroProject() {
+        val multibindings =
+          source(
+            """
+            interface Multibinding
+
+            class AppMultibinding @Inject constructor(): Multibinding {
+                override fun toString(): String = "AppMultibinding"
+            }
+            """
+              .trimIndent()
+          )
+
+        val appModuleContent =
+          """
+          @BindingContainer
+          @ContributesTo(Unit::class)
+          interface AppModule {
+            @Binds
+            @IntoSet
+            fun bindMultibinding(multibinding: AppMultibinding): Multibinding
+          }
+          """
+            .trimIndent()
+
+        val appModule = source(appModuleContent)
+
+        override fun sources() = throw IllegalStateException()
+
+        override val gradleProject: GradleProject
+          get() =
+            newGradleProjectBuilder(DslKind.KOTLIN)
+              .withRootProject {
+                withBuildScript {
+                  sources = listOf(main, appGraph)
+                  applyMetroDefault()
+                  dependencies(Dependency.implementation(":lib"))
+                }
+              }
+              .withSubproject("lib") {
+                sources.add(multibindings)
+                sources.add(appModule)
+                withBuildScript { applyMetroDefault() }
+              }
+              .write()
+
+        private val appGraph =
+          source(
+            """
+            @DependencyGraph(Unit::class)
+            interface AppGraph {
+              val multibindings: Set<Multibinding>
+            }
+
+            @BindingContainer
+            @ContributesTo(Unit::class)
+            interface PrimeModule {
+              @Multibinds(allowEmpty = true)
+              fun bindMultibinding(): Set<Multibinding>
+            }
+              """
+          )
+
+        val main =
+          source(
+            """
+            fun main(): String {
+              val appGraph = createGraph<AppGraph>()
+              return appGraph.multibindings.toString()
+            }
+            """
+          )
+      }
+
+    val project = fixture.gradleProject
+    val libProject = project.subprojects.first { it.name == "lib" }
+
+    // First build should succeed
+    val firstBuildResult = build(project.rootDir, "compileKotlin", "--quiet")
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    with(project.classLoader().loadClass("test.MainKt")) {
+      val result = declaredMethods.first { it.name == "main" }.invoke(null) as String
+      assertThat(result).isEqualTo("[AppMultibinding]")
+    }
+
+    // Remove contributing module from the build
+    libProject.delete(project.rootDir, fixture.appModule)
+
+    // Second build should succeed
+    val secondBuildResult = build(project.rootDir, "compileKotlin", "--quiet")
+    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    with(project.classLoader().loadClass("test.MainKt")) {
+      val result = declaredMethods.first { it.name == "main" }.invoke(null) as String
+      assertThat(result).isEqualTo("[]")
+    }
+
+    // Restore contributing module to the build
+    libProject.modify(project.rootDir, fixture.appModule, fixture.appModuleContent)
+
+    // Third build should succeed
+    val thirdBuildResult = build(project.rootDir, "compileKotlin", "--quiet")
+    assertThat(thirdBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    with(project.classLoader().loadClass("test.MainKt")) {
+      val result = declaredMethods.first { it.name == "main" }.invoke(null) as String
+      assertThat(result).isEqualTo("[AppMultibinding]")
+    }
   }
 }

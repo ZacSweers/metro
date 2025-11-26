@@ -1,0 +1,9 @@
+/OptionalBindingErrorIfDisabled.kt:(191,196): error: @OptionalBinding is disabled in this project.
+
+/OptionalBindingErrorIfDisabled.kt:(259,275): warning: This annotation is currently applied to the value parameter only, but in the future it will also be applied to property.
+- To opt in to applying to both value parameter and property, add '-Xannotation-default-target=param-property' to your compiler arguments.
+- To keep applying to the value parameter only, use the '@param:' annotation target.
+
+See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
+
+/OptionalBindingErrorIfDisabled.kt:(280,285): error: @OptionalBinding is disabled in this project.

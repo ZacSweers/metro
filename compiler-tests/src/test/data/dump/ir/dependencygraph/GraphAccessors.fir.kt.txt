@@ -9,28 +9,24 @@ interface Accessors {
 
 @DependencyGraph
 interface ExampleGraph {
-  companion object Companion : Factory {
-    private constructor() /* primary */ {
-      super/*Any*/()
-      /* <init>() */
-
-    }
-
-    @GraphFactoryInvokeFunctionMarker
-    override fun create(@Includes accessors: Accessors): ExampleGraph {
-      return $$MetroGraph(accessors = accessors)
-    }
-
-  }
-
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class $$MetroGraph : ExampleGraph {
-    private /* final field */ val accessorsInstance: Accessors = accessors
-    private /* final field */ val accessorsGetIntProvider: Provider<Int> = <this>.#accessorsInstance.<get-intProvider>()
-    private /* final field */ val accessorsGetStringProvider: Provider<String> = provider<String>(provider = local fun <anonymous>(): String {
-      return <this>.#accessorsInstance.<get-string>()
-    }
+  @MetroImplMarker
+  class Impl : ExampleGraph {
+    private val accessorsInstance: Accessors
+      field = accessors
+
+    private val accessorsInstanceProvider: Provider<Accessors>
+      field = Companion.invoke<Accessors>(value = <this>.#accessorsInstance)
+
+    private val accessorsGetIntProvider: Provider<Int>
+      field = <this>.#accessorsInstance.<get-intProvider>()
+
+    private val accessorsGetStringProvider: Provider<String>
+      field = provider<String>(provider = local fun <anonymous>(): String {
+        return <this>.#accessorsInstance.<get-string>()
+      }
 )
+
     private constructor(@Includes accessors: Accessors) /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -49,10 +45,25 @@ interface ExampleGraph {
 
   }
 
+  companion object Companion : Factory {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    override fun create(@Includes accessors: Accessors): ExampleGraph {
+      return Impl(accessors = accessors)
+    }
+
+  }
+
   @Factory
   interface Factory {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-    object $$Impl : Factory {
+    @MetroImplMarker
+    object Impl : Factory {
       private constructor() /* primary */ {
         super/*Any*/()
         /* <init>() */
@@ -61,7 +72,7 @@ interface ExampleGraph {
 
       @GraphFactoryInvokeFunctionMarker
       override fun create(@Includes accessors: Accessors): ExampleGraph {
-        return $$MetroGraph(accessors = accessors)
+        return Impl(accessors = accessors)
       }
 
     }

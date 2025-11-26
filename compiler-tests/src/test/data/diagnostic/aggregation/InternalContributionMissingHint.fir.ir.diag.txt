@@ -1,0 +1,7 @@
+/module_main_InternalContributionMissingHint.kt:(129,132): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: Foo
+
+    Foo is requested at
+        [AppGraph] AppGraph#foo
+
+Similar bindings:
+  - Foo (Contributed by 'FooImpl' but that class is internal to its module and its module is not a friend module to this one.)

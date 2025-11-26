@@ -13,14 +13,10 @@ internal object Origins {
     IrDeclarationOrigin.GeneratedByPlugin(Keys.ReceiverParameter)
   val RegularParameter: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.RegularParameter)
-  val AssistedFactoryImplClassDeclaration: IrDeclarationOrigin =
-    IrDeclarationOrigin.GeneratedByPlugin(Keys.AssistedFactoryImplClassDeclaration)
-  val AssistedFactoryImplCreatorFunctionDeclaration: IrDeclarationOrigin =
-    IrDeclarationOrigin.GeneratedByPlugin(Keys.AssistedFactoryImplCreatorFunctionDeclaration)
   val MetroGraphCreatorsObjectInvokeDeclaration: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.MetroGraphCreatorsObjectInvokeDeclaration)
-  val MetroGraphDeclaration: IrDeclarationOrigin =
-    IrDeclarationOrigin.GeneratedByPlugin(Keys.MetroGraphDeclaration)
+  val GraphImplClassDeclaration: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(Keys.GraphImplClassDeclaration)
   val MetroGraphAccessorCallableOverride: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.MetroGraphAccessorCallableOverride)
   val MetroGraphInjectorCallableOverride: IrDeclarationOrigin =
@@ -49,4 +45,14 @@ internal object Origins {
     IrDeclarationOrigin.GeneratedByPlugin(Keys.GeneratedGraphExtension)
   val BindingMirrorClassDeclaration: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.BindingMirrorClassDeclaration)
+  val GeneratedDynamicGraph: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(Keys.GeneratedDynamicGraph)
+  val DynamicContainerParam: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(Keys.DynamicContainerParam)
 }
+
+internal val IrDeclarationOrigin.isInvisibleGeneratedGraph: Boolean
+  get() = this == Origins.GeneratedGraphExtension || this == Origins.GeneratedDynamicGraph
+
+internal val IrDeclarationOrigin.isGraphImpl: Boolean
+  get() = this == Origins.GraphImplClassDeclaration || isInvisibleGeneratedGraph

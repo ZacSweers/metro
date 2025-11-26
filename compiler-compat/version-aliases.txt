@@ -1,0 +1,14 @@
+# Copyright (C) 2025 Zac Sweers
+# SPDX-License-Identifier: Apache-2.0
+
+# Kotlin compiler versions to test against in CI
+#
+# This file must be an equal or superset of the available compiler-compat modules.
+# Each line is a Kotlin version that has a corresponding k* module.
+# Blank lines and comments (starting with #) are ignored.
+
+2.2.20
+2.2.21
+2.3.0-Beta1
+2.3.0-Beta2
+2.3.0-RC

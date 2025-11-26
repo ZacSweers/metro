@@ -1,0 +1,3 @@
+/OptionalBindingIsNotAllowedOnInjectors.kt:(125,131): error: Injector functions cannot be annotated with @OptionalBinding.
+
+/OptionalBindingIsNotAllowedOnInjectors.kt:(132,148): error: Injector function parameters cannot be annotated with @OptionalBinding.

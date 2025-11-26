@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import com.diffplug.gradle.spotless.SpotlessExtension
 import com.diffplug.gradle.spotless.SpotlessExtensionPredeclare
+import com.diffplug.spotless.LineEnding
 import com.vanniktech.maven.publish.MavenPublishBaseExtension
 import kotlinx.validation.ExperimentalBCVApi
 import org.jetbrains.dokka.gradle.DokkaExtension
@@ -20,6 +21,9 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
   alias(libs.plugins.kotlin.jvm) apply false
   alias(libs.plugins.kotlin.multiplatform) apply false
+  alias(libs.plugins.kotlin.android) apply false
+  alias(libs.plugins.android.library) apply false
+  alias(libs.plugins.android.lint) apply false
   alias(libs.plugins.dokka)
   alias(libs.plugins.ksp) apply false
   alias(libs.plugins.mavenPublish) apply false
@@ -31,12 +35,26 @@ plugins {
 }
 
 apiValidation {
-  ignoredProjects += listOf("compiler", "compiler-tests")
-  ignoredPackages += listOf("dev.zacsweers.metro.internal")
+  ignoredProjects += buildList {
+    add("compiler")
+    add("compiler-tests")
+    add("compiler-compat")
+    layout.projectDirectory.dir("compiler-compat").asFile.listFiles()!!.forEach {
+      if (it.isDirectory && it.name.startsWith("k")) {
+        add(it.name)
+      }
+    }
+  }
+  ignoredPackages +=
+    listOf(
+      "dev.zacsweers.metro.internal",
+      "dev.zacsweers.metro.compiler.compat",
+      "dev.zacsweers.metro.interop.dagger.internal",
+    )
   @OptIn(ExperimentalBCVApi::class)
   klib {
     // This is only really possible to run on macOS
-    //    strictValidation = true
+    // strictValidation = true
     enabled = true
   }
 }
@@ -51,20 +69,24 @@ dokka {
 
 val ktfmtVersion = libs.versions.ktfmt.get()
 
-spotless {
-  predeclareDeps()
-}
+spotless { predeclareDeps() }
 
 configure<SpotlessExtensionPredeclare> {
   kotlin { ktfmt(ktfmtVersion).googleStyle().configure { it.setRemoveUnusedImports(true) } }
   kotlinGradle { ktfmt(ktfmtVersion).googleStyle().configure { it.setRemoveUnusedImports(true) } }
-  java { googleJavaFormat(libs.versions.gjf.get()).reorderImports(true).reflowLongStrings(true) }
+  java {
+    googleJavaFormat(libs.versions.gjf.get())
+      .reorderImports(true)
+      .reflowLongStrings(true)
+      .reorderImports(true)
+  }
 }
 
 // Configure spotless in subprojects
 allprojects {
   apply(plugin = "com.diffplug.spotless")
   configure<SpotlessExtension> {
+    setLineEndings(LineEnding.GIT_ATTRIBUTES_FAST_ALLSAME)
     format("misc") {
       target("*.gradle", "*.md", ".gitignore")
       trimTrailingWhitespace()
@@ -72,6 +94,10 @@ allprojects {
       endWithNewline()
     }
     java {
+      googleJavaFormat(libs.versions.gjf.get())
+        .reorderImports(true)
+        .reflowLongStrings(true)
+        .reorderImports(true)
       target("src/**/*.java")
       trimTrailingWhitespace()
       endWithNewline()
@@ -80,6 +106,7 @@ allprojects {
       targetExclude("**/*Generated.java")
     }
     kotlin {
+      ktfmt(ktfmtVersion).googleStyle().configure { it.setRemoveUnusedImports(true) }
       target("src/**/*.kt")
       trimTrailingWhitespace()
       endWithNewline()
@@ -87,6 +114,7 @@ allprojects {
       targetExclude("**/src/test/data/**")
     }
     kotlinGradle {
+      ktfmt(ktfmtVersion).googleStyle().configure { it.setRemoveUnusedImports(true) }
       target("*.kts")
       trimTrailingWhitespace()
       endWithNewline()
@@ -132,6 +160,7 @@ allprojects {
         "**/StringKey.kt",
         "**/topologicalSort.kt",
         "**/TopologicalSortTest.kt",
+        "**/ir/cache/*.kt",
       )
     }
     format("licenseJava") {
@@ -161,7 +190,7 @@ subprojects {
         progressiveMode.set(true)
         if (this is KotlinJvmCompilerOptions) {
           jvmTarget.set(libs.versions.jvmTarget.map(JvmTarget::fromTarget))
-          freeCompilerArgs.addAll("-Xjvm-default=all")
+          freeCompilerArgs.addAll("-jvm-default=no-compatibility")
         }
       }
     }
@@ -174,7 +203,9 @@ subprojects {
     if (project.path != ":compiler") {
       apply(plugin = "org.jetbrains.dokka")
     }
-    configure<MavenPublishBaseExtension> { publishToMavenCentral(automaticRelease = true) }
+    configure<MavenPublishBaseExtension> {
+      publishToMavenCentral(automaticRelease = true, validateDeployment = false)
+    }
 
     // configuration required to produce unique META-INF/*.kotlin_module file names
     tasks.withType<KotlinCompile>().configureEach {
@@ -188,6 +219,11 @@ subprojects {
       dokkaSourceSets.configureEach {
         skipDeprecated.set(true)
         documentedVisibilities.add(VisibilityModifier.Public)
+        reportUndocumented.set(true)
+        perPackageOption {
+          matchingRegex.set(".*\\.internal.*")
+          suppress.set(true)
+        }
         sourceLink {
           localDirectory.set(layout.projectDirectory.dir("src"))
           val relPath = rootProject.projectDir.toPath().relativize(projectDir.toPath())

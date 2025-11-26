@@ -1,0 +1,3 @@
+/SuggestInjectClassOnSingleContructor.kt:(90,97): warning: There is only one @Inject-annotated constructor. Consider moving the annotation to the class instead.
+
+/SuggestInjectClassOnSingleContructor.kt:(145,152): warning: There is only one @Inject-annotated constructor. Consider moving the annotation to the class instead.

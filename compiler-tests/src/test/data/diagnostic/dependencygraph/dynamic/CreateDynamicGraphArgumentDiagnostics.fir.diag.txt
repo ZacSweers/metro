@@ -1,0 +1,43 @@
+/CreateDynamicGraphArgumentDiagnostics.kt:(329,341): error: `createDynamicGraph` must have at least one argument.
+
+/CreateDynamicGraphArgumentDiagnostics.kt:(373,404): error: `createDynamicGraphFactory` must have at least one argument.
+
+/CreateDynamicGraphArgumentDiagnostics.kt:(479,497): error: `createDynamicGraph` cannot have spread arguments.
+
+/CreateDynamicGraphArgumentDiagnostics.kt:(560,578): error: `createDynamicGraphFactory` cannot have spread arguments.
+
+/CreateDynamicGraphArgumentDiagnostics.kt:(684,707): error: `createDynamicGraph` cannot have implicit spread arguments (i.e., passing one vararg to another via named argument).
+
+/CreateDynamicGraphArgumentDiagnostics.kt:(770,793): error: `createDynamicGraphFactory` cannot have implicit spread arguments (i.e., passing one vararg to another via named argument).
+
+/CreateDynamicGraphArgumentDiagnostics.kt:(886,894): error: `createDynamicGraph` cannot have multiple arguments of the same (raw) type. 'Bindings' is passed multiple times.
+
+/CreateDynamicGraphArgumentDiagnostics.kt:(896,904): error: `createDynamicGraph` cannot have multiple arguments of the same (raw) type. 'Bindings' is passed multiple times.
+
+/CreateDynamicGraphArgumentDiagnostics.kt:(967,975): error: `createDynamicGraphFactory` cannot have multiple arguments of the same (raw) type. 'Bindings' is passed multiple times.
+
+/CreateDynamicGraphArgumentDiagnostics.kt:(977,985): error: `createDynamicGraphFactory` cannot have multiple arguments of the same (raw) type. 'Bindings' is passed multiple times.
+
+/CreateDynamicGraphArgumentDiagnostics.kt:(1060,1070): error: `createDynamicGraph` only accepts concrete, non-local binding container types as arguments. Platform type 'kotlin.String' is not a binding container.
+
+/CreateDynamicGraphArgumentDiagnostics.kt:(1133,1143): error: `createDynamicGraphFactory` only accepts concrete, non-local binding container types as arguments. Platform type 'kotlin.String' is not a binding container.
+
+/CreateDynamicGraphArgumentDiagnostics.kt:(1224,1241): error: Anonymous objects cannot be annotated with @BindingContainer.
+
+/CreateDynamicGraphArgumentDiagnostics.kt:(1246,1260): error: `createDynamicGraph` only accepts concrete, non-local binding container types as arguments. Anonymous objects cannot be binding containers.
+
+/CreateDynamicGraphArgumentDiagnostics.kt:(1340,1357): error: Anonymous objects cannot be annotated with @BindingContainer.
+
+/CreateDynamicGraphArgumentDiagnostics.kt:(1362,1376): error: `createDynamicGraphFactory` only accepts concrete, non-local binding container types as arguments. Anonymous objects cannot be binding containers.
+
+/CreateDynamicGraphArgumentDiagnostics.kt:(1429,1446): error: Anonymous objects cannot be annotated with @BindingContainer.
+
+/CreateDynamicGraphArgumentDiagnostics.kt:(1510,1527): error: `createDynamicGraph` only accepts concrete, non-local binding container types as arguments. Anonymous objects cannot be binding containers.
+
+/CreateDynamicGraphArgumentDiagnostics.kt:(1590,1607): error: `createDynamicGraphFactory` only accepts concrete, non-local binding container types as arguments. Anonymous objects cannot be binding containers.
+
+/CreateDynamicGraphArgumentDiagnostics.kt:(1621,1638): error: Local classes cannot be annotated with @BindingContainer.
+
+/CreateDynamicGraphArgumentDiagnostics.kt:(1693,1705): error: `createDynamicGraph` only accepts concrete, non-local binding container types as arguments. Local class 'LocalClass' cannot be a binding container.
+
+/CreateDynamicGraphArgumentDiagnostics.kt:(1768,1780): error: `createDynamicGraphFactory` only accepts concrete, non-local binding container types as arguments. Local class 'LocalClass' cannot be a binding container.

@@ -2,18 +2,24 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
-import org.jetbrains.kotlin.generators.generateTestGroupSuiteWithJUnit5
+import dev.zacsweers.metro.compiler.test.COMPILER_VERSION
+import dev.zacsweers.metro.compiler.test.OVERRIDE_COMPILER_VERSION
 
 fun main() {
-  generateTestGroupSuiteWithJUnit5 {
-    testGroup(
-      testDataRoot = "compiler-tests/src/test/data",
-      testsRoot = "compiler-tests/src/test/java",
-    ) {
-      testClass<AbstractBoxTest> { model("box") }
-      testClass<AbstractDiagnosticTest> { model("diagnostic") }
-      testClass<AbstractFirDumpTest> { model("dump/fir") }
-      testClass<AbstractIrDumpTest> { model("dump/ir") }
+  val targetCompilerVersion = COMPILER_VERSION
+  val versionString = targetCompilerVersion.toString().filterNot { it == '.' }
+
+  val exclusionPattern =
+    if (OVERRIDE_COMPILER_VERSION.toBoolean()) {
+      // Exclude files with .k<version> where version != targetCompilerVersion
+      // Pattern must match the full filename (with ^ and $ anchors)
+      // language=RegExp
+      """^(.+)\.k(?!$versionString\b)\w+\.kt(s)?$"""
+    } else {
+      null
     }
-  }
+
+  generateTests<AbstractBoxTest, AbstractDiagnosticTest, AbstractFirDumpTest, AbstractIrDumpTest>(
+    exclusionPattern
+  )
 }

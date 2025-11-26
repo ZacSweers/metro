@@ -15,8 +15,6 @@ If adopting Metro into an existing codebase, you can use a few different strateg
 
         - [useBindingGraphFix](https://dagger.dev/dev-guide/compiler-options#useBindingGraphFix) 
             - The issue it fixes is something that Metro catches as well.
-        - [fullBindingGraphValidation](https://dagger.dev/dev-guide/compiler-options#full-binding-graph-validation)
-            - Metro performs full binding graph validation.
         - [ignoreProvisionKeyWildcards](https://dagger.dev/dev-guide/compiler-options#ignore-provision-key-wildcards)
 
     !!! warning "K2 Migration"

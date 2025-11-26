@@ -4,11 +4,12 @@ package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
-import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
+import dev.zacsweers.metro.compiler.ir.hasMetroDefault
 import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
@@ -18,7 +19,7 @@ import dev.zacsweers.metro.compiler.ir.stubExpression
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.mirrorIrConstructorCalls
-import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.irExprBody
@@ -39,8 +40,8 @@ import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.functions
-import org.jetbrains.kotlin.ir.util.hasDefaultValue
 import org.jetbrains.kotlin.ir.util.isObject
+import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.ir.util.parentAsClass
 
 /**
@@ -62,31 +63,47 @@ internal fun generateStaticCreateFunction(
   parameters: Parameters,
   providerFunction: IrFunction?,
   patchCreationParams: Boolean = true,
+  copyQualifiers: Boolean = false,
 ): IrSimpleFunction {
   val function = parentClass.functions.first { it.origin == Origins.FactoryCreateFunction }
 
   return function.apply {
     if (patchCreationParams) {
       val instanceParam = regularParameters.find { it.origin == Origins.InstanceParameter }
-      val valueParamsToPatch = regularParameters.filter { it.origin == Origins.RegularParameter }
+      val valueParamsToPatch =
+        nonDispatchParameters.filter { it.origin == Origins.RegularParameter }
       copyParameterDefaultValues(
         providerFunction = providerFunction,
-        sourceParameters = parameters.regularParameters.filterNot { it.isAssisted }.map { it.ir },
+        sourceMetroParameters = parameters,
+        sourceParameters =
+          parameters.nonDispatchParameters.filterNot { it.isAssisted }.map { it.asValueParameter },
         targetParameters = valueParamsToPatch,
         targetGraphParameter = instanceParam,
         wrapInProvider = true,
       )
     }
 
+    // Copy qualifier annotations from source parameters to function parameters
+    if (copyQualifiers) {
+      for ((i, param) in regularParameters.withIndex()) {
+        val sourceParam = parameters.regularParameters[i]
+        sourceParam.typeKey.qualifier?.let { qualifier ->
+          context.pluginContext.metadataDeclarationRegistrar.addMetadataVisibleAnnotationsToElement(
+            param,
+            qualifier.ir.deepCopyWithSymbols(),
+          )
+        }
+      }
+    }
+
     body =
       context.createIrBuilder(symbol).run {
         irExprBodySafe(
-          symbol,
           if (targetClass.isObject) {
             irGetObject(targetClass.symbol)
           } else {
             irCallConstructorWithSameParameters(function, targetConstructor)
-          },
+          }
         )
       }
   }
@@ -109,6 +126,7 @@ internal fun generateStaticCreateFunction(
 context(context: IrMetroContext)
 internal fun generateStaticNewInstanceFunction(
   parentClass: IrClass,
+  sourceMetroParameters: Parameters,
   sourceParameters: List<IrValueParameter>,
   targetFunction: IrFunction? = null,
   buildBody: IrBuilderWithScope.(IrSimpleFunction) -> IrExpression,
@@ -117,15 +135,17 @@ internal fun generateStaticNewInstanceFunction(
 
   return function.apply {
     val instanceParam = regularParameters.find { it.origin == Origins.InstanceParameter }
-    val valueParametersToMap = regularParameters.filter { it.origin == Origins.RegularParameter }
+    val valueParametersToMap =
+      nonDispatchParameters.filter { it.origin == Origins.RegularParameter }
     copyParameterDefaultValues(
       providerFunction = targetFunction,
+      sourceMetroParameters = sourceMetroParameters,
       sourceParameters = sourceParameters,
       targetParameters = valueParametersToMap,
       targetGraphParameter = instanceParam,
     )
 
-    body = context.createIrBuilder(symbol).run { irExprBodySafe(symbol, buildBody(this@apply)) }
+    body = context.createIrBuilder(symbol).run { irExprBodySafe(buildBody(this@apply)) }
   }
 }
 
@@ -150,7 +170,7 @@ internal fun generateMetadataVisibleMirrorFunction(
         if (target is IrConstructor) {
           val sourceClass = factoryClass.parentAsClass
           val scopeAndQualifierAnnotations = buildList {
-            val classMetroAnnotations = sourceClass.metroAnnotations(context.symbols.classIds)
+            val classMetroAnnotations = sourceClass.metroAnnotations(context.metroSymbols.classIds)
             classMetroAnnotations.scope?.ir?.let(::add)
             classMetroAnnotations.qualifier?.ir?.let(::add)
           }
@@ -169,7 +189,7 @@ internal fun generateMetadataVisibleMirrorFunction(
               .mirrorIrConstructorCalls(symbol)
               .filterNot {
                 // Exclude @Provides to avoid reentrant factory gen
-                it.annotationClass.classId in context.symbols.classIds.providesAnnotations
+                it.annotationClass.classId in context.metroSymbols.classIds.providesAnnotations
               }
               .map { it.deepCopyWithSymbols() }
         }
@@ -179,13 +199,15 @@ internal fun generateMetadataVisibleMirrorFunction(
         regularParameters.forEach {
           // If it has a default value expression, just replace it with a stub. We don't need it to
           // be functional, we just need it to be indicated
-          if (it.hasDefaultValue()) {
+          if (it.hasMetroDefault()) {
             it.defaultValue = context.createIrBuilder(symbol).run { irExprBody(stubExpression()) }
+          } else {
+            it.defaultValue = null
           }
         }
         // The function's signature already matches the target function's signature, all we need
         // this for
-        body = context.createIrBuilder(symbol).run { irExprBodySafe(symbol, stubExpression()) }
+        body = context.createIrBuilder(symbol).run { irExprBodySafe(stubExpression()) }
       }
   context.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(function)
   return function

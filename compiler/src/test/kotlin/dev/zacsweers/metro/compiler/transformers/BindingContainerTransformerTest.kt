@@ -4,20 +4,23 @@ package dev.zacsweers.metro.compiler.transformers
 
 import com.google.common.truth.Truth.assertThat
 import com.tschuchort.compiletesting.KotlinCompilation.ExitCode
+import com.tschuchort.compiletesting.SourceFile
 import dev.zacsweers.metro.compiler.ExampleGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
+import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.assertDiagnostics
 import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.captureStandardOut
 import dev.zacsweers.metro.compiler.companionObjectClass
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
-import dev.zacsweers.metro.compiler.generatedMetroGraphClass
+import dev.zacsweers.metro.compiler.generatedImpl
 import dev.zacsweers.metro.compiler.invokeCreateAs
 import dev.zacsweers.metro.compiler.provideValueAs
 import dev.zacsweers.metro.compiler.providesFactoryClass
 import dev.zacsweers.metro.internal.Factory
 import dev.zacsweers.metro.provider
 import kotlinx.coroutines.test.runTest
+import org.jetbrains.kotlin.name.ClassId
 import org.junit.Test
 
 class BindingContainerTransformerTest : MetroCompilerTest() {
@@ -28,17 +31,17 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @DependencyGraph
-            interface ExampleGraph {
-              @Provides
-              fun provideValue(): String = "Hello, world!"
-            }
+          @DependencyGraph
+          interface ExampleGraph {
+            @Provides
+            fun provideValue(): String = "Hello, world!"
+          }
           """
             .trimIndent()
         )
       )
 
-    val graph = result.ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+    val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
     val providesFactoryClass = result.ExampleGraph.providesFactoryClass()
     // Exercise calling the static provideValue function directly
     val providedValue = providesFactoryClass.provideValueAs<String>("provideValue", graph)
@@ -55,17 +58,17 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @DependencyGraph
-            interface ExampleGraph {
-              @Provides
-              val value: String get() = "Hello, world!"
-            }
+          @DependencyGraph
+          interface ExampleGraph {
+            @Provides
+            val value: String get() = "Hello, world!"
+          }
           """
             .trimIndent()
         )
       )
 
-    val graph = result.ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+    val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
     val providesFactoryClass = result.ExampleGraph.providesFactoryClass()
     // Exercise calling the static provideValue function directly
     val providedValue = providesFactoryClass.provideValueAs<String>("getValue", graph)
@@ -82,13 +85,13 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @DependencyGraph
-            interface ExampleGraph {
-              companion object {
-                @Provides
-                fun provideValue(): String = "Hello, world!"
-              }
+          @DependencyGraph
+          interface ExampleGraph {
+            companion object {
+              @Provides
+              fun provideValue(): String = "Hello, world!"
             }
+          }
           """
             .trimIndent()
         )
@@ -113,13 +116,13 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @DependencyGraph
-            interface ExampleGraph {
-              companion object {
-                @Provides
-                val value: String get() = "Hello, world!"
-              }
+          @DependencyGraph
+          interface ExampleGraph {
+            companion object {
+              @Provides
+              val value: String get() = "Hello, world!"
             }
+          }
           """
             .trimIndent()
         )
@@ -144,20 +147,20 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       compile(
         source(
           $$"""
-            @DependencyGraph
-            interface ExampleGraph {
-              @Provides
-              fun provideIntValue(): Int = 1
+          @DependencyGraph
+          interface ExampleGraph {
+            @Provides
+            fun provideIntValue(): Int = 1
 
-              @Provides
-              fun provideStringValue(intValue: Int): String = "Hello, $intValue!"
-            }
+            @Provides
+            fun provideStringValue(intValue: Int): String = "Hello, $intValue!"
+          }
           """
             .trimIndent()
         )
       )
 
-    val graph = result.ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+    val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
     val providesFactoryClass = result.ExampleGraph.providesFactoryClass("provideStringValue")
 
     // Exercise calling the static provideValue function directly
@@ -176,12 +179,12 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       compile(
         source(
           $$"""
-            interface ExampleGraph {
-              companion object {
-                @Provides
-                fun provideStringValue(intValue: Int): String = "Hello, $intValue!"
-              }
+          interface ExampleGraph {
+            companion object {
+              @Provides
+              fun provideStringValue(intValue: Int): String = "Hello, $intValue!"
             }
+          }
           """
             .trimIndent()
         )
@@ -205,23 +208,23 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       compile(
         source(
           $$"""
-            @DependencyGraph
-            interface ExampleGraph {
-              @Provides
-              fun provideBooleanValue(): Boolean = false
+          @DependencyGraph
+          interface ExampleGraph {
+            @Provides
+            fun provideBooleanValue(): Boolean = false
 
-              @Provides
-              fun provideIntValue(): Int = 1
+            @Provides
+            fun provideIntValue(): Int = 1
 
-              @Provides
-              fun provideStringValue(intValue: Int, booleanValue: Boolean): String = "Hello, $intValue! $booleanValue"
-            }
+            @Provides
+            fun provideStringValue(intValue: Int, booleanValue: Boolean): String = "Hello, $intValue! $booleanValue"
+          }
           """
             .trimIndent()
         )
       )
 
-    val graph = result.ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+    val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
     val providesFactoryClass = result.ExampleGraph.providesFactoryClass("provideStringValue")
 
     // Exercise calling the static provideValue function directly
@@ -241,23 +244,23 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       compile(
         source(
           $$"""
-            @DependencyGraph
-            interface ExampleGraph {
-              @Provides
-              fun provideIntValue(): Int = 1
+          @DependencyGraph
+          interface ExampleGraph {
+            @Provides
+            fun provideIntValue(): Int = 1
 
-              @Provides
-              fun provideStringValue(
-                intValue: Int,
-                intValue2: Int
-              ): String = "Hello, $intValue - $intValue2!"
-            }
+            @Provides
+            fun provideStringValue(
+              intValue: Int,
+              intValue2: Int
+            ): String = "Hello, $intValue - $intValue2!"
+          }
           """
             .trimIndent()
         )
       )
 
-    val graph = result.ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+    val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
     val providesFactoryClass = result.ExampleGraph.providesFactoryClass("provideStringValue")
 
     // Exercise calling the static provideValue function directly
@@ -277,27 +280,27 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       compile(
         source(
           $$"""
-            @DependencyGraph
-            interface ExampleGraph {
-              @Provides
-              fun provideIntValue(): Int = 1
+          @DependencyGraph
+          interface ExampleGraph {
+            @Provides
+            fun provideIntValue(): Int = 1
 
-              @Named("int2")
-              @Provides
-              fun provideIntValue2(): Int = 1
+            @Named("int2")
+            @Provides
+            fun provideIntValue2(): Int = 1
 
-              @Provides
-              fun provideStringValue(
-                intValue: Int,
-                @Named("int2") intValue2: Int
-              ): String = "Hello, $intValue - $intValue2!"
-            }
+            @Provides
+            fun provideStringValue(
+              intValue: Int,
+              @Named("int2") intValue2: Int
+            ): String = "Hello, $intValue - $intValue2!"
+          }
           """
             .trimIndent()
         )
       )
 
-    val graph = result.ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+    val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
     val providesFactoryClass = result.ExampleGraph.providesFactoryClass("provideStringValue")
 
     // Exercise calling the static provideValue function directly
@@ -317,11 +320,11 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @DependencyGraph
-            interface ExampleGraph {
-              @Provides
-              private fun String.provideValue(): Int = length
-            }
+          @DependencyGraph
+          interface ExampleGraph {
+            @Provides
+            private fun String.provideValue(): Int = length
+          }
           """
             .trimIndent()
         ),
@@ -330,7 +333,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
 
     result.assertDiagnostics(
       """
-        e: ExampleGraph.kt:9:22 `@Provides` functions may not be extension functions. Use `@Binds` instead for these. See https://zacsweers.github.io/metro/bindings/#binds for more information.
+      e: ExampleGraph.kt:9:22 `@Provides` functions may not be extension functions. Use `@Binds` instead for these. See https://zacsweers.github.io/metro/latest/bindings/#binds for more information.
       """
         .trimIndent()
     )
@@ -342,9 +345,9 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       compile(
         source(
           """
-            interface Base {
-              @Provides fun provideInt(): Int = 2
-            }
+          interface Base {
+            @Provides fun provideInt(): Int = 2
+          }
           """
             .trimIndent()
         )
@@ -353,16 +356,16 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph
-          interface ExampleGraph : Base {
-            val int: Int
-          }
+        @DependencyGraph
+        interface ExampleGraph : Base {
+          val int: Int
+        }
         """
           .trimIndent()
       ),
       previousCompilationResult = otherModuleResult,
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertThat(graph.callProperty<Int>("int")).isEqualTo(2)
     }
   }
@@ -373,9 +376,9 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       compile(
         source(
           """
-            interface Base {
-              @Provides @Named("int") fun provideInt(): Int = 2
-            }
+          interface Base {
+            @Provides @Named("int") fun provideInt(): Int = 2
+          }
           """
             .trimIndent()
         )
@@ -384,17 +387,17 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph
-          interface ExampleGraph : Base {
-            @Named("int")
-            val int: Int
-          }
+        @DependencyGraph
+        interface ExampleGraph : Base {
+          @Named("int")
+          val int: Int
+        }
         """
           .trimIndent()
       ),
       previousCompilationResult = otherModuleResult,
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertThat(graph.callProperty<Int>("int")).isEqualTo(2)
     }
   }
@@ -405,9 +408,9 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       compile(
         source(
           """
-            interface Base {
-              @Provides fun provideString(value: Int = 2): String = value.toString()
-            }
+          interface Base {
+            @Provides fun provideString(value: Int = 2): String = value.toString()
+          }
           """
             .trimIndent()
         )
@@ -416,16 +419,16 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph
-          interface ExampleGraph : Base {
-            val string: String
-          }
+        @DependencyGraph
+        interface ExampleGraph : Base {
+          val string: String
+        }
         """
           .trimIndent()
       ),
       previousCompilationResult = otherModuleResult,
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertThat(graph.callProperty<String>("string")).isEqualTo("2")
     }
   }
@@ -436,9 +439,9 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       compile(
         source(
           """
-            interface Base {
-              @Provides private fun provideInt(): Int = 2
-            }
+          interface Base {
+            @Provides private fun provideInt(): Int = 2
+          }
           """
             .trimIndent()
         )
@@ -447,16 +450,16 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph
-          interface ExampleGraph : Base {
-            val int: Int
-          }
+        @DependencyGraph
+        interface ExampleGraph : Base {
+          val int: Int
+        }
         """
           .trimIndent()
       ),
       previousCompilationResult = otherModuleResult,
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertThat(graph.callProperty<Int>("int")).isEqualTo(2)
     }
   }
@@ -480,12 +483,12 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
             @Provides fun provideFloatReceiverFloatFunction(): Float.() -> Float = { 2 * this }
             @Provides fun provideSuspendBooleanFunction(): suspend () -> Boolean = { true }
           }
-        """
+          """
             .trimIndent()
         )
       )
       .apply {
-        val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+        val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
         val out = captureStandardOut { graph.callProperty<() -> Unit>("unitFunction").invoke() }
         assertThat(out).isEqualTo("Hello, world!")
         assertThat(graph.callProperty<() -> Int>("intFunction").invoke()).isEqualTo(2)
@@ -503,16 +506,16 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       compile(
         source(
           """
-            interface EnabledProvider {
-              @Qualifier @Retention(BINARY) private annotation class FlipperEnabled
+          interface EnabledProvider {
+            @Qualifier @Retention(BINARY) private annotation class FlipperEnabled
 
-              @FlipperEnabled
-              @Provides
-              private fun provideEnabled(): Boolean = true
+            @FlipperEnabled
+            @Provides
+            private fun provideEnabled(): Boolean = true
 
-              @Provides
-              private fun provideEnabledValue(@FlipperEnabled enabled: Boolean): String = enabled.toString()
-            }
+            @Provides
+            private fun provideEnabledValue(@FlipperEnabled enabled: Boolean): String = enabled.toString()
+          }
           """
             .trimIndent(),
           extraImports =
@@ -523,11 +526,11 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @DependencyGraph
-            interface ExampleGraph : EnabledProvider {
-              val value: String
-            }
-          """
+        @DependencyGraph
+        interface ExampleGraph : EnabledProvider {
+          val value: String
+        }
+        """
           .trimIndent()
       ),
       previousCompilationResult = firstCompilation,
@@ -539,29 +542,91 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-          interface Base {
-            @Provides fun provideInt(): Int = 2
-            @Provides fun provideNullNullableInt(): Int? = null
-            @Provides fun provideString(): String = "Hello"
-            @Provides fun provideNotNullNullableString(): String? = "NullableHello"
-          }
-          @DependencyGraph
-          interface ExampleGraph : Base {
-            val int: Int
-            val nullableInt: Int?
-            val string: String
-            val nullableString: String?
-          }
+        interface Base {
+          @Provides fun provideInt(): Int = 2
+          @Provides fun provideNullNullableInt(): Int? = null
+          @Provides fun provideString(): String = "Hello"
+          @Provides fun provideNotNullNullableString(): String? = "NullableHello"
+        }
+        @DependencyGraph
+        interface ExampleGraph : Base {
+          val int: Int
+          val nullableInt: Int?
+          val string: String
+          val nullableString: String?
+        }
         """
           .trimIndent()
       )
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertThat(graph.callProperty<Int>("int")).isEqualTo(2)
       assertThat(graph.callProperty<Int?>("nullableInt")).isEqualTo(null)
       assertThat(graph.callProperty<String>("string")).isEqualTo("Hello")
       assertThat(graph.callProperty<String?>("nullableString")).isEqualTo("NullableHello")
     }
+  }
+
+  // TODO move to compiler-tests when reporting sourceless diagnostics work
+  @Test
+  fun `dagger interop module with subcomponents will warn`() {
+    val firstCompilation =
+      compile(
+        SourceFile.java(
+          "SomeSubcomponent.java",
+          """
+          import dagger.Subcomponent;
+
+          @Subcomponent
+          public interface SomeSubcomponent {
+            @Subcomponent.Factory
+            interface Factory {
+              SomeSubcomponent create();
+            }
+          }
+          """
+            .trimIndent(),
+        ),
+        SourceFile.java(
+          "ExampleModule.java",
+          """
+          import dagger.Provides;
+          import dagger.Module;
+
+          @Module(subcomponents = SomeSubcomponent.class)
+          public class ExampleModule {
+            public ExampleModule() {
+
+            }
+          }
+          """
+            .trimIndent(),
+        ),
+      )
+
+    compile(
+      source(
+        """
+        @DependencyGraph(bindingContainers = [ExampleModule::class])
+        interface ExampleGraph
+        """
+          .trimIndent()
+      ),
+      previousCompilationResult = firstCompilation,
+      options = metroOptions.withDaggerInterop(),
+    ) {
+      ExampleGraph.generatedImpl().createGraphWithNoArgs()
+      assertDiagnostics(
+        "w: Included Dagger module 'ExampleModule' declares a `subcomponents` parameter but this will be ignored by Metro in interop."
+      )
+    }
+  }
+
+  private fun MetroOptions.withDaggerInterop(): MetroOptions {
+    return copy(
+      enableDaggerRuntimeInterop = true,
+      customBindingContainerAnnotations = setOf(ClassId.fromString("dagger/Module")),
+    )
   }
 
   // TODO

@@ -87,15 +87,15 @@ class BindingGraphTest {
       .hasMessageThat()
       .contains(
         """
-          [Metro/DependencyCycle] Found a dependency cycle while processing 'AppGraph'.
-          Cycle:
-              B --> A --> B
+        [Metro/DependencyCycle] Found a dependency cycle while processing 'AppGraph'.
+        Cycle:
+            B --> A --> B
 
-          Trace:
-              B
-              A
-              B
-              ...
+        Trace:
+            B
+            A
+            B
+            ...
         """
           .trimIndent()
       )
@@ -292,10 +292,12 @@ class BindingGraphTest {
       .hasMessageThat()
       .contains(
         """
-          [Metro/DuplicateBinding] Duplicate binding for A
-          ├─ Binding 1: A
-          ├─ Binding 2: A
-          ├─ Bindings are equal: A
+        [Metro/DuplicateBinding] Multiple bindings found for A
+
+          A
+          A
+
+        (Hint) Bindings are equal
         """
           .trimIndent()
       )
@@ -314,10 +316,12 @@ class BindingGraphTest {
       .hasMessageThat()
       .contains(
         """
-          [Metro/DuplicateBinding] Duplicate binding for A
-          ├─ Binding 1: A
-          ├─ Binding 2: A
-          ├─ Bindings are the same: A
+        [Metro/DuplicateBinding] Multiple bindings found for A
+
+          A
+          A
+
+        (Hint) Bindings are the same
         """
           .trimIndent()
       )

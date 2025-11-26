@@ -41,7 +41,6 @@ internal class StringGraph(
         BaseBinding<String, StringTypeKey, StringContextualTypeKey>?,
         Map<StringContextualTypeKey, StringBindingStack.Entry>,
       ) -> StringBindingStack.Entry,
-    absentBinding = { StringBinding(it) },
     computeBinding,
   ) {
   fun tryPut(binding: BaseBinding<String, StringTypeKey, StringContextualTypeKey>) {

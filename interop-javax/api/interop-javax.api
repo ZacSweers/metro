@@ -1,0 +1,5 @@
+public final class dev/zacsweers/metro/interop/javax/JavaxInteropKt {
+	public static final fun asJavaxProvider (Ldev/zacsweers/metro/Provider;)Ljavax/inject/Provider;
+	public static final fun asMetroProvider (Ljavax/inject/Provider;)Ldev/zacsweers/metro/Provider;
+}
+

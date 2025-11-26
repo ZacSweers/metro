@@ -1,6 +1,12 @@
-# pip3 install mkdocs mkdocs-material
+# For local development/live edit:
+# python3 -m venv .venv (required only once)
+# source .venv/bin/activate
+# pip install -r .github/workflows/mkdocs-requirements.txt
+# ./scripts/copy_docs_files.sh
 # mkdocs serve
-# mkdocs gh-deploy
+#
+# ℹ️ NOTE: Deployment is done via `mike` for versioned site using GitHub Actions
+#          For manual deployment, use `./scripts/deploy_metro_docs_site.sh`
 
 site_name: Metro
 repo_name: Metro
@@ -49,6 +55,8 @@ plugins:
   # Versioned Metro docs site for each release
   # https://github.com/jimporter/mike
   - mike
+  # https://github.com/sondregronas/mkdocs-callouts
+  - callouts
 
 #extra_css:
 #  - 'css/app.css'
@@ -73,12 +81,14 @@ markdown_extensions:
   - pymdownx.smartsymbols
   - pymdownx.superfences
   - pymdownx.emoji
+  - pymdownx.details
   - pymdownx.tabbed:
       alternate_style: true
   - tables
   - admonition
   - attr_list
   - md_in_html
+  - nl2br
 
 nav:
   - 'Introduction': index.md
@@ -101,10 +111,14 @@ nav:
   - 'Performance': performance.md
   - 'Debugging': debugging.md
   - 'Compatibility': compatibility.md
-  - 'Adoption Strategies': adoption.md
+  - 'Stability': stability.md
   - 'FAQ': faq.md
+  - 'Adoption Strategies': adoption.md
   - 'Samples': samples.md
+  - 'MetroX':
+      - 'Android': metrox-android.md
   - 'API': api/index.html
+  - 'Design Doc': designdoc.html
   - 'Discussions ⏏': https://github.com/ZacSweers/metro/discussions
   - 'Change Log': changelog.md
   - 'Contributing': contributing.md

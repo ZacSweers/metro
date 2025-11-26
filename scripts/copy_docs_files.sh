@@ -13,5 +13,6 @@ cp CHANGELOG.md docs/changelog.md
 cp .github/CONTRIBUTING.md docs/contributing.md
 cp samples/README.md docs/samples.md
 cp .github/CODE_OF_CONDUCT.md docs/code-of-conduct.md
+cp metrox-android/README.md docs/metrox-android.md
 
 echo "Copying documentation files complete!"

@@ -31,7 +31,7 @@ internal class ContributionHintIrTransformer(
     }
 
     val contributions =
-      declaration.annotationsIn(symbols.classIds.allContributesAnnotations).toList()
+      declaration.annotationsIn(metroSymbols.classIds.allContributesAnnotations).toList()
 
     val contributionScopes = contributions.mapNotNullToSet { it.scopeOrNull() }
 

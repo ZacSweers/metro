@@ -9,7 +9,6 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.Provider
-import dev.zacsweers.metro.sample.androidviewmodel.components.AppGraph
 import kotlin.reflect.KClass
 
 /**
@@ -18,7 +17,8 @@ import kotlin.reflect.KClass
  */
 @ContributesBinding(AppScope::class)
 @Inject
-class MetroViewModelFactory(val appGraph: AppGraph) : ViewModelProvider.Factory {
+class MetroViewModelFactory(private val vmGraphFactory: ViewModelGraph.Factory) :
+  ViewModelProvider.Factory {
   override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
     val viewModelGraph = viewModelGraph(extras)
 
@@ -32,5 +32,6 @@ class MetroViewModelFactory(val appGraph: AppGraph) : ViewModelProvider.Factory 
     return modelClass.cast(provider())
   }
 
-  fun viewModelGraph(extras: CreationExtras): ViewModelGraph = appGraph.createViewModelGraph(extras)
+  fun viewModelGraph(extras: CreationExtras): ViewModelGraph =
+    vmGraphFactory.createViewModelGraph(extras)
 }

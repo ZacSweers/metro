@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
-import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.fir.FirMetroErrors
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.allScopeClassIds
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
@@ -74,7 +74,7 @@ internal object MergedContributionChecker : FirClassChecker(MppCheckerKind.Commo
             if (contributedType.visibility != effectiveSuperVis) " effectively" else ""
           reporter.reportOn(
             supertype.source,
-            FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
+            MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
             "${dependencyGraphAnno.toAnnotationClassIdSafe(session)?.shortClassName?.asString()} declarations may not extend declarations with narrower visibility. Contributed supertype '${contributedType.classId.asFqNameString()}' is$supertypeVis $effectiveSuperVis but graph declaration '${declaration.classId.asFqNameString()}' is$declarationVis ${effectiveVisibility}.",
           )
         }

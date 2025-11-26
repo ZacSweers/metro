@@ -5,9 +5,9 @@ package dev.zacsweers.metro.sample.androidviewmodel
 import android.app.Application
 import dev.zacsweers.metro.createGraph
 import dev.zacsweers.metro.sample.androidviewmodel.components.AppGraph
-import dev.zacsweers.metro.sample.androidviewmodel.components.MetroAppComponentFactory
+import dev.zacsweers.metrox.android.MetroAppComponentProviders
+import dev.zacsweers.metrox.android.MetroApplication
 
-class MetroApp : Application() {
-  /** Holder reference for the app graph for [MetroAppComponentFactory]. */
-  val appGraph by lazy { createGraph<AppGraph>() }
+class MetroApp : Application(), MetroApplication {
+  override val appComponentProviders: MetroAppComponentProviders by lazy { createGraph<AppGraph>() }
 }

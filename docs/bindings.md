@@ -101,7 +101,7 @@ interface MapMultibinding {
 
   @Provides
   @IntoMap
-  @MapKey(2)
+  @IntKey(2)
   fun provideInt2() = 2
 }
 ```
@@ -111,7 +111,7 @@ Alternatively, they can be declared with an `@Multibinds`-annotated accessor pro
 ```kotlin
 @DependencyGraph
 interface MapMultibinding {
-  @Multibinds
+  @Multibinds(allowEmpty = true)
   val ints: Map<Int, Int>
 }
 ```
@@ -123,20 +123,20 @@ Map multibindings support injecting *map providers*, where the value type can be
 ```kotlin
 @DependencyGraph
 interface MapMultibinding {
-  @Multibinds
+  @Multibinds(allowEmpty = true)
   val ints: Map<Int, Provider<Int>>
 }
 ```
 
 Unlike Dagger, empty multibindings in Metro are a compile error by default. Empty multibindings are allowed but must be opted into via `@Multibinds(allowEmpty = true)`.
 
-#### Implementation notes
+??? note "Implementation Notes"
 
-Metro takes inspiration from Guice in handling these in the binding graph. Since they cannot be added directly to the graph as-is (otherwise they would cause duplicate binding errors), a synthetic `@MultibindingElement` _qualifier_ annotation is generated for them at compile-time to disambiguate them. These are user-invisible but allows them to participate directly in graph validation like any other dependency. Metro then just adds these bindings as dependencies to `Binding.Multibinding` types.
+    Metro takes inspiration from Guice in handling these in the binding graph. Since they cannot be added directly to the graph as-is (otherwise they would cause duplicate binding errors), a synthetic `@MultibindingElement` _qualifier_ annotation is generated for them at compile-time to disambiguate them. These are user-invisible but allows them to participate directly in graph validation like any other dependency. Metro then just adds these bindings as dependencies to `Binding.Multibinding` types.
 
-## Optional Dependencies
+## Optional Bindings
 
-Metro supports optional dependencies by leaning on Kotlin’s native support for default parameter values. These are checked at injection sites and are allowed to be missing from the dependency graph when performing a lookup at validation/code-gen time.
+Metro supports optional bindings by leaning on Kotlin’s native support for default parameter values. These are checked at injection sites and are allowed to be missing from the dependency graph when performing a lookup at validation/code-gen time.
 
 The below example would, since there is no `Int` binding provided, provide a message of `Count: -1`.
 
@@ -149,7 +149,24 @@ interface AppGraph {
 }
 ```
 
-Dagger supports a similar feature via `@BindsOptionalOf`, but requires a separate declaration of this optional dependency to the graph.
+To expose accessors for optional bindings, use `@OptionalBinding` on the accessor. Note that the accessor _must_ declare a default body that Metro will use if the binding is absent.
+
+```kotlin
+@DependencyGraph
+interface AppGraph {
+  @OptionalBinding
+  val message: String
+    get() = "Absent!"
+}
+```
+
+There are a couple of optional configuration for Metro's optional binding support that can be configured via the `optionalBindingBehavior` Gradle DSL:
+
+- `DISABLED` - Disallows optional bindings entirely.
+- `REQUIRE_OPTIONAL_BINDING` - Requires optional binding _parameters_ to also be annotated with `@OptionalBinding`. This may be preferable for consistency with accessors and/or explicitness.
+- `DEFAULT` - The default behavior as described above — accessors must be annotated with `@OptionalBinding` with default bodies and parameters just use default value expressions.
+
+Dagger supports a similar feature via `@BindsOptionalOf`, but requires a separate declaration of this optional binding to the graph and works via `Optional<T>` types.
 
 KI supports the same feature.
 
@@ -175,15 +192,15 @@ interface ExampleGraph {
 }
 ```
 
-#### Implementation notes
+??? note "Implementation Notes"
 
-While kotlin-inject can support this by simply invoking functions with omitted arguments, Metro has to support this in generated factories.
-
-To accomplish this, Metro will slightly modify how generated provider/constructor injection factory classes look compared to Dagger. Since we are working in IR, we can copy the default value expressions from the source function/constructor to the factory’s newInstance and create() functions. This in turn allows calling generated graphs to simply omit absent binding arguments from their creation calls. This is a tried and tested pattern used by other first party plugins, namely kotlinx-serialization.
-
-There are a few cases that need to be handled here:
-
-* Expressions may reference previous parameters or instance members. To support this, we’ll transform them in IR to point at new parameters in those functions.
-* Expressions may reference private instance members. To support this, Metro factories are generated as nested classes within the source class or graph.
-    * This does depart from how dagger factories work, but if we ever wanted to have some sort of interop for that we could always generate bridging factory classes in the places dagger expects later.
-* Parameters in `create()` need to be wrapped in `Provider` calls. This means that for cases where they back-reference other parameters, those will need to be transformed into `invoke()` calls on those providers too.
+    While kotlin-inject can support this by simply invoking functions with omitted arguments, Metro has to support this in generated factories.
+    
+    To accomplish this, Metro will slightly modify how generated provider/constructor injection factory classes look compared to Dagger. Since we are working in IR, we can copy the default value expressions from the source function/constructor to the factory’s newInstance and create() functions. This in turn allows calling generated graphs to simply omit absent binding arguments from their creation calls. This is a tried and tested pattern used by other first party plugins, namely kotlinx-serialization.
+    
+    There are a few cases that need to be handled here:
+    
+    * Expressions may reference previous parameters or instance members. To support this, we’ll transform them in IR to point at new parameters in those functions.
+    * Expressions may reference private instance members. To support this, Metro factories are generated as nested classes within the source class or graph.
+        * This does depart from how dagger factories work, but if we ever wanted to have some sort of interop for that we could always generate bridging factory classes in the places dagger expects later.
+    * Parameters in `create()` need to be wrapped in `Provider` calls. This means that for cases where they back-reference other parameters, those will need to be transformed into `invoke()` calls on those providers too.

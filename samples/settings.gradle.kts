@@ -6,6 +6,10 @@ pluginManagement {
     google()
     gradlePluginPortal()
   }
+  plugins {
+    id("com.gradle.develocity") version "4.2.2"
+    id("com.android.settings") version "8.13.1"
+  }
 }
 
 dependencyResolutionManagement {
@@ -16,7 +20,10 @@ dependencyResolutionManagement {
   }
 }
 
-plugins { id("com.android.settings") version "8.11.0" }
+plugins {
+  id("com.gradle.develocity")
+  id("com.android.settings")
+}
 
 android {
   compileSdk = 36
@@ -32,6 +39,7 @@ include(
   ":circuit-app",
   ":integration-tests",
   ":interop:customAnnotations-dagger",
+  ":interop:customAnnotations-guice",
   ":interop:customAnnotations-kotlinInject",
   ":interop:dependencies-dagger",
   ":interop:dependencies-kotlinInject",
@@ -43,3 +51,18 @@ include(
 )
 
 includeBuild("..")
+
+develocity {
+  buildScan {
+    termsOfUseUrl = "https://gradle.com/terms-of-service"
+    termsOfUseAgree = "yes"
+
+    tag(if (System.getenv("CI").isNullOrBlank()) "Local" else "CI")
+
+    obfuscation {
+      username { "Redacted" }
+      hostname { "Redacted" }
+      ipAddresses { addresses -> addresses.map { "0.0.0.0" } }
+    }
+  }
+}

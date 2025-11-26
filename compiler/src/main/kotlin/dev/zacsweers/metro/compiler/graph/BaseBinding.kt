@@ -14,14 +14,29 @@ internal interface BaseBinding<
   val dependencies: List<ContextualTypeKey>
 
   /**
+   * If true, indicates this binding is an alias for another binding. Mostly just for diagnostics.
+   */
+  val isAlias: Boolean
+    get() = false
+
+  /**
    * If true, indicates this binding is purely informational and should not be stored in the graph
    * itself.
    */
   val isTransient: Boolean
     get() = false
 
+  /**
+   * Some types may be implicitly deferrable such as lazy/provider types, instance-based bindings,
+   * or bindings that don't participate in object construction such as object classes or members
+   * injectors.
+   */
   val isImplicitlyDeferrable: Boolean
     get() = contextualTypeKey.isDeferrable
 
-  fun renderLocationDiagnostic(): String
+  fun renderLocationDiagnostic(short: Boolean = false): LocationDiagnostic
+
+  fun renderDescriptionDiagnostic(short: Boolean = false, underlineTypeKey: Boolean = false): String
 }
+
+internal data class LocationDiagnostic(val location: String, val description: String?)

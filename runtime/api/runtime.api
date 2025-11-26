@@ -8,6 +8,9 @@ public abstract interface annotation class dev/zacsweers/metro/Assisted : java/l
 public abstract interface annotation class dev/zacsweers/metro/AssistedFactory : java/lang/annotation/Annotation {
 }
 
+public abstract interface annotation class dev/zacsweers/metro/AssistedInject : java/lang/annotation/Annotation {
+}
+
 public abstract interface annotation class dev/zacsweers/metro/BindingContainer : java/lang/annotation/Annotation {
 	public abstract fun includes ()[Ljava/lang/Class;
 }
@@ -126,6 +129,16 @@ public abstract interface annotation class dev/zacsweers/metro/Multibinds : java
 
 public abstract interface annotation class dev/zacsweers/metro/Named : java/lang/annotation/Annotation {
 	public abstract fun name ()Ljava/lang/String;
+}
+
+public abstract interface annotation class dev/zacsweers/metro/OptionalBinding : java/lang/annotation/Annotation {
+}
+
+public abstract interface annotation class dev/zacsweers/metro/OptionalDependency : java/lang/annotation/Annotation {
+}
+
+public abstract interface annotation class dev/zacsweers/metro/Origin : java/lang/annotation/Annotation {
+	public abstract fun value ()Ljava/lang/Class;
 }
 
 public abstract interface class dev/zacsweers/metro/Provider {

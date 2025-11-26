@@ -1,0 +1,132 @@
+# Manual deployment of docs site for specific tags
+# Allows deploying documentation for any git tag on-demand
+name: Metro Docs Site (Manual)
+
+on:
+  # Only triggered manually with tag input
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag name to publish site (e.g. 0.7.1)'
+        required: true
+        type: string
+      is_latest_release:
+        description: 'Is this the latest release? (updates "latest" alias)'
+        required: true
+        type: boolean
+        default: true
+
+# Sets permissions of the GITHUB_TOKEN to allow pushing to `gh-pages` branch
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+# Separate concurrency group for manual deployments to avoid conflicts
+concurrency:
+  group: "pages-manual"
+  cancel-in-progress: false
+
+jobs:
+  # Manual docs site deployment job
+  docs-site-manual:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6
+        with:
+          # Fetch all history and tags to allow checking out specific tags
+          fetch-depth: 0
+
+      - name: Validate and checkout specified tag
+        run: |
+          TAG_NAME="${{ inputs.tag_name }}"
+          
+          # Check if tag exists
+          if ! git rev-parse --verify "refs/tags/$TAG_NAME" >/dev/null 2>&1; then
+            echo "ERROR: Tag '$TAG_NAME' does not exist in the repository"
+            echo "Available tags:"
+            git tag --sort=-version:refname | head -10
+            exit 1
+          fi
+          
+          # Checkout the specified tag
+          echo "Checking out tag: $TAG_NAME"
+          git checkout "$TAG_NAME"
+          
+          echo "Successfully checked out tag: $TAG_NAME"
+          echo "Current HEAD: $(git rev-parse HEAD)"
+
+      - name: Configure JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version-file: .github/workflows/.java-version
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+        with:
+          # Read-only cache for manual deployments
+          cache-read-only: true
+          gradle-home-cache-strict-match: true
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+
+      - name: Generate API docs
+        # NOTE: The `dokkaPublications.html` task is pre-configured to generate HTML in `/docs/api`.
+        run: ./scripts/generate_docs_dokka.sh
+        env:
+          GRADLE_OPTS: -Xmx4g # Dokka can be memory intensive, so we increase the heap size
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Install MkDocs dependencies
+        run: |
+          pip install --requirement .github/workflows/mkdocs-requirements.txt
+
+      - name: Copy documentation files
+        run: ./scripts/copy_docs_files.sh
+
+      - name: Configure Git for Mike
+        run: |
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch gh-pages branch
+        run: |
+          # Fetch the gh-pages branch to ensure we have the latest state
+          git fetch origin gh-pages:gh-pages || echo "gh-pages branch doesn't exist yet (first deployment)"
+
+      - name: Show current mike versions
+        run: |
+          echo "Current mike versions available:"
+          mike list || echo "No docs site versions found (likely first deployment)"
+
+      - name: Deploy docs with mike
+        run: |
+          TAG_NAME="${{ inputs.tag_name }}"
+          IS_LATEST="${{ inputs.is_latest_release }}"
+          
+          if [[ "$IS_LATEST" == "true" ]]; then
+            echo "Deploying docs for tag: $TAG_NAME (marking as latest)"
+            mike deploy --update-aliases --push "$TAG_NAME" latest
+          else
+            echo "Deploying docs for tag: $TAG_NAME (not marking as latest)"
+            mike deploy --push "$TAG_NAME"
+          fi
+          
+          echo "✅ Successfully deployed docs for tag: $TAG_NAME"
+
+      - name: Show updated mike versions
+        run: |
+          echo "Updated mike versions after deployment:"
+          mike list
+
+      # ℹ️ NOTE: 
+      # The 'delete_old_version_docs.sh' step is intentionally skipped for the manual deployment,
+      # because in case manual deployment was used to generate old versioned site
+      # that is not latest, then the cleanup script would immidiately delete it.
+      #
+      # So, skipping it here, and let the normal docs workflow handle cleanup on next run.

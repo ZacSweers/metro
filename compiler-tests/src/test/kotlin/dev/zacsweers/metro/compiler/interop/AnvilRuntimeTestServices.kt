@@ -16,6 +16,10 @@ private val anvilRuntimeClasspath =
   System.getProperty("anvilRuntime.classpath")?.split(File.pathSeparator)?.map(::File)
     ?: error("Unable to get a valid classpath from 'anvilRuntime.classpath' property")
 
+private val kiAnvilRuntimeClasspath =
+  System.getProperty("kiAnvilRuntime.classpath")?.split(File.pathSeparator)?.map(::File)
+    ?: error("Unable to get a valid classpath from 'kiAnvilRuntime.classpath' property")
+
 fun TestConfigurationBuilder.configureAnvilAnnotations() {
   useConfigurators(::AnvilRuntimeEnvironmentConfigurator)
   useCustomRuntimeClasspathProviders(::AnvilRuntimeClassPathProvider)
@@ -27,8 +31,16 @@ class AnvilRuntimeEnvironmentConfigurator(testServices: TestServices) :
     configuration: CompilerConfiguration,
     module: TestModule,
   ) {
-    if (MetroDirectives.WITH_ANVIL in module.directives) {
+    if (
+      MetroDirectives.WITH_ANVIL in module.directives ||
+        MetroDirectives.ENABLE_ANVIL_KSP in module.directives
+    ) {
       for (file in anvilRuntimeClasspath) {
+        configuration.addJvmClasspathRoot(file)
+      }
+    }
+    if (MetroDirectives.WITH_KI_ANVIL in module.directives) {
+      for (file in kiAnvilRuntimeClasspath) {
         configuration.addJvmClasspathRoot(file)
       }
     }
@@ -38,9 +50,16 @@ class AnvilRuntimeEnvironmentConfigurator(testServices: TestServices) :
 class AnvilRuntimeClassPathProvider(testServices: TestServices) :
   RuntimeClasspathProvider(testServices) {
   override fun runtimeClassPaths(module: TestModule): List<File> {
-    return when (MetroDirectives.WITH_ANVIL in module.directives) {
-      true -> anvilRuntimeClasspath
-      false -> emptyList()
+    return buildList {
+      if (
+        MetroDirectives.WITH_ANVIL in module.directives ||
+          MetroDirectives.ENABLE_ANVIL_KSP in module.directives
+      ) {
+        addAll(anvilRuntimeClasspath)
+      }
+      if (MetroDirectives.WITH_KI_ANVIL in module.directives) {
+        addAll(kiAnvilRuntimeClasspath)
+      }
     }
   }
 }

@@ -2,5 +2,23 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended"
+  ],
+  "packageRules": [
+    {
+      "description": "Disable Kotlin updates - manually managed due to compiler plugin compatibility",
+      "matchPackagePatterns": [
+        "^org\\.jetbrains\\.kotlin"
+      ],
+      "enabled": false
+    },
+    {
+      "description": "Disable Android Gradle Plugin updates - manually managed",
+      "matchPackageNames": [
+        "com.android.lint",
+        "com.android.library",
+        "com.android.application"
+      ],
+      "enabled": false
+    }
   ]
 }

@@ -2,13 +2,17 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
-import dev.zacsweers.metro.compiler.fir.FirMetroErrors.BINDING_CONTAINER_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.BINDING_CONTAINER_ERROR
 import dev.zacsweers.metro.compiler.fir.annotationsIn
+import dev.zacsweers.metro.compiler.fir.bindingContainerErrorMessage
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.isBindingContainer
+import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.resolvedBindingContainersClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedClassId
 import dev.zacsweers.metro.compiler.fir.resolvedIncludesClassIds
+import dev.zacsweers.metro.compiler.fir.validateVisibility
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
@@ -20,20 +24,25 @@ import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
+import org.jetbrains.kotlin.fir.declarations.FirAnonymousObject
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.constructors
 import org.jetbrains.kotlin.fir.declarations.processAllDeclarations
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClass
+import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.declarations.utils.isEnumClass
+import org.jetbrains.kotlin.fir.declarations.utils.isInner
 import org.jetbrains.kotlin.fir.declarations.utils.isInterface
 import org.jetbrains.kotlin.fir.declarations.utils.isLocal
 import org.jetbrains.kotlin.fir.declarations.utils.modality
 import org.jetbrains.kotlin.fir.declarations.utils.nameOrSpecialName
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
+import org.jetbrains.kotlin.fir.resolve.getSuperTypes
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
+import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.toLookupTag
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
@@ -42,7 +51,6 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
 
   context(context: CheckerContext, reporter: DiagnosticReporter)
   override fun check(declaration: FirClass) {
-    if (declaration.isLocal) return
     val source = declaration.source ?: return
     val session = context.session
     val classIds = session.classIds
@@ -76,6 +84,15 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
       } else if (declaration.modality == Modality.SEALED) {
         report("Sealed classes")
         return
+      } else if (declaration.isInner) {
+        report("Inner classes")
+        return
+      } else if (declaration is FirAnonymousObject) {
+        report("Anonymous objects")
+        return
+      } else if (declaration.isLocal) {
+        report("Local classes")
+        return
       }
     }
 
@@ -97,9 +114,27 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
 
     val isBindingContainer = bindingContainerAnno != null
 
+    if (isBindingContainer) {
+      // Binding containers can't extend other binding containers
+      for (supertype in declaration.symbol.getSuperTypes(session)) {
+        val supertypeClass = supertype.toClassSymbol(session) ?: continue
+        if (supertypeClass.isBindingContainer(session)) {
+          val directRef = declaration.superTypeRefs.firstOrNull { it.coneType == supertype }
+          val source = directRef?.source ?: source
+          reporter.reportOn(
+            source,
+            BINDING_CONTAINER_ERROR,
+            "Binding containers cannot extend other binding containers, use `includes` instead. Container '${declaration.classId.asFqNameString()}' extends '${supertypeClass.classId.asFqNameString()}'.",
+          )
+        }
+      }
+    }
+
     val includesToCheck =
       bindingContainerAnno?.resolvedIncludesClassIds()
-        ?: graphLikeAnno?.resolvedBindingContainersClassIds()
+        ?: graphLikeAnno?.resolvedBindingContainersClassIds(
+          includeModulesArg = session.metroFirBuiltIns.options.enableDaggerRuntimeInterop
+        )
         ?: emptyList()
     val seen = mutableMapOf<ClassId, FirGetClassCall>()
     for (includedClassCall in includesToCheck) {
@@ -121,11 +156,21 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
         includedClassCall.resolvedClassId()?.toLookupTag()?.toClassSymbol(session) ?: continue
 
       // Target must be a binding container
-      if (!target.isAnnotatedWithAny(session, classIds.bindingContainerAnnotations)) {
+      if (!target.isBindingContainer(session)) {
         reporter.reportOn(
           includedClassCall.source,
           BINDING_CONTAINER_ERROR,
-          "Included binding containers must be annotated with @BindingContainer but '${target.classId.asSingleFqName()}' is not.",
+          "Included classes must be binding containers but '${target.classId.asSingleFqName()}' is not.",
+        )
+        continue
+      }
+
+      target.bindingContainerErrorMessage(session, alreadyCheckedAnnotation = true)?.let {
+        bindingContainerErrorMessage ->
+        reporter.reportOn(
+          includedClassCall.source,
+          BINDING_CONTAINER_ERROR,
+          "Invalid binding container argument: $bindingContainerErrorMessage",
         )
         continue
       }
@@ -167,7 +212,34 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
       }
     }
 
-    val isAbstract = declaration.isAbstract || declaration.isInterface
+    val isInterface = declaration.isInterface
+
+    if (!isInterface && !declaration.classKind.isObject) {
+      val isContributed = declaration.isAnnotatedWithAny(session, classIds.contributesToAnnotations)
+      if (isContributed) {
+        // Check for a single, no-arg constructor
+        val constructors = declaration.constructors(session)
+        if (constructors.isNotEmpty()) {
+          val noArgConstructor =
+            declaration.constructors(session).find { it.valueParameterSymbols.isEmpty() }
+          if (noArgConstructor == null) {
+            reporter.reportOn(
+              source,
+              BINDING_CONTAINER_ERROR,
+              "Contributed binding containers must have a no-arg constructor.",
+            )
+          } else {
+            noArgConstructor.validateVisibility(
+              "Contributed binding container ${declaration.classId.asFqNameString()}'s no-arg constructor"
+            ) {
+              return
+            }
+          }
+        }
+      }
+    }
+
+    val isAbstract = isInterface || declaration.isAbstract
 
     // Check for no conflicting names, requires class-level
     val providerNames = mutableMapOf<Name, FirCallableSymbol<*>>()

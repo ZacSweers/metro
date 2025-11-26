@@ -2,11 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir
 
-import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.computeMetroDefault
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.generators.collectAbstractFunctions
+import dev.zacsweers.metro.compiler.isPlatformType
 import dev.zacsweers.metro.compiler.mapToArray
 import dev.zacsweers.metro.compiler.memoized
+import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.symbols.GuiceSymbols
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Objects
 import org.jetbrains.kotlin.GeneratedDeclarationKey
 import org.jetbrains.kotlin.KtSourceElement
@@ -21,20 +26,18 @@ import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.analysis.checkers.classKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaredMemberScope
 import org.jetbrains.kotlin.fir.analysis.checkers.getAllowedAnnotationTargets
-import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirMemberDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
-import org.jetbrains.kotlin.fir.declarations.constructors
 import org.jetbrains.kotlin.fir.declarations.evaluateAs
 import org.jetbrains.kotlin.fir.declarations.findArgumentByName
-import org.jetbrains.kotlin.fir.declarations.getBooleanArgument
 import org.jetbrains.kotlin.fir.declarations.getDeprecationsProvider
 import org.jetbrains.kotlin.fir.declarations.getTargetType
 import org.jetbrains.kotlin.fir.declarations.hasAnnotation
@@ -43,18 +46,22 @@ import org.jetbrains.kotlin.fir.declarations.primaryConstructorIfAny
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
+import org.jetbrains.kotlin.fir.declarations.utils.isFinal
+import org.jetbrains.kotlin.fir.declarations.utils.isInner
 import org.jetbrains.kotlin.fir.declarations.utils.isLocal
+import org.jetbrains.kotlin.fir.declarations.utils.isOpen
 import org.jetbrains.kotlin.fir.declarations.utils.modality
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.deserialization.toQualifiedPropertyAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
-import org.jetbrains.kotlin.fir.expressions.FirArrayLiteral
+import org.jetbrains.kotlin.fir.expressions.FirCall
 import org.jetbrains.kotlin.fir.expressions.FirClassReferenceExpression
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
 import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
+import org.jetbrains.kotlin.fir.expressions.FirNamedArgumentExpression
 import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirResolvedQualifier
 import org.jetbrains.kotlin.fir.expressions.arguments
@@ -64,7 +71,6 @@ import org.jetbrains.kotlin.fir.expressions.builder.buildEnumEntryDeserializedAc
 import org.jetbrains.kotlin.fir.expressions.builder.buildLiteralExpression
 import org.jetbrains.kotlin.fir.expressions.unexpandedClassId
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension.TypeResolveService
-import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.extensions.NestedClassGenerationContext
 import org.jetbrains.kotlin.fir.extensions.QualifierPartBuilder
 import org.jetbrains.kotlin.fir.moduleData
@@ -85,12 +91,12 @@ import org.jetbrains.kotlin.fir.scopes.impl.toConeType
 import org.jetbrains.kotlin.fir.scopes.processAllCallables
 import org.jetbrains.kotlin.fir.scopes.processAllClassifiers
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirAnonymousObjectSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirBackingFieldSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
-import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertyAccessorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
@@ -177,9 +183,18 @@ internal fun FirBasedSymbol<*>.annotationsIn(
     }
 }
 
+/**
+ * Not typed as `FirArrayLiteral` or `FirCollectionLiteral` due to
+ * https://github.com/ZacSweers/metro/issues/1217
+ */
+// TODO after min kotlin 2.3.20 we can remove this for FirCollectionLiteral
+private fun FirAnnotation.arrayArgument(name: Name, index: Int): FirCall? {
+  return argumentAsOrNull<FirCall>(name, index)
+}
+
 /** @see [dev.zacsweers.metro.compiler.ClassIds.allRepeatableContributesAnnotationsContainers] */
 internal fun FirAnnotation.flattenRepeatedAnnotations(): Sequence<FirAnnotation> {
-  return argumentAsOrNull<FirArrayLiteral>(StandardNames.DEFAULT_VALUE_PARAMETER, 0)
+  return arrayArgument(StandardNames.DEFAULT_VALUE_PARAMETER, 0)
     ?.arguments
     ?.asSequence()
     ?.filterIsInstance<FirAnnotation>()
@@ -195,15 +210,6 @@ internal fun FirBasedSymbol<*>.isAnnotatedWithAny(
     .any { it.toAnnotationClassIdSafe(session) in names }
 }
 
-internal fun FirBasedSymbol<*>.findAnnotation(
-  session: FirSession,
-  names: Set<ClassId>,
-): FirAnnotation? {
-  return resolvedCompilerAnnotationsWithClassIds
-    .filter { it.isResolved }
-    .find { it.toAnnotationClassIdSafe(session) in names }
-}
-
 internal fun List<FirAnnotation>.isAnnotatedWithAny(
   session: FirSession,
   names: Set<ClassId>,
@@ -213,14 +219,14 @@ internal fun List<FirAnnotation>.isAnnotatedWithAny(
 
 internal inline fun FirMemberDeclaration.checkVisibility(
   allowProtected: Boolean = false,
-  onError: (source: KtSourceElement?, allowedVisibilities: String) -> Nothing,
+  onError: (source: KtSourceElement?, allowedVisibilities: String) -> Unit,
 ) {
   visibility.checkVisibility(source, allowProtected, onError)
 }
 
 internal inline fun FirCallableSymbol<*>.checkVisibility(
   allowProtected: Boolean = false,
-  onError: (source: KtSourceElement?, allowedVisibilities: String) -> Nothing,
+  onError: (source: KtSourceElement?, allowedVisibilities: String) -> Unit,
 ) {
   visibility.checkVisibility(source, allowProtected, onError)
 }
@@ -228,7 +234,7 @@ internal inline fun FirCallableSymbol<*>.checkVisibility(
 internal inline fun Visibility.checkVisibility(
   source: KtSourceElement?,
   allowProtected: Boolean = false,
-  onError: (source: KtSourceElement?, allowedVisibilities: String) -> Nothing,
+  onError: (source: KtSourceElement?, allowedVisibilities: String) -> Unit,
 ) {
   // TODO what about expect/actual/protected
   when (this) {
@@ -237,11 +243,13 @@ internal inline fun Visibility.checkVisibility(
       // These are fine
       // TODO what about across modules? Is internal really ok? Or PublishedApi?
     }
+
     Visibilities.Protected -> {
       if (!allowProtected) {
         onError(source, "public or internal")
       }
     }
+
     else -> {
       onError(source, if (allowProtected) "public, internal or protected" else "public or internal")
     }
@@ -290,7 +298,7 @@ internal fun FirClassSymbol<*>.callableDeclarations(
   }
 }
 
-context(context: CheckerContext, diagnosticReporter: DiagnosticReporter)
+context(context: CheckerContext)
 internal inline fun FirClass.singleAbstractFunction(
   session: FirSession,
   reporter: DiagnosticReporter,
@@ -303,7 +311,7 @@ internal inline fun FirClass.singleAbstractFunction(
     if (abstractFunctions.isEmpty()) {
       reporter.reportOn(
         source,
-        FirMetroErrors.FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION,
+        MetroDiagnostics.FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION,
         type,
         "none",
       )
@@ -312,7 +320,7 @@ internal inline fun FirClass.singleAbstractFunction(
       for (abstractFunction in abstractFunctions) {
         reporter.reportOn(
           abstractFunction.source,
-          FirMetroErrors.FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION,
+          MetroDiagnostics.FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION,
           type,
           abstractFunctions.size.toString(),
         )
@@ -325,7 +333,7 @@ internal inline fun FirClass.singleAbstractFunction(
   function.checkVisibility(allowProtected) { source, allowedVisibilities ->
     reporter.reportOn(
       source,
-      FirMetroErrors.METRO_DECLARATION_VISIBILITY_ERROR,
+      MetroDiagnostics.METRO_DECLARATION_VISIBILITY_ERROR,
       "$type classes' single abstract functions",
       allowedVisibilities,
     )
@@ -367,8 +375,11 @@ internal fun FirAnnotationCall.computeAnnotationHash(
               ?.coneType
               ?.classId
           }
+
           else -> {
-            error("Unexpected annotation argument type: ${arg::class.java} - ${arg.render()}")
+            reportCompilerBug(
+              "Unexpected annotation argument type: ${arg::class.java} - ${arg.render()}"
+            )
           }
         }
       }
@@ -381,76 +392,122 @@ context(context: CheckerContext, reporter: DiagnosticReporter)
 internal inline fun FirClassSymbol<*>.findInjectConstructor(
   session: FirSession,
   checkClass: Boolean,
+  classIds: Set<ClassId>,
   onError: () -> Nothing,
-): FirConstructorSymbol? {
-  val constructorInjections = findInjectConstructors(session, checkClass = checkClass)
+): FirInjectConstructor? {
+  val constructorInjections =
+    findInjectConstructorsImpl(
+      session = session,
+      annotationClassIds = classIds,
+      checkClass = checkClass,
+    )
   return when (constructorInjections.size) {
     0 -> null
     1 -> {
-      constructorInjections[0].also {
-        val warnOnInjectAnnotationPlacement =
-          session.metroFirBuiltIns.options.warnOnInjectAnnotationPlacement
-        if (warnOnInjectAnnotationPlacement && constructors(session).size == 1) {
-          val isAssisted =
-            it.resolvedCompilerAnnotationsWithClassIds.isAnnotatedWithAny(
-              session,
-              session.classIds.assistedAnnotations,
-            )
-          val inject =
-            it.resolvedCompilerAnnotationsWithClassIds
-              .annotationsIn(session, session.classIds.injectAnnotations)
-              .singleOrNull()
-          if (
-            !isAssisted &&
-              inject != null &&
-              KotlinTarget.CLASS in inject.getAllowedAnnotationTargets(session)
-          ) {
-            reporter.reportOn(inject.source, FirMetroErrors.SUGGEST_CLASS_INJECTION)
+      constructorInjections[0].also { (injectAnno, _, isOnClass, ctorCount) ->
+        if (!isOnClass) {
+          val warnOnInjectAnnotationPlacement =
+            session.metroFirBuiltIns.options.warnOnInjectAnnotationPlacement
+          if (warnOnInjectAnnotationPlacement && ctorCount == 1) {
+            if (KotlinTarget.CLASS in injectAnno.getAllowedAnnotationTargets(session)) {
+              reporter.reportOn(injectAnno.source, MetroDiagnostics.SUGGEST_CLASS_INJECTION)
+            }
           }
         }
       }
     }
+
     else -> {
-      reporter.reportOn(
-        constructorInjections[0]
-          .resolvedCompilerAnnotationsWithClassIds
-          .annotationsIn(session, session.classIds.injectAnnotations)
-          .single()
-          .source,
-        FirMetroErrors.CANNOT_HAVE_MULTIPLE_INJECTED_CONSTRUCTORS,
-      )
+      for (constructorInjection in constructorInjections) {
+        reporter.reportOn(
+          constructorInjection.annotation.source,
+          MetroDiagnostics.CANNOT_HAVE_MULTIPLE_INJECTED_CONSTRUCTORS,
+        )
+      }
       onError()
     }
   }
 }
 
-@OptIn(DirectDeclarationsAccess::class)
+internal fun FirClassSymbol<*>.findAssistedInjectConstructors(
+  session: FirSession,
+  checkClass: Boolean = true,
+): List<FirInjectConstructor> =
+  findInjectConstructorsImpl(
+    session,
+    session.metroFirBuiltIns.classIds.assistedInjectAnnotations,
+    checkClass,
+  )
+
 internal fun FirClassSymbol<*>.findInjectConstructors(
   session: FirSession,
   checkClass: Boolean = true,
-): List<FirConstructorSymbol> {
+): List<FirInjectConstructor> =
+  findInjectConstructorsImpl(
+    session,
+    session.metroFirBuiltIns.classIds.injectAnnotations,
+    checkClass,
+  )
+
+internal fun FirClassSymbol<*>.findInjectLikeConstructors(
+  session: FirSession,
+  checkClass: Boolean = true,
+): List<FirInjectConstructor> =
+  findInjectConstructorsImpl(
+    session = session,
+    annotationClassIds =
+      if (checkClass) {
+        // When checking classes, use inject-like annotations (@Inject and @Contributes*)
+        session.metroFirBuiltIns.classIds.injectLikeAnnotations
+      } else {
+        // When not checking classes (constructor-only), use only @Inject
+        session.metroFirBuiltIns.classIds.allInjectAnnotations
+      },
+    checkClass = checkClass,
+  )
+
+internal fun FirClassSymbol<*>.findInjectConstructorsImpl(
+  session: FirSession,
+  annotationClassIds: Set<ClassId>,
+  checkClass: Boolean,
+): List<FirInjectConstructor> {
   if (classKind != ClassKind.CLASS) return emptyList()
   rawStatus.modality?.let { if (it != Modality.FINAL && it != Modality.OPEN) return emptyList() }
-  return if (checkClass && isAnnotatedInject(session)) {
-    declarationSymbols.filterIsInstance<FirConstructorSymbol>().filter { it.isPrimary }
-  } else {
-    declarationSymbols.filterIsInstance<FirConstructorSymbol>().filter {
-      it.resolvedCompilerAnnotationsWithClassIds.isAnnotatedWithAny(
-        session,
-        session.classIds.injectAnnotations,
-      )
+
+  // Look at raw declarations, otherwise we infinite loop
+  @OptIn(DirectDeclarationsAccess::class)
+  val ctors = declarationSymbols.filterIsInstance<FirConstructorSymbol>()
+  if (checkClass) {
+    val classInject = annotationsIn(session, annotationClassIds).firstOrNull()
+    if (classInject != null) {
+      val primaryConstructor = ctors.find { it.isPrimary }
+      return listOf(FirInjectConstructor(classInject, primaryConstructor, true, ctors.size))
+    }
+  }
+
+  return buildList {
+    for (ctor in ctors) {
+      val injectAnno = ctor.annotationsIn(session, annotationClassIds).firstOrNull() ?: continue
+      add(FirInjectConstructor(injectAnno, ctor, false, ctors.size))
     }
   }
 }
 
-internal inline fun FirClass.validateInjectedClass(
+internal data class FirInjectConstructor(
+  val annotation: FirAnnotation,
+  val constructor: FirConstructorSymbol?,
+  val annotationOnClass: Boolean,
+  val ctorCount: Int,
+)
+
+internal fun FirClass.validateInjectedClass(
   context: CheckerContext,
   reporter: DiagnosticReporter,
-  onError: () -> Nothing,
+  classInjectAnnotations: List<FirAnnotation>,
 ) {
   if (isLocal) {
-    reporter.reportOn(source, FirMetroErrors.LOCAL_CLASSES_CANNOT_BE_INJECTED, context)
-    onError()
+    reporter.reportOn(source, MetroDiagnostics.LOCAL_CLASSES_CANNOT_BE_INJECTED, context)
+    return
   }
 
   when (classKind) {
@@ -460,31 +517,35 @@ internal inline fun FirClass.validateInjectedClass(
         Modality.OPEN -> {
           // final/open This is fine
         }
+
         else -> {
           // sealed/abstract
           reporter.reportOn(
             source,
-            FirMetroErrors.ONLY_FINAL_AND_OPEN_CLASSES_CAN_BE_INJECTED,
+            MetroDiagnostics.ONLY_FINAL_AND_OPEN_CLASSES_CAN_BE_INJECTED,
             context,
           )
-          onError()
         }
       }
     }
+    // This is fine for @Contributes* injection cases but errors
+    ClassKind.OBJECT if (classInjectAnnotations.isEmpty()) -> {
+      // If we hit here, it's because the class has a `@Contributes*` annotation implying its
+      // injectability but no regular `@Inject` annotations. So, report nothing
+    }
+
     else -> {
-      reporter.reportOn(source, FirMetroErrors.ONLY_CLASSES_CAN_BE_INJECTED, context)
-      onError()
+      reporter.reportOn(source, MetroDiagnostics.ONLY_CLASSES_CAN_BE_INJECTED, context)
     }
   }
 
   checkVisibility { source, allowedVisibilities ->
     reporter.reportOn(
       source,
-      FirMetroErrors.INJECTED_CLASSES_MUST_BE_VISIBLE,
+      MetroDiagnostics.INJECTED_CLASSES_MUST_BE_VISIBLE,
       allowedVisibilities,
       context,
     )
-    onError()
   }
 }
 
@@ -508,7 +569,7 @@ internal inline fun FirClass.validateApiDeclaration(
   if (isLocal) {
     reporter.reportOn(
       source,
-      FirMetroErrors.METRO_DECLARATION_ERROR,
+      MetroDiagnostics.METRO_DECLARATION_ERROR,
       "$type cannot be local classes.",
     )
     onError()
@@ -521,36 +582,40 @@ internal inline fun FirClass.validateApiDeclaration(
         Modality.SEALED -> {
           reporter.reportOn(
             source,
-            FirMetroErrors.METRO_DECLARATION_ERROR,
+            MetroDiagnostics.METRO_DECLARATION_ERROR,
             "$type should be non-sealed abstract classes or interfaces.",
           )
           onError()
         }
+
         else -> {
           // This is fine
         }
       }
     }
+
     ClassKind.CLASS -> {
       when (modality) {
         Modality.ABSTRACT -> {
           // This is fine
         }
+
         else -> {
           // final/open/sealed
           reporter.reportOn(
             source,
-            FirMetroErrors.METRO_DECLARATION_ERROR,
+            MetroDiagnostics.METRO_DECLARATION_ERROR,
             "$type should be non-sealed abstract classes or interfaces.",
           )
           onError()
         }
       }
     }
+
     else -> {
       reporter.reportOn(
         source,
-        FirMetroErrors.METRO_DECLARATION_ERROR,
+        MetroDiagnostics.METRO_DECLARATION_ERROR,
         "$type should be non-sealed abstract classes or interfaces.",
       )
       onError()
@@ -560,7 +625,7 @@ internal inline fun FirClass.validateApiDeclaration(
   checkVisibility { source, allowedVisibilities ->
     reporter.reportOn(
       source,
-      FirMetroErrors.METRO_DECLARATION_VISIBILITY_ERROR,
+      MetroDiagnostics.METRO_DECLARATION_VISIBILITY_ERROR,
       type,
       allowedVisibilities,
     )
@@ -578,7 +643,7 @@ internal inline fun FirConstructorSymbol.validateVisibility(type: String, onErro
   checkVisibility { source, allowedVisibilities ->
     reporter.reportOn(
       source,
-      FirMetroErrors.METRO_DECLARATION_VISIBILITY_ERROR,
+      MetroDiagnostics.METRO_DECLARATION_VISIBILITY_ERROR,
       type,
       allowedVisibilities,
     )
@@ -598,6 +663,10 @@ internal fun List<FirAnnotation>.qualifierAnnotation(
 ): MetroFirAnnotation? =
   asSequence()
     .annotationAnnotatedWithAny(session, session.classIds.qualifierAnnotations, typeResolver)
+    ?.takeIf {
+      // Guice's `@Assisted` annoyingly annotates itself as a qualifier too, so we catch that here
+      it.fir.toAnnotationClassIdSafe(session) != GuiceSymbols.ClassIds.assisted
+    }
 
 internal fun FirBasedSymbol<*>.mapKeyAnnotation(session: FirSession): MetroFirAnnotation? =
   resolvedCompilerAnnotationsWithClassIds.mapKeyAnnotation(session)
@@ -674,6 +743,13 @@ internal fun createDeprecatedHiddenAnnotation(session: FirSession): FirAnnotatio
           .toQualifiedPropertyAccessExpression(session)
     }
   }
+
+internal fun FirClassLikeDeclaration.markImpl(session: FirSession) {
+  replaceAnnotations(
+    annotations +
+      listOf(buildSimpleAnnotation { session.metroFirBuiltIns.metroImplMarkerClassSymbol })
+  )
+}
 
 internal fun FirClassLikeDeclaration.markAsDeprecatedHidden(session: FirSession) {
   replaceAnnotations(annotations + listOf(createDeprecatedHiddenAnnotation(session)))
@@ -765,9 +841,11 @@ internal fun FirCallableSymbol<*>.findAnnotation(
           return it
         }
     }
+
     is FirPropertyAccessorSymbol -> {
       return propertySymbol.findAnnotation(session, findAnnotation, this)
     }
+
     is FirBackingFieldSymbol -> {
       return propertySymbol.findAnnotation(session, findAnnotation, this)
     }
@@ -776,22 +854,33 @@ internal fun FirCallableSymbol<*>.findAnnotation(
   return null
 }
 
+context(compatContext: CompatContext)
 internal fun FirBasedSymbol<*>.requireContainingClassSymbol(): FirClassLikeSymbol<*> =
-  getContainingClassSymbol() ?: error("No containing class symbol found for $this")
+  with(compatContext) {
+    getContainingClassSymbol() ?: reportCompilerBug("No containing class symbol found for $this")
+  }
 
 private val FirPropertyAccessExpression.qualifierName: Name?
   get() = (calleeReference as? FirSimpleNamedReference)?.name
 
+internal fun FirAnnotation.originArgument() =
+  classArgument(StandardNames.DEFAULT_VALUE_PARAMETER, index = 0)
+
 internal fun FirAnnotation.scopeArgument() = classArgument(Symbols.Names.scope, index = 0)
 
 internal fun FirAnnotation.additionalScopesArgument() =
-  argumentAsOrNull<FirArrayLiteral>(Symbols.Names.additionalScopes, index = 1)
+  arrayArgument(Symbols.Names.additionalScopes, index = 1)
 
 internal fun FirAnnotation.bindingContainersArgument() =
-  argumentAsOrNull<FirArrayLiteral>(Symbols.Names.bindingContainers, index = 4)
+  arrayArgument(Symbols.Names.bindingContainers, index = 4)
 
-internal fun FirAnnotation.includesArgument() =
-  argumentAsOrNull<FirArrayLiteral>(Symbols.Names.includes, index = 0)
+internal fun FirAnnotation.modulesArgument() = arrayArgument(Symbols.Names.modules, index = 1)
+
+internal fun FirAnnotation.bindingContainerClasses(includeModulesArg: Boolean): FirCall? {
+  return bindingContainersArgument() ?: if (includeModulesArg) modulesArgument() else null
+}
+
+internal fun FirAnnotation.includesArgument() = arrayArgument(Symbols.Names.includes, index = 0)
 
 internal fun FirAnnotation.allScopeClassIds(): Set<ClassId> =
   buildSet {
@@ -800,11 +889,17 @@ internal fun FirAnnotation.allScopeClassIds(): Set<ClassId> =
     }
     .filterNotTo(mutableSetOf()) { it == StandardClassIds.Nothing }
 
-internal fun FirAnnotation.excludesArgument() =
-  argumentAsOrNull<FirArrayLiteral>(Symbols.Names.excludes, index = 2)
+internal fun FirAnnotation.excludesArgument(session: FirSession) =
+  arrayArgument(Symbols.Names.excludes, index = 2)
+    ?: run {
+      if (session.metroFirBuiltIns.options.enableDaggerAnvilInterop) {
+        arrayArgument(Symbols.Names.exclude, index = 3)
+      } else {
+        null
+      }
+    }
 
-internal fun FirAnnotation.replacesArgument() =
-  argumentAsOrNull<FirArrayLiteral>(Symbols.Names.replaces, index = 2)
+internal fun FirAnnotation.replacesArgument() = arrayArgument(Symbols.Names.replaces, index = 2)
 
 internal fun FirAnnotation.rankValue(): Long {
   // Although the parameter is defined as an Int, the value we receive here may end up being
@@ -837,10 +932,6 @@ internal fun FirAnnotation.anvilKClassBoundTypeArgument(
     ?.toFirResolvedTypeRef()
 }
 
-internal fun FirAnnotation.anvilIgnoreQualifier(session: FirSession): Boolean {
-  return getBooleanArgument(Symbols.Names.ignoreQualifier, session) ?: false
-}
-
 internal fun FirAnnotation.getAnnotationKClassArgument(
   name: Name,
   session: FirSession,
@@ -866,8 +957,8 @@ internal fun FirAnnotation.resolvedAdditionalScopesClassIds() =
     it.expectAsOrNull<FirGetClassCall>()?.resolvedClassId()
   }
 
-internal fun FirAnnotation.resolvedBindingContainersClassIds() =
-  bindingContainersArgument()?.argumentList?.arguments?.mapNotNull {
+internal fun FirAnnotation.resolvedBindingContainersClassIds(includeModulesArg: Boolean) =
+  bindingContainerClasses(includeModulesArg)?.argumentList?.arguments?.mapNotNull {
     it.expectAsOrNull<FirGetClassCall>()
   }
 
@@ -888,11 +979,13 @@ internal fun FirAnnotation.resolvedAdditionalScopesClassIds(
 }
 
 internal fun FirAnnotation.resolvedExcludedClassIds(
-  typeResolver: TypeResolveService
+  session: FirSession,
+  typeResolver: TypeResolveService,
 ): Set<ClassId> {
   val excludesArgument =
-    excludesArgument()?.argumentList?.arguments?.mapNotNull { it.expectAsOrNull<FirGetClassCall>() }
-      ?: return emptySet()
+    excludesArgument(session)?.argumentList?.arguments?.mapNotNull {
+      it.expectAsOrNull<FirGetClassCall>()
+    } ?: return emptySet()
   // Try to resolve it normally first. If this fails, try to resolve within the enclosing scope
   val excluded =
     excludesArgument.mapNotNull { it.resolvedClassId() }.takeUnless { it.isEmpty() }
@@ -920,9 +1013,7 @@ internal fun FirAnnotation.resolvedReplacedClassIds(
   return replaced.toSet()
 }
 
-internal fun FirGetClassCall.resolveClassId(
-  typeResolver: MetroFirTypeResolver
-): ClassId? {
+internal fun FirGetClassCall.resolveClassId(typeResolver: MetroFirTypeResolver): ClassId? {
   // If it's available and resolved, just use it directly!
   coneTypeIfResolved()?.classId?.let {
     return it
@@ -933,16 +1024,6 @@ internal fun FirGetClassCall.resolveClassId(
 }
 
 internal fun FirGetClassCall.resolvedClassId() = (argument as? FirResolvedQualifier)?.classId
-
-internal fun FirAnnotation.resolvedArgumentConeKotlinType(
-  name: Name,
-  index: Int,
-  typeResolver: TypeResolveService,
-): ConeKotlinType? {
-  // TODO if the annotation is resolved we can skip ahead
-  val getClassCall = argumentAsOrNull<FirGetClassCall>(name, index) ?: return null
-  return getClassCall.resolvedArgumentConeKotlinType(typeResolver)
-}
 
 internal fun FirGetClassCall.resolvedArgumentConeKotlinType(
   typeResolver: TypeResolveService
@@ -982,13 +1063,106 @@ internal fun FirAnnotation.classArgument(name: Name, index: Int) =
 internal fun FirAnnotation.annotationArgument(name: Name, index: Int) =
   argumentAsOrNull<FirFunctionCall>(name, index)
 
-internal inline fun <reified T> FirAnnotation.argumentAsOrNull(name: Name, index: Int): T? {
-  findArgumentByNameSafe(name)?.let {
-    return it as? T?
+internal inline fun <reified T : Any> FirAnnotation.argumentAsOrNull(name: Name, index: Int): T? {
+  return argumentAsOrNull(T::class.java, name, index)
+}
+
+/**
+ * Retrieves a specific argument from a [FirAnnotation] by its [name] and [index], and casts it to
+ * the specified type [klass] (if it matches). If the argument is not found, is not of the expected
+ * type, or the name does not match, returns null.
+ *
+ * @param klass The expected class type of the argument.
+ * @param name The name of the argument to retrieve.
+ * @param index The position of the argument in the argument list.
+ * @return The casted argument if found, otherwise null.
+ */
+internal fun <T : Any> FirAnnotation.argumentAsOrNull(klass: Class<T>, name: Name, index: Int): T? {
+  argumentMapping.mapping[name]?.let {
+    return if (klass.isInstance(it)) {
+      @Suppress("UNCHECKED_CAST")
+      it as T
+    } else {
+      null
+    }
   }
   if (this !is FirAnnotationCall) return null
+
+  if (arguments.isEmpty()) {
+    // Nothing to do here
+    return null
+  } else if (index == 0 && arguments.size == 1) {
+    val arg0 = arguments[0]
+    return if (arg0 is FirNamedArgumentExpression) {
+      if (arg0.name != name || !klass.isInstance(arg0.expression)) {
+        null
+      } else {
+        @Suppress("UNCHECKED_CAST")
+        arg0.expression as? T
+      }
+    } else if (klass.isInstance(arg0)) {
+      @Suppress("UNCHECKED_CAST")
+      arg0 as T
+    } else {
+      null
+    }
+  }
+
+  val argByIndex = arguments.getOrNull(index)
+
+  // Check if the index is present but under a different name
+  if (argByIndex != null && argumentMapping.mapping.isNotEmpty()) {
+    for ((argName, arg) in argumentMapping.mapping) {
+      if (arg == argByIndex && argName != name) {
+        // Different name than expected, bounce out
+        return null
+      }
+    }
+  }
+
+  val thoroughMapping =
+    argumentMapping.mapping.ifEmpty {
+      // These may not be present but are present in arguments
+      buildMap(arguments.size) {
+        for (arg in arguments) {
+          if (arg !is FirNamedArgumentExpression) continue
+          if (arg.name == name) {
+            return if (klass.isInstance(arg.expression)) {
+              @Suppress("UNCHECKED_CAST")
+              arg.expression as T
+            } else {
+              null
+            }
+          } else if (arg == argByIndex) {
+            // Different name than expected, bounce out
+            return null
+          }
+          put(arg.name, arg)
+        }
+      }
+    }
+
+  if (argByIndex == null) {
+    // Nothing to check here anyway
+    return null
+  }
+
+  // In external declarations, there is no argumentMapping (based on reading kotlinc source)
+  thoroughMapping.entries
+    .find { it.value == argByIndex }
+    ?.let { (associatedName, _) ->
+      if (associatedName != name) {
+        return null
+      }
+    }
+
   // Fall back to the index if necessary
-  return arguments.getOrNull(index) as? T?
+  return if (klass.isInstance(argByIndex)) {
+    @Suppress("UNCHECKED_CAST")
+    argByIndex as T
+  } else {
+    null
+  }
 }
 
 /**
@@ -1060,8 +1234,16 @@ internal fun FirClassSymbol<*>.implements(supertype: ClassId, session: FirSessio
     .any { it.classId?.let { it == supertype } == true }
 }
 
-internal val FirValueParameterSymbol.containingFunctionSymbol: FirFunctionSymbol<*>?
-  get() = containingDeclarationSymbol as? FirFunctionSymbol<*>
+internal fun FirClassLikeSymbol<*>.isBindingContainer(session: FirSession): Boolean {
+  return when {
+    isAnnotatedWithAny(session, session.classIds.bindingContainerAnnotations) -> true
+    this is FirClassSymbol<*> && session.metroFirBuiltIns.options.enableGuiceRuntimeInterop -> {
+      // Guice interop
+      implements(GuiceSymbols.ClassIds.module, session)
+    }
+    else -> false
+  }
+}
 
 internal fun ConeKotlinType.render(short: Boolean): String {
   return buildString { renderType(short, this@render) }
@@ -1086,7 +1268,7 @@ internal fun StringBuilder.renderType(short: Boolean, type: ConeKotlinType) {
 context(context: CheckerContext)
 internal fun FirClassSymbol<*>.nestedClasses(): List<FirRegularClassSymbol> {
   val collected = mutableListOf<FirRegularClassSymbol>()
-  declaredMemberScope(context).processAllClassifiers { symbol ->
+  declaredMemberScope().processAllClassifiers { symbol ->
     if (symbol is FirRegularClassSymbol) {
       collected += symbol
     }
@@ -1107,23 +1289,8 @@ internal fun NestedClassGenerationContext.nestedClasses(): List<FirRegularClassS
 context(context: CheckerContext)
 internal fun FirClassSymbol<*>.directCallableSymbols(): List<FirCallableSymbol<*>> {
   val collected = mutableListOf<FirCallableSymbol<*>>()
-  declaredMemberScope(context).processAllCallables { collected += it }
+  declaredMemberScope().processAllCallables { collected += it }
   return collected
-}
-
-internal fun MemberGenerationContext.directCallableSymbols(): List<FirCallableSymbol<*>> {
-  val collected = mutableListOf<FirCallableSymbol<*>>()
-  this.declaredScope?.processAllCallables { collected += it }
-  return collected
-}
-
-// Build a complete substitution map that includes mappings for ancestor type parameters
-internal fun buildShallowSubstitutionMap(
-  targetClass: FirClassSymbol<*>,
-  directMappings: Map<FirTypeParameterSymbol, ConeKotlinType>,
-  session: FirSession,
-): Map<FirTypeParameterSymbol, ConeKotlinType> {
-  return buildSubstitutionMapInner(targetClass, directMappings, session, full = false)
 }
 
 // Build a complete substitution map that includes mappings for ancestor type parameters
@@ -1194,3 +1361,66 @@ internal fun typeRefFromQualifierParts(
 
 internal val FirSession.memoizedAllSessionsSequence: Sequence<FirSession>
   get() = sequenceOf(this).plus(moduleData.allDependsOnDependencies.map { it.session }).memoized()
+
+internal fun FirClassSymbol<*>.originClassId(
+  session: FirSession,
+  typeResolver: MetroFirTypeResolver,
+): ClassId? =
+  annotationsIn(session, session.classIds.originAnnotations)
+    .firstOrNull()
+    ?.originArgument()
+    ?.resolveClassId(typeResolver)
+
+internal fun FirValueParameterSymbol.hasMetroDefault(session: FirSession): Boolean {
+  return computeMetroDefault(
+    behavior = session.metroFirBuiltIns.options.optionalBindingBehavior,
+    isAnnotatedOptionalDep = {
+      isAnnotatedWithAny(session, session.classIds.optionalBindingAnnotations)
+    },
+    hasDefaultValue = { this@hasMetroDefault.hasDefaultValue },
+  )
+}
+
+context(compatContext: CompatContext)
+internal fun FirCallableSymbol<*>.isEffectivelyOpen(): Boolean =
+  with(compatContext) {
+    if (visibility == Visibilities.Private) return false
+
+    // If it's in an interface - not private
+    // If it's in an abstract class - open
+    val containingClass = getContainingClassSymbol() ?: return false
+    val containingClassKind = containingClass.classKind ?: return false
+    return when (containingClassKind) {
+      ClassKind.INTERFACE -> true
+      ClassKind.CLASS -> !containingClass.isFinal && (isOpen || isAbstract)
+      ClassKind.ENUM_CLASS,
+      ClassKind.ENUM_ENTRY,
+      ClassKind.ANNOTATION_CLASS,
+      ClassKind.OBJECT -> false
+    }
+  }
+
+/**
+ * If this returns null, it's a valid container type. If this returns non-null, the string is the
+ * error message.
+ */
+internal fun FirClassLikeSymbol<*>.bindingContainerErrorMessage(
+  session: FirSession,
+  alreadyCheckedAnnotation: Boolean = false,
+): String? {
+  return if (classId.isPlatformType()) {
+    "Platform type '${classId.asFqNameString()}' is not a binding container."
+  } else if (this is FirAnonymousObjectSymbol) {
+    "Anonymous objects cannot be binding containers."
+  } else if (isLocal) {
+    "Local class '${classId.shortClassName}' cannot be a binding container."
+  } else if (isInner) {
+    "Inner class '${classId.shortClassName}' cannot be a binding container."
+  } else if (
+    !alreadyCheckedAnnotation && this is FirClassSymbol<*> && !isBindingContainer(session)
+  ) {
+    "'${classId.asFqNameString()}' is not a binding container."
+  } else {
+    null
+  }
+}

@@ -1,5 +1,5 @@
 // Regression test to ensure we reparent copied lambda parameters
-class ExampleClass @Inject constructor(@Assisted private val lambdaParam: (String) -> Unit = {}) {
+class ExampleClass @AssistedInject constructor(@Assisted private val lambdaParam: (String) -> Unit = {}) {
   @AssistedFactory
   interface Factory {
     fun create(@Assisted lambdaParam: (String) -> Unit): ExampleClass

@@ -2,14 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
-import dev.zacsweers.metro.compiler.Symbols.DaggerSymbols
-import dev.zacsweers.metro.compiler.fir.FirMetroErrors
+import dev.zacsweers.metro.compiler.MetroAnnotations
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.annotationsIn
-import dev.zacsweers.metro.compiler.fir.asFirContextualTypeKey
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.findInjectConstructor
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.validateInjectedClass
+import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
+import dev.zacsweers.metro.compiler.metroAnnotations
+import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
@@ -18,7 +20,6 @@ import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.getAnnotationByClassId
 import org.jetbrains.kotlin.fir.declarations.primaryConstructorIfAny
-import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 
 internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common) {
 
@@ -28,56 +29,70 @@ internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common
     val session = context.session
     val classIds = session.classIds
 
-    val classInjectAnnotation =
-      declaration.annotationsIn(session, classIds.injectAnnotations).toList()
+    // Check for class-level inject-like annotations (@Inject or @Contributes*)
+    val classInjectLikeAnnotations =
+      declaration.annotationsIn(session, classIds.injectLikeAnnotations).toList()
 
+    // Check for constructor-level @Inject annotations (only @Inject, not @Contributes*)
     val injectedConstructor =
-      declaration.symbol.findInjectConstructor(session, checkClass = false) {
+      declaration.symbol.findInjectConstructor(
+        session,
+        checkClass = false,
+        classIds = classIds.allInjectAnnotations,
+      ) {
         return
       }
 
-    val isInjected = classInjectAnnotation.isNotEmpty() || injectedConstructor != null
+    val isInjected = classInjectLikeAnnotations.isNotEmpty() || injectedConstructor != null
     if (!isInjected) return
 
     declaration
       .getAnnotationByClassId(DaggerSymbols.ClassIds.DAGGER_REUSABLE_CLASS_ID, session)
       ?.let {
-        reporter.reportOn(it.source ?: source, FirMetroErrors.DAGGER_REUSABLE_ERROR)
+        reporter.reportOn(it.source ?: source, MetroDiagnostics.DAGGER_REUSABLE_ERROR)
         return
       }
 
-    if (classInjectAnnotation.isNotEmpty() && injectedConstructor != null) {
+    // Only error if there's an actual @Inject annotation on the class (not @Contributes*)
+    // @Contributes* annotations are allowed to coexist with constructor @Inject
+    val classInjectAnnotations =
+      declaration.annotationsIn(session, classIds.allInjectAnnotations).toList()
+    if (injectedConstructor != null && classInjectAnnotations.isNotEmpty()) {
       reporter.reportOn(
-        injectedConstructor.source,
-        FirMetroErrors.CANNOT_HAVE_INJECT_IN_MULTIPLE_TARGETS,
+        injectedConstructor.annotation.source,
+        MetroDiagnostics.CANNOT_HAVE_INJECT_IN_MULTIPLE_TARGETS,
       )
-      return
     }
 
-    declaration.validateInjectedClass(context, reporter) {
-      return
+    // Assisted factories can be annotated with @Contributes* annotations and fall through here
+    // While they're implicitly injectable lookups, they aren't beholden to the same injection
+    // requirements
+    val isAssistedFactory =
+      declaration.isAnnotatedWithAny(session, classIds.assistedFactoryAnnotations)
+    if (!isAssistedFactory) {
+      declaration.validateInjectedClass(context, reporter, classInjectAnnotations)
     }
 
     val constructorToValidate =
-      injectedConstructor ?: declaration.primaryConstructorIfAny(session) ?: return
+      injectedConstructor?.constructor ?: declaration.primaryConstructorIfAny(session) ?: return
 
     for (parameter in constructorToValidate.valueParameterSymbols) {
-      if (parameter.isAnnotatedWithAny(session, classIds.assistedAnnotations)) continue
-      val type = parameter.resolvedReturnTypeRef.coneType
-      val contextKey = type.asFirContextualTypeKey(session, null, false)
-      if (contextKey.isWrappedInLazy) {
-        val canonicalType = contextKey.typeKey.type
-        val canonicalClass = canonicalType.toClassSymbol(session) ?: continue
-        if (canonicalClass.isAnnotatedWithAny(session, classIds.assistedFactoryAnnotations)) {
-          reporter.reportOn(
-            parameter.resolvedReturnTypeRef.source ?: parameter.source ?: source,
-            FirMetroErrors.ASSISTED_FACTORIES_CANNOT_BE_LAZY,
-            canonicalClass.name.asString(),
-            canonicalClass.classId.asFqNameString(),
-          )
-          return
-        }
-      }
+      val annotations =
+        parameter.metroAnnotations(
+          session,
+          MetroAnnotations.Kind.OptionalBinding,
+          MetroAnnotations.Kind.Assisted,
+          MetroAnnotations.Kind.Qualifier,
+        )
+      if (annotations.isAssisted) continue
+      validateInjectionSiteType(
+        session,
+        parameter.resolvedReturnTypeRef,
+        annotations.qualifier,
+        parameter.source ?: source,
+        isOptionalBinding = annotations.isOptionalBinding,
+        hasDefault = parameter.hasDefaultValue,
+      )
     }
   }
 }

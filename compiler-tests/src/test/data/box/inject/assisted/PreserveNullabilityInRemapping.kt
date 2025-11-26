@@ -1,6 +1,6 @@
 // https://github.com/ZacSweers/metro/issues/853
 class FetchViewModel<P>
-@Inject
+@AssistedInject
 constructor(
   @Assisted private val fetch: () -> P?,
   @Assisted private val fetchNotNull: () -> P & Any,

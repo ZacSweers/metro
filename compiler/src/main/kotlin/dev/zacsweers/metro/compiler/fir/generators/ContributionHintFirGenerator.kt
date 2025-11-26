@@ -2,8 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.generators
 
-import dev.zacsweers.metro.compiler.MetroOptions
-import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.annotationsIn
@@ -14,8 +13,10 @@ import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.resolvedArgumentTypeRef
 import dev.zacsweers.metro.compiler.fir.scopeArgument
+import dev.zacsweers.metro.compiler.ir.transformers.HintGenerator
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.scopeHintFunctionName
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.caches.FirCache
 import org.jetbrains.kotlin.fir.caches.firCachesFactory
@@ -25,7 +26,6 @@ import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
 import org.jetbrains.kotlin.fir.moduleData
-import org.jetbrains.kotlin.fir.plugin.createTopLevelFunction
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.types.classId
@@ -47,20 +47,18 @@ import org.jetbrains.kotlin.platform.jvm.isJvm
  *
  * https://youtrack.jetbrains.com/issue/KT-75865
  */
-internal class ContributionHintFirGenerator(session: FirSession, options: MetroOptions) :
-  FirDeclarationGenerationExtension(session) {
-
-  class Factory(private val options: MetroOptions) : FirDeclarationGenerationExtension.Factory {
-    override fun create(session: FirSession): FirDeclarationGenerationExtension {
-      return ContributionHintFirGenerator(session, options)
-    }
-  }
+internal class ContributionHintFirGenerator(session: FirSession, compatContext: CompatContext) :
+  FirDeclarationGenerationExtension(session), CompatContext by compatContext {
 
   private val platform = session.moduleData.platform
-  private val jvmHintsEnabled = options.generateJvmContributionHintsInFir
 
-  // Only generate hints for non-JVM/Android platforms by default
-  private val shouldGenerateHints = jvmHintsEnabled || !platform.isJvm()
+  private fun shouldGenerateHints(): Boolean {
+    val options = session.metroFirBuiltIns.options
+    val jvmHintsEnabled = options.generateJvmContributionHintsInFir
+    // Only generate hints for non-JVM/Android platforms by default
+    val shouldGenerateHints = jvmHintsEnabled || !platform.isJvm()
+    return shouldGenerateHints
+  }
 
   private fun contributedClassSymbols(): List<FirClassSymbol<*>> {
     val injectedClasses =
@@ -113,14 +111,14 @@ internal class ContributionHintFirGenerator(session: FirSession, options: MetroO
     }
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
-    if (!shouldGenerateHints) return
+    if (!shouldGenerateHints()) return
     register(session.predicates.contributesAnnotationPredicate)
     register(session.predicates.injectAnnotationPredicate)
   }
 
   @ExperimentalTopLevelDeclarationsGenerationApi
   override fun getTopLevelCallableIds(): Set<CallableId> {
-    if (!shouldGenerateHints) return emptySet()
+    if (!shouldGenerateHints()) return emptySet()
     return contributedClassesByScope.getValue(Unit, Unit).keys
   }
 
@@ -134,10 +132,13 @@ internal class ContributionHintFirGenerator(session: FirSession, options: MetroO
     return contributionsToScope
       .sortedBy { it.classId.asFqNameString() }
       .map { contributingClass ->
+        val containingFileName =
+          HintGenerator.hintFileName(contributingClass.classId, callableId.callableName)
         createTopLevelFunction(
             Keys.ContributionHint,
             callableId,
             session.builtinTypes.unitType.coneType,
+            containingFileName = containingFileName,
           ) {
             valueParameter(Symbols.Names.contributed, { contributingClass.constructType(it) })
           }

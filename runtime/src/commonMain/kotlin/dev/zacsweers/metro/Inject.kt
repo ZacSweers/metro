@@ -52,57 +52,7 @@ package dev.zacsweers.metro
  *
  * ## Assisted Injection
  *
- * Assisted injection is a type of injection where some dependencies may be fulfill by the host
- * dependency graph but some others may be _assisted_ at runtime during instantiation. This is
- * useful for deferring some inputs to dynamic values computed at runtime.
- *
- * For example, our `HttpClient` example above may accept a user-preferenced timeout duration.
- *
- * ```
- * @Inject
- * class HttpClient(
- *   @Assisted timeoutDuration: Duration,
- *   cache: Cache,
- * )
- * ```
- *
- * In this scenario, you would then also define a [AssistedFactory]-annotated type (usually a nested
- * class) to create this. This factory's requirements are defined on the [AssistedFactory] kdoc.
- *
- * ```
- * @Inject
- * class HttpClient(
- *   @Assisted timeoutDuration: Duration,
- *   cache: Cache,
- * ) {
- *   @AssistedFactory
- *   fun interface Factory {
- *     fun create(timeoutDuration: Duration): HttpClient
- *   }
- * }
- * ```
- *
- * This factory can then be requested as a dependency from the graph and used to instantiate new
- * `HttpClient` instances.
- *
- * ```
- * @DependencyGraph
- * interface AppGraph {
- *   val httpClientFactory: HttpClient.Factory
- * }
- *
- * fun main() {
- *   val httpClientFactory = createGraph<AppGraph>().httpClientFactory
- *   val httpClient = httpClientFactory.create(userPrefs.requestTimeoutDuration)
- * }
- * ```
- *
- * You can (and usually would!) access this dependency in any other injection site too.
- *
- * **Note**: Assisted injected types cannot be scoped and can only be instantiated by associated
- * [AssistedFactory] types.
- *
- * See the docs on [Assisted] and [AssistedFactory] for more details on their use.
+ * See [@AssistedInject][AssistedInject].
  *
  * ## Member Injection
  *
@@ -253,7 +203,7 @@ package dev.zacsweers.metro
  *
  * There are three reasons this is behind an opt-in option at the moment.
  * 1. Generating top-level declarations in Kotlin compiler plugins (in FIR specifically) is not
- *    currently compatible with incremental compilation.
+ *    currently compatible with incremental compilation on the JVM.
  * 2. Generating top-level declarations in Kotlin compiler plugins (in FIR specifically) is not
  *    currently compatible with non-JVM targets.
  * 3. IDE support is rudimentary at best and currently requires enabling a custom registry flag.
@@ -267,8 +217,8 @@ package dev.zacsweers.metro
  * }
  * ```
  *
- * @see <a href="https://zacsweers.github.io/metro/installation/#ide-support">Docs for how to enable
- *   IDE support</a>
+ * @see <a href="https://zacsweers.github.io/metro/latest/installation/#ide-support">Docs for how to
+ *   enable IDE support</a>
  */
 @Target(
   AnnotationTarget.CLASS,
