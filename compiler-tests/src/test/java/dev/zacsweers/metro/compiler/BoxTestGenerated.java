@@ -173,6 +173,18 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("ContributedBindingContainerExclusions.kt")
+      public void testContributedBindingContainerExclusions() {
+        runTest("compiler-tests/src/test/data/box/aggregation/interop/ContributedBindingContainerExclusions.kt");
+      }
+
+      @Test
+      @TestMetadata("ContributedGraphBindingContainerExclusions.kt")
+      public void testContributedGraphBindingContainerExclusions() {
+        runTest("compiler-tests/src/test/data/box/aggregation/interop/ContributedGraphBindingContainerExclusions.kt");
+      }
+
+      @Test
       @TestMetadata("ContributedGraphsSupportIgnoreQualifier.kt")
       public void testContributedGraphsSupportIgnoreQualifier() {
         runTest("compiler-tests/src/test/data/box/aggregation/interop/ContributedGraphsSupportIgnoreQualifier.kt");
