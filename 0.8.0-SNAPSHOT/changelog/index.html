@@ -2425,6 +2425,7 @@
 <h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
 <h2 id="unreleased"><strong>Unreleased</strong><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
 <ul>
+<li><strong>Enhancement</strong>: Lazily validate multibindings. Previously, multibindings were validated eagerly even if they were unused in a graph.</li>
 <li><strong>Enhancement</strong>: Report all duplicate bindings errors during graph construction rather than failing at first.</li>
 <li><strong>Fix</strong>: Catch more <code>IrErrorType</code> error types cases and report context/advice where possible.</li>
 <li><strong>Fix</strong>: Dedupe binding containers contributed to both parent and child graphs.</li>
