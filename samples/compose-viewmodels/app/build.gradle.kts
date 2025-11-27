@@ -1,5 +1,7 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.multiplatform)
@@ -11,7 +13,8 @@ plugins {
 
 kotlin {
   androidTarget()
-  jvm("desktop") {
+  jvm {
+    @OptIn(ExperimentalKotlinGradlePluginApi::class)
     mainRun { mainClass = "dev.zacsweers.metro.sample.composeviewmodels.app.MainKt" }
   }
 
@@ -26,7 +29,7 @@ kotlin {
       implementation(compose.material3)
       implementation(compose.runtime)
     }
-    val androidMain by getting {
+    androidMain {
       dependencies {
         implementation("dev.zacsweers.metro:metrox-android")
         implementation(libs.androidx.activity)
@@ -35,7 +38,7 @@ kotlin {
         implementation(libs.androidx.lifecycle.runtime.compose)
       }
     }
-    val desktopMain by getting {
+    jvmMain {
       dependencies {
         implementation(compose.desktop.currentOs)
         // To set main dispatcher on desktop app
