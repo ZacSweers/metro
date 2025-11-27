@@ -77,12 +77,14 @@ The generated HTML visualizations provide powerful tools for exploring your depe
 
 Multiple filters can be combined to focus on specific parts of your graph:
 
-| Filter                        | Description                                                               |
-|-------------------------------|---------------------------------------------------------------------------|
-| **Search**                    | Filter nodes by name or full type key                                     |
-| **Show synthetic bindings**   | Toggle visibility of generated/internal bindings (aliases, contributions) |
-| **Show only scoped bindings** | Hide non-scoped bindings to focus on singletons                           |
-| **Package filter**            | Toggle visibility by package (collapsed by default)                       |
+| Filter                          | Description                                                               |
+|---------------------------------|---------------------------------------------------------------------------|
+| **Search**                      | Filter nodes by name or full type key                                     |
+| **Show synthetic bindings**     | Toggle visibility of generated/internal bindings (aliases, contributions) |
+| **Show only scoped bindings**   | Hide non-scoped bindings to focus on singletons                           |
+| **Show default value bindings** | Toggle visibility of synthetic nodes for default parameter values         |
+| **Show metrics glow**           | Toggle the glow effects highlighting nodes with notable metrics           |
+| **Package filter**              | Toggle visibility by package (collapsed by default)                       |
 
 ### Analysis Tools
 
@@ -119,6 +121,32 @@ Nodes are colored by binding kind:
 | Peach      | Assisted injection                                      |
 
 Synthetic (generated) bindings appear gray and with reduced opacity. They do give you a good sense of the glue that Metro generates behind the scenes.
+
+### Metrics Glow Effects
+
+Nodes with notable analysis metrics are highlighted with glow effects to draw attention to potential architectural concerns:
+
+| Glow Color | Trigger                       | Meaning                                              |
+|------------|-------------------------------|------------------------------------------------------|
+| **Red**    | Centrality > 30%              | Critical connector - many paths flow through it      |
+| **Yellow** | Centrality > 10%              | Moderate connector - notable traffic hub             |
+| **Red**    | Dominator count > 10          | Dominates many bindings - initialization bottleneck  |
+| **Blue**   | Fan-in > 10                   | Highly depended-upon - changes affect many consumers |
+
+Use the "Show metrics glow" filter to toggle these effects on/off.
+
+### Metrics Heatmap Colors
+
+In tooltips and the details panel, analysis metrics are color-coded by severity:
+
+| Metric              | Blue (Good) | Yellow (Moderate) | Red (High)     |
+|---------------------|-------------|-------------------|----------------|
+| **Fan-in**          | ≤ 5         | 6-10              | > 10           |
+| **Fan-out**         | ≤ 4         | 5-8               | > 8            |
+| **Centrality**      | ≤ 10%       | 10-30%            | > 30%          |
+| **Dominator count** | ≤ 5         | 6-10              | > 10           |
+
+These thresholds help identify bindings that may warrant architectural review.
 
 ### Edge Types
 

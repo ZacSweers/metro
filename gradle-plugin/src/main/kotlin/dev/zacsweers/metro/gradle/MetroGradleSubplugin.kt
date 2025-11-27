@@ -50,12 +50,13 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
       )
     }
 
-    // HTML visualization task - interactive D3.js graphs
+    // HTML visualization task - interactive ECharts graphs
     val htmlTask =
       target.tasks.register(GenerateGraphHtmlTask.NAME, GenerateGraphHtmlTask::class.java)
     htmlTask.configure { task ->
       task.description = "Generates interactive HTML visualizations of Metro dependency graphs"
       task.inputFile.convention(graphMetadataTask.flatMap { it.outputFile })
+      task.analysisFile.convention(analyzeTask.flatMap { it.outputFile })
       task.outputDirectory.convention(
         target.layout.buildDirectory.dir("reports/metro/html")
       )

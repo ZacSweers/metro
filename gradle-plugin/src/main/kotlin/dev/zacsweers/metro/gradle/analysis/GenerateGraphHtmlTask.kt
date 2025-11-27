@@ -46,6 +46,14 @@ public abstract class GenerateGraphHtmlTask : DefaultTask() {
   @get:PathSensitive(PathSensitivity.RELATIVE)
   public abstract val inputFile: RegularFileProperty
 
+  /**
+   * Analysis report JSON file from [AnalyzeGraphTask]. Analysis metrics (fan-in/out, centrality,
+   * dominator count) are included in the visualization.
+   */
+  @get:InputFile
+  @get:PathSensitive(PathSensitivity.RELATIVE)
+  public abstract val analysisFile: RegularFileProperty
+
   /** The output directory for HTML files (one per graph). */
   @get:OutputDirectory public abstract val outputDirectory: DirectoryProperty
 
@@ -69,10 +77,19 @@ public abstract class GenerateGraphHtmlTask : DefaultTask() {
 
     val metadata = json.decodeFromString<AggregatedGraphMetadata>(input.readText())
 
+    // Parse analysis report
+    val analysisInput = analysisFile.get().asFile
+    logger.lifecycle("Including analysis data from ${analysisInput.absolutePath}")
+    val analysisReport = json.decodeFromString<FullAnalysisReport>(analysisInput.readText())
+
+    // Build per-graph analysis lookup
+    val analysisLookup = buildAnalysisLookup(analysisReport)
+
     outputDir.mkdirs()
 
     for (graphMetadata in metadata.graphs) {
-      val htmlContent = generateHtml(graphMetadata)
+      val graphAnalysis = analysisLookup[graphMetadata.graph] ?: GraphAnalysisData(emptyMap())
+      val htmlContent = generateHtml(graphMetadata, graphAnalysis)
 
       val fileName = "${graphMetadata.graph.replace('.', '-')}.html"
       val outputFile = File(outputDir, fileName)
@@ -88,6 +105,58 @@ public abstract class GenerateGraphHtmlTask : DefaultTask() {
     indexFile.toPath().writeText(indexContent)
     logger.lifecycle("Generated ${indexFile.absolutePath}")
   }
+
+  /** Builds a lookup map from graph name to per-binding analysis metrics. */
+  private fun buildAnalysisLookup(report: FullAnalysisReport): Map<String, GraphAnalysisData> {
+    val result = mutableMapOf<String, GraphAnalysisData>()
+
+    for (i in report.statistics.indices) {
+      val graphName = report.statistics[i].graphName
+      val fanAnalysis = report.fanAnalysis.getOrNull(i)
+      val centrality = report.centrality.getOrNull(i)
+      val dominators = report.dominators.getOrNull(i)
+
+      // Build per-binding metrics map
+      val bindingMetrics = mutableMapOf<String, BindingAnalysisMetrics>()
+
+      // Fan-in/Fan-out
+      fanAnalysis?.bindings?.forEach { fan ->
+        bindingMetrics.getOrPut(fan.key) { BindingAnalysisMetrics() }.apply {
+          fanIn = fan.fanIn
+          fanOut = fan.fanOut
+        }
+      }
+
+      // Centrality
+      centrality?.centralityScores?.forEach { score ->
+        bindingMetrics.getOrPut(score.key) { BindingAnalysisMetrics() }.apply {
+          betweennessCentrality = score.normalizedCentrality
+        }
+      }
+
+      // Dominator count
+      dominators?.dominators?.forEach { dom ->
+        bindingMetrics.getOrPut(dom.key) { BindingAnalysisMetrics() }.apply {
+          dominatorCount = dom.dominatedCount
+        }
+      }
+
+      result[graphName] = GraphAnalysisData(bindingMetrics)
+    }
+
+    return result
+  }
+
+  /** Analysis data for a single graph. */
+  private data class GraphAnalysisData(val bindingMetrics: Map<String, BindingAnalysisMetrics>)
+
+  /** Analysis metrics for a single binding. */
+  private data class BindingAnalysisMetrics(
+    var fanIn: Int = 0,
+    var fanOut: Int = 0,
+    var betweennessCentrality: Double = 0.0,
+    var dominatorCount: Int = 0,
+  )
 
   private fun generateIndex(metadata: AggregatedGraphMetadata): String {
     // language=html
@@ -177,8 +246,8 @@ ${metadata.graphs.joinToString("\n") { graph ->
       .trimIndent()
   }
 
-  private fun generateHtml(graphMetadata: GraphMetadata): String {
-    val graphData = buildEChartsData(graphMetadata)
+  private fun generateHtml(graphMetadata: GraphMetadata, analysis: GraphAnalysisData): String {
+    val graphData = buildEChartsData(graphMetadata, analysis)
     val categories = getBindingCategories()
     val longestPath = computeLongestPath(graphMetadata)
     val packages =
@@ -397,6 +466,10 @@ ${metadata.graphs.joinToString("\n") { graph ->
       border-style: dashed;
       opacity: 0.5;
     }
+    .edge-legend-item .edge-line.default {
+      background: #ffc107;
+      border-style: dashed;
+    }
     .edge-legend-item .edge-line.alias {
       background: #9e9e9e;
       border-style: dotted;
@@ -578,11 +651,19 @@ ${metadata.graphs.joinToString("\n") { graph ->
           <div class="section-title">Filters</div>
           <label class="filter-toggle">
             <input type="checkbox" id="hide-synthetic" checked>
-            <span>Show synthetic bindings</span>
+            <span>Focus synthetic bindings</span>
           </label>
           <label class="filter-toggle" style="margin-top:8px">
             <input type="checkbox" id="scoped-only">
-            <span>Show only scoped bindings</span>
+            <span>Focus only scoped bindings</span>
+          </label>
+          <label class="filter-toggle" style="margin-top:8px">
+            <input type="checkbox" id="show-defaults">
+            <span>Show default value bindings</span>
+          </label>
+          <label class="filter-toggle" style="margin-top:8px">
+            <input type="checkbox" id="show-glow" checked>
+            <span>Show metrics glow</span>
           </label>
         </div>
 
@@ -630,7 +711,7 @@ ${packages.mapIndexed { i, pkg ->
               <div class="edge-legend-item"><span class="edge-line assisted"></span> Assisted injection</div>
               <div class="edge-legend-item"><span class="edge-line multibinding"></span> Multibinding source</div>
               <div class="edge-legend-item"><span class="edge-line alias"></span> Alias (type binding)</div>
-              <div class="edge-legend-item"><span class="edge-line optional"></span> Optional (has default)</div>
+              <div class="edge-legend-item"><span class="edge-line default"></span> Default value (fallback)</div>
             </div>
           </div>
         </div>
@@ -695,6 +776,7 @@ ${packages.mapIndexed { i, pkg ->
               let html = '<div style="font-weight:600;color:#58a6ff;margin-bottom:8px">' + d.name;
               if (d.isGraph) html += ' <span style="color:#ffd700;font-size:10px">◆ GRAPH</span>';
               else if (d.isExtension) html += ' <span style="color:#00bfff;font-size:10px">▢ EXTENSION</span>';
+              else if (d.isDefaultValue) html += ' <span style="color:#ffc107;font-size:10px">📌 DEFAULT</span>';
               else if (d.synthetic) html += ' <span style="color:#8b949e;font-size:10px">(synthetic)</span>';
               html += '</div>';
               html += '<div style="color:#8b949e;font-size:11px">' + d.fullKey + '</div>';
@@ -703,6 +785,31 @@ ${packages.mapIndexed { i, pkg ->
               html += '<div>Package: <span style="color:#e6edf3">' + (d.pkg || '(root)') + '</span></div>';
               if (d.scoped) html += '<div>Scoped: <span style="color:#ff44cc">Yes</span></div>';
               if (d.scope) html += '<div>Scope: <span style="color:#e6edf3">' + d.scope + '</span></div>';
+              // Analysis metrics (if available) with heatmap coloring
+              if (d.fanIn !== undefined || d.fanOut !== undefined) {
+                html += '</div><div style="margin-top:8px;padding-top:8px;border-top:1px solid #30363d">';
+                html += '<div style="font-size:10px;color:#8b949e;margin-bottom:4px">ANALYSIS</div>';
+                // Fan-in with heatmap: green (low) -> yellow -> red (high)
+                if (d.fanIn !== undefined) {
+                  const fanInColor = d.fanIn > 10 ? '#f85149' : d.fanIn > 5 ? '#ffc107' : '#58a6ff';
+                  html += '<div>Fan-in: <span style="color:' + fanInColor + '">' + d.fanIn + '</span></div>';
+                }
+                // Fan-out with heatmap
+                if (d.fanOut !== undefined) {
+                  const fanOutColor = d.fanOut > 8 ? '#f85149' : d.fanOut > 4 ? '#ffc107' : '#58a6ff';
+                  html += '<div>Fan-out: <span style="color:' + fanOutColor + '">' + d.fanOut + '</span></div>';
+                }
+                // Centrality with heatmap
+                if (d.centrality !== undefined && d.centrality > 0) {
+                  const centralityColor = d.centrality > 0.3 ? '#ff6b6b' : d.centrality > 0.1 ? '#ffc107' : '#74c476';
+                  html += '<div>Centrality: <span style="color:' + centralityColor + '">' + (d.centrality * 100).toFixed(1) + '%</span></div>';
+                }
+                // Dominator count with heatmap
+                if (d.dominatorCount !== undefined && d.dominatorCount > 0) {
+                  const domColor = d.dominatorCount > 10 ? '#f85149' : d.dominatorCount > 5 ? '#ffc107' : '#58a6ff';
+                  html += '<div>Dominates: <span style="color:' + domColor + '">' + d.dominatorCount + ' bindings</span></div>';
+                }
+              }
               html += '</div>';
               return html;
             }
@@ -715,7 +822,8 @@ ${packages.mapIndexed { i, pkg ->
                 'assisted': 'Assisted injection',
                 'multibinding': 'Multibinding source',
                 'alias': 'Alias (type binding)',
-                'optional': 'Optional (has default)',
+                'default': 'Default value (fallback available)',
+                'default-resolves': 'Default resolves to binding',
                 'normal': 'Normal dependency'
               };
               return edgeLabels[d.edgeType] || 'Dependency';
@@ -776,7 +884,7 @@ ${packages.mapIndexed { i, pkg ->
           force: {
             repulsion: 400,
             gravity: 0.1,
-            edgeLength: [100, 250],
+            edgeLength: [50, 200],
             layoutAnimation: true
           }
         };
@@ -797,7 +905,7 @@ ${packages.mapIndexed { i, pkg ->
       chart.setOption(option, true);
     }
 
-    updateChart();
+    // Initial render - will be replaced by applyFilters() call at end of script
 
     // Build reverse dependency map
     const dependents = {};
@@ -826,6 +934,24 @@ ${packages.mapIndexed { i, pkg ->
       }
       if (node.origin) {
         html += '<div class="detail-row"><span class="detail-label">Origin</span><span class="detail-value">' + node.origin + '</span></div>';
+      }
+
+      // Analysis metrics section with heatmap colors
+      if (node.fanIn !== undefined || node.fanOut !== undefined) {
+        html += '<div class="deps-section"><div class="deps-title">Analysis</div>';
+        const fanInColor = node.fanIn > 10 ? '#f85149' : node.fanIn > 5 ? '#ffc107' : '#58a6ff';
+        const fanOutColor = node.fanOut > 8 ? '#f85149' : node.fanOut > 4 ? '#ffc107' : '#58a6ff';
+        html += '<div class="detail-row"><span class="detail-label">Fan-in</span><span class="detail-value" style="color:' + fanInColor + '">' + (node.fanIn || 0) + '</span></div>';
+        html += '<div class="detail-row"><span class="detail-label">Fan-out</span><span class="detail-value" style="color:' + fanOutColor + '">' + (node.fanOut || 0) + '</span></div>';
+        if (node.centrality !== undefined && node.centrality > 0) {
+          const centralityColor = node.centrality > 0.3 ? '#ff6b6b' : node.centrality > 0.1 ? '#ffc107' : '#74c476';
+          html += '<div class="detail-row"><span class="detail-label">Centrality</span><span class="detail-value" style="color:' + centralityColor + '">' + (node.centrality * 100).toFixed(1) + '%</span></div>';
+        }
+        if (node.dominatorCount !== undefined && node.dominatorCount > 0) {
+          const domColor = node.dominatorCount > 10 ? '#f85149' : node.dominatorCount > 5 ? '#ffc107' : '#58a6ff';
+          html += '<div class="detail-row"><span class="detail-label">Dominates</span><span class="detail-value" style="color:' + domColor + '">' + node.dominatorCount + ' bindings</span></div>';
+        }
+        html += '</div>';
       }
 
       if (deps.length > 0) {
@@ -900,25 +1026,40 @@ ${packages.mapIndexed { i, pkg ->
       }
     });
 
-    // Store original styles for restoration (deep copy to avoid mutation)
-    const originalNodeStyles = graphData.nodes.map(n => n.itemStyle ? JSON.parse(JSON.stringify(n.itemStyle)) : {});
-    const originalLinkStyles = graphData.links.map(l => l.lineStyle ? JSON.parse(JSON.stringify(l.lineStyle)) : {});
+    // Store original data for filtering (deep copy to avoid mutation)
+    const originalNodes = JSON.parse(JSON.stringify(graphData.nodes));
+    const originalLinks = JSON.parse(JSON.stringify(graphData.links));
 
-    // Apply all filters (package, synthetic, scoped, search)
+    // Apply all filters (package, synthetic, scoped, defaults, search, glow)
+    // Default value nodes are actually removed from the graph, others just get faded
     function applyFilters() {
       const showSynthetic = document.getElementById('hide-synthetic').checked;
       const scopedOnly = document.getElementById('scoped-only').checked;
+      const showDefaults = document.getElementById('show-defaults').checked;
+      const showGlow = document.getElementById('show-glow').checked;
       const enabledPackages = new Set();
       document.querySelectorAll('#package-filter input:checked').forEach(c => {
         enabledPackages.add(c.dataset.package);
       });
       const query = document.getElementById('search').value.toLowerCase();
 
-      // Track which nodes are visible
+      // Track which nodes pass the "removal" filters (default value toggle)
+      const includedNodeKeys = new Set();
+      // Track which nodes pass all filters (for opacity)
       const visibleNodeKeys = new Set();
 
-      const newNodes = graphData.nodes.map((n, i) => {
-        // Check all filter conditions
+      // First pass: determine which nodes to include (not filtered out entirely)
+      originalNodes.forEach(n => {
+        // Default value nodes are completely removed when filter is off
+        const passesDefaults = showDefaults || !n.isDefaultValue;
+        if (passesDefaults) {
+          includedNodeKeys.add(n.fullKey);
+        }
+      });
+
+      // Filter nodes - remove default value nodes if filter is off, fade others
+      const newNodes = originalNodes.filter(n => includedNodeKeys.has(n.fullKey)).map(n => {
+        // Check visibility filters (fade but don't remove)
         const passesPackage = enabledPackages.has(n.pkg);
         const passesSynthetic = showSynthetic || !n.synthetic;
         const passesScoped = !scopedOnly || n.scoped;
@@ -929,23 +1070,36 @@ ${packages.mapIndexed { i, pkg ->
           visibleNodeKeys.add(n.fullKey);
         }
 
-        // Merge original style with visibility
-        const baseStyle = {...originalNodeStyles[i]};
+        // Apply visibility styling and glow toggle
+        const baseStyle = n.itemStyle ? {...n.itemStyle} : {};
         if (!visible) {
           baseStyle.opacity = 0.1;
+        }
+        // Remove glow effects if toggle is off
+        if (!showGlow) {
+          delete baseStyle.shadowBlur;
+          delete baseStyle.shadowColor;
         }
         return {...n, itemStyle: Object.keys(baseStyle).length > 0 ? baseStyle : undefined};
       });
 
-      // Also filter links - hide links to/from hidden nodes
-      const newLinks = graphData.links.map((l, i) => {
-        const isVisible = visibleNodeKeys.has(l.source) && visibleNodeKeys.has(l.target);
-        // Always explicitly set opacity - ECharts may not remove it otherwise
-        const style = {...originalLinkStyles[i], opacity: isVisible ? 0.7 : 0.05};
-        return {...l, lineStyle: style};
-      });
+      // Filter links - remove links to/from removed nodes, fade links to faded nodes
+      const newLinks = originalLinks
+        .filter(l => includedNodeKeys.has(l.source) && includedNodeKeys.has(l.target))
+        .map(l => {
+          const isVisible = visibleNodeKeys.has(l.source) && visibleNodeKeys.has(l.target);
+          const style = l.lineStyle ? {...l.lineStyle} : {};
+          style.opacity = isVisible ? (style.opacity || 0.7) : 0.05;
+          return {...l, lineStyle: style};
+        });
 
-      chart.setOption({ series: [{ data: newNodes, links: newLinks }] }, false);
+      // Rebuild full option to properly handle node addition/removal
+      const option = getBaseOption();
+      const seriesOpt = getSeriesOption(currentLayout);
+      seriesOpt.data = newNodes;
+      seriesOpt.links = newLinks;
+      option.series = [seriesOpt];
+      chart.setOption(option, true);
     }
 
     // Package filter
@@ -959,6 +1113,12 @@ ${packages.mapIndexed { i, pkg ->
     // Scoped-only filter
     document.getElementById('scoped-only').addEventListener('change', applyFilters);
 
+    // Default value filter
+    document.getElementById('show-defaults').addEventListener('change', applyFilters);
+
+    // Glow effects filter
+    document.getElementById('show-glow').addEventListener('change', applyFilters);
+
     // Search
     document.getElementById('search').addEventListener('input', applyFilters);
 
@@ -971,6 +1131,8 @@ ${packages.mapIndexed { i, pkg ->
       document.querySelectorAll('#package-filter input').forEach(cb => cb.checked = true);
       document.getElementById('hide-synthetic').checked = true;
       document.getElementById('scoped-only').checked = false;
+      document.getElementById('show-defaults').checked = true;
+      document.getElementById('show-glow').checked = true;
       document.getElementById('search').value = '';
       updateChart();
     });
@@ -1004,6 +1166,9 @@ ${packages.mapIndexed { i, pkg ->
     if (packagesContent) {
       packagesContent.style.maxHeight = packagesContent.scrollHeight + 'px';
     }
+
+    // Apply filters on initial load to respect default filter states
+    applyFilters();
   </script>
 </body>
 </html>
@@ -1011,7 +1176,7 @@ ${packages.mapIndexed { i, pkg ->
       .trimIndent()
   }
 
-  private fun buildEChartsData(metadata: GraphMetadata): JsonObject {
+  private fun buildEChartsData(metadata: GraphMetadata, analysis: GraphAnalysisData): JsonObject {
     val categoryMap =
       mapOf(
         "ConstructorInjected" to 0,
@@ -1026,7 +1191,8 @@ ${packages.mapIndexed { i, pkg ->
         "GraphDependency" to 8,
         "MembersInjected" to 9,
         "CustomWrapper" to 10,
-        "Absent" to 11,
+        "DefaultValue" to 11,
+        "Absent" to 12,
       )
 
     // Build set of multibinding source keys for edge coloring
@@ -1035,6 +1201,37 @@ ${packages.mapIndexed { i, pkg ->
         .filter { it.multibinding != null }
         .flatMap { it.multibinding!!.sources }
         .toSet()
+
+    // Collect dependencies with default values for synthetic node generation
+    // Key: "default:{targetType}@{consumerKey}" to ensure uniqueness per usage site
+    data class DefaultValueInfo(
+      val syntheticKey: String,
+      val targetType: String,
+      val consumerKey: String,
+      val targetDisplayName: String,
+      val targetPackage: String,
+    )
+
+    val defaultValueNodes = mutableListOf<DefaultValueInfo>()
+    for (binding in metadata.bindings) {
+      for (dep in binding.dependencies) {
+        if (dep.hasDefault) {
+          // Strip " = ..." suffix from default value keys (e.g., "com.example.Analytics = ..." -> "com.example.Analytics")
+          val rawKey = dep.key.substringBefore(" = ")
+          val targetKey = unwrapTypeKey(rawKey)
+          val syntheticKey = "default:$targetKey@${binding.key}"
+          defaultValueNodes.add(
+            DefaultValueInfo(
+              syntheticKey = syntheticKey,
+              targetType = targetKey,
+              consumerKey = binding.key,
+              targetDisplayName = extractDisplayName(targetKey),
+              targetPackage = extractPackage(targetKey),
+            )
+          )
+        }
+      }
+    }
 
     val nodes = buildJsonArray {
       for (binding in metadata.bindings) {
@@ -1068,6 +1265,9 @@ ${packages.mapIndexed { i, pkg ->
             else -> 12
           }
 
+        // Get analysis metrics for this binding
+        val metrics = analysis.bindingMetrics[binding.key]
+
         add(
           buildJsonObject {
             // ECharts uses 'id' for link source/target matching
@@ -1085,6 +1285,15 @@ ${packages.mapIndexed { i, pkg ->
             put("category", JsonPrimitive(categoryMap[binding.bindingKind] ?: 11))
             put("symbol", JsonPrimitive(symbol))
             put("symbolSize", JsonPrimitive(baseSize))
+
+            // Analysis metrics (if available)
+            if (metrics != null) {
+              put("fanIn", JsonPrimitive(metrics.fanIn))
+              put("fanOut", JsonPrimitive(metrics.fanOut))
+              put("centrality", JsonPrimitive(metrics.betweennessCentrality))
+              put("dominatorCount", JsonPrimitive(metrics.dominatorCount))
+            }
+
             put(
               "itemStyle",
               buildJsonObject {
@@ -1096,6 +1305,61 @@ ${packages.mapIndexed { i, pkg ->
                 if (isSynthetic) {
                   put("opacity", JsonPrimitive(0.6))
                 }
+                // Add glow effect based on analysis metrics (centrality takes priority)
+                // Skip glow for the main graph binding as it's expected to have high metrics
+                if (metrics != null && !isMainGraph) {
+                  when {
+                    metrics.betweennessCentrality > 0.3 -> {
+                      // High centrality - orange/red glow
+                      put("shadowBlur", JsonPrimitive(15))
+                      put("shadowColor", JsonPrimitive("#ff6b6b"))
+                    }
+                    metrics.betweennessCentrality > 0.1 -> {
+                      // Medium centrality - yellow glow
+                      put("shadowBlur", JsonPrimitive(10))
+                      put("shadowColor", JsonPrimitive("#ffc107"))
+                    }
+                    metrics.dominatorCount > 10 -> {
+                      // High dominator count - red glow
+                      put("shadowBlur", JsonPrimitive(12))
+                      put("shadowColor", JsonPrimitive("#f85149"))
+                    }
+                    metrics.fanIn > 10 -> {
+                      // High fan-in - blue glow
+                      put("shadowBlur", JsonPrimitive(8))
+                      put("shadowColor", JsonPrimitive("#58a6ff"))
+                    }
+                  }
+                }
+              },
+            )
+          }
+        )
+      }
+
+      // Add synthetic default value nodes
+      for (defaultInfo in defaultValueNodes) {
+        add(
+          buildJsonObject {
+            put("id", JsonPrimitive(defaultInfo.syntheticKey))
+            put("name", JsonPrimitive(defaultInfo.targetDisplayName))
+            put("fullKey", JsonPrimitive(defaultInfo.syntheticKey))
+            put("pkg", JsonPrimitive(defaultInfo.targetPackage))
+            put("kind", JsonPrimitive("DefaultValue"))
+            put("scoped", JsonPrimitive(false))
+            put("synthetic", JsonPrimitive(true))
+            put("isGraph", JsonPrimitive(false))
+            put("isExtension", JsonPrimitive(false))
+            put("isDefaultValue", JsonPrimitive(true))
+            put("scope", JsonPrimitive(""))
+            put("origin", JsonPrimitive(""))
+            put("category", JsonPrimitive(categoryMap["DefaultValue"] ?: 12))
+            put("symbol", JsonPrimitive("pin")) // Pin shape for default values
+            put("symbolSize", JsonPrimitive(16))
+            put(
+              "itemStyle",
+              buildJsonObject {
+                put("opacity", JsonPrimitive(0.8))
               },
             )
           }
@@ -1103,8 +1367,12 @@ ${packages.mapIndexed { i, pkg ->
       }
     }
 
-    // Build set of valid node keys for validation
-    val nodeKeys = metadata.bindings.map { it.key }.toSet()
+    // Build set of valid node keys for validation (including synthetic default value nodes)
+    val nodeKeys = metadata.bindings.map { it.key }.toSet() +
+      defaultValueNodes.map { it.syntheticKey }.toSet()
+
+    // Build map from (consumerKey, targetType) -> syntheticKey for default value edge routing
+    val defaultValueNodeMap = defaultValueNodes.associate { (it.consumerKey to it.targetType) to it.syntheticKey }
 
     // Build set of scoped binding keys for inherited scope detection
     val scopedKeys = metadata.bindings.filter { it.isScoped }.map { it.key }.toSet()
@@ -1127,75 +1395,125 @@ ${packages.mapIndexed { i, pkg ->
 
         for (dep in binding.dependencies) {
           // Unwrap the dependency key to match node IDs (Provider<X>, Lazy<X> -> X)
-          val targetKey = unwrapTypeKey(dep.key)
+          // Also strip " = ..." suffix from default value keys
+          val rawKey = dep.key.substringBefore(" = ")
+          val targetKey = unwrapTypeKey(rawKey)
 
-          // Only create link if target exists in graph
-          if (targetKey !in nodeKeys) continue
+          // Check if this dependency routes through a default value node
+          val defaultValueNodeKey = defaultValueNodeMap[binding.key to targetKey]
 
           // Check if this is an inherited scoped binding (extension accessing parent's scoped binding)
           // Note: We don't check dep.isAccessor because extension accessors may not have it set
           val isInheritedScope = isGraphExtension && targetKey in scopedKeys
 
-          add(
-            buildJsonObject {
-              put("source", JsonPrimitive(binding.key))
-              put("target", JsonPrimitive(targetKey))
+          if (defaultValueNodeKey != null) {
+            // Route through the synthetic default value node:
+            // Consumer -> DefaultValue node -> Actual binding
 
-              // Determine edge type for coloring
-              val edgeType =
-                when {
-                  isInheritedScope -> "inherited"
-                  dep.isAccessor -> "accessor"
-                  isAlias -> "alias"
-                  dep.isAssisted || (isAssistedFactory && targetKey == binding.aliasTarget) ->
-                    "assisted"
-                  dep.isDeferrable -> "deferrable"
-                  isMultibinding && dep.key in multibindingSourceKeys -> "multibinding"
-                  dep.hasDefault -> "optional"
-                  else -> "normal"
-                }
-              put("edgeType", JsonPrimitive(edgeType))
+            // Edge from consumer to default value node
+            add(
+              buildJsonObject {
+                put("source", JsonPrimitive(binding.key))
+                put("target", JsonPrimitive(defaultValueNodeKey))
+                put("edgeType", JsonPrimitive("default"))
+                put(
+                  "lineStyle",
+                  buildJsonObject {
+                    put("color", JsonPrimitive(Colors.DEFAULT_VALUE))
+                    put("type", JsonPrimitive("dashed"))
+                    put("width", JsonPrimitive(2))
+                  },
+                )
+              }
+            )
 
-              // Apply line style based on edge type
-              put(
-                "lineStyle",
+            // Edge from default value node to actual binding (if it exists)
+            if (targetKey in metadata.bindings.map { it.key }.toSet()) {
+              add(
                 buildJsonObject {
-                  when (edgeType) {
-                    "inherited" -> {
-                      put("color", JsonPrimitive(Colors.EDGE_INHERITED))
-                      put("type", JsonPrimitive("dashed"))
-                      put("width", JsonPrimitive(2))
-                    }
-                    "accessor" -> {
-                      put("color", JsonPrimitive(Colors.EDGE_ACCESSOR))
-                      put("width", JsonPrimitive(2))
-                    }
-                    "alias" -> {
-                      put("color", JsonPrimitive(Colors.EDGE_ALIAS))
+                  put("source", JsonPrimitive(defaultValueNodeKey))
+                  put("target", JsonPrimitive(targetKey))
+                  put("edgeType", JsonPrimitive("default-resolves"))
+                  put(
+                    "lineStyle",
+                    buildJsonObject {
+                      put("color", JsonPrimitive(Colors.DEFAULT_VALUE))
                       put("type", JsonPrimitive("dotted"))
-                      put("width", JsonPrimitive(2))
-                    }
-                    "deferrable" -> {
-                      put("color", JsonPrimitive(Colors.EDGE_DEFERRABLE))
-                      put("type", JsonPrimitive("dashed"))
-                    }
-                    "assisted" -> {
-                      put("color", JsonPrimitive(Colors.EDGE_ASSISTED))
-                      put("width", JsonPrimitive(2))
-                    }
-                    "multibinding" -> {
-                      put("color", JsonPrimitive(Colors.EDGE_MULTIBINDING))
-                    }
-                    "optional" -> {
-                      put("type", JsonPrimitive("dashed"))
-                      put("opacity", JsonPrimitive(0.4))
-                    }
-                    else -> {} // use defaults
-                  }
-                },
+                      put("opacity", JsonPrimitive(0.6))
+                    },
+                  )
+                }
               )
             }
-          )
+          } else {
+            // Normal edge - only create link if target exists in graph
+            if (targetKey !in nodeKeys) continue
+
+            // Determine edge type for coloring
+            val edgeType =
+              when {
+                isInheritedScope -> "inherited"
+                dep.isAccessor -> "accessor"
+                isAlias -> "alias"
+                dep.isAssisted || (isAssistedFactory && targetKey == binding.aliasTarget) ->
+                  "assisted"
+                dep.isDeferrable -> "deferrable"
+                isMultibinding && dep.key in multibindingSourceKeys -> "multibinding"
+                else -> "normal"
+              }
+
+            // Edge value affects length in force layout (lower = shorter)
+            val edgeValue = when (edgeType) {
+              "alias", "assisted" -> 0.3  // Short edges for direct relationships
+              else -> 1.0
+            }
+
+            add(
+              buildJsonObject {
+                put("source", JsonPrimitive(binding.key))
+                put("target", JsonPrimitive(targetKey))
+                put("edgeType", JsonPrimitive(edgeType))
+                put("value", JsonPrimitive(edgeValue))
+
+                // Apply line style based on edge type
+                put(
+                  "lineStyle",
+                  buildJsonObject {
+                    when (edgeType) {
+                      "inherited" -> {
+                        put("color", JsonPrimitive(Colors.EDGE_INHERITED))
+                        put("type", JsonPrimitive("dashed"))
+                        put("width", JsonPrimitive(2))
+                      }
+                      "accessor" -> {
+                        put("color", JsonPrimitive(Colors.EDGE_ACCESSOR))
+                        put("width", JsonPrimitive(2))
+                      }
+                      "alias" -> {
+                        put("color", JsonPrimitive(Colors.EDGE_ALIAS))
+                        put("type", JsonPrimitive("dotted"))
+                        put("width", JsonPrimitive(2))
+                        put("curveness", JsonPrimitive(0.05))
+                      }
+                      "deferrable" -> {
+                        put("color", JsonPrimitive(Colors.EDGE_DEFERRABLE))
+                        put("type", JsonPrimitive("dashed"))
+                      }
+                      "assisted" -> {
+                        put("color", JsonPrimitive(Colors.EDGE_ASSISTED))
+                        put("width", JsonPrimitive(2))
+                        put("curveness", JsonPrimitive(0.05))
+                      }
+                      "multibinding" -> {
+                        put("color", JsonPrimitive(Colors.EDGE_MULTIBINDING))
+                      }
+                      else -> {} // use defaults
+                    }
+                  },
+                )
+              }
+            )
+          }
         }
       }
     }
@@ -1220,6 +1538,7 @@ ${packages.mapIndexed { i, pkg ->
         "GraphDependency" to Colors.GRAPH_DEPENDENCY,
         "MembersInjected" to Colors.MEMBERS_INJECTED,
         "CustomWrapper" to Colors.CUSTOM_WRAPPER,
+        "DefaultValue" to Colors.DEFAULT_VALUE,
         "Other" to Colors.OTHER,
       )
 
@@ -1325,6 +1644,7 @@ internal object Colors {
   const val GRAPH_DEPENDENCY = "#ef9a9a" // light red
   const val MEMBERS_INJECTED = "#fff59d" // light yellow
   const val CUSTOM_WRAPPER = "#80deea" // cyan
+  const val DEFAULT_VALUE = "#ffc107" // amber - default value provider
   const val OTHER = "#e0e0e0" // light gray
 
   // UI accent colors
@@ -1427,10 +1747,13 @@ internal fun extractDisplayName(key: String): String {
 }
 
 /**
- * Extracts the package from a type key, handling generic types and annotated types.
+ * Extracts the package from a type key, handling generic types, annotated types, and nested classes.
  *
  * For `kotlin.collections.Set<com.example.Plugin>`, extracts from the type parameter: `com.example`
  * For `@annotation.Foo(...) com.example.Bar`, extracts from the actual type: `com.example`
+ * For `com.example.OuterClass.InnerClass`, extracts just: `com.example`
+ *
+ * Uses the convention that package segments are lowercase and class names start with uppercase.
  */
 internal fun extractPackage(key: String): String {
   // Handle annotated types like "@dev.zacsweers.metro.internal.MultibindingElement(...) actual.Type"
@@ -1443,14 +1766,30 @@ internal fun extractPackage(key: String): String {
 
   // For generic collection types, extract package from the type parameter
   val genericStart = actualType.indexOf('<')
-  if (genericStart != -1) {
+  val typeToAnalyze = if (genericStart != -1) {
     val basePart = actualType.substring(0, genericStart)
     // If it's a standard collection, use the type parameter's package
     if (basePart.startsWith("kotlin.collections.") || basePart.startsWith("java.util.")) {
-      val typeParam =
-        actualType.substring(genericStart + 1, actualType.length - 1).split(',').first().trim()
-      return typeParam.substringBeforeLast('.', "")
+      actualType.substring(genericStart + 1, actualType.length - 1).split(',').first().trim()
+    } else {
+      actualType
     }
+  } else {
+    actualType
   }
-  return actualType.substringBeforeLast('.', "")
+
+  // Split by dots and find the package boundary
+  // Package segments are typically lowercase, class names start with uppercase
+  val segments = typeToAnalyze.split('.')
+  val packageSegments = mutableListOf<String>()
+
+  for (segment in segments) {
+    // Stop at the first segment that looks like a class name (starts with uppercase)
+    if (segment.isNotEmpty() && segment[0].isUpperCase()) {
+      break
+    }
+    packageSegments.add(segment)
+  }
+
+  return packageSegments.joinToString(".")
 }
