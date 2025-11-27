@@ -8,8 +8,6 @@ plugins {
 }
 
 @OptIn(DelicateMetroGradleApi::class)
-metro {
-  reportsDestination.set(layout.buildDirectory.dir("reports/metro"))
-}
+metro { reportsDestination.set(layout.buildDirectory.dir("reports/metro")) }
 
 kotlin { compilerOptions { optIn.add("kotlin.time.ExperimentalTime") } }

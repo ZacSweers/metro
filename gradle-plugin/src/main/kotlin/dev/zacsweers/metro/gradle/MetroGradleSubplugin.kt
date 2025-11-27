@@ -47,8 +47,7 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         }
 
         // Analysis task - comprehensive graph analysis
-        val analyzeTask =
-          target.tasks.register(AnalyzeGraphTask.NAME, AnalyzeGraphTask::class.java)
+        val analyzeTask = target.tasks.register(AnalyzeGraphTask.NAME, AnalyzeGraphTask::class.java)
         analyzeTask.configure { task ->
           task.description = "Analyzes Metro dependency graphs and produces a comprehensive report"
           task.inputFile.convention(graphMetadataTask.flatMap { it.outputFile })

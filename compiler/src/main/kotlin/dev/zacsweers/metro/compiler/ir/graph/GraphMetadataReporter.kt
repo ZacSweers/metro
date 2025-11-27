@@ -147,7 +147,8 @@ internal class GraphMetadataReporter(
             val isAssisted =
               when (binding) {
                 is IrBinding.Assisted -> {
-                  // Assisted factories have their target as a dependency, which is the assisted type
+                  // Assisted factories have their target as a dependency, which is the assisted
+                  // type
                   dependency == binding.target
                 }
                 else -> false

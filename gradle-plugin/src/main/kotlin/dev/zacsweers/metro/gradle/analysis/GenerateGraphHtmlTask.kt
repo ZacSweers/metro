@@ -121,24 +121,26 @@ public abstract class GenerateGraphHtmlTask : DefaultTask() {
 
       // Fan-in/Fan-out
       fanAnalysis?.bindings?.forEach { fan ->
-        bindingMetrics.getOrPut(fan.key) { BindingAnalysisMetrics() }.apply {
-          fanIn = fan.fanIn
-          fanOut = fan.fanOut
-        }
+        bindingMetrics
+          .getOrPut(fan.key) { BindingAnalysisMetrics() }
+          .apply {
+            fanIn = fan.fanIn
+            fanOut = fan.fanOut
+          }
       }
 
       // Centrality
       centrality?.centralityScores?.forEach { score ->
-        bindingMetrics.getOrPut(score.key) { BindingAnalysisMetrics() }.apply {
-          betweennessCentrality = score.normalizedCentrality
-        }
+        bindingMetrics
+          .getOrPut(score.key) { BindingAnalysisMetrics() }
+          .apply { betweennessCentrality = score.normalizedCentrality }
       }
 
       // Dominator count
       dominators?.dominators?.forEach { dom ->
-        bindingMetrics.getOrPut(dom.key) { BindingAnalysisMetrics() }.apply {
-          dominatorCount = dom.dominatedCount
-        }
+        bindingMetrics
+          .getOrPut(dom.key) { BindingAnalysisMetrics() }
+          .apply { dominatorCount = dom.dominatedCount }
       }
 
       result[graphName] = GraphAnalysisData(bindingMetrics)
@@ -250,8 +252,7 @@ ${metadata.graphs.joinToString("\n") { graph ->
     val graphData = buildEChartsData(graphMetadata, analysis)
     val categories = getBindingCategories()
     val longestPath = computeLongestPath(graphMetadata)
-    val packages =
-      graphMetadata.bindings.map { extractPackage(it.key) }.distinct().sorted()
+    val packages = graphMetadata.bindings.map { extractPackage(it.key) }.distinct().sorted()
 
     // language=html
     return """
@@ -1218,7 +1219,8 @@ ${packages.mapIndexed { i, pkg ->
     for (binding in metadata.bindings) {
       for (dep in binding.dependencies) {
         if (dep.hasDefault) {
-          // Strip " = ..." suffix from default value keys (e.g., "com.example.Analytics = ..." -> "com.example.Analytics")
+          // Strip " = ..." suffix from default value keys (e.g., "com.example.Analytics = ..." ->
+          // "com.example.Analytics")
           val rawKey = dep.key.substringBefore(" = ")
           val targetKey = unwrapTypeKey(rawKey)
           val syntheticKey = "default:$targetKey@${binding.key}"
@@ -1358,23 +1360,19 @@ ${packages.mapIndexed { i, pkg ->
             put("category", JsonPrimitive(categoryMap["DefaultValue"] ?: 12))
             put("symbol", JsonPrimitive("pin")) // Pin shape for default values
             put("symbolSize", JsonPrimitive(16))
-            put(
-              "itemStyle",
-              buildJsonObject {
-                put("opacity", JsonPrimitive(0.8))
-              },
-            )
+            put("itemStyle", buildJsonObject { put("opacity", JsonPrimitive(0.8)) })
           }
         )
       }
     }
 
     // Build set of valid node keys for validation (including synthetic default value nodes)
-    val nodeKeys = metadata.bindings.map { it.key }.toSet() +
-      defaultValueNodes.map { it.syntheticKey }.toSet()
+    val nodeKeys =
+      metadata.bindings.map { it.key }.toSet() + defaultValueNodes.map { it.syntheticKey }.toSet()
 
     // Build map from (consumerKey, targetType) -> syntheticKey for default value edge routing
-    val defaultValueNodeMap = defaultValueNodes.associate { (it.consumerKey to it.targetType) to it.syntheticKey }
+    val defaultValueNodeMap =
+      defaultValueNodes.associate { (it.consumerKey to it.targetType) to it.syntheticKey }
 
     // Build set of scoped binding keys for inherited scope detection
     val scopedKeys = metadata.bindings.filter { it.isScoped }.map { it.key }.toSet()
@@ -1404,7 +1402,8 @@ ${packages.mapIndexed { i, pkg ->
           // Check if this dependency routes through a default value node
           val defaultValueNodeKey = defaultValueNodeMap[binding.key to targetKey]
 
-          // Check if this is an inherited scoped binding (extension accessing parent's scoped binding)
+          // Check if this is an inherited scoped binding (extension accessing parent's scoped
+          // binding)
           // Note: We don't check dep.isAccessor because extension accessors may not have it set
           val isInheritedScope = isGraphExtension && targetKey in scopedKeys
 
@@ -1465,10 +1464,12 @@ ${packages.mapIndexed { i, pkg ->
               }
 
             // Edge value affects length in force layout (lower = shorter)
-            val edgeValue = when (edgeType) {
-              "alias", "assisted" -> 0.3  // Short edges for direct relationships
-              else -> 1.0
-            }
+            val edgeValue =
+              when (edgeType) {
+                "alias",
+                "assisted" -> 0.3 // Short edges for direct relationships
+                else -> 1.0
+              }
 
             add(
               buildJsonObject {
@@ -1588,7 +1589,9 @@ ${packages.mapIndexed { i, pkg ->
 
     fun dfs(node: String): List<String> {
       // If we've already computed this, return cached result
-      memo[node]?.let { return it }
+      memo[node]?.let {
+        return it
+      }
 
       // If this node is already in the current path, we have a cycle - return empty
       if (node in inProgress) return emptyList()
@@ -1695,7 +1698,8 @@ internal object Colors {
  */
 internal fun unwrapTypeKey(key: String): String {
   // Pattern for Provider<T> and Lazy<T> - these need to be unwrapped to find the target node
-  val wrapperPrefixes = listOf("Provider<", "Lazy<", "javax.inject.Provider<", "jakarta.inject.Provider<")
+  val wrapperPrefixes =
+    listOf("Provider<", "Lazy<", "javax.inject.Provider<", "jakarta.inject.Provider<")
   for (prefix in wrapperPrefixes) {
     if (key.startsWith(prefix) && key.endsWith(">")) {
       return key.removePrefix(prefix).removeSuffix(">")
@@ -1707,8 +1711,8 @@ internal fun unwrapTypeKey(key: String): String {
 /**
  * Extracts just the class name(s) from a fully qualified type, removing the package prefix.
  *
- * For `com.example.Presenter.Factory` → `Presenter.Factory`
- * For `com.example.Interceptor` → `Interceptor`
+ * For `com.example.Presenter.Factory` → `Presenter.Factory` For `com.example.Interceptor` →
+ * `Interceptor`
  *
  * Uses the convention that package segments are lowercase and class names start with uppercase.
  */
@@ -1727,18 +1731,21 @@ internal fun extractClassName(fqn: String): String {
     }
   }
 
-  return if (classSegments.isNotEmpty()) classSegments.joinToString(".") else fqn.substringAfterLast('.')
+  return if (classSegments.isNotEmpty()) classSegments.joinToString(".")
+  else fqn.substringAfterLast('.')
 }
 
 /**
  * Extracts a display-friendly short name from a type key.
  *
- * Handles generic types like `kotlin.collections.Set<com.example.Plugin>` → `Set<Plugin>`
- * Handles nested classes like `kotlin.collections.Set<com.example.Presenter.Factory>` → `Set<Presenter.Factory>`
- * Handles annotated types like `@annotation.Foo(...) com.example.Bar` → `Bar`
+ * Handles generic types like `kotlin.collections.Set<com.example.Plugin>` → `Set<Plugin>` Handles
+ * nested classes like `kotlin.collections.Set<com.example.Presenter.Factory>` →
+ * `Set<Presenter.Factory>` Handles annotated types like `@annotation.Foo(...) com.example.Bar` →
+ * `Bar`
  */
 internal fun extractDisplayName(key: String): String {
-  // Handle annotated types like "@dev.zacsweers.metro.internal.MultibindingElement(...) actual.Type"
+  // Handle annotated types like "@dev.zacsweers.metro.internal.MultibindingElement(...)
+  // actual.Type"
   val actualType =
     if (key.startsWith("@") && key.contains(") ")) {
       key.substringAfter(") ")
@@ -1756,9 +1763,7 @@ internal fun extractDisplayName(key: String): String {
     // Extract and simplify type parameters, preserving nested class context
     val typeParams = actualType.substring(genericStart + 1, actualType.length - 1)
     val simplifiedParams =
-      typeParams.split(',').joinToString(", ") { param ->
-        extractClassName(param.trim())
-      }
+      typeParams.split(',').joinToString(", ") { param -> extractClassName(param.trim()) }
 
     return "$baseName<$simplifiedParams>"
   }
@@ -1768,16 +1773,18 @@ internal fun extractDisplayName(key: String): String {
 }
 
 /**
- * Extracts the package from a type key, handling generic types, annotated types, and nested classes.
+ * Extracts the package from a type key, handling generic types, annotated types, and nested
+ * classes.
  *
  * For `kotlin.collections.Set<com.example.Plugin>`, extracts from the type parameter: `com.example`
- * For `@annotation.Foo(...) com.example.Bar`, extracts from the actual type: `com.example`
- * For `com.example.OuterClass.InnerClass`, extracts just: `com.example`
+ * For `@annotation.Foo(...) com.example.Bar`, extracts from the actual type: `com.example` For
+ * `com.example.OuterClass.InnerClass`, extracts just: `com.example`
  *
  * Uses the convention that package segments are lowercase and class names start with uppercase.
  */
 internal fun extractPackage(key: String): String {
-  // Handle annotated types like "@dev.zacsweers.metro.internal.MultibindingElement(...) actual.Type"
+  // Handle annotated types like "@dev.zacsweers.metro.internal.MultibindingElement(...)
+  // actual.Type"
   val actualType =
     if (key.startsWith("@") && key.contains(") ")) {
       key.substringAfter(") ")
@@ -1787,17 +1794,18 @@ internal fun extractPackage(key: String): String {
 
   // For generic collection types, extract package from the type parameter
   val genericStart = actualType.indexOf('<')
-  val typeToAnalyze = if (genericStart != -1) {
-    val basePart = actualType.substring(0, genericStart)
-    // If it's a standard collection, use the type parameter's package
-    if (basePart.startsWith("kotlin.collections.") || basePart.startsWith("java.util.")) {
-      actualType.substring(genericStart + 1, actualType.length - 1).split(',').first().trim()
+  val typeToAnalyze =
+    if (genericStart != -1) {
+      val basePart = actualType.substring(0, genericStart)
+      // If it's a standard collection, use the type parameter's package
+      if (basePart.startsWith("kotlin.collections.") || basePart.startsWith("java.util.")) {
+        actualType.substring(genericStart + 1, actualType.length - 1).split(',').first().trim()
+      } else {
+        actualType
+      }
     } else {
       actualType
     }
-  } else {
-    actualType
-  }
 
   // Split by dots and find the package boundary
   // Package segments are typically lowercase, class names start with uppercase

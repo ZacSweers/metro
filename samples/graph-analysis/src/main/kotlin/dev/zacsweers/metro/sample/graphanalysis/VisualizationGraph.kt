@@ -47,7 +47,7 @@ interface ServiceA
 @SingleIn(VisualizationScope::class)
 class ServiceAImpl(
   // This creates a valid cycle: A -> B -> Provider<A>
-  val serviceB: ServiceB,
+  val serviceB: ServiceB
 ) : ServiceA
 
 interface ServiceB
@@ -55,7 +55,7 @@ interface ServiceB
 @Inject
 class ServiceBImpl(
   // Lazy breaks the cycle
-  val serviceA: Lazy<ServiceA>,
+  val serviceA: Lazy<ServiceA>
 ) : ServiceB
 
 // --- Assisted injection ---
@@ -65,17 +65,11 @@ interface UserFactory {
   fun create(@Assisted userId: String): User
 }
 
-@AssistedInject
-class User(
-  @Assisted val userId: String,
-  val repo: UserRepository,
-)
+@AssistedInject class User(@Assisted val userId: String, val repo: UserRepository)
 
 interface UserRepository
 
-@Inject
-@SingleIn(VisualizationScope::class)
-class UserRepositoryImpl : UserRepository
+@Inject @SingleIn(VisualizationScope::class) class UserRepositoryImpl : UserRepository
 
 // --- Contributions from a module with Companion ---
 

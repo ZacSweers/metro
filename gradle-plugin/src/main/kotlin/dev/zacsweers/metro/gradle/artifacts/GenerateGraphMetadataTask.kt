@@ -44,9 +44,7 @@ public abstract class GenerateGraphMetadataTask : DefaultTask() {
   @get:Input public abstract val projectPath: Property<String>
 
   /** The kotlinc compilation name. */
-  @get:Input
-  @get:Optional
-  public abstract val compilationName: Property<String>
+  @get:Input @get:Optional public abstract val compilationName: Property<String>
 
   /** The graph metadata JSON files. */
   @get:InputFiles
@@ -94,9 +92,8 @@ public abstract class GenerateGraphMetadataTask : DefaultTask() {
         .filter { element ->
           // Deduplicate by graph name - in KMP projects, the same graph may be compiled
           // by multiple targets (e.g., android and jvm both compiling shared code)
-          val graphName = (element as? JsonObject)?.get("graph")?.let {
-            (it as? JsonPrimitive)?.content
-          }
+          val graphName =
+            (element as? JsonObject)?.get("graph")?.let { (it as? JsonPrimitive)?.content }
           if (graphName != null && !seenGraphs.add(graphName)) {
             logger.lifecycle("Skipping duplicate graph: $graphName")
             false

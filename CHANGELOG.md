@@ -5,6 +5,10 @@ Changelog
 --------------
 
 - **New**: New `dev.zacsweers.metro:metrox-android` artifact for Android `AppComponentFactory` support. See the [docs](https://zacsweers.github.io/metro/latest/metrox-android) for more information.
+- **New**: Add `generateMetroGraphMetadata` Gradle task that writes a merged JSON dump of all binding graphs in the project. This can be chained from the `GenerateGraphMetadataTask` for further processing.
+- **New**: Add `analyzeMetroGraph` Gradle task that performs comprehensive graph analysis including fan-in/fan-out, betweenness centrality, dominator analysis, and longest path detection.
+- **New**: Add `generateMetroGraphHtml` Gradle task that generates interactive HTML visualizations of dependency graphs using ECharts. Features include force/circular layouts, filtering by package/scope/synthetic bindings, metrics heatmaps, and longest path highlighting. See the [graph analysis docs](https://zacsweers.github.io/metro/latest/graph-analysis) for more information.
+- **New**: Add `MetroArtifacts` Gradle API for accessing Metro reports and graph metadata directories.
 - **Enhancement**: Lazily validate multibindings. Previously, multibindings were validated eagerly even if they were unused in a graph.
 - **Enhancement**: Report all duplicate bindings errors during graph construction rather than failing at first.
 - **Fix**: Catch more `IrErrorType` error types cases and report context/advice where possible.
@@ -13,8 +17,6 @@ Changelog
 - **Fix**: Fix colliding reports destinations in KMP projects by disambiguating with the target path as another subdir indirection.
 - **Fix**: Fix qualifiers not being propagated to generated `MembersInjector` classes for multibindings.
 - **Fix**: Remove misleading "doesn't appear to be visible to this compilation" hint, as this hint was misreporting.
-- [gradle] Add `generateMetroGraphMetadata` task that writes a merged JSON dump of all binding graphs in the project. This can be chained from the `GenerateGraphMetadataTask` for further processing.
-- [gradle] Add `MetroArtifacts` API for accessing Metro reports and graph metadata directories.
 - [gradle] Mark `metro.reportsDestination` as delicate/opt-in.
 
 0.7.7
