@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.gradle
 
+import dev.zacsweers.metro.gradle.analysis.AnalyzeGraphTask
+import dev.zacsweers.metro.gradle.analysis.GenerateGraphHtmlTask
 import dev.zacsweers.metro.gradle.artifacts.GenerateGraphMetadataTask
 import dev.zacsweers.metro.gradle.artifacts.MetroArtifactCopyTask
 import org.gradle.api.Project
@@ -34,6 +36,28 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
       task.projectPath.convention(target.path)
       task.outputFile.convention(
         target.layout.buildDirectory.file("reports/metro/graphMetadata.json")
+      )
+    }
+
+    // Analysis task - comprehensive graph analysis
+    val analyzeTask =
+      target.tasks.register(AnalyzeGraphTask.NAME, AnalyzeGraphTask::class.java)
+    analyzeTask.configure { task ->
+      task.description = "Analyzes Metro dependency graphs and produces a comprehensive report"
+      task.inputFile.convention(graphMetadataTask.flatMap { it.outputFile })
+      task.outputFile.convention(
+        target.layout.buildDirectory.file("reports/metro/analysis.json")
+      )
+    }
+
+    // HTML visualization task - interactive D3.js graphs
+    val htmlTask =
+      target.tasks.register(GenerateGraphHtmlTask.NAME, GenerateGraphHtmlTask::class.java)
+    htmlTask.configure { task ->
+      task.description = "Generates interactive HTML visualizations of Metro dependency graphs"
+      task.inputFile.convention(graphMetadataTask.flatMap { it.outputFile })
+      task.outputDirectory.convention(
+        target.layout.buildDirectory.dir("reports/metro/html")
       )
     }
   }

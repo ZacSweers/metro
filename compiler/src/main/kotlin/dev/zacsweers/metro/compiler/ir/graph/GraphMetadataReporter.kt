@@ -33,6 +33,19 @@ internal class GraphMetadataReporter(
     val reportsDir = context.reportsDir ?: return
     val outputDir = reportsDir.resolve("graph-metadata")
     outputDir.createDirectories()
+
+    // Build accessor type keys for adding to the graph's own binding
+    // This includes accessors, injectors, and graph extension accessors
+    val graphTypeKeyRendered = node.typeKey.render(short = false)
+    val accessorTypeKeys = buildList {
+      // Regular accessors (val serviceA: ServiceA)
+      addAll(node.accessors.map { it.contextKey })
+      // Injector functions (fun inject(target: Foo))
+      addAll(node.injectors.map { it.contextKey })
+      // Graph extension accessors
+      addAll(node.graphExtensions.values.flatten().map { it.key })
+    }
+
     val bindings =
       bindingGraph
         .bindingsSnapshot()
@@ -46,14 +59,39 @@ internal class GraphMetadataReporter(
                 binding.contextualTypeKey.render(short = false, includeQualifier = true)
               ),
             )
-            put(
-              "bindingKind",
-              JsonPrimitive(binding.javaClass.simpleName ?: binding.javaClass.name),
-            )
+            val bindingKind = binding.javaClass.simpleName ?: binding.javaClass.name
+            put("bindingKind", JsonPrimitive(bindingKind))
             binding.scope?.let { put("scope", JsonPrimitive(it.render(short = false))) }
             put("isScoped", JsonPrimitive(binding.isScoped()))
             put("nameHint", JsonPrimitive(binding.nameHint))
-            put("dependencies", buildDependenciesArray(binding.dependencies))
+            // For the graph's own binding (BoundInstance), include accessors as dependencies
+            val isGraphBinding =
+              binding is IrBinding.BoundInstance &&
+                binding.contextualTypeKey.render(short = false, includeQualifier = true) ==
+                  graphTypeKeyRendered
+            val dependencies =
+              if (isGraphBinding) {
+                buildAccessorDependenciesArray(accessorTypeKeys)
+              } else {
+                buildDependenciesArray(binding.dependencies, binding)
+              }
+            put("dependencies", dependencies)
+            // Determine if this is a synthetic/generated binding
+            val isSynthetic =
+              when {
+                // Alias bindings without a source declaration are synthetic
+                binding is IrBinding.Alias && binding.bindsCallable == null -> true
+                // MetroContribution types are synthetic
+                binding.contextualTypeKey
+                  .render(short = false, includeQualifier = true)
+                  .contains("MetroContribution") -> true
+                // CustomWrapper bindings are synthetic
+                binding is IrBinding.CustomWrapper -> true
+                // MembersInjected bindings are synthetic
+                binding is IrBinding.MembersInjected -> true
+                else -> false
+              }
+            put("isSynthetic", JsonPrimitive(isSynthetic))
             binding.reportableDeclaration?.let { declaration ->
               declaration.locationOrNull()?.render(short = true)?.let { location ->
                 put("origin", JsonPrimitive(location))
@@ -94,13 +132,44 @@ internal class GraphMetadataReporter(
     return JsonArray(annotations.map { JsonPrimitive(it.render(short = false)) })
   }
 
-  private fun buildDependenciesArray(deps: List<IrContextualTypeKey>): JsonArray {
+  private fun buildDependenciesArray(
+    deps: List<IrContextualTypeKey>,
+    binding: IrBinding? = null,
+  ): JsonArray {
     return buildJsonArray {
       for (dependency in deps) {
         add(
           buildJsonObject {
             put("key", JsonPrimitive(dependency.render(short = false, includeQualifier = true)))
             put("hasDefault", JsonPrimitive(dependency.hasDefault))
+            put("isDeferrable", JsonPrimitive(dependency.wrappedType.isDeferrable()))
+            // Check if this dependency is from an assisted parameter
+            val isAssisted =
+              when (binding) {
+                is IrBinding.Assisted -> {
+                  // Assisted factories have their target as a dependency, which is the assisted type
+                  dependency == binding.target
+                }
+                else -> false
+              }
+            put("isAssisted", JsonPrimitive(isAssisted))
+          }
+        )
+      }
+    }
+  }
+
+  /** Builds a dependencies array from accessor type keys (for graph's own binding). */
+  private fun buildAccessorDependenciesArray(accessors: List<IrContextualTypeKey>): JsonArray {
+    return buildJsonArray {
+      for (accessor in accessors) {
+        add(
+          buildJsonObject {
+            put("key", JsonPrimitive(accessor.render(short = false, includeQualifier = true)))
+            put("hasDefault", JsonPrimitive(false))
+            put("isDeferrable", JsonPrimitive(accessor.wrappedType.isDeferrable()))
+            put("isAssisted", JsonPrimitive(false))
+            put("isAccessor", JsonPrimitive(true))
           }
         )
       }
