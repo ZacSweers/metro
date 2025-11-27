@@ -115,7 +115,7 @@ public abstract class GenerateGraphMetadataTask : DefaultTask() {
     output.bufferedWriter().use { writer ->
       writer.write(json.encodeToString(JsonObject.serializer(), result))
     }
-    logger.lifecycle("Generated metro graph metadata file to $output")
+    logger.lifecycle("Generated metro graph metadata file to file://$output")
   }
 
   internal companion object {

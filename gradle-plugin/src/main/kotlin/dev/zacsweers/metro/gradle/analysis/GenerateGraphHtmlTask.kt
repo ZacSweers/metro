@@ -73,13 +73,13 @@ public abstract class GenerateGraphHtmlTask : DefaultTask() {
     val input = inputFile.get().asFile
     val outputDir = outputDirectory.get().asFile
 
-    logger.lifecycle("Generating Metro graph visualizations from ${input.absolutePath}")
+    logger.lifecycle("Generating Metro graph visualizations from file://${input.absolutePath}")
 
     val metadata = json.decodeFromString<AggregatedGraphMetadata>(input.readText())
 
     // Parse analysis report
     val analysisInput = analysisFile.get().asFile
-    logger.lifecycle("Including analysis data from ${analysisInput.absolutePath}")
+    logger.lifecycle("Including analysis data from file://${analysisInput.absolutePath}")
     val analysisReport = json.decodeFromString<FullAnalysisReport>(analysisInput.readText())
 
     // Build per-graph analysis lookup
@@ -96,14 +96,14 @@ public abstract class GenerateGraphHtmlTask : DefaultTask() {
       outputFile.toPath().createParentDirectories()
       outputFile.toPath().writeText(htmlContent)
 
-      logger.lifecycle("Generated ${outputFile.absolutePath}")
+      logger.lifecycle("Generated file://${outputFile.absolutePath}")
     }
 
     // Generate index page
     val indexContent = generateIndex(metadata)
     val indexFile = File(outputDir, "index.html")
     indexFile.toPath().writeText(indexContent)
-    logger.lifecycle("Generated ${indexFile.absolutePath}")
+    logger.lifecycle("Generated file://${indexFile.absolutePath}")
   }
 
   /** Builds a lookup map from graph name to per-binding analysis metrics. */
@@ -771,15 +771,17 @@ ${packages.mapIndexed { i, pkg ->
           padding: [12, 16],
           textStyle: { color: '#e6edf3', fontSize: 12 },
           formatter: function(params) {
+            // HTML escape to prevent angle brackets from being interpreted as tags
+            function esc(s) { return s ? s.replace(/</g, '&lt;').replace(/>/g, '&gt;') : s; }
             if (params.dataType === 'node') {
               const d = params.data;
-              let html = '<div style="font-weight:600;color:#58a6ff;margin-bottom:8px">' + d.name;
+              let html = '<div style="font-weight:600;color:#58a6ff;margin-bottom:8px">' + esc(d.name);
               if (d.isGraph) html += ' <span style="color:#ffd700;font-size:10px">◆ GRAPH</span>';
               else if (d.isExtension) html += ' <span style="color:#00bfff;font-size:10px">▢ EXTENSION</span>';
               else if (d.isDefaultValue) html += ' <span style="color:#ffc107;font-size:10px">📌 DEFAULT</span>';
               else if (d.synthetic) html += ' <span style="color:#8b949e;font-size:10px">(synthetic)</span>';
               html += '</div>';
-              html += '<div style="color:#8b949e;font-size:11px">' + d.fullKey + '</div>';
+              html += '<div style="color:#8b949e;font-size:11px">' + esc(d.fullKey) + '</div>';
               html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid #30363d">';
               html += '<div>Type: <span style="color:#e6edf3">' + d.kind + '</span></div>';
               html += '<div>Package: <span style="color:#e6edf3">' + (d.pkg || '(root)') + '</span></div>';
@@ -1703,9 +1705,36 @@ internal fun unwrapTypeKey(key: String): String {
 }
 
 /**
+ * Extracts just the class name(s) from a fully qualified type, removing the package prefix.
+ *
+ * For `com.example.Presenter.Factory` → `Presenter.Factory`
+ * For `com.example.Interceptor` → `Interceptor`
+ *
+ * Uses the convention that package segments are lowercase and class names start with uppercase.
+ */
+internal fun extractClassName(fqn: String): String {
+  val segments = fqn.split('.')
+  val classSegments = mutableListOf<String>()
+  var foundClass = false
+
+  for (segment in segments) {
+    // Class names start with uppercase
+    if (segment.isNotEmpty() && segment[0].isUpperCase()) {
+      foundClass = true
+    }
+    if (foundClass) {
+      classSegments.add(segment)
+    }
+  }
+
+  return if (classSegments.isNotEmpty()) classSegments.joinToString(".") else fqn.substringAfterLast('.')
+}
+
+/**
  * Extracts a display-friendly short name from a type key.
  *
  * Handles generic types like `kotlin.collections.Set<com.example.Plugin>` → `Set<Plugin>`
+ * Handles nested classes like `kotlin.collections.Set<com.example.Presenter.Factory>` → `Set<Presenter.Factory>`
  * Handles annotated types like `@annotation.Foo(...) com.example.Bar` → `Bar`
  */
 internal fun extractDisplayName(key: String): String {
@@ -1722,28 +1751,20 @@ internal fun extractDisplayName(key: String): String {
   if (genericStart != -1) {
     // Extract base type name (e.g., "Set" from "kotlin.collections.Set")
     val basePart = actualType.substring(0, genericStart)
-    val baseName = basePart.substringAfterLast('.')
+    val baseName = extractClassName(basePart)
 
-    // Extract and simplify type parameters
+    // Extract and simplify type parameters, preserving nested class context
     val typeParams = actualType.substring(genericStart + 1, actualType.length - 1)
     val simplifiedParams =
       typeParams.split(',').joinToString(", ") { param ->
-        param.trim().substringAfterLast('.')
+        extractClassName(param.trim())
       }
 
     return "$baseName<$simplifiedParams>"
   }
 
-  // Non-generic: just get the simple name
-  val shortName = actualType.substringAfterLast('.')
-
-  // Special case for Companion objects
-  if (shortName == "Companion") {
-    val enclosing = actualType.substringBeforeLast('.').substringAfterLast('.')
-    return "$enclosing.Companion"
-  }
-
-  return shortName
+  // Non-generic: extract class name preserving nested class context
+  return extractClassName(actualType)
 }
 
 /**
