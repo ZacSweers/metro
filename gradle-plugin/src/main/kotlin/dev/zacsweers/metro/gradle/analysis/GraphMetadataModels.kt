@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.gradle.analysis
 
+import dev.zacsweers.metro.gradle.artifacts.GenerateGraphMetadataTask
 import kotlinx.serialization.Serializable
 
-/** Aggregated graph metadata for a project, as produced by [AnalyzeGraphTask]. */
+/** Aggregated graph metadata for a project, as produced by [GenerateGraphMetadataTask]. */
 @Serializable
 public data class AggregatedGraphMetadata(
   val projectPath: String,
