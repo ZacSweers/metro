@@ -110,6 +110,7 @@ nav:
       - 'Generating Custom Metro Code': generating-metro-code.md
   - 'Performance': performance.md
   - 'Debugging': debugging.md
+  - 'Graph Analysis': graph-analysis.md
   - 'Compatibility': compatibility.md
   - 'Stability': stability.md
   - 'FAQ': faq.md
