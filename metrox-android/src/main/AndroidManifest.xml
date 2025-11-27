@@ -6,5 +6,5 @@
   <application
     android:appComponentFactory="dev.zacsweers.metrox.android.MetroAppComponentFactory"
     tools:replace="android:appComponentFactory"
-    tools:ignore="NewApi"/>
+    tools:ignore="NewApi,ReplaceNothing"/>
 </manifest>
