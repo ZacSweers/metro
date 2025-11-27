@@ -4,7 +4,7 @@ package dev.zacsweers.metro.gradle.analysis
 
 import kotlinx.serialization.Serializable
 
-/** Aggregated graph metadata for a project, as produced by [GenerateGraphMetadataTask]. */
+/** Aggregated graph metadata for a project, as produced by [AnalyzeGraphTask]. */
 @Serializable
 public data class AggregatedGraphMetadata(
   val projectPath: String,
