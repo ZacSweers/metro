@@ -7,7 +7,7 @@ Changelog
 - **New**: New `dev.zacsweers.metro:metrox-android` artifact for Android `AppComponentFactory` support. See the [docs](https://zacsweers.github.io/metro/latest/metrox-android) for more information.
 - **New**: New `dev.zacsweers.metro:metrox-viewmodel` and `metrox-viewmodel-compose` artifacts for AndroidX `ViewModel` support. See the [docs](https://zacsweers.github.io/metro/latest/metrox-viewmodel) ([compose docs](https://zacsweers.github.io/metro/latest/metrox-viewmodel-compose) ) for more information.
     - > Should I use this?
-    
+
       Well, that's up to you! This artifact is mostly for projects coming from heavy use of more vanilla Android architecture components or `hiltViewModel()` use. Modern Android apps should use higher level architectures like Circuit* (Disclosure: I am one of the authors of Circuit, and I'm a big fan of it!), Voyager, etc. that abstract away `ViewModel` management.
 
 - **Enhancement**: Lazily validate multibindings. Previously, multibindings were validated eagerly even if they were unused in a graph.
