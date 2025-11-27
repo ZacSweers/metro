@@ -35,15 +35,15 @@ internal class GraphMetadataReporter(
     outputDir.createDirectories()
 
     // Build accessor type keys for adding to the graph's own binding
-    // This includes accessors, injectors, and graph extension accessors
+    // This includes accessors and injectors, but _not_ graph extension accessors.
+    // Graph extensions depend on the parent graph, not vice versa - the parent
+    // merely provides an accessor for the extension.
     val graphTypeKeyRendered = node.typeKey.render(short = false)
     val accessorTypeKeys = buildList {
       // Regular accessors (val serviceA: ServiceA)
       addAll(node.accessors.map { it.contextKey })
       // Injector functions (fun inject(target: Foo))
       addAll(node.injectors.map { it.contextKey })
-      // Graph extension accessors
-      addAll(node.graphExtensions.values.flatten().map { it.key })
     }
 
     val bindings =
