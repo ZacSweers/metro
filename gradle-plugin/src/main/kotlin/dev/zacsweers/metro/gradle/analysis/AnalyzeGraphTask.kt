@@ -67,7 +67,7 @@ public abstract class AnalyzeGraphTask : DefaultTask() {
     val input = inputFile.get().asFile
     val output = outputFile.get().asFile.toPath()
 
-    logger.lifecycle("Analyzing Metro graph metadata from ${input.absolutePath}")
+    logger.lifecycle("Analyzing Metro graph metadata from file://${input.absolutePath}")
 
     val metadata = json.decodeFromString<AggregatedGraphMetadata>(input.readText())
 
@@ -104,7 +104,7 @@ public abstract class AnalyzeGraphTask : DefaultTask() {
     output.createParentDirectories()
     output.bufferedWriter().use { writer -> writer.write(json.encodeToString(report)) }
 
-    logger.lifecycle("Analysis report written to $output")
+    logger.lifecycle("Analysis report written to file://$output")
     logSummary(report)
   }
 
