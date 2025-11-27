@@ -2,6 +2,12 @@
 
 Compose integration for MetroX ViewModel. This artifact provides Compose-specific utilities for injecting ViewModels.
 
+> Should I use this?
+
+Well, that's up to you! This artifact is mostly for projects coming from heavy use of more vanilla Android architecture components or `hiltViewModel()` use. Modern Android apps should use higher level architectures like Circuit*, Voyager, etc. that abstract away `ViewModel` management.
+
+*Disclosure: I am one of the authors of Circuit, and I'm a big fan of it!
+
 ## Usage
 
 [![Maven Central](https://img.shields.io/maven-central/v/dev.zacsweers.metro/metrox-viewmodel-compose.svg)](https://central.sonatype.com/artifact/dev.zacsweers.metro/metrox-viewmodel-compose)
