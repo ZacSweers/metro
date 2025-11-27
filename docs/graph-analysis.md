@@ -101,6 +101,9 @@ Multiple filters can be combined to focus on specific parts of your graph:
 
 Larger nodes indicate more significant bindings (graphs, extensions, scoped).
 
+!!! tip "Full Legend"
+    The HTML visualization includes a complete interactive legend at the bottom of the chart showing all binding kinds and their colors. Expand the "Edge Types" section in the sidebar for edge styling details.
+
 ### Node Colors
 
 Nodes are colored by binding kind:
