@@ -40,6 +40,7 @@ include(
   ":compose-viewmodels:core",
   ":compose-viewmodels:screen-details",
   ":compose-viewmodels:screen-home",
+  ":graph-analysis",
   ":integration-tests",
   ":interop:customAnnotations-dagger",
   ":interop:customAnnotations-guice",
