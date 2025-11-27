@@ -11,6 +11,7 @@ Changelog
 - **New**: Add `MetroArtifacts` Gradle API for accessing Metro reports and graph metadata directories.
 - **Enhancement**: Lazily validate multibindings. Previously, multibindings were validated eagerly even if they were unused in a graph.
 - **Enhancement**: Report all duplicate bindings errors during graph construction rather than failing at first.
+- **Enhancement**: Support `FirFunctionCall` evaluation in annotation arguments during FIR.
 - **Fix**: Catch more `IrErrorType` error types cases and report context/advice where possible.
 - **Fix**: Dedupe binding containers contributed to both parent and child graphs.
 - **Fix**: Fix support for Anvil's `exclude` argument in dependency graph annotations when Anvil interop is enabled.

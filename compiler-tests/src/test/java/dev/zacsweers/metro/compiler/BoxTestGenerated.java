@@ -466,6 +466,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("EvaluatableConstantsAreEvaluatedInFir.kt")
+    public void testEvaluatableConstantsAreEvaluatedInFir() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/EvaluatableConstantsAreEvaluatedInFir.kt");
+    }
+
+    @Test
     @TestMetadata("ExposingIncludedGraphsDirectly.kt")
     public void testExposingIncludedGraphsDirectly() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/ExposingIncludedGraphsDirectly.kt");
