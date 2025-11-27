@@ -25,6 +25,7 @@ abstract class VisualizationScope private constructor()
  * - Scoped bindings
  * - Multibindings
  * - Companion object providers
+ * - Optional bindings with default values
  * - Graph extensions
  */
 @SingleIn(VisualizationScope::class)
@@ -34,6 +35,7 @@ interface VisualizationGraph {
   val serviceB: ServiceB
   val userFactory: UserFactory
   val plugins: Set<Plugin>
+  val featureManager: FeatureManager
   val extension: Extension
 }
 
@@ -123,6 +125,26 @@ interface PluginModule {
 
   @Binds @IntoSet fun bindPluginC(impl: PluginC): Plugin
 }
+
+// --- Optional bindings with defaults ---
+
+interface Analytics {
+  fun track(event: String)
+}
+
+class NoOpAnalytics : Analytics {
+  override fun track(event: String) {
+    // no-op
+  }
+}
+
+/** Demonstrates optional dependencies with default values */
+@Inject
+class FeatureManager(
+  val config: VisualizationConfig,
+  // Optional dependency - has a default value in the graph
+  val analytics: Analytics = NoOpAnalytics(),
+)
 
 // --- Graph extension ---
 
