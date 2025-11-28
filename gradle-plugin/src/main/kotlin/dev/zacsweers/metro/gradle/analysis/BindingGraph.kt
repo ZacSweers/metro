@@ -2,29 +2,30 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.gradle.analysis
 
-/**
- * An in-memory graph representation optimized for analysis algorithms.
- *
- * This provides efficient access to:
- * - Forward edges (dependencies): what does this binding depend on?
- * - Reverse edges (dependents): what bindings depend on this one?
- * - Binding metadata lookup by key
- */
+import com.google.common.graph.Graph
+import com.google.common.graph.GraphBuilder
+import com.google.common.graph.ImmutableGraph
+
 public class BindingGraph
 private constructor(
   private val bindings: Map<String, BindingMetadata>,
-  private val forwardEdges: Map<String, Set<String>>,
-  private val reverseEdges: Map<String, Set<String>>,
+  /** The full dependency graph with all edges. */
+  public val graph: Graph<String>,
+  /**
+   * The "eager" dependency graph containing only non-deferrable edges. Useful for cycle detection
+   * and critical path analysis where deferred dependencies (Provider, Lazy) don't contribute.
+   */
+  public val eagerGraph: Graph<String>,
   public val graphName: String,
   public val scopes: List<String>,
 ) {
   /** All binding keys in this graph. */
   public val keys: Set<String>
-    get() = bindings.keys
+    get() = graph.nodes()
 
   /** Number of bindings in this graph. */
   public val size: Int
-    get() = bindings.size
+    get() = graph.nodes().size
 
   /** Get binding metadata by key, or null if not found. */
   public fun getBinding(key: String): BindingMetadata? = bindings[key]
@@ -36,31 +37,33 @@ private constructor(
    * Get the keys of bindings that this binding depends on (forward edges). Returns empty set if
    * binding not found or has no dependencies.
    */
-  public fun getDependencies(key: String): Set<String> = forwardEdges[key] ?: emptySet()
+  public fun getDependencies(key: String): Set<String> =
+    if (key in graph.nodes()) graph.successors(key) else emptySet()
 
   /**
    * Get the keys of bindings that depend on this binding (reverse edges). Returns empty set if
    * binding not found or has no dependents.
    */
-  public fun getDependents(key: String): Set<String> = reverseEdges[key] ?: emptySet()
+  public fun getDependents(key: String): Set<String> =
+    if (key in graph.nodes()) graph.predecessors(key) else emptySet()
 
   /** Get fan-out (number of dependencies) for a binding. */
-  public fun fanOut(key: String): Int = getDependencies(key).size
+  public fun fanOut(key: String): Int = if (key in graph.nodes()) graph.outDegree(key) else 0
 
   /** Get fan-in (number of dependents) for a binding. */
-  public fun fanIn(key: String): Int = getDependents(key).size
+  public fun fanIn(key: String): Int = if (key in graph.nodes()) graph.inDegree(key) else 0
 
   /**
    * Find root bindings (entry points) - bindings with no dependents. These are typically graph
    * accessors or exposed bindings.
    */
-  public fun findRoots(): Set<String> = keys.filter { fanIn(it) == 0 }.toSet()
+  public fun findRoots(): Set<String> = graph.nodes().filter { graph.inDegree(it) == 0 }.toSet()
 
   /**
    * Find leaf bindings - bindings with no dependencies. These are typically bound instances, object
    * classes, or external dependencies.
    */
-  public fun findLeaves(): Set<String> = keys.filter { fanOut(it) == 0 }.toSet()
+  public fun findLeaves(): Set<String> = graph.nodes().filter { graph.outDegree(it) == 0 }.toSet()
 
   /** Perform a breadth-first traversal from the given start key. Returns keys in BFS order. */
   public fun bfs(startKey: String, forward: Boolean = true): List<String> {
@@ -110,27 +113,36 @@ private constructor(
     /** Build a [BindingGraph] from [GraphMetadata]. */
     public fun from(metadata: GraphMetadata): BindingGraph {
       val bindings = metadata.bindings.associateBy { it.key }
-      val forwardEdges = mutableMapOf<String, MutableSet<String>>()
-      val reverseEdges = mutableMapOf<String, MutableSet<String>>()
+      val bindingKeys = bindings.keys
 
-      // Initialize empty sets for all keys
-      for (key in bindings.keys) {
-        forwardEdges[key] = mutableSetOf()
-        reverseEdges[key] = mutableSetOf()
+      // Build both full and eager graphs
+      val fullGraphBuilder = GraphBuilder.directed().allowsSelfLoops(false).build<String>()
+      val eagerGraphBuilder = GraphBuilder.directed().allowsSelfLoops(false).build<String>()
+
+      // Add all nodes first
+      for (key in bindingKeys) {
+        fullGraphBuilder.addNode(key)
+        eagerGraphBuilder.addNode(key)
       }
 
       // Build edges
       for (binding in metadata.bindings) {
+        val from = binding.key
         for (dep in binding.dependencies) {
-          forwardEdges.getOrPut(binding.key) { mutableSetOf() }.add(dep.key)
-          reverseEdges.getOrPut(dep.key) { mutableSetOf() }.add(binding.key)
+          val to = dep.key
+          if (to in bindingKeys) {
+            fullGraphBuilder.putEdge(from, to)
+            if (!dep.isDeferrable) {
+              eagerGraphBuilder.putEdge(from, to)
+            }
+          }
         }
       }
 
       return BindingGraph(
         bindings = bindings,
-        forwardEdges = forwardEdges,
-        reverseEdges = reverseEdges,
+        graph = ImmutableGraph.copyOf(fullGraphBuilder),
+        eagerGraph = ImmutableGraph.copyOf(eagerGraphBuilder),
         graphName = metadata.graph,
         scopes = metadata.scopes,
       )

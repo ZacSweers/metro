@@ -2,32 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.gradle.analysis
 
-import com.google.common.graph.GraphBuilder
-import com.google.common.graph.ImmutableGraph
+import com.google.common.graph.Graph
 
 /** Performs various graph analysis algorithms on a [BindingGraph] using Guava graphs. */
 public class GraphAnalyzer(private val bindingGraph: BindingGraph) {
 
-  private val fullGraph: ImmutableGraph<String> by lazy { buildGraph() }
-  private val eagerGraph: ImmutableGraph<String> by lazy { buildGraph(eagerOnly = true) }
+  private val fullGraph: Graph<String>
+    get() = bindingGraph.graph
 
-  /** @param eagerOnly If true, only include edges that are non-deferrable. */
-  private fun buildGraph(eagerOnly: Boolean = false): ImmutableGraph<String> {
-    val dag = GraphBuilder.directed().allowsSelfLoops(false).build<String>()
-    for (binding in bindingGraph.getAllBindings()) {
-      dag.addNode(binding.key)
-      val from = binding.key
-      if (from !in bindingGraph.keys) continue
-      for (dep in binding.dependencies) {
-        val to = dep.key
-        if (eagerOnly && dep.isDeferrable) continue
-        if (to in bindingGraph.keys) {
-          dag.putEdge(from, to)
-        }
-      }
-    }
-    return ImmutableGraph.copyOf(dag)
-  }
+  private val eagerGraph: Graph<String>
+    get() = bindingGraph.eagerGraph
 
   /** Compute basic statistics about the graph. */
   public fun computeStatistics(): GraphStatistics {
