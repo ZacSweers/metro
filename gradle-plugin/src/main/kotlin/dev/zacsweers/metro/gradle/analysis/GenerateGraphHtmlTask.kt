@@ -1134,10 +1134,10 @@ ${packages.mapIndexed { i, pkg ->
       document.querySelectorAll('#package-filter input').forEach(cb => cb.checked = true);
       document.getElementById('hide-synthetic').checked = true;
       document.getElementById('scoped-only').checked = false;
-      document.getElementById('show-defaults').checked = true;
+      document.getElementById('show-defaults').checked = false;
       document.getElementById('show-glow').checked = true;
       document.getElementById('search').value = '';
-      updateChart();
+      applyFilters();
     });
 
     document.getElementById('center-btn').addEventListener('click', () => {
