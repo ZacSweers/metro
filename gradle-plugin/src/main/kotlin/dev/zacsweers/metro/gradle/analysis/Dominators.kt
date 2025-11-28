@@ -21,7 +21,9 @@ import com.google.common.graph.GraphBuilder
  */
 internal class Dominators<N : Any>(private val graph: Graph<N>) {
 
-  private val virtualRoot: N? by lazy { if (graph.nodes().isEmpty()) null else generateVirtualRoot() }
+  private val virtualRoot: N? by lazy {
+    if (graph.nodes().isEmpty()) null else generateVirtualRoot()
+  }
 
   private val dominanceGraph: Graph<N> by lazy { computeDominanceGraph() }
 
@@ -61,7 +63,10 @@ internal class Dominators<N : Any>(private val graph: Graph<N>) {
    * This is useful for identifying bottleneck nodes that are critical paths in the graph.
    */
   fun nodesByDominatedCount(): List<Pair<N, Int>> {
-    return graph.nodes().map { node -> node to dominatedBy(node).size }.sortedByDescending { it.second }
+    return graph
+      .nodes()
+      .map { node -> node to dominatedBy(node).size }
+      .sortedByDescending { it.second }
   }
 
   @Suppress("UNCHECKED_CAST")
@@ -76,8 +81,7 @@ internal class Dominators<N : Any>(private val graph: Graph<N>) {
       is String -> {
         var candidate = "___VIRTUAL_ROOT___"
         var i = 0
-        @Suppress("UNCHECKED_CAST")
-        val stringNodes = nodes as Set<String>
+        @Suppress("UNCHECKED_CAST") val stringNodes = nodes as Set<String>
         while (candidate in stringNodes) {
           i++
           candidate = "___VIRTUAL_ROOT___$i"

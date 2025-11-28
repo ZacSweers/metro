@@ -22,14 +22,16 @@ import com.google.common.graph.Graph
 internal class LongestPath<N : Any>(private val graph: Graph<N>) {
 
   private val lengths: Map<N, Int> by lazy { computeLengths() }
-  private val roots: Set<N> by lazy { graph.nodes().filterTo(mutableSetOf()) { graph.inDegree(it) == 0 } }
-
-  /** The length of the longest path in the graph, or 0 if the graph is empty. */
-  val longestPathLength: Int by lazy {
-    roots.maxOfOrNull { lengths[it] ?: 1 } ?: 0
+  private val roots: Set<N> by lazy {
+    graph.nodes().filterTo(mutableSetOf()) { graph.inDegree(it) == 0 }
   }
 
-  /** Returns the longest path length starting from [node], or null if [node] is not in the graph. */
+  /** The length of the longest path in the graph, or 0 if the graph is empty. */
+  val longestPathLength: Int by lazy { roots.maxOfOrNull { lengths[it] ?: 1 } ?: 0 }
+
+  /**
+   * Returns the longest path length starting from [node], or null if [node] is not in the graph.
+   */
   fun lengthFrom(node: N): Int? = lengths[node]
 
   /**
@@ -103,5 +105,4 @@ internal class LongestPath<N : Any>(private val graph: Graph<N>) {
     }
     return result
   }
-
 }

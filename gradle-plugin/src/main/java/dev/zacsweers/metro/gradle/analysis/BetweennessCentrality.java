@@ -1,22 +1,8 @@
-/*
- * (C) Copyright 2017-2023, by Assaf Mizrachi and Contributors.
- *
- * JGraphT : a free Java graph-theory library
- *
- * See the CONTRIBUTORS.md file distributed with this work for additional
- * information regarding copyright ownership.
- *
- * This program and the accompanying materials are made available under the
- * terms of the Eclipse Public License 2.0 which is available at
- * http://www.eclipse.org/legal/epl-2.0, or the
- * GNU Lesser General Public License v2.1 or later
- * which is available at
- * http://www.gnu.org/licenses/old-licenses/lgpl-2.1-standalone.html.
- *
- * SPDX-License-Identifier: EPL-2.0 OR LGPL-2.1-or-later
- */
+// Copyright (C) 2017-2023 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.gradle.analysis;
 
+import com.google.common.graph.Graph;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -25,8 +11,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Queue;
-
-import com.google.common.graph.Graph;
 import org.jetbrains.annotations.NotNull;
 
 /**

@@ -30,8 +30,7 @@ public data class LongestPathResult(
 )
 
 /** Result of dominator analysis. */
-@Serializable
-public data class DominatorResult(val dominators: List<DominatorNode>)
+@Serializable public data class DominatorResult(val dominators: List<DominatorNode>)
 
 /** A node in the dominator tree with its dominated nodes. */
 @Serializable
@@ -43,8 +42,7 @@ public data class DominatorNode(
 )
 
 /** Result of betweenness centrality analysis. */
-@Serializable
-public data class CentralityResult(val centralityScores: List<CentralityScore>)
+@Serializable public data class CentralityResult(val centralityScores: List<CentralityScore>)
 
 /** Centrality score for a single binding. */
 @Serializable

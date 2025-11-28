@@ -6,7 +6,6 @@ import com.google.common.graph.Graph
 
 /**
  * Computes fan-in and fan-out metrics for nodes in a directed graph.
- *
  * - **Fan-in**: The number of incoming edges (predecessors/dependents). High fan-in indicates a
  *   widely used node.
  * - **Fan-out**: The number of outgoing edges (successors/dependencies). High fan-out indicates a
@@ -24,16 +23,14 @@ internal class FanAnalysis<N : Any>(private val graph: Graph<N>) {
    *
    * @return the fan-in count, or null if [node] is not in the graph
    */
-  fun fanIn(node: N): Int? =
-    if (node in graph.nodes()) graph.inDegree(node) else null
+  fun fanIn(node: N): Int? = if (node in graph.nodes()) graph.inDegree(node) else null
 
   /**
    * Returns the fan-out (number of successors) for [node].
    *
    * @return the fan-out count, or null if [node] is not in the graph
    */
-  fun fanOut(node: N): Int? =
-    if (node in graph.nodes()) graph.outDegree(node) else null
+  fun fanOut(node: N): Int? = if (node in graph.nodes()) graph.outDegree(node) else null
 
   /**
    * Returns the predecessors (nodes with edges pointing to [node]).
@@ -80,12 +77,8 @@ internal class FanAnalysis<N : Any>(private val graph: Graph<N>) {
   }
 
   /** The maximum fan-in in the graph, or 0 if the graph is empty. */
-  val maxFanIn: Int by lazy {
-    graph.nodes().maxOfOrNull { graph.inDegree(it) } ?: 0
-  }
+  val maxFanIn: Int by lazy { graph.nodes().maxOfOrNull { graph.inDegree(it) } ?: 0 }
 
   /** The maximum fan-out in the graph, or 0 if the graph is empty. */
-  val maxFanOut: Int by lazy {
-    graph.nodes().maxOfOrNull { graph.outDegree(it) } ?: 0
-  }
+  val maxFanOut: Int by lazy { graph.nodes().maxOfOrNull { graph.outDegree(it) } ?: 0 }
 }
