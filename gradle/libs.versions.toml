@@ -23,7 +23,6 @@ circuit = "0.30.0"
 compose-jb = "1.9.3"
 dagger = "2.57.2"
 gjf = "1.32.0"
-jgrapht = "1.5.2"
 jdk = "24"
 robolectric = "4.16"
 jvmTarget = "11"
@@ -111,8 +110,6 @@ jakartaInject = "jakarta.inject:jakarta.inject-api:2.0.1"
 
 jetbrains-navigation-desktop = "org.jetbrains.androidx.navigation:navigation-compose:2.9.1"
 
-jgrapht = { module = "org.jgrapht:jgrapht-core", version.ref = "jgrapht" }
-
 kotlinInject-compiler = { module = "me.tatarka.inject:kotlin-inject-compiler-ksp", version.ref = "kotlinInject" }
 kotlinInject-runtime = { module = "me.tatarka.inject:kotlin-inject-runtime", version.ref = "kotlinInject" }
 kotlinInject-anvil-runtime = { module = "software.amazon.lastmile.kotlin.inject.anvil:runtime", version.ref = "kotlinInject-anvil" }
@@ -135,6 +132,8 @@ kotlinx-datetime = "org.jetbrains.kotlinx:kotlinx-datetime:0.7.1"
 # Only present to trigger automatic renovate updates
 ktfmt = { module = "com.facebook:ktfmt", version.ref = "ktfmt" }
 gjf = { module = "com.google.googlejavaformat:google-java-format", version.ref = "gjf" }
+
+graphSupport = "com.autonomousapps:graph-support:0.9.0"
 
 ktor-client = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-contentNegotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
