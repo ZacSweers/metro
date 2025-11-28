@@ -69,7 +69,7 @@ public abstract class GenerateGraphHtmlTask : DefaultTask() {
   }
 
   @TaskAction
-  public fun generate() {
+  internal fun generate() {
     val input = inputFile.get().asFile
     val outputDir = outputDirectory.get().asFile
 

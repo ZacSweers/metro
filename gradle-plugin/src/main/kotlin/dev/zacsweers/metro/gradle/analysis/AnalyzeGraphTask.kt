@@ -64,7 +64,7 @@ public abstract class AnalyzeGraphTask : DefaultTask() {
   }
 
   @TaskAction
-  public fun analyze() {
+  internal fun analyze() {
     val input = inputFile.get().asFile
     val output = outputFile.get().asFile.toPath()
 
