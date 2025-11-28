@@ -1025,7 +1025,7 @@ ${packages.mapIndexed { i, pkg ->
         btn.classList.remove('active');
         btn.innerHTML = '<span class="icon">📏</span> Show Longest Path';
         info.style.display = 'none';
-        updateChart();
+        applyFilters();
       }
     });
 
