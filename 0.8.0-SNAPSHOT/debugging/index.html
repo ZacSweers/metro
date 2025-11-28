@@ -18,7 +18,7 @@
         <link rel="prev" href="../performance/">
       
       
-        <link rel="next" href="../compatibility/">
+        <link rel="next" href="../graph-analysis/">
       
       
         
@@ -901,6 +901,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#graph-analysis-visualization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Graph Analysis &amp; Visualization
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#decompiled-bytecode" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -915,6 +926,33 @@
   
 </nav>
       
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../graph-analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Graph Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1069,10 +1107,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13" >
         
           
-          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="0">
             
   
   
@@ -1090,8 +1128,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_12">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_13">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1336,6 +1374,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#graph-analysis-visualization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Graph Analysis &amp; Visualization
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#decompiled-bytecode" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1376,6 +1425,10 @@
 <p>In the future, we could possibly explore including information in IR to synthesize call stack information similar to coroutines, but will save that for if/when it’s asked for.</p>
 <h2 id="reports">Reports<a class="headerlink" href="#reports" title="Permanent link">&para;</a></h2>
 <p>Similar to Compose, Metro supports a <code>reportsDestination</code> property in its Gradle DSL and can output various graph reports to this destination if specified. This is very much a WIP, feedback is welcome!</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>You should <em>not</em> leave this enabled by default as it can be quite verbose and potentially expensive. This property also does not participate in task inputs, so you may need to recompile with <code>--rerun</code> to force recompilation after adding this flag.</p>
+</div>
 <div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="n">reportsDestination</span><span class="p">.</span><span class="na">set</span><span class="p">(</span><span class="n">layout</span><span class="p">.</span><span class="na">buildDirectory</span><span class="p">.</span><span class="na">dir</span><span class="p">(</span><span class="s">&quot;metro/reports&quot;</span><span class="p">))</span>
 <span class="p">}</span>
@@ -1384,6 +1437,14 @@
 <p class="admonition-title">Warning</p>
 <p>The Kotlin Gradle Plugin does <em>not</em> include file inputs like <code>reportsDestination</code> as build inputs, so you may need to compile with <code>--rerun</code> to force recompilation after adding this flag.</p>
 </div>
+<h2 id="graph-analysis-visualization">Graph Analysis &amp; Visualization<a class="headerlink" href="#graph-analysis-visualization" title="Permanent link">&para;</a></h2>
+<p>Metro provides Gradle tasks for generating interactive HTML visualizations of your dependency graphs. See <a href="../graph-analysis/">Graph Analysis</a> for full documentation on:</p>
+<ul>
+<li>Generating and viewing interactive graph visualizations</li>
+<li>Understanding node shapes, colors, and edge types</li>
+<li>Using filters and analysis tools</li>
+<li>Identifying potential issues in your dependency structure</li>
+</ul>
 <h2 id="decompiled-bytecode">Decompiled Bytecode<a class="headerlink" href="#decompiled-bytecode" title="Permanent link">&para;</a></h2>
 <p>Compiled java class files of Metro-generated types are fairly friendly to the IntelliJ &ldquo;decompile to Java&rdquo; action. Simply open the class file in the IDE (usually seen as a Kotlin bytecode class) then run the &ldquo;decompile to Java&rdquo; action. For JVM projects they are under <code>build/classes</code>. For Android projects, it&rsquo;s <code>build/tmp/kotlin-classes</code>.</p>
 

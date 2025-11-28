@@ -3,6 +3,7 @@ $dokka.linkExtension:html
 
 module:gradle-plugin
 dev.zacsweers.metro.gradle
+dev.zacsweers.metro.gradle.analysis
 dev.zacsweers.metro.gradle.artifacts
 module:interop-dagger
 dev.zacsweers.metro.interop.dagger
