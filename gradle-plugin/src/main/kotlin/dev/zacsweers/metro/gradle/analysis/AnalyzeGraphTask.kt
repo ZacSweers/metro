@@ -88,6 +88,7 @@ public abstract class AnalyzeGraphTask : DefaultTask() {
           dominator = analyzer.computeDominators(),
           centrality = analyzer.computeBetweennessCentrality(),
           fanAnalysis = analyzer.computeFanAnalysis(topFanCount.get()),
+          pathsToRoot = analyzer.computePathsToRoot(),
         )
       )
     }

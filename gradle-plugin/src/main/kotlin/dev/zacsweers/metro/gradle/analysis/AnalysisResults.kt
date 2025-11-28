@@ -74,6 +74,15 @@ public data class FanScore(
   val dependencies: List<String>,
 )
 
+/** Result of paths-to-root analysis. Contains shortest paths from each node to the graph root. */
+@Serializable
+public data class PathsToRootResult(
+  /** The graph root node key. */
+  val rootKey: String,
+  /** Map from node key to its shortest path to root (list of keys from node to root inclusive). */
+  val paths: Map<String, List<String>>,
+)
+
 /** Complete analysis for a single dependency graph. */
 @Serializable
 public data class GraphAnalysis(
@@ -83,6 +92,7 @@ public data class GraphAnalysis(
   val dominator: DominatorResult,
   val centrality: CentralityResult,
   val fanAnalysis: FanAnalysisResult,
+  val pathsToRoot: PathsToRootResult = PathsToRootResult("", emptyMap()),
 )
 
 /** Combined analysis report for all graphs in a project. */

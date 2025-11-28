@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.gradle.analysis
 
+import com.autonomousapps.graph.ShortestPath
 import com.google.common.graph.Graph
 
 /** Performs various graph analysis algorithms on a [BindingGraph] using Guava graphs. */
@@ -105,6 +106,32 @@ public class GraphAnalyzer(private val bindingGraph: BindingGraph) {
       }
 
     return CentralityResult(scores)
+  }
+
+  /**
+   * Computes shortest paths from all nodes to the graph root using Dijkstra's algorithm.
+   *
+   * Paths are stored as lists from each node to the root (inclusive).
+   */
+  public fun computePathsToRoot(): PathsToRootResult {
+    val graphRoot = bindingGraph.graphRoot
+    if (graphRoot == null || fullGraph.nodes().isEmpty()) {
+      return PathsToRootResult("", emptyMap())
+    }
+
+    val shortestPath = ShortestPath(fullGraph, graphRoot)
+    val paths = mutableMapOf<String, List<String>>()
+
+    for (node in fullGraph.nodes()) {
+      if (shortestPath.hasPathTo(node)) {
+        // pathTo returns path from root to node, we want node to root so reverse it
+        paths[node] = shortestPath.pathTo(node).toList().reversed()
+      } else {
+        paths[node] = emptyList()
+      }
+    }
+
+    return PathsToRootResult(graphRoot, paths)
   }
 
   /**

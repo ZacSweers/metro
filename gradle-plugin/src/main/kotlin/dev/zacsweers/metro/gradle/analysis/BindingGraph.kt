@@ -27,6 +27,10 @@ private constructor(
   public val size: Int
     get() = graph.nodes().size
 
+  /** The root node key (the main dependency graph node). */
+  public val graphRoot: String?
+    get() = if (graphName in graph.nodes()) graphName else null
+
   /** Get binding metadata by key, or null if not found. */
   public fun getBinding(key: String): BindingMetadata? = bindings[key]
 
@@ -68,7 +72,8 @@ private constructor(
       for (binding in metadata.bindings) {
         val from = binding.key
         for (dep in binding.dependencies) {
-          val to = dep.key
+          // Unwrap Provider<X>/Lazy<X> to X to match node IDs
+          val to = unwrapTypeKey(dep.key)
           if (to in bindingKeys) {
             fullGraphBuilder.putEdge(from, to)
             // Skip deferrable (Provider/Lazy) edges from the eager graph -

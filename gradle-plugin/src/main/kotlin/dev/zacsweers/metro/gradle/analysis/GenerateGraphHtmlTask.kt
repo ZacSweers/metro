@@ -138,14 +138,23 @@ public abstract class GenerateGraphHtmlTask : DefaultTask() {
           .apply { dominatorCount = dom.dominatedCount }
       }
 
-      result[graph.graphName] = GraphAnalysisData(bindingMetrics)
+      result[graph.graphName] =
+        GraphAnalysisData(
+          bindingMetrics = bindingMetrics,
+          pathsToRoot = graph.pathsToRoot.paths,
+          graphRoot = graph.pathsToRoot.rootKey,
+        )
     }
 
     return result
   }
 
   /** Analysis data for a single graph. */
-  private data class GraphAnalysisData(val bindingMetrics: Map<String, BindingAnalysisMetrics>)
+  private data class GraphAnalysisData(
+    val bindingMetrics: Map<String, BindingAnalysisMetrics>,
+    val pathsToRoot: Map<String, List<String>> = emptyMap(),
+    val graphRoot: String = "",
+  )
 
   /** Analysis metrics for a single binding. */
   private data class BindingAnalysisMetrics(
@@ -762,6 +771,13 @@ ${packages.mapIndexed { i, pkg ->
     const graphData = ${json.encodeToString(JsonObject.serializer(), graphData)};
     const categories = ${json.encodeToString(JsonArray.serializer(), categories)};
     const longestPath = ${json.encodeToString(JsonArray.serializer(), buildJsonArray { longestPath.forEach { add(JsonPrimitive(it)) } })};
+    // Precomputed shortest paths from each node to graph root (using Dijkstra/BFS)
+    const pathsToRoot = ${json.encodeToString(JsonObject.serializer(), buildJsonObject {
+      analysis.pathsToRoot.forEach { (key, path) ->
+        put(key, buildJsonArray { path.forEach { add(JsonPrimitive(it)) } })
+      }
+    },)};
+    const graphRootKey = ${if (analysis.graphRoot.isNotEmpty()) "\"${analysis.graphRoot}\"" else "null"};
 
     const chart = echarts.init(document.getElementById('chart'), 'dark');
 
@@ -933,10 +949,82 @@ ${packages.mapIndexed { i, pkg ->
       if (dependents[l.target]) dependents[l.target].push(l.source);
     });
 
-    // Node click handler
+    // Get precomputed path from node to graph root (computed via Dijkstra/BFS during analysis)
+    function getPathToRoot(nodeKey) {
+      return pathsToRoot[nodeKey] || [nodeKey];
+    }
+
+    // Store currently highlighted path
+    let highlightedPath = null;
+
+    // Highlight path to root
+    function highlightPathToRoot(nodeKey) {
+      const path = getPathToRoot(nodeKey);
+      highlightedPath = new Set(path);
+
+      // Build set of edges in the path
+      const pathEdges = new Set();
+      for (let i = 0; i < path.length - 1; i++) {
+        // Edge direction is from higher to lower in path (root -> node)
+        pathEdges.add(path[i + 1] + '→' + path[i]);
+      }
+
+      const hideLabels = document.getElementById('hide-labels').checked;
+
+      const newNodes = graphData.nodes.map(n => ({
+        ...n,
+        itemStyle: highlightedPath.has(n.fullKey)
+          ? { ...n.itemStyle, borderColor: '#0078C6', borderWidth: 4, opacity: 1 }
+          : { ...n.itemStyle, opacity: 0.15 },
+        label: hideLabels ? { show: false } : (highlightedPath.has(n.fullKey) ? { show: true, color: '#e6edf3' } : { show: false })
+      }));
+
+      const newLinks = graphData.links.map(l => ({
+        ...l,
+        lineStyle: pathEdges.has(l.source + '→' + l.target)
+          ? { color: '#0078C6', width: 3, opacity: 1 }
+          : { ...l.lineStyle, opacity: 0.05 }
+      }));
+
+      chart.setOption({ series: [{ data: newNodes, links: newLinks }] });
+    }
+
+    // Clear path highlighting
+    function clearPathHighlight() {
+      if (highlightedPath) {
+        highlightedPath = null;
+        applyFilters();
+      }
+    }
+
+    // Node click handler - highlight path to root
     chart.on('click', function(params) {
       if (params.dataType === 'node') {
         showDetails(params.data);
+        highlightPathToRoot(params.data.fullKey);
+      } else {
+        // Click on empty space clears highlighting
+        clearPathHighlight();
+      }
+    });
+
+    // Double-click to clear highlighting
+    chart.on('dblclick', function() {
+      clearPathHighlight();
+    });
+
+    // ESC key to reset/clear highlighting
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        clearPathHighlight();
+      }
+    });
+
+    // Click on chart background (not on node/edge) to clear highlighting
+    chart.getZr().on('click', function(e) {
+      // If the click target is null, it means we clicked on empty space
+      if (!e.target) {
+        clearPathHighlight();
       }
     });
 
@@ -1301,13 +1389,6 @@ ${packages.mapIndexed { i, pkg ->
     // Build map from binding key to its color
     val bindingColorMap =
       metadata.bindings.associate { it.key to (kindColorMap[it.bindingKind] ?: Colors.OTHER) }
-
-    // Build set of multibinding source keys for edge coloring
-    val multibindingSources =
-      metadata.bindings
-        .filter { it.multibinding != null }
-        .flatMap { it.multibinding!!.sources }
-        .toSet()
 
     // Collect dependencies with default values for synthetic node generation
     // Key: "default:{targetType}@{consumerKey}" to ensure uniqueness per usage site
@@ -1968,7 +2049,7 @@ internal fun extractPackage(key: String): String {
   val genericStart = actualType.indexOf('<')
   val typeToAnalyze =
     if (genericStart != -1) {
-      val basePart = actualType.substring(0, genericStart)
+      val basePart = actualType.take(genericStart)
       // If it's a standard collection, use the type parameter's package
       if (basePart.startsWith("kotlin.collections.") || basePart.startsWith("java.util.")) {
         actualType.substring(genericStart + 1, actualType.length - 1).split(',').first().trim()
