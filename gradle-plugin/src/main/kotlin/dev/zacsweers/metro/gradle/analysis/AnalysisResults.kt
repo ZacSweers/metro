@@ -7,7 +7,6 @@ import kotlinx.serialization.Serializable
 /** Statistics about a dependency graph. */
 @Serializable
 public data class GraphStatistics(
-  val graphName: String,
   val totalBindings: Int,
   val scopedBindings: Int,
   val unscopedBindings: Int,
@@ -24,7 +23,6 @@ public data class GraphStatistics(
 /** Result of longest path analysis. */
 @Serializable
 public data class LongestPathResult(
-  val graphName: String,
   val longestPathLength: Int,
   val longestPaths: List<List<String>>,
   val averagePathLength: Double,
@@ -33,7 +31,7 @@ public data class LongestPathResult(
 
 /** Result of dominator analysis. */
 @Serializable
-public data class DominatorResult(val graphName: String, val dominators: List<DominatorNode>)
+public data class DominatorResult(val dominators: List<DominatorNode>)
 
 /** A node in the dominator tree with its dominated nodes. */
 @Serializable
@@ -46,10 +44,7 @@ public data class DominatorNode(
 
 /** Result of betweenness centrality analysis. */
 @Serializable
-public data class CentralityResult(
-  val graphName: String,
-  val centralityScores: List<CentralityScore>,
-)
+public data class CentralityResult(val centralityScores: List<CentralityScore>)
 
 /** Centrality score for a single binding. */
 @Serializable
@@ -63,7 +58,6 @@ public data class CentralityScore(
 /** Result of fan-in/fan-out analysis. */
 @Serializable
 public data class FanAnalysisResult(
-  val graphName: String,
   val bindings: List<FanScore>,
   val highFanIn: List<FanScore>,
   val highFanOut: List<FanScore>,
@@ -82,14 +76,21 @@ public data class FanScore(
   val dependencies: List<String>,
 )
 
+/** Complete analysis for a single dependency graph. */
+@Serializable
+public data class GraphAnalysis(
+  val graphName: String,
+  val statistics: GraphStatistics,
+  val longestPath: LongestPathResult,
+  val dominator: DominatorResult,
+  val centrality: CentralityResult,
+  val fanAnalysis: FanAnalysisResult,
+)
+
 /** Combined analysis report for all graphs in a project. */
 @Serializable
-public data class FullAnalysisReport(
-  val projectPath: String,
-  val graphCount: Int,
-  val statistics: List<GraphStatistics>,
-  val longestPaths: List<LongestPathResult>,
-  val dominators: List<DominatorResult>,
-  val centrality: List<CentralityResult>,
-  val fanAnalysis: List<FanAnalysisResult>,
-)
+public data class FullAnalysisReport(val projectPath: String, val graphs: List<GraphAnalysis>) {
+  /** Number of graphs in this report. */
+  val graphCount: Int
+    get() = graphs.size
+}

@@ -72,11 +72,7 @@ public abstract class AnalyzeGraphTask : DefaultTask() {
 
     val metadata = json.decodeFromString<AggregatedGraphMetadata>(input.readText())
 
-    val statistics = mutableListOf<GraphStatistics>()
-    val longestPaths = mutableListOf<LongestPathResult>()
-    val dominators = mutableListOf<DominatorResult>()
-    val centrality = mutableListOf<CentralityResult>()
-    val fanAnalysis = mutableListOf<FanAnalysisResult>()
+    val graphs = mutableListOf<GraphAnalysis>()
 
     for (graphMetadata in metadata.graphs) {
       logger.lifecycle("Analyzing graph: ${graphMetadata.graph}")
@@ -84,23 +80,19 @@ public abstract class AnalyzeGraphTask : DefaultTask() {
       val graph = BindingGraph.from(graphMetadata)
       val analyzer = GraphAnalyzer(graph)
 
-      statistics.add(analyzer.computeStatistics())
-      longestPaths.add(analyzer.findLongestPaths(maxLongestPaths.get()))
-      dominators.add(analyzer.computeDominators())
-      centrality.add(analyzer.computeBetweennessCentrality())
-      fanAnalysis.add(analyzer.computeFanAnalysis(topFanCount.get()))
+      graphs.add(
+        GraphAnalysis(
+          graphName = graphMetadata.graph,
+          statistics = analyzer.computeStatistics(),
+          longestPath = analyzer.findLongestPaths(maxLongestPaths.get()),
+          dominator = analyzer.computeDominators(),
+          centrality = analyzer.computeBetweennessCentrality(),
+          fanAnalysis = analyzer.computeFanAnalysis(topFanCount.get()),
+        )
+      )
     }
 
-    val report =
-      FullAnalysisReport(
-        projectPath = metadata.projectPath,
-        graphCount = metadata.graphCount,
-        statistics = statistics,
-        longestPaths = longestPaths,
-        dominators = dominators,
-        centrality = centrality,
-        fanAnalysis = fanAnalysis,
-      )
+    val report = FullAnalysisReport(projectPath = metadata.projectPath, graphs = graphs)
 
     output.createParentDirectories()
     output.bufferedWriter().use { writer -> writer.write(json.encodeToString(report)) }
@@ -115,31 +107,26 @@ public abstract class AnalyzeGraphTask : DefaultTask() {
     logger.lifecycle("Project: ${report.projectPath}")
     logger.lifecycle("Graphs analyzed: ${report.graphCount}")
 
-    for (stats in report.statistics) {
+    for (graph in report.graphs) {
+      val stats = graph.statistics
       logger.lifecycle("")
-      logger.lifecycle("Graph: ${stats.graphName}")
+      logger.lifecycle("Graph: ${graph.graphName}")
       logger.lifecycle("  Total bindings: ${stats.totalBindings}")
       logger.lifecycle("  Scoped: ${stats.scopedBindings}, Unscoped: ${stats.unscopedBindings}")
       logger.lifecycle("  Avg dependencies: ${"%.2f".format(stats.averageDependencies)}")
       logger.lifecycle("  Binding types: ${stats.bindingsByKind}")
-    }
 
-    for (path in report.longestPaths) {
+      val path = graph.longestPath
       if (path.longestPathLength > 0) {
-        logger.lifecycle("")
-        logger.lifecycle("Longest path in ${path.graphName}: ${path.longestPathLength} nodes")
+        logger.lifecycle("  Longest path: ${path.longestPathLength} nodes")
         path.longestPaths.firstOrNull()?.let { p ->
-          logger.lifecycle("  ${p.joinToString(" -> ") { it.substringAfterLast('.') }}")
+          logger.lifecycle("    ${p.joinToString(" -> ") { it.substringAfterLast('.') }}")
         }
       }
-    }
 
-    for (fan in report.fanAnalysis) {
-      val topFanIn = fan.highFanIn.firstOrNull()
+      val topFanIn = graph.fanAnalysis.highFanIn.firstOrNull()
       if (topFanIn != null && topFanIn.fanIn > 0) {
-        logger.lifecycle("")
-        logger.lifecycle("Highest fan-in in ${fan.graphName}:")
-        logger.lifecycle("  ${topFanIn.key.substringAfterLast('.')} (${topFanIn.fanIn} dependents)")
+        logger.lifecycle("  Highest fan-in: ${topFanIn.key.substringAfterLast('.')} (${topFanIn.fanIn} dependents)")
       }
     }
   }

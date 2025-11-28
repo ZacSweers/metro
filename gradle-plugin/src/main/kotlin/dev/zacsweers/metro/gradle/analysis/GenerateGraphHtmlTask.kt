@@ -110,17 +110,12 @@ public abstract class GenerateGraphHtmlTask : DefaultTask() {
   private fun buildAnalysisLookup(report: FullAnalysisReport): Map<String, GraphAnalysisData> {
     val result = mutableMapOf<String, GraphAnalysisData>()
 
-    for (i in report.statistics.indices) {
-      val graphName = report.statistics[i].graphName
-      val fanAnalysis = report.fanAnalysis.getOrNull(i)
-      val centrality = report.centrality.getOrNull(i)
-      val dominators = report.dominators.getOrNull(i)
-
+    for (graph in report.graphs) {
       // Build per-binding metrics map
       val bindingMetrics = mutableMapOf<String, BindingAnalysisMetrics>()
 
       // Fan-in/Fan-out
-      fanAnalysis?.bindings?.forEach { fan ->
+      graph.fanAnalysis.bindings.forEach { fan ->
         bindingMetrics
           .getOrPut(fan.key) { BindingAnalysisMetrics() }
           .apply {
@@ -130,20 +125,20 @@ public abstract class GenerateGraphHtmlTask : DefaultTask() {
       }
 
       // Centrality
-      centrality?.centralityScores?.forEach { score ->
+      graph.centrality.centralityScores.forEach { score ->
         bindingMetrics
           .getOrPut(score.key) { BindingAnalysisMetrics() }
           .apply { betweennessCentrality = score.normalizedCentrality }
       }
 
       // Dominator count
-      dominators?.dominators?.forEach { dom ->
+      graph.dominator.dominators.forEach { dom ->
         bindingMetrics
           .getOrPut(dom.key) { BindingAnalysisMetrics() }
           .apply { dominatorCount = dom.dominatedCount }
       }
 
-      result[graphName] = GraphAnalysisData(bindingMetrics)
+      result[graph.graphName] = GraphAnalysisData(bindingMetrics)
     }
 
     return result

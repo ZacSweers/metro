@@ -61,6 +61,32 @@ data class DependencyMetadata(
 )
 ```
 
+## Analysis Result Models
+
+Analysis results are organized by graph in `AnalysisResults.kt`. Each graph's analysis is grouped together in a `GraphAnalysis` object:
+
+```kotlin
+// Top-level report containing all graphs
+data class FullAnalysisReport(
+  val projectPath: String,
+  val graphs: List<GraphAnalysis>  // All analysis grouped per-graph
+) {
+  val graphCount: Int get() = graphs.size  // Computed property
+}
+
+// All analysis for a single graph, co-located
+data class GraphAnalysis(
+  val graphName: String,
+  val statistics: GraphStatistics,
+  val longestPath: LongestPathResult,
+  val dominator: DominatorResult,
+  val centrality: CentralityResult,
+  val fanAnalysis: FanAnalysisResult,
+)
+```
+
+Note: Individual result types (`GraphStatistics`, `LongestPathResult`, etc.) do NOT contain `graphName` since it's in the parent `GraphAnalysis`. This avoids redundancy and makes the structure more intuitive to navigate.
+
 ## Type Key Handling
 
 Type keys can be complex strings with annotations, generics, or wrapper types. Three helper functions handle these:

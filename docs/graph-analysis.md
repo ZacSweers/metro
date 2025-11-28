@@ -38,9 +38,9 @@ Aggregates all graph metadata and produces a comprehensive analysis report.
 ./gradlew :app:analyzeMetroGraph
 ```
 
-**Output:** `{reportsDestination}/analysis/aggregated.json`
+**Output:** `build/reports/metro/analysis.json`
 
-This task combines all individual graph JSON files into a single aggregated file that can be used for further analysis or consumed by other tools.
+This task combines all individual graph JSON files into a single aggregated file and runs various graph analysis algorithms. The output can be used for further analysis or consumed by other tools.
 
 ### `generateMetroGraphHtml`
 
@@ -372,12 +372,16 @@ When analyzing a graph, look for patterns:
 
 ## Programmatic Access
 
-The aggregated JSON from `analyzeMetroGraph` can be consumed programmatically for custom analysis:
+The JSON outputs can be consumed programmatically for custom analysis.
+
+### Raw Metadata
+
+The raw graph metadata from `generateMetroGraphMetadata`:
 
 ```kotlin
-// Example: Parse aggregated metadata
+// Parse raw graph metadata
 val metadata = Json.decodeFromString<AggregatedGraphMetadata>(
-    file("build/reports/metro/analysis/aggregated.json").readText()
+    file("build/reports/metro/graphMetadata.json").readText()
 )
 
 // Analyze bindings
@@ -387,9 +391,51 @@ val scopedCount = metadata.graphs.sumOf { graph ->
 println("Total scoped bindings: $scopedCount")
 ```
 
-The JSON schema includes:
+The raw metadata includes:
 
 - All bindings with their kinds, scopes, and dependencies
 - Multibinding information (sources, collection type)
 - Origin locations (file and line numbers)
 - Synthetic binding flags
+
+### Analysis Report
+
+The analysis report from `analyzeMetroGraph` is organized by graph, with all analysis data grouped together:
+
+```kotlin
+// Parse analysis report
+val report = Json.decodeFromString<FullAnalysisReport>(
+    file("build/reports/metro/analysis.json").readText()
+)
+
+// Each graph has all its analysis co-located
+for (graph in report.graphs) {
+    println("Graph: ${graph.graphName}")
+    println("  Bindings: ${graph.statistics.totalBindings}")
+    println("  Scoped: ${graph.statistics.scopedBindings}")
+    println("  Longest path: ${graph.longestPath.longestPathLength}")
+
+    // High fan-in bindings
+    graph.fanAnalysis.highFanIn.take(3).forEach { binding ->
+        println("  High fan-in: ${binding.key} (${binding.fanIn} dependents)")
+    }
+}
+```
+
+The analysis report structure:
+
+```kotlin
+data class FullAnalysisReport(
+    val projectPath: String,
+    val graphs: List<GraphAnalysis>  // All analysis grouped by graph
+)
+
+data class GraphAnalysis(
+    val graphName: String,
+    val statistics: GraphStatistics,    // Binding counts, averages
+    val longestPath: LongestPathResult, // Deepest dependency chains
+    val dominator: DominatorResult,     // Dominator tree analysis
+    val centrality: CentralityResult,   // Betweenness centrality scores
+    val fanAnalysis: FanAnalysisResult  // Fan-in/fan-out metrics
+)
+```

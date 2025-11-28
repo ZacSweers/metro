@@ -21,7 +21,6 @@ public class GraphAnalyzer(private val bindingGraph: BindingGraph) {
     val bindingsByKind = bindings.groupingBy { it.bindingKind }.eachCount().toSortedMap()
 
     return GraphStatistics(
-      graphName = bindingGraph.graphName,
       totalBindings = bindingGraph.size,
       scopedBindings = bindings.count { it.isScoped },
       unscopedBindings = bindings.count { !it.isScoped },
@@ -39,7 +38,7 @@ public class GraphAnalyzer(private val bindingGraph: BindingGraph) {
   public fun findLongestPaths(maxPaths: Int = 5): LongestPathResult {
     val vs = eagerGraph.nodes()
     if (vs.isEmpty()) {
-      return LongestPathResult(bindingGraph.graphName, 0, emptyList(), 0.0, sortedMapOf())
+      return LongestPathResult(0, emptyList(), 0.0, sortedMapOf())
     }
 
     val lp = LongestPath(eagerGraph)
@@ -48,7 +47,6 @@ public class GraphAnalyzer(private val bindingGraph: BindingGraph) {
     val distribution = rootLens.groupingBy { it }.eachCount().toSortedMap()
 
     return LongestPathResult(
-      graphName = bindingGraph.graphName,
       longestPathLength = lp.longestPathLength,
       longestPaths = lp.paths(maxPaths),
       averagePathLength = if (rootLens.isNotEmpty()) rootLens.average() else 0.0,
@@ -65,7 +63,7 @@ public class GraphAnalyzer(private val bindingGraph: BindingGraph) {
    */
   public fun computeDominators(): DominatorResult {
     if (fullGraph.nodes().isEmpty()) {
-      return DominatorResult(bindingGraph.graphName, emptyList())
+      return DominatorResult(emptyList())
     }
 
     val dominators = Dominators(fullGraph)
@@ -83,7 +81,7 @@ public class GraphAnalyzer(private val bindingGraph: BindingGraph) {
         }
         .sortedByDescending { it.dominatedCount }
 
-    return DominatorResult(bindingGraph.graphName, result)
+    return DominatorResult(result)
   }
 
   /**
@@ -92,7 +90,7 @@ public class GraphAnalyzer(private val bindingGraph: BindingGraph) {
    */
   public fun computeBetweennessCentrality(): CentralityResult {
     if (fullGraph.nodes().isEmpty()) {
-      return CentralityResult(bindingGraph.graphName, emptyList())
+      return CentralityResult(emptyList())
     }
 
     val centrality = Centrality(fullGraph)
@@ -106,7 +104,7 @@ public class GraphAnalyzer(private val bindingGraph: BindingGraph) {
         )
       }
 
-    return CentralityResult(bindingGraph.graphName, scores)
+    return CentralityResult(scores)
   }
 
   /**
@@ -116,14 +114,7 @@ public class GraphAnalyzer(private val bindingGraph: BindingGraph) {
    */
   public fun computeFanAnalysis(topN: Int): FanAnalysisResult {
     if (fullGraph.nodes().isEmpty()) {
-      return FanAnalysisResult(
-        bindingGraph.graphName,
-        emptyList(),
-        emptyList(),
-        emptyList(),
-        0.0,
-        0.0,
-      )
+      return FanAnalysisResult(emptyList(), emptyList(), emptyList(), 0.0, 0.0)
     }
 
     val fanAnalysis = FanAnalysis(fullGraph)
@@ -150,7 +141,6 @@ public class GraphAnalyzer(private val bindingGraph: BindingGraph) {
     val topOut = base.sortedByDescending { it.fanOut }.take(topN).map(::hydrate)
 
     return FanAnalysisResult(
-      graphName = bindingGraph.graphName,
       bindings = base.sortedBy { it.key },
       highFanIn = topIn,
       highFanOut = topOut,
