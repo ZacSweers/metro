@@ -669,6 +669,10 @@ ${metadata.graphs.joinToString("\n") { graph ->
             <input type="checkbox" id="hide-labels">
             <span>Hide labels (art mode)</span>
           </label>
+          <label class="filter-toggle" style="margin-top:8px">
+            <input type="checkbox" id="color-edges" checked>
+            <span>Color edges by binding type</span>
+          </label>
         </div>
 
         <div class="section">
@@ -1067,7 +1071,7 @@ ${packages.mapIndexed { i, pkg ->
     const originalNodes = JSON.parse(JSON.stringify(graphData.nodes));
     const originalLinks = JSON.parse(JSON.stringify(graphData.links));
 
-    // Apply all filters (package, synthetic, scoped, defaults, search, glow)
+    // Apply all filters (package, synthetic, scoped, defaults, search, glow, edge colors)
     // Default value nodes are actually removed from the graph, others just get faded
     function applyFilters() {
       const showSynthetic = document.getElementById('hide-synthetic').checked;
@@ -1076,6 +1080,7 @@ ${packages.mapIndexed { i, pkg ->
       const showGlow = document.getElementById('show-glow').checked;
       const showContributions = document.getElementById('show-contributions').checked;
       const hideLabels = document.getElementById('hide-labels').checked;
+      const colorEdges = document.getElementById('color-edges').checked;
       const enabledPackages = new Set();
       document.querySelectorAll('#package-filter input:checked').forEach(c => {
         enabledPackages.add(c.dataset.package);
@@ -1128,12 +1133,20 @@ ${packages.mapIndexed { i, pkg ->
       });
 
       // Filter links - remove links to/from removed nodes, fade links to faded nodes
+      // When colorEdges is off, use neutral grey for all edges
       const newLinks = originalLinks
         .filter(l => includedNodeKeys.has(l.source) && includedNodeKeys.has(l.target))
         .map(l => {
           const isVisible = visibleNodeKeys.has(l.source) && visibleNodeKeys.has(l.target);
           const style = l.lineStyle ? {...l.lineStyle} : {};
           style.opacity = isVisible ? (style.opacity || 0.7) : 0.05;
+          // Override edge color to grey when toggle is off (except for special edge types)
+          if (!colorEdges) {
+            const specialEdges = ['accessor', 'inherited', 'assisted', 'multibinding', 'alias', 'default'];
+            if (!specialEdges.includes(l.edgeType)) {
+              style.color = '#30363d';
+            }
+          }
           return {...l, lineStyle: style};
         });
 
@@ -1175,6 +1188,9 @@ ${packages.mapIndexed { i, pkg ->
       }
     });
 
+    // Color edges toggle
+    document.getElementById('color-edges').addEventListener('change', applyFilters);
+
     // Search
     document.getElementById('search').addEventListener('input', applyFilters);
 
@@ -1191,6 +1207,7 @@ ${packages.mapIndexed { i, pkg ->
       document.getElementById('show-glow').checked = true;
       document.getElementById('show-contributions').checked = false;
       document.getElementById('hide-labels').checked = false;
+      document.getElementById('color-edges').checked = true;
       document.getElementById('search').value = '';
       applyFilters();
     });
