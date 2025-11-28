@@ -1367,6 +1367,38 @@ ${packages.mapIndexed { i, pkg ->
         "Absent" to 12,
       )
 
+    // Calculate dynamic glow thresholds based on graph size and metrics distribution
+    // This ensures glow effects work well for both small and large graphs
+    val metrics = analysis.bindingMetrics.values
+    val graphSize = metadata.bindings.size.coerceAtLeast(1)
+
+    // For centrality: use top 10% and top 25% as high/medium thresholds
+    val centralityValues = metrics.map { it.betweennessCentrality }.filter { it > 0 }.sorted()
+    val highCentralityThreshold =
+      if (centralityValues.size >= 10) {
+        centralityValues[centralityValues.size * 9 / 10] // 90th percentile
+      } else {
+        0.3 // fallback for small graphs
+      }
+    val mediumCentralityThreshold =
+      if (centralityValues.size >= 4) {
+        centralityValues[centralityValues.size * 3 / 4] // 75th percentile
+      } else {
+        0.1 // fallback for small graphs
+      }
+
+    // For dominator count: scale threshold with graph size (top ~10% of graph)
+    val dominatorThreshold = (graphSize * 0.1).coerceAtLeast(3.0)
+
+    // For fan-in: use 90th percentile or scale with graph size
+    val fanInValues = metrics.map { it.fanIn }.filter { it > 0 }.sorted()
+    val fanInThreshold =
+      if (fanInValues.size >= 10) {
+        fanInValues[fanInValues.size * 9 / 10].toDouble() // 90th percentile
+      } else {
+        (graphSize * 0.15).coerceAtLeast(3.0) // fallback
+      }
+
     // Map binding kinds to their colors for edge inheritance
     val kindColorMap =
       mapOf(
@@ -1508,25 +1540,26 @@ ${packages.mapIndexed { i, pkg ->
                 }
                 // Add glow effect based on analysis metrics (centrality takes priority)
                 // Skip glow for the main graph binding as it's expected to have high metrics
+                // Thresholds are dynamic based on graph size and metrics distribution
                 if (metrics != null && !isMainGraph) {
                   when {
-                    metrics.betweennessCentrality > 0.3 -> {
-                      // High centrality - orange/red glow
+                    metrics.betweennessCentrality > highCentralityThreshold -> {
+                      // High centrality (top 10%) - orange/red glow
                       put("shadowBlur", JsonPrimitive(15))
                       put("shadowColor", JsonPrimitive("#ff6b6b"))
                     }
-                    metrics.betweennessCentrality > 0.1 -> {
-                      // Medium centrality - yellow glow
+                    metrics.betweennessCentrality > mediumCentralityThreshold -> {
+                      // Medium centrality (top 25%) - yellow glow
                       put("shadowBlur", JsonPrimitive(10))
                       put("shadowColor", JsonPrimitive("#F6BC26"))
                     }
-                    metrics.dominatorCount > 10 -> {
-                      // High dominator count - red glow
+                    metrics.dominatorCount > dominatorThreshold -> {
+                      // High dominator count (top ~10% of graph size) - red glow
                       put("shadowBlur", JsonPrimitive(12))
                       put("shadowColor", JsonPrimitive("#D82233"))
                     }
-                    metrics.fanIn > 10 -> {
-                      // High fan-in - blue glow
+                    metrics.fanIn > fanInThreshold -> {
+                      // High fan-in (top 10%) - blue glow
                       put("shadowBlur", JsonPrimitive(8))
                       put("shadowColor", JsonPrimitive("#0078C6"))
                     }
