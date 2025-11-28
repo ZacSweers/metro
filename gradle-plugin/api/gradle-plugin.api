@@ -129,6 +129,35 @@ public final class dev/zacsweers/metro/gradle/OptionalDependencyBehavior : java/
 	public static fun values ()[Ldev/zacsweers/metro/gradle/OptionalDependencyBehavior;
 }
 
+public final class dev/zacsweers/metro/gradle/analysis/AccessorMetadata {
+	public static final field Companion Ldev/zacsweers/metro/gradle/analysis/AccessorMetadata$Companion;
+	public fun <init> (Ljava/lang/String;Z)V
+	public synthetic fun <init> (Ljava/lang/String;ZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Z
+	public final fun copy (Ljava/lang/String;Z)Ldev/zacsweers/metro/gradle/analysis/AccessorMetadata;
+	public static synthetic fun copy$default (Ldev/zacsweers/metro/gradle/analysis/AccessorMetadata;Ljava/lang/String;ZILjava/lang/Object;)Ldev/zacsweers/metro/gradle/analysis/AccessorMetadata;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getKey ()Ljava/lang/String;
+	public fun hashCode ()I
+	public final fun isDeferrable ()Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public final synthetic class dev/zacsweers/metro/gradle/analysis/AccessorMetadata$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Ldev/zacsweers/metro/gradle/analysis/AccessorMetadata$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ldev/zacsweers/metro/gradle/analysis/AccessorMetadata;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Ldev/zacsweers/metro/gradle/analysis/AccessorMetadata;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+}
+
+public final class dev/zacsweers/metro/gradle/analysis/AccessorMetadata$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
 public final class dev/zacsweers/metro/gradle/analysis/AggregatedGraphMetadata {
 	public static final field Companion Ldev/zacsweers/metro/gradle/analysis/AggregatedGraphMetadata$Companion;
 	public fun <init> (Ljava/lang/String;ILjava/util/List;)V
@@ -311,20 +340,19 @@ public final class dev/zacsweers/metro/gradle/analysis/CentralityScore$Companion
 
 public final class dev/zacsweers/metro/gradle/analysis/DependencyMetadata {
 	public static final field Companion Ldev/zacsweers/metro/gradle/analysis/DependencyMetadata$Companion;
-	public fun <init> (Ljava/lang/String;ZZZZ)V
-	public synthetic fun <init> (Ljava/lang/String;ZZZZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Ljava/lang/String;ZLjava/lang/String;Z)V
+	public synthetic fun <init> (Ljava/lang/String;ZLjava/lang/String;ZILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Ljava/lang/String;
 	public final fun component2 ()Z
-	public final fun component3 ()Z
+	public final fun component3 ()Ljava/lang/String;
 	public final fun component4 ()Z
-	public final fun component5 ()Z
-	public final fun copy (Ljava/lang/String;ZZZZ)Ldev/zacsweers/metro/gradle/analysis/DependencyMetadata;
-	public static synthetic fun copy$default (Ldev/zacsweers/metro/gradle/analysis/DependencyMetadata;Ljava/lang/String;ZZZZILjava/lang/Object;)Ldev/zacsweers/metro/gradle/analysis/DependencyMetadata;
+	public final fun copy (Ljava/lang/String;ZLjava/lang/String;Z)Ldev/zacsweers/metro/gradle/analysis/DependencyMetadata;
+	public static synthetic fun copy$default (Ldev/zacsweers/metro/gradle/analysis/DependencyMetadata;Ljava/lang/String;ZLjava/lang/String;ZILjava/lang/Object;)Ldev/zacsweers/metro/gradle/analysis/DependencyMetadata;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getHasDefault ()Z
 	public final fun getKey ()Ljava/lang/String;
+	public final fun getWrapperType ()Ljava/lang/String;
 	public fun hashCode ()I
-	public final fun isAccessor ()Z
 	public final fun isAssisted ()Z
 	public final fun isDeferrable ()Z
 	public fun toString ()Ljava/lang/String;
@@ -399,6 +427,93 @@ public final synthetic class dev/zacsweers/metro/gradle/analysis/DominatorResult
 }
 
 public final class dev/zacsweers/metro/gradle/analysis/DominatorResult$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class dev/zacsweers/metro/gradle/analysis/ExtensionAccessorMetadata {
+	public static final field Companion Ldev/zacsweers/metro/gradle/analysis/ExtensionAccessorMetadata$Companion;
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Ldev/zacsweers/metro/gradle/analysis/ExtensionAccessorMetadata;
+	public static synthetic fun copy$default (Ldev/zacsweers/metro/gradle/analysis/ExtensionAccessorMetadata;Ljava/lang/String;ILjava/lang/Object;)Ldev/zacsweers/metro/gradle/analysis/ExtensionAccessorMetadata;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getKey ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final synthetic class dev/zacsweers/metro/gradle/analysis/ExtensionAccessorMetadata$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Ldev/zacsweers/metro/gradle/analysis/ExtensionAccessorMetadata$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ldev/zacsweers/metro/gradle/analysis/ExtensionAccessorMetadata;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Ldev/zacsweers/metro/gradle/analysis/ExtensionAccessorMetadata;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+}
+
+public final class dev/zacsweers/metro/gradle/analysis/ExtensionAccessorMetadata$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class dev/zacsweers/metro/gradle/analysis/ExtensionFactoryAccessorMetadata {
+	public static final field Companion Ldev/zacsweers/metro/gradle/analysis/ExtensionFactoryAccessorMetadata$Companion;
+	public fun <init> (Ljava/lang/String;Z)V
+	public synthetic fun <init> (Ljava/lang/String;ZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Z
+	public final fun copy (Ljava/lang/String;Z)Ldev/zacsweers/metro/gradle/analysis/ExtensionFactoryAccessorMetadata;
+	public static synthetic fun copy$default (Ldev/zacsweers/metro/gradle/analysis/ExtensionFactoryAccessorMetadata;Ljava/lang/String;ZILjava/lang/Object;)Ldev/zacsweers/metro/gradle/analysis/ExtensionFactoryAccessorMetadata;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getKey ()Ljava/lang/String;
+	public fun hashCode ()I
+	public final fun isSAM ()Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public final synthetic class dev/zacsweers/metro/gradle/analysis/ExtensionFactoryAccessorMetadata$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Ldev/zacsweers/metro/gradle/analysis/ExtensionFactoryAccessorMetadata$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ldev/zacsweers/metro/gradle/analysis/ExtensionFactoryAccessorMetadata;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Ldev/zacsweers/metro/gradle/analysis/ExtensionFactoryAccessorMetadata;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+}
+
+public final class dev/zacsweers/metro/gradle/analysis/ExtensionFactoryAccessorMetadata$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class dev/zacsweers/metro/gradle/analysis/ExtensionsMetadata {
+	public static final field Companion Ldev/zacsweers/metro/gradle/analysis/ExtensionsMetadata$Companion;
+	public fun <init> ()V
+	public fun <init> (Ljava/util/List;Ljava/util/List;Ljava/util/List;)V
+	public synthetic fun <init> (Ljava/util/List;Ljava/util/List;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/util/List;
+	public final fun component2 ()Ljava/util/List;
+	public final fun component3 ()Ljava/util/List;
+	public final fun copy (Ljava/util/List;Ljava/util/List;Ljava/util/List;)Ldev/zacsweers/metro/gradle/analysis/ExtensionsMetadata;
+	public static synthetic fun copy$default (Ldev/zacsweers/metro/gradle/analysis/ExtensionsMetadata;Ljava/util/List;Ljava/util/List;Ljava/util/List;ILjava/lang/Object;)Ldev/zacsweers/metro/gradle/analysis/ExtensionsMetadata;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAccessors ()Ljava/util/List;
+	public final fun getFactoriesImplemented ()Ljava/util/List;
+	public final fun getFactoryAccessors ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final synthetic class dev/zacsweers/metro/gradle/analysis/ExtensionsMetadata$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Ldev/zacsweers/metro/gradle/analysis/ExtensionsMetadata$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ldev/zacsweers/metro/gradle/analysis/ExtensionsMetadata;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Ldev/zacsweers/metro/gradle/analysis/ExtensionsMetadata;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+}
+
+public final class dev/zacsweers/metro/gradle/analysis/ExtensionsMetadata$Companion {
 	public final fun serializer ()Lkotlinx/serialization/KSerializer;
 }
 
@@ -557,17 +672,22 @@ public final class dev/zacsweers/metro/gradle/analysis/GraphAnalyzer {
 
 public final class dev/zacsweers/metro/gradle/analysis/GraphMetadata {
 	public static final field Companion Ldev/zacsweers/metro/gradle/analysis/GraphMetadata$Companion;
-	public fun <init> (Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/List;)V
+	public fun <init> (Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ldev/zacsweers/metro/gradle/analysis/RootsMetadata;Ldev/zacsweers/metro/gradle/analysis/ExtensionsMetadata;Ljava/util/List;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ldev/zacsweers/metro/gradle/analysis/RootsMetadata;Ldev/zacsweers/metro/gradle/analysis/ExtensionsMetadata;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Ljava/lang/String;
 	public final fun component2 ()Ljava/util/List;
 	public final fun component3 ()Ljava/util/List;
-	public final fun component4 ()Ljava/util/List;
-	public final fun copy (Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/List;)Ldev/zacsweers/metro/gradle/analysis/GraphMetadata;
-	public static synthetic fun copy$default (Ldev/zacsweers/metro/gradle/analysis/GraphMetadata;Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/List;ILjava/lang/Object;)Ldev/zacsweers/metro/gradle/analysis/GraphMetadata;
+	public final fun component4 ()Ldev/zacsweers/metro/gradle/analysis/RootsMetadata;
+	public final fun component5 ()Ldev/zacsweers/metro/gradle/analysis/ExtensionsMetadata;
+	public final fun component6 ()Ljava/util/List;
+	public final fun copy (Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ldev/zacsweers/metro/gradle/analysis/RootsMetadata;Ldev/zacsweers/metro/gradle/analysis/ExtensionsMetadata;Ljava/util/List;)Ldev/zacsweers/metro/gradle/analysis/GraphMetadata;
+	public static synthetic fun copy$default (Ldev/zacsweers/metro/gradle/analysis/GraphMetadata;Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ldev/zacsweers/metro/gradle/analysis/RootsMetadata;Ldev/zacsweers/metro/gradle/analysis/ExtensionsMetadata;Ljava/util/List;ILjava/lang/Object;)Ldev/zacsweers/metro/gradle/analysis/GraphMetadata;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getAggregationScopes ()Ljava/util/List;
 	public final fun getBindings ()Ljava/util/List;
+	public final fun getExtensions ()Ldev/zacsweers/metro/gradle/analysis/ExtensionsMetadata;
 	public final fun getGraph ()Ljava/lang/String;
+	public final fun getRoots ()Ldev/zacsweers/metro/gradle/analysis/RootsMetadata;
 	public final fun getScopes ()Ljava/util/List;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
@@ -630,6 +750,32 @@ public final synthetic class dev/zacsweers/metro/gradle/analysis/GraphStatistics
 }
 
 public final class dev/zacsweers/metro/gradle/analysis/GraphStatistics$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class dev/zacsweers/metro/gradle/analysis/InjectorMetadata {
+	public static final field Companion Ldev/zacsweers/metro/gradle/analysis/InjectorMetadata$Companion;
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Ldev/zacsweers/metro/gradle/analysis/InjectorMetadata;
+	public static synthetic fun copy$default (Ldev/zacsweers/metro/gradle/analysis/InjectorMetadata;Ljava/lang/String;ILjava/lang/Object;)Ldev/zacsweers/metro/gradle/analysis/InjectorMetadata;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getKey ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final synthetic class dev/zacsweers/metro/gradle/analysis/InjectorMetadata$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Ldev/zacsweers/metro/gradle/analysis/InjectorMetadata$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ldev/zacsweers/metro/gradle/analysis/InjectorMetadata;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Ldev/zacsweers/metro/gradle/analysis/InjectorMetadata;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+}
+
+public final class dev/zacsweers/metro/gradle/analysis/InjectorMetadata$Companion {
 	public final fun serializer ()Lkotlinx/serialization/KSerializer;
 }
 
@@ -722,6 +868,36 @@ public final synthetic class dev/zacsweers/metro/gradle/analysis/OptionalWrapper
 }
 
 public final class dev/zacsweers/metro/gradle/analysis/OptionalWrapperMetadata$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class dev/zacsweers/metro/gradle/analysis/RootsMetadata {
+	public static final field Companion Ldev/zacsweers/metro/gradle/analysis/RootsMetadata$Companion;
+	public fun <init> ()V
+	public fun <init> (Ljava/util/List;Ljava/util/List;)V
+	public synthetic fun <init> (Ljava/util/List;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/util/List;
+	public final fun component2 ()Ljava/util/List;
+	public final fun copy (Ljava/util/List;Ljava/util/List;)Ldev/zacsweers/metro/gradle/analysis/RootsMetadata;
+	public static synthetic fun copy$default (Ldev/zacsweers/metro/gradle/analysis/RootsMetadata;Ljava/util/List;Ljava/util/List;ILjava/lang/Object;)Ldev/zacsweers/metro/gradle/analysis/RootsMetadata;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAccessors ()Ljava/util/List;
+	public final fun getInjectors ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final synthetic class dev/zacsweers/metro/gradle/analysis/RootsMetadata$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Ldev/zacsweers/metro/gradle/analysis/RootsMetadata$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ldev/zacsweers/metro/gradle/analysis/RootsMetadata;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Ldev/zacsweers/metro/gradle/analysis/RootsMetadata;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+}
+
+public final class dev/zacsweers/metro/gradle/analysis/RootsMetadata$Companion {
 	public final fun serializer ()Lkotlinx/serialization/KSerializer;
 }
 
