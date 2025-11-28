@@ -281,7 +281,7 @@ ${metadata.graphs.joinToString("\n") { graph ->
     }
     .sidebar-header h1 {
       font-size: 1.3rem;
-      color: #58a6ff;
+      color: #0078C6;
       margin-bottom: 4px;
       word-break: break-all;
     }
@@ -313,7 +313,7 @@ ${metadata.graphs.joinToString("\n") { graph ->
     }
     .search-box input:focus {
       outline: none;
-      border-color: #58a6ff;
+      border-color: #0078C6;
       box-shadow: 0 0 0 3px rgba(88,166,255,0.15);
     }
     .search-box::before {
@@ -345,7 +345,7 @@ ${metadata.graphs.joinToString("\n") { graph ->
       border-radius: 8px;
       padding: 12px;
     }
-    .stat-value { font-size: 1.5rem; font-weight: 700; color: #58a6ff; }
+    .stat-value { font-size: 1.5rem; font-weight: 700; color: #0078C6; }
     .stat-label { font-size: 0.75rem; color: #8b949e; margin-top: 2px; }
     .toggle-group {
       display: flex;
@@ -463,7 +463,7 @@ ${metadata.graphs.joinToString("\n") { graph ->
       opacity: 0.5;
     }
     .edge-legend-item .edge-line.default {
-      background: #ffc107;
+      background: #F6BC26;
       border-style: dashed;
     }
     .edge-legend-item .edge-line.alias {
@@ -471,11 +471,11 @@ ${metadata.graphs.joinToString("\n") { graph ->
       border-style: dotted;
     }
     .edge-legend-item .edge-line.accessor {
-      background: #4fc3f7;
+      background: #009952;
       height: 3px;
     }
     .edge-legend-item .edge-line.inherited {
-      background: #ff44cc;
+      background: #EB6800;
       border-style: dashed;
       height: 3px;
     }
@@ -500,7 +500,7 @@ ${metadata.graphs.joinToString("\n") { graph ->
       color: #e6edf3;
     }
     .filter-toggle input {
-      accent-color: #58a6ff;
+      accent-color: #0078C6;
       width: 16px;
       height: 16px;
     }
@@ -520,7 +520,7 @@ ${metadata.graphs.joinToString("\n") { graph ->
       color: #e6edf3;
     }
     .package-item input {
-      accent-color: #58a6ff;
+      accent-color: #0078C6;
     }
     .package-item .pkg-color {
       width: 10px;
@@ -537,7 +537,7 @@ ${metadata.graphs.joinToString("\n") { graph ->
     .detail-header {
       font-family: monospace;
       font-size: 0.85rem;
-      color: #58a6ff;
+      color: #0078C6;
       word-break: break-all;
       margin-bottom: 12px;
       padding-bottom: 12px;
@@ -551,7 +551,7 @@ ${metadata.graphs.joinToString("\n") { graph ->
     }
     .detail-label { color: #8b949e; }
     .detail-value { color: #e6edf3; font-family: monospace; }
-    .detail-value.scoped { color: #ff44cc; }
+    .detail-value.scoped { color: #FFFFFF; font-weight: 600; }
     .deps-section { margin-top: 16px; }
     .deps-title {
       font-size: 0.75rem;
@@ -582,7 +582,7 @@ ${metadata.graphs.joinToString("\n") { graph ->
       color: #8b949e;
       transition: all 0.15s;
     }
-    .dep-item:hover { background: #30363d; color: #58a6ff; }
+    .dep-item:hover { background: #30363d; color: #0078C6; }
     .controls {
       padding: 12px 20px;
       border-top: 1px solid #30363d;
@@ -611,7 +611,7 @@ ${metadata.graphs.joinToString("\n") { graph ->
       font-size: 0.8rem;
     }
     .longest-path-info .path-length {
-      color: #58a6ff;
+      color: #0078C6;
       font-weight: 600;
     }
     .longest-path-info .path-nodes {
@@ -779,17 +779,17 @@ ${packages.mapIndexed { i, pkg ->
             function esc(s) { return s ? s.replace(/</g, '&lt;').replace(/>/g, '&gt;') : s; }
             if (params.dataType === 'node') {
               const d = params.data;
-              let html = '<div style="font-weight:600;color:#58a6ff;margin-bottom:8px">' + esc(d.name);
-              if (d.isGraph) html += ' <span style="color:#ffd700;font-size:10px">◆ GRAPH</span>';
-              else if (d.isExtension) html += ' <span style="color:#00bfff;font-size:10px">▢ EXTENSION</span>';
-              else if (d.isDefaultValue) html += ' <span style="color:#ffc107;font-size:10px">📌 DEFAULT</span>';
+              let html = '<div style="font-weight:600;color:#0078C6;margin-bottom:8px">' + esc(d.name);
+              if (d.isGraph) html += ' <span style="color:#009952;font-size:10px">◆ GRAPH</span>';
+              else if (d.isExtension) html += ' <span style="color:#EB6800;font-size:10px">▢ EXTENSION</span>';
+              else if (d.isDefaultValue) html += ' <span style="color:#F6BC26;font-size:10px">📌 DEFAULT</span>';
               else if (d.synthetic) html += ' <span style="color:#8b949e;font-size:10px">(synthetic)</span>';
               html += '</div>';
               html += '<div style="color:#8b949e;font-size:11px">' + esc(d.fullKey) + '</div>';
               html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid #30363d">';
               html += '<div>Type: <span style="color:#e6edf3">' + d.kind + '</span></div>';
               html += '<div>Package: <span style="color:#e6edf3">' + (d.pkg || '(root)') + '</span></div>';
-              if (d.scoped) html += '<div>Scoped: <span style="color:#ff44cc">Yes</span></div>';
+              if (d.scoped) html += '<div>Scoped: <span style="color:#FFFFFF;font-weight:600">Yes</span></div>';
               if (d.scope) html += '<div>Scope: <span style="color:#e6edf3">' + d.scope + '</span></div>';
               // Analysis metrics (if available) with heatmap coloring
               if (d.fanIn !== undefined || d.fanOut !== undefined) {
@@ -797,22 +797,22 @@ ${packages.mapIndexed { i, pkg ->
                 html += '<div style="font-size:10px;color:#8b949e;margin-bottom:4px">ANALYSIS</div>';
                 // Fan-in with heatmap: green (low) -> yellow -> red (high)
                 if (d.fanIn !== undefined) {
-                  const fanInColor = d.fanIn > 10 ? '#f85149' : d.fanIn > 5 ? '#ffc107' : '#58a6ff';
+                  const fanInColor = d.fanIn > 10 ? '#D82233' : d.fanIn > 5 ? '#F6BC26' : '#0078C6';
                   html += '<div>Fan-in: <span style="color:' + fanInColor + '">' + d.fanIn + '</span></div>';
                 }
                 // Fan-out with heatmap
                 if (d.fanOut !== undefined) {
-                  const fanOutColor = d.fanOut > 8 ? '#f85149' : d.fanOut > 4 ? '#ffc107' : '#58a6ff';
+                  const fanOutColor = d.fanOut > 8 ? '#D82233' : d.fanOut > 4 ? '#F6BC26' : '#0078C6';
                   html += '<div>Fan-out: <span style="color:' + fanOutColor + '">' + d.fanOut + '</span></div>';
                 }
                 // Centrality with heatmap
                 if (d.centrality !== undefined && d.centrality > 0) {
-                  const centralityColor = d.centrality > 0.3 ? '#ff6b6b' : d.centrality > 0.1 ? '#ffc107' : '#74c476';
+                  const centralityColor = d.centrality > 0.3 ? '#ff6b6b' : d.centrality > 0.1 ? '#F6BC26' : '#74c476';
                   html += '<div>Centrality: <span style="color:' + centralityColor + '">' + (d.centrality * 100).toFixed(1) + '%</span></div>';
                 }
                 // Dominator count with heatmap
                 if (d.dominatorCount !== undefined && d.dominatorCount > 0) {
-                  const domColor = d.dominatorCount > 10 ? '#f85149' : d.dominatorCount > 5 ? '#ffc107' : '#58a6ff';
+                  const domColor = d.dominatorCount > 10 ? '#D82233' : d.dominatorCount > 5 ? '#F6BC26' : '#0078C6';
                   html += '<div>Dominates: <span style="color:' + domColor + '">' + d.dominatorCount + ' bindings</span></div>';
                 }
               }
@@ -967,16 +967,16 @@ ${packages.mapIndexed { i, pkg ->
       // Analysis metrics section with heatmap colors
       if (node.fanIn !== undefined || node.fanOut !== undefined) {
         html += '<div class="deps-section"><div class="deps-title">Analysis</div>';
-        const fanInColor = node.fanIn > 10 ? '#f85149' : node.fanIn > 5 ? '#ffc107' : '#58a6ff';
-        const fanOutColor = node.fanOut > 8 ? '#f85149' : node.fanOut > 4 ? '#ffc107' : '#58a6ff';
+        const fanInColor = node.fanIn > 10 ? '#D82233' : node.fanIn > 5 ? '#F6BC26' : '#0078C6';
+        const fanOutColor = node.fanOut > 8 ? '#D82233' : node.fanOut > 4 ? '#F6BC26' : '#0078C6';
         html += '<div class="detail-row"><span class="detail-label">Fan-in</span><span class="detail-value" style="color:' + fanInColor + '">' + (node.fanIn || 0) + '</span></div>';
         html += '<div class="detail-row"><span class="detail-label">Fan-out</span><span class="detail-value" style="color:' + fanOutColor + '">' + (node.fanOut || 0) + '</span></div>';
         if (node.centrality !== undefined && node.centrality > 0) {
-          const centralityColor = node.centrality > 0.3 ? '#ff6b6b' : node.centrality > 0.1 ? '#ffc107' : '#74c476';
+          const centralityColor = node.centrality > 0.3 ? '#ff6b6b' : node.centrality > 0.1 ? '#F6BC26' : '#74c476';
           html += '<div class="detail-row"><span class="detail-label">Centrality</span><span class="detail-value" style="color:' + centralityColor + '">' + (node.centrality * 100).toFixed(1) + '%</span></div>';
         }
         if (node.dominatorCount !== undefined && node.dominatorCount > 0) {
-          const domColor = node.dominatorCount > 10 ? '#f85149' : node.dominatorCount > 5 ? '#ffc107' : '#58a6ff';
+          const domColor = node.dominatorCount > 10 ? '#D82233' : node.dominatorCount > 5 ? '#F6BC26' : '#0078C6';
           html += '<div class="detail-row"><span class="detail-label">Dominates</span><span class="detail-value" style="color:' + domColor + '">' + node.dominatorCount + ' bindings</span></div>';
         }
         html += '</div>';
@@ -1029,7 +1029,7 @@ ${packages.mapIndexed { i, pkg ->
       const newNodes = graphData.nodes.map(n => ({
         ...n,
         itemStyle: pathSet.has(n.fullKey)
-          ? { borderColor: '#f85149', borderWidth: 4 }
+          ? { borderColor: '#D82233', borderWidth: 4 }
           : { opacity: 0.2 },
         label: labelStyle
       }));
@@ -1037,7 +1037,7 @@ ${packages.mapIndexed { i, pkg ->
       const newLinks = graphData.links.map(l => ({
         ...l,
         lineStyle: pathEdges.has(l.source + '→' + l.target)
-          ? { color: '#f85149', width: 3, opacity: 1 }
+          ? { color: '#D82233', width: 3, opacity: 1 }
           : { opacity: 0.1 }
       }));
 
@@ -1262,6 +1262,29 @@ ${packages.mapIndexed { i, pkg ->
         "Absent" to 12,
       )
 
+    // Map binding kinds to their colors for edge inheritance
+    val kindColorMap =
+      mapOf(
+        "ConstructorInjected" to Colors.CONSTRUCTOR_INJECTED,
+        "Provided" to Colors.PROVIDED,
+        "Alias" to Colors.ALIAS,
+        "BoundInstance" to Colors.BOUND_INSTANCE,
+        "Multibinding" to Colors.MULTIBINDING,
+        "GraphExtension" to Colors.GRAPH_EXTENSION,
+        "GraphExtensionFactory" to Colors.GRAPH_EXTENSION,
+        "Assisted" to Colors.ASSISTED,
+        "ObjectClass" to Colors.OBJECT_CLASS,
+        "GraphDependency" to Colors.GRAPH_DEPENDENCY,
+        "MembersInjected" to Colors.MEMBERS_INJECTED,
+        "CustomWrapper" to Colors.CUSTOM_WRAPPER,
+        "DefaultValue" to Colors.DEFAULT_VALUE,
+        "Absent" to Colors.OTHER,
+      )
+
+    // Build map from binding key to its color
+    val bindingColorMap =
+      metadata.bindings.associate { it.key to (kindColorMap[it.bindingKind] ?: Colors.OTHER) }
+
     // Build set of multibinding source keys for edge coloring
     val multibindingSources =
       metadata.bindings
@@ -1365,10 +1388,22 @@ ${packages.mapIndexed { i, pkg ->
             put(
               "itemStyle",
               buildJsonObject {
-                // Only scoped bindings get a special border (graphs/extensions use shape only)
-                if (binding.isScoped && !isMainGraph && !isGraphExtension) {
-                  put("borderColor", JsonPrimitive(Colors.SCOPED_BORDER))
-                  put("borderWidth", JsonPrimitive(3))
+                // Main graph gets green fill+border, extensions get orange border
+                when {
+                  isMainGraph -> {
+                    put("color", JsonPrimitive(Colors.GRAPH_NODE_BORDER))
+                    put("borderColor", JsonPrimitive(Colors.GRAPH_NODE_BORDER))
+                    put("borderWidth", JsonPrimitive(3))
+                  }
+                  isGraphExtension -> {
+                    put("color", JsonPrimitive(Colors.EXTENSION_NODE_BORDER))
+                    put("borderColor", JsonPrimitive(Colors.EXTENSION_NODE_BORDER))
+                    put("borderWidth", JsonPrimitive(3))
+                  }
+                  binding.isScoped -> {
+                    put("borderColor", JsonPrimitive(Colors.SCOPED_BORDER))
+                    put("borderWidth", JsonPrimitive(3))
+                  }
                 }
                 if (isSynthetic) {
                   put("opacity", JsonPrimitive(0.6))
@@ -1385,17 +1420,17 @@ ${packages.mapIndexed { i, pkg ->
                     metrics.betweennessCentrality > 0.1 -> {
                       // Medium centrality - yellow glow
                       put("shadowBlur", JsonPrimitive(10))
-                      put("shadowColor", JsonPrimitive("#ffc107"))
+                      put("shadowColor", JsonPrimitive("#F6BC26"))
                     }
                     metrics.dominatorCount > 10 -> {
                       // High dominator count - red glow
                       put("shadowBlur", JsonPrimitive(12))
-                      put("shadowColor", JsonPrimitive("#f85149"))
+                      put("shadowColor", JsonPrimitive("#D82233"))
                     }
                     metrics.fanIn > 10 -> {
                       // High fan-in - blue glow
                       put("shadowBlur", JsonPrimitive(8))
-                      put("shadowColor", JsonPrimitive("#58a6ff"))
+                      put("shadowColor", JsonPrimitive("#0078C6"))
                     }
                   }
                 }
@@ -1545,6 +1580,8 @@ ${packages.mapIndexed { i, pkg ->
                 }
 
                 // Apply line style based on edge type
+                // Normal edges inherit color from source binding
+                val sourceColor = bindingColorMap[binding.key] ?: Colors.OTHER
                 put(
                   "lineStyle",
                   buildJsonObject {
@@ -1565,7 +1602,7 @@ ${packages.mapIndexed { i, pkg ->
                         put("curveness", JsonPrimitive(0.05))
                       }
                       "deferrable" -> {
-                        put("color", JsonPrimitive(Colors.EDGE_DEFERRABLE))
+                        put("color", JsonPrimitive(sourceColor))
                         put("type", JsonPrimitive("dashed"))
                       }
                       "assisted" -> {
@@ -1576,7 +1613,10 @@ ${packages.mapIndexed { i, pkg ->
                       "multibinding" -> {
                         put("color", JsonPrimitive(Colors.EDGE_MULTIBINDING))
                       }
-                      else -> {} // use defaults
+                      else -> {
+                        // Normal edges inherit color from source binding
+                        put("color", JsonPrimitive(sourceColor))
+                      }
                     }
                   },
                 )
@@ -1720,53 +1760,80 @@ ${packages.mapIndexed { i, pkg ->
   }
 }
 
-/** Centralized color constants for graph visualization */
+/**
+ * Centralized color constants for graph visualization.
+ *
+ * Colors based on the NYC MTA subway line colors:
+ * - Red (#D82233) - 1/2/3 lines
+ * - Orange (#EB6800) - B/D/F/M lines
+ * - Yellow (#F6BC26) - N/Q/R/W lines
+ * - Light Green (#799534) - G line
+ * - Dark Green (#009952) - 4/5/6 lines
+ * - Blue (#0078C6) - A/C/E lines
+ * - Purple (#9A38A1) - 7 line
+ * - Grey (#7C858C) - L/S shuttles
+ * - Brown (#8E5C33) - J/Z lines
+ * - Teal (#008EB7) - T line (Second Ave)
+ */
 internal object Colors {
-  // Edge type colors
-  const val EDGE_ALIAS = "#9e9e9e" // gray
-  const val EDGE_ACCESSOR = "#4fc3f7" // light blue - graph entry points
-  // Binding kind colors (for node fill)
-  const val CONSTRUCTOR_INJECTED = "#6baed6" // blue
-  const val PROVIDED = "#74c476" // green
-  const val ALIAS = "#9e9e9e" // gray (synthetic)
-  const val BOUND_INSTANCE = "#64b5f6" // light blue
-  const val MULTIBINDING = "#f48fb1" // pink
-  const val GRAPH_EXTENSION = "#b39ddb" // purple
-  const val ASSISTED = "#ffab91" // peach
-  const val OBJECT_CLASS = "#a5d6a7" // light green
-  const val GRAPH_DEPENDENCY = "#ef9a9a" // light red
-  const val MEMBERS_INJECTED = "#fff59d" // light yellow
-  const val CUSTOM_WRAPPER = "#80deea" // cyan
-  const val DEFAULT_VALUE = "#ffc107" // amber - default value provider
-  const val OTHER = "#e0e0e0" // light gray
+  // NYC Subway line colors
+  private const val SUBWAY_RED = "#D82233" // 1/2/3
+  private const val SUBWAY_ORANGE = "#EB6800" // B/D/F/M
+  private const val SUBWAY_YELLOW = "#F6BC26" // N/Q/R/W
+  private const val SUBWAY_LIGHT_GREEN = "#799534" // G
+  private const val SUBWAY_DARK_GREEN = "#009952" // 4/5/6
+  private const val SUBWAY_BLUE = "#0078C6" // A/C/E
+  private const val SUBWAY_PURPLE = "#9A38A1" // 7
+  private const val SUBWAY_GREY = "#7C858C" // L/S
+  private const val SUBWAY_BROWN = "#8E5C33" // J/Z
+  private const val SUBWAY_TEAL = "#008EB7" // T
+
+  // Edge type colors (special cases - most edges inherit from source node)
+  const val EDGE_ALIAS = SUBWAY_GREY
+  const val EDGE_ACCESSOR = SUBWAY_DARK_GREEN // graph entry points - green
+  const val EDGE_DEFAULT = SUBWAY_GREY // default value edges
+
+  // Binding kind colors (for node fill AND edge color inheritance)
+  const val CONSTRUCTOR_INJECTED = SUBWAY_BLUE // main building blocks - blue
+  const val PROVIDED = SUBWAY_YELLOW // providers
+  const val ALIAS = SUBWAY_GREY // synthetic aliases
+  const val BOUND_INSTANCE = SUBWAY_TEAL // bound instances
+  const val MULTIBINDING = SUBWAY_PURPLE // collections
+  const val GRAPH_EXTENSION = SUBWAY_ORANGE // extensions
+  const val ASSISTED = SUBWAY_RED // assisted factories
+  const val OBJECT_CLASS = SUBWAY_TEAL // object classes
+  const val GRAPH_DEPENDENCY = SUBWAY_BLUE // graph dependencies
+  const val MEMBERS_INJECTED = SUBWAY_LIGHT_GREEN // members injection
+  const val CUSTOM_WRAPPER = SUBWAY_TEAL // custom wrappers
+  const val DEFAULT_VALUE = SUBWAY_YELLOW // default value provider
+  const val OTHER = SUBWAY_GREY
 
   // UI accent colors
-  const val SCOPED_BORDER = "#ff44cc" // bright magenta
-  const val GRAPH_NODE_BORDER = "#ffd700" // gold - main dependency graph
-  const val EXTENSION_NODE_BORDER = "#00bfff" // deep sky blue - graph extensions
-  const val LONGEST_PATH = "#f85149" // red
-  const val PRIMARY = "#58a6ff" // blue link color
+  const val SCOPED_BORDER = "#FFFFFF" // scoped bindings - white for emphasis
+  const val GRAPH_NODE_BORDER = SUBWAY_DARK_GREEN // main dependency graph - matches accessors
+  const val EXTENSION_NODE_BORDER = SUBWAY_ORANGE // graph extensions - match extension color
+  const val LONGEST_PATH = SUBWAY_RED // path highlight
+  const val PRIMARY = SUBWAY_BLUE // link color
 
-  // Edge type colors
-  const val EDGE_DEFERRABLE = "#17becf" // cyan
-  const val EDGE_ASSISTED = "#ff7f0e" // orange
-  const val EDGE_INHERITED = "#ff44cc" // magenta - inherited scoped binding from parent
-  const val EDGE_MULTIBINDING = "#9467bd" // purple
-  const val EDGE_DEFAULT = "#30363d" // dark gray
+  // Edge type colors (for special edge types)
+  const val EDGE_DEFERRABLE = SUBWAY_TEAL // Provider/Lazy
+  const val EDGE_ASSISTED = SUBWAY_RED // assisted injection
+  const val EDGE_INHERITED = SUBWAY_ORANGE // inherited from parent - match extension color
+  const val EDGE_MULTIBINDING = SUBWAY_PURPLE // multibinding contributions
 
-  /** Distinct colors for package grouping */
+  /** Distinct colors for package grouping - NYC Subway palette */
   val packageColors =
     listOf(
-      "#6baed6", // blue
-      "#74c476", // green
-      "#fd8d3c", // orange
-      "#9e9ac8", // purple
-      "#e377c2", // pink
-      "#bcbd22", // olive
-      "#17becf", // cyan
-      "#ff7f0e", // dark orange
-      "#8c564b", // brown
-      "#7f7f7f", // gray
+      SUBWAY_RED, // 1/2/3
+      SUBWAY_DARK_GREEN, // 4/5/6
+      SUBWAY_BLUE, // A/C/E
+      SUBWAY_ORANGE, // B/D/F/M
+      SUBWAY_YELLOW, // N/Q/R/W
+      SUBWAY_PURPLE, // 7
+      SUBWAY_LIGHT_GREEN, // G
+      SUBWAY_BROWN, // J/Z
+      SUBWAY_TEAL, // T
+      SUBWAY_GREY, // L/S
       "#d62728", // red
       "#1f77b4", // dark blue
       "#2ca02c", // dark green
