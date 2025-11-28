@@ -61,7 +61,7 @@ public inline fun <reified VM : ViewModel> assistedMetroViewModel(
 @Composable
 public inline fun <
   reified VM : ViewModel,
-  reified FactoryType : ManualViewModelAssistedFactory<VM>,
+  reified FactoryType : ManualViewModelAssistedFactory,
 > assistedMetroViewModel(
   viewModelStoreOwner: ViewModelStoreOwner = requireViewModelStoreOwner(),
   key: String? = null,

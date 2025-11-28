@@ -30,7 +30,7 @@ public annotation class ViewModelAssistedFactoryKey(val value: KClass<out ViewMo
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.RUNTIME)
 public annotation class ManualViewModelAssistedFactoryKey(
-  val value: KClass<out ManualViewModelAssistedFactory<*>>
+  val value: KClass<out ManualViewModelAssistedFactory>
 )
 
 /**
@@ -80,11 +80,9 @@ public interface ViewModelAssistedFactory {
  * Or in Compose with the `assistedMetroViewModel` overload that accepts a reified
  * [ManualViewModelAssistedFactory] type:
  * ```kotlin
- * val viewModel = assistedMetroViewModel<MyViewModel, MyViewModel.Factory> {
+ * val viewModel = assistedMetroViewModel<MyViewModel> {
  *   create("param1", 42)
  * }
  * ```
- *
- * @param VM The type of ViewModel this factory creates.
  */
-public interface ManualViewModelAssistedFactory<VM : ViewModel>
+public interface ManualViewModelAssistedFactory

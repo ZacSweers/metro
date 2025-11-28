@@ -31,8 +31,8 @@ class DetailsViewModel(@Assisted val data: String) : ViewModel() {
 
   @AssistedFactory
   @ManualViewModelAssistedFactoryKey(Factory::class)
-  @ContributesIntoMap(AppScope::class, binding<ManualViewModelAssistedFactory<*>>())
-  fun interface Factory : ManualViewModelAssistedFactory<DetailsViewModel> {
+  @ContributesIntoMap(AppScope::class, binding<ManualViewModelAssistedFactory>())
+  fun interface Factory : ManualViewModelAssistedFactory {
     fun create(@Assisted data: String): DetailsViewModel
   }
 }

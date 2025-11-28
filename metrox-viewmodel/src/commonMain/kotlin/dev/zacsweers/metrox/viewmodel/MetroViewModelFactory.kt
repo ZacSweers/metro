@@ -28,7 +28,7 @@ import kotlin.reflect.KClass
  * class MyViewModelFactory(
  *   override val viewModelProviders: Map<KClass<out ViewModel>, Provider<ViewModel>>,
  *   override val assistedFactoryProviders: Map<KClass<out ViewModel>, Provider<ViewModelAssistedFactory>>,
- *   override val manualAssistedFactoryProviders: Map<KClass<out ManualViewModelAssistedFactory<*>>, Provider<ManualViewModelAssistedFactory<*>>>,
+ *   override val manualAssistedFactoryProviders: Map<KClass<out ManualViewModelAssistedFactory>, Provider<ManualViewModelAssistedFactory>>,
  * ): MetroViewModelFactory()
  *
  * // Compose installation
@@ -72,10 +72,7 @@ public abstract class MetroViewModelFactory : ViewModelProvider.Factory {
     Map<KClass<out ViewModel>, Provider<ViewModelAssistedFactory>> =
     emptyMap()
   protected open val manualAssistedFactoryProviders:
-    Map<
-      KClass<out ManualViewModelAssistedFactory<*>>,
-      Provider<ManualViewModelAssistedFactory<*>>,
-    > =
+    Map<KClass<out ManualViewModelAssistedFactory>, Provider<ManualViewModelAssistedFactory>> =
     emptyMap()
 
   @Suppress("UNCHECKED_CAST")
@@ -91,10 +88,9 @@ public abstract class MetroViewModelFactory : ViewModelProvider.Factory {
     throw IllegalArgumentException("Unknown model class $modelClass")
   }
 
-  public fun <
-    VM : ViewModel,
-    FactoryType : ManualViewModelAssistedFactory<VM>,
-  > createManuallyAssistedFactory(factoryClass: KClass<FactoryType>): Provider<FactoryType> {
+  public fun <FactoryType : ManualViewModelAssistedFactory> createManuallyAssistedFactory(
+    factoryClass: KClass<FactoryType>
+  ): Provider<FactoryType> {
     manualAssistedFactoryProviders[factoryClass]?.let { provider ->
       @Suppress("UNCHECKED_CAST")
       return provider as Provider<FactoryType>

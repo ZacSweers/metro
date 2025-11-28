@@ -49,7 +49,7 @@ A `ViewModelProvider.Factory` implementation that uses injected maps to create V
 class MyViewModelFactory(
   override val viewModelProviders: Map<KClass<out ViewModel>, Provider<ViewModel>>,
   override val assistedFactoryProviders: Map<KClass<out ViewModel>, Provider<ViewModelAssistedFactory>>,
-  override val manualAssistedFactoryProviders: Map<KClass<out ManualViewModelAssistedFactory<*>>, Provider<ManualViewModelAssistedFactory<*>>>,
+  override val manualAssistedFactoryProviders: Map<KClass<out ManualViewModelAssistedFactory>, Provider<ManualViewModelAssistedFactory>>,
 ) : MetroViewModelFactory()
 ```
 
@@ -99,8 +99,8 @@ class CustomViewModel(@Assisted val param1: String, @Assisted val param2: Int) :
 
   @AssistedFactory
   @ManualViewModelAssistedFactoryKey(Factory::class)
-  @ContributesIntoMap(AppScope::class, binding<ManualViewModelAssistedFactory<*>>())
-  interface Factory : ManualViewModelAssistedFactory<CustomViewModel> {
+  @ContributesIntoMap(AppScope::class)
+  interface Factory : ManualViewModelAssistedFactory {
     fun create(param1: String, param2: Int): CustomViewModel
   }
 }
