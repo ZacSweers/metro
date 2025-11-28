@@ -36,11 +36,7 @@ public data class RootsMetadata(
 )
 
 /** Metadata for an accessor property. */
-@Serializable
-public data class AccessorMetadata(
-  val key: String,
-  val isDeferrable: Boolean = false,
-)
+@Serializable public data class AccessorMetadata(val key: String, val isDeferrable: Boolean = false)
 
 /** Metadata for an injector function. */
 @Serializable public data class InjectorMetadata(val key: String)
@@ -61,10 +57,7 @@ public data class ExtensionsMetadata(
 
 /** Metadata for an extension factory accessor. */
 @Serializable
-public data class ExtensionFactoryAccessorMetadata(
-  val key: String,
-  val isSAM: Boolean = false,
-)
+public data class ExtensionFactoryAccessorMetadata(val key: String, val isSAM: Boolean = false)
 
 /** Metadata for a single binding within a graph. */
 @Serializable
@@ -95,7 +88,8 @@ public data class DependencyMetadata(
   val isAssisted: Boolean = false,
 ) {
   /** True if wrapped in Provider/Lazy (breaks cycles). */
-  val isDeferrable: Boolean get() = wrapperType != null
+  val isDeferrable: Boolean
+    get() = wrapperType != null
 }
 
 /** Metadata for multibinding configuration. */
