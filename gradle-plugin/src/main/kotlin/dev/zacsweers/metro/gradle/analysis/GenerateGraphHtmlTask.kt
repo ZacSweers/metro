@@ -665,6 +665,10 @@ ${metadata.graphs.joinToString("\n") { graph ->
             <input type="checkbox" id="show-contributions">
             <span>Show synthetic contribution types</span>
           </label>
+          <label class="filter-toggle" style="margin-top:8px">
+            <input type="checkbox" id="hide-labels">
+            <span>Hide labels (art mode)</span>
+          </label>
         </div>
 
         <div class="section">
@@ -1010,6 +1014,36 @@ ${packages.mapIndexed { i, pkg ->
       });
     });
 
+    // Render longest path highlighting (respects art mode)
+    function renderLongestPath() {
+      const pathSet = new Set(longestPath);
+      const pathEdges = new Set();
+      for (let i = 0; i < longestPath.length - 1; i++) {
+        pathEdges.add(longestPath[i] + '→' + longestPath[i + 1]);
+      }
+
+      // Respect art mode (hide labels)
+      const hideLabels = document.getElementById('hide-labels').checked;
+      const labelStyle = hideLabels ? { show: false } : undefined;
+
+      const newNodes = graphData.nodes.map(n => ({
+        ...n,
+        itemStyle: pathSet.has(n.fullKey)
+          ? { borderColor: '#f85149', borderWidth: 4 }
+          : { opacity: 0.2 },
+        label: labelStyle
+      }));
+
+      const newLinks = graphData.links.map(l => ({
+        ...l,
+        lineStyle: pathEdges.has(l.source + '→' + l.target)
+          ? { color: '#f85149', width: 3, opacity: 1 }
+          : { opacity: 0.1 }
+      }));
+
+      chart.setOption({ series: [{ data: newNodes, links: newLinks }] });
+    }
+
     // Longest path highlight
     document.getElementById('longest-path-btn').addEventListener('click', () => {
       showingLongestPath = !showingLongestPath;
@@ -1020,29 +1054,7 @@ ${packages.mapIndexed { i, pkg ->
         btn.classList.add('active');
         btn.innerHTML = '<span class="icon">✓</span> Showing Longest Path';
         info.style.display = 'block';
-
-        // Highlight longest path nodes and edges
-        const pathSet = new Set(longestPath);
-        const pathEdges = new Set();
-        for (let i = 0; i < longestPath.length - 1; i++) {
-          pathEdges.add(longestPath[i] + '→' + longestPath[i + 1]);
-        }
-
-        const newNodes = graphData.nodes.map(n => ({
-          ...n,
-          itemStyle: pathSet.has(n.fullKey)
-            ? { borderColor: '#f85149', borderWidth: 4 }
-            : { opacity: 0.2 }
-        }));
-
-        const newLinks = graphData.links.map(l => ({
-          ...l,
-          lineStyle: pathEdges.has(l.source + '→' + l.target)
-            ? { color: '#f85149', width: 3, opacity: 1 }
-            : { opacity: 0.1 }
-        }));
-
-        chart.setOption({ series: [{ data: newNodes, links: newLinks }] });
+        renderLongestPath();
       } else {
         btn.classList.remove('active');
         btn.innerHTML = '<span class="icon">📏</span> Show Longest Path';
@@ -1063,6 +1075,7 @@ ${packages.mapIndexed { i, pkg ->
       const showDefaults = document.getElementById('show-defaults').checked;
       const showGlow = document.getElementById('show-glow').checked;
       const showContributions = document.getElementById('show-contributions').checked;
+      const hideLabels = document.getElementById('hide-labels').checked;
       const enabledPackages = new Set();
       document.querySelectorAll('#package-filter input:checked').forEach(c => {
         enabledPackages.add(c.dataset.package);
@@ -1109,7 +1122,9 @@ ${packages.mapIndexed { i, pkg ->
           delete baseStyle.shadowBlur;
           delete baseStyle.shadowColor;
         }
-        return {...n, itemStyle: Object.keys(baseStyle).length > 0 ? baseStyle : undefined};
+        // Hide labels in art mode
+        const labelStyle = hideLabels ? { show: false } : undefined;
+        return {...n, itemStyle: Object.keys(baseStyle).length > 0 ? baseStyle : undefined, label: labelStyle};
       });
 
       // Filter links - remove links to/from removed nodes, fade links to faded nodes
@@ -1151,6 +1166,15 @@ ${packages.mapIndexed { i, pkg ->
     // Contribution types filter
     document.getElementById('show-contributions').addEventListener('change', applyFilters);
 
+    // Art mode (hide labels) - also re-renders longest path if showing
+    document.getElementById('hide-labels').addEventListener('change', () => {
+      if (showingLongestPath) {
+        renderLongestPath();
+      } else {
+        applyFilters();
+      }
+    });
+
     // Search
     document.getElementById('search').addEventListener('input', applyFilters);
 
@@ -1166,6 +1190,7 @@ ${packages.mapIndexed { i, pkg ->
       document.getElementById('show-defaults').checked = false;
       document.getElementById('show-glow').checked = true;
       document.getElementById('show-contributions').checked = false;
+      document.getElementById('hide-labels').checked = false;
       document.getElementById('search').value = '';
       applyFilters();
     });
