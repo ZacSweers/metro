@@ -117,6 +117,7 @@ data class GraphAnalysis(
   val dominator: DominatorResult,
   val centrality: CentralityResult,
   val fanAnalysis: FanAnalysisResult,
+  val pathsToRoot: PathsToRootResult,
 )
 ```
 
@@ -205,6 +206,52 @@ The graph's own binding (BoundInstance) includes dependencies on:
 3. **Graph extensions** - Extension accessors and factories
 
 This creates edges from the graph node to all exposed types.
+
+## Shortest Paths & Path Highlighting
+
+The analysis computes shortest paths from every node back to the graph root using Dijkstra's algorithm (via `ShortestPath` class from dependency-analysis-gradle-plugin).
+
+### PathsToRootResult
+```kotlin
+data class PathsToRootResult(
+  val rootKey: String,                    // The graph root node key
+  val paths: Map<String, List<String>>,   // Node key -> path to root (inclusive)
+)
+```
+
+Each path is a list from the node to root, e.g., `["MyService", "MyRepository", "AppGraph"]`.
+
+### Computation
+In `GraphAnalyzer.computePathsToRoot()`:
+1. Create `ShortestPath` instance with graph root as source
+2. For each node, get path via `shortestPath.pathTo(node)`
+3. Reverse the path (Dijkstra returns root→node, we want node→root)
+4. Store in map keyed by node
+
+### Usage in Visualization
+The precomputed paths are embedded in the HTML as a JavaScript object:
+```javascript
+const pathsToRoot = { "com.example.Foo": ["Foo", "Bar", "AppGraph"], ... };
+```
+
+When a user clicks a node:
+1. Look up the precomputed path from `pathsToRoot`
+2. Highlight all nodes and edges along the path
+3. Fade non-path elements to 15% opacity
+
+Clear highlighting via:
+- Double-click anywhere
+- Press ESC key
+- Click on empty chart background
+
+### Dynamic Glow Thresholds
+Glow effect thresholds are computed dynamically based on graph size and metrics distribution:
+- **High centrality**: 90th percentile of centrality values
+- **Medium centrality**: 75th percentile of centrality values
+- **Dominator count**: 10% of graph size (minimum 3)
+- **Fan-in**: 90th percentile of fan-in values
+
+This ensures glow effects work well for both small and large graphs.
 
 ## Filtering System
 

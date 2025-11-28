@@ -65,7 +65,8 @@ The generated HTML visualizations provide powerful tools for exploring your depe
 
 - **Drag** nodes to rearrange the layout
 - **Scroll** to zoom in/out
-- **Click** a node to view its details and highlight connections
+- **Click** a node to view its details and highlight the path back to the graph root
+- **Double-click** or press **ESC** to clear path highlighting
 - **Hover** over nodes and edges for tooltips
 
 ### Layout Modes
@@ -126,12 +127,15 @@ Synthetic (generated) bindings appear gray and with reduced opacity. They do giv
 
 Nodes with notable analysis metrics are highlighted with glow effects to draw attention to potential architectural concerns:
 
-| Glow Color | Trigger                       | Meaning                                              |
-|------------|-------------------------------|------------------------------------------------------|
-| **Red**    | Centrality > 30%              | Critical connector - many paths flow through it      |
-| **Yellow** | Centrality > 10%              | Moderate connector - notable traffic hub             |
-| **Red**    | Dominator count > 10          | Dominates many bindings - initialization bottleneck  |
-| **Blue**   | Fan-in > 10                   | Highly depended-upon - changes affect many consumers |
+| Glow Color | Trigger                          | Meaning                                              |
+|------------|----------------------------------|------------------------------------------------------|
+| **Red**    | Centrality in top 10%            | Critical connector - many paths flow through it      |
+| **Yellow** | Centrality in top 25%            | Moderate connector - notable traffic hub             |
+| **Red**    | Dominator count > 10% of graph   | Dominates many bindings - initialization bottleneck  |
+| **Blue**   | Fan-in in top 10%                | Highly depended-upon - changes affect many consumers |
+
+!!! note "Dynamic Thresholds"
+    Glow thresholds are computed dynamically based on graph size and metrics distribution. This ensures meaningful highlighting for both small (10 nodes) and large (500+ nodes) graphs.
 
 Use the "Show metrics glow" filter to toggle these effects on/off.
 
@@ -348,6 +352,26 @@ The `analyzeMetroGraph` task computes several metrics that help identify archite
     - Use `Provider`/`Lazy` to defer initialization of deep branches
     - May indicate "wrapper" classes that just delegate
 
+### Shortest Paths to Root
+
+**What it measures:** The shortest path from each binding back to the graph root, computed using Dijkstra's algorithm.
+
+**In simple terms:** For any binding, what's the most direct route back to where it's consumed by the graph? This is precomputed during analysis and used to power the path highlighting feature in the visualization.
+
+**How to use it:**
+
+- **Click any node** in the visualization to highlight its path back to the graph root
+- The path shows the minimum number of hops to reach that binding from the graph's entry points
+- Useful for understanding how deeply nested a binding is in the dependency structure
+- Helps trace the resolution path when debugging injection issues
+
+**In the analysis JSON:**
+```kotlin
+val pathsToRoot = graph.pathsToRoot
+val path = pathsToRoot.paths["com.example.MyService"]
+// Returns: ["MyService", "MyRepository", "AppGraph"] (from binding to root)
+```
+
 ### Root and Leaf Analysis
 
 **What it measures:**
@@ -466,6 +490,7 @@ data class GraphAnalysis(
     val longestPath: LongestPathResult, // Deepest dependency chains
     val dominator: DominatorResult,     // Dominator tree analysis
     val centrality: CentralityResult,   // Betweenness centrality scores
-    val fanAnalysis: FanAnalysisResult  // Fan-in/fan-out metrics
+    val fanAnalysis: FanAnalysisResult, // Fan-in/fan-out metrics
+    val pathsToRoot: PathsToRootResult  // Shortest paths from each node to graph root
 )
 ```
