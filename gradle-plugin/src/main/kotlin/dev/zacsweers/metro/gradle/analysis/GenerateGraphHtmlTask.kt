@@ -661,6 +661,10 @@ ${metadata.graphs.joinToString("\n") { graph ->
             <input type="checkbox" id="show-glow" checked>
             <span>Show metrics glow</span>
           </label>
+          <label class="filter-toggle" style="margin-top:8px">
+            <input type="checkbox" id="show-contributions">
+            <span>Show synthetic contribution types</span>
+          </label>
         </div>
 
         <div class="section">
@@ -813,6 +817,10 @@ ${packages.mapIndexed { i, pkg ->
             }
             if (params.dataType === 'edge') {
               const d = params.data;
+              // For deferrable edges, show the specific type (Provider or Lazy)
+              if (d.edgeType === 'deferrable' && d.wrapperType) {
+                return 'Deferrable (' + d.wrapperType + ')';
+              }
               const edgeLabels = {
                 'accessor': 'Accessor (graph entry point)',
                 'inherited': 'Inherited binding (from parent graph)',
@@ -844,6 +852,10 @@ ${packages.mapIndexed { i, pkg ->
     }
 
     function getSeriesOption(layout) {
+      // Calculate appropriate zoom based on number of nodes
+      const nodeCount = graphData.nodes.length;
+      const initialZoom = nodeCount > 200 ? 0.3 : nodeCount > 100 ? 0.5 : nodeCount > 50 ? 0.7 : 1;
+
       const base = {
         type: 'graph',
         data: graphData.nodes,
@@ -851,6 +863,7 @@ ${packages.mapIndexed { i, pkg ->
         categories: categories,
         roam: true,
         draggable: true,
+        zoom: initialZoom,
         label: {
           show: true,
           position: 'right',
@@ -872,7 +885,7 @@ ${packages.mapIndexed { i, pkg ->
           curveness: 0.2,
           opacity: 0.7
         },
-        scaleLimit: { min: 0.2, max: 5 }
+        scaleLimit: { min: 0.1, max: 5 }
       };
 
       if (layout === 'force') {
@@ -919,11 +932,24 @@ ${packages.mapIndexed { i, pkg ->
       }
     });
 
+    // HTML escape helper to prevent XSS and fix display of < > characters
+    function escapeHtml(str) {
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // Shorten a fully-qualified type key to just class names (handles generics)
+    function shortenTypeKey(key) {
+      // Replace qualified names with short names, but handle generics properly
+      // Match: word characters and dots followed by a dot and then a capitalized class name
+      // This handles: com.example.Foo -> Foo, kotlin.collections.Map<kotlin.String, com.example.Bar> -> Map<String, Bar>
+      return key.replace(/(?:[\w]+\.)+([A-Z][\w]*)/g, '$1');
+    }
+
     function showDetails(node) {
       const deps = graphData.links.filter(l => l.source === node.fullKey).map(l => l.target);
       const depts = dependents[node.fullKey] || [];
 
-      let html = '<div class="detail-header">' + node.fullKey + '</div>';
+      let html = '<div class="detail-header">' + escapeHtml(node.fullKey) + '</div>';
       html += '<div class="detail-row"><span class="detail-label">Kind</span><span class="detail-value">' + node.kind + '</span></div>';
       html += '<div class="detail-row"><span class="detail-label">Package</span><span class="detail-value">' + (node.pkg || '(root)') + '</span></div>';
       html += '<div class="detail-row"><span class="detail-label">Scoped</span><span class="detail-value' + (node.scoped ? ' scoped' : '') + '">' + (node.scoped ? 'Yes' : 'No') + '</span></div>';
@@ -954,11 +980,11 @@ ${packages.mapIndexed { i, pkg ->
 
       if (deps.length > 0) {
         html += '<div class="deps-section"><div class="deps-title">Dependencies <span class="count">' + deps.length + '</span></div>';
-        html += '<div class="deps-list">' + deps.map(d => '<div class="dep-item" onclick="focusNode(\'' + d.replace(/'/g, "\\'") + '\')">' + d.split('.').pop() + '</div>').join('') + '</div></div>';
+        html += '<div class="deps-list">' + deps.map(d => '<div class="dep-item" onclick="focusNode(\'' + d.replace(/'/g, "\\'") + '\')">' + escapeHtml(shortenTypeKey(d)) + '</div>').join('') + '</div></div>';
       }
       if (depts.length > 0) {
         html += '<div class="deps-section"><div class="deps-title">Dependents <span class="count">' + depts.length + '</span></div>';
-        html += '<div class="deps-list">' + depts.map(d => '<div class="dep-item" onclick="focusNode(\'' + d.replace(/'/g, "\\'") + '\')">' + d.split('.').pop() + '</div>').join('') + '</div></div>';
+        html += '<div class="deps-list">' + depts.map(d => '<div class="dep-item" onclick="focusNode(\'' + d.replace(/'/g, "\\'") + '\')">' + escapeHtml(shortenTypeKey(d)) + '</div>').join('') + '</div></div>';
       }
 
       document.getElementById('details').innerHTML = html;
@@ -979,7 +1005,8 @@ ${packages.mapIndexed { i, pkg ->
         document.querySelectorAll('.toggle-btn[data-layout]').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         currentLayout = btn.dataset.layout;
-        updateChart();
+        // Use applyFilters() instead of updateChart() to respect filter state
+        applyFilters();
       });
     });
 
@@ -1035,13 +1062,14 @@ ${packages.mapIndexed { i, pkg ->
       const scopedOnly = document.getElementById('scoped-only').checked;
       const showDefaults = document.getElementById('show-defaults').checked;
       const showGlow = document.getElementById('show-glow').checked;
+      const showContributions = document.getElementById('show-contributions').checked;
       const enabledPackages = new Set();
       document.querySelectorAll('#package-filter input:checked').forEach(c => {
         enabledPackages.add(c.dataset.package);
       });
       const query = document.getElementById('search').value.toLowerCase();
 
-      // Track which nodes pass the "removal" filters (default value toggle)
+      // Track which nodes pass the "removal" filters (default value toggle, contribution types)
       const includedNodeKeys = new Set();
       // Track which nodes pass all filters (for opacity)
       const visibleNodeKeys = new Set();
@@ -1050,12 +1078,15 @@ ${packages.mapIndexed { i, pkg ->
       originalNodes.forEach(n => {
         // Default value nodes are completely removed when filter is off
         const passesDefaults = showDefaults || !n.isDefaultValue;
-        if (passesDefaults) {
+        // MetroContribution types are removed when filter is off
+        const isContribution = n.fullKey.includes('MetroContribution');
+        const passesContributions = showContributions || !isContribution;
+        if (passesDefaults && passesContributions) {
           includedNodeKeys.add(n.fullKey);
         }
       });
 
-      // Filter nodes - remove default value nodes if filter is off, fade others
+      // Filter nodes - remove default value/contribution nodes if filter is off, fade others
       const newNodes = originalNodes.filter(n => includedNodeKeys.has(n.fullKey)).map(n => {
         // Check visibility filters (fade but don't remove)
         const passesPackage = enabledPackages.has(n.pkg);
@@ -1117,6 +1148,9 @@ ${packages.mapIndexed { i, pkg ->
     // Glow effects filter
     document.getElementById('show-glow').addEventListener('change', applyFilters);
 
+    // Contribution types filter
+    document.getElementById('show-contributions').addEventListener('change', applyFilters);
+
     // Search
     document.getElementById('search').addEventListener('input', applyFilters);
 
@@ -1131,12 +1165,22 @@ ${packages.mapIndexed { i, pkg ->
       document.getElementById('scoped-only').checked = false;
       document.getElementById('show-defaults').checked = false;
       document.getElementById('show-glow').checked = true;
+      document.getElementById('show-contributions').checked = false;
       document.getElementById('search').value = '';
       applyFilters();
     });
 
     document.getElementById('center-btn').addEventListener('click', () => {
-      chart.resize();
+      // Fit the graph to view by calculating bounds and setting appropriate zoom
+      const nodes = chart.getOption().series[0].data;
+      if (!nodes || nodes.length === 0) return;
+
+      // For force layout, nodes may not have fixed positions yet
+      // Trigger a re-layout by updating the option
+      const option = getBaseOption();
+      option.series = [getSeriesOption(currentLayout)];
+      chart.setOption(option, true);
+      applyFilters();
     });
 
     // Resize handler
@@ -1399,7 +1443,6 @@ ${packages.mapIndexed { i, pkg ->
 
           // Check if this is an inherited scoped binding (extension accessing parent's scoped
           // binding)
-          // Note: We don't check dep.isAccessor because extension accessors may not have it set
           val isInheritedScope = isGraphExtension && targetKey in scopedKeys
 
           if (defaultValueNodeKey != null) {
@@ -1449,7 +1492,6 @@ ${packages.mapIndexed { i, pkg ->
             val edgeType =
               when {
                 isInheritedScope -> "inherited"
-                dep.isAccessor -> "accessor"
                 isAlias -> "alias"
                 dep.isAssisted || (isAssistedFactory && targetKey == binding.aliasTarget) ->
                   "assisted"
@@ -1472,6 +1514,10 @@ ${packages.mapIndexed { i, pkg ->
                 put("target", JsonPrimitive(targetKey))
                 put("edgeType", JsonPrimitive(edgeType))
                 put("value", JsonPrimitive(edgeValue))
+                // Include wrapper type for deferrable edges
+                if (edgeType == "deferrable" && dep.wrapperType != null) {
+                  put("wrapperType", JsonPrimitive(dep.wrapperType))
+                }
 
                 // Apply line style based on edge type
                 put(
@@ -1512,6 +1558,28 @@ ${packages.mapIndexed { i, pkg ->
               }
             )
           }
+        }
+      }
+
+      // Add accessor edges from the graph node to each accessor (from roots)
+      metadata.roots?.accessors?.forEach { accessor ->
+        val targetKey = unwrapTypeKey(accessor.key)
+        if (targetKey in nodeKeys) {
+          add(
+            buildJsonObject {
+              put("source", JsonPrimitive(metadata.graph))
+              put("target", JsonPrimitive(targetKey))
+              put("edgeType", JsonPrimitive("accessor"))
+              put("value", JsonPrimitive(1.0))
+              put(
+                "lineStyle",
+                buildJsonObject {
+                  put("color", JsonPrimitive(Colors.EDGE_ACCESSOR))
+                  put("width", JsonPrimitive(2))
+                },
+              )
+            }
+          )
         }
       }
     }

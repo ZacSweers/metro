@@ -167,11 +167,22 @@ Edges are styled to indicate the relationship type:
 
 ### Understanding Graph Structure
 
-**Entry points:**
-Light blue edges from the main graph (diamond) show your public API. These are the types accessible via accessor properties.
+**Entry points (roots):**
+The graph's entry points are tracked in the `roots` metadata object, separate from binding dependencies. This includes:
+
+- **Accessors** - Properties on the graph interface that expose bindings (e.g., `val serviceA: ServiceA`)
+- **Injectors** - Functions that inject dependencies into targets (e.g., `fun inject(target: Activity)`)
+
+Light blue edges from the main graph (diamond) show these entry points—your graph's public API. The analysis infrastructure creates edges from the graph to accessor targets when building the graph structure.
 
 **Graph extensions:**
-Rounded rectangle nodes show `@GraphExtension` types. Magenta dashed edges indicate which scoped bindings they inherit from the parent graph.
+Rounded rectangle nodes show `@GraphExtension` types. Extension information is tracked in the `extensions` metadata object:
+
+- **accessors** - Non-factory extension accessors
+- **factoryAccessors** - Factory accessors that create extension instances
+- **factoriesImplemented** - Factory interfaces this graph implements
+
+Magenta dashed edges indicate which scoped bindings extensions inherit from the parent graph.
 
 **Binding flow:**
 Follow edges from entry points inward to understand how dependencies are resolved. The direction of arrows shows the "depends on" relationship.
@@ -389,11 +400,30 @@ val scopedCount = metadata.graphs.sumOf { graph ->
     graph.bindings.count { it.isScoped }
 }
 println("Total scoped bindings: $scopedCount")
+
+// Check entry points
+for (graph in metadata.graphs) {
+    println("Graph: ${graph.graph}")
+    graph.roots?.let { roots ->
+        println("  Accessors: ${roots.accessors.size}")
+        println("  Injectors: ${roots.injectors.size}")
+    }
+    graph.extensions?.let { ext ->
+        println("  Extension factories: ${ext.factoriesImplemented.size}")
+    }
+}
 ```
 
 The raw metadata includes:
 
-- All bindings with their kinds, scopes, and dependencies
+- **roots** - Entry points into the graph
+    - `accessors` - Properties exposing bindings from the graph
+    - `injectors` - Functions that inject dependencies into targets
+- **extensions** - Graph extension information
+    - `accessors` - Non-factory extension accessors
+    - `factoryAccessors` - Factory accessors (with `isSAM` flag)
+    - `factoriesImplemented` - Factory interfaces this graph implements
+- **bindings** - All bindings with their kinds, scopes, and dependencies
 - Multibinding information (sources, collection type)
 - Origin locations (file and line numbers)
 - Synthetic binding flags

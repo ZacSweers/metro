@@ -37,6 +37,38 @@ The system generates interactive HTML visualizations of Metro dependency graphs 
 
 ## Data Models
 
+### GraphMetadata
+Top-level metadata for a dependency graph:
+```kotlin
+data class GraphMetadata(
+  val graph: String,                    // Fully qualified graph class name
+  val scopes: List<String>,             // Scope annotations
+  val aggregationScopes: List<String>,  // Aggregation scope class names
+  val roots: RootsMetadata?,            // Entry points (accessors, injectors)
+  val extensions: ExtensionsMetadata?,  // Graph extension information
+  val bindings: List<BindingMetadata>,  // All bindings in the graph
+)
+```
+
+### RootsMetadata
+Entry points into the graph (separate from binding dependencies):
+```kotlin
+data class RootsMetadata(
+  val accessors: List<AccessorMetadata>,  // val serviceA: ServiceA
+  val injectors: List<InjectorMetadata>,  // fun inject(target: Foo)
+)
+```
+
+### ExtensionsMetadata
+Graph extension information:
+```kotlin
+data class ExtensionsMetadata(
+  val accessors: List<ExtensionAccessorMetadata>,         // Extension accessors
+  val factoryAccessors: List<ExtensionFactoryAccessorMetadata>,  // Factory accessors
+  val factoriesImplemented: List<String>,                 // Factory interfaces this graph implements
+)
+```
+
 ### BindingMetadata
 Represents a single binding in the graph:
 ```kotlin
@@ -57,9 +89,12 @@ data class DependencyMetadata(
   val key: String,           // Type key of the dependency
   val isDeferrable: Boolean, // Wrapped in Provider/Lazy (breaks cycles)
   val isAssisted: Boolean,   // Assisted injection parameter
-  val isAccessor: Boolean,   // Graph entry point (accessor property)
 )
 ```
+
+Note: Accessors are tracked only in the `roots` object, not as dependencies of the graph's BoundInstance binding.
+The `BindingGraph` class creates edges from the graph to accessor targets when building the graph structure,
+maintaining clean semantic separation while preserving graph connectivity for analysis.
 
 ## Analysis Result Models
 
