@@ -20,9 +20,9 @@ kotlin {
 
   sourceSets {
     commonMain.dependencies {
-      implementation(project(":compose-viewmodels:core"))
       implementation(project(":compose-viewmodels:screen-home"))
       implementation(project(":compose-viewmodels:screen-details"))
+      implementation("dev.zacsweers.metro:metrox-viewmodel-compose")
 
       implementation(libs.jetbrains.navigation.desktop)
       implementation(libs.kotlinx.serialization.json)

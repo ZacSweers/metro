@@ -37,7 +37,6 @@ include(
   ":android-app",
   ":circuit-app",
   ":compose-viewmodels:app",
-  ":compose-viewmodels:core",
   ":compose-viewmodels:screen-details",
   ":compose-viewmodels:screen-home",
   ":graph-analysis",

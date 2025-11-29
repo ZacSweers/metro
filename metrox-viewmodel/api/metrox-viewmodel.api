@@ -1,0 +1,41 @@
+public abstract interface class dev/zacsweers/metrox/viewmodel/ManualViewModelAssistedFactory {
+}
+
+public abstract interface annotation class dev/zacsweers/metrox/viewmodel/ManualViewModelAssistedFactoryKey : java/lang/annotation/Annotation {
+	public abstract fun value ()Ljava/lang/Class;
+}
+
+public abstract class dev/zacsweers/metrox/viewmodel/MetroViewModelFactory : androidx/lifecycle/ViewModelProvider$Factory {
+	public fun <init> ()V
+	public final fun create (Lkotlin/reflect/KClass;Landroidx/lifecycle/viewmodel/CreationExtras;)Landroidx/lifecycle/ViewModel;
+	public final fun createManuallyAssistedFactory (Lkotlin/reflect/KClass;)Ldev/zacsweers/metro/Provider;
+	protected fun getAssistedFactoryProviders ()Ljava/util/Map;
+	protected fun getManualAssistedFactoryProviders ()Ljava/util/Map;
+	protected fun getViewModelProviders ()Ljava/util/Map;
+}
+
+public abstract interface class dev/zacsweers/metrox/viewmodel/MetroViewModelMultibindings {
+	public abstract fun getAssistedFactoryProviders ()Ljava/util/Map;
+	public abstract fun getManualAssistedFactoryProviders ()Ljava/util/Map;
+	public abstract fun getViewModelProviders ()Ljava/util/Map;
+}
+
+public abstract interface class dev/zacsweers/metrox/viewmodel/ViewModelAssistedFactory {
+	public abstract fun create (Landroidx/lifecycle/viewmodel/CreationExtras;)Landroidx/lifecycle/ViewModel;
+}
+
+public abstract interface annotation class dev/zacsweers/metrox/viewmodel/ViewModelAssistedFactoryKey : java/lang/annotation/Annotation {
+	public abstract fun value ()Ljava/lang/Class;
+}
+
+public abstract interface class dev/zacsweers/metrox/viewmodel/ViewModelGraph : dev/zacsweers/metrox/viewmodel/MetroViewModelMultibindings {
+	public abstract fun getMetroViewModelFactory ()Ldev/zacsweers/metrox/viewmodel/MetroViewModelFactory;
+}
+
+public abstract interface annotation class dev/zacsweers/metrox/viewmodel/ViewModelKey : java/lang/annotation/Annotation {
+	public abstract fun value ()Ljava/lang/Class;
+}
+
+public abstract class dev/zacsweers/metrox/viewmodel/ViewModelScope {
+}
+

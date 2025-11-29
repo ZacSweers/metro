@@ -14,7 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import dev.zacsweers.metro.sample.composeviewmodels.core.metroViewModel
+import dev.zacsweers.metrox.viewmodel.metroViewModel
 
 @Composable
 fun HomeScreen(

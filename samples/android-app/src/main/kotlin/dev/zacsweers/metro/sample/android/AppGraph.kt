@@ -12,10 +12,11 @@ import dev.zacsweers.metro.Multibinds
 import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metrox.android.MetroAppComponentProviders
+import dev.zacsweers.metrox.viewmodel.ViewModelGraph
 import kotlin.reflect.KClass
 
 @DependencyGraph(AppScope::class)
-interface AppGraph : MetroAppComponentProviders {
+interface AppGraph : MetroAppComponentProviders, ViewModelGraph {
 
   @Provides fun provideApplicationContext(application: Application): Context = application
 

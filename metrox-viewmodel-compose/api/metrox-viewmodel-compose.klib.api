@@ -1,0 +1,15 @@
+// Klib ABI Dump
+// Targets: [iosArm64, iosSimulatorArm64, iosX64, js, macosArm64, macosX64, wasmJs]
+// Rendering settings:
+// - Signature version: 2
+// - Show manifest properties: true
+// - Show declarations: true
+
+// Library unique name: <dev.zacsweers.metro:metrox-viewmodel-compose>
+final val dev.zacsweers.metrox.viewmodel/LocalMetroViewModelFactory // dev.zacsweers.metrox.viewmodel/LocalMetroViewModelFactory|{}LocalMetroViewModelFactory[0]
+    final fun <get-LocalMetroViewModelFactory>(): androidx.compose.runtime/ProvidableCompositionLocal<dev.zacsweers.metrox.viewmodel/MetroViewModelFactory> // dev.zacsweers.metrox.viewmodel/LocalMetroViewModelFactory.<get-LocalMetroViewModelFactory>|<get-LocalMetroViewModelFactory>(){}[0]
+
+final fun dev.zacsweers.metrox.viewmodel/requireViewModelStoreOwner(androidx.compose.runtime/Composer?, kotlin/Int): androidx.lifecycle/ViewModelStoreOwner // dev.zacsweers.metrox.viewmodel/requireViewModelStoreOwner|requireViewModelStoreOwner(androidx.compose.runtime.Composer?;kotlin.Int){}[0]
+final inline fun <#A: reified androidx.lifecycle/ViewModel, #B: reified dev.zacsweers.metrox.viewmodel/ManualViewModelAssistedFactory> dev.zacsweers.metrox.viewmodel/assistedMetroViewModel(androidx.lifecycle/ViewModelStoreOwner?, kotlin/String?, androidx.lifecycle.viewmodel/CreationExtras?, crossinline kotlin/Function1<#B, #A>, androidx.compose.runtime/Composer?, kotlin/Int, kotlin/Int): #A // dev.zacsweers.metrox.viewmodel/assistedMetroViewModel|assistedMetroViewModel(androidx.lifecycle.ViewModelStoreOwner?;kotlin.String?;androidx.lifecycle.viewmodel.CreationExtras?;kotlin.Function1<0:1,0:0>;androidx.compose.runtime.Composer?;kotlin.Int;kotlin.Int){0§<androidx.lifecycle.ViewModel>;1§<dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactory>}[0]
+final inline fun <#A: reified androidx.lifecycle/ViewModel> dev.zacsweers.metrox.viewmodel/assistedMetroViewModel(androidx.lifecycle/ViewModelStoreOwner?, kotlin/String?, androidx.lifecycle.viewmodel/CreationExtras?, androidx.compose.runtime/Composer?, kotlin/Int, kotlin/Int): #A // dev.zacsweers.metrox.viewmodel/assistedMetroViewModel|assistedMetroViewModel(androidx.lifecycle.ViewModelStoreOwner?;kotlin.String?;androidx.lifecycle.viewmodel.CreationExtras?;androidx.compose.runtime.Composer?;kotlin.Int;kotlin.Int){0§<androidx.lifecycle.ViewModel>}[0]
+final inline fun <#A: reified androidx.lifecycle/ViewModel> dev.zacsweers.metrox.viewmodel/metroViewModel(androidx.lifecycle/ViewModelStoreOwner?, kotlin/String?, androidx.compose.runtime/Composer?, kotlin/Int, kotlin/Int): #A // dev.zacsweers.metrox.viewmodel/metroViewModel|metroViewModel(androidx.lifecycle.ViewModelStoreOwner?;kotlin.String?;androidx.compose.runtime.Composer?;kotlin.Int;kotlin.Int){0§<androidx.lifecycle.ViewModel>}[0]
