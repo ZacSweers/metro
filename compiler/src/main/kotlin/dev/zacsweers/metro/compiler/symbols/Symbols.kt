@@ -132,6 +132,7 @@ internal class Symbols(
     val Composable = ClassId(FqNames.composeRuntime, StringNames.COMPOSABLE.asName())
     val GraphFactoryInvokeFunctionMarkerClass =
       ClassId(FqNames.metroRuntimeInternalPackage, "GraphFactoryInvokeFunctionMarker".asName())
+    val HasMemberInjections = ClassId(FqNames.metroRuntimePackage, "HasMemberInjections".asName())
     val JavaOptional = ClassId(FqNames.javaUtil, Names.Optional)
     val Lazy = StandardClassIds.byName("Lazy")
     val MembersInjector = ClassId(FqNames.metroRuntimePackage, Names.membersInjector)
