@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.fir
 import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.asFqNames
 import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.fir.extensions.predicate.DeclarationPredicate
 import org.jetbrains.kotlin.fir.extensions.predicate.LookupPredicate.BuilderContext.annotated
 import org.jetbrains.kotlin.fir.extensions.predicate.LookupPredicate.BuilderContext.parentAnnotated
@@ -51,6 +52,9 @@ internal class ExtensionPredicates(private val classIds: ClassIds) {
     annotated(classIds.injectLikeAnnotations.asFqNames())
 
   internal val assistedAnnotationPredicate = annotated(classIds.assistedAnnotations.asFqNames())
+
+  internal val hasMemberInjectionsAnnotationPredicate =
+    annotated(Symbols.ClassIds.HasMemberInjections.asSingleFqName())
 
   internal val assistedFactoryAnnotationPredicate =
     annotated(classIds.assistedFactoryAnnotations.asFqNames())
