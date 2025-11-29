@@ -28,5 +28,4 @@ package dev.zacsweers.metro
  *
  * Note: This annotation is not required for final classes since they cannot be subclassed.
  */
-@Target(AnnotationTarget.CLASS)
-public annotation class HasMemberInjections
+@Target(AnnotationTarget.CLASS) public annotation class HasMemberInjections

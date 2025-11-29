@@ -150,6 +150,10 @@ open annotation class dev.zacsweers.metro/GraphExtension : kotlin/Annotation { /
     }
 }
 
+open annotation class dev.zacsweers.metro/HasMemberInjections : kotlin/Annotation { // dev.zacsweers.metro/HasMemberInjections|null[0]
+    constructor <init>() // dev.zacsweers.metro/HasMemberInjections.<init>|<init>(){}[0]
+}
+
 open annotation class dev.zacsweers.metro/Includes : kotlin/Annotation { // dev.zacsweers.metro/Includes|null[0]
     constructor <init>() // dev.zacsweers.metro/Includes.<init>|<init>(){}[0]
 }

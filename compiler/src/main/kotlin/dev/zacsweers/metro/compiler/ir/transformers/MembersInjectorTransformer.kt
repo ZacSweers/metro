@@ -88,7 +88,10 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
 
   data class MemberInjectClass(
     val sourceClass: IrClass,
-    /** The generated injector class. May be null if the [sourceClass] has no direct members to inject. */
+    /**
+     * The generated injector class. May be null if the [sourceClass] has no direct members to
+     * inject.
+     */
     val injectorClass: IrClass?,
     val typeKey: IrTypeKey,
     val requiredParametersByClass: Map<ClassId, List<Parameters>>,
