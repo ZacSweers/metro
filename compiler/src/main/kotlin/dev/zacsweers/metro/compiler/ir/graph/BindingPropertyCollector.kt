@@ -63,12 +63,11 @@ internal class BindingPropertyCollector(private val graph: IrBindingGraph) {
       }
 
       // Find all bindings that are directly or transitively aliased into multibindings.
-      // These need properties to avoid inlining their dependency trees at the multibinding call site.
-      if (
-        binding is IrBinding.Alias &&
-          binding.isIntoMultibinding &&
-          !binding.hasSimpleDependencies
-      ) {
+      // These need properties to avoid inlining their dependency trees at the multibinding call
+      // site.
+      val shouldCollectAliasChain =
+        binding is IrBinding.Alias && binding.isIntoMultibinding && !binding.hasSimpleDependencies
+      if (shouldCollectAliasChain) {
         collectAliasChain(binding.aliasedType, inlineableIntoMultibinding)
       }
     }
