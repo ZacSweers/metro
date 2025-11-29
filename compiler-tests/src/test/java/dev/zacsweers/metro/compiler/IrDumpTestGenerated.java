@@ -231,4 +231,20 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
       runTest("compiler-tests/src/test/data/dump/ir/injectconstructor/ConstructorFunctionSignatures.kt");
     }
   }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/dump/ir/multibindings")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Multibindings {
+    @Test
+    public void testAllFilesPresentInMultibindings() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/multibindings"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    }
+
+    @Test
+    @TestMetadata("MultibindingSourcesGetGettersThroughAliases.kt")
+    public void testMultibindingSourcesGetGettersThroughAliases() {
+      runTest("compiler-tests/src/test/data/dump/ir/multibindings/MultibindingSourcesGetGettersThroughAliases.kt");
+    }
+  }
 }
