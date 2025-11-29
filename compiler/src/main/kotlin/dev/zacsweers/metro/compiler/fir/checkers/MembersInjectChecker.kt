@@ -135,7 +135,7 @@ internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
     }
 
     // Check @HasMemberInjections requirement for non-final classes
-    if (isInClass && !declaration.isFinal) {
+    if (isInClass) {
       val annotation =
         declaration.symbol.getAnnotationByClassId(Symbols.ClassIds.HasMemberInjections, session)
       val hasAnnotation = annotation != null
@@ -151,7 +151,7 @@ internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
       }
 
       val needsAnnotation = hasDeclaredMemberInjections || ancestorHasMemberInjections()
-      if (!hasAnnotation && needsAnnotation) {
+      if (!declaration.isFinal && !hasAnnotation && needsAnnotation) {
         val reason =
           if (hasDeclaredMemberInjections) {
             "has declared member injections"
