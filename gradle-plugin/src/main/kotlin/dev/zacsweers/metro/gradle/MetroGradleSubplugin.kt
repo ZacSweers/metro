@@ -16,7 +16,9 @@ import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 import org.jetbrains.kotlin.gradle.plugin.SubpluginArtifact
 import org.jetbrains.kotlin.gradle.plugin.SubpluginOption
 import org.jetbrains.kotlin.gradle.plugin.getKotlinPluginVersion
+import org.jetbrains.kotlin.gradle.plugin.kotlinToolingVersion
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
+import org.jetbrains.kotlin.tooling.core.KotlinToolingVersion
 
 public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
   private companion object {
@@ -141,8 +143,17 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         KotlinPlatformType.wasm -> false
       }
 
-    // Ensure that the languageVersion is 2.x
+    val kotlinVersion = project.kotlinToolingVersion
+    val orderComposePlugin = kotlinVersion >= KotlinToolingVersion(2, 3, 0, null)
     kotlinCompilation.compileTaskProvider.configure { task ->
+      if (orderComposePlugin) {
+        // Order before compose-compiler
+        task.compilerOptions.freeCompilerArgs.add(
+          "-Xcompiler-plugin-order=${PLUGIN_ID}>androidx.compose.compiler.plugins.kotlin"
+        )
+      }
+
+      // Ensure that the languageVersion is 2.x
       task.doFirst { innerTask ->
         val compilerOptions = (innerTask as KotlinCompilationTask<*>).compilerOptions
         val languageVersion = compilerOptions.languageVersion.orNull ?: return@doFirst
@@ -153,10 +164,13 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
     }
 
     project.dependencies.add(
-      kotlinCompilation.implementationConfigurationName,
+      kotlinCompilation.defaultSourceSet.implementationConfigurationName,
       "dev.zacsweers.metro:runtime:$VERSION",
     )
-    if (kotlinCompilation.implementationConfigurationName == "metadataCompilationImplementation") {
+    if (
+      kotlinCompilation.defaultSourceSet.implementationConfigurationName ==
+        "metadataCompilationImplementation"
+    ) {
       project.dependencies.add("commonMainImplementation", "dev.zacsweers.metro:runtime:$VERSION")
     }
 
@@ -166,13 +180,13 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
     if (isJvmTarget) {
       if (extension.interop.enableDaggerRuntimeInterop.getOrElse(false)) {
         project.dependencies.add(
-          kotlinCompilation.implementationConfigurationName,
+          kotlinCompilation.defaultSourceSet.implementationConfigurationName,
           "dev.zacsweers.metro:interop-dagger:$VERSION",
         )
       }
       if (extension.interop.enableGuiceRuntimeInterop.getOrElse(false)) {
         project.dependencies.add(
-          kotlinCompilation.implementationConfigurationName,
+          kotlinCompilation.defaultSourceSet.implementationConfigurationName,
           "dev.zacsweers.metro:interop-guice:$VERSION",
         )
       }
@@ -257,6 +271,8 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
           )
         )
         add(lazyOption("contributes-as-inject", extension.contributesAsInject))
+        // Track whether we ordered the plugin before compose-compiler
+        add(SubpluginOption("plugin-order-set", orderComposePlugin.toString()))
         reportsDir.orNull
           ?.let { FilesSubpluginOption("reports-destination", listOf(it.asFile)) }
           ?.let(::add)

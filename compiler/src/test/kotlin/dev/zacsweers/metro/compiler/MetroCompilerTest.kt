@@ -299,6 +299,9 @@ abstract class MetroCompilerTest {
               MetroOption.INTEROP_INCLUDE_GUICE_ANNOTATIONS -> {
                 processor.option(entry.raw.cliOption, false)
               }
+              MetroOption.PLUGIN_ORDER_SET -> {
+                processor.option(entry.raw.cliOption, pluginOrderSet?.toString().orEmpty())
+              }
             }
           yield(option)
         }

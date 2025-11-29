@@ -657,6 +657,18 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       required = false,
       allowMultipleOccurrences = false,
     )
+  ),
+  PLUGIN_ORDER_SET(
+    RawMetroOption(
+      name = "plugin-order-set",
+      defaultValue = "",
+      valueDescription = "<true | false | empty>",
+      description =
+        "Internal option indicating whether the plugin order was set before compose-compiler. Empty means unset.",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it },
+    )
   );
 
   companion object {
@@ -778,6 +790,11 @@ public data class MetroOptions(
   val customOptionalBindingAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_OPTIONAL_BINDING.raw.defaultValue.expectAs(),
   val contributesAsInject: Boolean = MetroOption.CONTRIBUTES_AS_INJECT.raw.defaultValue.expectAs(),
+  val pluginOrderSet: Boolean? =
+    MetroOption.PLUGIN_ORDER_SET.raw.defaultValue
+      .expectAs<String>()
+      .takeUnless(String::isBlank)
+      ?.toBooleanStrict(),
 ) {
   public fun toBuilder(): Builder = Builder(this)
 
@@ -854,6 +871,7 @@ public data class MetroOptions(
     public var customOptionalBindingAnnotations: MutableSet<ClassId> =
       base.customOptionalBindingAnnotations.toMutableSet()
     public var contributesAsInject: Boolean = base.contributesAsInject
+    public var pluginOrderSet: Boolean? = base.pluginOrderSet
 
     private fun FqName.classId(name: String): ClassId {
       return ClassId(this, Name.identifier(name))
@@ -1018,6 +1036,7 @@ public data class MetroOptions(
         customOriginAnnotations = customOriginAnnotations,
         customOptionalBindingAnnotations = customOptionalBindingAnnotations,
         contributesAsInject = contributesAsInject,
+        pluginOrderSet = pluginOrderSet,
       )
     }
 
@@ -1192,6 +1211,10 @@ public data class MetroOptions(
           }
           MetroOption.INTEROP_INCLUDE_GUICE_ANNOTATIONS -> {
             if (configuration.getAsBoolean(entry)) includeGuiceAnnotations()
+          }
+          MetroOption.PLUGIN_ORDER_SET -> {
+            pluginOrderSet =
+              configuration.getAsString(entry).takeUnless(String::isBlank)?.toBooleanStrict()
           }
         }
       }
