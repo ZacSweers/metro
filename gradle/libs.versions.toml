@@ -137,6 +137,8 @@ gjf = { module = "com.google.googlejavaformat:google-java-format", version.ref =
 
 graphSupport = "com.autonomousapps:graph-support:0.9.0"
 
+guava = "com.google.guava:guava:33.5.0-jre"
+
 ktor-client = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-contentNegotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
 ktor-client-engine-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }

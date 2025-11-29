@@ -1,5 +1,6 @@
 // Copyright (C) 2024 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import java.util.Locale
 import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
@@ -14,6 +15,7 @@ plugins {
   alias(libs.plugins.buildConfig)
   alias(libs.plugins.testkit)
   alias(libs.plugins.android.lint)
+  alias(libs.plugins.shadow) apply false
 }
 
 tasks.withType<ValidatePlugins>().configureEach { enableStricterValidation = true }
@@ -63,12 +65,56 @@ gradlePlugin {
 
 kotlin.compilerOptions.optIn.add("dev.zacsweers.metro.gradle.DelicateMetroGradleApi")
 
+/**
+ * We shade guava and graph-support to avoid conflicts with other Gradle plugins that may use
+ * different versions.
+ */
+val embedded by configurations.dependencyScope("embedded")
+
+val embeddedClasspath by configurations.resolvable("embeddedClasspath") { extendsFrom(embedded) }
+
+configurations.named("compileOnly").configure { extendsFrom(embedded) }
+
+configurations.named("testImplementation").configure { extendsFrom(embedded) }
+
+configurations.named("functionalTestImplementation").configure { extendsFrom(embedded) }
+
+tasks.jar.configure { enabled = false }
+
+val shadowJar =
+  tasks.register<ShadowJar>("shadowJar") {
+    from(java.sourceSets.main.map { it.output })
+    configurations = listOf(embeddedClasspath)
+
+    dependencies {
+      exclude(dependency("org.jetbrains:.*"))
+      exclude(dependency("org.intellij:.*"))
+      exclude(dependency("org.jetbrains.kotlin:.*"))
+    }
+
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    mergeServiceFiles()
+
+    relocate("com.google.common", "dev.zacsweers.metro.gradle.shaded.com.google.common")
+    relocate("com.google.thirdparty", "dev.zacsweers.metro.gradle.shaded.com.google.thirdparty")
+    relocate("com.google.errorprone", "dev.zacsweers.metro.gradle.shaded.com.google.errorprone")
+    relocate("com.google.j2objc", "dev.zacsweers.metro.gradle.shaded.com.google.j2objc")
+    relocate("com.autonomousapps", "dev.zacsweers.metro.gradle.shaded.com.autonomousapps")
+  }
+
+for (c in arrayOf("apiElements", "runtimeElements")) {
+  configurations.named(c) { artifacts.removeIf { true } }
+  artifacts.add(c, shadowJar)
+}
+
 dependencies {
   compileOnly(libs.kotlin.gradlePlugin)
   compileOnly(libs.kotlin.gradlePlugin.api)
   compileOnly(libs.kotlin.stdlib)
   implementation(libs.kotlinx.serialization.json)
-  implementation(libs.graphSupport)
+
+  add(embedded.name, libs.graphSupport)
+  add(embedded.name, libs.guava)
 
   lintChecks(libs.androidx.lint.gradle)
 
