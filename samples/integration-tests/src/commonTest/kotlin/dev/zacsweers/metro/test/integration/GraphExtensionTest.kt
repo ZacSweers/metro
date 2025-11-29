@@ -11,7 +11,7 @@ import dev.zacsweers.metro.createGraph
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class ContributesGraphExtensionTest {
+class GraphExtensionTest {
   @Test
   fun simple() {
     val exampleGraph = createGraph<SimpleScenario.ExampleGraph>()

@@ -220,11 +220,10 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
             extension.generateJvmContributionHintsInFir,
           )
         )
-        @Suppress("DEPRECATION")
         add(
           lazyOption(
             "enable-full-binding-graph-validation",
-            extension.enableFullBindingGraphValidation.orElse(extension.enableStrictValidation),
+            extension.enableFullBindingGraphValidation,
           )
         )
         add(
@@ -237,13 +236,10 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         add(lazyOption("shrink-unused-bindings", extension.shrinkUnusedBindings))
         add(lazyOption("chunk-field-inits", extension.chunkFieldInits))
         add(lazyOption("statements-per-init-fun", extension.statementsPerInitFun))
-        @Suppress("DEPRECATION")
         add(
           lazyOption(
             "optional-binding-behavior",
-            extension.optionalBindingBehavior.orElse(
-              extension.optionalDependencyBehavior.map { it.mapToOptionalBindingBehavior() }
-            ),
+            extension.optionalBindingBehavior,
           )
         )
         add(lazyOption("public-provider-severity", extension.publicProviderSeverity))

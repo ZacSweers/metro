@@ -26,6 +26,15 @@ Changelog
 - **Fix**: Fix qualifiers not being propagated to generated `MembersInjector` classes for multibindings.
 - **Fix**: Remove misleading "doesn't appear to be visible to this compilation" hint, as this hint was misreporting.
 - **Fix**: Fix not reserving properties multibinding contributors that are behind aliases.
+- **Removed**: Removed deprecated `enableScopedInjectClassHints` Gradle DSL property.
+- **Removed**: Removed deprecated `enableStrictValidation` Gradle DSL property.
+- **Removed**: Removed deprecated `contributesGraphExtension` Gradle DSL property.
+- **Removed**: Removed deprecated `contributesGraphExtensionFactory` Gradle DSL property.
+- **Removed**: Removed deprecated `optionalDependencyBehavior` Gradle DSL property.
+- **Removed**: Removed deprecated `OptionalDependencyBehavior` Gradle plugin class.
+- **Removed**: Removed deprecated `includeAnvil` Gradle DSL function.
+- **Removed**: Removed deprecated `ContributesGraphExtension` annotation.
+- **Removed**: Removed deprecated `OptionalDependency` annotation.
 - [gradle] Mark `metro.reportsDestination` as delicate/opt-in.
 
 0.7.7

@@ -19,7 +19,7 @@ import dev.zacsweers.metro.compiler.newInstanceStrict
 import kotlin.test.assertNotNull
 import org.junit.Test
 
-class ContributesGraphExtensionTest : MetroCompilerTest() {
+class ContributedGraphExtensionTest : MetroCompilerTest() {
   @Test
   fun simple() {
     compile(
@@ -985,7 +985,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
 
   // Regression test for https://github.com/ZacSweers/metro/issues/359
   @Test
-  fun `ContributesGraphExtension can access providers from interface contributed to parent`() {
+  fun `Contributed GraphExtension can access providers from interface contributed to parent`() {
     compile(
       source(
         """
@@ -1377,7 +1377,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `ContributesGraphExtension can provide multibindings`() {
+  fun `Contributed GraphExtension can provide multibindings`() {
     compile(
       source(
         """
@@ -1414,7 +1414,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `ContributesGraphExtension can provide multibindings via @Binds`() {
+  fun `Contributed GraphExtension can provide multibindings via @Binds`() {
     compile(
       source(
         """
@@ -1453,7 +1453,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `ContributesGraphExtension can access multibindings provided by its parent`() {
+  fun `Contributed GraphExtension can access multibindings provided by its parent`() {
     compile(
       source(
         """

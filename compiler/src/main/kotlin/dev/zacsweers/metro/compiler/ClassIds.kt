@@ -145,12 +145,6 @@ public class ClassIds(
   private val contributesIntoMapAnnotation =
     Symbols.FqNames.metroRuntimePackage.classIdOf("ContributesIntoMap")
 
-  // TODO deprecated, remove these eventually
-  private val contributesGraphExtensionAnnotation =
-    Symbols.FqNames.metroRuntimePackage.classIdOf("ContributesGraphExtension")
-  private val contributesGraphExtensionFactoryAnnotation =
-    contributesGraphExtensionAnnotation.createNestedClassId(Symbols.Names.FactoryClass)
-
   internal val contributesToAnnotations =
     setOf(contributesToAnnotation) + customContributesToAnnotations
   internal val contributesBindingAnnotations =
@@ -160,10 +154,10 @@ public class ClassIds(
   internal val contributesIntoMapAnnotations =
     setOf(contributesIntoMapAnnotation) + customIntoMapAnnotations
   internal val graphExtensionAnnotations =
-    setOf(Symbols.ClassIds.graphExtension, contributesGraphExtensionAnnotation) +
+    setOf(Symbols.ClassIds.graphExtension) +
       customGraphExtensionAnnotations
   internal val graphExtensionFactoryAnnotations =
-    setOf(Symbols.ClassIds.graphExtensionFactory, contributesGraphExtensionFactoryAnnotation) +
+    setOf(Symbols.ClassIds.graphExtensionFactory) +
       customGraphExtensionFactoryAnnotations
   internal val allGraphExtensionAndFactoryAnnotations =
     graphExtensionAnnotations + graphExtensionFactoryAnnotations

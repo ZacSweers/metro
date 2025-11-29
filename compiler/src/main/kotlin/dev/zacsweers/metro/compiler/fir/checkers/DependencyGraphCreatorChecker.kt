@@ -123,7 +123,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
     if (isContributedExtensionFactory) {
       val contributedScopes = contributesToAnno.flatMapToSet { it.allScopeClassIds() }
       val overlapping = contributedScopes.intersect(targetGraphScopes)
-      // ContributesGraphExtension.Factory must not contribute to the same scope as its containing
+      // GraphExtension.Factory must not contribute to the same scope as its containing
       // graph, otherwise it'd be contributing to itself!
       if (overlapping.isNotEmpty()) {
         reporter.reportOn(
