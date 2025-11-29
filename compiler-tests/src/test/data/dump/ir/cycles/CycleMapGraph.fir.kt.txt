@@ -146,7 +146,7 @@ interface CycleMapGraph {
 
     private val mapOfStringToX: Provider<Map<String, Provider<X>>>
       private get(): Provider<Map<String, Provider<X>>> {
-        return Companion.builder<String, X>(size = 1).put(key = "X", providerOfValue = Companion.create(y = <this>.#yProvider)).build()
+        return Companion.builder<String, X>(size = 1).put(key = "X", providerOfValue = <this>.<get-xProvider>()).build()
       }
 
     private val mapOfStringToY: Provider<Map<String, Provider<Y>>>
@@ -160,6 +160,11 @@ interface CycleMapGraph {
     override val X.x: X
       override get(): X {
         return error(message = "Never called")
+      }
+
+    private val xProvider: Provider<X>
+      private get(): Provider<X> {
+        return Companion.create(y = <this>.#yProvider)
       }
 
     @Binds

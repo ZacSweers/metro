@@ -166,6 +166,7 @@ allprojects {
     format("licenseJava") {
       licenseHeaderFile(rootProject.file("spotless/spotless.java"), "package")
       target("src/**/*.java")
+      targetExclude("**/BetweennessCentrality.java")
       targetExclude("**/*Generated.java")
     }
   }

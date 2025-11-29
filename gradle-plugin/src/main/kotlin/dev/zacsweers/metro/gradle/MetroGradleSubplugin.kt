@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.gradle
 
+import dev.zacsweers.metro.gradle.analysis.AnalyzeGraphTask
+import dev.zacsweers.metro.gradle.analysis.GenerateGraphHtmlTask
 import dev.zacsweers.metro.gradle.artifacts.GenerateGraphMetadataTask
 import dev.zacsweers.metro.gradle.artifacts.MetroArtifactCopyTask
 import org.gradle.api.Project
@@ -27,16 +29,45 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
   }
 
   override fun apply(target: Project) {
-    target.extensions.create("metro", MetroPluginExtension::class.java, target.layout)
+    val extension =
+      target.extensions.create("metro", MetroPluginExtension::class.java, target.layout)
 
-    val graphMetadataTask =
-      target.tasks.register(GenerateGraphMetadataTask.NAME, GenerateGraphMetadataTask::class.java)
-    graphMetadataTask.configure { task ->
-      task.description = "Generates Metro graph metadata for ${target.path}"
-      task.projectPath.convention(target.path)
-      task.outputFile.convention(
-        target.layout.buildDirectory.file("reports/metro/graphMetadata.json")
-      )
+    // Only register analysis tasks when reportsDestination is configured
+    target.afterEvaluate {
+      if (extension.reportsDestination.isPresent) {
+        val graphMetadataTask =
+          target.tasks.register(
+            GenerateGraphMetadataTask.NAME,
+            GenerateGraphMetadataTask::class.java,
+          )
+        graphMetadataTask.configure { task ->
+          task.description = "Generates Metro graph metadata for ${target.path}"
+          task.projectPath.convention(target.path)
+          task.outputFile.convention(
+            target.layout.buildDirectory.file("reports/metro/graphMetadata.json")
+          )
+        }
+
+        // Analysis task - comprehensive graph analysis
+        val analyzeTask = target.tasks.register(AnalyzeGraphTask.NAME, AnalyzeGraphTask::class.java)
+        analyzeTask.configure { task ->
+          task.description = "Analyzes Metro dependency graphs and produces a comprehensive report"
+          task.inputFile.convention(graphMetadataTask.flatMap { it.outputFile })
+          task.outputFile.convention(
+            target.layout.buildDirectory.file("reports/metro/analysis.json")
+          )
+        }
+
+        // HTML visualization task - interactive ECharts graphs
+        val htmlTask =
+          target.tasks.register(GenerateGraphHtmlTask.NAME, GenerateGraphHtmlTask::class.java)
+        htmlTask.configure { task ->
+          task.description = "Generates interactive HTML visualizations of Metro dependency graphs"
+          task.inputFile.convention(graphMetadataTask.flatMap { it.outputFile })
+          task.analysisFile.convention(analyzeTask.flatMap { it.outputFile })
+          task.outputDirectory.convention(target.layout.buildDirectory.dir("reports/metro/html"))
+        }
+      }
     }
   }
 
@@ -162,14 +193,13 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
     }
 
     val reportsDir =
-      extension.reportsDestination.map {
+      extension.reportsDestination.map { baseDir ->
         // Include target name to avoid collisions in KMP projects where multiple targets
         // may have compilations with the same name (e.g., both jvm and android have "main")
-        val subdir =
-          listOf(kotlinCompilation.target.name, kotlinCompilation.name)
-            .filter(String::isNotBlank)
-            .joinToString("/")
-        it.dir(subdir)
+        // Use chained dir() calls instead of joining with "/" to avoid Windows path issues
+        listOf(kotlinCompilation.target.name, kotlinCompilation.name)
+          .filter(String::isNotBlank)
+          .fold(baseDir) { dir, segment -> dir.dir(segment) }
       }
 
     if (extension.reportsDestination.isPresent) {
@@ -204,11 +234,10 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
             extension.generateJvmContributionHintsInFir,
           )
         )
-        @Suppress("DEPRECATION")
         add(
           lazyOption(
             "enable-full-binding-graph-validation",
-            extension.enableFullBindingGraphValidation.orElse(extension.enableStrictValidation),
+            extension.enableFullBindingGraphValidation,
           )
         )
         add(
@@ -221,15 +250,7 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         add(lazyOption("shrink-unused-bindings", extension.shrinkUnusedBindings))
         add(lazyOption("chunk-field-inits", extension.chunkFieldInits))
         add(lazyOption("statements-per-init-fun", extension.statementsPerInitFun))
-        @Suppress("DEPRECATION")
-        add(
-          lazyOption(
-            "optional-binding-behavior",
-            extension.optionalBindingBehavior.orElse(
-              extension.optionalDependencyBehavior.map { it.mapToOptionalBindingBehavior() }
-            ),
-          )
-        )
+        add(lazyOption("optional-binding-behavior", extension.optionalBindingBehavior))
         add(lazyOption("public-provider-severity", extension.publicProviderSeverity))
         add(
           lazyOption(

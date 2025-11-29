@@ -346,7 +346,7 @@ $dependencies
 metro {
   interop {
     includeJavax()
-    includeAnvil()
+    includeAnvilForDagger()
   }
 }
 """
@@ -907,7 +907,7 @@ metro {
   // reportsDestination.set(layout.buildDirectory.dir("metro"))
   interop {
     includeJavax()
-    includeAnvil()
+    includeAnvilForDagger()
   }
 }
 """

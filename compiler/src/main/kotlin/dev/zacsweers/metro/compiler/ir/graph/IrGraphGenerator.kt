@@ -43,7 +43,7 @@ import dev.zacsweers.metro.compiler.ir.typeOrNullableAny
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
-import dev.zacsweers.metro.compiler.isInvisibleGeneratedGraph
+import dev.zacsweers.metro.compiler.isSyntheticGeneratedGraph
 import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -641,7 +641,7 @@ internal class IrGraphGenerator(
           .forEach { property -> addChild(property) }
       }
 
-      if (!graphClass.origin.isInvisibleGeneratedGraph) {
+      if (!graphClass.origin.isSyntheticGeneratedGraph) {
         parentTracer.traceNested("Generate Metro metadata") {
           // Finally, generate metadata
           val graphProto = node.toProto(bindingGraph = bindingGraph)

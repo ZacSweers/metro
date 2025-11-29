@@ -4,13 +4,12 @@
 
 @Inject class Bar
 
+@HasMemberInjections
 open class Parent {
-
   @Inject lateinit var foo: Foo
 }
 
 class Child : Parent() {
-
   @Inject lateinit var bar: Bar
 }
 

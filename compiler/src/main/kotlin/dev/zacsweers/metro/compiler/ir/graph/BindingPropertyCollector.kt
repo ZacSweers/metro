@@ -54,11 +54,21 @@ internal class BindingPropertyCollector(private val graph: IrBindingGraph) {
 
   fun collect(): Map<IrTypeKey, CollectedProperty> {
     // Count references for each dependency
+    val inlineableIntoMultibinding = mutableSetOf<IrTypeKey>()
     for ((key, binding) in graph.bindingsSnapshot()) {
       // Ensure each key has a node
       nodes.getOrPut(key) { Node(binding) }
       for (dependency in binding.dependencies) {
         dependency.mark()
+      }
+
+      // Find all bindings that are directly or transitively aliased into multibindings.
+      // These need properties to avoid inlining their dependency trees at the multibinding call
+      // site.
+      val shouldCollectAliasChain =
+        binding is IrBinding.Alias && binding.isIntoMultibinding && !binding.hasSimpleDependencies
+      if (shouldCollectAliasChain) {
+        collectAliasChain(binding.aliasedType, inlineableIntoMultibinding)
       }
     }
 
@@ -74,8 +84,29 @@ internal class BindingPropertyCollector(private val graph: IrBindingGraph) {
               it.property.backingField != null -> PropertyType.FIELD
               else -> reportCompilerBug("No getter or backing field for reserved property")
             }
-          } ?: node.propertyType ?: continue
+          }
+            ?: node.propertyType
+            // If no property from normal logic, but it's inlineable into a multibinding, use GETTER
+            ?: if (key in inlineableIntoMultibinding) PropertyType.GETTER else continue
         put(key, CollectedProperty(node.binding, propertyType))
+      }
+    }
+  }
+
+  /**
+   * Follows an alias chain and collects all type keys that would be inlined. Handles chained
+   * aliases like: Alias1 → Alias2 → Impl
+   */
+  private fun collectAliasChain(typeKey: IrTypeKey, destination: MutableSet<IrTypeKey>) {
+    var current = typeKey
+    while (current !in destination) {
+      destination += current
+      val node = nodes[current] ?: return
+      val binding = node.binding
+      if (binding is IrBinding.Alias) {
+        current = binding.aliasedType
+      } else {
+        return
       }
     }
   }

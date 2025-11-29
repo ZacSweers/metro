@@ -278,6 +278,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
             lateinit var name: String
           }
 
+          @HasMemberInjections
           abstract class Middle : Base() {
 
             @Inject
@@ -287,6 +288,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
             lateinit var middle2: Set<String>
           }
 
+          @HasMemberInjections
           abstract class Base {
 
             @Inject
@@ -352,6 +354,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
+          @HasMemberInjections
           abstract class ExampleClass<T> {
             @Inject lateinit var string: String
           }
@@ -388,6 +391,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
+          @HasMemberInjections
           abstract class Base<T> {
             @Inject lateinit var unknownItems: List<T>
           }
@@ -444,10 +448,12 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
+          @HasMemberInjections
           abstract class Base<T> {
             @Inject lateinit var unknownItems: List<T>
           }
 
+          @HasMemberInjections
           abstract class Middle<R> : Base<R>() {
             @Inject lateinit var numbers: List<Int>
 
@@ -511,6 +517,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
         source(
           source =
             """
+          @HasMemberInjections
           abstract class Base {
             @Inject lateinit var string: String
           }
@@ -698,7 +705,8 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
           }
         }
 
-        abstract class Base {
+        @HasMemberInjections
+          abstract class Base {
           @Inject var baseLong: Long = 0L
         }
 
@@ -733,6 +741,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
           }
         }
 
+        @HasMemberInjections
         abstract class Base {
           @Inject private var privateBaseLong: Long = 0L
           fun baseLong() = privateBaseLong

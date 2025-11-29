@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
+import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -33,6 +34,9 @@ internal class GraphMetadataReporter(
     val reportsDir = context.reportsDir ?: return
     val outputDir = reportsDir.resolve("graph-metadata")
     outputDir.createDirectories()
+
+    val graphTypeKeyRendered = node.typeKey.render(short = false)
+
     val bindings =
       bindingGraph
         .bindingsSnapshot()
@@ -46,14 +50,40 @@ internal class GraphMetadataReporter(
                 binding.contextualTypeKey.render(short = false, includeQualifier = true)
               ),
             )
-            put(
-              "bindingKind",
-              JsonPrimitive(binding.javaClass.simpleName ?: binding.javaClass.name),
-            )
+            val bindingKind = binding.javaClass.simpleName ?: binding.javaClass.name
+            put("bindingKind", JsonPrimitive(bindingKind))
             binding.scope?.let { put("scope", JsonPrimitive(it.render(short = false))) }
             put("isScoped", JsonPrimitive(binding.isScoped()))
             put("nameHint", JsonPrimitive(binding.nameHint))
-            put("dependencies", buildDependenciesArray(binding.dependencies))
+            // For the graph's own binding (BoundInstance), dependencies are empty -
+            // accessors are tracked separately in the "roots" object
+            val isGraphBinding =
+              binding is IrBinding.BoundInstance &&
+                binding.contextualTypeKey.render(short = false, includeQualifier = true) ==
+                  graphTypeKeyRendered
+            val dependencies =
+              if (isGraphBinding) {
+                JsonArray(emptyList())
+              } else {
+                buildDependenciesArray(binding.dependencies, binding)
+              }
+            put("dependencies", dependencies)
+            // Determine if this is a synthetic/generated binding
+            val isSynthetic =
+              when {
+                // Alias bindings without a source declaration are synthetic
+                binding is IrBinding.Alias && binding.bindsCallable == null -> true
+                // MetroContribution types are synthetic
+                binding.contextualTypeKey
+                  .render(short = false, includeQualifier = true)
+                  .contains("MetroContribution") -> true
+                // CustomWrapper bindings are synthetic
+                binding is IrBinding.CustomWrapper -> true
+                // MembersInjected bindings are synthetic
+                binding is IrBinding.MembersInjected -> true
+                else -> false
+              }
+            put("isSynthetic", JsonPrimitive(isSynthetic))
             binding.reportableDeclaration?.let { declaration ->
               declaration.locationOrNull()?.render(short = true)?.let { location ->
                 put("origin", JsonPrimitive(location))
@@ -74,6 +104,82 @@ internal class GraphMetadataReporter(
           }
         }
 
+    // Build roots object with accessors and injectors
+    val rootsJson = buildJsonObject {
+      put(
+        "accessors",
+        buildJsonArray {
+          for (accessor in node.accessors) {
+            add(
+              buildJsonObject {
+                put(
+                  "key",
+                  JsonPrimitive(accessor.contextKey.render(short = false, includeQualifier = true)),
+                )
+                put("isDeferrable", JsonPrimitive(accessor.contextKey.wrappedType.isDeferrable()))
+              }
+            )
+          }
+        },
+      )
+      put(
+        "injectors",
+        buildJsonArray {
+          for (injector in node.injectors) {
+            add(
+              buildJsonObject {
+                put(
+                  "key",
+                  JsonPrimitive(injector.contextKey.render(short = false, includeQualifier = true)),
+                )
+              }
+            )
+          }
+        },
+      )
+    }
+
+    // Build extensions object
+    val extensionsJson = buildJsonObject {
+      // Extension accessors (non-factory)
+      val allExtensionAccessors = node.graphExtensions.values.flatten()
+      put(
+        "accessors",
+        buildJsonArray {
+          for (ext in allExtensionAccessors.filter { !it.isFactory }) {
+            add(
+              buildJsonObject {
+                put("key", JsonPrimitive(ext.key.render(short = false, includeQualifier = true)))
+              }
+            )
+          }
+        },
+      )
+      // Extension factory accessors
+      put(
+        "factoryAccessors",
+        buildJsonArray {
+          for (ext in allExtensionAccessors.filter { it.isFactory }) {
+            add(
+              buildJsonObject {
+                put("key", JsonPrimitive(ext.key.render(short = false, includeQualifier = true)))
+                put("isSAM", JsonPrimitive(ext.isFactorySAM))
+              }
+            )
+          }
+        },
+      )
+      // Factory interfaces implemented by this graph (from graph extension factory accessors)
+      put(
+        "factoriesImplemented",
+        buildJsonArray {
+          for (ext in allExtensionAccessors.filter { it.isFactory }) {
+            add(JsonPrimitive(ext.key.render(short = false, includeQualifier = true)))
+          }
+        },
+      )
+    }
+
     val graphJson = buildJsonObject {
       put("graph", JsonPrimitive(node.sourceGraph.kotlinFqName.asString()))
       put("scopes", buildAnnotationArray(node.scopes))
@@ -81,6 +187,8 @@ internal class GraphMetadataReporter(
         "aggregationScopes",
         JsonArray(node.aggregationScopes.map { JsonPrimitive(it.asSingleFqName().asString()) }),
       )
+      put("roots", rootsJson)
+      put("extensions", extensionsJson)
       put("bindings", JsonArray(bindings))
     }
 
@@ -94,18 +202,46 @@ internal class GraphMetadataReporter(
     return JsonArray(annotations.map { JsonPrimitive(it.render(short = false)) })
   }
 
-  private fun buildDependenciesArray(deps: List<IrContextualTypeKey>): JsonArray {
+  private fun buildDependenciesArray(
+    deps: List<IrContextualTypeKey>,
+    binding: IrBinding? = null,
+  ): JsonArray {
     return buildJsonArray {
       for (dependency in deps) {
         add(
           buildJsonObject {
             put("key", JsonPrimitive(dependency.render(short = false, includeQualifier = true)))
             put("hasDefault", JsonPrimitive(dependency.hasDefault))
+            // Get the wrapper type name if wrapped (Provider, Lazy, etc.)
+            val wrapperType = dependency.wrappedType.wrapperTypeName()
+            if (wrapperType != null) {
+              put("wrapperType", JsonPrimitive(wrapperType))
+            }
+            // Check if this dependency is from an assisted parameter
+            val isAssisted =
+              when (binding) {
+                is IrBinding.Assisted -> {
+                  // Assisted factories have their target as a dependency, which is the assisted
+                  // type
+                  dependency == binding.target
+                }
+                else -> false
+              }
+            put("isAssisted", JsonPrimitive(isAssisted))
           }
         )
       }
     }
   }
+
+  /** Returns the wrapper type name (e.g., "Provider", "Lazy") or null if not wrapped. */
+  private fun <T : Any> WrappedType<T>.wrapperTypeName(): String? =
+    when (this) {
+      is WrappedType.Canonical -> null
+      is WrappedType.Provider -> "Provider"
+      is WrappedType.Lazy -> "Lazy"
+      is WrappedType.Map -> valueType.wrapperTypeName()
+    }
 
   private fun IrBinding.Multibinding.toJson(): JsonObject {
     return buildJsonObject {

@@ -35,6 +35,8 @@ jobs:
     strategy:
       matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
       fail-fast: false
+    permissions:
+      checks: write
 
     steps:
       - name: Checkout
@@ -100,6 +102,8 @@ jobs:
   samples:
     name: "samples"
     runs-on: ubuntu-latest
+    permissions:
+      checks: write
 
     steps:
       - name: Checkout
@@ -164,6 +168,8 @@ jobs:
     name: "multiplatform / ${{ matrix.os }}"
     if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ${{ matrix.os }}
+    permissions:
+      checks: write
 
     strategy:
       fail-fast: false
@@ -307,10 +313,9 @@ jobs:
           fi
 
   publish:
+    name: Publish snapshot (main only)
     runs-on: macos-latest
     if: github.ref == 'refs/heads/main' && github.repository == 'zacsweers/metro'
-    # Sonatype keeps giving 429 errors lately, so no need to mark this as failure for now
-    continue-on-error: true
     needs:
       - final-status
 
@@ -354,7 +359,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-konan-
 
-      - name: Upload snapshot (main only)
+      - name: Upload snapshot
+        # Sonatype keeps giving 429 errors lately, so no need to mark this as failure for now
+        continue-on-error: true
         env:
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.SonatypeUsername }}
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.SonatypePassword }}

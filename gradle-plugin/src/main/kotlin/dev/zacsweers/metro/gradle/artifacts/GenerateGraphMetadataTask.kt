@@ -17,6 +17,7 @@ import org.gradle.api.provider.Property
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFiles
+import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
@@ -43,7 +44,7 @@ public abstract class GenerateGraphMetadataTask : DefaultTask() {
   @get:Input public abstract val projectPath: Property<String>
 
   /** The kotlinc compilation name. */
-  @get:Input public abstract val compilationName: Property<String>
+  @get:Input @get:Optional public abstract val compilationName: Property<String>
 
   /** The graph metadata JSON files. */
   @get:InputFiles
@@ -70,6 +71,9 @@ public abstract class GenerateGraphMetadataTask : DefaultTask() {
     val output = outputFile.get().asFile.toPath()
     output.deleteIfExists()
 
+    // Track seen graph names to deduplicate (KMP projects may have same graph in multiple targets)
+    val seenGraphs = mutableSetOf<String>()
+
     val graphJsonElements =
       graphJsonFiles
         .asSequence()
@@ -85,6 +89,18 @@ public abstract class GenerateGraphMetadataTask : DefaultTask() {
               null
             }
         }
+        .filter { element ->
+          // Deduplicate by graph name - in KMP projects, the same graph may be compiled
+          // by multiple targets (e.g., android and jvm both compiling shared code)
+          val graphName =
+            (element as? JsonObject)?.get("graph")?.let { (it as? JsonPrimitive)?.content }
+          if (graphName != null && !seenGraphs.add(graphName)) {
+            logger.lifecycle("Skipping duplicate graph: $graphName")
+            false
+          } else {
+            true
+          }
+        }
         .toList()
 
     val result = buildJsonObject {
@@ -96,7 +112,7 @@ public abstract class GenerateGraphMetadataTask : DefaultTask() {
     output.bufferedWriter().use { writer ->
       writer.write(json.encodeToString(JsonObject.serializer(), result))
     }
-    logger.lifecycle("Generated metro graph metadata file to $output")
+    logger.lifecycle("Generated metro graph metadata file to file://$output")
   }
 
   internal companion object {

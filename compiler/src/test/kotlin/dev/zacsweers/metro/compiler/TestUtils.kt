@@ -18,6 +18,7 @@ import dev.zacsweers.metro.internal.MetroImplMarker
 import dev.zacsweers.metro.provider
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
+import java.lang.reflect.AccessibleObject
 import java.lang.reflect.Field
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
@@ -355,15 +356,18 @@ fun <T> Any.callFunction(name: String, vararg args: Any): T {
           }
         },
     )
+    .ensureAccessible()
     .invoke(this, *args) as T
 }
 
 private val Class<*>.unboxIfPrimitive: Class<*>
   get() = primitiveByWrapper ?: this
 
+private fun <T : AccessibleObject> T.ensureAccessible(): T = apply { trySetAccessible() }
+
 fun <T> Any.callProperty(name: String): T {
   @Suppress("UNCHECKED_CAST")
-  return javaClass.getMethod("get${name.capitalizeUS()}").invoke(this) as T
+  return javaClass.getMethod("get${name.capitalizeUS()}").ensureAccessible().invoke(this) as T
 }
 
 fun <T> Any.callFactoryInvoke(vararg args: Any): T {

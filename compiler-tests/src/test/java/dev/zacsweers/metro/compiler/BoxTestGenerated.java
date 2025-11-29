@@ -466,6 +466,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("EvaluatableConstantsAreEvaluatedInFir.kt")
+    public void testEvaluatableConstantsAreEvaluatedInFir() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/EvaluatableConstantsAreEvaluatedInFir.kt");
+    }
+
+    @Test
     @TestMetadata("ExposingIncludedGraphsDirectly.kt")
     public void testExposingIncludedGraphsDirectly() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/ExposingIncludedGraphsDirectly.kt");
@@ -1418,6 +1424,24 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("AncestorInjectionWithEmptyDescendants.kt")
+    public void testAncestorInjectionWithEmptyDescendants() {
+      runTest("compiler-tests/src/test/data/box/member/AncestorInjectionWithEmptyDescendants.kt");
+    }
+
+    @Test
+    @TestMetadata("AnotherAncestorInjection.kt")
+    public void testAnotherAncestorInjection() {
+      runTest("compiler-tests/src/test/data/box/member/AnotherAncestorInjection.kt");
+    }
+
+    @Test
+    @TestMetadata("ComplexScopedAncestor.kt")
+    public void testComplexScopedAncestor() {
+      runTest("compiler-tests/src/test/data/box/member/ComplexScopedAncestor.kt");
+    }
+
+    @Test
     @TestMetadata("FieldInjectFactory.kt")
     public void testFieldInjectFactory() {
       runTest("compiler-tests/src/test/data/box/member/FieldInjectFactory.kt");
@@ -1436,9 +1460,39 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("MemberInjectsAcrossModules.kt")
+    public void testMemberInjectsAcrossModules() {
+      runTest("compiler-tests/src/test/data/box/member/MemberInjectsAcrossModules.kt");
+    }
+
+    @Test
     @TestMetadata("MembersInjectorRespectMultibindingQualifier.kt")
     public void testMembersInjectorRespectMultibindingQualifier() {
       runTest("compiler-tests/src/test/data/box/member/MembersInjectorRespectMultibindingQualifier.kt");
+    }
+
+    @Test
+    @TestMetadata("ScopedInjectIntoBaseMember.kt")
+    public void testScopedInjectIntoBaseMember() {
+      runTest("compiler-tests/src/test/data/box/member/ScopedInjectIntoBaseMember.kt");
+    }
+
+    @Test
+    @TestMetadata("SimpleAncestorInjectionWithEmptyChild.kt")
+    public void testSimpleAncestorInjectionWithEmptyChild() {
+      runTest("compiler-tests/src/test/data/box/member/SimpleAncestorInjectionWithEmptyChild.kt");
+    }
+
+    @Test
+    @TestMetadata("SimpleAncestorInjectionWithEmptyChildNoFactory.kt")
+    public void testSimpleAncestorInjectionWithEmptyChildNoFactory() {
+      runTest("compiler-tests/src/test/data/box/member/SimpleAncestorInjectionWithEmptyChildNoFactory.kt");
+    }
+
+    @Test
+    @TestMetadata("SimpleAncestorInjectionWithEmptyChildWithParentInAnotherModule.kt")
+    public void testSimpleAncestorInjectionWithEmptyChildWithParentInAnotherModule() {
+      runTest("compiler-tests/src/test/data/box/member/SimpleAncestorInjectionWithEmptyChildWithParentInAnotherModule.kt");
     }
   }
 

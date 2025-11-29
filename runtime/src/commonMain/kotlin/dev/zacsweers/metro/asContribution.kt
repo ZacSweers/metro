@@ -11,9 +11,9 @@ package dev.zacsweers.metro
  * This is not necessary if you enable IDE support.
  *
  * **NOTE**: This is _only_ applicable to [DependencyGraph]-annotated types.
- * [ContributesGraphExtension]-annotated types cannot be validated at compile-time with this
- * function as their generated class is definitionally contextual and the compiler cannot infer that
- * from callsites of this function alone.
+ * [GraphExtension]-annotated types cannot be validated at compile-time with this function as their
+ * generated class is definitionally contextual and the compiler cannot infer that from callsites of
+ * this function alone.
  *
  * @see <a href="https://zacsweers.github.io/metro/latest/installation/#ide-support">Docs for how to
  *   enable IDE support</a>

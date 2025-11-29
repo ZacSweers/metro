@@ -1,4 +1,5 @@
 // https://github.com/ZacSweers/metro/issues/1176
+@HasMemberInjections
 abstract class BaseActivity {
   @Inject lateinit var value: String
 }

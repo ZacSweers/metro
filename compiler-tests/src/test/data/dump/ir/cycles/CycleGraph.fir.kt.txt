@@ -345,7 +345,7 @@ interface CycleGraph {
       field = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider)))
 
     @DependencyGraph
-    inner class ChildCycleGraphImpl : ChildCycleGraph {
+    private inner class ChildCycleGraphImpl : ChildCycleGraph {
       private val cProvider: Provider<C>
         field = DelegateFactory<C>()
 

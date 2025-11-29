@@ -23,7 +23,7 @@ internal class IrBindingContainerResolver(private val bindingContainerAnnotation
    * Resolves all binding containers transitively starting from the given roots. This method handles
    * caching and cycle detection to build the transitive closure of all included binding containers.
    */
-  internal fun resolveAllBindingContainersCached(roots: Set<IrClass>): Set<IrClass> {
+  internal fun resolveTransitiveClosure(roots: Set<IrClass>): Set<IrClass> {
     val result = mutableSetOf<IrClass>()
     val visitedClasses = mutableSetOf<ClassId>()
 

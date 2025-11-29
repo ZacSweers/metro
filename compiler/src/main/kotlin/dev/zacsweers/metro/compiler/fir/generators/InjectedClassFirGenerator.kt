@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.Keys
+import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
 import dev.zacsweers.metro.compiler.fir.buildSafeDefaultValueStub
 import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
@@ -19,6 +20,7 @@ import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isAnnotatedInject
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
+import dev.zacsweers.metro.compiler.fir.memoizedAllSessionsSequence
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
@@ -62,6 +64,7 @@ import org.jetbrains.kotlin.fir.plugin.createNestedClass
 import org.jetbrains.kotlin.fir.plugin.createTopLevelClass
 import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
+import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
 import org.jetbrains.kotlin.fir.scopes.impl.toConeType
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
@@ -72,6 +75,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
+import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.name.CallableId
@@ -87,6 +91,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(session.predicates.injectLikeAnnotationsPredicate)
     register(session.predicates.assistedAnnotationPredicate)
+    register(session.predicates.hasMemberInjectionsAnnotationPredicate)
   }
 
   private val symbols: FirCache<Unit, Map<ClassId, FirNamedFunctionSymbol>, TypeResolveService?> =
@@ -173,6 +178,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
     private val memberKeyAllocator =
       NameAllocator(preallocateKeywords = false, mode = NameAllocator.Mode.COUNT)
     private var declaredInjectedMembersPopulated = false
+    private var parentHasMemberInjections: Boolean? = null
     private var ancestorInjectedMembersPopulated = false
 
     init {
@@ -220,6 +226,30 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
       injectedMembersParamsByMemberKey.putAll(declared)
       declaredInjectedMembersPopulated = true
       return declared
+    }
+
+    @OptIn(SymbolInternals::class)
+    fun parentClassHasMemberInjections(session: FirSession): Boolean {
+      parentHasMemberInjections?.let {
+        return it
+      }
+      val resolver =
+        MetroFirTypeResolver.Factory(session, session.memoizedAllSessionsSequence)
+          .create(classSymbol) ?: return false
+
+      return classSymbol.fir.superTypeRefs
+        .any {
+          val resolved =
+            if (it is FirResolvedTypeRef) {
+              it.coneType
+            } else {
+              resolver.resolveType(it)
+            }
+          val clazz = resolved.toRegularClassSymbol(session) ?: return@any false
+          clazz.classKind == ClassKind.CLASS &&
+            clazz.hasAnnotation(Symbols.ClassIds.HasMemberInjections, session)
+        }
+        .also { parentHasMemberInjections = it }
     }
 
     fun populateAncestorMemberInjections(session: FirSession) {
@@ -399,10 +429,15 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
         val classId = owner.classId.createNestedClassId(name)
         val injectedClass = injectFactoryClassIdsToInjectedClass[classId] ?: return null
 
+        // Supertypes are not yet resolved in this phase, so we
+        // need to separately check them here
+        val parentHasInjections = injectedClass.parentClassHasMemberInjections(session)
+
         val classKind =
           if (
             injectedClass.classSymbol.typeParameterSymbols.isEmpty() &&
-              injectedClass.allParameters.isEmpty()
+              injectedClass.allParameters.isEmpty() &&
+              !parentHasInjections
           ) {
             ClassKind.OBJECT
           } else {
@@ -658,6 +693,8 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
     val functions = mutableListOf<FirNamedFunctionSymbol>()
     if (targetClass.hasOrigin(Keys.InjectConstructorFactoryClassDeclaration)) {
       val injectedClass = injectFactoryClassIdsToInjectedClass[targetClassId] ?: return emptyList()
+
+      injectedClass.populateAncestorMemberInjections(session)
 
       val returnType = injectedClass.classSymbol.defaultType()
       functions +=

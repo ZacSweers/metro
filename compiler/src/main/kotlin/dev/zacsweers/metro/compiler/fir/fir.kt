@@ -376,6 +376,12 @@ internal fun FirAnnotationCall.computeAnnotationHash(
               ?.classId
           }
 
+          is FirFunctionCall -> {
+            // This is some constant-able expression like "foo" + "bar" in an annotation arg, which
+            // is legal
+            arg.evaluateAs<FirLiteralExpression>(session)?.value
+          }
+
           else -> {
             reportCompilerBug(
               "Unexpected annotation argument type: ${arg::class.java} - ${arg.render()}"

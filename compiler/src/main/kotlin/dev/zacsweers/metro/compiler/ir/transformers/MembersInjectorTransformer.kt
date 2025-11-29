@@ -38,6 +38,7 @@ import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
+import dev.zacsweers.metro.compiler.ir.staticIshDeclarationContainerOrNull
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.memoize
@@ -79,6 +80,7 @@ import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
+import org.jetbrains.kotlin.ir.util.superClass
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 
@@ -86,7 +88,11 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
 
   data class MemberInjectClass(
     val sourceClass: IrClass,
-    val injectorClass: IrClass,
+    /**
+     * The generated injector class. May be null if the [sourceClass] has no direct members to
+     * inject.
+     */
+    val injectorClass: IrClass?,
     val typeKey: IrTypeKey,
     val requiredParametersByClass: Map<ClassId, List<Parameters>>,
     val declaredInjectFunctions: Map<IrSimpleFunction, Parameters>,
@@ -121,7 +127,29 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
       .allSupertypesSequence(excludeSelf = false, excludeAny = true)
       .mapNotNull { it.classOrNull?.owner }
       .filterNot { it.isInterface }
-      .mapNotNull { getOrGenerateInjector(it) }
+      .mapNotNull { clazz ->
+        val injector = getOrGenerateInjector(clazz)
+        if (injector != null) {
+          injector
+        } else if (
+          (clazz == declaration) &&
+            (clazz.superClass?.hasAnnotation(Symbols.ClassIds.HasMemberInjections) == true)
+        ) {
+          // This is a class with no member injections that does extend a parent that has them.
+          // Create a binding for linking
+          MemberInjectClass(
+            sourceClass = clazz,
+            injectorClass = null,
+            typeKey =
+              IrTypeKey(clazz.defaultType.wrapInMembersInjector(), clazz.qualifierAnnotation()),
+            requiredParametersByClass = emptyMap(),
+            declaredInjectFunctions = emptyMap(),
+            isDagger = false,
+          )
+        } else {
+          null
+        }
+      }
       .toList()
       .asReversed() // Base types go first
   }
@@ -142,16 +170,20 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
       val injectedMembersByClass = declaration.getOrComputeMemberInjectParameters(isDagger)
       val parameterGroupsForClass = injectedMembersByClass.getValue(injectedClassId)
 
+      val creatorsClass = injectorClass.staticIshDeclarationContainerOrNull()
       val declaredInjectFunctions =
-        parameterGroupsForClass.associateBy { params ->
-          val name =
-            if (params.isProperty) {
-              params.irProperty!!.name
-            } else {
-              params.callableId.callableName
-            }
-          val creatorsClass = injectorClass.requireStaticIshDeclarationContainer()
-          creatorsClass.requireSimpleFunction("inject${name.capitalizeUS().asString()}").owner
+        if (creatorsClass != null) {
+          parameterGroupsForClass.associateBy { params ->
+            val name =
+              if (params.isProperty) {
+                params.irProperty!!.name
+              } else {
+                params.callableId.callableName
+              }
+            creatorsClass.requireSimpleFunction("inject${name.capitalizeUS().asString()}").owner
+          }
+        } else {
+          emptyMap()
         }
 
       return MemberInjectClass(

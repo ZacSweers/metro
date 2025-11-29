@@ -72,10 +72,6 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
   public val generateJvmContributionHintsInFir: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(false)
 
-  @Deprecated("This is deprecated and no longer does anything. It will be removed in the future.")
-  public val enableScopedInjectClassHints: Property<Boolean> =
-    objects.property(Boolean::class.javaObjectType).convention(false)
-
   /**
    * Enable/disable full validation of bindings. If enabled, _all_ declared `@Provides` and `@Binds`
    * bindings will be validated even if they are not used by the graph. Disabled by default.
@@ -93,13 +89,6 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
   public val enableGraphImplClassAsReturnType: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(false)
 
-  @Deprecated(
-    "Use enableFullBindingGraphValidation",
-    ReplaceWith("enableFullBindingGraphValidation"),
-  )
-  public val enableStrictValidation: Property<Boolean> =
-    objects.property(Boolean::class.javaObjectType).convention(false)
-
   /** Enable/disable shrinking of unused bindings. Enabled by default. */
   public val shrinkUnusedBindings: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(true)
@@ -114,13 +103,6 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
    */
   public val statementsPerInitFun: Property<Int> =
     objects.property(Int::class.javaObjectType).convention(25)
-
-  @Suppress("DEPRECATION")
-  @Deprecated("Use optionalBindingBehavior instead", ReplaceWith("optionalBindingBehavior"))
-  public val optionalDependencyBehavior: Property<OptionalDependencyBehavior> =
-    objects
-      .property(OptionalDependencyBehavior::class.java)
-      .convention(OptionalDependencyBehavior.DEFAULT)
 
   /**
    * Controls the behavior of optional dependencies on a per-compilation basis. Default is
@@ -251,12 +233,6 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     public val contributesTo: SetProperty<String> = objects.setProperty(String::class.java)
     public val contributesBinding: SetProperty<String> = objects.setProperty(String::class.java)
     public val contributesIntoSet: SetProperty<String> = objects.setProperty(String::class.java)
-    @Deprecated("This is deprecated and no longer does anything. It will be removed in the future.")
-    public val contributesGraphExtension: SetProperty<String> =
-      objects.setProperty(String::class.java)
-    @Deprecated("This is deprecated and no longer does anything. It will be removed in the future.")
-    public val contributesGraphExtensionFactory: SetProperty<String> =
-      objects.setProperty(String::class.java)
     public val elementsIntoSet: SetProperty<String> = objects.setProperty(String::class.java)
     public val dependencyGraph: SetProperty<String> = objects.setProperty(String::class.java)
     public val dependencyGraphFactory: SetProperty<String> = objects.setProperty(String::class.java)
@@ -307,26 +283,6 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     /** Includes kotlin-inject annotations support. */
     public fun includeKotlinInject() {
       includeKotlinInjectAnnotations.set(true)
-    }
-
-    @Deprecated("Use one of the more specific includeAnvil*() functions instead.")
-    @JvmOverloads
-    public fun includeAnvil(
-      includeDaggerAnvil: Boolean = true,
-      includeKotlinInjectAnvil: Boolean = true,
-    ) {
-      check(includeDaggerAnvil || includeKotlinInjectAnvil) {
-        "At least one of includeDaggerAnvil or includeKotlinInjectAnvil must be true"
-      }
-      enableDaggerAnvilInterop.set(includeDaggerAnvil)
-      if (includeDaggerAnvil) {
-        includeDagger()
-        includeAnvilAnnotations.set(true)
-      }
-      if (includeKotlinInjectAnvil) {
-        includeKotlinInject()
-        includeKotlinInjectAnvilAnnotations.set(true)
-      }
     }
 
     /** Includes Anvil annotations support for Dagger. */

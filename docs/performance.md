@@ -58,6 +58,11 @@ Metro again shines here. Dagger-KSP seems to have a bottleneck that disproportio
 
 Below are some results from real-world projects, shared with the developers' permission.
 
+!!! note "Cash App"
+    Cash App wrote a blog post about their migration to Metro: [Cash App Moves to Metro](https://code.cash.app/cash-android-moves-to-metro)
+
+    > According to our benchmarks, by migrating to Metro and K2 we managed to improve clean build speeds by over 16% and incremental build speeds by almost 60%!
+
 !!! note "Gabriel Ittner from Freeletics"
     I've got Metro working on our code base now using the Kotlin 2.2.0 preview
     
@@ -93,6 +98,11 @@ Below are some results from real-world projects, shared with the developers' per
     | Root ABI change (Incremental)     | 95.7 s             | 48.1 s (49.8% faster) |
     | Root non-ABI change (Incremental) | 70.9 s             | 38.9 s (45.2% faster) |
     | Clean build                       | 327 s              | 288 s (11.7% faster)  |
+
+!!! note "Cyril Mottier from Amo"
+    [Ref](https://x.com/cyrilmottier/status/1971562605899546936)
+
+    > We already had incremental compilation in the single-digit seconds range, but I’m still blown away by how much faster it is now that the entire codebase is fully on Metro. 🤯
 
 ### Reporting
 
