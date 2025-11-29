@@ -12,13 +12,13 @@
         <meta name="author" content="Zac Sweers">
       
       
-        <link rel="canonical" href="https://zacsweers.github.io/metro/0.8.0-SNAPSHOT/contributing/">
+        <link rel="canonical" href="https://zacsweers.github.io/metro/0.8.0-SNAPSHOT/metrox-viewmodel/">
       
       
-        <link rel="prev" href="../changelog/">
+        <link rel="prev" href="../metrox-android/">
       
       
-        <link rel="next" href="../code-of-conduct/">
+        <link rel="next" href="../api/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>Contributing - Metro</title>
+        <title>ViewModel - Metro</title>
       
     
     
@@ -63,17 +63,17 @@
     
   
 <meta property="og:type" content="website" />
-<meta property="og:title" content="Contributing - Metro" />
+<meta property="og:title" content="ViewModel - Metro" />
 <meta property="og:description" content="A multiplatform dependency injection framework for Kotlin" />
-<meta property="og:image" content="https://zacsweers.github.io/metro/0.8.0-SNAPSHOT/assets/images/social/contributing.png" />
+<meta property="og:image" content="https://zacsweers.github.io/metro/0.8.0-SNAPSHOT/assets/images/social/metrox-viewmodel.png" />
 <meta property="og:image:type" content="image/png" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
-<meta property="og:url" content="https://zacsweers.github.io/metro/0.8.0-SNAPSHOT/contributing/" />
+<meta property="og:url" content="https://zacsweers.github.io/metro/0.8.0-SNAPSHOT/metrox-viewmodel/" />
 <meta property="twitter:card" content="summary_large_image" />
-<meta property="twitter:title" content="Contributing - Metro" />
+<meta property="twitter:title" content="ViewModel - Metro" />
 <meta property="twitter:description" content="A multiplatform dependency injection framework for Kotlin" />
-<meta property="twitter:image" content="https://zacsweers.github.io/metro/0.8.0-SNAPSHOT/assets/images/social/contributing.png" />
+<meta property="twitter:image" content="https://zacsweers.github.io/metro/0.8.0-SNAPSHOT/assets/images/social/metrox-viewmodel.png" />
 </head>
   
   
@@ -93,7 +93,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#contributing-to-metro" class="md-skip">
+        <a href="#metrox-viewmodel" class="md-skip">
           Skip to content
         </a>
       
@@ -132,7 +132,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Contributing
+              ViewModel
             
           </span>
         </div>
@@ -1016,18 +1016,20 @@
       
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13" checked>
         
           
           <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="0">
@@ -1048,7 +1050,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_13">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1091,10 +1093,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../metrox-viewmodel/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ViewModel
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1110,6 +1139,120 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#core-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Components
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core Components">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#viewmodelgraph" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ViewModelGraph
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#metroviewmodelfactory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MetroViewModelFactory
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#contributing-viewmodels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Contributing ViewModels
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#assisted-viewmodel-creation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Assisted ViewModel Creation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manual-assisted-injection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual Assisted Injection
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#android-framework-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Android Framework Integration
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1262,37 +1405,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Contributing
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
         
   
   
@@ -1308,109 +1424,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#development" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Development
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#testing" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Testing
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#compiler-plugin-design" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Compiler Plugin Design
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Compiler Plugin Design">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-fir" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. FIR
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-ir" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. IR
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#typekey-and-contextualtypekey" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        TypeKey and ContextualTypeKey
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#misc-notes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Misc Notes
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1469,10 +1482,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#development" class="md-nav__link">
+  <a href="#usage" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Development
+        Usage
       
     </span>
   </a>
@@ -1480,33 +1493,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#testing" class="md-nav__link">
+  <a href="#core-components" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Testing
+        Core Components
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#compiler-plugin-design" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Compiler Plugin Design
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Compiler Plugin Design">
+    <nav class="md-nav" aria-label="Core Components">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-fir" class="md-nav__link">
+  <a href="#viewmodelgraph" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. FIR
+        ViewModelGraph
       
     </span>
   </a>
@@ -1514,10 +1516,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#2-ir" class="md-nav__link">
+  <a href="#metroviewmodelfactory" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. IR
+        MetroViewModelFactory
       
     </span>
   </a>
@@ -1525,10 +1527,32 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#typekey-and-contextualtypekey" class="md-nav__link">
+  <a href="#contributing-viewmodels" class="md-nav__link">
     <span class="md-ellipsis">
       
-        TypeKey and ContextualTypeKey
+        Contributing ViewModels
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#assisted-viewmodel-creation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Assisted ViewModel Creation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manual-assisted-injection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual Assisted Injection
       
     </span>
   </a>
@@ -1541,10 +1565,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#misc-notes" class="md-nav__link">
+  <a href="#android-framework-integration" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Misc Notes
+        Android Framework Integration
       
     </span>
   </a>
@@ -1571,82 +1595,98 @@
   
 
 
-<h1 id="contributing-to-metro">Contributing to Metro<a class="headerlink" href="#contributing-to-metro" title="Permanent link">&para;</a></h1>
-<p>Metro welcomes contributions! Small contributions like documentation improvements, small obvious fixes, etc are always good and don&rsquo;t need prior discussion. I liberally leave TODO comments in code that don&rsquo;t quite meet the standard of an issue but are still things worth improving :). For larger functionality changes or features, please raise a discussion or issue first before starting work.</p>
-<h2 id="development">Development<a class="headerlink" href="#development" title="Permanent link">&para;</a></h2>
-<p>Local development with Metro is fairly straightforward. You should be able to clone the repo and open it in IntelliJ as a standard Gradle project.</p>
-<p>If you get an issue with the Android gradle plugin version being too new, you can follow the instructions <a href="https://youtrack.jetbrains.com/issue/IDEA-348937/2024.1-Beta-missing-option-to-enable-sync-with-future-AGP-versions#focus=Comments-27-11721710.0-0">here</a>.</p>
-<p>Note: This project uses a specific JDK (see the <code>jdk</code> version in <code>libs.versions.toml</code>). If you don&rsquo;t have that JDK installed, you can likely change it to whatever JDK suits your needs as long as it&rsquo;s compatible with the <code>jvmTarget</code> version defined in <code>libs.versions.toml</code>.</p>
-<p>There are a few primary subprojects to consider.</p>
-<ol>
-<li><code>:compiler</code> — Metro&rsquo;s compiler plugin implementation lives. This includes compiler-supported interop features too.</li>
-<li><code>:compiler-tests</code> — Compiler tests using JetBrains&rsquo; official compiler testing infrastructure.</li>
-<li><code>:gradle-plugin</code> — Metro&rsquo;s companion Gradle plugin implementation. Mostly just an extension API and compiler plugin wiring with KGP.<ul>
-<li>This is also where incremental compilation integration tests live!</li>
-</ul>
-</li>
-<li><code>:runtime</code> — Metro&rsquo;s core multiplatform runtime API. This is mostly annotations plus some small runtime APIs.</li>
-<li><code>:interop-dagger</code> — An ancillary set of JVM-only Dagger-specific runtime APIs for interop with Dagger.</li>
-<li><code>samples/</code> — A separate gradle project that contains several sample projects. This <em>includes</em> the core artifacts as an included build. You can add this project in IntelliJ as another Gradle project to support developing both. There are also some integration tests in here.</li>
-<li><code>:integration-tests</code> — self-explanatory.</li>
-<li><code>:multi-module-test</code> — A multi-module integration test.</li>
-</ol>
-<p>There is a useful <code>./metrow</code> helper CLI that can perform a few common commands across the various subprojects.</p>
-<div class="admonition tip">
-<p class="admonition-title">Tip</p>
-<p>Before submitting a PR, it is useful to run <code>regen</code> and <code>check</code>.</p>
-</div>
-<ul>
-<li><code>./metrow format</code> — Runs all code formatters.</li>
-<li><code>./metrow regen</code> — Regenerates <code>.api</code> files and runs all code formatters.</li>
-<li><code>./metrow check</code> — Runs checks across all included Gradle projects (including samples and the Gradle plugin).</li>
-<li><code>./metrow publish --local --version x.y.z</code> — Publishes to maven local with the specified <code>x.y.z</code> version (replace this with whatever you want, like <code>1.0.0-LOCAL01</code>.)</li>
-</ul>
-<h2 id="testing">Testing<a class="headerlink" href="#testing" title="Permanent link">&para;</a></h2>
-<p>Tests are spread across a few areas.</p>
-<ul>
-<li><code>compiler-tests/</code> — New compiler tests using JetBrains&rsquo; official compiler testing infrastructure. If possible, write new compiler tests in here! See <a href="https://github.com/ZacSweers/metro/pull/128">this PR</a> for more details on how they work.</li>
-<li><code>compiler/src/test/</code> — Core compiler tests. These should be focused primarily on <em>error</em> testing but can also perform limited functional testing. Note that while many tests are here, new tests should ideally use <code>compiler-tests</code>.</li>
-<li><code>gradle-plugin/src/functionalTest</code> — Integration gradle tests, primarily focused on exercising different incremental compilation scenarios.</li>
-<li><code>samples/</code> — Some samples have tests! This is useful to assert that these samples work as expected.<ul>
-<li><code>integration-tests/</code> — Integration tests. These should only be functional in nature and not test error cases (error cases won&rsquo;t compile!). Note that new integration tests should usually be written in <code>compiler-tests</code>. Some scenarios, such as multi-compilation tests across Gradle, may make more sense to write here.</li>
-</ul>
-</li>
-</ul>
-<p>To publish to a local maven repo, run this:</p>
-<div class="highlight"><pre><span></span><code>./metrow<span class="w"> </span>publish<span class="w"> </span>--local<span class="w"> </span>--version<span class="w"> </span><span class="m">1</span>.0.0-LOCAL01<span class="w"> </span><span class="c1"># whatever version you want</span>
+<h1 id="metrox-viewmodel">MetroX ViewModel<a class="headerlink" href="#metrox-viewmodel" title="Permanent link">&para;</a></h1>
+<p>ViewModel integration for Metro. This artifact provides core utilities for injecting ViewModels using Metro&rsquo;s dependency injection.</p>
+<p>For Compose-specific APIs (<code>LocalMetroViewModelFactory</code>, <code>metroViewModel()</code>, etc.), see the <a href="../metrox-viewmodel-compose"><code>metrox-viewmodel-compose</code></a> artifact.</p>
+<blockquote>
+<p>Should I use this?</p>
+</blockquote>
+<p>Well, that&rsquo;s up to you! This artifact is mostly for projects coming from heavy use of more vanilla Android architecture components or <code>hiltViewModel()</code> use. Modern Android apps should use higher level architectures like Circuit*, Voyager, etc. that abstract away <code>ViewModel</code> management.</p>
+<p>*Disclosure: I am one of the authors of Circuit, and I&rsquo;m a big fan of it!</p>
+<h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
+<p><a href="https://central.sonatype.com/artifact/dev.zacsweers.metro/metrox-viewmodel"><img alt="Maven Central" src="https://img.shields.io/maven-central/v/dev.zacsweers.metro/metrox-viewmodel.svg" /></a></p>
+<div class="highlight"><pre><span></span><code><span class="n">dependencies</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">implementation</span><span class="p">(</span><span class="s">&quot;dev.zacsweers.metro:metrox-viewmodel:x.y.z&quot;</span><span class="p">)</span>
+<span class="p">}</span>
 </code></pre></div>
-<h2 id="compiler-plugin-design">Compiler Plugin Design<a class="headerlink" href="#compiler-plugin-design" title="Permanent link">&para;</a></h2>
-<p>The compiler plugin is implemented primarily in two parts.</p>
-<h3 id="1-fir">1. FIR<a class="headerlink" href="#1-fir" title="Permanent link">&para;</a></h3>
-<p>The FIR frontend generates declarations, generates supertypes, and performs diagnostic checks for Metro types. <em>Any</em> class or callable declaration generated by Metro should be done <em>here</em> as this is required for them to be visible in Kotlin metadata later.</p>
-<p>Generators go in the <code>dev.zacsweers.metro.compiler.fir.generators</code> package.</p>
-<p>Checkers go in the <code>dev.zacsweers.metro.compiler.fir.checkers</code> package.</p>
-<p>New checker contributions are generally welcome. New generators almost always warrant prior discussion first!</p>
-<h3 id="2-ir">2. IR<a class="headerlink" href="#2-ir" title="Permanent link">&para;</a></h3>
-<p>The IR backend performs two main functions:</p>
-<ol>
-<li><em>Implements</em> declarations generated in FIR. This includes generated graphs, factories, member injectors, etc.</li>
-<li>Performs dependency graph construction and validation. This is primarily spread across <code>DependencyGraphTransformer</code>, <code>BindingGraph</code>, and <code>Binding</code>.</li>
-</ol>
-<p>Most of this is implemented as <em>transformers</em> in the <code>dev.zacsweers.metro.compiler.ir.transformers</code> package. Note that <em>all</em> transformers are run from the <code>DependencyGraphTransformer</code>, which is the only <em>true</em> <code>IrTransformer</code> of the bunch and just delegates out to the other transformers as needed.</p>
-<p>Aggregation hint properties are also implemented in IR as a workaround to support incremental compilation. See <code>ContributionHintIrTransformer</code> for more details.</p>
-<h3 id="typekey-and-contextualtypekey"><code>TypeKey</code> and <code>ContextualTypeKey</code><a class="headerlink" href="#typekey-and-contextualtypekey" title="Permanent link">&para;</a></h3>
-<p><code>TypeKey</code> and <code>ContextualTypeKey</code> (and their FIR counterparts) deserve special mention. Most of the compiler&rsquo;s dependency graph analysis thinks in terms of these two types.</p>
-<p>A <code>TypeKey</code> is the canonical representations of specific binding, composed of a <em>type</em> and optional <em>qualifier</em>.</p>
-<p>A <code>ContextualTypeKey</code> can be thought up as a <code>TypeKey</code> <em>with context</em> of how it&rsquo;s used. This is useful for a few reasons:</p>
-<ul>
-<li>Allows Metro&rsquo;s compiler plugin to generate code accordingly for how the given <code>TypeKey</code> is used at runtime, for example wrapping in <code>Provider</code>, <code>Lazy</code>, etc.</li>
-<li>Allows dependency graph resolution to understand if the type is <em>deferrable</em>, which is useful in breaking dependency cycles.</li>
-</ul>
-<h2 id="misc-notes">Misc Notes<a class="headerlink" href="#misc-notes" title="Permanent link">&para;</a></h2>
-<ul>
-<li>IR code should cache eagerly.</li>
-<li>FIR code should cache carefully (remember it runs in the IDE!).</li>
-<li>FIR code should be defensive. It may run continuously in the IDE and not all information may be available to the compiler as the user has written it. If you&rsquo;ve ever written a custom lint check, your methodology should be similar.</li>
-<li>Inversely, IR code should be offensive. Assert expectations with clear error messages, report errors with useful error messages.</li>
-<li>FIR-generated declaration should use descriptive <em>keys</em> to declarations that can be referenced later in FIR and IR (as <code>origins</code>). See <code>Keys.kt</code> for FIR declarations and <code>Origins.kt</code> for their IR analogs.</li>
-</ul>
+<h2 id="core-components">Core Components<a class="headerlink" href="#core-components" title="Permanent link">&para;</a></h2>
+<h3 id="viewmodelgraph">ViewModelGraph<a class="headerlink" href="#viewmodelgraph" title="Permanent link">&para;</a></h3>
+<p>Create a graph interface that extends <code>ViewModelGraph</code> to get multibindings for ViewModel providers:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">ViewModelGraph</span>
+</code></pre></div>
+<p><code>ViewModelGraph</code> includes map multibindings for:<br />
+- <code>viewModelProviders</code> - Standard ViewModel providers<br />
+- <code>assistedFactoryProviders</code> - Assisted ViewModel factory providers<br />
+- <code>manualAssistedFactoryProviders</code> - Manual assisted factory providers</p>
+<p>It also provides a <code>metroViewModelFactory</code> property for creating ViewModels.</p>
+<h3 id="metroviewmodelfactory">MetroViewModelFactory<a class="headerlink" href="#metroviewmodelfactory" title="Permanent link">&para;</a></h3>
+<p>A <code>ViewModelProvider.Factory</code> implementation that uses injected maps to create ViewModels. Subclass it to provide your own bindings:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@Inject</span>
+<span class="nd">@ContributesBinding</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="nd">@SingleIn</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">MyViewModelFactory</span><span class="p">(</span>
+<span class="w">  </span><span class="kd">override</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">viewModelProviders</span><span class="p">:</span><span class="w"> </span><span class="n">Map</span><span class="o">&lt;</span><span class="n">KClass</span><span class="o">&lt;</span><span class="k">out</span><span class="w"> </span><span class="n">ViewModel</span><span class="o">&gt;</span><span class="p">,</span><span class="w"> </span><span class="n">Provider</span><span class="o">&lt;</span><span class="n">ViewModel</span><span class="o">&gt;&gt;</span><span class="p">,</span>
+<span class="w">  </span><span class="kd">override</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">assistedFactoryProviders</span><span class="p">:</span><span class="w"> </span><span class="n">Map</span><span class="o">&lt;</span><span class="n">KClass</span><span class="o">&lt;</span><span class="k">out</span><span class="w"> </span><span class="n">ViewModel</span><span class="o">&gt;</span><span class="p">,</span><span class="w"> </span><span class="n">Provider</span><span class="o">&lt;</span><span class="n">ViewModelAssistedFactory</span><span class="o">&gt;&gt;</span><span class="p">,</span>
+<span class="w">  </span><span class="kd">override</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">manualAssistedFactoryProviders</span><span class="p">:</span><span class="w"> </span><span class="n">Map</span><span class="o">&lt;</span><span class="n">KClass</span><span class="o">&lt;</span><span class="k">out</span><span class="w"> </span><span class="n">ManualViewModelAssistedFactory</span><span class="o">&gt;</span><span class="p">,</span><span class="w"> </span><span class="n">Provider</span><span class="o">&lt;</span><span class="n">ManualViewModelAssistedFactory</span><span class="o">&gt;&gt;</span><span class="p">,</span>
+<span class="p">)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">MetroViewModelFactory</span><span class="p">()</span>
+</code></pre></div>
+<h3 id="contributing-viewmodels">Contributing ViewModels<a class="headerlink" href="#contributing-viewmodels" title="Permanent link">&para;</a></h3>
+<p>Use <code>@ViewModelKey</code> with <code>@ContributesIntoMap</code> to contribute ViewModels:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@Inject</span>
+<span class="nd">@ViewModelKey</span><span class="p">(</span><span class="n">HomeViewModel</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="nd">@ContributesIntoMap</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">HomeViewModel</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">ViewModel</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="c1">// ...</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="assisted-viewmodel-creation">Assisted ViewModel Creation<a class="headerlink" href="#assisted-viewmodel-creation" title="Permanent link">&para;</a></h3>
+<p>For ViewModels requiring runtime parameters and only using <code>CreationParams</code> can use <code>ViewModelAssistedFactory</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@AssistedInject</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">DetailsViewModel</span><span class="p">(</span><span class="nd">@Assisted</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">id</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">ViewModel</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="c1">// ...</span>
+
+<span class="w">  </span><span class="nd">@AssistedFactory</span>
+<span class="w">  </span><span class="nd">@ViewModelAssistedFactoryKey</span><span class="p">(</span><span class="n">Factory</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="w">  </span><span class="nd">@ContributesIntoMap</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="kd">interface</span><span class="w"> </span><span class="nc">Factory</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">ViewModelAssistedFactory</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">override</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="n">params</span><span class="p">:</span><span class="w"> </span><span class="n">CreationParams</span><span class="p">):</span><span class="w"> </span><span class="n">DetailsViewModel</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="k">return</span><span class="w"> </span><span class="n">create</span><span class="p">(</span><span class="n">params</span><span class="p">.</span><span class="na">get</span><span class="o">&lt;</span><span class="kt">String</span><span class="o">&gt;</span><span class="p">(</span><span class="n">KEY_ID</span><span class="p">))</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kd">fun</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="nd">@Assisted</span><span class="w"> </span><span class="n">id</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">):</span><span class="w"> </span><span class="n">DetailsViewModel</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="manual-assisted-injection">Manual Assisted Injection<a class="headerlink" href="#manual-assisted-injection" title="Permanent link">&para;</a></h3>
+<p>For full control over ViewModel creation, use <code>ManualViewModelAssistedFactory</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@AssistedInject</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">CustomViewModel</span><span class="p">(</span><span class="nd">@Assisted</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">param1</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">,</span><span class="w"> </span><span class="nd">@Assisted</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">param2</span><span class="p">:</span><span class="w"> </span><span class="kt">Int</span><span class="p">)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">ViewModel</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="c1">// ...</span>
+
+<span class="w">  </span><span class="nd">@AssistedFactory</span>
+<span class="w">  </span><span class="nd">@ManualViewModelAssistedFactoryKey</span><span class="p">(</span><span class="n">Factory</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="w">  </span><span class="nd">@ContributesIntoMap</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="w">  </span><span class="kd">interface</span><span class="w"> </span><span class="nc">Factory</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">ManualViewModelAssistedFactory</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">fun</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="n">param1</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">,</span><span class="w"> </span><span class="n">param2</span><span class="p">:</span><span class="w"> </span><span class="kt">Int</span><span class="p">):</span><span class="w"> </span><span class="n">CustomViewModel</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h2 id="android-framework-integration">Android Framework Integration<a class="headerlink" href="#android-framework-integration" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1">// Activity</span>
+<span class="nd">@Inject</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">ExampleActivity</span><span class="p">(</span><span class="kd">private</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">viewModelFactory</span><span class="p">:</span><span class="w"> </span><span class="n">MyViewModelFactory</span><span class="p">)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">ComponentActivity</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">override</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">defaultViewModelProviderFactory</span><span class="p">:</span><span class="w"> </span><span class="n">ViewModelProvider</span><span class="p">.</span><span class="na">Factory</span>
+<span class="w">    </span><span class="k">get</span><span class="p">()</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">viewModelFactory</span>
+<span class="p">}</span>
+
+<span class="c1">// Fragment</span>
+<span class="nd">@Inject</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">ExampleFragment</span><span class="p">(</span><span class="kd">private</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">viewModelFactory</span><span class="p">:</span><span class="w"> </span><span class="n">MyViewModelFactory</span><span class="p">)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">Fragment</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">override</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">defaultViewModelProviderFactory</span><span class="p">:</span><span class="w"> </span><span class="n">ViewModelProvider</span><span class="p">.</span><span class="na">Factory</span>
+<span class="w">    </span><span class="k">get</span><span class="p">()</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">viewModelFactory</span>
+<span class="p">}</span>
+</code></pre></div>
 
 
 

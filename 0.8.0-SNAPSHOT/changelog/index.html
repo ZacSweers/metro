@@ -1087,6 +1087,62 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../metrox-viewmodel/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ViewModel
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../metrox-viewmodel-compose.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ViewModel Compose
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2535,7 +2591,20 @@
 <h2 id="unreleased"><strong>Unreleased</strong><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>New</strong>: New <code>dev.zacsweers.metro:metrox-android</code> artifact for Android <code>AppComponentFactory</code> support. See the <a href="https://zacsweers.github.io/metro/latest/metrox-android">docs</a> for more information.</li>
-<li><strong>New</strong>: Add <code>generateMetroGraphMetadata</code> Gradle task that writes a merged JSON dump of all binding graphs in the project. This can be chained from the <code>GenerateGraphMetadataTask</code> for further processing.</li>
+<li>
+<p><strong>New</strong>: New <code>dev.zacsweers.metro:metrox-viewmodel</code> and <code>metrox-viewmodel-compose</code> artifacts for AndroidX <code>ViewModel</code> support. See the <a href="https://zacsweers.github.io/metro/latest/metrox-viewmodel">docs</a> (<a href="https://zacsweers.github.io/metro/latest/metrox-viewmodel-compose">compose docs</a> ) for more information.</p>
+<ul>
+<li>
+<blockquote>
+<p>Should I use this?</p>
+</blockquote>
+</li>
+</ul>
+<p>Well, that&rsquo;s up to you! This artifact is mostly for projects coming from heavy use of more vanilla Android architecture components or <code>hiltViewModel()</code> use. Modern Android apps should use higher level architectures like Circuit* (Disclosure: I am one of the authors of Circuit, and I&rsquo;m a big fan of it!), Voyager, etc. that abstract away <code>ViewModel</code> management.</p>
+</li>
+<li>
+<p><strong>New</strong>: Add <code>generateMetroGraphMetadata</code> Gradle task that writes a merged JSON dump of all binding graphs in the project. This can be chained from the <code>GenerateGraphMetadataTask</code> for further processing.</p>
+</li>
 <li><strong>New</strong>: Add <code>analyzeMetroGraph</code> Gradle task that performs comprehensive graph analysis including fan-in/fan-out, betweenness centrality, dominator analysis, and longest path detection.</li>
 <li><strong>New</strong>: Add <code>generateMetroGraphHtml</code> Gradle task that generates interactive HTML visualizations of dependency graphs using ECharts. Features include force/circular layouts, filtering by package/scope/synthetic bindings, metrics heatmaps, and longest path highlighting. See the <a href="https://zacsweers.github.io/metro/latest/graph-analysis">graph analysis docs</a> for more information.</li>
 <li><strong>New</strong>: Add <code>MetroArtifacts</code> Gradle API for accessing Metro reports and graph metadata directories.</li>
