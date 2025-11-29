@@ -2,6 +2,7 @@
 
 @Inject class Foo
 
+@HasMemberInjections
 open class Parent {
   @Inject lateinit var foo1: Foo
 }

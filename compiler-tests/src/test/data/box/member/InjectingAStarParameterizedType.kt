@@ -5,6 +5,7 @@ class Context
 
 class GenericTest
 
+@HasMemberInjections
 abstract class BaseMainActivity<T> {
   @Inject @ApplicationContext lateinit var context: Context
 }

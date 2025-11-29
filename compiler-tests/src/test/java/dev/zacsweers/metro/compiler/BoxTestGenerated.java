@@ -1430,6 +1430,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("AnotherAncestorInjection.kt")
+    public void testAnotherAncestorInjection() {
+      runTest("compiler-tests/src/test/data/box/member/AnotherAncestorInjection.kt");
+    }
+
+    @Test
     @TestMetadata("FieldInjectFactory.kt")
     public void testFieldInjectFactory() {
       runTest("compiler-tests/src/test/data/box/member/FieldInjectFactory.kt");
@@ -1457,6 +1463,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("SimpleAncestorInjectionWithEmptyChild.kt")
     public void testSimpleAncestorInjectionWithEmptyChild() {
       runTest("compiler-tests/src/test/data/box/member/SimpleAncestorInjectionWithEmptyChild.kt");
+    }
+
+    @Test
+    @TestMetadata("SimpleAncestorInjectionWithEmptyChildNoFactory.kt")
+    public void testSimpleAncestorInjectionWithEmptyChildNoFactory() {
+      runTest("compiler-tests/src/test/data/box/member/SimpleAncestorInjectionWithEmptyChildNoFactory.kt");
     }
 
     @Test

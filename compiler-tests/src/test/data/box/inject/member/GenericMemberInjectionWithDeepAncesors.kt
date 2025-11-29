@@ -1,8 +1,10 @@
+@HasMemberInjections
 abstract class GrandParent<T : Any, R : Any> {
   @Inject lateinit var grandParentT: T // becomes String
   @Inject lateinit var grandParentR: R // becomes Int
 }
 
+@HasMemberInjections
 abstract class Parent<T : Any, R : Any> : GrandParent<R, T>() {
   @Inject lateinit var parentT: T // becomes Int
   @Inject lateinit var parentR: R // becomes String

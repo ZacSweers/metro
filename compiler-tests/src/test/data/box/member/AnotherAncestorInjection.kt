@@ -1,17 +1,20 @@
-// https://github.com/ZacSweers/metro/issues/649
-import kotlin.reflect.KClass
+// https://github.com/ZacSweers/metro/issues/896
 
-@Inject class Foo
-
-@Inject class Bar
-
+// MODULE: lib
 @HasMemberInjections
 open class Parent {
   @Inject lateinit var foo: Foo
 }
 
-class Child : Parent() {
-  @Inject lateinit var bar: Bar
+@Inject class Foo
+
+// MODULE: main(lib)
+import kotlin.reflect.KClass
+
+class Child : Parent()
+
+class ChildWithAttribute : Parent() {
+  @Inject lateinit var foo2: Foo
 }
 
 @ContributesTo(AppScope::class)
@@ -26,6 +29,11 @@ interface MultibindingModule {
   @IntoMap
   @ClassKey(Child::class)
   fun bindChild(instance: MembersInjector<Child>): MembersInjector<*>
+
+  @Binds
+  @IntoMap
+  @ClassKey(ChildWithAttribute::class)
+  fun bindChildWithAttribute(instance: MembersInjector<ChildWithAttribute>): MembersInjector<*>
 }
 
 @DependencyGraph(AppScope::class)
@@ -35,6 +43,6 @@ interface AppGraph {
 
 fun box(): String {
   val graph = createGraph<AppGraph>()
-  assertTrue(graph.membersInjectors.isNotEmpty())
+  assertEquals(3, graph.membersInjectors.size)
   return "OK"
 }

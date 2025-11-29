@@ -4,21 +4,19 @@ abstract class Parent {
   var int: Int = 0
 }
 
-@HasMemberInjections
-abstract class Child : Parent()
-
-@Inject
-class GrandChild : Child()
+class Child : Parent()
 
 @DependencyGraph
 interface AppGraph {
   @Provides fun provideInt(): Int = 3
 
-  val grandChild: GrandChild
+  fun inject(child: Child)
 }
 
 fun box(): String {
   val graph = createGraph<AppGraph>()
-  assertEquals(3, graph.grandChild.int)
+  val child = Child()
+  graph.inject(child)
+  assertEquals(3, child.int)
   return "OK"
 }

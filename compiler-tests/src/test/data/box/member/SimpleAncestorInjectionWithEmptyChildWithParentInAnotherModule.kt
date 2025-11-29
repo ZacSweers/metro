@@ -6,19 +6,17 @@ abstract class Parent {
 }
 
 // MODULE: main(lib)
+@Inject
 class Child : Parent()
 
 @DependencyGraph
 interface AppGraph {
   @Provides fun provideInt(): Int = 3
-
-  fun inject(child: Child)
+  val child: Child
 }
 
 fun box(): String {
   val graph = createGraph<AppGraph>()
-  val child = Child()
-  graph.inject(child)
-  assertEquals(3, child.int)
+  assertEquals(3, graph.child.int)
   return "OK"
 }
