@@ -315,8 +315,6 @@ jobs:
   publish:
     runs-on: macos-latest
     if: github.ref == 'refs/heads/main' && github.repository == 'zacsweers/metro'
-    # Sonatype keeps giving 429 errors lately, so no need to mark this as failure for now
-    continue-on-error: true
     needs:
       - final-status
 
@@ -361,6 +359,8 @@ jobs:
             ${{ runner.os }}-konan-
 
       - name: Upload snapshot (main only)
+        # Sonatype keeps giving 429 errors lately, so no need to mark this as failure for now
+        continue-on-error: true
         env:
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.SonatypeUsername }}
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.SonatypePassword }}
