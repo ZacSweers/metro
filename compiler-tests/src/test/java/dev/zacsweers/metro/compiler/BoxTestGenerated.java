@@ -1460,9 +1460,21 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("MemberInjectsAcrossModules.kt")
+    public void testMemberInjectsAcrossModules() {
+      runTest("compiler-tests/src/test/data/box/member/MemberInjectsAcrossModules.kt");
+    }
+
+    @Test
     @TestMetadata("MembersInjectorRespectMultibindingQualifier.kt")
     public void testMembersInjectorRespectMultibindingQualifier() {
       runTest("compiler-tests/src/test/data/box/member/MembersInjectorRespectMultibindingQualifier.kt");
+    }
+
+    @Test
+    @TestMetadata("ScopedInjectIntoBaseMember.kt")
+    public void testScopedInjectIntoBaseMember() {
+      runTest("compiler-tests/src/test/data/box/member/ScopedInjectIntoBaseMember.kt");
     }
 
     @Test

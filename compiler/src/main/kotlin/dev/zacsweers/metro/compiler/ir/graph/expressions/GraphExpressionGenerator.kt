@@ -43,9 +43,11 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.defaultType
+import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.primaryConstructor
+import org.jetbrains.kotlin.ir.util.superClass
 import org.jetbrains.kotlin.name.Name
 
 internal class GraphExpressionGenerator
@@ -278,8 +280,17 @@ private constructor(
         is IrBinding.MembersInjected -> {
           val injectedClass = referenceClass(binding.targetClassId)!!.owner
           val injectedType = injectedClass.defaultType
+
+          // When looking for an injector, try the current class.
+          // If the current class doesn't have one but the parent does have injections, traverse up
+          // until we hit the first injector that does work and use that
           val injectorClass =
-            membersInjectorTransformer.getOrGenerateInjector(injectedClass)?.injectorClass
+            generateSequence(injectedClass) { clazz ->
+                clazz.superClass?.takeIf { it.hasAnnotation(Symbols.ClassIds.HasMemberInjections) }
+              }
+              .firstNotNullOfOrNull { clazz ->
+                membersInjectorTransformer.getOrGenerateInjector(clazz)?.injectorClass
+              }
 
           if (injectorClass == null) {
             // Return a noop
