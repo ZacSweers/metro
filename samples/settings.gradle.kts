@@ -39,6 +39,7 @@ include(
   ":compose-viewmodels:app",
   ":compose-viewmodels:screen-details",
   ":compose-viewmodels:screen-home",
+  ":graph-analysis",
   ":integration-tests",
   ":interop:customAnnotations-dagger",
   ":interop:customAnnotations-guice",

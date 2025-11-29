@@ -54,6 +54,20 @@ class MetroArtifactsTest {
               "graph": "test.AppGraph",
               "scopes": [],
               "aggregationScopes": [],
+              "roots": {
+                "accessors": [
+                  {
+                    "key": "kotlin.String",
+                    "isDeferrable": false
+                  }
+                ],
+                "injectors": []
+              },
+              "extensions": {
+                "accessors": [],
+                "factoryAccessors": [],
+                "factoriesImplemented": []
+              },
               "bindings": [
                 {
                   "key": "kotlin.String",
@@ -63,9 +77,11 @@ class MetroArtifactsTest {
                   "dependencies": [
                     {
                       "key": "test.AppGraph",
-                      "hasDefault": false
+                      "hasDefault": false,
+                      "isAssisted": false
                     }
                   ],
+                  "isSynthetic": false,
                   "origin": "AppGraph.kt:10:3",
                   "declaration": "provideValue",
                   "multibinding": null,
@@ -77,6 +93,7 @@ class MetroArtifactsTest {
                   "isScoped": false,
                   "nameHint": "AppGraphProvider",
                   "dependencies": [],
+                  "isSynthetic": false,
                   "origin": "AppGraph.kt:6:1",
                   "declaration": "AppGraph",
                   "multibinding": null,
@@ -90,9 +107,11 @@ class MetroArtifactsTest {
                   "dependencies": [
                     {
                       "key": "test.AppGraph",
-                      "hasDefault": false
+                      "hasDefault": false,
+                      "isAssisted": false
                     }
                   ],
+                  "isSynthetic": true,
                   "multibinding": null,
                   "optionalWrapper": null,
                   "aliasTarget": "test.AppGraph"
