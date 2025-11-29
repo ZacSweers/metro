@@ -1424,6 +1424,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("AncestorInjectionWithEmptyDescendants.kt")
+    public void testAncestorInjectionWithEmptyDescendants() {
+      runTest("compiler-tests/src/test/data/box/member/AncestorInjectionWithEmptyDescendants.kt");
+    }
+
+    @Test
     @TestMetadata("FieldInjectFactory.kt")
     public void testFieldInjectFactory() {
       runTest("compiler-tests/src/test/data/box/member/FieldInjectFactory.kt");
@@ -1445,6 +1451,18 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("MembersInjectorRespectMultibindingQualifier.kt")
     public void testMembersInjectorRespectMultibindingQualifier() {
       runTest("compiler-tests/src/test/data/box/member/MembersInjectorRespectMultibindingQualifier.kt");
+    }
+
+    @Test
+    @TestMetadata("SimpleAncestorInjectionWithEmptyChild.kt")
+    public void testSimpleAncestorInjectionWithEmptyChild() {
+      runTest("compiler-tests/src/test/data/box/member/SimpleAncestorInjectionWithEmptyChild.kt");
+    }
+
+    @Test
+    @TestMetadata("SimpleAncestorInjectionWithEmptyChildWithParentInAnotherModule.kt")
+    public void testSimpleAncestorInjectionWithEmptyChildWithParentInAnotherModule() {
+      runTest("compiler-tests/src/test/data/box/member/SimpleAncestorInjectionWithEmptyChildWithParentInAnotherModule.kt");
     }
   }
 
