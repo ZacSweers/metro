@@ -54,26 +54,6 @@ open annotation class dev.zacsweers.metro/ContributesBinding : kotlin/Annotation
         final fun <get-scope>(): kotlin.reflect/KClass<*> // dev.zacsweers.metro/ContributesBinding.scope.<get-scope>|<get-scope>(){}[0]
 }
 
-open annotation class dev.zacsweers.metro/ContributesGraphExtension : kotlin/Annotation { // dev.zacsweers.metro/ContributesGraphExtension|null[0]
-    constructor <init>(kotlin.reflect/KClass<*> = ..., kotlin/Array<kotlin.reflect/KClass<*>> = ..., kotlin/Array<kotlin.reflect/KClass<*>> = ..., kotlin/Array<kotlin.reflect/KClass<*>> = ...) // dev.zacsweers.metro/ContributesGraphExtension.<init>|<init>(kotlin.reflect.KClass<*>;kotlin.Array<kotlin.reflect.KClass<*>>;kotlin.Array<kotlin.reflect.KClass<*>>;kotlin.Array<kotlin.reflect.KClass<*>>){}[0]
-
-    final val additionalScopes // dev.zacsweers.metro/ContributesGraphExtension.additionalScopes|{}additionalScopes[0]
-        final fun <get-additionalScopes>(): kotlin/Array<kotlin.reflect/KClass<*>> // dev.zacsweers.metro/ContributesGraphExtension.additionalScopes.<get-additionalScopes>|<get-additionalScopes>(){}[0]
-    final val bindingContainers // dev.zacsweers.metro/ContributesGraphExtension.bindingContainers|{}bindingContainers[0]
-        final fun <get-bindingContainers>(): kotlin/Array<kotlin.reflect/KClass<*>> // dev.zacsweers.metro/ContributesGraphExtension.bindingContainers.<get-bindingContainers>|<get-bindingContainers>(){}[0]
-    final val excludes // dev.zacsweers.metro/ContributesGraphExtension.excludes|{}excludes[0]
-        final fun <get-excludes>(): kotlin/Array<kotlin.reflect/KClass<*>> // dev.zacsweers.metro/ContributesGraphExtension.excludes.<get-excludes>|<get-excludes>(){}[0]
-    final val scope // dev.zacsweers.metro/ContributesGraphExtension.scope|{}scope[0]
-        final fun <get-scope>(): kotlin.reflect/KClass<*> // dev.zacsweers.metro/ContributesGraphExtension.scope.<get-scope>|<get-scope>(){}[0]
-
-    open annotation class Factory : kotlin/Annotation { // dev.zacsweers.metro/ContributesGraphExtension.Factory|null[0]
-        constructor <init>(kotlin.reflect/KClass<*>) // dev.zacsweers.metro/ContributesGraphExtension.Factory.<init>|<init>(kotlin.reflect.KClass<*>){}[0]
-
-        final val scope // dev.zacsweers.metro/ContributesGraphExtension.Factory.scope|{}scope[0]
-            final fun <get-scope>(): kotlin.reflect/KClass<*> // dev.zacsweers.metro/ContributesGraphExtension.Factory.scope.<get-scope>|<get-scope>(){}[0]
-    }
-}
-
 open annotation class dev.zacsweers.metro/ContributesIntoMap : kotlin/Annotation { // dev.zacsweers.metro/ContributesIntoMap|null[0]
     constructor <init>(kotlin.reflect/KClass<*>, dev.zacsweers.metro/binding<*> = ..., kotlin/Array<kotlin.reflect/KClass<*>> = ...) // dev.zacsweers.metro/ContributesIntoMap.<init>|<init>(kotlin.reflect.KClass<*>;dev.zacsweers.metro.binding<*>;kotlin.Array<kotlin.reflect.KClass<*>>){}[0]
 
@@ -200,10 +180,6 @@ open annotation class dev.zacsweers.metro/Named : kotlin/Annotation { // dev.zac
 
 open annotation class dev.zacsweers.metro/OptionalBinding : kotlin/Annotation { // dev.zacsweers.metro/OptionalBinding|null[0]
     constructor <init>() // dev.zacsweers.metro/OptionalBinding.<init>|<init>(){}[0]
-}
-
-open annotation class dev.zacsweers.metro/OptionalDependency : kotlin/Annotation { // dev.zacsweers.metro/OptionalDependency|null[0]
-    constructor <init>() // dev.zacsweers.metro/OptionalDependency.<init>|<init>(){}[0]
 }
 
 open annotation class dev.zacsweers.metro/Origin : kotlin/Annotation { // dev.zacsweers.metro/Origin|null[0]

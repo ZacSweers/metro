@@ -154,11 +154,9 @@ public class ClassIds(
   internal val contributesIntoMapAnnotations =
     setOf(contributesIntoMapAnnotation) + customIntoMapAnnotations
   internal val graphExtensionAnnotations =
-    setOf(Symbols.ClassIds.graphExtension) +
-      customGraphExtensionAnnotations
+    setOf(Symbols.ClassIds.graphExtension) + customGraphExtensionAnnotations
   internal val graphExtensionFactoryAnnotations =
-    setOf(Symbols.ClassIds.graphExtensionFactory) +
-      customGraphExtensionFactoryAnnotations
+    setOf(Symbols.ClassIds.graphExtensionFactory) + customGraphExtensionFactoryAnnotations
   internal val allGraphExtensionAndFactoryAnnotations =
     graphExtensionAnnotations + graphExtensionFactoryAnnotations
 

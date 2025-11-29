@@ -32,17 +32,6 @@ public abstract interface annotation class dev/zacsweers/metro/ContributesBindin
 	public abstract fun value ()[Ldev/zacsweers/metro/ContributesBinding;
 }
 
-public abstract interface annotation class dev/zacsweers/metro/ContributesGraphExtension : java/lang/annotation/Annotation {
-	public abstract fun additionalScopes ()[Ljava/lang/Class;
-	public abstract fun bindingContainers ()[Ljava/lang/Class;
-	public abstract fun excludes ()[Ljava/lang/Class;
-	public abstract fun scope ()Ljava/lang/Class;
-}
-
-public abstract interface annotation class dev/zacsweers/metro/ContributesGraphExtension$Factory : java/lang/annotation/Annotation {
-	public abstract fun scope ()Ljava/lang/Class;
-}
-
 public abstract interface annotation class dev/zacsweers/metro/ContributesIntoMap : java/lang/annotation/Annotation {
 	public abstract fun binding ()Ldev/zacsweers/metro/binding;
 	public abstract fun replaces ()[Ljava/lang/Class;
@@ -135,9 +124,6 @@ public abstract interface annotation class dev/zacsweers/metro/Named : java/lang
 }
 
 public abstract interface annotation class dev/zacsweers/metro/OptionalBinding : java/lang/annotation/Annotation {
-}
-
-public abstract interface annotation class dev/zacsweers/metro/OptionalDependency : java/lang/annotation/Annotation {
 }
 
 public abstract interface annotation class dev/zacsweers/metro/Origin : java/lang/annotation/Annotation {

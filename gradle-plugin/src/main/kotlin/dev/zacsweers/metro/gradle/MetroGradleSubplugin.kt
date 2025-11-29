@@ -236,12 +236,7 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         add(lazyOption("shrink-unused-bindings", extension.shrinkUnusedBindings))
         add(lazyOption("chunk-field-inits", extension.chunkFieldInits))
         add(lazyOption("statements-per-init-fun", extension.statementsPerInitFun))
-        add(
-          lazyOption(
-            "optional-binding-behavior",
-            extension.optionalBindingBehavior,
-          )
-        )
+        add(lazyOption("optional-binding-behavior", extension.optionalBindingBehavior))
         add(lazyOption("public-provider-severity", extension.publicProviderSeverity))
         add(
           lazyOption(
