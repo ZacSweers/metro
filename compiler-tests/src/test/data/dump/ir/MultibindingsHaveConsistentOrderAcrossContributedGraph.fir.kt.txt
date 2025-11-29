@@ -134,10 +134,20 @@ interface ExampleGraph : MetroContributionToAppScope {
           return buildSet<Task>(capacity = 4, builderAction = local fun MutableSet<Task>.<anonymous>() {
             $receiver.add(element = Companion.create(instance = <this>).invoke())
             $receiver.add(element = Companion.create(instance = <this>).invoke())
-            $receiver.add(element = MetroFactory.create().invoke())
-            $receiver.add(element = MetroFactory.create().invoke())
+            $receiver.add(element = <this>.<get-taskImpl1Provider>().invoke())
+            $receiver.add(element = <this>.<get-taskImpl2Provider>().invoke())
           }
 )
+        }
+
+      private val taskImpl1Provider: Provider<TaskImpl1>
+        private get(): Provider<TaskImpl1> {
+          return MetroFactory.create()
+        }
+
+      private val taskImpl2Provider: Provider<TaskImpl2>
+        private get(): Provider<TaskImpl2> {
+          return MetroFactory.create()
         }
 
       override val tasksFromParent: Set<Task>
@@ -176,10 +186,20 @@ interface ExampleGraph : MetroContributionToAppScope {
         return buildSet<Task>(capacity = 4, builderAction = local fun MutableSet<Task>.<anonymous>() {
           $receiver.add(element = Companion.create(instance = <this>.#thisGraphInstance).invoke())
           $receiver.add(element = Companion.create(instance = <this>.#thisGraphInstance).invoke())
-          $receiver.add(element = MetroFactory.create().invoke())
-          $receiver.add(element = MetroFactory.create().invoke())
+          $receiver.add(element = <this>.<get-taskImpl1Provider>().invoke())
+          $receiver.add(element = <this>.<get-taskImpl2Provider>().invoke())
         }
 )
+      }
+
+    private val taskImpl1Provider: Provider<TaskImpl1>
+      private get(): Provider<TaskImpl1> {
+        return MetroFactory.create()
+      }
+
+    private val taskImpl2Provider: Provider<TaskImpl2>
+      private get(): Provider<TaskImpl2> {
+        return MetroFactory.create()
       }
 
     override val tasks: Set<Task>
