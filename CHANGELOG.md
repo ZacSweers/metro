@@ -23,6 +23,7 @@ Changelog
 - **Fix**: Fix colliding reports destinations in KMP projects by disambiguating with the target path as another subdir indirection.
 - **Fix**: Fix qualifiers not being propagated to generated `MembersInjector` classes for multibindings.
 - **Fix**: Remove misleading "doesn't appear to be visible to this compilation" hint, as this hint was misreporting.
+- **Fix**: Fix not reserving properties multibinding contributors that are behind aliases.
 - [gradle] Mark `metro.reportsDestination` as delicate/opt-in.
 
 0.7.7
