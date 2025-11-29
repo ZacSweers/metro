@@ -156,6 +156,8 @@ internal class CreateGraphTransformer(
         element.expectAs<IrExpression>().type
       }
 
+    val nearestDeclaration = expression.symbol.owner
+
     // Generate or retrieve the dynamic graph class
     val dynamicGraph =
       dynamicGraphGenerator.getOrBuildDynamicGraph(
@@ -163,6 +165,7 @@ internal class CreateGraphTransformer(
         containerTypes = containerTypes,
         isFactory = isFactory,
         context = context,
+        containingFunction = nearestDeclaration,
       )
 
     // Replace with constructor call or factory creation

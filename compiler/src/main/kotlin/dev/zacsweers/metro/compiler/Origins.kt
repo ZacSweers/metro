@@ -51,8 +51,8 @@ internal object Origins {
     IrDeclarationOrigin.GeneratedByPlugin(Keys.DynamicContainerParam)
 }
 
-internal val IrDeclarationOrigin.isInvisibleGeneratedGraph: Boolean
+internal val IrDeclarationOrigin.isSyntheticGeneratedGraph: Boolean
   get() = this == Origins.GeneratedGraphExtension || this == Origins.GeneratedDynamicGraph
 
 internal val IrDeclarationOrigin.isGraphImpl: Boolean
-  get() = this == Origins.GraphImplClassDeclaration || isInvisibleGeneratedGraph
+  get() = this == Origins.GraphImplClassDeclaration || isSyntheticGeneratedGraph

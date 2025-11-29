@@ -10,7 +10,7 @@ interface AppGraph : Factory {
       field = Companion.invoke<AppGraph>(value = <this>.#thisGraphInstance)
 
     @DependencyGraph
-    inner class LoggedInGraphImpl : LoggedInGraph {
+    private inner class LoggedInGraphImpl : LoggedInGraph {
       private val idInstanceProvider: Provider<String>
         field = Companion.invoke<String>(value = id)
 

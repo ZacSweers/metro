@@ -122,7 +122,7 @@ interface ExampleGraph : MetroContributionToAppScope {
       field = Companion.invoke<ExampleGraph>(value = <this>.#thisGraphInstance)
 
     @DependencyGraph(scope = Unit::class)
-    inner class LoggedInGraphImpl : LoggedInGraph {
+    private inner class LoggedInGraphImpl : LoggedInGraph {
       constructor() /* primary */ {
         super/*Any*/()
         /* <init>() */
