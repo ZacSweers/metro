@@ -1436,6 +1436,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ComplexScopedAncestor.kt")
+    public void testComplexScopedAncestor() {
+      runTest("compiler-tests/src/test/data/box/member/ComplexScopedAncestor.kt");
+    }
+
+    @Test
     @TestMetadata("FieldInjectFactory.kt")
     public void testFieldInjectFactory() {
       runTest("compiler-tests/src/test/data/box/member/FieldInjectFactory.kt");
