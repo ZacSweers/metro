@@ -1,5 +1,7 @@
 // Copyright (C) 2024 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
+import com.android.build.gradle.internal.lint.AndroidLintAnalysisTask
+import com.android.build.gradle.internal.lint.LintModelWriterTask
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import java.util.Locale
 import java.util.Properties
@@ -106,6 +108,10 @@ for (c in arrayOf("apiElements", "runtimeElements")) {
   configurations.named(c) { artifacts.removeIf { true } }
   artifacts.add(c, shadowJar)
 }
+
+tasks.withType<AndroidLintAnalysisTask>().configureEach { dependsOn(shadowJar) }
+
+tasks.withType<LintModelWriterTask>().configureEach { dependsOn(shadowJar) }
 
 dependencies {
   compileOnly(libs.kotlin.gradlePlugin)
