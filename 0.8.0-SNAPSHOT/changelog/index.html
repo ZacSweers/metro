@@ -2608,9 +2608,11 @@
 <li><strong>New</strong>: Add <code>analyzeMetroGraph</code> Gradle task that performs comprehensive graph analysis including fan-in/fan-out, betweenness centrality, dominator analysis, and longest path detection.</li>
 <li><strong>New</strong>: Add <code>generateMetroGraphHtml</code> Gradle task that generates interactive HTML visualizations of dependency graphs using ECharts. Features include force/circular layouts, filtering by package/scope/synthetic bindings, metrics heatmaps, and longest path highlighting. See the <a href="https://zacsweers.github.io/metro/latest/graph-analysis">graph analysis docs</a> for more information.</li>
 <li><strong>New</strong>: Add <code>MetroArtifacts</code> Gradle API for accessing Metro reports and graph metadata directories.</li>
+<li><strong>Behavior Change</strong>: All non-final classes with member injections or that extend classes with member injections must now be annotated with <code>@HasMemberInjections</code>. This is enforced with a new diagnostic check.</li>
 <li><strong>Enhancement</strong>: Lazily validate multibindings. Previously, multibindings were validated eagerly even if they were unused in a graph.</li>
 <li><strong>Enhancement</strong>: Report all duplicate bindings errors during graph construction rather than failing at first.</li>
 <li><strong>Enhancement</strong>: Support <code>FirFunctionCall</code> evaluation in annotation arguments during FIR.</li>
+<li><strong>Fix</strong>: Support member injection of classes that have no member injections but do extend superclasses with member injections.</li>
 <li><strong>Fix</strong>: Catch more <code>IrErrorType</code> error types cases and report context/advice where possible.</li>
 <li><strong>Fix</strong>: Dedupe binding containers contributed to both parent and child graphs.</li>
 <li><strong>Fix</strong>: Fix support for Anvil&rsquo;s <code>exclude</code> argument in dependency graph annotations when Anvil interop is enabled.</li>
