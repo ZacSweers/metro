@@ -7,6 +7,7 @@ import org.jetbrains.kotlin.GeneratedDeclarationKey
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.descriptors.Modality
+import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.fakeElement as fakeElementNative
 import org.jetbrains.kotlin.fir.FirSession
@@ -14,20 +15,41 @@ import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol as ge
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingSymbol as getContainingSymbolNative
 import org.jetbrains.kotlin.fir.copy as copyDeclarationNative
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
+import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationStatus
+import org.jetbrains.kotlin.fir.declarations.FirFunction
+import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameter
+import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
+import org.jetbrains.kotlin.fir.declarations.FirValueParameter
+import org.jetbrains.kotlin.fir.declarations.builder.FirSimpleFunctionBuilder
+import org.jetbrains.kotlin.fir.declarations.builder.buildSimpleFunction
+import org.jetbrains.kotlin.fir.declarations.impl.FirResolvedDeclarationStatusImpl
 import org.jetbrains.kotlin.fir.extensions.ExperimentalTopLevelDeclarationsGenerationApi
+import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirExtension
+import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.plugin.SimpleFunctionBuildingContext
+import org.jetbrains.kotlin.fir.plugin.createMemberFunction as createMemberFunctionNative
 import org.jetbrains.kotlin.fir.plugin.createTopLevelFunction as createTopLevelFunctionNative
+import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
+import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
+import org.jetbrains.kotlin.fir.toEffectiveVisibility
+import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
+import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.ir.builders.Scope
+import org.jetbrains.kotlin.ir.builders.declarations.IrFieldBuilder
+import org.jetbrains.kotlin.ir.builders.declarations.addBackingField
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
+import org.jetbrains.kotlin.ir.declarations.IrField
+import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
@@ -51,7 +73,7 @@ public class CompatContextImpl : CompatContext {
     returnType: ConeKotlinType,
     containingFileName: String?, // Ignored on 2.2.20
     config: SimpleFunctionBuildingContext.() -> Unit,
-  ): FirSimpleFunction {
+  ): FirFunction {
     return createTopLevelFunctionNative(key, callableId, returnType, config)
   }
 
@@ -62,8 +84,28 @@ public class CompatContextImpl : CompatContext {
     returnTypeProvider: (List<FirTypeParameter>) -> ConeKotlinType,
     containingFileName: String?, // Ignored on 2.2.20
     config: SimpleFunctionBuildingContext.() -> Unit,
-  ): FirSimpleFunction {
+  ): FirFunction {
     return createTopLevelFunctionNative(key, callableId, returnTypeProvider, config)
+  }
+
+  override fun FirExtension.createMemberFunction(
+    owner: FirClassSymbol<*>,
+    key: GeneratedDeclarationKey,
+    name: Name,
+    returnType: ConeKotlinType,
+    config: SimpleFunctionBuildingContext.() -> Unit,
+  ): FirFunction {
+    return createMemberFunctionNative(owner, key, name, returnType, config)
+  }
+
+  override fun FirExtension.createMemberFunction(
+    owner: FirClassSymbol<*>,
+    key: GeneratedDeclarationKey,
+    name: Name,
+    returnTypeProvider: (List<FirTypeParameter>) -> ConeKotlinType,
+    config: SimpleFunctionBuildingContext.() -> Unit,
+  ): FirFunction {
+    return createMemberFunctionNative(owner, key, name, returnTypeProvider, config)
   }
 
   override fun KtSourceElement.fakeElement(
@@ -134,6 +176,58 @@ public class CompatContextImpl : CompatContext {
     endOffset: Int,
   ): IrVariable =
     createTemporaryVariableDeclaration(irType, nameHint, isMutable, origin, startOffset, endOffset)
+
+  override fun FirFunction.isNamedFunction(): Boolean {
+    return this is FirSimpleFunction
+  }
+
+  override fun FirDeclarationGenerationExtension.buildMemberFunction(
+    owner: FirClassLikeSymbol<*>,
+    returnTypeProvider: (List<FirTypeParameterRef>) -> ConeKotlinType,
+    callableId: CallableId,
+    origin: FirDeclarationOrigin,
+    visibility: Visibility,
+    modality: Modality,
+    body: CompatContext.FunctionBuilderScope.() -> Unit,
+  ): FirFunction {
+    return buildSimpleFunction {
+      resolvePhase = FirResolvePhase.BODY_RESOLVE
+      moduleData = session.moduleData
+      this.origin = origin
+
+      source = owner.source?.fakeElementNative(KtFakeSourceElementKind.PluginGenerated)
+
+      val functionSymbol = FirNamedFunctionSymbol(callableId)
+      symbol = functionSymbol
+      name = callableId.callableName
+
+      status =
+        FirResolvedDeclarationStatusImpl(
+          visibility,
+          modality,
+          Visibilities.Public.toEffectiveVisibility(owner, forClass = true),
+        )
+
+      dispatchReceiverType = owner.constructType()
+
+      FunctionBuilderScopeImpl(this).body()
+
+      // Must go after body() because type parameters are added there
+      this.returnTypeRef = returnTypeProvider(typeParameters).toFirResolvedTypeRef()
+    }
+  }
+
+  private class FunctionBuilderScopeImpl(
+    private val builder: FirSimpleFunctionBuilder,
+  ) : CompatContext.FunctionBuilderScope {
+    override val symbol: FirNamedFunctionSymbol get() = builder.symbol
+    override val typeParameters: MutableList<FirTypeParameter> get() = builder.typeParameters
+    override val valueParameters: MutableList<FirValueParameter> get() = builder.valueParameters
+  }
+
+  override fun IrProperty.addBackingFieldCompat(builder: IrFieldBuilder.() -> Unit): IrField {
+    return addBackingField(builder)
+  }
 
   public class Factory : CompatContext.Factory {
     override val minVersion: String = "2.2.20"
