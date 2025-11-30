@@ -2599,8 +2599,10 @@
 <p>Should I use this?</p>
 </blockquote>
 </li>
-</ul>
+<li>
 <p>Well, that&rsquo;s up to you! This artifact is mostly for projects coming from heavy use of more vanilla Android architecture components or <code>hiltViewModel()</code> use. Modern Android apps should use higher level architectures like Circuit* (Disclosure: I am one of the authors of Circuit, and I&rsquo;m a big fan of it!), Voyager, etc. that abstract away <code>ViewModel</code> management.</p>
+</li>
+</ul>
 </li>
 <li>
 <p><strong>New</strong>: Add <code>generateMetroGraphMetadata</code> Gradle task that writes a merged JSON dump of all binding graphs in the project. This can be chained from the <code>GenerateGraphMetadataTask</code> for further processing.</p>
@@ -2612,6 +2614,7 @@
 <li><strong>Enhancement</strong>: Lazily validate multibindings. Previously, multibindings were validated eagerly even if they were unused in a graph.</li>
 <li><strong>Enhancement</strong>: Report all duplicate bindings errors during graph construction rather than failing at first.</li>
 <li><strong>Enhancement</strong>: Support <code>FirFunctionCall</code> evaluation in annotation arguments during FIR.</li>
+<li><strong>Enhancement</strong>: Order before the Compose compiler on Kotlin 2.3.0+.</li>
 <li><strong>Fix</strong>: Support member injection of classes that have no member injections but do extend superclasses with member injections.</li>
 <li><strong>Fix</strong>: Catch more <code>IrErrorType</code> error types cases and report context/advice where possible.</li>
 <li><strong>Fix</strong>: Dedupe binding containers contributed to both parent and child graphs.</li>
