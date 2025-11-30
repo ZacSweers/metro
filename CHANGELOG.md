@@ -32,6 +32,7 @@ Changelog
 - **Fix**: Remove misleading "doesn't appear to be visible to this compilation" hint, as this hint was misreporting.
 - **Fix**: Fix not reserving properties multibinding contributors that are behind aliases.
 - **Fix**: Stub hint function bodies if FIR-generated.
+- **Fix**: Hide FIR-generated hint functions.
 - **Removed**: Removed deprecated `enableScopedInjectClassHints` Gradle DSL property.
 - **Removed**: Removed deprecated `enableStrictValidation` Gradle DSL property.
 - **Removed**: Removed deprecated `contributesGraphExtension` Gradle DSL property.
