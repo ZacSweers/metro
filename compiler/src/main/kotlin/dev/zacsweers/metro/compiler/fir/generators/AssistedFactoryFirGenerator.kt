@@ -18,7 +18,7 @@ import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
-import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
+import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotation
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMapping
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
@@ -96,18 +96,18 @@ internal class AssistedFactoryFirGenerator(session: FirSession, compatContext: C
               MetroFirValueParameter(session, param)
             }
           val createFunction = generateCreateFunction(assistedParams, targetClass, callableId)
-          return listOf(createFunction.symbol)
+          return listOf(createFunction.symbol as FirNamedFunctionSymbol)
         }
       }
     }
     return super.generateFunctions(callableId, context)
   }
 
-  private fun FirExtension.generateCreateFunction(
+  private fun FirDeclarationGenerationExtension.generateCreateFunction(
     assistedParams: List<MetroFirValueParameter>,
     targetClass: FirClassLikeSymbol<*>,
     callableId: CallableId,
-  ): FirSimpleFunction {
+  ): FirFunction {
     return generateMemberFunction(
       owner = targetClass,
       returnTypeRef = targetClass.constructType().toFirResolvedTypeRef(),

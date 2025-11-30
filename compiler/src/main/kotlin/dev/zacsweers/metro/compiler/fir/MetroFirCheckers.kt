@@ -21,7 +21,6 @@ import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.DeclarationCheckers
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirCallableDeclarationChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
-import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirSimpleFunctionChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.ExpressionCheckers
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirAnnotationChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirFunctionCallChecker
@@ -45,10 +44,7 @@ internal class MetroFirCheckers(session: FirSession) : FirAdditionalCheckersExte
           )
 
       override val callableDeclarationCheckers: Set<FirCallableDeclarationChecker>
-        get() = setOf(BindingContainerCallableChecker, MultibindsChecker)
-
-      override val simpleFunctionCheckers: Set<FirSimpleFunctionChecker>
-        get() = setOf(FunctionInjectionChecker)
+        get() = setOf(BindingContainerCallableChecker, MultibindsChecker, FunctionInjectionChecker)
     }
 
   override val expressionCheckers: ExpressionCheckers =

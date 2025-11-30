@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.fir.generateMemberFunction
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.wrapInProviderIfNecessary
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.containingClassForStaticMemberAttr
@@ -22,7 +23,7 @@ import org.jetbrains.kotlin.fir.declarations.builder.buildTypeParameterCopy
 import org.jetbrains.kotlin.fir.declarations.origin
 import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
-import org.jetbrains.kotlin.fir.extensions.FirExtension
+import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.plugin.createConstructor
 import org.jetbrains.kotlin.fir.resolve.ScopeSession
@@ -43,7 +44,7 @@ import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.Name
 
-internal fun FirExtension.buildFactoryConstructor(
+internal fun FirDeclarationGenerationExtension.buildFactoryConstructor(
   context: MemberGenerationContext,
   instanceReceiver: ConeClassLikeType?,
   extensionReceiver: ConeClassLikeType?,
@@ -105,7 +106,7 @@ internal fun FirExtension.buildFactoryConstructor(
       .also { it.containingClassForStaticMemberAttr = owner.toLookupTag() }
   }
 
-internal fun FirExtension.buildFactoryCreateFunction(
+internal fun FirDeclarationGenerationExtension.buildFactoryCreateFunction(
   context: MemberGenerationContext,
   returnType: ConeKotlinType,
   instanceReceiver: ConeClassLikeType?,
@@ -122,7 +123,7 @@ internal fun FirExtension.buildFactoryCreateFunction(
 }
 
 @OptIn(SymbolInternals::class)
-internal fun FirExtension.buildFactoryCreateFunction(
+internal fun FirDeclarationGenerationExtension.buildFactoryCreateFunction(
   context: MemberGenerationContext,
   returnTypeProvider: (List<FirTypeParameterRef>) -> ConeKotlinType,
   instanceReceiver: ConeClassLikeType?,
@@ -205,11 +206,11 @@ internal fun FirExtension.buildFactoryCreateFunction(
               .toFirResolvedTypeRef()
         }
       }
-      .symbol
+      .symbol as FirNamedFunctionSymbol
   }
 
 @OptIn(SymbolInternals::class)
-internal fun FirExtension.buildNewInstanceFunction(
+internal fun FirDeclarationGenerationExtension.buildNewInstanceFunction(
   context: MemberGenerationContext,
   name: Name,
   returnType: ConeKotlinType,
@@ -279,7 +280,7 @@ internal fun FirExtension.buildNewInstanceFunction(
           this.returnTypeRef = copiedType.toFirResolvedTypeRef()
         }
       }
-      .symbol
+      .symbol as FirNamedFunctionSymbol
   }
 
 internal fun FirClassSymbol<*>.findSamFunction(session: FirSession): FirFunctionSymbol<*>? {

@@ -59,7 +59,6 @@ import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
 import org.jetbrains.kotlin.fir.plugin.createCompanionObject
 import org.jetbrains.kotlin.fir.plugin.createConstructor
 import org.jetbrains.kotlin.fir.plugin.createDefaultPrivateConstructor
-import org.jetbrains.kotlin.fir.plugin.createMemberFunction
 import org.jetbrains.kotlin.fir.plugin.createNestedClass
 import org.jetbrains.kotlin.fir.plugin.createTopLevelClass
 import org.jetbrains.kotlin.fir.resolve.defaultType
@@ -678,8 +677,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
             )
           }
         }
-        .symbol
-        .let(::listOf)
+        .let { (it.symbol as FirNamedFunctionSymbol).let(::listOf) }
     }
 
     val targetClass =
@@ -721,7 +719,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
                   )
                 }
               }
-              .symbol
+              .symbol as FirNamedFunctionSymbol
           }
           Symbols.Names.create -> {
             buildFactoryCreateFunction(
@@ -834,7 +832,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
                   replaceAnnotationsSafe(annotations + buildAssistedAnnotation())
                 }
               }
-              .symbol
+              .symbol as FirNamedFunctionSymbol
           }
         }
     }

@@ -142,7 +142,7 @@ internal class ContributionHintFirGenerator(session: FirSession, compatContext: 
           ) {
             valueParameter(Symbols.Names.contributed, { contributingClass.constructType(it) })
           }
-          .symbol
+          .symbol as FirNamedFunctionSymbol
       }
   }
 

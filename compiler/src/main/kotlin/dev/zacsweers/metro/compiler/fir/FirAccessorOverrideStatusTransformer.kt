@@ -13,13 +13,14 @@ import org.jetbrains.kotlin.fir.declarations.FirBackingField
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirConstructor
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
+import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationStatus
 import org.jetbrains.kotlin.fir.declarations.FirEnumEntry
 import org.jetbrains.kotlin.fir.declarations.FirErrorFunction
 import org.jetbrains.kotlin.fir.declarations.FirField
+import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.FirPropertyAccessor
-import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.declarations.utils.hasBody
 import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
@@ -44,6 +45,9 @@ internal class FirAccessorOverrideStatusTransformer(session: FirSession) :
     // First check if this is an accessor in a dependency graph
     if (declaration !is FirCallableDeclaration) return false
 
+    // Skip Java sources
+    if (declaration.origin is FirDeclarationOrigin.Java.Source) return false
+
     when (declaration) {
       is FirAnonymousFunction,
       is FirConstructor,
@@ -53,7 +57,7 @@ internal class FirAccessorOverrideStatusTransformer(session: FirSession) :
       is FirEnumEntry,
       is FirField,
       is FirValueParameter -> return false
-      is FirSimpleFunction,
+      is FirFunction, // FirSimpleFunction/FirNamedFunction
       is FirProperty -> {
         // Continue on
       }
@@ -64,13 +68,13 @@ internal class FirAccessorOverrideStatusTransformer(session: FirSession) :
 
     // Only abstract callables
     if (
-      declaration is FirSimpleFunction && declaration.hasBody ||
+      declaration is FirFunction && declaration.hasBody ||
         (declaration as? FirProperty)?.getter?.hasBody == true
     ) {
       return false
     }
 
-    if (declaration is FirSimpleFunction && declaration.valueParameters.isNotEmpty()) return false
+    if (declaration is FirFunction && declaration.valueParameters.isNotEmpty()) return false
 
     val containingClass = declaration.getContainingClassSymbol() ?: return false
     val isInGraph =

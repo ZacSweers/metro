@@ -54,7 +54,6 @@ import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.DescriptorVisibility
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
-import org.jetbrains.kotlin.ir.builders.declarations.addBackingField
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.declarations.addGetter
 import org.jetbrains.kotlin.ir.builders.declarations.addProperty
@@ -672,7 +671,7 @@ internal class IrGraphGenerator(
         this.name = name.decapitalizeUS().asName()
         this.visibility = DescriptorVisibilities.PRIVATE
       }
-      .apply { this.addBackingField { this.type = typeKey.type } }
+      .apply { this.addBackingFieldCompat { this.type = typeKey.type } }
       .initFinal { initializerExpression() }
 
   private fun DependencyGraphNode.implementOverrides() {
