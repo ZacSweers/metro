@@ -13,6 +13,8 @@ internal object Origins {
     IrDeclarationOrigin.GeneratedByPlugin(Keys.ReceiverParameter)
   val RegularParameter: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.RegularParameter)
+  val ContributionHint: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(Keys.ContributionHint)
   val MetroGraphCreatorsObjectInvokeDeclaration: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.MetroGraphCreatorsObjectInvokeDeclaration)
   val GraphImplClassDeclaration: IrDeclarationOrigin =

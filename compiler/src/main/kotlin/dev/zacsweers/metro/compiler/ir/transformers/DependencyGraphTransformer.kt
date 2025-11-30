@@ -61,6 +61,7 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -143,6 +144,13 @@ internal class DependencyGraphTransformer(
     return createGraphTransformer.visitCall(expression)
       ?: AsContributionTransformer.visitCall(expression, metroContext)
       ?: super.visitCall(expression)
+  }
+
+  override fun visitSimpleFunction(declaration: IrSimpleFunction): IrStatement {
+    if (options.generateJvmContributionHintsInFir) {
+      contributionHintIrTransformer.visitFunction(declaration)
+    }
+    return super.visitSimpleFunction(declaration)
   }
 
   override fun visitClassNew(declaration: IrClass): IrStatement {
