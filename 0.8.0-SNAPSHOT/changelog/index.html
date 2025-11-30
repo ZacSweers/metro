@@ -2610,6 +2610,10 @@
 <li><strong>New</strong>: Add <code>analyzeMetroGraph</code> Gradle task that performs comprehensive graph analysis including fan-in/fan-out, betweenness centrality, dominator analysis, and longest path detection.</li>
 <li><strong>New</strong>: Add <code>generateMetroGraphHtml</code> Gradle task that generates interactive HTML visualizations of dependency graphs using ECharts. Features include force/circular layouts, filtering by package/scope/synthetic bindings, metrics heatmaps, and longest path highlighting. See the <a href="https://zacsweers.github.io/metro/latest/graph-analysis">graph analysis docs</a> for more information.</li>
 <li><strong>New</strong>: Add <code>MetroArtifacts</code> Gradle API for accessing Metro reports and graph metadata directories.</li>
+<li><strong>New</strong>: Add <code>supportedHintContributionPlatforms</code> Gradle DSL property to manually override supported hint contribution generation on different platforms. By default this computes default supported platforms based on the platform and Kotlin tooling version.</li>
+<li><strong>API Change</strong>: Rename <code>generateJvmContributionHintsInFir</code> Gradle DSL property to <code>generateContributionHintsInFir</code>. Note this property/mode still doesn&rsquo;t really work and is highly experimental at the moment.</li>
+<li><strong>Behavior Change</strong>: Add <code>@DelicateMetroGradleApi</code> annotations to relevant Gradle extension APIs.</li>
+<li><strong>Behavior Change</strong>: The <code>generateContributionHints</code> property now computes defaults per platform and per Kotlin compilation as a <code>convention</code> and can be overridden.</li>
 <li><strong>Behavior Change</strong>: All non-final classes with member injections or that extend classes with member injections must now be annotated with <code>@HasMemberInjections</code>. This is enforced with a new diagnostic check.</li>
 <li><strong>Enhancement</strong>: Lazily validate multibindings. Previously, multibindings were validated eagerly even if they were unused in a graph.</li>
 <li><strong>Enhancement</strong>: Report all duplicate bindings errors during graph construction rather than failing at first.</li>
@@ -2623,6 +2627,8 @@
 <li><strong>Fix</strong>: Fix qualifiers not being propagated to generated <code>MembersInjector</code> classes for multibindings.</li>
 <li><strong>Fix</strong>: Remove misleading &ldquo;doesn&rsquo;t appear to be visible to this compilation&rdquo; hint, as this hint was misreporting.</li>
 <li><strong>Fix</strong>: Fix not reserving properties multibinding contributors that are behind aliases.</li>
+<li><strong>Fix</strong>: Stub hint function bodies if FIR-generated.</li>
+<li><strong>Fix</strong>: Hide FIR-generated hint functions.</li>
 <li><strong>Removed</strong>: Removed deprecated <code>enableScopedInjectClassHints</code> Gradle DSL property.</li>
 <li><strong>Removed</strong>: Removed deprecated <code>enableStrictValidation</code> Gradle DSL property.</li>
 <li><strong>Removed</strong>: Removed deprecated <code>contributesGraphExtension</code> Gradle DSL property.</li>
