@@ -149,8 +149,7 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       name = "generate-contribution-hints-in-fir",
       defaultValue = false,
       valueDescription = "<true | false>",
-      description =
-        "Enable/disable generation of contribution hint generation in FIR.",
+      description = "Enable/disable generation of contribution hint generation in FIR.",
       required = false,
       allowMultipleOccurrences = false,
     )

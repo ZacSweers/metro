@@ -27,7 +27,7 @@ public final class dev/zacsweers/metro/gradle/MetroGradleSubplugin : org/jetbrai
 }
 
 public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension {
-	public fun <init> (Lorg/gradle/api/file/ProjectLayout;Lorg/gradle/api/model/ObjectFactory;Lorg/gradle/api/provider/ProviderFactory;)V
+	public fun <init> (Lorg/jetbrains/kotlin/tooling/core/KotlinToolingVersion;Lorg/gradle/api/file/ProjectLayout;Lorg/gradle/api/model/ObjectFactory;Lorg/gradle/api/provider/ProviderFactory;)V
 	public final fun getChunkFieldInits ()Lorg/gradle/api/provider/Property;
 	public final fun getContributesAsInject ()Lorg/gradle/api/provider/Property;
 	public final fun getDebug ()Lorg/gradle/api/provider/Property;
@@ -38,7 +38,7 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension {
 	public final fun getEnabled ()Lorg/gradle/api/provider/Property;
 	public final fun getGenerateAssistedFactories ()Lorg/gradle/api/provider/Property;
 	public final fun getGenerateContributionHints ()Lorg/gradle/api/provider/Property;
-	public final fun getGenerateJvmContributionHintsInFir ()Lorg/gradle/api/provider/Property;
+	public final fun getGenerateContributionHintsInFir ()Lorg/gradle/api/provider/Property;
 	public final fun getInterop ()Ldev/zacsweers/metro/gradle/MetroPluginExtension$InteropHandler;
 	public final fun getInteropAnnotationsNamedArgSeverity ()Lorg/gradle/api/provider/Property;
 	public final fun getMaxIrErrors ()Lorg/gradle/api/provider/Property;
@@ -47,6 +47,7 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension {
 	public final fun getReportsDestination ()Lorg/gradle/api/file/DirectoryProperty;
 	public final fun getShrinkUnusedBindings ()Lorg/gradle/api/provider/Property;
 	public final fun getStatementsPerInitFun ()Lorg/gradle/api/provider/Property;
+	public final fun getSupportedHintContributionPlatforms ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getTransformProvidersToPrivate ()Lorg/gradle/api/provider/Property;
 	public final fun getWarnOnInjectAnnotationPlacement ()Lorg/gradle/api/provider/Property;
 	public final fun interop (Lorg/gradle/api/Action;)V

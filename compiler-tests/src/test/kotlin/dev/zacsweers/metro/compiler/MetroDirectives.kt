@@ -19,9 +19,7 @@ object MetroDirectives : SimpleDirectivesContainer() {
   val DISABLE_TRANSFORM_PROVIDERS_TO_PRIVATE by
     directive("Disables automatic transformation of providers to be private.")
   val GENERATE_CONTRIBUTION_HINTS_IN_FIR by
-    directive(
-      "Enable/disable generation of contribution hint generation in FIR."
-    )
+    directive("Enable/disable generation of contribution hint generation in FIR.")
   val PUBLIC_PROVIDER_SEVERITY by
     enumDirective<MetroOptions.DiagnosticSeverity>(
       "Control diagnostic severity reporting of public providers."
