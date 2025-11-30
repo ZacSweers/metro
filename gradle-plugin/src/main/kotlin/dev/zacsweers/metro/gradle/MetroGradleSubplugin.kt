@@ -26,6 +26,8 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
       lazy(LazyThreadSafetyMode.NONE) {
         KotlinVersion.fromVersion(BASE_KOTLIN_VERSION.substringBeforeLast('.'))
       }
+
+    val kotlin230 = KotlinToolingVersion(2, 3, 0, null)
   }
 
   override fun apply(target: Project) {
@@ -144,7 +146,7 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
       }
 
     val kotlinVersion = project.kotlinToolingVersion
-    val orderComposePlugin = kotlinVersion >= KotlinToolingVersion(2, 3, 0, null)
+    val orderComposePlugin = kotlinVersion >= kotlin230
     kotlinCompilation.compileTaskProvider.configure { task ->
       if (orderComposePlugin) {
         // Order before compose-compiler
