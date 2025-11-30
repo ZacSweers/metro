@@ -17,7 +17,7 @@ Changelog
 - **New**: Add `supportedHintContributionPlatforms` Gradle DSL property to manually override supported hint contribution generation on different platforms. By default this computes default supported platforms based on the platform and Kotlin tooling version.
 - **API Change**: Rename `generateJvmContributionHintsInFir` Gradle DSL property to `generateContributionHintsInFir`. Note this property/mode still doesn't really work and is highly experimental at the moment.
 - **Behavior Change**: Add `@DelicateMetroGradleApi` annotations to relevant Gradle extension APIs.
-- **Behavior Change**: The renamed `generateContributionHints` property now computes defaults per platform and per Kotlin compilation as a `convention` and can be overridden.
+- **Behavior Change**: The `generateContributionHints` property now computes defaults per platform and per Kotlin compilation as a `convention` and can be overridden.
 - **Behavior Change**: All non-final classes with member injections or that extend classes with member injections must now be annotated with `@HasMemberInjections`. This is enforced with a new diagnostic check.
 - **Enhancement**: Lazily validate multibindings. Previously, multibindings were validated eagerly even if they were unused in a graph.
 - **Enhancement**: Report all duplicate bindings errors during graph construction rather than failing at first.
@@ -31,6 +31,7 @@ Changelog
 - **Fix**: Fix qualifiers not being propagated to generated `MembersInjector` classes for multibindings.
 - **Fix**: Remove misleading "doesn't appear to be visible to this compilation" hint, as this hint was misreporting.
 - **Fix**: Fix not reserving properties multibinding contributors that are behind aliases.
+- **Fix**: Stub hint function bodies if FIR-generated.
 - **Removed**: Removed deprecated `enableScopedInjectClassHints` Gradle DSL property.
 - **Removed**: Removed deprecated `enableStrictValidation` Gradle DSL property.
 - **Removed**: Removed deprecated `contributesGraphExtension` Gradle DSL property.
