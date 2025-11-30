@@ -26,14 +26,20 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
       lazy(LazyThreadSafetyMode.NONE) {
         KotlinVersion.fromVersion(BASE_KOTLIN_VERSION.substringBeforeLast('.'))
       }
-
-    val kotlin230 = KotlinToolingVersion(2, 3, 0, null)
-    val kotlin2320 = KotlinToolingVersion(2, 3, 20, null)
   }
 
   override fun apply(target: Project) {
+    val toolingVersion = target.kotlinToolingVersion
+    val baseToolingVersion =
+      KotlinToolingVersion(toolingVersion.major, toolingVersion.minor, toolingVersion.patch, null)
+
     val extension =
-      target.extensions.create("metro", MetroPluginExtension::class.java, target.layout)
+      target.extensions.create(
+        "metro",
+        MetroPluginExtension::class.java,
+        baseToolingVersion,
+        target.layout,
+      )
 
     // Only register analysis tasks when reportsDestination is configured
     target.afterEvaluate {
@@ -138,20 +144,13 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
 
     val kotlinVersion = project.kotlinToolingVersion
 
-    val supportedPlatforms: Provider<Set<KotlinPlatformType>> =
-      extension.supportedHintContributionPlatforms.orElse(
-        project.provider {
-          if (kotlinVersion >= kotlin2320) {
-            // Kotlin 2.3.20, all platforms are supported
-            KotlinPlatformType.entries.toSet()
-          } else {
-            // Only jvm/android work prior to Kotlin 2.3.20
-            setOf(KotlinPlatformType.common, KotlinPlatformType.jvm, KotlinPlatformType.androidJvm)
-          }
-        }
+    if (project.logVerbosely) {
+      project.logger.lifecycle(
+        "Supported platforms for ${kotlinCompilation.platformType} are: ${extension.supportedHintContributionPlatforms.get()}"
       )
+    }
 
-    val orderComposePlugin = kotlinVersion >= kotlin230
+    val orderComposePlugin = kotlinVersion >= KotlinVersions.kotlin230
     kotlinCompilation.compileTaskProvider.configure { task ->
       if (orderComposePlugin) {
         // Order before compose-compiler
@@ -222,238 +221,254 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
       }
     }
 
-    return project.provider {
-      buildList {
-        add(lazyOption("enabled", extension.enabled))
-        add(lazyOption("max-ir-errors-count", extension.maxIrErrors))
-        add(lazyOption("debug", extension.debug))
-        add(lazyOption("generate-assisted-factories", extension.generateAssistedFactories))
-        add(
-          lazyOption(
-            "generate-contribution-hints",
-            extension.generateContributionHints.orElse(
-              project
-                .provider { kotlinCompilation.platformType }
-                .zip(supportedPlatforms) { platformType, supportedPlatforms ->
-                  platformType in supportedPlatforms
-                }
-            ),
-          )
-        )
-        add(
-          lazyOption("generate-contribution-hints-in-fir", extension.generateContributionHintsInFir)
-        )
-        add(
-          lazyOption(
-            "enable-full-binding-graph-validation",
-            extension.enableFullBindingGraphValidation,
-          )
-        )
-        add(
-          lazyOption(
-            "enable-graph-impl-class-as-return-type",
-            extension.enableGraphImplClassAsReturnType.orElse(false),
-          )
-        )
-        add(lazyOption("transform-providers-to-private", extension.transformProvidersToPrivate))
-        add(lazyOption("shrink-unused-bindings", extension.shrinkUnusedBindings))
-        add(lazyOption("chunk-field-inits", extension.chunkFieldInits))
-        add(lazyOption("statements-per-init-fun", extension.statementsPerInitFun))
-        add(lazyOption("optional-binding-behavior", extension.optionalBindingBehavior))
-        add(lazyOption("public-provider-severity", extension.publicProviderSeverity))
-        add(
-          lazyOption(
-            "warn-on-inject-annotation-placement",
-            extension.warnOnInjectAnnotationPlacement,
-          )
-        )
-        add(
-          lazyOption(
-            "interop-annotations-named-arg-severity",
-            extension.interopAnnotationsNamedArgSeverity,
-          )
-        )
-        add(
-          lazyOption(
-            "enable-top-level-function-injection",
-            extension.enableTopLevelFunctionInjection,
-          )
-        )
-        add(lazyOption("contributes-as-inject", extension.contributesAsInject))
-        // Track whether we ordered the plugin before compose-compiler
-        add(SubpluginOption("plugin-order-set", orderComposePlugin.toString()))
-        reportsDir.orNull
-          ?.let { FilesSubpluginOption("reports-destination", listOf(it.asFile)) }
-          ?.let(::add)
-
-        if (isJvmTarget) {
-          add(
-            SubpluginOption(
-              "enable-dagger-runtime-interop",
-              extension.interop.enableDaggerRuntimeInterop.getOrElse(false).toString(),
-            )
-          )
-        }
-
-        with(extension.interop) {
-          provider
-            .getOrElse(mutableSetOf())
-            .takeUnless { it.isEmpty() }
-            ?.let { SubpluginOption("custom-provider", value = it.joinToString(":")) }
-            ?.let(::add)
-          lazy
-            .getOrElse(mutableSetOf())
-            .takeUnless { it.isEmpty() }
-            ?.let { SubpluginOption("custom-lazy", value = it.joinToString(":")) }
-            ?.let(::add)
-          assisted
-            .getOrElse(mutableSetOf())
-            .takeUnless { it.isEmpty() }
-            ?.let { SubpluginOption("custom-assisted", value = it.joinToString(":")) }
-            ?.let(::add)
-          assistedFactory
-            .getOrElse(mutableSetOf())
-            .takeUnless { it.isEmpty() }
-            ?.let { SubpluginOption("custom-assisted-factory", value = it.joinToString(":")) }
-            ?.let(::add)
-          assistedInject
-            .getOrElse(mutableSetOf())
-            .takeUnless { it.isEmpty() }
-            ?.let { SubpluginOption("custom-assisted-inject", value = it.joinToString(":")) }
-            ?.let(::add)
-          binds
-            .getOrElse(mutableSetOf())
-            .takeUnless { it.isEmpty() }
-            ?.let { SubpluginOption("custom-binds", value = it.joinToString(":")) }
-            ?.let(::add)
-          contributesTo
-            .getOrElse(mutableSetOf())
-            .takeUnless { it.isEmpty() }
-            ?.let { SubpluginOption("custom-contributes-to", value = it.joinToString(":")) }
-            ?.let(::add)
-          contributesBinding
-            .getOrElse(mutableSetOf())
-            .takeUnless { it.isEmpty() }
-            ?.let { SubpluginOption("custom-contributes-binding", value = it.joinToString(":")) }
-            ?.let(::add)
-          contributesIntoSet
-            .getOrElse(mutableSetOf())
-            .takeUnless { it.isEmpty() }
-            ?.let { SubpluginOption("custom-contributes-into-set", value = it.joinToString(":")) }
-            ?.let(::add)
-          graphExtension
-            .getOrElse(mutableSetOf())
-            .takeUnless { it.isEmpty() }
-            ?.let { SubpluginOption("custom-graph-extension", value = it.joinToString(":")) }
-            ?.let(::add)
-          graphExtensionFactory
-            .getOrElse(mutableSetOf())
-            .takeUnless { it.isEmpty() }
-            ?.let {
-              SubpluginOption("custom-graph-extension-factory", value = it.joinToString(":"))
-            }
-            ?.let(::add)
-          elementsIntoSet
-            .getOrElse(mutableSetOf())
-            .takeUnless { it.isEmpty() }
-            ?.let { SubpluginOption("custom-elements-into-set", value = it.joinToString(":")) }
-            ?.let(::add)
-          dependencyGraph
-            .getOrElse(mutableSetOf())
-            .takeUnless { it.isEmpty() }
-            ?.let { SubpluginOption("custom-dependency-graph", value = it.joinToString(":")) }
-            ?.let(::add)
-          dependencyGraphFactory
-            .getOrElse(mutableSetOf())
-            .takeUnless { it.isEmpty() }
-            ?.let {
-              SubpluginOption("custom-dependency-graph-factory", value = it.joinToString(":"))
-            }
-            ?.let(::add)
-          inject
-            .getOrElse(mutableSetOf())
-            .takeUnless { it.isEmpty() }
-            ?.let { SubpluginOption("custom-inject", value = it.joinToString(":")) }
-            ?.let(::add)
-          intoMap
-            .getOrElse(mutableSetOf())
-            .takeUnless { it.isEmpty() }
-            ?.let { SubpluginOption("custom-into-map", value = it.joinToString(":")) }
-            ?.let(::add)
-          intoSet
-            .getOrElse(mutableSetOf())
-            .takeUnless { it.isEmpty() }
-            ?.let { SubpluginOption("custom-into-set", value = it.joinToString(":")) }
-            ?.let(::add)
-          mapKey
-            .getOrElse(mutableSetOf())
-            .takeUnless { it.isEmpty() }
-            ?.let { SubpluginOption("custom-map-key", value = it.joinToString(":")) }
-            ?.let(::add)
-          multibinds
-            .getOrElse(mutableSetOf())
-            .takeUnless { it.isEmpty() }
-            ?.let { SubpluginOption("custom-multibinds", value = it.joinToString(":")) }
-            ?.let(::add)
-          provides
-            .getOrElse(mutableSetOf())
-            .takeUnless { it.isEmpty() }
-            ?.let { SubpluginOption("custom-provides", value = it.joinToString(":")) }
-            ?.let(::add)
-          qualifier
-            .getOrElse(mutableSetOf())
-            .takeUnless { it.isEmpty() }
-            ?.let { SubpluginOption("custom-qualifier", value = it.joinToString(":")) }
-            ?.let(::add)
-          scope
-            .getOrElse(mutableSetOf())
-            .takeUnless { it.isEmpty() }
-            ?.let { SubpluginOption("custom-scope", value = it.joinToString(":")) }
-            ?.let(::add)
-          bindingContainer
-            .getOrElse(mutableSetOf())
-            .takeUnless { it.isEmpty() }
-            ?.let { SubpluginOption("custom-binding-container", value = it.joinToString(":")) }
-            ?.let(::add)
-          origin
-            .getOrElse(mutableSetOf())
-            .takeUnless { it.isEmpty() }
-            ?.let { SubpluginOption("custom-origin", value = it.joinToString(":")) }
-            ?.let(::add)
-          optionalBinding
-            .getOrElse(mutableSetOf())
-            .takeUnless { it.isEmpty() }
-            ?.let { SubpluginOption("custom-optional-binding", value = it.joinToString(":")) }
-            ?.let(::add)
-          add(lazyOption("interop-include-javax-annotations", includeJavaxAnnotations))
-          add(lazyOption("interop-include-jakarta-annotations", includeJakartaAnnotations))
-          add(lazyOption("interop-include-dagger-annotations", includeDaggerAnnotations))
-          add(
-            lazyOption("interop-include-kotlin-inject-annotations", includeKotlinInjectAnnotations)
-          )
-          add(lazyOption("interop-include-anvil-annotations", includeAnvilAnnotations))
+    return project
+      .provider {
+        buildList {
+          add(lazyOption("enabled", extension.enabled))
+          add(lazyOption("max-ir-errors-count", extension.maxIrErrors))
+          add(lazyOption("debug", extension.debug))
+          add(lazyOption("generate-assisted-factories", extension.generateAssistedFactories))
           add(
             lazyOption(
-              "interop-include-kotlin-inject-anvil-annotations",
-              includeKotlinInjectAnvilAnnotations,
+              "generate-contribution-hints",
+              extension.generateContributionHints.orElse(
+                project
+                  .provider { kotlinCompilation.platformType }
+                  .zip(extension.supportedHintContributionPlatforms) {
+                    platformType,
+                    supportedPlatforms ->
+                    platformType in supportedPlatforms
+                  }
+              ),
             )
           )
           add(
-            SubpluginOption(
-              "enable-dagger-anvil-interop",
-              value = enableDaggerAnvilInterop.getOrElse(false).toString(),
+            lazyOption(
+              "generate-contribution-hints-in-fir",
+              extension.generateContributionHintsInFir,
             )
           )
-          add(lazyOption("interop-include-guice-annotations", includeGuiceAnnotations))
           add(
-            SubpluginOption(
-              "enable-guice-runtime-interop",
-              value = enableGuiceRuntimeInterop.getOrElse(false).toString(),
+            lazyOption(
+              "enable-full-binding-graph-validation",
+              extension.enableFullBindingGraphValidation,
             )
+          )
+          add(
+            lazyOption(
+              "enable-graph-impl-class-as-return-type",
+              extension.enableGraphImplClassAsReturnType.orElse(false),
+            )
+          )
+          add(lazyOption("transform-providers-to-private", extension.transformProvidersToPrivate))
+          add(lazyOption("shrink-unused-bindings", extension.shrinkUnusedBindings))
+          add(lazyOption("chunk-field-inits", extension.chunkFieldInits))
+          add(lazyOption("statements-per-init-fun", extension.statementsPerInitFun))
+          add(lazyOption("optional-binding-behavior", extension.optionalBindingBehavior))
+          add(lazyOption("public-provider-severity", extension.publicProviderSeverity))
+          add(
+            lazyOption(
+              "warn-on-inject-annotation-placement",
+              extension.warnOnInjectAnnotationPlacement,
+            )
+          )
+          add(
+            lazyOption(
+              "interop-annotations-named-arg-severity",
+              extension.interopAnnotationsNamedArgSeverity,
+            )
+          )
+          add(
+            lazyOption(
+              "enable-top-level-function-injection",
+              extension.enableTopLevelFunctionInjection,
+            )
+          )
+          add(lazyOption("contributes-as-inject", extension.contributesAsInject))
+          // Track whether we ordered the plugin before compose-compiler
+          add(SubpluginOption("plugin-order-set", orderComposePlugin.toString()))
+          reportsDir.orNull
+            ?.let { FilesSubpluginOption("reports-destination", listOf(it.asFile)) }
+            ?.let(::add)
+
+          if (isJvmTarget) {
+            add(
+              SubpluginOption(
+                "enable-dagger-runtime-interop",
+                extension.interop.enableDaggerRuntimeInterop.getOrElse(false).toString(),
+              )
+            )
+          }
+
+          with(extension.interop) {
+            provider
+              .getOrElse(mutableSetOf())
+              .takeUnless { it.isEmpty() }
+              ?.let { SubpluginOption("custom-provider", value = it.joinToString(":")) }
+              ?.let(::add)
+            lazy
+              .getOrElse(mutableSetOf())
+              .takeUnless { it.isEmpty() }
+              ?.let { SubpluginOption("custom-lazy", value = it.joinToString(":")) }
+              ?.let(::add)
+            assisted
+              .getOrElse(mutableSetOf())
+              .takeUnless { it.isEmpty() }
+              ?.let { SubpluginOption("custom-assisted", value = it.joinToString(":")) }
+              ?.let(::add)
+            assistedFactory
+              .getOrElse(mutableSetOf())
+              .takeUnless { it.isEmpty() }
+              ?.let { SubpluginOption("custom-assisted-factory", value = it.joinToString(":")) }
+              ?.let(::add)
+            assistedInject
+              .getOrElse(mutableSetOf())
+              .takeUnless { it.isEmpty() }
+              ?.let { SubpluginOption("custom-assisted-inject", value = it.joinToString(":")) }
+              ?.let(::add)
+            binds
+              .getOrElse(mutableSetOf())
+              .takeUnless { it.isEmpty() }
+              ?.let { SubpluginOption("custom-binds", value = it.joinToString(":")) }
+              ?.let(::add)
+            contributesTo
+              .getOrElse(mutableSetOf())
+              .takeUnless { it.isEmpty() }
+              ?.let { SubpluginOption("custom-contributes-to", value = it.joinToString(":")) }
+              ?.let(::add)
+            contributesBinding
+              .getOrElse(mutableSetOf())
+              .takeUnless { it.isEmpty() }
+              ?.let { SubpluginOption("custom-contributes-binding", value = it.joinToString(":")) }
+              ?.let(::add)
+            contributesIntoSet
+              .getOrElse(mutableSetOf())
+              .takeUnless { it.isEmpty() }
+              ?.let { SubpluginOption("custom-contributes-into-set", value = it.joinToString(":")) }
+              ?.let(::add)
+            graphExtension
+              .getOrElse(mutableSetOf())
+              .takeUnless { it.isEmpty() }
+              ?.let { SubpluginOption("custom-graph-extension", value = it.joinToString(":")) }
+              ?.let(::add)
+            graphExtensionFactory
+              .getOrElse(mutableSetOf())
+              .takeUnless { it.isEmpty() }
+              ?.let {
+                SubpluginOption("custom-graph-extension-factory", value = it.joinToString(":"))
+              }
+              ?.let(::add)
+            elementsIntoSet
+              .getOrElse(mutableSetOf())
+              .takeUnless { it.isEmpty() }
+              ?.let { SubpluginOption("custom-elements-into-set", value = it.joinToString(":")) }
+              ?.let(::add)
+            dependencyGraph
+              .getOrElse(mutableSetOf())
+              .takeUnless { it.isEmpty() }
+              ?.let { SubpluginOption("custom-dependency-graph", value = it.joinToString(":")) }
+              ?.let(::add)
+            dependencyGraphFactory
+              .getOrElse(mutableSetOf())
+              .takeUnless { it.isEmpty() }
+              ?.let {
+                SubpluginOption("custom-dependency-graph-factory", value = it.joinToString(":"))
+              }
+              ?.let(::add)
+            inject
+              .getOrElse(mutableSetOf())
+              .takeUnless { it.isEmpty() }
+              ?.let { SubpluginOption("custom-inject", value = it.joinToString(":")) }
+              ?.let(::add)
+            intoMap
+              .getOrElse(mutableSetOf())
+              .takeUnless { it.isEmpty() }
+              ?.let { SubpluginOption("custom-into-map", value = it.joinToString(":")) }
+              ?.let(::add)
+            intoSet
+              .getOrElse(mutableSetOf())
+              .takeUnless { it.isEmpty() }
+              ?.let { SubpluginOption("custom-into-set", value = it.joinToString(":")) }
+              ?.let(::add)
+            mapKey
+              .getOrElse(mutableSetOf())
+              .takeUnless { it.isEmpty() }
+              ?.let { SubpluginOption("custom-map-key", value = it.joinToString(":")) }
+              ?.let(::add)
+            multibinds
+              .getOrElse(mutableSetOf())
+              .takeUnless { it.isEmpty() }
+              ?.let { SubpluginOption("custom-multibinds", value = it.joinToString(":")) }
+              ?.let(::add)
+            provides
+              .getOrElse(mutableSetOf())
+              .takeUnless { it.isEmpty() }
+              ?.let { SubpluginOption("custom-provides", value = it.joinToString(":")) }
+              ?.let(::add)
+            qualifier
+              .getOrElse(mutableSetOf())
+              .takeUnless { it.isEmpty() }
+              ?.let { SubpluginOption("custom-qualifier", value = it.joinToString(":")) }
+              ?.let(::add)
+            scope
+              .getOrElse(mutableSetOf())
+              .takeUnless { it.isEmpty() }
+              ?.let { SubpluginOption("custom-scope", value = it.joinToString(":")) }
+              ?.let(::add)
+            bindingContainer
+              .getOrElse(mutableSetOf())
+              .takeUnless { it.isEmpty() }
+              ?.let { SubpluginOption("custom-binding-container", value = it.joinToString(":")) }
+              ?.let(::add)
+            origin
+              .getOrElse(mutableSetOf())
+              .takeUnless { it.isEmpty() }
+              ?.let { SubpluginOption("custom-origin", value = it.joinToString(":")) }
+              ?.let(::add)
+            optionalBinding
+              .getOrElse(mutableSetOf())
+              .takeUnless { it.isEmpty() }
+              ?.let { SubpluginOption("custom-optional-binding", value = it.joinToString(":")) }
+              ?.let(::add)
+            add(lazyOption("interop-include-javax-annotations", includeJavaxAnnotations))
+            add(lazyOption("interop-include-jakarta-annotations", includeJakartaAnnotations))
+            add(lazyOption("interop-include-dagger-annotations", includeDaggerAnnotations))
+            add(
+              lazyOption(
+                "interop-include-kotlin-inject-annotations",
+                includeKotlinInjectAnnotations,
+              )
+            )
+            add(lazyOption("interop-include-anvil-annotations", includeAnvilAnnotations))
+            add(
+              lazyOption(
+                "interop-include-kotlin-inject-anvil-annotations",
+                includeKotlinInjectAnvilAnnotations,
+              )
+            )
+            add(
+              SubpluginOption(
+                "enable-dagger-anvil-interop",
+                value = enableDaggerAnvilInterop.getOrElse(false).toString(),
+              )
+            )
+            add(lazyOption("interop-include-guice-annotations", includeGuiceAnnotations))
+            add(
+              SubpluginOption(
+                "enable-guice-runtime-interop",
+                value = enableGuiceRuntimeInterop.getOrElse(false).toString(),
+              )
+            )
+          }
+        }
+      }
+      .also {
+        if (project.logVerbosely) {
+          project.logger.lifecycle(
+            "Metro compiler plugin options for ${kotlinCompilation.platformType}:\n${it.get().joinToString("\n") { "- " + it.key + ": " + it.value }}"
           )
         }
       }
-    }
   }
 }
 

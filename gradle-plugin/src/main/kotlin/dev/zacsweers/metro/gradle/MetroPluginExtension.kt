@@ -11,11 +11,17 @@ import org.gradle.api.provider.Property
 import org.gradle.api.provider.ProviderFactory
 import org.gradle.api.provider.SetProperty
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
+import org.jetbrains.kotlin.tooling.core.KotlinToolingVersion
 
 @MetroExtensionMarker
 public abstract class MetroPluginExtension
 @Inject
-constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFactory) {
+constructor(
+  baseKotlinVersion: KotlinToolingVersion,
+  layout: ProjectLayout,
+  objects: ObjectFactory,
+  providers: ProviderFactory,
+) {
 
   public val interop: InteropHandler = objects.newInstance(InteropHandler::class.java)
 
@@ -99,7 +105,19 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     "Contribution hint gen does not work yet in all platforms on all Kotlin versions. See the kdoc."
   )
   public val supportedHintContributionPlatforms: SetProperty<KotlinPlatformType> =
-    objects.setProperty(KotlinPlatformType::class.javaObjectType)
+    objects
+      .setProperty(KotlinPlatformType::class.javaObjectType)
+      .convention(
+        providers.provider {
+          if (baseKotlinVersion >= KotlinVersions.kotlin2320) {
+            // Kotlin 2.3.20, all platforms are supported
+            KotlinPlatformType.entries.toSet()
+          } else {
+            // Only jvm/android work prior to Kotlin 2.3.20
+            setOf(KotlinPlatformType.common, KotlinPlatformType.jvm, KotlinPlatformType.androidJvm)
+          }
+        }
+      )
 
   /**
    * Enable/disable full validation of bindings. If enabled, _all_ declared `@Provides` and `@Binds`
