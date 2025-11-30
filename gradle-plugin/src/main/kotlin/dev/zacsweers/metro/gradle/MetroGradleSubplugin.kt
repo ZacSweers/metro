@@ -30,6 +30,7 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
 
   override fun apply(target: Project) {
     val toolingVersion = target.kotlinToolingVersion
+
     val baseToolingVersion =
       KotlinToolingVersion(toolingVersion.major, toolingVersion.minor, toolingVersion.patch, null)
 
@@ -41,8 +42,46 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         target.layout,
       )
 
-    // Only register analysis tasks when reportsDestination is configured
+    // Only register analysis tasks when metro's extension is configured
     target.afterEvaluate {
+      // Check version and show warning by default.
+      val checkVersions =
+        target.extensions
+          .getByType(MetroPluginExtension::class.java)
+          .enableKotlinVersionCompatibilityChecks
+          .getOrElse(true)
+
+      if (checkVersions) {
+        val supportedVersions = SUPPORTED_KOTLIN_VERSIONS.map(::KotlinToolingVersion)
+        val minSupported = supportedVersions.min()
+        val maxSupported = supportedVersions.max()
+
+        val isSupported = toolingVersion in minSupported..maxSupported
+        if (!isSupported) {
+          if (toolingVersion < minSupported) {
+            target.logger.lifecycle(
+              """
+              Metro '$VERSION' requires Kotlin ${SUPPORTED_KOTLIN_VERSIONS.first()} or later, but this build uses '$toolingVersion'.
+              Please upgrade Kotlin to at least '${SUPPORTED_KOTLIN_VERSIONS.first()}'.
+              Supported Kotlin versions: ${SUPPORTED_KOTLIN_VERSIONS.first()} - ${SUPPORTED_KOTLIN_VERSIONS.last()}
+              You can also disable this warning via `metro.version.check=false` or setting the `metro.enableKotlinVersionCompatibilityChecks` DSL property.
+            """
+                .trimIndent()
+            )
+          } else {
+            target.logger.lifecycle(
+              """
+              This build uses unrecognized Kotlin version '$toolingVersion'.
+              Metro '$VERSION' supports the following Kotlin versions: $SUPPORTED_KOTLIN_VERSIONS
+              If you have any issues, please upgrade Metro (if applicable) or use a supported Kotlin version. See https://zacsweers.github.io/metro/latest/compatibility.
+              You can also disable this warning via `metro.version.check=false` or setting the `metro.enableKotlinVersionCompatibilityChecks` DSL property.
+            """
+                .trimIndent()
+            )
+          }
+        }
+      }
+
       if (extension.reportsDestination.isPresent) {
         val graphMetadataTask =
           target.tasks.register(
@@ -92,47 +131,6 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
   }
 
   override fun isApplicable(kotlinCompilation: KotlinCompilation<*>): Boolean {
-    val project = kotlinCompilation.target.project
-
-    // Check version and show warning by default.
-    val checkVersions =
-      project.extensions
-        .getByType(MetroPluginExtension::class.java)
-        .enableKotlinVersionCompatibilityChecks
-        .getOrElse(true)
-    if (checkVersions) {
-      val kotlinVersionString = project.getKotlinPluginVersion()
-      val kotlinVersion = VersionNumber.parse(kotlinVersionString)
-      val supportedVersions = SUPPORTED_KOTLIN_VERSIONS.map(VersionNumber::parse)
-      val minSupported = supportedVersions.min()
-      val maxSupported = supportedVersions.max()
-
-      val isSupported = kotlinVersion in minSupported..maxSupported
-      if (!isSupported) {
-        if (kotlinVersion < minSupported) {
-          project.logger.lifecycle(
-            """
-              Metro '$VERSION' requires Kotlin ${SUPPORTED_KOTLIN_VERSIONS.first()} or later, but this build uses '$kotlinVersionString'.
-              Please upgrade Kotlin to at least '${SUPPORTED_KOTLIN_VERSIONS.first()}'.
-              Supported Kotlin versions: ${SUPPORTED_KOTLIN_VERSIONS.first()} - ${SUPPORTED_KOTLIN_VERSIONS.last()}
-              You can also disable this warning via `metro.version.check=false` or setting the `metro.enableKotlinVersionCompatibilityChecks` DSL property.
-            """
-              .trimIndent()
-          )
-        } else {
-          project.logger.lifecycle(
-            """
-              This build uses unrecognized Kotlin version '$kotlinVersionString'.
-              Metro '$VERSION' supports the following Kotlin versions: $SUPPORTED_KOTLIN_VERSIONS
-              If you have any issues, please upgrade Metro (if applicable) or use a supported Kotlin version. See https://zacsweers.github.io/metro/latest/compatibility.
-              You can also disable this warning via `metro.version.check=false` or setting the `metro.enableKotlinVersionCompatibilityChecks` DSL property.
-            """
-              .trimIndent()
-          )
-        }
-      }
-    }
-
     return true
   }
 
