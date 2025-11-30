@@ -138,7 +138,7 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
 
     val kotlinVersion = project.kotlinToolingVersion
 
-    val supportedPlatforms =
+    val supportedPlatforms: Provider<Set<KotlinPlatformType>> =
       extension.supportedHintContributionPlatforms.orElse(
         project.provider {
           if (kotlinVersion >= kotlin2320) {
