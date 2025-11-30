@@ -14,7 +14,7 @@ compose-viewmodels/
 ## Running
 
 - **Android**: `./gradlew -p samples :compose-viewmodels:app:installDebug`
-- **Desktop**: `./gradlew -p samples :compose-viewmodels:app:run`
+- **Desktop**: `./gradlew -p samples :compose-viewmodels:app:jvmRun`
 
 ## Key Concepts
 
