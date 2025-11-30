@@ -28,6 +28,7 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
       }
 
     val kotlin230 = KotlinToolingVersion(2, 3, 0, null)
+    val kotlin2320 = KotlinToolingVersion(2, 3, 20, null)
   }
 
   override fun apply(target: Project) {
@@ -135,17 +136,21 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
     val project = kotlinCompilation.target.project
     val extension = project.extensions.getByType(MetroPluginExtension::class.java)
 
-    val platformCanGenerateContributionHints =
-      when (kotlinCompilation.platformType) {
-        KotlinPlatformType.common,
-        KotlinPlatformType.jvm,
-        KotlinPlatformType.androidJvm -> true
-        KotlinPlatformType.js,
-        KotlinPlatformType.native,
-        KotlinPlatformType.wasm -> false
-      }
-
     val kotlinVersion = project.kotlinToolingVersion
+
+    val supportedPlatforms =
+      extension.supportedHintContributionPlatforms.orElse(
+        project.provider {
+          if (kotlinVersion >= kotlin2320) {
+            // Kotlin 2.3.20, all platforms are supported
+            KotlinPlatformType.entries.toSet()
+          } else {
+            // Only jvm/android work prior to Kotlin 2.3.20
+            setOf(KotlinPlatformType.common, KotlinPlatformType.jvm, KotlinPlatformType.androidJvm)
+          }
+        }
+      )
+
     val orderComposePlugin = kotlinVersion >= kotlin230
     kotlinCompilation.compileTaskProvider.configure { task ->
       if (orderComposePlugin) {
@@ -226,14 +231,17 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         add(
           lazyOption(
             "generate-contribution-hints",
-            extension.generateContributionHints.orElse(platformCanGenerateContributionHints),
+            extension.generateContributionHints.orElse(
+              project
+                .provider { kotlinCompilation.platformType }
+                .zip(supportedPlatforms) { platformType, supportedPlatforms ->
+                  platformType in supportedPlatforms
+                }
+            ),
           )
         )
         add(
-          lazyOption(
-            "generate-contribution-hints-in-fir",
-            extension.generateContributionHintsInFir,
-          )
+          lazyOption("generate-contribution-hints-in-fir", extension.generateContributionHintsInFir)
         )
         add(
           lazyOption(

@@ -10,6 +10,7 @@ import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.ProviderFactory
 import org.gradle.api.provider.SetProperty
+import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 
 @MetroExtensionMarker
 public abstract class MetroPluginExtension
@@ -73,7 +74,7 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
 
   /**
    * Enable/disable contribution hint generation in FIR. Disabled by default as this is still
-   * experimental. Requires [generateContributionHints] to be true
+   * experimental. Requires [generateContributionHints] to be true.
    *
    * **Warnings**
    * - Prior to Kotlin 2.3.20, FIR contribution hint gen is only compatible with jvm/android
@@ -85,6 +86,20 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
   )
   public val generateContributionHintsInFir: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(false)
+
+  /**
+   * Sets the platforms for which contribution hints will be generated. If not set, defaults are
+   * computed per-platform and per Kotlin version based on known compatible combinations.
+   *
+   * **Warnings** Prior to Kotlin 2.3.20, contribution hint gen is
+   * - ...only compatible with jvm/android targets.
+   * - ...does not support incremental compilation on any targets.
+   */
+  @DelicateMetroGradleApi(
+    "Contribution hint gen does not work yet in all platforms on all Kotlin versions. See the kdoc."
+  )
+  public val supportedHintContributionPlatforms: SetProperty<KotlinPlatformType> =
+    objects.setProperty(KotlinPlatformType::class.javaObjectType)
 
   /**
    * Enable/disable full validation of bindings. If enabled, _all_ declared `@Provides` and `@Binds`
