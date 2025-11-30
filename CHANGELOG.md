@@ -18,6 +18,7 @@ Changelog
 - **Enhancement**: Lazily validate multibindings. Previously, multibindings were validated eagerly even if they were unused in a graph.
 - **Enhancement**: Report all duplicate bindings errors during graph construction rather than failing at first.
 - **Enhancement**: Support `FirFunctionCall` evaluation in annotation arguments during FIR.
+- **Enhancement**: Order before the Compose compiler on Kotlin 2.3.0+.
 - **Fix**: Support member injection of classes that have no member injections but do extend superclasses with member injections.
 - **Fix**: Catch more `IrErrorType` error types cases and report context/advice where possible.
 - **Fix**: Dedupe binding containers contributed to both parent and child graphs.
