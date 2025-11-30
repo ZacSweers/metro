@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.compat.k2320_dev_5437
 
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.compat.k230_RC.CompatContextImpl as DelegateType
 import org.jetbrains.kotlin.GeneratedDeclarationKey
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
@@ -22,6 +23,8 @@ import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirExtension
 import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.plugin.SimpleFunctionBuildingContext
+import org.jetbrains.kotlin.fir.plugin.createMemberFunction as createMemberFunctionNative
+import org.jetbrains.kotlin.fir.plugin.createTopLevelFunction as createTopLevelFunctionNative
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
@@ -35,9 +38,6 @@ import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.Name
-import dev.zacsweers.metro.compiler.compat.k230_RC.CompatContextImpl as DelegateType
-import org.jetbrains.kotlin.fir.plugin.createMemberFunction as createMemberFunctionNative
-import org.jetbrains.kotlin.fir.plugin.createTopLevelFunction as createTopLevelFunctionNative
 
 public class CompatContextImpl : CompatContext by DelegateType() {
 

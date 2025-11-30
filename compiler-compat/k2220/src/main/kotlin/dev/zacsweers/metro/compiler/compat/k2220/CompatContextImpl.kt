@@ -33,11 +33,10 @@ import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.plugin.SimpleFunctionBuildingContext
 import org.jetbrains.kotlin.fir.plugin.createMemberFunction as createMemberFunctionNative
 import org.jetbrains.kotlin.fir.plugin.createTopLevelFunction as createTopLevelFunctionNative
-import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
-import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.toEffectiveVisibility
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
@@ -55,6 +54,7 @@ import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
 import org.jetbrains.kotlin.ir.util.addFakeOverrides as addFakeOverridesNative
 import org.jetbrains.kotlin.name.CallableId
+import org.jetbrains.kotlin.name.Name
 
 public class CompatContextImpl : CompatContext {
   override fun FirBasedSymbol<*>.getContainingClassSymbol(): FirClassLikeSymbol<*>? =
@@ -217,12 +217,16 @@ public class CompatContextImpl : CompatContext {
     }
   }
 
-  private class FunctionBuilderScopeImpl(
-    private val builder: FirSimpleFunctionBuilder,
-  ) : CompatContext.FunctionBuilderScope {
-    override val symbol: FirNamedFunctionSymbol get() = builder.symbol
-    override val typeParameters: MutableList<FirTypeParameter> get() = builder.typeParameters
-    override val valueParameters: MutableList<FirValueParameter> get() = builder.valueParameters
+  private class FunctionBuilderScopeImpl(private val builder: FirSimpleFunctionBuilder) :
+    CompatContext.FunctionBuilderScope {
+    override val symbol: FirNamedFunctionSymbol
+      get() = builder.symbol
+
+    override val typeParameters: MutableList<FirTypeParameter>
+      get() = builder.typeParameters
+
+    override val valueParameters: MutableList<FirValueParameter>
+      get() = builder.valueParameters
   }
 
   override fun IrProperty.addBackingFieldCompat(builder: IrFieldBuilder.() -> Unit): IrField {

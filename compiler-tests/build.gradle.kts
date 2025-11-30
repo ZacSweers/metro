@@ -71,7 +71,8 @@ dependencies {
     compilerTestFrameworkVersion = testCompilerVersion
   } else if (testKotlinVersion >= KotlinVersion(2, 3)) {
     generatorConfigToUse = "generator230"
-    compilerTestFrameworkVersion = if (testCompilerVersion.contains("-dev")) {
+    compilerTestFrameworkVersion =
+      if (testCompilerVersion.contains("-dev")) {
         testCompilerVersion
       } else {
         "2.3.0-Beta2"

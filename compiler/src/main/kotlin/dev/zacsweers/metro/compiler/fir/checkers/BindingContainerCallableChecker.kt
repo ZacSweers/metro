@@ -248,7 +248,8 @@ internal object BindingContainerCallableChecker :
 
     val bodyExpression =
       when (declaration) {
-        is FirFunction if (with(session.compatContext) { declaration.isNamedFunction() } ) -> declaration.body
+        is FirFunction if (with(session.compatContext) { declaration.isNamedFunction() }) ->
+          declaration.body
         is FirProperty -> {
           declaration.getter?.body ?: declaration.initializer
         }
@@ -284,7 +285,8 @@ internal object BindingContainerCallableChecker :
             // Compare type keys. Different qualifiers are ok
             val returnTypeKey =
               when (declaration) {
-                is FirFunction if (with(session.compatContext) { declaration.isNamedFunction() } ) -> FirTypeKey.from(session, declaration)
+                is FirFunction if (with(session.compatContext) { declaration.isNamedFunction() }) ->
+                  FirTypeKey.from(session, declaration)
                 is FirProperty -> FirTypeKey.from(session, declaration)
                 else -> return
               }
@@ -312,7 +314,10 @@ internal object BindingContainerCallableChecker :
         }
       } else {
         val name =
-          if (declaration is FirFunction && with(session.compatContext) { declaration.isNamedFunction() }) {
+          if (
+            declaration is FirFunction &&
+              with(session.compatContext) { declaration.isNamedFunction() }
+          ) {
             "functions"
           } else {
             "properties"
@@ -397,7 +402,9 @@ internal object BindingContainerCallableChecker :
         }
       }
 
-      if (declaration is FirFunction && with(session.compatContext) { declaration.isNamedFunction() }) {
+      if (
+        declaration is FirFunction && with(session.compatContext) { declaration.isNamedFunction() }
+      ) {
         for (parameter in declaration.valueParameters) {
           val annotations =
             parameter.symbol.metroAnnotations(

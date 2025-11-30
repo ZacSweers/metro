@@ -195,9 +195,7 @@ internal class ParentContext(private val metroContext: IrMetroContext) {
           GraphPropertyData(key, metroContext.metroSymbols.metroProvider.typeWith(key.type))
 
         // These must always be fields
-        with(metroContext) {
-          ensureInitialized(PropertyType.FIELD)
-        }
+        with(metroContext) { ensureInitialized(PropertyType.FIELD) }
       }
   }
 
