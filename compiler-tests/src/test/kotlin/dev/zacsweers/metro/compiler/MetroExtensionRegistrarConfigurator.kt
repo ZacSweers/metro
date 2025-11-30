@@ -67,8 +67,8 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
           MetroDirectives.ENABLE_FULL_BINDING_GRAPH_VALIDATION in module.directives
         enableGraphImplClassAsReturnType =
           MetroDirectives.ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE in module.directives
-        generateJvmContributionHintsInFir =
-          MetroDirectives.GENERATE_JVM_CONTRIBUTION_HINTS_IN_FIR in module.directives
+        generateContributionHintsInFir =
+          MetroDirectives.GENERATE_CONTRIBUTION_HINTS_IN_FIR in module.directives
         if (transformProvidersToPrivate) {
           publicProviderSeverity = MetroOptions.DiagnosticSeverity.NONE
         } else {

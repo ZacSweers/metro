@@ -147,7 +147,7 @@ internal class DependencyGraphTransformer(
   }
 
   override fun visitSimpleFunction(declaration: IrSimpleFunction): IrStatement {
-    if (options.generateJvmContributionHintsInFir) {
+    if (options.generateContributionHintsInFir) {
       contributionHintIrTransformer.visitFunction(declaration)
     }
     return super.visitSimpleFunction(declaration)
@@ -169,7 +169,7 @@ internal class DependencyGraphTransformer(
     // Native/WASM/JS compilation hint gen can't be done in IR
     // https://youtrack.jetbrains.com/issue/KT-75865
     val generateHints =
-      options.generateContributionHints && !options.generateJvmContributionHintsInFir
+      options.generateContributionHints && !options.generateContributionHintsInFir
     if (generateHints) {
       contributionHintIrTransformer.visitClass(declaration)
     }

@@ -66,10 +66,14 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     objects.property(Boolean::class.javaObjectType)
 
   /**
-   * Enable/disable contribution hint generation in FIR for JVM compilations types. Disabled by
-   * default. Requires [generateContributionHints] to be true
+   * Enable/disable contribution hint generation in FIR. Disabled by default as this is still
+   * experimental. Requires [generateContributionHints] to be true
    */
-  public val generateJvmContributionHintsInFir: Property<Boolean> =
+  @DelicateMetroGradleApi(
+    "FIR contribution generation is experimental and does not work yet " +
+      "with incremental compilation or Kotlin version < 2.3.20."
+  )
+  public val generateContributionHintsInFir: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(false)
 
   /**

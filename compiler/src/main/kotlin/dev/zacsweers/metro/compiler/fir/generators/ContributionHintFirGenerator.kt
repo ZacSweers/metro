@@ -55,7 +55,7 @@ internal class ContributionHintFirGenerator(session: FirSession, compatContext: 
 
   private fun shouldGenerateHints(): Boolean {
     val options = session.metroFirBuiltIns.options
-    val jvmHintsEnabled = options.generateJvmContributionHintsInFir
+    val jvmHintsEnabled = options.generateContributionHintsInFir
     // Only generate hints for non-JVM/Android platforms by default
     val shouldGenerateHints = jvmHintsEnabled || !platform.isJvm()
     return shouldGenerateHints

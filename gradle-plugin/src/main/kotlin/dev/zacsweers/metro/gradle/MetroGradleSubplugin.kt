@@ -231,8 +231,8 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         )
         add(
           lazyOption(
-            "generate-jvm-contribution-hints-in-fir",
-            extension.generateJvmContributionHintsInFir,
+            "generate-contribution-hints-in-fir",
+            extension.generateContributionHintsInFir,
           )
         )
         add(
