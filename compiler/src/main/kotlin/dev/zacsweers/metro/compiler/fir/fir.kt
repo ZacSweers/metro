@@ -31,6 +31,7 @@ import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaredMemberScope
 import org.jetbrains.kotlin.fir.analysis.checkers.getAllowedAnnotationTargets
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
+import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
@@ -758,6 +759,11 @@ internal fun FirClassLikeDeclaration.markImpl(session: FirSession) {
 }
 
 internal fun FirClassLikeDeclaration.markAsDeprecatedHidden(session: FirSession) {
+  replaceAnnotations(annotations + listOf(createDeprecatedHiddenAnnotation(session)))
+  replaceDeprecationsProvider(this.getDeprecationsProvider(session))
+}
+
+internal fun FirCallableDeclaration.markAsDeprecatedHidden(session: FirSession) {
   replaceAnnotations(annotations + listOf(createDeprecatedHiddenAnnotation(session)))
   replaceDeprecationsProvider(this.getDeprecationsProvider(session))
 }
