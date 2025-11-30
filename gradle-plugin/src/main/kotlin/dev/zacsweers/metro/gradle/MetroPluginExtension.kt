@@ -49,9 +49,15 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
    * Enables whether the Metro compiler plugin can inject top-level functions. See the kdoc on
    * `Inject` for more details.
    *
-   * Be extra careful with this API, as top-level function injection is not compatible with
-   * incremental compilation!
+   * **Warnings**
+   * - Prior to Kotlin 2.3.20, top-level function injection is only compatible with jvm/android
+   *   targets.
+   * - Top-level function injection is not yet compatible with incremental compilation on any
+   *   platform
    */
+  @DelicateMetroGradleApi(
+    "Top-level function injection is experimental and does not work yet in all cases. See the kdoc."
+  )
   public val enableTopLevelFunctionInjection: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(false)
 
@@ -68,10 +74,14 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
   /**
    * Enable/disable contribution hint generation in FIR. Disabled by default as this is still
    * experimental. Requires [generateContributionHints] to be true
+   *
+   * **Warnings**
+   * - Prior to Kotlin 2.3.20, FIR contribution hint gen is only compatible with jvm/android
+   *   targets.
+   * - FIR contribution hint gen is not yet compatible with incremental compilation on any platform
    */
   @DelicateMetroGradleApi(
-    "FIR contribution generation is experimental and does not work yet " +
-      "with incremental compilation or Kotlin version < 2.3.20."
+    "FIR contribution hint gen is experimental and does not work yet in all cases. See the kdoc."
   )
   public val generateContributionHintsInFir: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(false)
