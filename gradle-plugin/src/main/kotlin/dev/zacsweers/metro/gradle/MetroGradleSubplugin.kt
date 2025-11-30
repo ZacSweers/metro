@@ -122,8 +122,8 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         } else {
           project.logger.lifecycle(
             """
+              This build uses unrecognized Kotlin version '$kotlinVersionString'.
               Metro '$VERSION' supports the following Kotlin versions: $SUPPORTED_KOTLIN_VERSIONS
-              This build uses unrecognized version '$kotlinVersionString'.
               If you have any issues, please upgrade Metro (if applicable) or use a supported Kotlin version. See https://zacsweers.github.io/metro/latest/compatibility.
               You can also disable this warning via `metro.version.check=false` or setting the `metro.enableKotlinVersionCompatibilityChecks` DSL property.
             """
