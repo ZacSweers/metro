@@ -37,7 +37,7 @@ buildConfig {
   val supportedVersions =
     fileTree(compilerCompatDir) { include("k*/version.txt") }
       .elements
-      .map { files -> files.map { it.asFile.readText().trim().lowercase(Locale.US) }.sorted() }
+      .map { files -> files.map { it.asFile.readText().trim() }.sorted() }
   buildConfigField(
     "List<String>",
     "SUPPORTED_KOTLIN_VERSIONS",
