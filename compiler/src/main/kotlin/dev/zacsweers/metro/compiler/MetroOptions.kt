@@ -144,13 +144,13 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
-  GENERATE_JVM_CONTRIBUTION_HINTS_IN_FIR(
+  GENERATE_CONTRIBUTION_HINTS_IN_FIR(
     RawMetroOption.boolean(
-      name = "generate-jvm-contribution-hints-in-fir",
+      name = "generate-contribution-hints-in-fir",
       defaultValue = false,
       valueDescription = "<true | false>",
       description =
-        "Enable/disable generation of contribution hint generation in FIR for JVM compilations types.",
+        "Enable/disable generation of contribution hint generation in FIR.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -690,8 +690,8 @@ public data class MetroOptions(
     MetroOption.ENABLE_TOP_LEVEL_FUNCTION_INJECTION.raw.defaultValue.expectAs(),
   val generateContributionHints: Boolean =
     MetroOption.GENERATE_CONTRIBUTION_HINTS.raw.defaultValue.expectAs(),
-  val generateJvmContributionHintsInFir: Boolean =
-    MetroOption.GENERATE_JVM_CONTRIBUTION_HINTS_IN_FIR.raw.defaultValue.expectAs(),
+  val generateContributionHintsInFir: Boolean =
+    MetroOption.GENERATE_CONTRIBUTION_HINTS_IN_FIR.raw.defaultValue.expectAs(),
   val transformProvidersToPrivate: Boolean =
     MetroOption.TRANSFORM_PROVIDERS_TO_PRIVATE.raw.defaultValue.expectAs(),
   val shrinkUnusedBindings: Boolean =
@@ -805,7 +805,7 @@ public data class MetroOptions(
     public var generateAssistedFactories: Boolean = base.generateAssistedFactories
     public var enableTopLevelFunctionInjection: Boolean = base.enableTopLevelFunctionInjection
     public var generateContributionHints: Boolean = base.generateContributionHints
-    public var generateJvmContributionHintsInFir: Boolean = base.generateJvmContributionHintsInFir
+    public var generateContributionHintsInFir: Boolean = base.generateContributionHintsInFir
     public var transformProvidersToPrivate: Boolean = base.transformProvidersToPrivate
     public var shrinkUnusedBindings: Boolean = base.shrinkUnusedBindings
     public var chunkFieldInits: Boolean = base.chunkFieldInits
@@ -994,7 +994,7 @@ public data class MetroOptions(
         generateAssistedFactories = generateAssistedFactories,
         enableTopLevelFunctionInjection = enableTopLevelFunctionInjection,
         generateContributionHints = generateContributionHints,
-        generateJvmContributionHintsInFir = generateJvmContributionHintsInFir,
+        generateContributionHintsInFir = generateContributionHintsInFir,
         transformProvidersToPrivate = transformProvidersToPrivate,
         shrinkUnusedBindings = shrinkUnusedBindings,
         chunkFieldInits = chunkFieldInits,
@@ -1083,8 +1083,8 @@ public data class MetroOptions(
           MetroOption.GENERATE_CONTRIBUTION_HINTS ->
             generateContributionHints = configuration.getAsBoolean(entry)
 
-          MetroOption.GENERATE_JVM_CONTRIBUTION_HINTS_IN_FIR ->
-            generateJvmContributionHintsInFir = configuration.getAsBoolean(entry)
+          MetroOption.GENERATE_CONTRIBUTION_HINTS_IN_FIR ->
+            generateContributionHintsInFir = configuration.getAsBoolean(entry)
 
           MetroOption.TRANSFORM_PROVIDERS_TO_PRIVATE ->
             transformProvidersToPrivate = configuration.getAsBoolean(entry)
