@@ -168,8 +168,7 @@ internal class DependencyGraphTransformer(
     // TODO can we eagerly check for known metro types and skip?
     // Native/WASM/JS compilation hint gen can't be done in IR
     // https://youtrack.jetbrains.com/issue/KT-75865
-    val generateHints =
-      options.generateContributionHints && !options.generateContributionHintsInFir
+    val generateHints = options.generateContributionHints && !options.generateContributionHintsInFir
     if (generateHints) {
       contributionHintIrTransformer.visitClass(declaration)
     }

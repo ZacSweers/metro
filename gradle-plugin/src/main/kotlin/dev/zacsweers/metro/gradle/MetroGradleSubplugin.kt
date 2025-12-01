@@ -6,7 +6,12 @@ import dev.zacsweers.metro.gradle.analysis.AnalyzeGraphTask
 import dev.zacsweers.metro.gradle.analysis.GenerateGraphHtmlTask
 import dev.zacsweers.metro.gradle.artifacts.GenerateGraphMetadataTask
 import dev.zacsweers.metro.gradle.artifacts.MetroArtifactCopyTask
+import javax.inject.Inject
 import org.gradle.api.Project
+import org.gradle.api.problems.ProblemGroup
+import org.gradle.api.problems.ProblemId
+import org.gradle.api.problems.Problems
+import org.gradle.api.problems.Severity
 import org.gradle.api.provider.Provider
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 import org.jetbrains.kotlin.gradle.plugin.FilesSubpluginOption
@@ -15,21 +20,27 @@ import org.jetbrains.kotlin.gradle.plugin.KotlinCompilerPluginSupportPlugin
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 import org.jetbrains.kotlin.gradle.plugin.SubpluginArtifact
 import org.jetbrains.kotlin.gradle.plugin.SubpluginOption
-import org.jetbrains.kotlin.gradle.plugin.getKotlinPluginVersion
 import org.jetbrains.kotlin.gradle.plugin.kotlinToolingVersion
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 import org.jetbrains.kotlin.tooling.core.KotlinToolingVersion
 
-public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
+public class MetroGradleSubplugin @Inject constructor(private val problems: Problems) :
+  KotlinCompilerPluginSupportPlugin {
+
   private companion object {
     val gradleMetroKotlinVersion by
       lazy(LazyThreadSafetyMode.NONE) {
         KotlinVersion.fromVersion(BASE_KOTLIN_VERSION.substringBeforeLast('.'))
       }
+
+    val PROBLEM_GROUP: ProblemGroup = ProblemGroup.create("metro-group", "Metro Problems")
   }
+
+  private val problemReporter = problems.reporter
 
   override fun apply(target: Project) {
     val toolingVersion = target.kotlinToolingVersion
+
     val baseToolingVersion =
       KotlinToolingVersion(toolingVersion.major, toolingVersion.minor, toolingVersion.patch, null)
 
@@ -41,8 +52,78 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         target.layout,
       )
 
-    // Only register analysis tasks when reportsDestination is configured
+    // Only register analysis tasks when metro's extension is configured
     target.afterEvaluate {
+      // Check version and show warning by default.
+      val checkVersions =
+        target.extensions
+          .getByType(MetroPluginExtension::class.java)
+          .enableKotlinVersionCompatibilityChecks
+          .getOrElse(true)
+
+      if (checkVersions) {
+        val supportedVersions = SUPPORTED_KOTLIN_VERSIONS.map(::KotlinToolingVersion)
+        val minSupported = supportedVersions.min()
+        val maxSupported = supportedVersions.max()
+
+        val isSupported = toolingVersion in minSupported..maxSupported
+        if (!isSupported) {
+          val compatibilityUrl = "https://zacsweers.github.io/metro/latest/compatibility"
+          val disableSolution =
+            "You can disable this warning via `metro.version.check=false` or setting the `metro.enableKotlinVersionCompatibilityChecks` DSL property"
+          if (toolingVersion < minSupported) {
+            val label =
+              "Metro '$VERSION' requires Kotlin ${SUPPORTED_KOTLIN_VERSIONS.first()} or later, but this build uses '$toolingVersion'"
+            val details =
+              "Supported Kotlin versions: ${SUPPORTED_KOTLIN_VERSIONS.first()} - ${SUPPORTED_KOTLIN_VERSIONS.last()}"
+            val solution =
+              "Please upgrade Kotlin to at least '${SUPPORTED_KOTLIN_VERSIONS.first()}'"
+            val problemId =
+              ProblemId.create(
+                "kotlin-version-too-old",
+                "Kotlin version is too old for Metro",
+                PROBLEM_GROUP,
+              )
+            problemReporter.report(problemId) { spec ->
+              spec
+                .severity(Severity.WARNING)
+                .contextualLabel(label)
+                .details(details)
+                .solution(solution)
+                .solution(disableSolution)
+                .documentedAt(compatibilityUrl)
+            }
+            target.logger.warn(
+              "$label. $solution.\n$details.\nDocs: $compatibilityUrl\n($disableSolution)"
+            )
+          } else {
+            val label = "This build uses unrecognized Kotlin version '$toolingVersion'"
+            val details =
+              "Metro '$VERSION' supports the following Kotlin versions: $SUPPORTED_KOTLIN_VERSIONS"
+            val solution =
+              "If you have any issues, please upgrade Metro (if applicable) or use a supported Kotlin version. See $compatibilityUrl"
+            val problemId =
+              ProblemId.create(
+                "kotlin-version-unrecognized",
+                "Kotlin version is unrecognized by Metro",
+                PROBLEM_GROUP,
+              )
+            problemReporter.report(problemId) { spec ->
+              spec
+                .severity(Severity.WARNING)
+                .contextualLabel(label)
+                .details(details)
+                .solution(solution)
+                .solution(disableSolution)
+                .documentedAt(compatibilityUrl)
+            }
+            target.logger.warn(
+              "$label. $details.\n$solution.\nDocs: $compatibilityUrl\n($disableSolution)"
+            )
+          }
+        }
+      }
+
       if (extension.reportsDestination.isPresent) {
         val graphMetadataTask =
           target.tasks.register(
@@ -92,47 +173,6 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
   }
 
   override fun isApplicable(kotlinCompilation: KotlinCompilation<*>): Boolean {
-    val project = kotlinCompilation.target.project
-
-    // Check version and show warning by default.
-    val checkVersions =
-      project.extensions
-        .getByType(MetroPluginExtension::class.java)
-        .enableKotlinVersionCompatibilityChecks
-        .getOrElse(true)
-    if (checkVersions) {
-      val kotlinVersionString = project.getKotlinPluginVersion()
-      val kotlinVersion = VersionNumber.parse(kotlinVersionString)
-      val supportedVersions = SUPPORTED_KOTLIN_VERSIONS.map(VersionNumber::parse)
-      val minSupported = supportedVersions.min()
-      val maxSupported = supportedVersions.max()
-
-      val isSupported = kotlinVersion in minSupported..maxSupported
-      if (!isSupported) {
-        if (kotlinVersion < minSupported) {
-          project.logger.lifecycle(
-            """
-              Metro '$VERSION' requires Kotlin ${SUPPORTED_KOTLIN_VERSIONS.first()} or later, but this build uses '$kotlinVersionString'.
-              Please upgrade Kotlin to at least '${SUPPORTED_KOTLIN_VERSIONS.first()}'.
-              Supported Kotlin versions: ${SUPPORTED_KOTLIN_VERSIONS.first()} - ${SUPPORTED_KOTLIN_VERSIONS.last()}
-              You can also disable this warning via `metro.version.check=false` or setting the `metro.enableKotlinVersionCompatibilityChecks` DSL property.
-            """
-              .trimIndent()
-          )
-        } else {
-          project.logger.lifecycle(
-            """
-              Metro '$VERSION' supports the following Kotlin versions: $SUPPORTED_KOTLIN_VERSIONS
-              This build uses unrecognized version '$kotlinVersionString'.
-              If you have any issues, please upgrade Metro (if applicable) or use a supported Kotlin version. See https://zacsweers.github.io/metro/latest/compatibility.
-              You can also disable this warning via `metro.version.check=false` or setting the `metro.enableKotlinVersionCompatibilityChecks` DSL property.
-            """
-              .trimIndent()
-          )
-        }
-      }
-    }
-
     return true
   }
 

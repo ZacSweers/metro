@@ -25,6 +25,7 @@ import org.jetbrains.kotlin.fir.expressions.builder.buildExpressionStub
 import org.jetbrains.kotlin.fir.expressions.builder.buildFunctionCall
 import org.jetbrains.kotlin.fir.expressions.builder.buildLiteralExpression
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
+import org.jetbrains.kotlin.fir.java.declarations.FirJavaField
 import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.plugin.DeclarationBuildingContext
 import org.jetbrains.kotlin.fir.references.builder.buildResolvedNamedReference
@@ -89,9 +90,36 @@ internal fun FirDeclarationGenerationExtension.copyParameters(
   parameterInit: FirValueParameterBuilder.(original: MetroFirValueParameter) -> Unit = {},
 ) {
   for (original in sourceParameters) {
-    val originalFir = original.symbol.fir as FirValueParameter
-    functionBuilder.valueParameters +=
-      buildValueParameterCopy(originalFir) {
+    val newParam =
+      when (val originalFir = original.symbol.fir) {
+        // Java fields don't have parameters we can just copy,
+        // so we build a real one here based on it
+        is FirJavaField -> {
+          buildValueParameter {
+              this.moduleData = originalFir.moduleData
+              name = original.name
+              origin = Keys.RegularParameter.origin
+              symbol = FirValueParameterSymbol()
+              containingDeclarationSymbol = functionBuilder.symbol
+              returnTypeRef = originalFir.returnTypeRef
+              symbol = FirValueParameterSymbol()
+              parameterInit(original)
+              if (originalFir.symbol.hasInitializer) {
+                if (originalFir.symbol.hasMetroDefault(session)) {
+                  if (!copyParameterDefaults) {
+                    defaultValue = buildSafeDefaultValueStub(session)
+                  }
+                } else {
+                  defaultValue = null
+                }
+              }
+            }
+            .apply {
+              context(session.compatContext) { replaceAnnotationsSafe(original.symbol.annotations) }
+            }
+        }
+        else -> {
+          buildValueParameterCopy(originalFir as FirValueParameter) {
           name = original.name
           origin = Keys.RegularParameter.origin
           symbol = FirValueParameterSymbol()
@@ -111,8 +139,10 @@ internal fun FirDeclarationGenerationExtension.copyParameters(
           source = null
         }
         .apply {
-          context(session.compatContext) { replaceAnnotationsSafe(original.symbol.annotations) }
+          context(session.compatContext) { replaceAnnotationsSafe(original.symbol.annotations) }}
         }
+      }
+    functionBuilder.valueParameters += newParam
   }
 }
 

@@ -23,7 +23,7 @@ internal class ContributionHintIrTransformer(
   private val hintGenerator: HintGenerator,
 ) : IrMetroContext by context {
 
-  // Only executed if generateJvmContributionHintsInFir is enabled
+  // Only executed if generateContributionHintsInFir is enabled
   // Implements the FIR-generated declarations with empty bodies
   fun visitFunction(declaration: IrSimpleFunction) {
     if (declaration.origin == Origins.ContributionHint) {

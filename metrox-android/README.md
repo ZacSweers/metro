@@ -1,6 +1,6 @@
 # MetroX Android
 
-Core Android support for Metro. This artifact specifically focuses on integration with `AppComponentFactory` (which requires API 28+).
+Core Android support for Metro. This artifact specifically focuses on integration with `AppComponentFactory`, which requires API 28+. As a result, this artifact requires min SDK 28 since it's useless on older versions.
 
 ## Usage
 

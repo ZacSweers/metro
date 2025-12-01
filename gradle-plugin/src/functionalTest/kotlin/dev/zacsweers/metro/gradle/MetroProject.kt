@@ -29,6 +29,7 @@ abstract class MetroProject(
 
   /** Generates just the `metro { ... }` block content for use in custom build scripts. */
   fun buildMetroBlock(): String = buildString {
+    appendLine("@OptIn(dev.zacsweers.metro.gradle.DelicateMetroGradleApi::class)")
     appendLine("metro {")
     appendLine("  debug.set($debug)")
     if (reportsEnabled) {
