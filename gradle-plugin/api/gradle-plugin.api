@@ -16,7 +16,7 @@ public abstract interface annotation class dev/zacsweers/metro/gradle/MetroExten
 }
 
 public final class dev/zacsweers/metro/gradle/MetroGradleSubplugin : org/jetbrains/kotlin/gradle/plugin/KotlinCompilerPluginSupportPlugin {
-	public fun <init> ()V
+	public fun <init> (Lorg/gradle/api/problems/Problems;)V
 	public synthetic fun apply (Ljava/lang/Object;)V
 	public fun apply (Lorg/gradle/api/Project;)V
 	public fun applyToCompilation (Lorg/jetbrains/kotlin/gradle/plugin/KotlinCompilation;)Lorg/gradle/api/provider/Provider;
