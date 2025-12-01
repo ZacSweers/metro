@@ -1,8 +1,6 @@
 // Regression test for https://github.com/ZacSweers/metro/issues/1455
 // ENABLE_DAGGER_INTEROP
 // WITH_ANVIL
-package com.mad.interop
-
 import com.squareup.anvil.annotations.MergeComponent
 import com.squareup.anvil.annotations.optional.SingleIn
 import dagger.multibindings.ClassKey
@@ -30,5 +28,6 @@ interface AppGraph {
 fun box(): String {
   val graph = createGraph<AppGraph>()
   assertTrue(graph.multibindingsReference.multibindings.size == 0)
+  assertTrue(graph.multibindings.size == 0)
   return "OK"
 }
