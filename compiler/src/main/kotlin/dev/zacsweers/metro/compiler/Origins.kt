@@ -67,6 +67,7 @@ internal object Origins {
     val PROPERTY_BACKING_FIELD: IrDeclarationOrigin by getConstant("PROPERTY_BACKING_FIELD")
     val LOCAL_FUNCTION_FOR_LAMBDA: IrDeclarationOrigin by getConstant("LOCAL_FUNCTION_FOR_LAMBDA")
     val IR_TEMPORARY_VARIABLE: IrDeclarationOrigin by getConstant("IR_TEMPORARY_VARIABLE")
+    val IR_EXTERNAL_JAVA_DECLARATION_STUB: IrDeclarationOrigin by getConstant("IR_EXTERNAL_JAVA_DECLARATION_STUB")
   }
 }
 
