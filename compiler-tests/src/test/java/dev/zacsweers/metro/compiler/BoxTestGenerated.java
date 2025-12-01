@@ -1309,6 +1309,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("MultibindingMapOfProvidersEmpty.kt")
+      public void testMultibindingMapOfProvidersEmpty() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/MultibindingMapOfProvidersEmpty.kt");
+      }
+
+      @Test
       @TestMetadata("OptionalInACycle.kt")
       public void testOptionalInACycle() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/OptionalInACycle.kt");
