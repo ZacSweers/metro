@@ -927,6 +927,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       runTest("compiler-tests/src/test/data/box/inject/InjectedPrivateConstructorParametersWithGenericsWork.kt");
     }
 
+    @Test
+    @TestMetadata("InjectedTypeInheritsAnAnnotatedAbstractClass.kt")
+    public void testInjectedTypeInheritsAnAnnotatedAbstractClass() {
+      runTest("compiler-tests/src/test/data/box/inject/InjectedTypeInheritsAnAnnotatedAbstractClass.kt");
+    }
+
     @Nested
     @TestMetadata("compiler-tests/src/test/data/box/inject/assisted")
     @TestDataPath("$PROJECT_ROOT")
