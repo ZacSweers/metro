@@ -624,6 +624,8 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
                   applyMetroDefault()
                   dependencies(Dependency.implementation(":lib"))
                 }
+
+                withMetroSettings()
               }
               .withSubproject("lib") {
                 sources.add(bindingContainer)
@@ -1990,6 +1992,8 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
                   applyMetroDefault()
                   dependencies(Dependency.implementation(":lib"))
                 }
+
+                withMetroSettings()
               }
               .withSubproject("lib") {
                 sources.add(multibindings)

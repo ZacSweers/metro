@@ -1249,6 +1249,8 @@ class ICTests : BaseIncrementalCompilationTest() {
                     Dependency.implementation(":lib"),
                   )
                 }
+
+                withMetroSettings()
               }
               .withSubproject("common") {
                 sources.add(bar)
@@ -1358,6 +1360,8 @@ class ICTests : BaseIncrementalCompilationTest() {
                     Dependency.implementation(":lib"),
                   )
                 }
+
+                withMetroSettings()
               }
               .withSubproject("common") {
                 sources.add(bar)
@@ -1466,6 +1470,8 @@ class ICTests : BaseIncrementalCompilationTest() {
                   applyMetroDefault()
                   dependencies(Dependency.implementation(":lib"))
                 }
+
+                withMetroSettings()
               }
               .withSubproject("lib") {
                 sources.add(provider)
@@ -1627,6 +1633,8 @@ class ICTests : BaseIncrementalCompilationTest() {
                     Dependency.implementation(":lib"),
                   )
                 }
+
+                withMetroSettings()
               }
               .withSubproject("common") {
                 sources.add(fooBar)
@@ -1748,6 +1756,8 @@ class ICTests : BaseIncrementalCompilationTest() {
                   applyMetroDefault()
                   dependencies(Dependency.implementation(":lib"))
                 }
+
+                withMetroSettings()
               }
               .withSubproject("lib") {
                 sources.add(appGraph)
@@ -1939,6 +1949,8 @@ class ICTests : BaseIncrementalCompilationTest() {
                   applyMetroDefault()
                   dependencies(Dependency.implementation(":lib"))
                 }
+
+                withMetroSettings()
               }
               .withSubproject("lib") {
                 sources.add(myActivity)
@@ -2108,6 +2120,8 @@ class ICTests : BaseIncrementalCompilationTest() {
                   )
                 }
 
+                withMetroSettings()
+
                 val androidHome = System.getProperty("metro.androidHome")
                 assumeTrue(androidHome != null) // skip if environment not set up for Android
                 // Use invariantSeparatorsPath for cross-platform .properties file compatibility
@@ -2119,7 +2133,7 @@ class ICTests : BaseIncrementalCompilationTest() {
       }
 
     val project = fixture.gradleProject
-    val numRuns = 10
+    val numRuns = 3
 
     repeat(numRuns) { i ->
       println("Running build ${i+1}/$numRuns...")

@@ -5,6 +5,7 @@ package dev.zacsweers.metro.gradle
 import com.autonomousapps.kit.AbstractGradleProject
 import com.autonomousapps.kit.GradleProject
 import com.autonomousapps.kit.GradleProject.DslKind
+import com.autonomousapps.kit.RootProject
 import com.autonomousapps.kit.Source
 import com.autonomousapps.kit.gradle.BuildScript
 import com.autonomousapps.kit.gradle.DependencyResolutionManagement
@@ -28,13 +29,17 @@ abstract class MetroProject(
         .withRootProject {
           sources = this@MetroProject.sources()
           withBuildScript { applyMetroDefault() }
-          withSettingsScript {
-            pluginManagement = PluginManagement(metroRepositories(Repository.DEFAULT_PLUGINS))
-            dependencyResolutionManagement =
-              DependencyResolutionManagement(metroRepositories(Repository.DEFAULT))
-          }
+          withMetroSettings()
         }
         .write()
+
+  protected fun RootProject.Builder.withMetroSettings() = apply {
+    withSettingsScript {
+      pluginManagement = PluginManagement(metroRepositories(Repository.DEFAULT_PLUGINS))
+      dependencyResolutionManagement =
+        DependencyResolutionManagement(metroRepositories(Repository.DEFAULT))
+    }
+  }
 
   private fun metroRepositories(defaults: List<Repository>): Repositories =
     Repositories(
