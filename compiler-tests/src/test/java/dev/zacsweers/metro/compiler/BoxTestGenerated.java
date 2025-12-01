@@ -927,6 +927,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       runTest("compiler-tests/src/test/data/box/inject/InjectedPrivateConstructorParametersWithGenericsWork.kt");
     }
 
+    @Test
+    @TestMetadata("InjectedTypeInheritsAnAnnotatedAbstractClass.kt")
+    public void testInjectedTypeInheritsAnAnnotatedAbstractClass() {
+      runTest("compiler-tests/src/test/data/box/inject/InjectedTypeInheritsAnAnnotatedAbstractClass.kt");
+    }
+
     @Nested
     @TestMetadata("compiler-tests/src/test/data/box/inject/assisted")
     @TestDataPath("$PROJECT_ROOT")
@@ -1303,9 +1309,21 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("MultibindingEmptyDaggerSetProvider.kt")
+      public void testMultibindingEmptyDaggerSetProvider() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/MultibindingEmptyDaggerSetProvider.kt");
+      }
+
+      @Test
       @TestMetadata("MultibindingMapOfProviders.kt")
       public void testMultibindingMapOfProviders() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/MultibindingMapOfProviders.kt");
+      }
+
+      @Test
+      @TestMetadata("MultibindingMapOfProvidersEmpty.kt")
+      public void testMultibindingMapOfProvidersEmpty() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/MultibindingMapOfProvidersEmpty.kt");
       }
 
       @Test

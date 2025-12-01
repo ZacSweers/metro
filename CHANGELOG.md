@@ -4,6 +4,11 @@ Changelog
 **Unreleased**
 --------------
 
+0.8.0
+-----
+
+_2025-12-01_
+
 - **New**: New `dev.zacsweers.metro:metrox-android` artifact for Android `AppComponentFactory` support. See the [docs](https://zacsweers.github.io/metro/latest/metrox-android) for more information.
 - **New**: New `dev.zacsweers.metro:metrox-viewmodel` and `metrox-viewmodel-compose` artifacts for AndroidX `ViewModel` support. See the [docs](https://zacsweers.github.io/metro/latest/metrox-viewmodel) ([compose docs](https://zacsweers.github.io/metro/latest/metrox-viewmodel-compose) ) for more information.
     - > Should I use this?
@@ -37,6 +42,8 @@ Changelog
 - **Fix**: Stub hint function bodies if FIR-generated.
 - **Fix**: Hide FIR-generated hint functions.
 - **Fix**: Full support injected Java fields from Dagger-processed Java supertypes.
+- **Fix**: Use correct type args for empty map provider return types.
+- **Fix**: Add Dagger's internal `SetFactory`, `MapFactory` and `MapProviderFactory` to known Dagger ClassIds in `Provider` interop.
 - **Removed**: Removed deprecated `enableScopedInjectClassHints` Gradle DSL property.
 - **Removed**: Removed deprecated `enableStrictValidation` Gradle DSL property.
 - **Removed**: Removed deprecated `contributesGraphExtension` Gradle DSL property.
@@ -46,7 +53,16 @@ Changelog
 - **Removed**: Removed deprecated `includeAnvil` Gradle DSL function.
 - **Removed**: Removed deprecated `ContributesGraphExtension` annotation.
 - **Removed**: Removed deprecated `OptionalDependency` annotation.
-- [gradle] Mark `metro.reportsDestination` as delicate/opt-in.
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@yschimke](https://github.com/yschimke)
+- [@jonapoul](https://github.com/jonapoul)
+- [@kevinguitar](https://github.com/kevinguitar)
+- [@jonamireh](https://github.com/jonamireh)
+- [@zsmb13](https://github.com/zsmb13)
+- [@bjdodson](https://github.com/bjdodson)
+- [@consp1racy](https://github.com/consp1racy)
 
 0.7.7
 -----

@@ -15,5 +15,6 @@ cp samples/README.md docs/samples.md
 cp .github/CODE_OF_CONDUCT.md docs/code-of-conduct.md
 cp metrox-android/README.md docs/metrox-android.md
 cp metrox-viewmodel/README.md docs/metrox-viewmodel.md
+cp metrox-viewmodel-compose/README.md docs/metrox-viewmodel-compose.md
 
 echo "Copying documentation files complete!"

@@ -11,7 +11,7 @@ For simple cases, all you need to do is
     [![Maven Central](https://img.shields.io/maven-central/v/dev.zacsweers.metro/metrox-android.svg)](https://central.sonatype.com/artifact/dev.zacsweers.metro/metrox-android)
     ```kotlin
     dependencies {
-      implementation("dev.zacsweers.metrox:metrox-android:x.y.z")
+      implementation("dev.zacsweers.metro:metrox-android:x.y.z")
     }
     ```
 2. Make your `AppGraph` (or equivalent) implement `MetroAppComponentProviders`.
