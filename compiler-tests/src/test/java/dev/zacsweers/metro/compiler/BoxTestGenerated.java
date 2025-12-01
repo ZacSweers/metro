@@ -1225,6 +1225,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("DaggerMemberInjectorInheritance.kt")
+      public void testDaggerMemberInjectorInheritance() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/DaggerMemberInjectorInheritance.kt");
+      }
+
+      @Test
       @TestMetadata("DaggerModulesAnnotationInterop.kt")
       public void testDaggerModulesAnnotationInterop() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/DaggerModulesAnnotationInterop.kt");
