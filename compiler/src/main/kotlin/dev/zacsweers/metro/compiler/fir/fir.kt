@@ -98,6 +98,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirFieldSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertyAccessorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
@@ -1390,6 +1391,16 @@ internal fun FirValueParameterSymbol.hasMetroDefault(session: FirSession): Boole
       isAnnotatedWithAny(session, session.classIds.optionalBindingAnnotations)
     },
     hasDefaultValue = { this@hasMetroDefault.hasDefaultValue },
+  )
+}
+
+internal fun FirFieldSymbol.hasMetroDefault(session: FirSession): Boolean {
+  return computeMetroDefault(
+    behavior = session.metroFirBuiltIns.options.optionalBindingBehavior,
+    isAnnotatedOptionalDep = {
+      isAnnotatedWithAny(session, session.classIds.optionalBindingAnnotations)
+    },
+    hasDefaultValue = { this@hasMetroDefault.hasInitializer },
   )
 }
 

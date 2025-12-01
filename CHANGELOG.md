@@ -36,6 +36,7 @@ Changelog
 - **Fix**: Fix not reserving properties multibinding contributors that are behind aliases.
 - **Fix**: Stub hint function bodies if FIR-generated.
 - **Fix**: Hide FIR-generated hint functions.
+- **Fix**: Full support injected Java fields from Dagger-processed Java supertypes.
 - **Removed**: Removed deprecated `enableScopedInjectClassHints` Gradle DSL property.
 - **Removed**: Removed deprecated `enableStrictValidation` Gradle DSL property.
 - **Removed**: Removed deprecated `contributesGraphExtension` Gradle DSL property.

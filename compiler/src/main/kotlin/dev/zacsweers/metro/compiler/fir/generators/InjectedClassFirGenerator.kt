@@ -36,6 +36,7 @@ import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.caches.FirCache
 import org.jetbrains.kotlin.fir.caches.firCachesFactory
+import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.declarations.builder.buildValueParameterCopy
@@ -70,6 +71,7 @@ import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirFieldSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
@@ -332,6 +334,33 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
                 }
               // Guaranteed at least one param if we're generating here
               members[params[0].memberInjectorFunctionName] = params
+            }
+            // Handle injected fields from java supertypes (i.e. Dagger-processed)
+            is FirFieldSymbol -> {
+              val isJava = injectedMember.hasOrigin(FirDeclarationOrigin.Java.Library)
+              if (!isJava) {
+                reportCompilerBug(
+                  "Unexpected non-java FIR field ${injectedMember.callableId}. Please report a " +
+                    "repro of how this field is set"
+                )
+              }
+              val isDaggerInteropEnabled =
+                session.metroFirBuiltIns.options.enableDaggerRuntimeInterop
+              if (!isDaggerInteropEnabled) {
+                error(
+                  "Encountered an injected field from a Java supertype: ${injectedMember.callableId}. " +
+                    "However, Dagger interop is disabled, so Metro is unsure what todo about this field."
+                )
+              }
+              val propertyName = injectedMember.name
+              val param =
+                MetroFirValueParameter(
+                  session = session,
+                  symbol = injectedMember,
+                  name = parameterNameAllocator.newName(propertyName),
+                  memberKey = memberKeyAllocator.newName(propertyName),
+                )
+              members[param.memberInjectorFunctionName] = listOf(param)
             }
           }
         }

@@ -54,7 +54,6 @@ import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irGet
-import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irSetField
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrField
@@ -78,7 +77,6 @@ import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
-import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.superClass
 import org.jetbrains.kotlin.name.CallableId
@@ -726,7 +724,6 @@ internal fun IrBlockBodyBuilder.addMemberInjection(
   for ((function, parameters) in injectFunctions) {
     trackFunctionCall(callingFunction, function)
     +irInvoke(
-      dispatchReceiver = irGetObject(function.parentAsClass.symbol),
       callee = function.symbol,
       typeArgs = typeArgs,
       args =

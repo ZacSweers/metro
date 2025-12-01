@@ -8,13 +8,21 @@ import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.java.JavaTypeParameterStack
+import org.jetbrains.kotlin.fir.java.resolveIfJavaType
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
+import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirFieldSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.ConeKotlinTypeProjection
 import org.jetbrains.kotlin.fir.types.classId
+import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.constructType
+import org.jetbrains.kotlin.fir.types.hasFlexibleMarkedNullability
+import org.jetbrains.kotlin.fir.types.typeContext
+import org.jetbrains.kotlin.fir.types.withNullability
 import org.jetbrains.kotlin.name.StandardClassIds
 
 /** A class that represents a type with contextual information. */
@@ -78,10 +86,30 @@ internal class FirContextualTypeKey(
 
   // TODO cache these?
   companion object {
+    @OptIn(SymbolInternals::class)
+    private fun FirCallableSymbol<*>.resolvedTypeSafe(session: FirSession): ConeKotlinType {
+      return when (this) {
+        is FirFieldSymbol -> {
+          // These explode if we call them directly so we need to reach into fir instead :|
+          fir.returnTypeRef
+            .resolveIfJavaType(session, JavaTypeParameterStack.EMPTY, null)
+            .coneType
+            .let {
+              if (it.hasFlexibleMarkedNullability) {
+                it.withNullability(nullable = false, session.typeContext)
+              } else {
+                it
+              }
+            }
+        }
+        else -> resolvedReturnTypeRef.coneType
+      }
+    }
+
     fun from(
       session: FirSession,
       callable: FirCallableSymbol<*>,
-      type: ConeKotlinType = callable.resolvedReturnTypeRef.coneType,
+      type: ConeKotlinType = callable.resolvedTypeSafe(session),
       wrapInProvider: Boolean = false,
     ): FirContextualTypeKey {
       return type
