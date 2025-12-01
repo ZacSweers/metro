@@ -5,22 +5,18 @@ import com.squareup.anvil.annotations.MergeComponent
 import com.squareup.anvil.annotations.optional.SingleIn
 import dagger.multibindings.Multibinds
 import javax.inject.Inject
-import javax.inject.Provider
-import kotlin.reflect.KClass
 
 interface Multibinding
 
 @SingleIn(AppScope::class)
-class MultibindingsReference
-@Inject
-constructor(val multibindings: Map<KClass<*>, Provider<Multibinding>>)
+class MultibindingsReference @Inject constructor(val multibindings: Set<Multibinding>)
 
 @SingleIn(AppScope::class)
 @MergeComponent(AppScope::class)
 interface AppGraph {
   val multibindingsReference: MultibindingsReference
 
-  @get:Multibinds val multibindings: Map<KClass<*>, Multibinding>
+  @get:Multibinds val multibindings: Set<Multibinding>
 }
 
 fun box(): String {
