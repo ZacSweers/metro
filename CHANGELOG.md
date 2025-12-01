@@ -37,6 +37,8 @@ Changelog
 - **Fix**: Stub hint function bodies if FIR-generated.
 - **Fix**: Hide FIR-generated hint functions.
 - **Fix**: Full support injected Java fields from Dagger-processed Java supertypes.
+- **Fix**: Use correct type args for empty map provider return types.
+- **Fix**: Add Dagger's internal `SetFactory`, `MapFactory` and `MapProviderFactory` to known Dagger ClassIds in `Provider` interop.
 - **Removed**: Removed deprecated `enableScopedInjectClassHints` Gradle DSL property.
 - **Removed**: Removed deprecated `enableStrictValidation` Gradle DSL property.
 - **Removed**: Removed deprecated `contributesGraphExtension` Gradle DSL property.

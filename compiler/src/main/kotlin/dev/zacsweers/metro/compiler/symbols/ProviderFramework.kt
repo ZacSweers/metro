@@ -380,6 +380,9 @@ internal abstract class BaseDelegatingProviderFramework(
  * Dagger:
  * - `dagger.Lazy`
  * - `dagger.internal.Provider`
+ * - `dagger.internal.SetFactory`
+ * - `dagger.internal.MapFactory`
+ * - `dagger.internal.MapProviderFactory`
  */
 internal class DaggerProviderFramework(
   private val symbols: DaggerSymbols,
