@@ -330,8 +330,8 @@ internal class IrBindingStackImpl(override val graph: IrClass, private val logge
   // TODO can we use one structure?
   // TODO can we use scattermap's IntIntMap? Store the typekey hash to its index
   private val entrySet = mutableSetOf<IrTypeKey>()
-  private val stack = ArrayDeque<IrBindingStack.Entry>()
-  override val entries: List<IrBindingStack.Entry> = stack
+  private val stack = ArrayDeque<Entry>()
+  override val entries: List<Entry> = stack
 
   init {
     logger.log("New stack: ${logger.type}")
@@ -346,7 +346,7 @@ internal class IrBindingStackImpl(override val graph: IrClass, private val logge
     }
   }
 
-  override fun push(entry: IrBindingStack.Entry) {
+  override fun push(entry: Entry) {
     val logPrefix =
       if (stack.isEmpty()) {
         "\uD83C\uDF32"
@@ -367,7 +367,7 @@ internal class IrBindingStackImpl(override val graph: IrClass, private val logge
     entrySet.remove(removed.typeKey)
   }
 
-  override fun entryFor(key: IrTypeKey): IrBindingStack.Entry? {
+  override fun entryFor(key: IrTypeKey): Entry? {
     return if (key in entrySet) {
       stack.first { entry -> entry.typeKey == key }
     } else {
@@ -376,7 +376,7 @@ internal class IrBindingStackImpl(override val graph: IrClass, private val logge
   }
 
   // TODO optimize this by looking in the entrySet first?
-  override fun entriesSince(key: IrTypeKey): List<IrBindingStack.Entry> {
+  override fun entriesSince(key: IrTypeKey): List<Entry> {
     // Top entry is always the key currently being processed, so exclude it from analysis with
     // dropLast(1)
     val inFocus = stack.asReversed().dropLast(1)
@@ -445,10 +445,10 @@ internal fun bindingStackEntryForDependency(
   callingBinding: IrBinding,
   contextKey: IrContextualTypeKey,
   targetKey: IrTypeKey,
-): IrBindingStack.Entry {
+): Entry {
   return when (callingBinding) {
     is IrBinding.ConstructorInjected -> {
-      IrBindingStack.Entry.injectedAt(
+      Entry.injectedAt(
         contextKey,
         callingBinding.classFactory.function,
         callingBinding.parameterFor(targetKey),
@@ -457,14 +457,10 @@ internal fun bindingStackEntryForDependency(
       )
     }
     is IrBinding.CustomWrapper -> {
-      IrBindingStack.Entry.injectedAt(
-        contextKey,
-        callingBinding.declaration,
-        displayTypeKey = targetKey,
-      )
+      Entry.injectedAt(contextKey, callingBinding.declaration, displayTypeKey = targetKey)
     }
     is IrBinding.Alias -> {
-      IrBindingStack.Entry.injectedAt(
+      Entry.injectedAt(
         contextKey,
         callingBinding.ir,
         callingBinding.parameters.extensionOrFirstParameter?.ir?.expectAs(),
@@ -472,7 +468,7 @@ internal fun bindingStackEntryForDependency(
       )
     }
     is IrBinding.Provided -> {
-      IrBindingStack.Entry.injectedAt(
+      Entry.injectedAt(
         contextKey,
         callingBinding.providerFactory.function,
         callingBinding.parameterFor(targetKey),
@@ -481,39 +477,28 @@ internal fun bindingStackEntryForDependency(
       )
     }
     is IrBinding.Assisted -> {
-      IrBindingStack.Entry.injectedAt(
-        contextKey,
-        callingBinding.function,
-        displayTypeKey = targetKey,
-      )
+      Entry.injectedAt(contextKey, callingBinding.function, displayTypeKey = targetKey)
     }
     is IrBinding.MembersInjected -> {
-      IrBindingStack.Entry.injectedAt(
-        contextKey,
-        callingBinding.function,
-        displayTypeKey = targetKey,
-      )
+      Entry.injectedAt(contextKey, callingBinding.function, displayTypeKey = targetKey)
     }
     is IrBinding.Multibinding -> {
-      IrBindingStack.Entry.contributedToMultibinding(
-        callingBinding.contextualTypeKey,
-        callingBinding.declaration,
-      )
+      Entry.contributedToMultibinding(callingBinding.contextualTypeKey, callingBinding.declaration)
     }
     is IrBinding.ObjectClass -> TODO()
     is IrBinding.BoundInstance -> TODO()
     is IrBinding.GraphDependency -> {
-      IrBindingStack.Entry.injectedAt(contextKey, callingBinding.getter, displayTypeKey = targetKey)
+      Entry.injectedAt(contextKey, callingBinding.getter, displayTypeKey = targetKey)
     }
     is IrBinding.GraphExtension -> {
-      IrBindingStack.Entry.generatedExtensionAt(
+      Entry.generatedExtensionAt(
         contextKey,
         parent = callingBinding.parent.kotlinFqName.asString(),
         callingBinding.accessor,
       )
     }
     is IrBinding.GraphExtensionFactory -> {
-      IrBindingStack.Entry.generatedExtensionAt(
+      Entry.generatedExtensionAt(
         contextKey,
         parent = callingBinding.parent.kotlinFqName.asString(),
         callingBinding.accessor,
