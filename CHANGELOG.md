@@ -23,6 +23,9 @@ Changelog
 - **Enhancement**: Report all duplicate bindings errors during graph construction rather than failing at first.
 - **Enhancement**: Support `FirFunctionCall` evaluation in annotation arguments during FIR.
 - **Enhancement**: Order before the Compose compiler on Kotlin 2.3.0+.
+- **Enhancement**: Only print Metro Gradle version configuration mismatch warnings once rather than per-compilation.
+- **Enhancement**: Report Metro Gradle configuration issues to Gradle's `Problems` API.
+  - While this is nice for the IDE integration/Develocity integration, it's wholly hidden away from CLI users. So, Metro will still print these warnings to console too.
 - **Fix**: Support member injection of classes that have no member injections but do extend superclasses with member injections.
 - **Fix**: Catch more `IrErrorType` error types cases and report context/advice where possible.
 - **Fix**: Dedupe binding containers contributed to both parent and child graphs.
