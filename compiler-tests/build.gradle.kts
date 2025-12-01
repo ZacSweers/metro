@@ -75,7 +75,7 @@ dependencies {
       if (testCompilerVersion.contains("-dev")) {
         testCompilerVersion
       } else {
-        "2.3.0-Beta2"
+        "2.3.0-Beta1"
       }
   } else {
     generatorConfigToUse = "generator220"
