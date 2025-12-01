@@ -703,6 +703,7 @@ internal class MultibindingExpressionGenerator(
                 // builder()
                 callee = valueFrameworkSymbols.mapProviderFactoryBuilderFunction,
                 typeHint = mapProviderType,
+                typeArgs = listOf(keyType, rawValueType),
                 args = listOf(irInt(0)),
               ),
           )
