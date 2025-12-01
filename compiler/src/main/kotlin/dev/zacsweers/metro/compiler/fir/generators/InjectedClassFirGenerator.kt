@@ -41,6 +41,7 @@ import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.declarations.builder.buildValueParameterCopy
 import org.jetbrains.kotlin.fir.declarations.hasAnnotation
+import org.jetbrains.kotlin.fir.declarations.hasAnnotationWithClassId
 import org.jetbrains.kotlin.fir.declarations.origin
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
@@ -249,7 +250,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
             }
           val clazz = resolved.toRegularClassSymbol(session) ?: return@any false
           clazz.classKind == ClassKind.CLASS &&
-            clazz.hasAnnotation(Symbols.ClassIds.HasMemberInjections, session)
+            clazz.hasAnnotationWithClassId(Symbols.ClassIds.HasMemberInjections, session)
         }
         .also { parentHasMemberInjections = it }
     }
