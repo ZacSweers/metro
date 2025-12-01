@@ -57,6 +57,7 @@ Special thanks to the following contributors for contributing to this release!
 - [@jonamireh](https://github.com/jonamireh)
 - [@zsmb13](https://github.com/zsmb13)
 - [@bjdodson](https://github.com/bjdodson)
+- [@consp1racy](https://github.com/consp1racy)
 
 0.7.7
 -----
