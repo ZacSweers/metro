@@ -13,7 +13,7 @@ public class BaseClass {
 // ENABLE_DAGGER_INTEROP
 
 class SubClass : BaseClass() {
-  @Inject internal lateinit var internalString: String
+  @Inject var int: Int = 0
 }
 
 @DependencyGraph
@@ -21,6 +21,7 @@ interface ExampleGraph {
   fun inject(subClass: SubClass)
 
   @Provides fun provideMessage(): String = "Hello"
+  @Provides fun provideInt(): Int = 3
 }
 
 fun box(): String {
@@ -28,6 +29,6 @@ fun box(): String {
   val subClass = SubClass()
   graph.inject(subClass)
   assertEquals("Hello", subClass.message)
-  assertEquals("Hello", subClass.internalString)
+  assertEquals(3, subClass.int)
   return "OK"
 }
