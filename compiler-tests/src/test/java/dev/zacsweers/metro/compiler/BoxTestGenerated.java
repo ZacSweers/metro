@@ -592,6 +592,24 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ProvidingEmptyMultibindingsDirectly.kt")
+    public void testProvidingEmptyMultibindingsDirectly() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/ProvidingEmptyMultibindingsDirectly.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidingEmptyProviderMapDirectly.kt")
+    public void testProvidingEmptyProviderMapDirectly() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/ProvidingEmptyProviderMapDirectly.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidingMapsDirectly.kt")
+    public void testProvidingMapsDirectly() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/ProvidingMapsDirectly.kt");
+    }
+
+    @Test
     @TestMetadata("QualifiersWithEnumsWork.kt")
     public void testQualifiersWithEnumsWork() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/QualifiersWithEnumsWork.kt");
