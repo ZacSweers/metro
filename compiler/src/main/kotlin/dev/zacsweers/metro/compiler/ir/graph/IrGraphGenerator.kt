@@ -88,6 +88,7 @@ import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.ir.util.statements
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.platform.jvm.isJvm
 
 internal typealias PropertyInitializer =
   IrBuilderWithScope.(thisReceiver: IrValueParameter, key: IrTypeKey) -> IrExpression
@@ -141,6 +142,7 @@ internal class IrGraphGenerator(
    * @see <a href="https://github.com/ZacSweers/metro/issues/645">#645</a>
    */
   private val propertyInitializers = mutableListOf<Pair<IrProperty, PropertyInitializer>>()
+
   // TODO replace with irAttribute
   private val propertiesToTypeKeys = mutableMapOf<IrProperty, IrTypeKey>()
   private val expressionGeneratorFactory =
@@ -563,13 +565,18 @@ internal class IrGraphGenerator(
         }
       }
 
+      val isJvm = pluginContext.platform?.isJvm() == true
       val propertyBindings =
         propertyInitializers.map { (property, initializer) ->
           PropertyBinding(
             property =
               property.apply {
-                // Make backing fields internal to prevent property access errors from shards.
-                backingField?.visibility = DescriptorVisibilities.INTERNAL
+                // On JVM, make backing fields INTERNAL so inner shard classes can access them.
+                backingField?.visibility =
+                  when {
+                    !isJvm -> DescriptorVisibilities.PRIVATE
+                    else -> DescriptorVisibilities.INTERNAL
+                  }
               },
             typeKey = propertiesToTypeKeys.getValue(property),
             initializer = initializer,

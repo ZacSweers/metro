@@ -133,9 +133,7 @@ internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext b
           body =
             createIrBuilder(symbol).irBlockBody {
               for (binding in bindings) {
-                val property = binding.property
-                val backingField = property.backingField
-
+                val backingField = binding.property.backingField
                 if (backingField != null) {
                   val initValue =
                     binding.initializer.invoke(
