@@ -2176,8 +2176,8 @@
 <span class="p">}</span>
 </code></pre></div>
 <p>In the <code>:app</code> module:</p>
-<div class="highlight"><pre><span></span><code>@DependencyGraph(AppScope::class)
-interface AppGraph
+<div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span>
 </code></pre></div>
 <p>The generated code will modify <code>AppGraph</code> to implement <code>LoggedInGraph.Factory</code> and implement <code>createLoggedInGraph()</code> using a generated final <code>LoggedInGraphImpl</code> class that includes all contributed bindings, including <code>UserRepository</code> from <code>:user-data</code>.</p>
 <div class="highlight"><pre><span></span><code><span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span>
