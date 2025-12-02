@@ -8,8 +8,8 @@ import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.constructType
+import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.fir.memoizedAllSessionsSequence
-import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.resolvedArgumentTypeRef
 import dev.zacsweers.metro.compiler.fir.scopeArgument
@@ -25,40 +25,19 @@ import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
-import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
-import org.jetbrains.kotlin.platform.jvm.isJvm
 
 /**
- * Generates hint marker functions for non-JVM/Android platforms during FIR. This handles both
- * scoped `@Inject` classes and classes with contributing annotations.
- *
- * For JVM/Android platforms, hints are generated in IR to avoid breaking incremental compilation.
- * For other platforms (Native, JS, WASM) where there is no incremental compilation, we generate
- * hints in FIR to ensure they are available for metadata.
- *
- * Note this approach is not compatible with IC for now, but that's ok as there is no IC for non-jvm
- * platforms anyway.
- *
- * https://youtrack.jetbrains.com/issue/KT-75865
+ * Generates hint marker functions for during FIR. This handles both scoped `@Inject` classes and
+ * classes with contributing annotations.
  */
 internal class ContributionHintFirGenerator(session: FirSession, compatContext: CompatContext) :
   FirDeclarationGenerationExtension(session), CompatContext by compatContext {
-
-  private val platform = session.moduleData.platform
-
-  private fun shouldGenerateHints(): Boolean {
-    val options = session.metroFirBuiltIns.options
-    val jvmHintsEnabled = options.generateJvmContributionHintsInFir
-    // Only generate hints for non-JVM/Android platforms by default
-    val shouldGenerateHints = jvmHintsEnabled || !platform.isJvm()
-    return shouldGenerateHints
-  }
 
   private fun contributedClassSymbols(): List<FirClassSymbol<*>> {
     val injectedClasses =
@@ -111,14 +90,12 @@ internal class ContributionHintFirGenerator(session: FirSession, compatContext: 
     }
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
-    if (!shouldGenerateHints()) return
     register(session.predicates.contributesAnnotationPredicate)
     register(session.predicates.injectAnnotationPredicate)
   }
 
   @ExperimentalTopLevelDeclarationsGenerationApi
   override fun getTopLevelCallableIds(): Set<CallableId> {
-    if (!shouldGenerateHints()) return emptySet()
     return contributedClassesByScope.getValue(Unit, Unit).keys
   }
 
@@ -142,7 +119,8 @@ internal class ContributionHintFirGenerator(session: FirSession, compatContext: 
           ) {
             valueParameter(Symbols.Names.contributed, { contributingClass.constructType(it) })
           }
-          .symbol
+          .apply { markAsDeprecatedHidden(session) }
+          .symbol as FirNamedFunctionSymbol
       }
   }
 

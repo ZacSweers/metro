@@ -248,7 +248,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertDiagnostics(
-      "e: ExampleGraph.kt:8:14 Injected type is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary."
+      "e: ExampleGraph.kt:8:14 Injected class 'test.ExampleClass' is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary."
     )
   }
 
@@ -270,7 +270,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertDiagnostics(
-      "e: ExampleGraph.kt:8:14 Injected type is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary."
+      "e: ExampleGraph.kt:8:14 Injected class 'test.ExampleClass' is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary."
     )
   }
 
@@ -294,7 +294,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertDiagnostics(
-      "e: ExampleGraph.kt:8:14 Injected type is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary."
+      "e: ExampleGraph.kt:8:14 Injected class 'test.ExampleClass' is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary."
     )
   }
 

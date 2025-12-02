@@ -10,11 +10,18 @@ import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.ProviderFactory
 import org.gradle.api.provider.SetProperty
+import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
+import org.jetbrains.kotlin.tooling.core.KotlinToolingVersion
 
 @MetroExtensionMarker
 public abstract class MetroPluginExtension
 @Inject
-constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFactory) {
+constructor(
+  baseKotlinVersion: KotlinToolingVersion,
+  layout: ProjectLayout,
+  objects: ObjectFactory,
+  providers: ProviderFactory,
+) {
 
   public val interop: InteropHandler = objects.newInstance(InteropHandler::class.java)
 
@@ -49,9 +56,15 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
    * Enables whether the Metro compiler plugin can inject top-level functions. See the kdoc on
    * `Inject` for more details.
    *
-   * Be extra careful with this API, as top-level function injection is not compatible with
-   * incremental compilation!
+   * **Warnings**
+   * - Prior to Kotlin 2.3.20, top-level function injection is only compatible with jvm/android
+   *   targets.
+   * - Top-level function injection is not yet compatible with incremental compilation on any
+   *   platform
    */
+  @DelicateMetroGradleApi(
+    "Top-level function injection is experimental and does not work yet in all cases. See the kdoc."
+  )
   public val enableTopLevelFunctionInjection: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(false)
 
@@ -66,15 +79,45 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     objects.property(Boolean::class.javaObjectType)
 
   /**
-   * Enable/disable contribution hint generation in FIR for JVM compilations types. Disabled by
-   * default. Requires [generateContributionHints] to be true
+   * Enable/disable contribution hint generation in FIR. Disabled by default as this is still
+   * experimental. Requires [generateContributionHints] to be true.
+   *
+   * **Warnings**
+   * - Prior to Kotlin 2.3.20, FIR contribution hint gen is only compatible with jvm/android
+   *   targets.
+   * - FIR contribution hint gen is not yet compatible with incremental compilation on any platform
    */
-  public val generateJvmContributionHintsInFir: Property<Boolean> =
+  @DelicateMetroGradleApi(
+    "FIR contribution hint gen is experimental and does not work yet in all cases. See the kdoc."
+  )
+  public val generateContributionHintsInFir: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(false)
 
-  @Deprecated("This is deprecated and no longer does anything. It will be removed in the future.")
-  public val enableScopedInjectClassHints: Property<Boolean> =
-    objects.property(Boolean::class.javaObjectType).convention(false)
+  /**
+   * Sets the platforms for which contribution hints will be generated. If not set, defaults are
+   * computed per-platform and per Kotlin version based on known compatible combinations.
+   *
+   * **Warnings** Prior to Kotlin 2.3.20, contribution hint gen is
+   * - ...only compatible with jvm/android targets.
+   * - ...does not support incremental compilation on any targets.
+   */
+  @DelicateMetroGradleApi(
+    "Contribution hint gen does not work yet in all platforms on all Kotlin versions. See the kdoc."
+  )
+  public val supportedHintContributionPlatforms: SetProperty<KotlinPlatformType> =
+    objects
+      .setProperty(KotlinPlatformType::class.javaObjectType)
+      .convention(
+        providers.provider {
+          if (baseKotlinVersion >= KotlinVersions.kotlin2320) {
+            // Kotlin 2.3.20, all platforms are supported
+            KotlinPlatformType.entries.toSet()
+          } else {
+            // Only jvm/android work prior to Kotlin 2.3.20
+            setOf(KotlinPlatformType.common, KotlinPlatformType.jvm, KotlinPlatformType.androidJvm)
+          }
+        }
+      )
 
   /**
    * Enable/disable full validation of bindings. If enabled, _all_ declared `@Provides` and `@Binds`
@@ -91,13 +134,6 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
    * to the generated Metro graph type. This is helpful for Dagger/Anvil interop.
    */
   public val enableGraphImplClassAsReturnType: Property<Boolean> =
-    objects.property(Boolean::class.javaObjectType).convention(false)
-
-  @Deprecated(
-    "Use enableFullBindingGraphValidation",
-    ReplaceWith("enableFullBindingGraphValidation"),
-  )
-  public val enableStrictValidation: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(false)
 
   /** Enable/disable shrinking of unused bindings. Enabled by default. */
@@ -125,13 +161,6 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
    */
   public val keysPerGraphShard: Property<Int> =
     objects.property(Int::class.javaObjectType).convention(2000)
-
-  @Suppress("DEPRECATION")
-  @Deprecated("Use optionalBindingBehavior instead", ReplaceWith("optionalBindingBehavior"))
-  public val optionalDependencyBehavior: Property<OptionalDependencyBehavior> =
-    objects
-      .property(OptionalDependencyBehavior::class.java)
-      .convention(OptionalDependencyBehavior.DEFAULT)
 
   /**
    * Controls the behavior of optional dependencies on a per-compilation basis. Default is
@@ -190,14 +219,23 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     objects.property(Boolean::class.javaObjectType).convention(false)
 
   /**
-   * If set, the Metro compiler will dump report diagnostics about resolved dependency graphs to the
-   * given destination.
+   * If set, the Metro compiler will dump verbose report diagnostics about resolved dependency
+   * graphs to the given destination. Outputs are per-compilation granularity (i.e.
+   * `build/metro/main/...`).
    *
    * This behaves similar to the compose-compiler's option of the same name.
+   *
+   * This also enables the `generateMetroGraphMetadata` task, which will dump JSON representations
+   * of all graphs per compilation in this project.
+   *
+   * This enables a nontrivial amount of logging and overhead and should only be used for debugging.
    *
    * Optionally, you can specify a `metro.reportsDestination` gradle property whose value is a
    * _relative_ path from the project's **build** directory.
    */
+  @DelicateMetroGradleApi(
+    "This should only be used for debugging purposes and is not intended to be always enabled."
+  )
   public val reportsDestination: DirectoryProperty =
     objects
       .directoryProperty()
@@ -253,12 +291,6 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     public val contributesTo: SetProperty<String> = objects.setProperty(String::class.java)
     public val contributesBinding: SetProperty<String> = objects.setProperty(String::class.java)
     public val contributesIntoSet: SetProperty<String> = objects.setProperty(String::class.java)
-    @Deprecated("This is deprecated and no longer does anything. It will be removed in the future.")
-    public val contributesGraphExtension: SetProperty<String> =
-      objects.setProperty(String::class.java)
-    @Deprecated("This is deprecated and no longer does anything. It will be removed in the future.")
-    public val contributesGraphExtensionFactory: SetProperty<String> =
-      objects.setProperty(String::class.java)
     public val elementsIntoSet: SetProperty<String> = objects.setProperty(String::class.java)
     public val dependencyGraph: SetProperty<String> = objects.setProperty(String::class.java)
     public val dependencyGraphFactory: SetProperty<String> = objects.setProperty(String::class.java)
@@ -309,26 +341,6 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     /** Includes kotlin-inject annotations support. */
     public fun includeKotlinInject() {
       includeKotlinInjectAnnotations.set(true)
-    }
-
-    @Deprecated("Use one of the more specific includeAnvil*() functions instead.")
-    @JvmOverloads
-    public fun includeAnvil(
-      includeDaggerAnvil: Boolean = true,
-      includeKotlinInjectAnvil: Boolean = true,
-    ) {
-      check(includeDaggerAnvil || includeKotlinInjectAnvil) {
-        "At least one of includeDaggerAnvil or includeKotlinInjectAnvil must be true"
-      }
-      enableDaggerAnvilInterop.set(includeDaggerAnvil)
-      if (includeDaggerAnvil) {
-        includeDagger()
-        includeAnvilAnnotations.set(true)
-      }
-      if (includeKotlinInjectAnvil) {
-        includeKotlinInject()
-        includeKotlinInjectAnvilAnnotations.set(true)
-      }
     }
 
     /** Includes Anvil annotations support for Dagger. */

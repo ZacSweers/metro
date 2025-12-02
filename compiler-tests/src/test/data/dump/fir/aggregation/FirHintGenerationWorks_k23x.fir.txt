@@ -20,16 +20,16 @@ FILE: FirHintGenerationWorks_k23x.kt
 FILE: metro/hints/contributedInterface1AppScope.kt
     package metro.hints
 
-    public final fun AppScope(contributed: R|ContributedInterface1|): R|kotlin/Unit|
+    @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) public final fun AppScope(contributed: R|ContributedInterface1|): R|kotlin/Unit|
 FILE: metro/hints/contributedInterface3AppScope.kt
     package metro.hints
 
-    public final fun AppScope(contributed: R|ContributedInterface3|): R|kotlin/Unit|
+    @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) public final fun AppScope(contributed: R|ContributedInterface3|): R|kotlin/Unit|
 FILE: metro/hints/contributedInterface2Unit.kt
     package metro.hints
 
-    public final fun Unit(contributed: R|ContributedInterface2|): R|kotlin/Unit|
+    @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) public final fun Unit(contributed: R|ContributedInterface2|): R|kotlin/Unit|
 FILE: metro/hints/contributedInterface3Unit.kt
     package metro.hints
 
-    public final fun Unit(contributed: R|ContributedInterface3|): R|kotlin/Unit|
+    @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) public final fun Unit(contributed: R|ContributedInterface3|): R|kotlin/Unit|

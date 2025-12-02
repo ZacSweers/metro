@@ -8,10 +8,14 @@ import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.OutOfQuotaPolicy
 import dev.zacsweers.metro.createGraphFactory
+import dev.zacsweers.metrox.android.MetroAppComponentProviders
+import dev.zacsweers.metrox.android.MetroApplication
 
-class MetroApp : Application(), Configuration.Provider {
-  /** Holder reference for the app graph for [MetroAppComponentFactory]. */
-  val appGraph by lazy { createGraphFactory<AppGraph.Factory>().create(this) }
+class MetroApp : Application(), MetroApplication, Configuration.Provider {
+  private val appGraph by lazy { createGraphFactory<AppGraph.Factory>().create(this) }
+
+  override val appComponentProviders: MetroAppComponentProviders
+    get() = appGraph
 
   override val workManagerConfiguration: Configuration
     get() = Configuration.Builder().setWorkerFactory(appGraph.workerFactory).build()

@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
 import dev.zacsweers.metro.compiler.fir.isOrImplements
+import dev.zacsweers.metro.compiler.fir.isResolved
 import dev.zacsweers.metro.compiler.fir.mapKeyAnnotation
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.resolvedBindingArgument
@@ -35,7 +36,6 @@ import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.isAny
 import org.jetbrains.kotlin.fir.types.isNothing
-import org.jetbrains.kotlin.fir.types.isResolved
 import org.jetbrains.kotlin.name.ClassId
 
 internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
@@ -365,7 +365,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
       reporter.reportOn(
         annotation.source,
         MetroDiagnostics.AGGREGATION_ERROR,
-        "`@${kind}` annotations only permitted on interfaces. However ${declaration.nameOrSpecialName} is a ${declaration.classKind}.",
+        "`@${kind}` annotations only permitted on interfaces or binding containers. However ${declaration.nameOrSpecialName} is a ${declaration.classKind}.",
       )
       onError()
     }

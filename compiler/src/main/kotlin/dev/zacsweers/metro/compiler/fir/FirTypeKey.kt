@@ -7,9 +7,9 @@ import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.descriptors.annotations.AnnotationUseSiteTarget
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
+import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.FirReceiverParameter
-import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.resolve.substitution.ConeSubstitutor
@@ -81,7 +81,7 @@ internal class FirTypeKey(val type: ConeKotlinType, val qualifier: MetroFirAnnot
 
     fun from(
       session: FirSession,
-      function: FirSimpleFunction,
+      function: FirFunction,
       substitutor: ConeSubstitutor = ConeSubstitutor.Empty,
     ): FirTypeKey {
       return from(session, function.returnTypeRef, function.annotations, substitutor)

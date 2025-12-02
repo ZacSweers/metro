@@ -452,7 +452,7 @@ interface AppGraph : MetroContributionToAppScope {
     }
 
     @DependencyGraph(scope = ChildScope::class)
-    inner class ChildGraphImpl : ChildGraph, MetroContributionToChildScope {
+    private inner class ChildGraphImpl : ChildGraph, MetroContributionToChildScope {
       private val thisGraphInstance: ChildGraphImpl
         field = <this>
 
@@ -469,7 +469,7 @@ interface AppGraph : MetroContributionToAppScope {
         field = Companion.provider<Provider<ChildService3>, ChildService3>(delegate = Companion.create(child2 = <this>.#childService2Provider))
 
       @DependencyGraph(scope = GrandchildScope::class)
-      inner class GrandchildGraphImpl : GrandchildGraph {
+      private inner class GrandchildGraphImpl : GrandchildGraph {
         private val grandchildService1Provider: Provider<GrandchildService1>
           field = Companion.provider<Provider<GrandchildService1>, GrandchildService1>(delegate = Companion.create(app2 = <this>.#appService2Provider, child3 = <this>.#childService3Provider))
 

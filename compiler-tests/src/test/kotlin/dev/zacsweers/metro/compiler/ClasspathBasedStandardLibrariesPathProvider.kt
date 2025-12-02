@@ -5,9 +5,8 @@ package dev.zacsweers.metro.compiler
 import java.io.File
 import java.io.File.pathSeparator
 import java.io.File.separator
-import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
 
-object ClasspathBasedStandardLibrariesPathProvider : KotlinStandardLibrariesPathProvider() {
+object ClasspathBasedStandardLibrariesPathProvider : MetroKotlinStandardLibrariesPathProvider() {
   private val SEP = "\\$separator"
 
   private val GRADLE_DEPENDENCY =

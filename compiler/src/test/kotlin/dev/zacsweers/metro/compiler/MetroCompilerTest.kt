@@ -103,8 +103,11 @@ abstract class MetroCompilerTest {
                 processor.option(entry.raw.cliOption, enableTopLevelFunctionInjection)
               MetroOption.GENERATE_CONTRIBUTION_HINTS ->
                 processor.option(entry.raw.cliOption, generateContributionHints)
-              MetroOption.GENERATE_JVM_CONTRIBUTION_HINTS_IN_FIR ->
-                processor.option(entry.raw.cliOption, generateJvmContributionHintsInFir)
+              MetroOption.GENERATE_CONTRIBUTION_HINTS_IN_FIR ->
+                processor.option(
+                  entry.raw.cliOption,
+                  this@toPluginOptions.generateContributionHintsInFir,
+                )
               MetroOption.TRANSFORM_PROVIDERS_TO_PRIVATE ->
                 processor.option(entry.raw.cliOption, transformProvidersToPrivate)
               MetroOption.SHRINK_UNUSED_BINDINGS ->
@@ -113,6 +116,10 @@ abstract class MetroCompilerTest {
                 processor.option(entry.raw.cliOption, chunkFieldInits)
               MetroOption.STATEMENTS_PER_INIT_FUN ->
                 processor.option(entry.raw.cliOption, statementsPerInitFun)
+              MetroOption.ENABLE_GRAPH_SHARDING ->
+                processor.option(entry.raw.cliOption, enableGraphSharding)
+              MetroOption.KEYS_PER_GRAPH_SHARD ->
+                processor.option(entry.raw.cliOption, keysPerGraphShard)
               MetroOption.PUBLIC_PROVIDER_SEVERITY ->
                 processor.option(entry.raw.cliOption, publicProviderSeverity)
               MetroOption.WARN_ON_INJECT_ANNOTATION_PLACEMENT ->
@@ -299,11 +306,8 @@ abstract class MetroCompilerTest {
               MetroOption.INTEROP_INCLUDE_GUICE_ANNOTATIONS -> {
                 processor.option(entry.raw.cliOption, false)
               }
-              MetroOption.ENABLE_GRAPH_SHARDING -> {
-                processor.option(entry.raw.cliOption, enableGraphSharding)
-              }
-              MetroOption.KEYS_PER_GRAPH_SHARD -> {
-                processor.option(entry.raw.cliOption, keysPerGraphShard)
+              MetroOption.PLUGIN_ORDER_SET -> {
+                processor.option(entry.raw.cliOption, pluginOrderSet?.toString().orEmpty())
               }
             }
           yield(option)

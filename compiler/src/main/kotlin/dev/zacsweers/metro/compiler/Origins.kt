@@ -13,6 +13,8 @@ internal object Origins {
     IrDeclarationOrigin.GeneratedByPlugin(Keys.ReceiverParameter)
   val RegularParameter: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.RegularParameter)
+  val ContributionHint: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(Keys.ContributionHint)
   val MetroGraphCreatorsObjectInvokeDeclaration: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.MetroGraphCreatorsObjectInvokeDeclaration)
   val GraphImplClassDeclaration: IrDeclarationOrigin =
@@ -49,10 +51,29 @@ internal object Origins {
     IrDeclarationOrigin.GeneratedByPlugin(Keys.GeneratedDynamicGraph)
   val DynamicContainerParam: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.DynamicContainerParam)
+
+  object FirstParty {
+    // in 2.3.20, Kotlin changed the types of origins like IrDeclarationOrigin.DEFINED to
+    // IrDeclarationOrigin rather than IrDeclarationOriginImpl
+    // So, now we do cached reflection lookups of these :(
+    private fun getConstant(name: String): Lazy<IrDeclarationOrigin> = lazy {
+      IrDeclarationOrigin.Companion::class
+        .java
+        .getDeclaredMethod("get$name")
+        .invoke(IrDeclarationOrigin.Companion) as IrDeclarationOrigin
+    }
+
+    val DEFINED: IrDeclarationOrigin by getConstant("DEFINED")
+    val PROPERTY_BACKING_FIELD: IrDeclarationOrigin by getConstant("PROPERTY_BACKING_FIELD")
+    val LOCAL_FUNCTION_FOR_LAMBDA: IrDeclarationOrigin by getConstant("LOCAL_FUNCTION_FOR_LAMBDA")
+    val IR_TEMPORARY_VARIABLE: IrDeclarationOrigin by getConstant("IR_TEMPORARY_VARIABLE")
+    val IR_EXTERNAL_JAVA_DECLARATION_STUB: IrDeclarationOrigin by
+      getConstant("IR_EXTERNAL_JAVA_DECLARATION_STUB")
+  }
 }
 
-internal val IrDeclarationOrigin.isInvisibleGeneratedGraph: Boolean
+internal val IrDeclarationOrigin.isSyntheticGeneratedGraph: Boolean
   get() = this == Origins.GeneratedGraphExtension || this == Origins.GeneratedDynamicGraph
 
 internal val IrDeclarationOrigin.isGraphImpl: Boolean
-  get() = this == Origins.GraphImplClassDeclaration || isInvisibleGeneratedGraph
+  get() = this == Origins.GraphImplClassDeclaration || isSyntheticGeneratedGraph

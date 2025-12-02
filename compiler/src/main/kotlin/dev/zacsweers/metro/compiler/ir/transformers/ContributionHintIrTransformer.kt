@@ -2,13 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
+import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.scopeOrNull
+import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.scopeHintFunctionName
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 
 /**
  * A transformer that generates hint marker functions for _downstream_ compilations. This handles
@@ -19,6 +22,14 @@ internal class ContributionHintIrTransformer(
   context: IrMetroContext,
   private val hintGenerator: HintGenerator,
 ) : IrMetroContext by context {
+
+  // Only executed if generateContributionHintsInFir is enabled
+  // Implements the FIR-generated declarations with empty bodies
+  fun visitFunction(declaration: IrSimpleFunction) {
+    if (declaration.origin == Origins.ContributionHint) {
+      declaration.apply { body = stubExpressionBody() }
+    }
+  }
 
   fun visitClass(declaration: IrClass) {
     // Don't generate hints for non-public APIs

@@ -4,7 +4,67 @@ Changelog
 **Unreleased**
 --------------
 
+- **New**: Experimental support for Kotlin `2.3.20` dev builds. See the [compatibility docs](https://zacsweers.github.io/metro/latest/compatibility/) for tested versions.
+
+0.8.0
+-----
+
+_2025-12-01_
+
+- **New**: New `dev.zacsweers.metro:metrox-android` artifact for Android `AppComponentFactory` support. See the [docs](https://zacsweers.github.io/metro/latest/metrox-android) for more information.
+- **New**: New `dev.zacsweers.metro:metrox-viewmodel` and `metrox-viewmodel-compose` artifacts for AndroidX `ViewModel` support. See the [docs](https://zacsweers.github.io/metro/latest/metrox-viewmodel) ([compose docs](https://zacsweers.github.io/metro/latest/metrox-viewmodel-compose) ) for more information.
+    - > Should I use this?
+
+      - Well, that's up to you! This artifact is mostly for projects coming from heavy use of more vanilla Android architecture components or `hiltViewModel()` use. Modern Android apps should use higher level architectures like Circuit* (Disclosure: I am one of the authors of Circuit, and I'm a big fan of it!), Voyager, etc. that abstract away `ViewModel` management.
+
+- **New**: Add `generateMetroGraphMetadata` Gradle task that writes a merged JSON dump of all binding graphs in the project. This can be chained from the `GenerateGraphMetadataTask` for further processing.
+- **New**: Add `analyzeMetroGraph` Gradle task that performs comprehensive graph analysis including fan-in/fan-out, betweenness centrality, dominator analysis, and longest path detection.
+- **New**: Add `generateMetroGraphHtml` Gradle task that generates interactive HTML visualizations of dependency graphs using ECharts. Features include force/circular layouts, filtering by package/scope/synthetic bindings, metrics heatmaps, and longest path highlighting. See the [graph analysis docs](https://zacsweers.github.io/metro/latest/graph-analysis) for more information.
+- **New**: Add `MetroArtifacts` Gradle API for accessing Metro reports and graph metadata directories.
+- **New**: Add `supportedHintContributionPlatforms` Gradle DSL property to manually override supported hint contribution generation on different platforms. By default this computes default supported platforms based on the platform and Kotlin tooling version.
+- **API Change**: Rename `generateJvmContributionHintsInFir` Gradle DSL property to `generateContributionHintsInFir`. Note this property/mode still doesn't really work and is highly experimental at the moment.
+- **Behavior Change**: Add `@DelicateMetroGradleApi` annotations to relevant Gradle extension APIs.
+- **Behavior Change**: The `generateContributionHints` property now computes defaults per platform and per Kotlin compilation as a `convention` and can be overridden.
+- **Behavior Change**: All non-final classes with member injections or that extend classes with member injections must now be annotated with `@HasMemberInjections`. This is enforced with a new diagnostic check.
+- **Enhancement**: Lazily validate multibindings. Previously, multibindings were validated eagerly even if they were unused in a graph.
+- **Enhancement**: Report all duplicate bindings errors during graph construction rather than failing at first.
+- **Enhancement**: Support `FirFunctionCall` evaluation in annotation arguments during FIR.
+- **Enhancement**: Order before the Compose compiler on Kotlin 2.3.0+.
+- **Enhancement**: Only print Metro Gradle version configuration mismatch warnings once rather than per-compilation.
+- **Enhancement**: Report Metro Gradle configuration issues to Gradle's `Problems` API.
+  - While this is nice for the IDE integration/Develocity integration, it's wholly hidden away from CLI users. So, Metro will still print these warnings to console too.
+- **Fix**: Support member injection of classes that have no member injections but do extend superclasses with member injections.
 - **Fix**: Catch more `IrErrorType` error types cases and report context/advice where possible.
+- **Fix**: Dedupe binding containers contributed to both parent and child graphs.
+- **Fix**: Fix support for Anvil's `exclude` argument in dependency graph annotations when Anvil interop is enabled.
+- **Fix**: Fix colliding reports destinations in KMP projects by disambiguating with the target path as another subdir indirection.
+- **Fix**: Fix qualifiers not being propagated to generated `MembersInjector` classes for multibindings.
+- **Fix**: Remove misleading "doesn't appear to be visible to this compilation" hint, as this hint was misreporting.
+- **Fix**: Fix not reserving properties multibinding contributors that are behind aliases.
+- **Fix**: Stub hint function bodies if FIR-generated.
+- **Fix**: Hide FIR-generated hint functions.
+- **Fix**: Full support injected Java fields from Dagger-processed Java supertypes.
+- **Fix**: Use correct type args for empty map provider return types.
+- **Fix**: Add Dagger's internal `SetFactory`, `MapFactory` and `MapProviderFactory` to known Dagger ClassIds in `Provider` interop.
+- **Removed**: Removed deprecated `enableScopedInjectClassHints` Gradle DSL property.
+- **Removed**: Removed deprecated `enableStrictValidation` Gradle DSL property.
+- **Removed**: Removed deprecated `contributesGraphExtension` Gradle DSL property.
+- **Removed**: Removed deprecated `contributesGraphExtensionFactory` Gradle DSL property.
+- **Removed**: Removed deprecated `optionalDependencyBehavior` Gradle DSL property.
+- **Removed**: Removed deprecated `OptionalDependencyBehavior` Gradle plugin class.
+- **Removed**: Removed deprecated `includeAnvil` Gradle DSL function.
+- **Removed**: Removed deprecated `ContributesGraphExtension` annotation.
+- **Removed**: Removed deprecated `OptionalDependency` annotation.
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@yschimke](https://github.com/yschimke)
+- [@jonapoul](https://github.com/jonapoul)
+- [@kevinguitar](https://github.com/kevinguitar)
+- [@jonamireh](https://github.com/jonamireh)
+- [@zsmb13](https://github.com/zsmb13)
+- [@bjdodson](https://github.com/bjdodson)
+- [@consp1racy](https://github.com/consp1racy)
 
 0.7.7
 -----

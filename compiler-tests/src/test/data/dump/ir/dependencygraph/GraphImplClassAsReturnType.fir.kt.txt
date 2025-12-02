@@ -12,7 +12,7 @@ interface AppGraph : MetroContributionToAppScope {
       field = Companion.invoke<AppGraph>(value = <this>.#thisGraphInstance)
 
     @DependencyGraph(scope = String::class)
-    inner class ChildGraphImpl : ChildGraph {
+    private inner class ChildGraphImpl : ChildGraph {
       constructor() /* primary */ {
         super/*Any*/()
         /* <init>() */

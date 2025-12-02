@@ -363,7 +363,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
               reporter.reportOn(
                 parameter.source,
                 MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-                "Injected type is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary.",
+                "Injected class '${clazz.classId.asSingleFqName()}' is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary.",
               )
             }
 

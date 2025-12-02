@@ -671,6 +671,7 @@ internal class MultibindingExpressionGenerator(
     accessType: AccessType,
   ): IrExpression =
     with(scope) {
+      val kvArgs = listOf(keyType, rawValueType)
       if (accessType == AccessType.INSTANCE) {
         // Type: Map<Key, Value>
         // Returns: emptyMap()
@@ -689,20 +690,24 @@ internal class MultibindingExpressionGenerator(
         if (emptyCallee != null) {
           irInvoke(
             callee = emptyCallee,
-            typeHint = mapProviderType,
-            typeArgs = listOf(keyType, rawValueType),
+            typeHint = emptyCallee.owner.returnType.rawType().typeWith(kvArgs),
+            typeArgs = kvArgs,
           )
         } else {
           // Call builder().build()
           irInvoke(
             // build()
             callee = valueFrameworkSymbols.mapProviderFactoryBuilderBuildFunction,
-            typeHint = mapProviderType,
+            typeHint =
+              valueFrameworkSymbols.mapProviderFactoryBuilderBuildFunction.owner.returnType
+                .rawType()
+                .typeWith(kvArgs),
             dispatchReceiver =
               irInvoke(
                 // builder()
                 callee = valueFrameworkSymbols.mapProviderFactoryBuilderFunction,
                 typeHint = mapProviderType,
+                typeArgs = kvArgs,
                 args = listOf(irInt(0)),
               ),
           )
@@ -712,7 +717,10 @@ internal class MultibindingExpressionGenerator(
         // Returns: MapFactory.empty()
         irInvoke(
           callee = valueFrameworkSymbols.mapFactoryEmptyFunction,
-          typeHint = mapProviderType,
+          typeHint =
+            valueFrameworkSymbols.mapFactoryEmptyFunction.owner.returnType
+              .rawType()
+              .typeWith(kvArgs),
           typeArgs = listOf(keyType, rawValueType),
         )
       }

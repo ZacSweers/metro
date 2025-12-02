@@ -173,6 +173,18 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("ContributedBindingContainerExclusions.kt")
+      public void testContributedBindingContainerExclusions() {
+        runTest("compiler-tests/src/test/data/box/aggregation/interop/ContributedBindingContainerExclusions.kt");
+      }
+
+      @Test
+      @TestMetadata("ContributedGraphBindingContainerExclusions.kt")
+      public void testContributedGraphBindingContainerExclusions() {
+        runTest("compiler-tests/src/test/data/box/aggregation/interop/ContributedGraphBindingContainerExclusions.kt");
+      }
+
+      @Test
       @TestMetadata("ContributedGraphsSupportIgnoreQualifier.kt")
       public void testContributedGraphsSupportIgnoreQualifier() {
         runTest("compiler-tests/src/test/data/box/aggregation/interop/ContributedGraphsSupportIgnoreQualifier.kt");
@@ -247,6 +259,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("DedupeContainersContributedToMultipleScopes.kt")
     public void testDedupeContainersContributedToMultipleScopes() {
       runTest("compiler-tests/src/test/data/box/bindingcontainers/DedupeContainersContributedToMultipleScopes.kt");
+    }
+
+    @Test
+    @TestMetadata("DuplicateContainersAcrossExtensions.kt")
+    public void testDuplicateContainersAcrossExtensions() {
+      runTest("compiler-tests/src/test/data/box/bindingcontainers/DuplicateContainersAcrossExtensions.kt");
     }
 
     @Test
@@ -448,6 +466,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("EvaluatableConstantsAreEvaluatedInFir.kt")
+    public void testEvaluatableConstantsAreEvaluatedInFir() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/EvaluatableConstantsAreEvaluatedInFir.kt");
+    }
+
+    @Test
     @TestMetadata("ExposingIncludedGraphsDirectly.kt")
     public void testExposingIncludedGraphsDirectly() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/ExposingIncludedGraphsDirectly.kt");
@@ -565,6 +589,24 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("PrivateBindsInOtherModule.kt")
     public void testPrivateBindsInOtherModule() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/PrivateBindsInOtherModule.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidingEmptyMultibindingsDirectly.kt")
+    public void testProvidingEmptyMultibindingsDirectly() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/ProvidingEmptyMultibindingsDirectly.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidingEmptyProviderMapDirectly.kt")
+    public void testProvidingEmptyProviderMapDirectly() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/ProvidingEmptyProviderMapDirectly.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidingMapsDirectly.kt")
+    public void testProvidingMapsDirectly() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/ProvidingMapsDirectly.kt");
     }
 
     @Test
@@ -961,6 +1003,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       runTest("compiler-tests/src/test/data/box/inject/InjectedPrivateConstructorParametersWithGenericsWork.kt");
     }
 
+    @Test
+    @TestMetadata("InjectedTypeInheritsAnAnnotatedAbstractClass.kt")
+    public void testInjectedTypeInheritsAnAnnotatedAbstractClass() {
+      runTest("compiler-tests/src/test/data/box/inject/InjectedTypeInheritsAnAnnotatedAbstractClass.kt");
+    }
+
     @Nested
     @TestMetadata("compiler-tests/src/test/data/box/inject/assisted")
     @TestDataPath("$PROJECT_ROOT")
@@ -1265,6 +1313,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("DaggerMemberInjectorInheritance.kt")
+      public void testDaggerMemberInjectorInheritance() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/DaggerMemberInjectorInheritance.kt");
+      }
+
+      @Test
       @TestMetadata("DaggerModulesAnnotationInterop.kt")
       public void testDaggerModulesAnnotationInterop() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/DaggerModulesAnnotationInterop.kt");
@@ -1337,9 +1391,21 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("MultibindingEmptyDaggerSetProvider.kt")
+      public void testMultibindingEmptyDaggerSetProvider() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/MultibindingEmptyDaggerSetProvider.kt");
+      }
+
+      @Test
       @TestMetadata("MultibindingMapOfProviders.kt")
       public void testMultibindingMapOfProviders() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/MultibindingMapOfProviders.kt");
+      }
+
+      @Test
+      @TestMetadata("MultibindingMapOfProvidersEmpty.kt")
+      public void testMultibindingMapOfProvidersEmpty() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/MultibindingMapOfProvidersEmpty.kt");
       }
 
       @Test
@@ -1464,6 +1530,24 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("AncestorInjectionWithEmptyDescendants.kt")
+    public void testAncestorInjectionWithEmptyDescendants() {
+      runTest("compiler-tests/src/test/data/box/member/AncestorInjectionWithEmptyDescendants.kt");
+    }
+
+    @Test
+    @TestMetadata("AnotherAncestorInjection.kt")
+    public void testAnotherAncestorInjection() {
+      runTest("compiler-tests/src/test/data/box/member/AnotherAncestorInjection.kt");
+    }
+
+    @Test
+    @TestMetadata("ComplexScopedAncestor.kt")
+    public void testComplexScopedAncestor() {
+      runTest("compiler-tests/src/test/data/box/member/ComplexScopedAncestor.kt");
+    }
+
+    @Test
     @TestMetadata("FieldInjectFactory.kt")
     public void testFieldInjectFactory() {
       runTest("compiler-tests/src/test/data/box/member/FieldInjectFactory.kt");
@@ -1479,6 +1563,42 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("InjectingAStarParameterizedType.kt")
     public void testInjectingAStarParameterizedType() {
       runTest("compiler-tests/src/test/data/box/member/InjectingAStarParameterizedType.kt");
+    }
+
+    @Test
+    @TestMetadata("MemberInjectsAcrossModules.kt")
+    public void testMemberInjectsAcrossModules() {
+      runTest("compiler-tests/src/test/data/box/member/MemberInjectsAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("MembersInjectorRespectMultibindingQualifier.kt")
+    public void testMembersInjectorRespectMultibindingQualifier() {
+      runTest("compiler-tests/src/test/data/box/member/MembersInjectorRespectMultibindingQualifier.kt");
+    }
+
+    @Test
+    @TestMetadata("ScopedInjectIntoBaseMember.kt")
+    public void testScopedInjectIntoBaseMember() {
+      runTest("compiler-tests/src/test/data/box/member/ScopedInjectIntoBaseMember.kt");
+    }
+
+    @Test
+    @TestMetadata("SimpleAncestorInjectionWithEmptyChild.kt")
+    public void testSimpleAncestorInjectionWithEmptyChild() {
+      runTest("compiler-tests/src/test/data/box/member/SimpleAncestorInjectionWithEmptyChild.kt");
+    }
+
+    @Test
+    @TestMetadata("SimpleAncestorInjectionWithEmptyChildNoFactory.kt")
+    public void testSimpleAncestorInjectionWithEmptyChildNoFactory() {
+      runTest("compiler-tests/src/test/data/box/member/SimpleAncestorInjectionWithEmptyChildNoFactory.kt");
+    }
+
+    @Test
+    @TestMetadata("SimpleAncestorInjectionWithEmptyChildWithParentInAnotherModule.kt")
+    public void testSimpleAncestorInjectionWithEmptyChildWithParentInAnotherModule() {
+      runTest("compiler-tests/src/test/data/box/member/SimpleAncestorInjectionWithEmptyChildWithParentInAnotherModule.kt");
     }
   }
 
@@ -1519,6 +1639,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("PrimeMultibindingMapEnumKey.kt")
     public void testPrimeMultibindingMapEnumKey() {
       runTest("compiler-tests/src/test/data/box/multibindings/PrimeMultibindingMapEnumKey.kt");
+    }
+
+    @Test
+    @TestMetadata("UnusedMultibindingsDoNotGetValidated.kt")
+    public void testUnusedMultibindingsDoNotGetValidated() {
+      runTest("compiler-tests/src/test/data/box/multibindings/UnusedMultibindingsDoNotGetValidated.kt");
     }
   }
 

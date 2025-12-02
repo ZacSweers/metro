@@ -110,11 +110,16 @@ nav:
       - 'Generating Custom Metro Code': generating-metro-code.md
   - 'Performance': performance.md
   - 'Debugging': debugging.md
+  - 'Graph Analysis': graph-analysis.md
   - 'Compatibility': compatibility.md
   - 'Stability': stability.md
   - 'FAQ': faq.md
   - 'Adoption Strategies': adoption.md
   - 'Samples': samples.md
+  - 'MetroX':
+      - 'Android': metrox-android.md
+      - 'ViewModel': metrox-viewmodel.md
+      - 'ViewModel Compose': metrox-viewmodel-compose.md
   - 'API': api/index.html
   - 'Design Doc': designdoc.html
   - 'Discussions ⏏': https://github.com/ZacSweers/metro/discussions

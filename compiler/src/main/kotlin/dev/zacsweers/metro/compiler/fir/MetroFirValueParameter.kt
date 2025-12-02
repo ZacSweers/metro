@@ -60,7 +60,7 @@ internal interface MetroFirValueParameter {
 
         override fun toString(): String {
           return buildString {
-            append(name)
+            append(name ?: symbol.name)
             if (isAssisted) {
               append(" (assisted)")
             }

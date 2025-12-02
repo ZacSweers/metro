@@ -1,0 +1,15 @@
+/HasMemberInjectionDiagnostics.kt:(486,495): error: Non-final class 'OpenClass' has declared member injections and must be annotated with @HasMemberInjections.
+
+/HasMemberInjectionDiagnostics.kt:(614,642): error: Non-final class 'OpenClassWithAnnotatedParent' extends a class with member injections and must be annotated with @HasMemberInjections.
+
+/HasMemberInjectionDiagnostics.kt:(696,707): error: Non-final class 'SealedClass' has declared member injections and must be annotated with @HasMemberInjections.
+
+/HasMemberInjectionDiagnostics.kt:(765,795): error: Non-final class 'SealedClassWithAnnotatedParent' extends a class with member injections and must be annotated with @HasMemberInjections.
+
+/HasMemberInjectionDiagnostics.kt:(849,862): error: Non-final class 'AbstractClass' has declared member injections and must be annotated with @HasMemberInjections.
+
+/HasMemberInjectionDiagnostics.kt:(922,954): error: Non-final class 'AbstractClassWithAnnotatedParent' extends a class with member injections and must be annotated with @HasMemberInjections.
+
+/HasMemberInjectionDiagnostics.kt:(1002,1022): error: Class 'UnnecessaryFinalDecl' does not need to be annotated with @HasMemberInjections as it has none nor does it extend a class with any.
+
+/HasMemberInjectionDiagnostics.kt:(1051,1071): error: Class 'UnnecessaryOpenDecl' does not need to be annotated with @HasMemberInjections as it has none nor does it extend a class with any.

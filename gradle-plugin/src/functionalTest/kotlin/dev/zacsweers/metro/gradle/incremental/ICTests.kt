@@ -10,13 +10,15 @@ import com.autonomousapps.kit.GradleProject
 import com.autonomousapps.kit.GradleProject.DslKind
 import com.autonomousapps.kit.gradle.Dependency
 import com.google.common.truth.Truth.assertThat
-import dev.zacsweers.metro.gradle.MetroOptionOverrides
+import dev.zacsweers.metro.gradle.GradlePlugins
 import dev.zacsweers.metro.gradle.MetroProject
 import dev.zacsweers.metro.gradle.buildAndAssertThat
 import dev.zacsweers.metro.gradle.classLoader
 import dev.zacsweers.metro.gradle.cleanOutputLine
 import dev.zacsweers.metro.gradle.source
+import java.io.File
 import org.gradle.testkit.runner.TaskOutcome
+import org.junit.Assume.assumeTrue
 import org.junit.Ignore
 import org.junit.Test
 
@@ -823,7 +825,7 @@ class ICTests : BaseIncrementalCompilationTest() {
   @Test
   fun scopingChangeOnNonContributedClassIsDetected() {
     val fixture =
-      object : MetroProject(metroOptions = MetroOptionOverrides()) {
+      object : MetroProject() {
         override fun sources() =
           listOf(unusedScope, exampleClass, exampleGraph, loggedInGraph, main)
 
@@ -1247,6 +1249,8 @@ class ICTests : BaseIncrementalCompilationTest() {
                     Dependency.implementation(":lib"),
                   )
                 }
+
+                withMetroSettings()
               }
               .withSubproject("common") {
                 sources.add(bar)
@@ -1356,6 +1360,8 @@ class ICTests : BaseIncrementalCompilationTest() {
                     Dependency.implementation(":lib"),
                   )
                 }
+
+                withMetroSettings()
               }
               .withSubproject("common") {
                 sources.add(bar)
@@ -1464,6 +1470,8 @@ class ICTests : BaseIncrementalCompilationTest() {
                   applyMetroDefault()
                   dependencies(Dependency.implementation(":lib"))
                 }
+
+                withMetroSettings()
               }
               .withSubproject("lib") {
                 sources.add(provider)
@@ -1625,6 +1633,8 @@ class ICTests : BaseIncrementalCompilationTest() {
                     Dependency.implementation(":lib"),
                   )
                 }
+
+                withMetroSettings()
               }
               .withSubproject("common") {
                 sources.add(fooBar)
@@ -1746,6 +1756,8 @@ class ICTests : BaseIncrementalCompilationTest() {
                   applyMetroDefault()
                   dependencies(Dependency.implementation(":lib"))
                 }
+
+                withMetroSettings()
               }
               .withSubproject("lib") {
                 sources.add(appGraph)
@@ -1937,6 +1949,8 @@ class ICTests : BaseIncrementalCompilationTest() {
                   applyMetroDefault()
                   dependencies(Dependency.implementation(":lib"))
                 }
+
+                withMetroSettings()
               }
               .withSubproject("lib") {
                 sources.add(myActivity)
@@ -2057,6 +2071,73 @@ class ICTests : BaseIncrementalCompilationTest() {
       val mainClass = loadClass("test.MainKt")
       val result = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as String
       assertThat(result).isEqualTo("App")
+    }
+  }
+
+  @Test
+  fun multiplatformAndroidPluginWithReportsEnabledShouldNotFailWithFileExistsException() {
+    val fixture =
+      object : MetroProject(reportsEnabled = true) {
+        override fun sources() =
+          listOf(
+            source(
+              """
+              data class DummyClass(val abc: Int, val xyz: String)
+              """
+                .trimIndent(),
+              packageName = "com.example.test",
+              sourceSet = "commonMain",
+            )
+          )
+
+        override val gradleProject: GradleProject
+          get() {
+            val projectSources = sources()
+            return newGradleProjectBuilder(DslKind.KOTLIN)
+              .withRootProject {
+                sources = projectSources
+                withBuildScript {
+                  plugins(
+                    GradlePlugins.Kotlin.multiplatform(),
+                    GradlePlugins.agpKmp,
+                    GradlePlugins.metro,
+                  )
+                  withKotlin(
+                    """
+                    kotlin {
+                      jvm()
+
+                      android {
+                        namespace = "com.example.test"
+                        minSdk = 36
+                        compileSdk = 36
+                      }
+                    }
+
+                    ${buildMetroBlock()}
+                    """
+                      .trimIndent()
+                  )
+                }
+
+                withMetroSettings()
+
+                val androidHome = System.getProperty("metro.androidHome")
+                assumeTrue(androidHome != null) // skip if environment not set up for Android
+                // Use invariantSeparatorsPath for cross-platform .properties file compatibility
+                val sdkDir = File(androidHome).invariantSeparatorsPath
+                withFile("local.properties", "sdk.dir=$sdkDir")
+              }
+              .write()
+          }
+      }
+
+    val project = fixture.gradleProject
+    val numRuns = 3
+
+    repeat(numRuns) { i ->
+      println("Running build ${i+1}/$numRuns...")
+      build(project.rootDir, "assemble", "--no-configuration-cache", "--rerun-tasks")
     }
   }
 }

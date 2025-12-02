@@ -105,7 +105,7 @@ interface ExampleGraph : MetroContributionToAppScope {
       field = Companion.provider<Provider<Dependency>, Dependency>(delegate = MetroFactory.create())
 
     @DependencyGraph(scope = LoggedInScope::class)
-    inner class LoggedInGraphImpl : LoggedInGraph {
+    private inner class LoggedInGraphImpl : LoggedInGraph {
       private val childDependencyProvider: Provider<ChildDependency>
         field = Companion.provider<Provider<ChildDependency>, ChildDependency>(delegate = Companion.create(dep = <this>.#dependencyProvider))
 

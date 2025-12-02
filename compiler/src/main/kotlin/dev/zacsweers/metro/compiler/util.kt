@@ -30,7 +30,7 @@ internal fun ClassId.isPlatformType(): Boolean {
 internal const val LOG_PREFIX = "[METRO]"
 
 internal const val REPORT_METRO_MESSAGE =
-  "This is a bug in the Metro compiler, please report it to https://github.com/zacsweers/metro."
+  "This is possibly a bug in the Metro compiler, please report it with details and/or a reproducer to https://github.com/zacsweers/metro."
 
 internal fun <T> memoize(initializer: () -> T) = lazy(LazyThreadSafetyMode.NONE, initializer)
 

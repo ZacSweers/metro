@@ -2,24 +2,21 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir
 
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
-import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
+import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
-import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
-import org.jetbrains.kotlin.fir.declarations.builder.FirSimpleFunctionBuilder
 import org.jetbrains.kotlin.fir.declarations.builder.FirValueParameterBuilder
-import org.jetbrains.kotlin.fir.declarations.builder.buildSimpleFunction
 import org.jetbrains.kotlin.fir.declarations.builder.buildValueParameter
 import org.jetbrains.kotlin.fir.declarations.builder.buildValueParameterCopy
-import org.jetbrains.kotlin.fir.declarations.impl.FirResolvedDeclarationStatusImpl
 import org.jetbrains.kotlin.fir.declarations.origin
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.buildResolvedArgumentList
@@ -27,7 +24,8 @@ import org.jetbrains.kotlin.fir.expressions.builder.buildArgumentList
 import org.jetbrains.kotlin.fir.expressions.builder.buildExpressionStub
 import org.jetbrains.kotlin.fir.expressions.builder.buildFunctionCall
 import org.jetbrains.kotlin.fir.expressions.builder.buildLiteralExpression
-import org.jetbrains.kotlin.fir.extensions.FirExtension
+import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
+import org.jetbrains.kotlin.fir.java.declarations.FirJavaField
 import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.plugin.DeclarationBuildingContext
 import org.jetbrains.kotlin.fir.references.builder.buildResolvedNamedReference
@@ -38,27 +36,23 @@ import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
-import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
-import org.jetbrains.kotlin.fir.toEffectiveVisibility
-import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.coneType
-import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.types.ConstantValueKind
 
-internal fun FirExtension.generateMemberFunction(
+internal fun FirDeclarationGenerationExtension.generateMemberFunction(
   owner: FirClassLikeSymbol<*>,
   returnTypeRef: FirTypeRef,
   callableId: CallableId,
   origin: FirDeclarationOrigin = Keys.Default.origin,
   visibility: Visibility = Visibilities.Public,
   modality: Modality = Modality.FINAL,
-  body: FirSimpleFunctionBuilder.() -> Unit = {},
-): FirSimpleFunction {
+  body: CompatContext.FunctionBuilderScope.() -> Unit = {},
+): FirFunction {
   contract { callsInPlace(body, InvocationKind.EXACTLY_ONCE) }
   return generateMemberFunction(
     owner,
@@ -71,50 +65,25 @@ internal fun FirExtension.generateMemberFunction(
   )
 }
 
-internal fun FirExtension.generateMemberFunction(
+@Suppress("LEAKED_IN_PLACE_LAMBDA", "WRONG_INVOCATION_KIND")
+internal fun FirDeclarationGenerationExtension.generateMemberFunction(
   owner: FirClassLikeSymbol<*>,
   returnTypeProvider: (List<FirTypeParameterRef>) -> ConeKotlinType,
   callableId: CallableId,
   origin: FirDeclarationOrigin = Keys.Default.origin,
   visibility: Visibility = Visibilities.Public,
   modality: Modality = Modality.FINAL,
-  body: FirSimpleFunctionBuilder.() -> Unit = {},
-): FirSimpleFunction {
+  body: CompatContext.FunctionBuilderScope.() -> Unit = {},
+): FirFunction {
   contract { callsInPlace(body, InvocationKind.EXACTLY_ONCE) }
-  return buildSimpleFunction {
-    resolvePhase = FirResolvePhase.BODY_RESOLVE
-    moduleData = session.moduleData
-    this.origin = origin
-
-    source =
-      with(session.compatContext) {
-        owner.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
-      }
-
-    val functionSymbol = FirNamedFunctionSymbol(callableId)
-    symbol = functionSymbol
-    name = callableId.callableName
-
-    // TODO is there a non-impl API for this?
-    status =
-      FirResolvedDeclarationStatusImpl(
-        visibility,
-        modality,
-        Visibilities.Public.toEffectiveVisibility(owner, forClass = true),
-      )
-
-    dispatchReceiverType = owner.constructType()
-
-    body()
-
-    // Must go after body() because type parameters are added there
-    this.returnTypeRef = returnTypeProvider(typeParameters).toFirResolvedTypeRef()
+  return with(session.compatContext) {
+    buildMemberFunction(owner, returnTypeProvider, callableId, origin, visibility, modality, body)
   }
 }
 
 @OptIn(SymbolInternals::class)
-internal fun FirExtension.copyParameters(
-  functionBuilder: FirSimpleFunctionBuilder,
+internal fun FirDeclarationGenerationExtension.copyParameters(
+  functionBuilder: CompatContext.FunctionBuilderScope,
   sourceParameters: List<MetroFirValueParameter>,
   // TODO it would be neat to transform default value expressions in FIR? Right now only
   //  simple ones are supported
@@ -122,27 +91,60 @@ internal fun FirExtension.copyParameters(
   parameterInit: FirValueParameterBuilder.(original: MetroFirValueParameter) -> Unit = {},
 ) {
   for (original in sourceParameters) {
-    val originalFir = original.symbol.fir as FirValueParameter
-    functionBuilder.valueParameters +=
-      buildValueParameterCopy(originalFir) {
-          name = original.name
-          origin = Keys.RegularParameter.origin
-          symbol = FirValueParameterSymbol()
-          containingDeclarationSymbol = functionBuilder.symbol
-          parameterInit(original)
-          if (originalFir.symbol.hasDefaultValue) {
-            if (originalFir.symbol.hasMetroDefault(session)) {
-              if (!copyParameterDefaults) {
-                defaultValue = buildSafeDefaultValueStub(session)
+    val newParam =
+      when (val originalFir = original.symbol.fir) {
+        // Java fields don't have parameters we can just copy,
+        // so we build a real one here based on it
+        is FirJavaField -> {
+          buildValueParameter {
+              this.moduleData = originalFir.moduleData
+              name = original.name
+              origin = Keys.RegularParameter.origin
+              symbol = FirValueParameterSymbol()
+              containingDeclarationSymbol = functionBuilder.symbol
+              returnTypeRef = originalFir.returnTypeRef
+              symbol = FirValueParameterSymbol()
+              parameterInit(original)
+              if (originalFir.symbol.hasInitializer) {
+                if (originalFir.symbol.hasMetroDefault(session)) {
+                  if (!copyParameterDefaults) {
+                    defaultValue = buildSafeDefaultValueStub(session)
+                  }
+                } else {
+                  defaultValue = null
+                }
               }
-            } else {
-              defaultValue = null
             }
-          }
+            .apply {
+              context(session.compatContext) { replaceAnnotationsSafe(original.symbol.annotations) }
+            }
         }
-        .apply {
-          context(session.compatContext) { replaceAnnotationsSafe(original.symbol.annotations) }
+        else -> {
+          buildValueParameterCopy(originalFir as FirValueParameter) {
+              name = original.name
+              origin = Keys.RegularParameter.origin
+              symbol = FirValueParameterSymbol()
+              containingDeclarationSymbol = functionBuilder.symbol
+              parameterInit(original)
+              if (originalFir.symbol.hasDefaultValue) {
+                if (originalFir.symbol.hasMetroDefault(session)) {
+                  if (!copyParameterDefaults) {
+                    defaultValue = buildSafeDefaultValueStub(session)
+                  }
+                } else {
+                  defaultValue = null
+                }
+              }
+              // We don't assign a source here. Even using fakeElement() still sometimes results in
+              // using mismatched offsets, regardless of the kind
+              source = null
+            }
+            .apply {
+              context(session.compatContext) { replaceAnnotationsSafe(original.symbol.annotations) }
+            }
         }
+      }
+    functionBuilder.valueParameters += newParam
   }
 }
 
@@ -173,7 +175,7 @@ internal fun buildSafeDefaultValueStub(
   }
 }
 
-internal fun FirExtension.buildSimpleValueParameter(
+internal fun FirDeclarationGenerationExtension.buildSimpleValueParameter(
   name: Name,
   type: FirTypeRef,
   containingFunctionSymbol: FirFunctionSymbol<*>,
@@ -201,6 +203,10 @@ internal fun FirExtension.buildSimpleValueParameter(
     this.isCrossinline = isCrossinline
     this.isNoinline = isNoinline
     this.isVararg = isVararg
+
+    // We don't assign a source here. Even using fakeElement() still sometimes results in
+    // using mismatched offsets, regardless of the kind
+    source = null
     body()
   }
 }

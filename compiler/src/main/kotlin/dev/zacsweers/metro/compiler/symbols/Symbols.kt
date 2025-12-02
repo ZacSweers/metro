@@ -65,6 +65,7 @@ internal class Symbols(
     const val CREATE_DYNAMIC_GRAPH_FACTORY = "createDynamicGraphFactory"
     const val ELEMENTS_INTO_SET = "ElementsIntoSet"
     const val ERROR = "error"
+    const val EXCLUDE = "exclude" // Anvil
     const val EXCLUDES = "excludes"
     const val EXTENDS = "Extends"
     const val FACTORY = "factory"
@@ -131,6 +132,7 @@ internal class Symbols(
     val Composable = ClassId(FqNames.composeRuntime, StringNames.COMPOSABLE.asName())
     val GraphFactoryInvokeFunctionMarkerClass =
       ClassId(FqNames.metroRuntimeInternalPackage, "GraphFactoryInvokeFunctionMarker".asName())
+    val HasMemberInjections = ClassId(FqNames.metroRuntimePackage, "HasMemberInjections".asName())
     val JavaOptional = ClassId(FqNames.javaUtil, Names.Optional)
     val Lazy = StandardClassIds.byName("Lazy")
     val MembersInjector = ClassId(FqNames.metroRuntimePackage, Names.membersInjector)
@@ -195,6 +197,7 @@ internal class Symbols(
     val createDynamicGraphFactory = StringNames.CREATE_DYNAMIC_GRAPH_FACTORY.asName()
     val delegateFactory = "delegateFactory".asName()
     val error = StringNames.ERROR.asName()
+    val exclude = StringNames.EXCLUDE.asName()
     val excludes = StringNames.EXCLUDES.asName()
     val factory = StringNames.FACTORY.asName()
     val ignoreQualifier = StringNames.IGNORE_QUALIFIER.asName()

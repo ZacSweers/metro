@@ -2,15 +2,21 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.cli.common.messages.AnalyzerWithCompilerReport
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity.ERROR
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity.FIXED_WARNING
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity.INFO
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity.WARNING
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.diagnostics.InternalDiagnosticFactoryMethod
 import org.jetbrains.kotlin.diagnostics.KtDiagnostic
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
+import org.jetbrains.kotlin.diagnostics.Severity
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.sourceElement
 
@@ -34,6 +40,15 @@ internal fun <A : Any> IrMetroContext.reportCompat(
   reportCompat(toReport, factory, a)
 }
 
+// AnalyzerWithCompilerReport removed this API in 2.3.20, so we copy it in
+private fun convertSeverity(severity: Severity): CompilerMessageSeverity =
+  when (severity) {
+    Severity.INFO -> INFO
+    Severity.ERROR -> ERROR
+    Severity.WARNING -> WARNING
+    Severity.FIXED_WARNING -> FIXED_WARNING
+  }
+
 @OptIn(InternalDiagnosticFactoryMethod::class)
 @Suppress("DEPRECATION")
 internal fun <A : Any> IrMetroContext.reportCompat(
@@ -56,14 +71,14 @@ internal fun <A : Any> IrMetroContext.reportCompat(
       )
       return
     }
-    val severity = AnalyzerWithCompilerReport.convertSeverity(factory.severity)
+    val severity = convertSeverity(factory.severity)
     val location = irDeclaration?.locationOrNull()
     val message =
       if (
         location == null &&
           irDeclaration != null &&
           // Java stubs have nothing useful for us here
-          irDeclaration.origin != IrDeclarationOrigin.IR_EXTERNAL_JAVA_DECLARATION_STUB
+          irDeclaration.origin != Origins.FirstParty.IR_EXTERNAL_JAVA_DECLARATION_STUB
       ) {
         buildString {
           appendLine(a)

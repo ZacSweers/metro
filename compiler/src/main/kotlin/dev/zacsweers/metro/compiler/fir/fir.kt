@@ -31,6 +31,7 @@ import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaredMemberScope
 import org.jetbrains.kotlin.fir.analysis.checkers.getAllowedAnnotationTargets
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
+import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
@@ -64,6 +65,7 @@ import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
 import org.jetbrains.kotlin.fir.expressions.FirNamedArgumentExpression
 import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirResolvedQualifier
+import org.jetbrains.kotlin.fir.expressions.UnresolvedExpressionTypeAccess
 import org.jetbrains.kotlin.fir.expressions.arguments
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotation
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMapping
@@ -77,7 +79,7 @@ import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.references.impl.FirSimpleNamedReference
 import org.jetbrains.kotlin.fir.references.toResolvedPropertySymbol
 import org.jetbrains.kotlin.fir.render
-import org.jetbrains.kotlin.fir.renderer.ConeIdRendererForDiagnostics
+import org.jetbrains.kotlin.fir.renderer.ConeIdRenderer
 import org.jetbrains.kotlin.fir.renderer.ConeIdShortRenderer
 import org.jetbrains.kotlin.fir.renderer.ConeTypeRendererForReadability
 import org.jetbrains.kotlin.fir.resolve.defaultType
@@ -97,6 +99,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirFieldSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertyAccessorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
@@ -116,13 +119,17 @@ import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.fir.types.constructType
-import org.jetbrains.kotlin.fir.types.isResolved
 import org.jetbrains.kotlin.fir.types.resolvedType
 import org.jetbrains.kotlin.fir.types.type
+import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.StandardClassIds
 import org.jetbrains.kotlin.types.ConstantValueKind
+
+@OptIn(UnresolvedExpressionTypeAccess::class)
+internal val FirExpression.isResolved: Boolean
+  get() = coneTypeOrNull != null
 
 internal fun FirBasedSymbol<*>.isAnnotatedInject(session: FirSession): Boolean {
   return isAnnotatedWithAny(session, session.classIds.injectAnnotations)
@@ -374,6 +381,12 @@ internal fun FirAnnotationCall.computeAnnotationHash(
               ?.resolvedReceiverTypeRef
               ?.coneType
               ?.classId
+          }
+
+          is FirFunctionCall -> {
+            // This is some constant-able expression like "foo" + "bar" in an annotation arg, which
+            // is legal
+            arg.evaluateAs<FirLiteralExpression>(session)?.value
           }
 
           else -> {
@@ -756,6 +769,11 @@ internal fun FirClassLikeDeclaration.markAsDeprecatedHidden(session: FirSession)
   replaceDeprecationsProvider(this.getDeprecationsProvider(session))
 }
 
+internal fun FirCallableDeclaration.markAsDeprecatedHidden(session: FirSession) {
+  replaceAnnotations(annotations + listOf(createDeprecatedHiddenAnnotation(session)))
+  replaceDeprecationsProvider(this.getDeprecationsProvider(session))
+}
+
 internal fun ConeTypeProjection.wrapInProviderIfNecessary(
   session: FirSession,
   providerClassId: ClassId,
@@ -889,7 +907,15 @@ internal fun FirAnnotation.allScopeClassIds(): Set<ClassId> =
     }
     .filterNotTo(mutableSetOf()) { it == StandardClassIds.Nothing }
 
-internal fun FirAnnotation.excludesArgument() = arrayArgument(Symbols.Names.excludes, index = 2)
+internal fun FirAnnotation.excludesArgument(session: FirSession) =
+  arrayArgument(Symbols.Names.excludes, index = 2)
+    ?: run {
+      if (session.metroFirBuiltIns.options.enableDaggerAnvilInterop) {
+        arrayArgument(Symbols.Names.exclude, index = 3)
+      } else {
+        null
+      }
+    }
 
 internal fun FirAnnotation.replacesArgument() = arrayArgument(Symbols.Names.replaces, index = 2)
 
@@ -971,11 +997,13 @@ internal fun FirAnnotation.resolvedAdditionalScopesClassIds(
 }
 
 internal fun FirAnnotation.resolvedExcludedClassIds(
-  typeResolver: TypeResolveService
+  session: FirSession,
+  typeResolver: TypeResolveService,
 ): Set<ClassId> {
   val excludesArgument =
-    excludesArgument()?.argumentList?.arguments?.mapNotNull { it.expectAsOrNull<FirGetClassCall>() }
-      ?: return emptySet()
+    excludesArgument(session)?.argumentList?.arguments?.mapNotNull {
+      it.expectAsOrNull<FirGetClassCall>()
+    } ?: return emptySet()
   // Try to resolve it normally first. If this fails, try to resolve within the enclosing scope
   val excluded =
     excludesArgument.mapNotNull { it.resolvedClassId() }.takeUnless { it.isEmpty() }
@@ -1255,6 +1283,17 @@ internal fun StringBuilder.renderType(short: Boolean, type: ConeKotlinType) {
   renderer.render(type)
 }
 
+// Original in kotlinc was removed
+private class ConeIdRendererForDiagnostics : ConeIdRenderer() {
+  override fun renderClassId(classId: ClassId) {
+    builder.append(classId.asFqNameString())
+  }
+
+  override fun renderCallableId(callableId: CallableId) {
+    builder.append(callableId.asSingleFqName().asString())
+  }
+}
+
 context(context: CheckerContext)
 internal fun FirClassSymbol<*>.nestedClasses(): List<FirRegularClassSymbol> {
   val collected = mutableListOf<FirRegularClassSymbol>()
@@ -1368,6 +1407,16 @@ internal fun FirValueParameterSymbol.hasMetroDefault(session: FirSession): Boole
       isAnnotatedWithAny(session, session.classIds.optionalBindingAnnotations)
     },
     hasDefaultValue = { this@hasMetroDefault.hasDefaultValue },
+  )
+}
+
+internal fun FirFieldSymbol.hasMetroDefault(session: FirSession): Boolean {
+  return computeMetroDefault(
+    behavior = session.metroFirBuiltIns.options.optionalBindingBehavior,
+    isAnnotatedOptionalDep = {
+      isAnnotatedWithAny(session, session.classIds.optionalBindingAnnotations)
+    },
+    hasDefaultValue = { this@hasMetroDefault.hasInitializer },
   )
 }
 

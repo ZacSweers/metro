@@ -9,8 +9,10 @@ import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.copyWithNewDefaults
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
+import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationStatus
-import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
+import org.jetbrains.kotlin.fir.declarations.FirFunction
+import org.jetbrains.kotlin.fir.declarations.FirMemberDeclaration
 import org.jetbrains.kotlin.fir.declarations.hasAnnotation
 import org.jetbrains.kotlin.fir.declarations.utils.hasBody
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
@@ -26,6 +28,9 @@ internal class FirProvidesStatusTransformer(session: FirSession) :
 
   override fun needTransformStatus(declaration: FirDeclaration): Boolean {
     if (declaration !is FirCallableDeclaration) return false
+
+    // Skip Java sources
+    if (declaration.origin is FirDeclarationOrigin.Java.Source) return false
 
     val isProvides =
       session.predicateBasedProvider.matches(
@@ -45,7 +50,7 @@ internal class FirProvidesStatusTransformer(session: FirSession) :
     }
 
     if (declaration.symbol.rawStatus.isOverride) return false
-    if (declaration !is FirSimpleFunction) return false
+    if (declaration !is FirFunction) return false
 
     // A later FIR checker will check this case
     if (!declaration.hasBody) return false
@@ -56,7 +61,7 @@ internal class FirProvidesStatusTransformer(session: FirSession) :
     status: FirDeclarationStatus,
     declaration: FirDeclaration,
   ): FirDeclarationStatus {
-    return when ((declaration as FirSimpleFunction).visibility) {
+    return when ((declaration as FirMemberDeclaration).visibility) {
       Visibilities.Unknown -> {
         status.copyWithNewDefaults(
           visibility = Visibilities.Private,

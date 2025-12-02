@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.fir.bindingContainerErrorMessage
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
+import dev.zacsweers.metro.compiler.fir.isResolved
 import dev.zacsweers.metro.compiler.fir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.fir.validateApiDeclaration
 import dev.zacsweers.metro.compiler.flatMapToSet
@@ -26,7 +27,6 @@ import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
-import org.jetbrains.kotlin.fir.types.isResolved
 
 internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.Common) {
   private val NON_INCLUDES_KINDS = setOf(ClassKind.ENUM_CLASS, ClassKind.ANNOTATION_CLASS)
@@ -123,7 +123,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
     if (isContributedExtensionFactory) {
       val contributedScopes = contributesToAnno.flatMapToSet { it.allScopeClassIds() }
       val overlapping = contributedScopes.intersect(targetGraphScopes)
-      // ContributesGraphExtension.Factory must not contribute to the same scope as its containing
+      // GraphExtension.Factory must not contribute to the same scope as its containing
       // graph, otherwise it'd be contributing to itself!
       if (overlapping.isNotEmpty()) {
         reporter.reportOn(

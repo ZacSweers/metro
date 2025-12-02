@@ -376,7 +376,13 @@ internal class DaggerSymbols(
       JakartaSymbols.ClassIds.JAKARTA_PROVIDER_CLASS_ID,
     )
 
-  val primitives = providerPrimitives + ClassIds.DAGGER_LAZY_CLASS_ID
+  val primitives = buildSet {
+    addAll(providerPrimitives)
+    add(ClassIds.DAGGER_LAZY_CLASS_ID)
+    add(ClassIds.DAGGER_INTERNAL_SET_FACTORY_CLASS_ID)
+    add(ClassIds.DAGGER_INTERNAL_MAP_PROVIDER_FACTORY_CLASS_ID)
+    add(ClassIds.DAGGER_INTERNAL_MAP_FACTORY_CLASS_ID)
+  }
 
   override val doubleCheck by lazy {
     pluginContext.referenceClass(
@@ -480,6 +486,12 @@ internal class DaggerSymbols(
     val DAGGER_BINDS_OPTIONAL_OF = ClassId(daggerRuntimePackageFqName, "BindsOptionalOf".asName())
     val DAGGER_INTERNAL_PROVIDER_CLASS_ID =
       ClassId(daggerInternalPackageFqName, Symbols.Names.ProviderClass)
+    val DAGGER_INTERNAL_SET_FACTORY_CLASS_ID =
+      ClassId(daggerInternalPackageFqName, "SetFactory".asName())
+    val DAGGER_INTERNAL_MAP_PROVIDER_FACTORY_CLASS_ID =
+      ClassId(daggerInternalPackageFqName, "MapProviderFactory".asName())
+    val DAGGER_INTERNAL_MAP_FACTORY_CLASS_ID =
+      ClassId(daggerInternalPackageFqName, "MapFactory".asName())
     val DAGGER_MULTIBINDS = ClassId(daggerMultibindsPackageFqName, "Multibinds".asName())
     val DAGGER_ASSISTED_INJECT = ClassId(daggerAssistedPackageFqName, "AssistedInject".asName())
     val DAGGER_INJECTED_FIELD_SIGNATURE =

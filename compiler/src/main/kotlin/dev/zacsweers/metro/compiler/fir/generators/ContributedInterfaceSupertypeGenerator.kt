@@ -267,7 +267,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
         }
       }
 
-    val excluded = graphAnnotation.resolvedExcludedClassIds(typeResolver)
+    val excluded = graphAnnotation.resolvedExcludedClassIds(session, typeResolver)
     if (contributions.isEmpty() && excluded.isEmpty()) {
       return emptyList()
     }
@@ -337,7 +337,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
       // If the target is `@GraphExtension`, also implicitly exclude its nested factory if available
       // TODO this is finicky and the target class's annotations aren't resolved.
       //  Ideally we also && targetClass.isAnnotatedWithAny(session,
-      //  session.classIds.contributesGraphExtensionAnnotations)
+      //  session.classIds.graphExtensionAnnotations)
       val targetClass = excludedClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()
       if (targetClass != null) {
         for (nestedClassName in

@@ -149,13 +149,12 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
-  GENERATE_JVM_CONTRIBUTION_HINTS_IN_FIR(
+  GENERATE_CONTRIBUTION_HINTS_IN_FIR(
     RawMetroOption.boolean(
-      name = "generate-jvm-contribution-hints-in-fir",
+      name = "generate-contribution-hints-in-fir",
       defaultValue = false,
       valueDescription = "<true | false>",
-      description =
-        "Enable/disable generation of contribution hint generation in FIR for JVM compilations types.",
+      description = "Enable/disable generation of contribution hint generation in FIR.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -684,6 +683,18 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       required = false,
       allowMultipleOccurrences = false,
     )
+  ),
+  PLUGIN_ORDER_SET(
+    RawMetroOption(
+      name = "plugin-order-set",
+      defaultValue = "",
+      valueDescription = "<true | false | empty>",
+      description =
+        "Internal option indicating whether the plugin order was set before compose-compiler. Empty means unset.",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it },
+    )
   );
 
   companion object {
@@ -705,8 +716,8 @@ public data class MetroOptions(
     MetroOption.ENABLE_TOP_LEVEL_FUNCTION_INJECTION.raw.defaultValue.expectAs(),
   val generateContributionHints: Boolean =
     MetroOption.GENERATE_CONTRIBUTION_HINTS.raw.defaultValue.expectAs(),
-  val generateJvmContributionHintsInFir: Boolean =
-    MetroOption.GENERATE_JVM_CONTRIBUTION_HINTS_IN_FIR.raw.defaultValue.expectAs(),
+  val generateContributionHintsInFir: Boolean =
+    MetroOption.GENERATE_CONTRIBUTION_HINTS_IN_FIR.raw.defaultValue.expectAs(),
   val transformProvidersToPrivate: Boolean =
     MetroOption.TRANSFORM_PROVIDERS_TO_PRIVATE.raw.defaultValue.expectAs(),
   val shrinkUnusedBindings: Boolean =
@@ -807,6 +818,11 @@ public data class MetroOptions(
   val customOptionalBindingAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_OPTIONAL_BINDING.raw.defaultValue.expectAs(),
   val contributesAsInject: Boolean = MetroOption.CONTRIBUTES_AS_INJECT.raw.defaultValue.expectAs(),
+  val pluginOrderSet: Boolean? =
+    MetroOption.PLUGIN_ORDER_SET.raw.defaultValue
+      .expectAs<String>()
+      .takeUnless(String::isBlank)
+      ?.toBooleanStrict(),
 ) {
   public fun toBuilder(): Builder = Builder(this)
 
@@ -817,11 +833,13 @@ public data class MetroOptions(
     public var generateAssistedFactories: Boolean = base.generateAssistedFactories
     public var enableTopLevelFunctionInjection: Boolean = base.enableTopLevelFunctionInjection
     public var generateContributionHints: Boolean = base.generateContributionHints
-    public var generateJvmContributionHintsInFir: Boolean = base.generateJvmContributionHintsInFir
+    public var generateContributionHintsInFir: Boolean = base.generateContributionHintsInFir
     public var transformProvidersToPrivate: Boolean = base.transformProvidersToPrivate
     public var shrinkUnusedBindings: Boolean = base.shrinkUnusedBindings
     public var chunkFieldInits: Boolean = base.chunkFieldInits
     public var statementsPerInitFun: Int = base.statementsPerInitFun
+    public var enableGraphSharding: Boolean = base.enableGraphSharding
+    public var keysPerGraphShard: Int = base.keysPerGraphShard
     public var publicProviderSeverity: DiagnosticSeverity = base.publicProviderSeverity
     public var optionalBindingBehavior: OptionalBindingBehavior = base.optionalBindingBehavior
     public var warnOnInjectAnnotationPlacement: Boolean = base.warnOnInjectAnnotationPlacement
@@ -883,8 +901,7 @@ public data class MetroOptions(
     public var customOptionalBindingAnnotations: MutableSet<ClassId> =
       base.customOptionalBindingAnnotations.toMutableSet()
     public var contributesAsInject: Boolean = base.contributesAsInject
-    public var enableGraphSharding: Boolean = base.enableGraphSharding
-    public var keysPerGraphShard: Int = base.keysPerGraphShard
+    public var pluginOrderSet: Boolean? = base.pluginOrderSet
 
     private fun FqName.classId(name: String): ClassId {
       return ClassId(this, Name.identifier(name))
@@ -1007,11 +1024,13 @@ public data class MetroOptions(
         generateAssistedFactories = generateAssistedFactories,
         enableTopLevelFunctionInjection = enableTopLevelFunctionInjection,
         generateContributionHints = generateContributionHints,
-        generateJvmContributionHintsInFir = generateJvmContributionHintsInFir,
+        generateContributionHintsInFir = generateContributionHintsInFir,
         transformProvidersToPrivate = transformProvidersToPrivate,
         shrinkUnusedBindings = shrinkUnusedBindings,
         chunkFieldInits = chunkFieldInits,
         statementsPerInitFun = statementsPerInitFun,
+        enableGraphSharding = enableGraphSharding,
+        keysPerGraphShard = keysPerGraphShard,
         publicProviderSeverity = publicProviderSeverity,
         optionalBindingBehavior = optionalBindingBehavior,
         warnOnInjectAnnotationPlacement = warnOnInjectAnnotationPlacement,
@@ -1049,8 +1068,7 @@ public data class MetroOptions(
         customOriginAnnotations = customOriginAnnotations,
         customOptionalBindingAnnotations = customOptionalBindingAnnotations,
         contributesAsInject = contributesAsInject,
-        enableGraphSharding = enableGraphSharding,
-        keysPerGraphShard = keysPerGraphShard,
+        pluginOrderSet = pluginOrderSet,
       )
     }
 
@@ -1097,8 +1115,8 @@ public data class MetroOptions(
           MetroOption.GENERATE_CONTRIBUTION_HINTS ->
             generateContributionHints = configuration.getAsBoolean(entry)
 
-          MetroOption.GENERATE_JVM_CONTRIBUTION_HINTS_IN_FIR ->
-            generateJvmContributionHintsInFir = configuration.getAsBoolean(entry)
+          MetroOption.GENERATE_CONTRIBUTION_HINTS_IN_FIR ->
+            generateContributionHintsInFir = configuration.getAsBoolean(entry)
 
           MetroOption.TRANSFORM_PROVIDERS_TO_PRIVATE ->
             transformProvidersToPrivate = configuration.getAsBoolean(entry)
@@ -1230,6 +1248,10 @@ public data class MetroOptions(
           }
           MetroOption.INTEROP_INCLUDE_GUICE_ANNOTATIONS -> {
             if (configuration.getAsBoolean(entry)) includeGuiceAnnotations()
+          }
+          MetroOption.PLUGIN_ORDER_SET -> {
+            pluginOrderSet =
+              configuration.getAsString(entry).takeUnless(String::isBlank)?.toBooleanStrict()
           }
         }
       }

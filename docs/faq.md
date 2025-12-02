@@ -40,6 +40,10 @@ This allows some dynamism with keys but has some downsides. A few different reas
 - It breaks the ability to expose `Map<Key, Provider<Value>>` unless you start manually managing `Provider` types yourself.
 - You allocate and throw away a `Pair` instance each time it's called.
 
+### **Will Metro add support for dagger-android features or dagger-android interop?**
+
+No.
+
 ## Hilt FAQ
 
 ### **Will Metro add support for Hilt features or Hilt interop?**

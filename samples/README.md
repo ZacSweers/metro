@@ -10,6 +10,10 @@ A simple Android sample app that demonstrates using Metro to constructor-inject 
 
 A multiplatform sample that demonstrates using Metro with [Circuit](https://github.com/slackhq/circuit) and Jetpack Compose.
 
+## [compose-viewmodels](https://github.com/ZacSweers/metro/tree/main/samples/compose-viewmodels)
+
+A multiplatform sample that demonstrates using Metro for `ViewModel` injection in a multi-module Compose app with Compose Navigation. Shows both standard and assisted ViewModel injection patterns.
+
 ## [interop](https://github.com/ZacSweers/metro/tree/main/samples/interop)
 
 Various demonstrating interop between Metro and other dependency injection frameworks.

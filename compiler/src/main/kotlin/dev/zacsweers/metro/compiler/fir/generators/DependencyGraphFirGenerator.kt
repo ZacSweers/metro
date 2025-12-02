@@ -41,7 +41,6 @@ import org.jetbrains.kotlin.fir.extensions.NestedClassGenerationContext
 import org.jetbrains.kotlin.fir.plugin.createCompanionObject
 import org.jetbrains.kotlin.fir.plugin.createConstructor
 import org.jetbrains.kotlin.fir.plugin.createDefaultPrivateConstructor
-import org.jetbrains.kotlin.fir.plugin.createMemberFunction
 import org.jetbrains.kotlin.fir.plugin.createNestedClass
 import org.jetbrains.kotlin.fir.scopes.impl.toConeType
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
@@ -453,7 +452,7 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
                 }
             )
           }
-          .symbol
+          .symbol as FirNamedFunctionSymbol
       }
 
     val functions = mutableListOf<FirNamedFunctionSymbol>()
@@ -488,7 +487,7 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
                     }
                 )
               }
-          functions += generatedFunction.symbol
+          functions += generatedFunction.symbol as FirNamedFunctionSymbol
         } else if (owner.implements(creator.classSymbol.classId, session)) {
           // Companion is the interface
           val samFunction = creator.classSymbol.findSamFunction(session)
@@ -506,7 +505,7 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
                 creatorClass.constructType(it.mapToArray(FirTypeParameter::toConeType))
               },
             )
-          functions += generatedFunction.symbol
+          functions += generatedFunction.symbol as FirNamedFunctionSymbol
         }
       }
     } else if (owner.hasOrigin(Keys.GraphFactoryImplClassDeclaration)) {

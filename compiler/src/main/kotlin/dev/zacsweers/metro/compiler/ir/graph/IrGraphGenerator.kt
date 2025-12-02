@@ -46,7 +46,7 @@ import dev.zacsweers.metro.compiler.ir.typeOrNullableAny
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
-import dev.zacsweers.metro.compiler.isInvisibleGeneratedGraph
+import dev.zacsweers.metro.compiler.isSyntheticGeneratedGraph
 import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -57,7 +57,6 @@ import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.DescriptorVisibility
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
-import org.jetbrains.kotlin.ir.builders.declarations.addBackingField
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.declarations.addGetter
 import org.jetbrains.kotlin.ir.builders.declarations.addProperty
@@ -157,6 +156,8 @@ internal class IrGraphGenerator(
       parentTracer = parentTracer,
       getterPropertyFor = ::getOrCreateLazyProperty,
     )
+
+  private val graphMetadataReporter = GraphMetadataReporter(this)
 
   fun IrProperty.withInit(typeKey: IrTypeKey, init: PropertyInitializer): IrProperty = apply {
     // Only necessary for fields
@@ -708,10 +709,11 @@ internal class IrGraphGenerator(
           .forEach { property -> addChild(property) }
       }
 
-      if (!graphClass.origin.isInvisibleGeneratedGraph) {
+      if (!graphClass.origin.isSyntheticGeneratedGraph) {
         parentTracer.traceNested("Generate Metro metadata") {
           // Finally, generate metadata
           val graphProto = node.toProto(bindingGraph = bindingGraph)
+          graphMetadataReporter.write(node, bindingGraph)
           val metroMetadata = MetroMetadata(METRO_VERSION, dependency_graph = graphProto)
 
           writeDiagnostic({
@@ -738,7 +740,7 @@ internal class IrGraphGenerator(
         this.name = name.decapitalizeUS().asName()
         this.visibility = DescriptorVisibilities.PRIVATE
       }
-      .apply { this.addBackingField { this.type = typeKey.type } }
+      .apply { this.addBackingFieldCompat { this.type = typeKey.type } }
       .initFinal { initializerExpression() }
 
   private fun DependencyGraphNode.implementOverrides() {

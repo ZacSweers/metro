@@ -1,0 +1,194 @@
+@Inject
+class Bar : Base {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<Bar> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    fun create(): Factory<Bar> {
+      return MetroFactory
+    }
+
+    fun newInstance(): Bar {
+      return Bar()
+    }
+
+    override operator fun invoke(): Bar {
+      return MetroFactory.newInstance()
+    }
+
+    fun mirrorFunction(): Bar {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Base*/()
+    /* <init>() */
+
+  }
+
+}
+
+abstract class Base {
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class Foo : Base {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<Foo> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    fun create(): Factory<Foo> {
+      return MetroFactory
+    }
+
+    fun newInstance(): Foo {
+      return Foo()
+    }
+
+    override operator fun invoke(): Foo {
+      return MetroFactory.newInstance()
+    }
+
+    fun mirrorFunction(): Foo {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Base*/()
+    /* <init>() */
+
+  }
+
+}
+
+@DependencyGraph
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  abstract class BindsMirror {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Binds
+    @CallableMetadata(callableName = "<get-bind2>", propertyName = "bind2", startOffset = 263, endOffset = 282)
+    abstract fun Bar.bind2(): Base
+
+    @Binds
+    @IntoSet
+    @CallableMetadata(callableName = "<get-bind3>", propertyName = "bind3", startOffset = 301, endOffset = 320)
+    abstract fun Base.bind3_intoset(): Any
+
+    @Binds
+    @IntoSet
+    @CallableMetadata(callableName = "<get-bind>", propertyName = "bind", startOffset = 236, endOffset = 253)
+    abstract fun Foo.bind_intoset(): Any
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    private val barProvider: Provider<Bar>
+      private get(): Provider<Bar> {
+        return MetroFactory.create()
+      }
+
+    @Binds
+    @IntoSet
+    override val Foo.bind: Any
+      override get(): Any {
+        return error(message = "Never called")
+      }
+
+    @Binds
+    override val Bar.bind2: Base
+      override get(): Base {
+        return error(message = "Never called")
+      }
+
+    @Binds
+    @IntoSet
+    override val Base.bind3: Any
+      override get(): Any {
+        return error(message = "Never called")
+      }
+
+    private val fooProvider: Provider<Foo>
+      private get(): Provider<Foo> {
+        return MetroFactory.create()
+      }
+
+    private val setOfAny: Set<Any>
+      private get(): Set<Any> {
+        return buildSet<Any>(capacity = 2, builderAction = local fun MutableSet<Any>.<anonymous>() {
+          $receiver.add(element = <this>.<get-fooProvider>().invoke())
+          $receiver.add(element = <this>.<get-barProvider>().invoke())
+        }
+)
+      }
+
+    override val values: Set<Any>
+      override get(): Set<Any> {
+        return <this>.<get-setOfAny>()
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  @Binds
+  @IntoSet
+  abstract val Foo.bind: Any
+    abstract get
+
+  @Binds
+  abstract val Bar.bind2: Base
+    abstract get
+
+  @Binds
+  @IntoSet
+  abstract val Base.bind3: Any
+    abstract get
+
+  abstract val values: Set<Any>
+    abstract get
+
+}

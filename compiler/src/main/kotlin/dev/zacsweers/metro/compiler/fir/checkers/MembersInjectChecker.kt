@@ -11,16 +11,22 @@ import dev.zacsweers.metro.compiler.fir.isDependencyGraph
 import dev.zacsweers.metro.compiler.fir.isGraphFactory
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.metroAnnotations
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.ClassKind
+import org.jetbrains.kotlin.descriptors.isClass
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.declarations.FirClass
+import org.jetbrains.kotlin.fir.declarations.getAnnotationByClassId
+import org.jetbrains.kotlin.fir.declarations.hasAnnotation
 import org.jetbrains.kotlin.fir.declarations.utils.fromPrimaryConstructor
 import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
+import org.jetbrains.kotlin.fir.declarations.utils.isFinal
 import org.jetbrains.kotlin.fir.declarations.utils.isSuspend
+import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirEnumEntrySymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
@@ -50,6 +56,8 @@ internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
 
     val isInClass = declaration.classKind == ClassKind.CLASS
 
+    var hasDeclaredMemberInjections = false
+
     for (callable in declaration.symbol.directCallableSymbols()) {
       if (callable is FirConstructorSymbol || callable is FirEnumEntrySymbol) continue
       val annotations = callable.metroAnnotations(session)
@@ -77,6 +85,9 @@ internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
         )
         continue
       }
+
+      // Track that this class has valid declared member injections
+      hasDeclaredMemberInjections = true
 
       if (
         callable is FirPropertySymbol &&
@@ -120,6 +131,44 @@ internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
             "Injected member functions cannot have type parameters.",
           )
         }
+      }
+    }
+
+    // Check @HasMemberInjections requirement for non-final classes
+    if (isInClass) {
+      val annotation =
+        declaration.symbol.getAnnotationByClassId(Symbols.ClassIds.HasMemberInjections, session)
+      val hasAnnotation = annotation != null
+
+      // Check if any superclass has @HasMemberInjections (indicating inherited member injections)
+      fun ancestorHasMemberInjections(): Boolean {
+        return declaration.symbol.resolvedSuperTypes.any { superType ->
+          superType.toClassSymbol(session)?.let { parent ->
+            parent.classKind.isClass &&
+              parent.hasAnnotation(Symbols.ClassIds.HasMemberInjections, session)
+          } ?: false
+        }
+      }
+
+      val needsAnnotation = hasDeclaredMemberInjections || ancestorHasMemberInjections()
+      if (!declaration.isFinal && !hasAnnotation && needsAnnotation) {
+        val reason =
+          if (hasDeclaredMemberInjections) {
+            "has declared member injections"
+          } else {
+            "extends a class with member injections"
+          }
+        reporter.reportOn(
+          declaration.source,
+          MetroDiagnostics.MEMBERS_INJECT_ERROR,
+          "Non-final class '${declaration.symbol.classId.shortClassName}' $reason and must be annotated with @HasMemberInjections.",
+        )
+      } else if (hasAnnotation && !needsAnnotation) {
+        reporter.reportOn(
+          annotation.source,
+          MetroDiagnostics.MEMBERS_INJECT_ERROR,
+          "Class '${declaration.symbol.classId.shortClassName}' does not need to be annotated with @HasMemberInjections as it has none nor does it extend a class with any.",
+        )
       }
     }
   }

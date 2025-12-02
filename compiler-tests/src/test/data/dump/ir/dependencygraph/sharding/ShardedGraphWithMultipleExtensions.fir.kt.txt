@@ -543,7 +543,7 @@ interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope {
     }
 
     @DependencyGraph(scope = Feature1Scope::class)
-    inner class Feature1GraphImpl : Feature1Graph {
+    private inner class Feature1GraphImpl : Feature1Graph {
       private val feature1Service1Provider: Provider<Feature1Service1>
         field = Companion.provider<Provider<Feature1Service1>, Feature1Service1>(delegate = MetroFactory.create())
 
@@ -567,7 +567,7 @@ interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope {
     }
 
     @DependencyGraph(scope = Feature2Scope::class)
-    inner class Feature2GraphImpl : Feature2Graph {
+    private inner class Feature2GraphImpl : Feature2Graph {
       private val feature2Service1Provider: Provider<Feature2Service1>
         field = Companion.provider<Provider<Feature2Service1>, Feature2Service1>(delegate = Companion.create(app = <this>.#appService1Provider))
 

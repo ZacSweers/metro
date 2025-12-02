@@ -61,7 +61,7 @@ Special thanks to the many people that helped advise and offer feedback on Metro
 - Jesse Wilson
 - Dany Santiago
 - Eva Tatarka
-- Bill Phillips
+- Bridget Phillips
 - Bryan Stern
 - James Barr
 - and many more!

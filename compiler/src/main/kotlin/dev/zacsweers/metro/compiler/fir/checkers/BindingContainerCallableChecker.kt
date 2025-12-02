@@ -36,8 +36,8 @@ import org.jetbrains.kotlin.fir.containingClassLookupTag
 import org.jetbrains.kotlin.fir.correspondingProperty
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirConstructor
+import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirProperty
-import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
 import org.jetbrains.kotlin.fir.declarations.getAnnotationByClassId
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClass
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
@@ -248,7 +248,8 @@ internal object BindingContainerCallableChecker :
 
     val bodyExpression =
       when (declaration) {
-        is FirSimpleFunction -> declaration.body
+        is FirFunction if (with(session.compatContext) { declaration.isNamedFunction() }) ->
+          declaration.body
         is FirProperty -> {
           declaration.getter?.body ?: declaration.initializer
         }
@@ -284,7 +285,8 @@ internal object BindingContainerCallableChecker :
             // Compare type keys. Different qualifiers are ok
             val returnTypeKey =
               when (declaration) {
-                is FirSimpleFunction -> FirTypeKey.from(session, declaration)
+                is FirFunction if (with(session.compatContext) { declaration.isNamedFunction() }) ->
+                  FirTypeKey.from(session, declaration)
                 is FirProperty -> FirTypeKey.from(session, declaration)
                 else -> return
               }
@@ -311,7 +313,15 @@ internal object BindingContainerCallableChecker :
           // Fall through to the Provides-without-body error below
         }
       } else {
-        val name = if (declaration is FirSimpleFunction) "functions" else "properties"
+        val name =
+          if (
+            declaration is FirFunction &&
+              with(session.compatContext) { declaration.isNamedFunction() }
+          ) {
+            "functions"
+          } else {
+            "properties"
+          }
         // Check if the body expression is just returning "this"
         // NOTE we only do this check for `@Provides`. It's valid to annotate a
         // `@Binds` with a body if the caller wants to still mark it private
@@ -392,7 +402,9 @@ internal object BindingContainerCallableChecker :
         }
       }
 
-      if (declaration is FirSimpleFunction) {
+      if (
+        declaration is FirFunction && with(session.compatContext) { declaration.isNamedFunction() }
+      ) {
         for (parameter in declaration.valueParameters) {
           val annotations =
             parameter.symbol.metroAnnotations(

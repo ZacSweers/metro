@@ -354,8 +354,8 @@ internal class InjectConstructorTransformer(
         if (injectors.isNotEmpty()) {
           val instance = irTemporary(newInstance)
           for (injector in injectors) {
-            val typeArgs =
-              injector.injectorClass.parentAsClass.typeParameters.map { it.defaultType }
+            val injectorClass = injector.injectorClass ?: continue
+            val typeArgs = injectorClass.parentAsClass.typeParameters.map { it.defaultType }
             for ((function, parameters) in injector.declaredInjectFunctions) {
               // Record for IC
               trackFunctionCall(invokeFunction, function)
@@ -403,7 +403,8 @@ internal class InjectConstructorTransformer(
       // If compose compiler has already run, the looked up function may be the _old_ function
       // and we need to update the reference to the newly transformed one
       val hasComposeCompilerRun =
-        invokeFunction.regularParameters.lastOrNull()?.name?.asString() == "\$changed"
+        options.pluginOrderSet?.let { !it }
+          ?: (invokeFunction.regularParameters.lastOrNull()?.name?.asString() == $$"$changed")
       if (hasComposeCompilerRun) {
         val originalParent = targetCallable.owner.file
         targetCallable =

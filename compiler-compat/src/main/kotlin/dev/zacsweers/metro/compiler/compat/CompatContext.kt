@@ -11,24 +11,34 @@ import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
+import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationStatus
-import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
+import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameter
+import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
+import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.extensions.ExperimentalTopLevelDeclarationsGenerationApi
+import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirExtension
 import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrar
 import org.jetbrains.kotlin.fir.plugin.SimpleFunctionBuildingContext
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.ir.builders.Scope
+import org.jetbrains.kotlin.ir.builders.declarations.IrFieldBuilder
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
+import org.jetbrains.kotlin.ir.declarations.IrField
+import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
 import org.jetbrains.kotlin.name.CallableId
+import org.jetbrains.kotlin.name.Name
 
 public interface CompatContext {
   public companion object Companion {
@@ -115,18 +125,18 @@ public interface CompatContext {
    * Calling [getContainingClassSymbol] for the symbol of `(1)` will return `expect class MyClass`,
    * but calling it for `(2)` will give `actual class MyClass`.
    */
-  // Deleted in Kotlin 2.3.0
+  @CompatApi(since = "2.3.0", reason = CompatApi.Reason.DELETED)
   public fun FirBasedSymbol<*>.getContainingClassSymbol(): FirClassLikeSymbol<*>?
 
   /**
    * Returns the containing class or file if the callable is top-level. The containing symbol is
    * resolved using the declaration-site session.
    */
-  // Deleted in Kotlin 2.3.0
+  @CompatApi(since = "2.3.0", reason = CompatApi.Reason.DELETED)
   public fun FirCallableSymbol<*>.getContainingSymbol(session: FirSession): FirBasedSymbol<*>?
 
   /** The containing symbol is resolved using the declaration-site session. */
-  // Deleted in Kotlin 2.3.0
+  @CompatApi(since = "2.3.0", reason = CompatApi.Reason.DELETED)
   public fun FirDeclaration.getContainingClassSymbol(): FirClassLikeSymbol<*>?
 
   /**
@@ -138,7 +148,11 @@ public interface CompatContext {
    *   full file path would be `package/of/the/property/containingFileName.kt. If null is passed,
    *   then `__GENERATED BUILTINS DECLARATIONS__.kt` would be used
    */
-  // Kotlin 2.3.0 added containingFileName
+  @CompatApi(
+    since = "2.3.0",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "containingFileName parameter was added",
+  )
   @ExperimentalTopLevelDeclarationsGenerationApi
   public fun FirExtension.createTopLevelFunction(
     key: GeneratedDeclarationKey,
@@ -146,7 +160,7 @@ public interface CompatContext {
     returnType: ConeKotlinType,
     containingFileName: String? = null,
     config: SimpleFunctionBuildingContext.() -> Unit = {},
-  ): FirSimpleFunction
+  ): FirFunction
 
   /**
    * Creates a top-level function with [callableId] and return type provided by
@@ -159,7 +173,11 @@ public interface CompatContext {
    *   full file path would be `package/of/the/property/containingFileName.kt. If null is passed,
    *   then `__GENERATED BUILTINS DECLARATIONS__.kt` would be used
    */
-  // Kotlin 2.3.0 added containingFileName
+  @CompatApi(
+    since = "2.3.0",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "containingFileName parameter was added",
+  )
   @ExperimentalTopLevelDeclarationsGenerationApi
   public fun FirExtension.createTopLevelFunction(
     key: GeneratedDeclarationKey,
@@ -167,7 +185,45 @@ public interface CompatContext {
     returnTypeProvider: (List<FirTypeParameter>) -> ConeKotlinType,
     containingFileName: String? = null,
     config: SimpleFunctionBuildingContext.() -> Unit = {},
-  ): FirSimpleFunction
+  ): FirFunction
+
+  /**
+   * Creates a member function for [owner] with specified [returnType].
+   *
+   * Return type is [FirFunction] instead of `FirSimpleFunction` because it was renamed to
+   * `FirNamedFunction` in Kotlin 2.3.20.
+   */
+  @CompatApi(
+    since = "2.3.20",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "FirSimpleFunction was renamed to FirNamedFunction",
+  )
+  public fun FirExtension.createMemberFunction(
+    owner: FirClassSymbol<*>,
+    key: GeneratedDeclarationKey,
+    name: Name,
+    returnType: ConeKotlinType,
+    config: SimpleFunctionBuildingContext.() -> Unit = {},
+  ): FirFunction
+
+  /**
+   * Creates a member function for [owner] with return type provided by [returnTypeProvider].
+   *
+   * Return type is [FirFunction] instead of `FirSimpleFunction` because it was renamed to
+   * `FirNamedFunction` in Kotlin 2.3.20.
+   */
+  @CompatApi(
+    since = "2.3.20",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "FirSimpleFunction was renamed to FirNamedFunction",
+  )
+  public fun FirExtension.createMemberFunction(
+    owner: FirClassSymbol<*>,
+    key: GeneratedDeclarationKey,
+    name: Name,
+    returnTypeProvider: (List<FirTypeParameter>) -> ConeKotlinType,
+    config: SimpleFunctionBuildingContext.() -> Unit = {},
+  ): FirFunction
 
   // Changed to a new KtSourceElementOffsetStrategy overload in Kotlin 2.3.0
   public fun KtSourceElement.fakeElement(
@@ -176,7 +232,11 @@ public interface CompatContext {
     endOffset: Int = -1,
   ): KtSourceElement
 
-  // Kotlin 2.3.0 changed hasMustUseReturnValue to returnValueStatus
+  @CompatApi(
+    since = "2.3.0",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "changed hasMustUseReturnValue to returnValueStatus",
+  )
   public fun FirDeclarationStatus.copy(
     visibility: Visibility? = this.visibility,
     modality: Modality? = this.modality,
@@ -203,9 +263,14 @@ public interface CompatContext {
   ): FirDeclarationStatus
 
   // Parameters changed in Kotlin 2.3.0
+  @CompatApi(since = "2.3.0", reason = CompatApi.Reason.ABI_CHANGE)
   public fun IrClass.addFakeOverrides(typeSystem: IrTypeSystemContext)
 
-  // Kotlin 2.3.0 added inventUniqueName param
+  @CompatApi(
+    since = "2.3.0",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "added inventUniqueName param",
+  )
   public fun Scope.createTemporaryVariableDeclarationCompat(
     irType: IrType,
     nameHint: String? = null,
@@ -214,6 +279,76 @@ public interface CompatContext {
     startOffset: Int,
     endOffset: Int,
   ): IrVariable
+
+  @CompatApi(
+    since = "2.3.20",
+    reason = CompatApi.Reason.COMPAT,
+    message =
+      "We use FirFunction instead of FirSimpleFunction or FirNamedFunction to better interop and occasionally need to check for certain that this is a named function",
+  )
+  public fun FirFunction.isNamedFunction(): Boolean
+
+  /**
+   * Builds a member function using the version-appropriate builder.
+   *
+   * This abstraction exists because `FirSimpleFunctionBuilder` was renamed to
+   * `FirNamedFunctionBuilder` in Kotlin 2.3.20, causing linkage failures at runtime.
+   *
+   * @param owner The class that will contain this function
+   * @param returnTypeProvider Provider for the return type, called after type parameters are added
+   * @param callableId The callable ID for the function
+   * @param origin The declaration origin
+   * @param visibility The visibility of the function
+   * @param modality The modality of the function
+   * @param body Configuration block for type parameters and value parameters
+   */
+  @CompatApi(
+    since = "2.3.20",
+    reason = CompatApi.Reason.RENAMED,
+    message = "FirSimpleFunctionBuilder was renamed to FirNamedFunctionBuilder",
+  )
+  public fun FirDeclarationGenerationExtension.buildMemberFunction(
+    owner: FirClassLikeSymbol<*>,
+    returnTypeProvider: (List<FirTypeParameterRef>) -> ConeKotlinType,
+    callableId: CallableId,
+    origin: FirDeclarationOrigin,
+    visibility: Visibility,
+    modality: Modality,
+    body: FunctionBuilderScope.() -> Unit,
+  ): FirFunction
+
+  /**
+   * A stable interface for configuring function builders across Kotlin compiler versions.
+   *
+   * This abstraction exists because `FirSimpleFunctionBuilder` was renamed to
+   * `FirNamedFunctionBuilder` in Kotlin 2.3.20, causing linkage failures at runtime.
+   */
+  public interface FunctionBuilderScope {
+    public val symbol: FirNamedFunctionSymbol
+    public val typeParameters: MutableList<FirTypeParameter>
+    public val valueParameters: MutableList<FirValueParameter>
+  }
+
+  @CompatApi(
+    since = "2.3.20",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message =
+      "usages of IrDeclarationOrigin constants are getting inlined and causing runtime failures, so we have a non-inline version to defeat this inlining",
+  )
+  public fun IrProperty.addBackingFieldCompat(builder: IrFieldBuilder.() -> Unit = {}): IrField
 }
 
 private data class FactoryData(val version: String, val factory: CompatContext.Factory)
+
+internal annotation class CompatApi(
+  val since: String,
+  val reason: Reason,
+  val message: String = "",
+) {
+  enum class Reason {
+    DELETED,
+    RENAMED,
+    ABI_CHANGE,
+    COMPAT,
+  }
+}

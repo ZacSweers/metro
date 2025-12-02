@@ -329,7 +329,7 @@ internal fun IrBuilderWithScope.irInvoke(
   if (!contextArgs.isNullOrEmpty()) argSize += contextArgs.size
   if (extensionReceiver != null) argSize++
   check(callee.owner.parameters.size == argSize) {
-    "Expected ${callee.owner.parameters.size} arguments but got ${args.size} for function: ${callee.owner.kotlinFqName}"
+    "Expected ${callee.owner.parameters.size} arguments but got $argSize for function: ${callee.owner.kotlinFqName}"
   }
 
   var index = 0
@@ -346,7 +346,7 @@ internal fun IrStatementsBuilder<*>.irTemporary(
   nameHint: String? = null,
   irType: IrType = value?.type!!, // either value or irType should be supplied at callsite
   isMutable: Boolean = false,
-  origin: IrDeclarationOrigin = IrDeclarationOrigin.IR_TEMPORARY_VARIABLE,
+  origin: IrDeclarationOrigin = Origins.FirstParty.IR_TEMPORARY_VARIABLE,
 ): IrVariable =
   with(context) {
     val temporary =
@@ -465,7 +465,7 @@ internal fun irLambda(
       .buildFun {
         startOffset = SYNTHETIC_OFFSET
         endOffset = SYNTHETIC_OFFSET
-        origin = IrDeclarationOrigin.LOCAL_FUNCTION_FOR_LAMBDA
+        origin = Origins.FirstParty.LOCAL_FUNCTION_FOR_LAMBDA
         name = Name.special("<anonymous>")
         visibility = DescriptorVisibilities.LOCAL
         isSuspend = suspend
@@ -741,7 +741,8 @@ internal fun IrConstructorCall.subcomponentsArgument() =
   getValueArgument(Symbols.Names.subcomponents)?.expectAsOrNull<IrVararg>()
 
 internal fun IrConstructorCall.excludesArgument() =
-  getValueArgument(Symbols.Names.excludes)?.expectAsOrNull<IrVararg>()
+  (getValueArgument(Symbols.Names.excludes) ?: getValueArgument(Symbols.Names.exclude))
+    ?.expectAsOrNull<IrVararg>()
 
 internal fun IrConstructorCall.additionalScopesArgument() =
   getValueArgument(Symbols.Names.additionalScopes)?.expectAsOrNull<IrVararg>()
@@ -1072,7 +1073,7 @@ internal fun IrOverridableDeclaration<*>.finalizeFakeOverride(
 ) {
   check(isFakeOverride) { "Function $name is not a fake override!" }
   isFakeOverride = false
-  origin = IrDeclarationOrigin.DEFINED
+  origin = Origins.FirstParty.DEFINED
   modality = Modality.FINAL
   if (this is IrSimpleFunction) {
     setDispatchReceiver(
