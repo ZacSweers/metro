@@ -65,6 +65,7 @@ internal fun FirDeclarationGenerationExtension.generateMemberFunction(
   )
 }
 
+@Suppress("LEAKED_IN_PLACE_LAMBDA", "WRONG_INVOCATION_KIND")
 internal fun FirDeclarationGenerationExtension.generateMemberFunction(
   owner: FirClassLikeSymbol<*>,
   returnTypeProvider: (List<FirTypeParameterRef>) -> ConeKotlinType,
