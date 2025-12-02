@@ -1,6 +1,6 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-package dev.zacsweers.metro.compiler.compat.k230_Beta1
+package dev.zacsweers.metro.compiler.compat.k230_beta1
 
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import org.jetbrains.kotlin.GeneratedDeclarationKey
