@@ -621,7 +621,13 @@ internal class IrGraphGenerator(
                 dispatchReceiver =
                   irGetField(irGet(dispatchReceiver), info.instanceProperty.backingField!!),
                 callee = info.initializeFunction.symbol,
-                args = listOf(irGet(dispatchReceiver)),
+                args =
+                  buildList {
+                    add(irGet(dispatchReceiver))
+                    for (outerParam in info.outerReceiverParams) {
+                      add(irGet(outerParam))
+                    }
+                  },
               )
             }
           }

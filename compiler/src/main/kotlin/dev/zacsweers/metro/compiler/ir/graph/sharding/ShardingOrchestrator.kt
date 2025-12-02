@@ -6,9 +6,7 @@ import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.graph.Component
 import dev.zacsweers.metro.compiler.graph.GraphTopology
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
-import dev.zacsweers.metro.compiler.ir.graph.DependencyGraphNode
-import dev.zacsweers.metro.compiler.isSyntheticGeneratedGraph
-import java.util.SortedSet
+import java.util.*
 
 /**
  * Partitions bindings into shards when a graph exceeds [MetroOptions.keysPerGraphShard].
@@ -19,12 +17,8 @@ import java.util.SortedSet
  * Returns null if sharding isn't needed:
  * - Graph sharding is disabled
  * - There are too few bindings
- * - It's either a dynamic graph or a graph extension
  */
-internal class ShardingOrchestrator(
-  private val node: DependencyGraphNode,
-  private val options: MetroOptions,
-) {
+internal class ShardingOrchestrator(private val options: MetroOptions) {
 
   /**
    * Returns shard groups in topologically sorted order, or null if sharding isn't needed. Each list
@@ -37,10 +31,7 @@ internal class ShardingOrchestrator(
     val adjacencyKeys = topologyData.adjacency.keys
 
     if (
-      adjacencyKeys.isEmpty() ||
-        !options.enableGraphSharding ||
-        adjacencyKeys.size <= maxPerShard ||
-        node.sourceGraph.origin.isSyntheticGeneratedGraph
+      adjacencyKeys.isEmpty() || !options.enableGraphSharding || adjacencyKeys.size <= maxPerShard
     )
       return null
 
@@ -61,6 +52,12 @@ internal class ShardingOrchestrator(
    *
    * Processes SCCs in topological order, keeping all bindings in an SCC together so circular
    * dependencies (including Provider<T> cycles) stay in the same shard.
+   *
+   * Isolated keys are bindings not part of any cycle (single-node SCCs not tracked in
+   * [componentOf]). They're processed after multi-node components, relying on their relative order
+   * in [sortedKeys].
+   *
+   * If a single SCC exceeds [maxBindingsPerShard], it's kept whole to preserve cycle integrity.
    */
   private fun partitionUsingSCCs(
     adjacency: Map<IrTypeKey, SortedSet<IrTypeKey>>,
@@ -71,11 +68,9 @@ internal class ShardingOrchestrator(
   ) = buildList {
     var currentShard = mutableListOf<IrTypeKey>()
 
-    // Build ordered component ids from sortedKeys and collect isolated keys
     val orderedComponents = sortedKeys.mapNotNull { componentOf[it] }.distinct()
     val isolatedKeys = sortedKeys.filter { componentOf[it] == null && adjacency.containsKey(it) }
 
-    // Append components to shards, respecting size limits
     for (componentId in orderedComponents) {
       val component = components[componentId]
       val validKeys = component.vertices.filter(adjacency::containsKey)

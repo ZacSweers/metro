@@ -89,8 +89,7 @@ internal class IrBindingGraph(
   private val injectors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
   private val extraKeeps = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
   private val reservedProperties = mutableMapOf<IrTypeKey, ParentContext.PropertyAccess>()
-  private val shardingOrchestrator =
-    ShardingOrchestrator(node = node, options = metroContext.options)
+  private val shardingOrchestrator = ShardingOrchestrator(metroContext.options)
 
   // Thin immutable view over the internal bindings
   fun bindingsSnapshot(): Map<IrTypeKey, IrBinding> = realGraph.bindings

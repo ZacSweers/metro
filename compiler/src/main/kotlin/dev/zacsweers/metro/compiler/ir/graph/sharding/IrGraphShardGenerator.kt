@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
+import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.declarations.addBackingField
 import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
@@ -27,10 +28,17 @@ import org.jetbrains.kotlin.ir.builders.irSetField
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.declarations.IrValueParameter
+import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.expressions.IrGetValue
+import org.jetbrains.kotlin.ir.expressions.impl.IrGetValueImpl
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.defaultType
+import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
+import org.jetbrains.kotlin.ir.visitors.IrVisitorVoid
+import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
 import org.jetbrains.kotlin.name.Name
 
 /**
@@ -73,10 +81,9 @@ internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext b
     graphClass: IrClass,
     shardGroups: List<List<PropertyBinding>>,
   ): List<ShardInfo> {
+    val graphReceiver = graphClass.thisReceiverOrFail
     return shardGroups.mapIndexed { index, bindings ->
       val shardName = "Shard${index + 1}"
-      val graphReceiver = graphClass.thisReceiverOrFail
-
       val shardClass =
         irFactory
           .buildClass {
@@ -125,26 +132,50 @@ internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext b
 
       val initializeFunction =
         shardClass.addFunction("initialize", irBuiltIns.unitType).apply {
-          val shardReceiver = graphReceiver.copyTo(this)
+          val shardReceiver = shardClass.thisReceiverOrFail.copyTo(this)
           setDispatchReceiver(shardReceiver)
+        }
 
-          val graphInstanceParam = addValueParameter("graphInstance", graphClass.defaultType)
+      val graphInstanceParam =
+        initializeFunction.addValueParameter("graphInstance", graphClass.defaultType)
 
-          body =
-            createIrBuilder(symbol).irBlockBody {
-              for (binding in bindings) {
-                val backingField = binding.property.backingField
-                if (backingField != null) {
-                  val initValue =
-                    binding.initializer.invoke(
-                      this@irBlockBody,
-                      graphInstanceParam,
-                      binding.typeKey,
-                    )
-                  +irSetField(irGet(graphInstanceParam), backingField, initValue)
-                }
-              }
-            }
+      // First pass: generate expressions and collect out-of-scope parameters
+      val inScopeParams = setOf(graphInstanceParam)
+      val collector = OuterReceiverCollector(inScopeParams)
+      val generatedExpressions = mutableListOf<Pair<PropertyBinding, IrExpression>>()
+
+      createIrBuilder(initializeFunction.symbol).run {
+        for (binding in bindings) {
+          val backingField = binding.property.backingField
+          if (backingField != null) {
+            val initValue =
+              binding.initializer.invoke(this@run, graphInstanceParam, binding.typeKey)
+            initValue.acceptChildrenVoid(collector)
+            generatedExpressions.add(binding to initValue)
+          }
+        }
+      }
+
+      val outerReceiverParams = mutableListOf<IrValueParameter>()
+      val paramMapping = mutableMapOf<IrValueParameter, IrValueParameter>()
+      for (outerParam in collector.outOfScopeParams) {
+        val newParam =
+          initializeFunction.addValueParameter(
+            "outer_${outerParam.name.asString()}",
+            outerParam.type,
+          )
+        paramMapping[outerParam] = newParam
+        outerReceiverParams.add(outerParam)
+      }
+
+      val remapper = if (paramMapping.isNotEmpty()) ParameterRemapper(paramMapping) else null
+      initializeFunction.body =
+        createIrBuilder(initializeFunction.symbol).irBlockBody {
+          for ((binding, initValue) in generatedExpressions) {
+            val backingField = binding.property.backingField!!
+            val remappedValue = remapper?.remap(initValue) ?: initValue
+            +irSetField(irGet(graphInstanceParam), backingField, remappedValue)
+          }
         }
 
       ShardInfo(
@@ -153,6 +184,7 @@ internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext b
         instanceProperty = shardInstanceProperty,
         initializeFunction = initializeFunction,
         bindings = bindings,
+        outerReceiverParams = outerReceiverParams,
       )
     }
   }
@@ -172,4 +204,47 @@ internal data class ShardInfo(
   val instanceProperty: IrProperty,
   val initializeFunction: IrSimpleFunction,
   val bindings: List<PropertyBinding>,
+  val outerReceiverParams: List<IrValueParameter>,
 )
+
+/**
+ * Collects all [IrValueParameter] references from an expression that are not in the given scope.
+ * Used to detect when binding code references parameters from outer class constructors.
+ */
+private class OuterReceiverCollector(private val inScopeParams: Set<IrValueParameter>) :
+  IrVisitorVoid() {
+  val outOfScopeParams = mutableSetOf<IrValueParameter>()
+
+  override fun visitElement(element: IrElement) {
+    element.acceptChildrenVoid(this)
+  }
+
+  override fun visitGetValue(expression: IrGetValue) {
+    val owner = expression.symbol.owner
+    if (owner is IrValueParameter && owner !in inScopeParams) {
+      outOfScopeParams.add(owner)
+    }
+    super.visitGetValue(expression)
+  }
+}
+
+/** Remaps [IrGetValue] nodes to use substituted parameters. */
+private class ParameterRemapper(private val mapping: Map<IrValueParameter, IrValueParameter>) :
+  IrElementTransformerVoid() {
+
+  fun remap(expression: IrExpression): IrExpression {
+    return expression.transform(this, null)
+  }
+
+  override fun visitGetValue(expression: IrGetValue): IrExpression {
+    val owner = expression.symbol.owner
+    if (owner is IrValueParameter && owner in mapping) {
+      return IrGetValueImpl(
+        expression.startOffset,
+        expression.endOffset,
+        mapping.getValue(owner).symbol,
+      )
+    }
+    return super.visitGetValue(expression)
+  }
+}
