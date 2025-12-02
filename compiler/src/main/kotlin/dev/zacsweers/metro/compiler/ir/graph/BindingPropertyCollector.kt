@@ -127,42 +127,27 @@ internal class BindingPropertyCollector(private val graph: IrBindingGraph) {
     return node.mark()
   }
 
-  /** Resolves an alias chain to its final non-alias target, caches intermediates. */
-  private fun resolveAliasTarget(typeKey: IrTypeKey): IrTypeKey? {
-    resolvedAliasTargets[typeKey]?.let { cachedTarget ->
-      return cachedTarget
-    }
-
-    val visited = mutableSetOf<IrTypeKey>()
-    val target = resolveAliasTargetImpl(typeKey, visited)
-
-    // Cache the resolved target for all visited keys
-    if (target != null) {
-      for (key in visited) {
-        resolvedAliasTargets[key] = target
-      }
-    }
-
-    return target
-  }
-
-  private tailrec fun resolveAliasTargetImpl(
-    current: IrTypeKey,
-    visited: MutableSet<IrTypeKey>,
-  ): IrTypeKey? {
-    // Check cache for early termination
+  /** Resolves an alias chain to its final non-alias target, caching all intermediate keys. */
+  private fun resolveAliasTarget(current: IrTypeKey): IrTypeKey? {
+    // Check cache
     resolvedAliasTargets[current]?.let {
       return it
     }
 
     val binding = graph.findBinding(current) ?: return null
-    visited += current
 
-    return if (binding is IrBinding.Alias && binding.typeKey != binding.aliasedType) {
-      resolveAliasTargetImpl(binding.aliasedType, visited)
-    } else {
-      current
+    val target =
+      if (binding is IrBinding.Alias && binding.typeKey != binding.aliasedType) {
+        resolveAliasTarget(binding.aliasedType)
+      } else {
+        current
+      }
+
+    // Cache on the way back up
+    if (target != null) {
+      resolvedAliasTargets[current] = target
     }
+    return target
   }
 }
 
