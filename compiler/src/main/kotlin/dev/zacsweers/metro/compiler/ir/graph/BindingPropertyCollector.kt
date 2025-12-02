@@ -55,14 +55,21 @@ internal class BindingPropertyCollector(private val graph: IrBindingGraph) {
   /** Cache of alias type keys to their resolved non-alias target type keys. */
   private val resolvedAliasTargets = HashMap<IrTypeKey, IrTypeKey>()
 
+  /** Bindings that would be inlined into multibindings and need properties to avoid duplication. */
+  private val inlineableIntoMultibinding = mutableSetOf<IrTypeKey>()
+
   fun collect(): Map<IrTypeKey, CollectedProperty> {
-    // Count references for each dependency
-    val inlineableIntoMultibinding = mutableSetOf<IrTypeKey>()
     for ((key, binding) in graph.bindingsSnapshot()) {
       // Ensure each key has a node
       nodes.getOrPut(key) { Node(binding) }
-      for (dependency in binding.dependencies) {
-        dependency.mark()
+
+      // For non-alias bindings, mark dependencies normally.
+      // For alias bindings, skip marking dependencies here - the alias's target will be
+      // marked when something depends on this alias (via resolveAliasTarget below).
+      if (binding !is IrBinding.Alias) {
+        for (dependency in binding.dependencies) {
+          dependency.mark()
+        }
       }
 
       // Find all bindings that are directly or transitively aliased into multibindings.
@@ -97,20 +104,58 @@ internal class BindingPropertyCollector(private val graph: IrBindingGraph) {
   }
 
   /**
-   * Follows an alias chain starting from [start], invoking [action] on each binding in the chain
-   * and returning the final non-alias target key.
-   *
-   * Handles chained aliases like: Alias1 → Alias2 → Impl. Results are cached for efficiency.
+   * Follows an alias chain and collects all type keys in the chain. Used to find bindings that
+   * would be inlined into multibindings.
    */
-  private fun followAliasChain(
-    start: IrTypeKey,
-    action: ((IrTypeKey, IrBinding) -> Unit)?,
-  ): IrTypeKey? {
-    resolvedAliasTargets[start]?.let { cached ->
-      return cached
-    }
+  private fun collectAliasChain(typeKey: IrTypeKey, destination: MutableSet<IrTypeKey>) {
+    var current = typeKey
     val visited = mutableSetOf<IrTypeKey>()
-    val target = followAliasChainImpl(start, visited, action)
+    while (current !in visited) {
+      visited += current
+      val binding = graph.findBinding(current) ?: return
+      destination += current
+      if (binding is IrBinding.Alias && binding.typeKey != binding.aliasedType) {
+        current = binding.aliasedType
+      } else {
+        return
+      }
+    }
+  }
+
+  /**
+   * Marks a dependency, resolving through alias chains to mark the final non-alias target. This
+   * ensures that if Foo (alias → FooImpl) is referenced N times, FooImpl gets refCount=N.
+   */
+  private fun IrContextualTypeKey.mark(): Boolean {
+    val binding = graph.requireBinding(this)
+
+    // For aliases, resolve to the final target and mark that instead.
+    // This avoids double-counting (once via alias dependency, once via external reference)
+    // while ensuring the actual implementation gets the correct ref count.
+    if (binding is IrBinding.Alias && binding.typeKey != binding.aliasedType) {
+      val targetKey = resolveAliasTarget(binding.aliasedType) ?: return false
+      val targetBinding = graph.findBinding(targetKey) ?: return false
+      val targetNode = nodes.getOrPut(targetKey) { Node(targetBinding) }
+      return targetNode.mark()
+    }
+
+    return binding.mark()
+  }
+
+  private fun IrBinding.mark(): Boolean {
+    val node = nodes.getOrPut(typeKey) { Node(this) }
+    return node.mark()
+  }
+
+  /** Resolves an alias chain to its final non-alias target, caching results for efficiency. */
+  private fun resolveAliasTarget(typeKey: IrTypeKey): IrTypeKey? {
+    resolvedAliasTargets[typeKey]?.let {
+      return it
+    }
+
+    val visited = mutableSetOf<IrTypeKey>()
+    val target = resolveAliasTargetImpl(typeKey, visited)
+
     // Cache the resolved target for all visited keys
     if (target != null) {
       for (key in visited) {
@@ -120,55 +165,23 @@ internal class BindingPropertyCollector(private val graph: IrBindingGraph) {
     return target
   }
 
-  private tailrec fun followAliasChainImpl(
+  private tailrec fun resolveAliasTargetImpl(
     current: IrTypeKey,
     visited: MutableSet<IrTypeKey>,
-    action: ((IrTypeKey, IrBinding) -> Unit)?,
   ): IrTypeKey? {
-    if (current in visited) return null
-    // Check cache - if found, we can return early without further traversal
-    resolvedAliasTargets[current]?.let { cached ->
-      return cached
+    // Check cache for early termination
+    resolvedAliasTargets[current]?.let {
+      return it
     }
-    visited += current
+
     val binding = graph.findBinding(current) ?: return null
-    action?.invoke(current, binding)
-    return if (binding is IrBinding.Alias) {
-      followAliasChainImpl(binding.aliasedType, visited, action)
+    visited += current
+
+    return if (binding is IrBinding.Alias && binding.typeKey != binding.aliasedType) {
+      resolveAliasTargetImpl(binding.aliasedType, visited)
     } else {
       current
     }
-  }
-
-  /**
-   * Follows an alias chain and collects all type keys that would be inlined. Handles chained
-   * aliases like: Alias1 → Alias2 → Impl
-   */
-  private fun collectAliasChain(typeKey: IrTypeKey, destination: MutableSet<IrTypeKey>) {
-    followAliasChain(typeKey) { key, _ -> destination += key }
-  }
-
-  private fun IrContextualTypeKey.mark(): Boolean {
-    val binding = graph.requireBinding(this)
-    return binding.mark()
-  }
-
-  private fun IrBinding.mark(): Boolean {
-    val node = nodes.getOrPut(typeKey) { Node(this) }
-    val alreadyMarked = node.mark()
-
-    // For aliases, also mark the final non-alias target in the chain.
-    // This ensures that if Foo (alias) -> FooImpl is referenced twice,
-    // FooImpl gets refCount >= 2 and becomes a field.
-    if (this is IrBinding.Alias) {
-      followAliasChain(aliasedType, action = null)?.let { targetKey ->
-        val targetBinding = graph.findBinding(targetKey) ?: return@let
-        val targetNode = nodes.getOrPut(targetKey) { Node(targetBinding) }
-        targetNode.mark()
-      }
-    }
-
-    return alreadyMarked
   }
 }
 
