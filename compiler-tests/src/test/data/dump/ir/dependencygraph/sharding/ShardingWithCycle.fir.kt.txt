@@ -1,0 +1,360 @@
+@SingleIn(scope = AppScope::class)
+@Inject
+class A {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<A> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    fun create(): Factory<A> {
+      return MetroFactory
+    }
+
+    fun newInstance(): A {
+      return A()
+    }
+
+    override operator fun invoke(): A {
+      return MetroFactory.newInstance()
+    }
+
+    @SingleIn(scope = AppScope::class)
+    fun mirrorFunction(): A {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@SingleIn(scope = AppScope::class)
+@Inject
+class B {
+  val a: A
+    field = a
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<B> {
+    private /* final field */ val a: Provider<A> = a
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(a: Provider<A>): Factory<B> {
+        return MetroFactory(a = a)
+      }
+
+      fun newInstance(a: A): B {
+        return B(a = a)
+      }
+
+    }
+
+    private constructor(a: Provider<A>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): B {
+      return Companion.newInstance(a = <this>.#a.invoke())
+    }
+
+    @SingleIn(scope = AppScope::class)
+    fun mirrorFunction(a: A): B {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(a: A) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@SingleIn(scope = AppScope::class)
+@Inject
+class C {
+  val b: B
+    field = b
+    get
+
+  val d: Provider<D>
+    field = d
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<C> {
+    private /* final field */ val b: Provider<B> = b
+    private /* final field */ val d: Provider<D> = d
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(b: Provider<B>, d: Provider<D>): Factory<C> {
+        return MetroFactory(b = b, d = d)
+      }
+
+      fun newInstance(b: B, d: Provider<D>): C {
+        return C(b = b, d = d)
+      }
+
+    }
+
+    private constructor(b: Provider<B>, d: Provider<D>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): C {
+      return Companion.newInstance(b = <this>.#b.invoke(), d = <this>.#d)
+    }
+
+    @SingleIn(scope = AppScope::class)
+    fun mirrorFunction(b: B, d: Provider<D>): C {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(b: B, d: Provider<D>) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@SingleIn(scope = AppScope::class)
+@Inject
+class D {
+  val c: C
+    field = c
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<D> {
+    private /* final field */ val c: Provider<C> = c
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(c: Provider<C>): Factory<D> {
+        return MetroFactory(c = c)
+      }
+
+      fun newInstance(c: C): D {
+        return D(c = c)
+      }
+
+    }
+
+    private constructor(c: Provider<C>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): D {
+      return Companion.newInstance(c = <this>.#c.invoke())
+    }
+
+    @SingleIn(scope = AppScope::class)
+    fun mirrorFunction(c: C): D {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(c: C) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@SingleIn(scope = AppScope::class)
+@Inject
+class E {
+  val c: C
+    field = c
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<E> {
+    private /* final field */ val c: Provider<C> = c
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(c: Provider<C>): Factory<E> {
+        return MetroFactory(c = c)
+      }
+
+      fun newInstance(c: C): E {
+        return E(c = c)
+      }
+
+    }
+
+    private constructor(c: Provider<C>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): E {
+      return Companion.newInstance(c = <this>.#c.invoke())
+    }
+
+    @SingleIn(scope = AppScope::class)
+    fun mirrorFunction(c: C): E {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(c: C) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@DependencyGraph(scope = AppScope::class)
+interface TestGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : TestGraph {
+    private val cProvider: Provider<C>
+
+    private val aProvider: Provider<A>
+
+    private val bProvider: Provider<B>
+
+    private val dProvider: Provider<D>
+
+    private val eProvider: Provider<E>
+
+    private val shard1: Shard1
+      get(): Shard1 {
+        return <this>.#shard1
+      }
+
+    private val shard2: Shard2
+      get(): Shard2 {
+        return <this>.#shard2
+      }
+
+    private val shard3: Shard3
+      get(): Shard3 {
+        return <this>.#shard3
+      }
+
+    private inner class Shard1 {
+      constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun initialize(graphInstance: Impl) {
+        graphInstance.#aProvider = Companion.provider<Provider<A>, A>(delegate = MetroFactory.create())
+        graphInstance.#bProvider = Companion.provider<Provider<B>, B>(delegate = Companion.create(a = graphInstance.#aProvider))
+      }
+
+    }
+
+    private inner class Shard2 {
+      constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun initialize(graphInstance: Impl) {
+        graphInstance.#cProvider = DelegateFactory<C>()
+        graphInstance.#dProvider = Companion.provider<Provider<D>, D>(delegate = Companion.create(c = graphInstance.#cProvider))
+      }
+
+    }
+
+    private inner class Shard3 {
+      constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun initialize(graphInstance: Impl) {
+        graphInstance.#eProvider = Companion.provider<Provider<E>, E>(delegate = Companion.create(c = graphInstance.#cProvider))
+      }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+      <this>.#shard1 = <this>.Shard1()
+      <this>.#shard2 = <this>.Shard2()
+      <this>.#shard3 = <this>.Shard3()
+      <this>.#shard1.initialize(graphInstance = <this>)
+      <this>.#shard2.initialize(graphInstance = <this>)
+      <this>.#shard3.initialize(graphInstance = <this>)
+      Companion.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = Companion.provider<Provider<C>, C>(delegate = Companion.create(b = <this>.#bProvider, d = <this>.#dProvider)))
+    }
+
+    override val e: E
+      override get(): E {
+        return <this>.#eProvider.invoke()
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): TestGraph {
+      return Impl()
+    }
+
+  }
+
+  abstract val e: E
+    abstract get
+
+}

@@ -951,6 +951,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("ShardingWithCycle.kt")
+      public void testShardingWithCycle() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/sharding/ShardingWithCycle.kt");
+      }
+
+      @Test
       @TestMetadata("ShardingWithMultibindings.kt")
       public void testShardingWithMultibindings() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/sharding/ShardingWithMultibindings.kt");

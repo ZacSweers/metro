@@ -273,6 +273,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
       }
 
       @Test
+      @TestMetadata("ShardingWithCycle.kt")
+      public void testShardingWithCycle() {
+        runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/sharding/ShardingWithCycle.kt");
+      }
+
+      @Test
       @TestMetadata("ShardingWithMultibindings.kt")
       public void testShardingWithMultibindings() {
         runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/sharding/ShardingWithMultibindings.kt");
