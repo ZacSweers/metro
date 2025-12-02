@@ -1,3 +1,4 @@
+@HasMemberInjections
 sealed class Base<T : Any> {
     @Inject private lateinit var formatter: Formatter
 
