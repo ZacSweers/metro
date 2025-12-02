@@ -77,7 +77,7 @@ internal class BindingPropertyCollector(private val graph: IrBindingGraph) {
       if (
         binding is IrBinding.Alias && binding.isIntoMultibinding && !binding.hasSimpleDependencies
       ) {
-        resolveAliasTarget(binding.aliasedType, collectInto = inlineableIntoMultibinding)
+        resolveAliasTarget(binding.aliasedType)?.let(inlineableIntoMultibinding::add)
       }
     }
 
@@ -127,16 +127,9 @@ internal class BindingPropertyCollector(private val graph: IrBindingGraph) {
     return node.mark()
   }
 
-  /**
-   * Resolves an alias chain to its final non-alias target, caching results for efficiency.
-   * Optionally collects the final target into [collectInto].
-   */
-  private fun resolveAliasTarget(
-    typeKey: IrTypeKey,
-    collectInto: MutableSet<IrTypeKey>? = null,
-  ): IrTypeKey? {
+  /** Resolves an alias chain to its final non-alias target, caches intermediates. */
+  private fun resolveAliasTarget(typeKey: IrTypeKey): IrTypeKey? {
     resolvedAliasTargets[typeKey]?.let { cachedTarget ->
-      collectInto?.add(cachedTarget)
       return cachedTarget
     }
 
@@ -148,7 +141,6 @@ internal class BindingPropertyCollector(private val graph: IrBindingGraph) {
       for (key in visited) {
         resolvedAliasTargets[key] = target
       }
-      collectInto?.add(target)
     }
 
     return target
