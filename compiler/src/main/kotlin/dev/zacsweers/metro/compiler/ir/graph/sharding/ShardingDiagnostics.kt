@@ -28,6 +28,7 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
  * Reports are written to `sharding-plan-{GraphName}.txt` in [MetroOptions.reportsDestination].
  */
 internal object ShardingDiagnostics {
+  private const val MAX_CROSS_SHARD_DEPS = 100
 
   fun generateShardingPlanReport(
     graphClass: IrClass,
@@ -72,7 +73,13 @@ internal object ShardingDiagnostics {
     shardInfos.forEach { info ->
       appendLine("Shard ${info.index + 1}:")
       appendLine("  Class: ${info.shardClass.name}")
-      appendLine("  Bindings: ${info.bindings.size}")
+      val bindingCount = info.bindings.size
+      val limit = options.keysPerGraphShard
+      if (bindingCount > limit) {
+        appendLine("  Bindings: $bindingCount (exceeds limit of $limit due to large SCC)")
+      } else {
+        appendLine("  Bindings: $bindingCount")
+      }
       appendLine("  Outgoing cross-shard edges: ${crossShardEdgeCounts[info.index]}")
       appendLine("  Instance property: ${info.instanceProperty.name}")
 
@@ -91,18 +98,22 @@ internal object ShardingDiagnostics {
       appendLine()
     }
 
-    // Compute and display detailed cross-shard dependencies
+    // Compute and display detailed cross-shard dependencies (truncated for large graphs)
     appendLine("Cross-shard dependencies:")
     var crossShardDepCount = 0
+    var reportedCount = 0
     shardInfos.forEach { info ->
       info.bindings.forEach { binding ->
         val deps = bindingGraph.requireBinding(binding.typeKey).dependencies
         deps.forEach { dep ->
           val depShard = bindingToShard[dep.typeKey]
           if (depShard != null && depShard != info.index) {
-            appendLine(
-              "  Shard${info.index + 1}.${binding.typeKey} → Shard${depShard + 1}.${dep.typeKey}"
-            )
+            if (reportedCount < MAX_CROSS_SHARD_DEPS) {
+              appendLine(
+                "  Shard${info.index + 1}.${binding.typeKey} → Shard${depShard + 1}.${dep.typeKey}"
+              )
+              reportedCount++
+            }
             crossShardDepCount++
           }
         }
@@ -111,6 +122,8 @@ internal object ShardingDiagnostics {
 
     if (crossShardDepCount == 0) {
       appendLine("  (none)")
+    } else if (crossShardDepCount > MAX_CROSS_SHARD_DEPS) {
+      appendLine("  ... (${crossShardDepCount - MAX_CROSS_SHARD_DEPS} more, truncated)")
     }
     appendLine()
     appendLine("Total cross-shard dependencies: $crossShardDepCount")
