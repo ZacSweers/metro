@@ -66,7 +66,7 @@ testkit = { id = "com.autonomousapps.testkit", version = "0.17" }
 wire = { id = "com.squareup.wire", version.ref = "wire" }
 
 [libraries]
-androidx-activity = "androidx.activity:activity-compose:1.12.0"
+androidx-activity = "androidx.activity:activity-compose:1.12.1"
 androidx-annotation = { module = "androidx.annotation:annotation", version.ref = "annotation" }
 androidx-appcompat = "androidx.appcompat:appcompat:1.7.1"
 androidx-core = "androidx.core:core-ktx:1.17.0"
