@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph.sharding
 
+import dev.zacsweers.metro.compiler.DEFAULT_KEYS_PER_GRAPH_SHARD
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -9,17 +10,17 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.buildBlockBody
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.generateDefaultConstructorBody
+import dev.zacsweers.metro.compiler.ir.graph.InitStatement
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
 import dev.zacsweers.metro.compiler.ir.graph.PropertyInitializer
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrElement
-import org.jetbrains.kotlin.ir.IrStatement
-import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.declarations.addBackingField
 import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
@@ -106,7 +107,6 @@ internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext b
    * Generates shard classes and initialization logic if sharding is needed.
    *
    * @param deferredInit A callback to append deferred initialization logic (e.g. setDelegate calls)
-   *
    * to the end of the initialization sequence.
    *
    * @return A list of initialization statements, or null if no sharding is needed.
@@ -117,12 +117,19 @@ internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext b
     plannedGroups: List<List<IrTypeKey>>?,
     bindingGraph: IrBindingGraph,
     diagnosticTag: String,
-    deferredInit: (MutableList<IrBuilderWithScope.(IrValueParameter) -> IrStatement>) -> Unit,
-  ): List<IrBuilderWithScope.(IrValueParameter) -> IrStatement>? {
-
+    deferredInit: (MutableList<InitStatement>) -> Unit,
+  ): List<InitStatement>? {
     val shardGroups = planShardGroups(propertyBindings, plannedGroups)
-
-    if (shardGroups.size <= 1) return null
+    if (shardGroups.size <= 1) {
+      if (options.keysPerGraphShard != DEFAULT_KEYS_PER_GRAPH_SHARD) {
+        messageCollector.report(
+          CompilerMessageSeverity.WARNING,
+          "Graph sharding is configured using keysPerGraphShard=${options.keysPerGraphShard}, " +
+            "but the graph '${graphClass.name.asString()}' has only ${propertyBindings.size} bindings, so sharding is not being applied.",
+        )
+      }
+      return null
+    }
 
     // If we are sharding on JVM, we must relax visibility of the backing fields
     // so the inner shard classes can access them directly.
