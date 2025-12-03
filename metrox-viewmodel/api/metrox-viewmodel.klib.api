@@ -14,10 +14,10 @@ open annotation class dev.zacsweers.metrox.viewmodel/ManualViewModelAssistedFact
 }
 
 open annotation class dev.zacsweers.metrox.viewmodel/ViewModelAssistedFactoryKey : kotlin/Annotation { // dev.zacsweers.metrox.viewmodel/ViewModelAssistedFactoryKey|null[0]
-    constructor <init>(kotlin.reflect/KClass<out dev.zacsweers.metrox.viewmodel/ViewModelAssistedFactory>) // dev.zacsweers.metrox.viewmodel/ViewModelAssistedFactoryKey.<init>|<init>(kotlin.reflect.KClass<out|dev.zacsweers.metrox.viewmodel.ViewModelAssistedFactory>){}[0]
+    constructor <init>(kotlin.reflect/KClass<out androidx.lifecycle/ViewModel>) // dev.zacsweers.metrox.viewmodel/ViewModelAssistedFactoryKey.<init>|<init>(kotlin.reflect.KClass<out|androidx.lifecycle.ViewModel>){}[0]
 
     final val value // dev.zacsweers.metrox.viewmodel/ViewModelAssistedFactoryKey.value|{}value[0]
-        final fun <get-value>(): kotlin.reflect/KClass<out dev.zacsweers.metrox.viewmodel/ViewModelAssistedFactory> // dev.zacsweers.metrox.viewmodel/ViewModelAssistedFactoryKey.value.<get-value>|<get-value>(){}[0]
+        final fun <get-value>(): kotlin.reflect/KClass<out androidx.lifecycle/ViewModel> // dev.zacsweers.metrox.viewmodel/ViewModelAssistedFactoryKey.value.<get-value>|<get-value>(){}[0]
 }
 
 open annotation class dev.zacsweers.metrox.viewmodel/ViewModelKey : kotlin/Annotation { // dev.zacsweers.metrox.viewmodel/ViewModelKey|null[0]
