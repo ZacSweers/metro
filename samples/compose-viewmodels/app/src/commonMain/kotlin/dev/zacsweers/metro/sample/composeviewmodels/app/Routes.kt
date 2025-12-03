@@ -7,3 +7,5 @@ import kotlinx.serialization.Serializable
 @Serializable data object HomeRoute
 
 @Serializable data class DetailsRoute(val data: String)
+
+@Serializable data class SettingsRoute(val userId: String)

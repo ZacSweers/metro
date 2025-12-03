@@ -6,9 +6,10 @@ This sample demonstrates how to use Metro for ViewModel injection in a multi-mod
 
 ```
 compose-viewmodels/
-├── app/            # Multiplatform app module
-├── screen-home/    # Home screen with standard ViewModel injection
-└── screen-details/ # Details screen with assisted ViewModel injection
+├── app/             # Multiplatform app module
+├── screen-home/     # Home screen with standard ViewModel injection
+└── screen-details/  # Details screen with manual assisted ViewModel injection
+└── screen-settings/ # Settings screen with assisted ViewModel injection
 ```
 
 ## Running
