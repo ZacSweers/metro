@@ -19,16 +19,20 @@ kotlin {
   }
 
   sourceSets {
-    commonMain.dependencies {
-      implementation(project(":compose-viewmodels:screen-home"))
-      implementation(project(":compose-viewmodels:screen-details"))
-      implementation("dev.zacsweers.metro:metrox-viewmodel-compose")
+    commonMain {
+      dependencies {
+        implementation(project(":compose-viewmodels:screen-home"))
+        implementation(project(":compose-viewmodels:screen-details"))
+        implementation(project(":compose-viewmodels:screen-settings"))
+        implementation("dev.zacsweers.metro:metrox-viewmodel-compose")
 
-      implementation(libs.jetbrains.navigation.desktop)
-      implementation(libs.kotlinx.serialization.json)
-      implementation(compose.material3)
-      implementation(compose.runtime)
+        implementation(libs.jetbrains.navigation.desktop)
+        implementation(libs.kotlinx.serialization.json)
+        implementation(compose.material3)
+        implementation(compose.runtime)
+      }
     }
+    commonTest { dependencies { implementation(libs.kotlin.test) } }
     androidMain {
       dependencies {
         implementation("dev.zacsweers.metro:metrox-android")
