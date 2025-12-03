@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.graph.MissingBindingHints
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
+import dev.zacsweers.metro.compiler.graph.partitionBySCCs
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -15,7 +16,6 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.bindingTypeOrNull
-import dev.zacsweers.metro.compiler.ir.graph.sharding.ShardingOrchestrator
 import dev.zacsweers.metro.compiler.ir.hasErrorTypes
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
@@ -89,7 +89,6 @@ internal class IrBindingGraph(
   private val injectors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
   private val extraKeeps = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
   private val reservedProperties = mutableMapOf<IrTypeKey, ParentContext.PropertyAccess>()
-  private val shardingOrchestrator = ShardingOrchestrator(metroContext.options)
 
   // Thin immutable view over the internal bindings
   fun bindingsSnapshot(): Map<IrTypeKey, IrBinding> = realGraph.bindings
@@ -205,7 +204,13 @@ internal class IrBindingGraph(
 
     val shardGroups =
       parentTracer.traceNested("compute shard groups") {
-        shardingOrchestrator.computeShardGroups(topologyResult)
+        val maxPerShard = metroContext.options.keysPerGraphShard
+        val enableSharding = metroContext.options.enableGraphSharding
+        if (enableSharding && topologyResult.adjacency.size > maxPerShard) {
+          topologyResult.partitionBySCCs(maxPerShard)
+        } else {
+          null
+        }
       }
     return BindingGraphResult(sortedKeys, deferredTypes, reachableKeys, shardGroups, false)
   }
