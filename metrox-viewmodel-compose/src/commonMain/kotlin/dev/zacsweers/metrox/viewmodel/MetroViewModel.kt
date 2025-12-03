@@ -52,6 +52,7 @@ public inline fun <reified VM : ViewModel> assistedMetroViewModel(
     viewModelStoreOwner = viewModelStoreOwner,
     key = key,
     factory = LocalMetroViewModelFactory.current,
+    extras = extras,
   )
 
 /**
@@ -86,6 +87,7 @@ public inline fun <
           return modelClass.cast(provider().createViewModel())
         }
       },
+    extras = extras,
   )
 }
 
