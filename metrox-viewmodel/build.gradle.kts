@@ -51,10 +51,13 @@ kotlin {
   iosArm64()
 
   sourceSets {
-    commonMain.dependencies {
-      api(project(":runtime"))
-      api(libs.jetbrains.lifecycle.viewmodel)
+    commonMain {
+      dependencies {
+        api(project(":runtime"))
+        api(libs.jetbrains.lifecycle.viewmodel)
+      }
     }
+    commonTest { dependencies { implementation(libs.kotlin.test) } }
   }
 
   targets.configureEach {
