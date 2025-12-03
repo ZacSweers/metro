@@ -20,7 +20,7 @@ public annotation class ViewModelKey(val value: KClass<out ViewModel>)
 @MapKey
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.RUNTIME)
-public annotation class ViewModelAssistedFactoryKey(val value: KClass<out ViewModelAssistedFactory>)
+public annotation class ViewModelAssistedFactoryKey(val value: KClass<out ViewModel>)
 
 /**
  * A [MapKey] annotation for binding
