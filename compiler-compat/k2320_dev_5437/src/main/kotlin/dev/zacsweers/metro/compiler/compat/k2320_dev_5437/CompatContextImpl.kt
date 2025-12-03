@@ -3,7 +3,7 @@
 package dev.zacsweers.metro.compiler.compat.k2320_dev_5437
 
 import dev.zacsweers.metro.compiler.compat.CompatContext
-import dev.zacsweers.metro.compiler.compat.k230_RC.CompatContextImpl as DelegateType
+import dev.zacsweers.metro.compiler.compat.k230_beta1.CompatContextImpl as DelegateType
 import org.jetbrains.kotlin.GeneratedDeclarationKey
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities

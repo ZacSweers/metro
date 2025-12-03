@@ -52,23 +52,32 @@ internal class BindingPropertyCollector(private val graph: IrBindingGraph) {
 
   private val nodes = HashMap<IrTypeKey, Node>(INITIAL_VALUE)
 
+  /** Cache of alias type keys to their resolved non-alias target type keys. */
+  private val resolvedAliasTargets = HashMap<IrTypeKey, IrTypeKey>()
+
   fun collect(): Map<IrTypeKey, CollectedProperty> {
-    // Count references for each dependency
     val inlineableIntoMultibinding = mutableSetOf<IrTypeKey>()
+
     for ((key, binding) in graph.bindingsSnapshot()) {
       // Ensure each key has a node
       nodes.getOrPut(key) { Node(binding) }
-      for (dependency in binding.dependencies) {
-        dependency.mark()
+
+      // For non-alias bindings, mark dependencies normally.
+      // For alias bindings, skip marking dependencies here - the alias's target will be
+      // marked when something depends on this alias (via resolveAliasTarget below).
+      if (binding !is IrBinding.Alias) {
+        for (dependency in binding.dependencies) {
+          dependency.mark()
+        }
       }
 
       // Find all bindings that are directly or transitively aliased into multibindings.
       // These need properties to avoid inlining their dependency trees at the multibinding call
       // site.
-      val shouldCollectAliasChain =
+      if (
         binding is IrBinding.Alias && binding.isIntoMultibinding && !binding.hasSimpleDependencies
-      if (shouldCollectAliasChain) {
-        collectAliasChain(binding.aliasedType, inlineableIntoMultibinding)
+      ) {
+        resolveAliasTarget(binding.aliasedType)?.let(inlineableIntoMultibinding::add)
       }
     }
 
@@ -94,31 +103,51 @@ internal class BindingPropertyCollector(private val graph: IrBindingGraph) {
   }
 
   /**
-   * Follows an alias chain and collects all type keys that would be inlined. Handles chained
-   * aliases like: Alias1 → Alias2 → Impl
+   * Marks a dependency, resolving through alias chains to mark the final non-alias target. This
+   * ensures that if Foo (alias → FooImpl) is referenced N times, FooImpl gets refCount=N.
    */
-  private fun collectAliasChain(typeKey: IrTypeKey, destination: MutableSet<IrTypeKey>) {
-    var current = typeKey
-    while (current !in destination) {
-      destination += current
-      val node = nodes[current] ?: return
-      val binding = node.binding
-      if (binding is IrBinding.Alias) {
-        current = binding.aliasedType
-      } else {
-        return
-      }
-    }
-  }
-
   private fun IrContextualTypeKey.mark(): Boolean {
     val binding = graph.requireBinding(this)
+
+    // For aliases, resolve to the final target and mark that instead.
+    // This avoids double-counting (once via alias dependency, once via external reference)
+    // while ensuring the actual implementation gets the correct ref count.
+    if (binding is IrBinding.Alias && binding.typeKey != binding.aliasedType) {
+      val targetKey = resolveAliasTarget(binding.aliasedType) ?: return false
+      val targetBinding = graph.findBinding(targetKey) ?: return false
+      val targetNode = nodes.getOrPut(targetKey) { Node(targetBinding) }
+      return targetNode.mark()
+    }
+
     return binding.mark()
   }
 
   private fun IrBinding.mark(): Boolean {
     val node = nodes.getOrPut(typeKey) { Node(this) }
     return node.mark()
+  }
+
+  /** Resolves an alias chain to its final non-alias target, caching all intermediate keys. */
+  private fun resolveAliasTarget(current: IrTypeKey): IrTypeKey? {
+    // Check cache
+    resolvedAliasTargets[current]?.let {
+      return it
+    }
+
+    val binding = graph.findBinding(current) ?: return null
+
+    val target =
+      if (binding is IrBinding.Alias && binding.typeKey != binding.aliasedType) {
+        resolveAliasTarget(binding.aliasedType)
+      } else {
+        current
+      }
+
+    // Cache on the way back up
+    if (target != null) {
+      resolvedAliasTargets[current] = target
+    }
+    return target
   }
 }
 

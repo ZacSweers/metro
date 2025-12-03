@@ -289,7 +289,7 @@ interface LoggedInGraph {
 
 In the `:app` module:
 
-```
+```kotlin
 @DependencyGraph(AppScope::class)
 interface AppGraph
 ```

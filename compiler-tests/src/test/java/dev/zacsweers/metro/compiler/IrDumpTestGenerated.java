@@ -166,6 +166,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("RefCountingFollowsAliases.kt")
+    public void testRefCountingFollowsAliases() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/RefCountingFollowsAliases.kt");
+    }
+
+    @Test
     @TestMetadata("UnusedInstanceBindingsInUnextendedGraphGetNoProviderFields.kt")
     public void testUnusedInstanceBindingsInUnextendedGraphGetNoProviderFields() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/UnusedInstanceBindingsInUnextendedGraphGetNoProviderFields.kt");

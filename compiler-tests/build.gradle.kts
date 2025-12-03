@@ -66,11 +66,13 @@ dependencies {
 
   val generatorConfigToUse: String
 
-  if (testKotlinVersion >= KotlinVersion(2, 3, 20)) {
-    generatorConfigToUse = "generator2320"
-    compilerTestFrameworkVersion = testCompilerVersion
-  } else if (testKotlinVersion >= KotlinVersion(2, 3)) {
-    generatorConfigToUse = "generator230"
+  if (testKotlinVersion >= KotlinVersion(2, 3)) {
+    generatorConfigToUse =
+      if (testKotlinVersion >= KotlinVersion(2, 3, 20)) {
+        "generator2320"
+      } else {
+        "generator230"
+      }
     compilerTestFrameworkVersion = testCompilerVersion
   } else {
     generatorConfigToUse = "generator220"

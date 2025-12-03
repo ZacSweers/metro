@@ -168,7 +168,8 @@ fi
 # Transform version to valid package name
 # 1. Remove dots
 # 2. Replace dashes with underscores
-PACKAGE_SUFFIX=$(echo "$KOTLIN_VERSION" | sed 's/\.//g' | sed 's/-/_/g')
+# 3. Lowercase for valid package naming
+PACKAGE_SUFFIX=$(echo "$KOTLIN_VERSION" | sed 's/\.//g' | sed 's/-/_/g' | tr '[:upper:]' '[:lower:]')
 MODULE_NAME="k$PACKAGE_SUFFIX"
 
 echo "Generating compatibility module for Kotlin $KOTLIN_VERSION"
@@ -179,18 +180,38 @@ echo "Package suffix: $PACKAGE_SUFFIX"
 DELEGATE_MODULE_NAME=""
 DELEGATE_PACKAGE_SUFFIX=""
 if [ -n "$DELEGATES_TO" ]; then
-    # Transform delegate version to module name
-    DELEGATE_PACKAGE_SUFFIX=$(echo "$DELEGATES_TO" | sed 's/\.//g' | sed 's/-/_/g')
+    # Transform delegate version to module name (lowercase for valid package naming)
+    DELEGATE_PACKAGE_SUFFIX=$(echo "$DELEGATES_TO" | sed 's/\.//g' | sed 's/-/_/g' | tr '[:upper:]' '[:lower:]')
     DELEGATE_MODULE_NAME="k$DELEGATE_PACKAGE_SUFFIX"
 
-    # Verify delegate module exists
-    if [ ! -d "compiler-compat/$DELEGATE_MODULE_NAME" ]; then
-        echo "❌ Error: Delegate module 'compiler-compat/$DELEGATE_MODULE_NAME' does not exist"
+    # Verify delegate module exists by checking version.txt files
+    # This handles both old mixed-case names and new lowercase names
+    FOUND_DELEGATE=""
+    for module_dir in compiler-compat/k*/; do
+        if [ -f "${module_dir}version.txt" ]; then
+            module_version=$(cat "${module_dir}version.txt" | tr -d '\n')
+            if [ "$module_version" = "$DELEGATES_TO" ]; then
+                # Extract actual module name from path
+                FOUND_DELEGATE=$(basename "$module_dir")
+                break
+            fi
+        fi
+    done
+
+    if [ -z "$FOUND_DELEGATE" ]; then
+        echo "❌ Error: No module found for delegate version '$DELEGATES_TO'"
         echo "Available modules:"
-        ls -1 compiler-compat/ | grep '^k' || echo "  (none found)"
+        for module_dir in compiler-compat/k*/; do
+            if [ -f "${module_dir}version.txt" ]; then
+                module_version=$(cat "${module_dir}version.txt" | tr -d '\n')
+                echo "  - $(basename "$module_dir") ($module_version)"
+            fi
+        done
         exit 1
     fi
 
+    # Use the actual found module name (may differ in case from DELEGATE_MODULE_NAME)
+    DELEGATE_MODULE_NAME="$FOUND_DELEGATE"
     echo "Delegating to: $DELEGATES_TO (module: $DELEGATE_MODULE_NAME)"
 fi
 
