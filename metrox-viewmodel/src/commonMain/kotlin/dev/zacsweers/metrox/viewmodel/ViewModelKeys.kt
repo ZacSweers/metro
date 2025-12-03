@@ -51,8 +51,8 @@ public annotation class ManualViewModelAssistedFactoryKey(
  *   @ViewModelAssistedFactoryKey(Factory::class)
  *   @ContributesIntoMap(AppScope::class)
  *   fun interface Factory : ViewModelAssistedFactory {
- *     override fun create(params: CreationParams): DetailsViewModel {
- *       return create(params.get<String>(KEY_ID))
+ *     override fun create(extras: CreationExtras): DetailsViewModel {
+ *       return create(extras.get<String>(KEY_ID))
  *     }
  *
  *     fun create(@Assisted id: String): DetailsViewModel
