@@ -2,17 +2,24 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph.sharding
 
+import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.buildBlockBody
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.generateDefaultConstructorBody
+import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
 import dev.zacsweers.metro.compiler.ir.graph.PropertyInitializer
+import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
+import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrElement
+import org.jetbrains.kotlin.ir.IrStatement
+import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.declarations.addBackingField
 import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
@@ -21,6 +28,7 @@ import org.jetbrains.kotlin.ir.builders.declarations.addProperty
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.builders.irBlockBody
+import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irReturn
@@ -36,23 +44,146 @@ import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.defaultType
+import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.IrVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.platform.jvm.isJvm
 
 /**
- * Generates IR for shard classes when a graph is partitioned.
+ * Generates IR for shard classes when graph sharding is enabled.
  *
- * Creates inner shard classes with properties and an initialize() function for their bindings.
+ * When a dependency graph has many bindings, initialization code can exceed JVM method size limits.
+ * Sharding moves initialization logic into inner shard classes while keeping provider fields on the
+ * graph. Each shard exposes `initialize()` to set up a subset of providers. If a shard would exceed
+ * the statement limit, its work is split into private `init1()`, `init2()`, etc.
+ *
+ * Example generated structure:
+ * ```kotlin
+ * class AppGraph$Impl : AppGraph {
+ *   // Provider fields for all bindings
+ *   private val repoProvider: Provider<Repository>
+ *   private val apiProvider: Provider<ApiService>
+ *   // ... more providers ...
+ *
+ *   // Shard instance fields
+ *   private val shard1: Shard1
+ *   private val shard2: Shard2
+ *
+ *   private inner class Shard1 {
+ *     // When statements fit in one method:
+ *     fun initialize(graph: Impl) {
+ *       graph.repoProvider = provider { Repository.MetroFactory.create() }
+ *       graph.apiProvider = provider { ApiService.MetroFactory.create(graph.repoProvider) }
+ *       // ... more initializations ...
+ *     }
+ *   }
+ *
+ *   private inner class Shard2 {
+ *     // When statements exceed statementsPerInitFun, they're chunked:
+ *     private fun init1(graph: Impl) { ... }
+ *     private fun init2(graph: Impl) { ... }
+ *
+ *     fun initialize(graph: Impl) {
+ *       init1(graph)
+ *       init2(graph)
+ *     }
+ *   }
+ *
+ *   init {
+ *     shard1 = Shard1()
+ *     shard2 = Shard2()
+ *     shard1.initialize(this)
+ *     shard2.initialize(this)
+ *   }
+ * }
+ * ```
  */
 internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext by context {
 
   /**
-   * Converts planned groups to property bindings and merge all unplanned bindings in the final
-   * group.
+   * Generates shard classes and initialization logic if sharding is needed.
+   *
+   * @param deferredInit A callback to append deferred initialization logic (e.g. setDelegate calls)
+   *
+   * to the end of the initialization sequence.
+   *
+   * @return A list of initialization statements, or null if no sharding is needed.
    */
-  fun planShardGroups(
+  fun generateShards(
+    graphClass: IrClass,
+    propertyBindings: List<PropertyBinding>,
+    plannedGroups: List<List<IrTypeKey>>?,
+    bindingGraph: IrBindingGraph,
+    diagnosticTag: String,
+    deferredInit: (MutableList<IrBuilderWithScope.(IrValueParameter) -> IrStatement>) -> Unit,
+  ): List<IrBuilderWithScope.(IrValueParameter) -> IrStatement>? {
+
+    val shardGroups = planShardGroups(propertyBindings, plannedGroups)
+
+    if (shardGroups.size <= 1) return null
+
+    // If we are sharding on JVM, we must relax visibility of the backing fields
+    // so the inner shard classes can access them directly.
+    if (pluginContext.platform.isJvm()) {
+      for (binding in propertyBindings) {
+        binding.property.backingField?.visibility = DescriptorVisibilities.INTERNAL
+      }
+    }
+
+    val shardInfos = generateShards(graphClass, shardGroups)
+
+    writeDiagnostic("sharding-plan-${diagnosticTag}.txt") {
+      ShardingDiagnostics.generateShardingPlanReport(
+        graphClass = graphClass,
+        shardInfos = shardInfos,
+        initOrder = shardGroups.indices.toList(),
+        totalBindings = propertyBindings.size,
+        options = options,
+        bindingGraph = bindingGraph,
+      )
+    }
+
+    return buildList {
+      // First instantiate all shards
+      for (info in shardInfos) {
+        add { dispatchReceiver ->
+          irSetField(
+            irGet(dispatchReceiver),
+            info.instanceProperty.backingField!!,
+            irCallConstructor(info.shardClass.primaryConstructor!!.symbol, emptyList()).apply {
+              this.dispatchReceiver = irGet(dispatchReceiver)
+            },
+          )
+        }
+      }
+
+      // Call initializer functions in order
+      for (shardIndex in shardGroups.indices) {
+        val info = shardInfos[shardIndex]
+        add { dispatchReceiver ->
+          irInvoke(
+            dispatchReceiver =
+              irGetField(irGet(dispatchReceiver), info.instanceProperty.backingField!!),
+            callee = info.initializeFunction.symbol,
+            args =
+              buildList {
+                add(irGet(dispatchReceiver))
+                for (outerParam in info.outerReceiverParams) {
+                  add(irGet(outerParam))
+                }
+              },
+          )
+        }
+      }
+
+      // Add deferred initialization (e.g., setDelegate calls) at the end
+      deferredInit(this)
+    }
+  }
+
+  private fun planShardGroups(
     propertyBindings: List<PropertyBinding>,
     plannedGroups: List<List<IrTypeKey>>?,
   ): List<List<PropertyBinding>> {
@@ -73,11 +204,7 @@ internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext b
     }
   }
 
-  /**
-   * Generates inner shard classes with initialize() functions. Also adds shard instance properties
-   * to the parent graph.
-   */
-  fun generateShards(
+  private fun generateShards(
     graphClass: IrClass,
     shardGroups: List<List<PropertyBinding>>,
   ): List<ShardInfo> {
@@ -122,7 +249,6 @@ internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext b
               .apply {
                 val getterReceiver = graphReceiver.copyTo(this)
                 setDispatchReceiver(getterReceiver)
-
                 body =
                   createIrBuilder(symbol).irBlockBody {
                     +irReturn(irGetField(irGet(getterReceiver), backingField!!))
@@ -158,6 +284,7 @@ internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext b
 
       val outerReceiverParams = mutableListOf<IrValueParameter>()
       val paramMapping = mutableMapOf<IrValueParameter, IrValueParameter>()
+
       for (outerParam in collector.outOfScopeParams) {
         val newParam =
           initializeFunction.addValueParameter(
@@ -169,14 +296,61 @@ internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext b
       }
 
       val remapper = if (paramMapping.isNotEmpty()) ParameterRemapper(paramMapping) else null
-      initializeFunction.body =
-        createIrBuilder(initializeFunction.symbol).irBlockBody {
-          for ((binding, initValue) in generatedExpressions) {
-            val backingField = binding.property.backingField!!
-            val remappedValue = remapper?.remap(initValue) ?: initValue
-            +irSetField(irGet(graphInstanceParam), backingField, remappedValue)
+
+      // Prepare data for statements (backing field + remapped init value)
+      val statementData =
+        generatedExpressions.map { (binding, initValue) ->
+          binding.property.backingField!! to (remapper?.remap(initValue) ?: initValue)
+        }
+
+      // Chunk statements if needed to avoid method size limits
+      val mustChunk = options.chunkFieldInits && statementData.size > options.statementsPerInitFun
+
+      if (mustChunk) {
+        val functionNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
+        val chunks = statementData.chunked(options.statementsPerInitFun)
+
+        val chunkedFunctions =
+          chunks.map { chunk ->
+            val initName = functionNameAllocator.newName("init")
+            shardClass
+              .addFunction(
+                initName,
+                irBuiltIns.unitType,
+                visibility = DescriptorVisibilities.PRIVATE,
+              )
+              .apply {
+                val localShardReceiver = shardClass.thisReceiverOrFail.copyTo(this)
+                setDispatchReceiver(localShardReceiver)
+                val localGraphParam = addValueParameter("graphInstance", graphClass.defaultType)
+                // Remap graphInstanceParam to localGraphParam in the expressions
+                val paramRemapper = ParameterRemapper(mapOf(graphInstanceParam to localGraphParam))
+                buildBlockBody {
+                  for ((backingField, initValue) in chunk) {
+                    val remappedValue = paramRemapper.remap(initValue)
+                    +irSetField(irGet(localGraphParam), backingField, remappedValue)
+                  }
+                }
+              }
+          }
+
+        initializeFunction.buildBlockBody {
+          for (chunkedFn in chunkedFunctions) {
+            +irInvoke(
+              dispatchReceiver = irGet(initializeFunction.dispatchReceiverParameter!!),
+              callee = chunkedFn.symbol,
+              args = listOf(irGet(graphInstanceParam)),
+            )
           }
         }
+      } else {
+        initializeFunction.body =
+          createIrBuilder(initializeFunction.symbol).irBlockBody {
+            for ((backingField, initValue) in statementData) {
+              +irSetField(irGet(graphInstanceParam), backingField, initValue)
+            }
+          }
+      }
 
       ShardInfo(
         index = index,

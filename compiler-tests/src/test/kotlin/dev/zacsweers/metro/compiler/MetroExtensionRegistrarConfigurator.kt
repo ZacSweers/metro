@@ -63,6 +63,9 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         module.directives.singleOrZeroValue(MetroDirectives.CHUNK_FIELD_INITS)?.let {
           chunkFieldInits = it
         }
+        module.directives.singleOrZeroValue(MetroDirectives.STATEMENTS_PER_INIT_FUN)?.let {
+          statementsPerInitFun = it
+        }
         module.directives.singleOrZeroValue(MetroDirectives.ENABLE_GRAPH_SHARDING)?.let {
           enableGraphSharding = it
         }

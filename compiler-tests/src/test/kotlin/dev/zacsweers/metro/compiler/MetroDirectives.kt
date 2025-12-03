@@ -30,6 +30,8 @@ object MetroDirectives : SimpleDirectivesContainer() {
     valueDirective("Enable/disable shrinking of unused bindings.") { it.toBoolean() }
   val CHUNK_FIELD_INITS by
     valueDirective("Enable/disable chunking of field initializers.") { it.toBoolean() }
+  val STATEMENTS_PER_INIT_FUN by
+    valueDirective("Maximum statements per init function when chunking is enabled.") { it.toInt() }
   val ENABLE_GRAPH_SHARDING by
     valueDirective("Enable/disable graph sharding of binding graphs.") { it.toBoolean() }
   val KEYS_PER_GRAPH_SHARD by

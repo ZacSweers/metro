@@ -20,7 +20,6 @@ import dev.zacsweers.metro.compiler.ir.graph.expressions.BindingExpressionGenera
 import dev.zacsweers.metro.compiler.ir.graph.expressions.GraphExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.sharding.IrGraphShardGenerator
 import dev.zacsweers.metro.compiler.ir.graph.sharding.PropertyBinding
-import dev.zacsweers.metro.compiler.ir.graph.sharding.ShardingDiagnostics
 import dev.zacsweers.metro.compiler.ir.instanceFactory
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irGetProperty
@@ -65,7 +64,6 @@ import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
-import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irSetField
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -88,7 +86,6 @@ import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.ir.util.statements
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
-import org.jetbrains.kotlin.platform.jvm.isJvm
 
 internal typealias PropertyInitializer =
   IrBuilderWithScope.(thisReceiver: IrValueParameter, key: IrTypeKey) -> IrExpression
@@ -565,78 +562,30 @@ internal class IrGraphGenerator(
         }
       }
 
-      val isJvm = pluginContext.platform?.isJvm() == true
       val propertyBindings =
         propertyInitializers.map { (property, initializer) ->
           PropertyBinding(
-            property =
-              property.apply {
-                // On JVM, make backing fields INTERNAL so inner shard classes can access them.
-                backingField?.visibility =
-                  when {
-                    !isJvm -> DescriptorVisibilities.PRIVATE
-                    else -> DescriptorVisibilities.INTERNAL
-                  }
-              },
+            property = property,
             typeKey = propertiesToTypeKeys.getValue(property),
             initializer = initializer,
           )
         }
+
+      // Generate sharded inits if needed or fall back to chunked inits at graph level
       val shardGenerator = IrGraphShardGenerator(metroContext)
-      val shardGroups = shardGenerator.planShardGroups(propertyBindings, sealResult.shardGroups)
-      if (shardGroups.size > 1) {
-        val shardInfos = shardGenerator.generateShards(graphClass, shardGroups)
+      val shardedInitStatements =
+        shardGenerator.generateShards(
+          graphClass = graphClass,
+          propertyBindings = propertyBindings,
+          plannedGroups = sealResult.shardGroups,
+          bindingGraph = bindingGraph,
+          diagnosticTag = parentTracer.tag,
+          deferredInit = ::addDeferredSetDelegateCalls,
+        )
 
-        writeDiagnostic("sharding-plan-${parentTracer.tag}.txt") {
-          ShardingDiagnostics.generateShardingPlanReport(
-            graphClass = graphClass,
-            shardInfos = shardInfos,
-            initOrder = shardGroups.indices.toList(),
-            totalBindings = propertyInitializers.size,
-            options = options,
-            bindingGraph = bindingGraph,
-          )
-        }
-
-        // Instantiate all shards, then initialize in order.
-        constructorStatements += buildList {
-          // Instantiate all shards
-          for (info in shardInfos) {
-            add { dispatchReceiver ->
-              irSetField(
-                irGet(dispatchReceiver),
-                info.instanceProperty.backingField!!,
-                irCallConstructor(info.shardClass.primaryConstructor!!.symbol, emptyList()).apply {
-                  this.dispatchReceiver = irGet(dispatchReceiver)
-                },
-              )
-            }
-          }
-
-          // Initialize shards in order
-          for (shardIndex in shardGroups.indices) {
-            val info = shardInfos[shardIndex]
-            add { dispatchReceiver ->
-              irInvoke(
-                dispatchReceiver =
-                  irGetField(irGet(dispatchReceiver), info.instanceProperty.backingField!!),
-                callee = info.initializeFunction.symbol,
-                args =
-                  buildList {
-                    add(irGet(dispatchReceiver))
-                    for (outerParam in info.outerReceiverParams) {
-                      add(irGet(outerParam))
-                    }
-                  },
-              )
-            }
-          }
-
-          // Add deferred setDelegate calls after all shards are initialized
-          addDeferredSetDelegateCalls(this)
-        }
+      if (shardedInitStatements != null) {
+        constructorStatements += shardedInitStatements
       } else {
-        // No sharding needed - use the original chunked init logic
         val mustChunkInits =
           options.chunkFieldInits && propertyInitializers.size > options.statementsPerInitFun
 
