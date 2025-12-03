@@ -107,8 +107,7 @@ internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext b
    * Generates shard classes and initialization logic if sharding is needed.
    *
    * @param deferredInit A callback to append deferred initialization logic (e.g. setDelegate calls)
-   * to the end of the initialization sequence.
-   *
+   *   to the end of the initialization sequence.
    * @return A list of initialization statements, or null if no sharding is needed.
    */
   fun generateShards(
