@@ -47,7 +47,7 @@ kotlin {
         api(libs.jetbrains.lifecycle.viewmodel.compose)
       }
     }
-    commonMain { dependencies { @OptIn(ExperimentalComposeLibrary::class) api(compose.uiTest) } }
+    commonTest { dependencies { @OptIn(ExperimentalComposeLibrary::class) api(compose.uiTest) } }
     jvmTest {
       dependencies {
         implementation(libs.junit)

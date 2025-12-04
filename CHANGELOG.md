@@ -4,6 +4,8 @@ Changelog
 **Unreleased**
 --------------
 
+- **Fix**: Fix accidental leak of androidx.test dep in `metrox-viewmodel-compose` artifact.
+
 0.8.1
 -----
 
