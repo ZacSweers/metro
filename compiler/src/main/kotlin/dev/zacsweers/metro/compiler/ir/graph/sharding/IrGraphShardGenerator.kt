@@ -208,6 +208,9 @@ internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext b
       return listOf(propertyBindings)
     }
 
+    // Use remove() to both lookup and track which bindings have been assigned to groups.
+    // Any bindings remaining in the map after processing all planned groups are collected
+    // into a final "overflow" group.
     val bindingsByKey = propertyBindings.associateBy { it.typeKey }.toMutableMap()
     val groups =
       plannedGroups.mapNotNull { group ->
