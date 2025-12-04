@@ -135,11 +135,17 @@ internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext b
       return null
     }
 
-    // If we are sharding on JVM, we must relax visibility of the backing fields
-    // so the inner shard classes can access them directly.
+    // On JVM, shard classes write to the outer graph's backing fields via irSetField().
+    // This generates direct field access bytecode, which JVM doesn't allow for private fields
+    // across class boundaries (inner classes are separate classes in JVM bytecode).
+    // We use protected (package-private + subclass in JVM) rather than internal (public in
+    // bytecode) to minimize exposure while still allowing inner class access within the same
+    // package.
+    // The alternative is we could generate synthetic accessors (which kotlinc somewhat surprisingly
+    // doens't do here), but in this case it's kind of unnecessary.
     if (pluginContext.platform.isJvm()) {
       for (binding in propertyBindings) {
-        binding.property.backingField?.visibility = DescriptorVisibilities.INTERNAL
+        binding.property.backingField?.visibility = DescriptorVisibilities.PROTECTED
       }
     }
 
