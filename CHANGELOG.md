@@ -5,6 +5,7 @@ Changelog
 --------------
 
 - **Fix**: Avoid JDK 21 `List.removeFirst()` call. That said, Metro's compiler may move to JDK 21+ in the future (note this is separate from the runtime JVM targets).
+- **Fix**: Fix accidental leak of androidx.test dep in `metrox-viewmodel-compose` artifact.
 
 0.8.1
 -----
