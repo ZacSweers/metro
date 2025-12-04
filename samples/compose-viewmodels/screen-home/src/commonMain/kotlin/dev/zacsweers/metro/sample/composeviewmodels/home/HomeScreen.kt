@@ -5,6 +5,7 @@ package dev.zacsweers.metro.sample.composeviewmodels.home
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
@@ -19,11 +20,12 @@ import dev.zacsweers.metrox.viewmodel.metroViewModel
 @Composable
 fun HomeScreen(
   onNavToDetails: (data: String) -> Unit,
+  onNavToSettings: (userId: String) -> Unit,
   modifier: Modifier = Modifier,
   viewModel: HomeViewModel = metroViewModel(),
 ) =
   Column(
-    modifier = modifier,
+    modifier = modifier.fillMaxSize(),
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.Center,
   ) {
@@ -40,5 +42,9 @@ fun HomeScreen(
     Row(modifier = Modifier.padding(20.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
       Button(onClick = { onNavToDetails("A") }) { Text(text = "Details A") }
       Button(onClick = { onNavToDetails("B") }) { Text(text = "Details B") }
+    }
+
+    Button(modifier = Modifier.padding(20.dp), onClick = { onNavToSettings("user-123") }) {
+      Text(text = "Settings")
     }
   }

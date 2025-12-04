@@ -1,5 +1,6 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
+import org.jetbrains.compose.ExperimentalComposeLibrary
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JsModuleKind.MODULE_UMD
 
@@ -40,10 +41,20 @@ kotlin {
   iosArm64()
 
   sourceSets {
-    commonMain.dependencies {
-      api(project(":metrox-viewmodel"))
-      api(libs.jetbrains.lifecycle.viewmodel.compose)
-      api(compose.runtime)
+    commonMain {
+      dependencies {
+        api(project(":metrox-viewmodel"))
+        api(libs.jetbrains.lifecycle.viewmodel.compose)
+      }
+    }
+    commonMain { dependencies { @OptIn(ExperimentalComposeLibrary::class) api(compose.uiTest) } }
+    jvmTest {
+      dependencies {
+        implementation(libs.junit)
+        implementation(libs.truth)
+        implementation(compose.desktop.currentOs)
+        implementation(compose.desktop.uiTestJUnit4)
+      }
     }
   }
 }

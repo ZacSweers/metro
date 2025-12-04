@@ -4,8 +4,16 @@ Changelog
 **Unreleased**
 --------------
 
+0.8.1
+-----
+
+_2025-12-03_
+
 - **New**: Experimental support for Kotlin `2.3.20` dev builds. See the [compatibility docs](https://zacsweers.github.io/metro/latest/compatibility/) for tested versions.
 - **Fix**: Follow chained alias bindings when ref-counting used bindings in property collection.
+- **Fix**: Fix `@ViewModelAssistedFactoryKey` KClass key type to use `out ViewModel` instead.
+
+Special thanks to [@ansman](https://github.com/ansman) and [@jisungbin](https://github.com/jisungbin) for contributing to this release!
 
 0.8.0
 -----

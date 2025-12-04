@@ -3,7 +3,7 @@
 A compile-time dependency injection framework for Kotlin Multiplatform, powered by a Kotlin compiler plugin.
 
 [![Maven Central](https://img.shields.io/maven-central/v/dev.zacsweers.metro/runtime.svg)](https://github.com/ZacSweers/metro/releases)
-[![Kotlin](https://img.shields.io/badge/Kotlin-2.2.20--2.3.0--RC-blue.svg?logo=kotlin)](docs/compatibility.md)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.2.20--2.3.20--dev--5437-blue.svg?logo=kotlin)](docs/compatibility.md)
 [![Build Status](https://github.com/ZacSweers/metro/actions/workflows/ci.yml/badge.svg)](https://github.com/ZacSweers/metro/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
 

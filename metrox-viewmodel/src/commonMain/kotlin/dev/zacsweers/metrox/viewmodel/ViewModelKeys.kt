@@ -20,7 +20,7 @@ public annotation class ViewModelKey(val value: KClass<out ViewModel>)
 @MapKey
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.RUNTIME)
-public annotation class ViewModelAssistedFactoryKey(val value: KClass<out ViewModelAssistedFactory>)
+public annotation class ViewModelAssistedFactoryKey(val value: KClass<out ViewModel>)
 
 /**
  * A [MapKey] annotation for binding
@@ -51,8 +51,8 @@ public annotation class ManualViewModelAssistedFactoryKey(
  *   @ViewModelAssistedFactoryKey(Factory::class)
  *   @ContributesIntoMap(AppScope::class)
  *   fun interface Factory : ViewModelAssistedFactory {
- *     override fun create(params: CreationParams): DetailsViewModel {
- *       return create(params.get<String>(KEY_ID))
+ *     override fun create(extras: CreationExtras): DetailsViewModel {
+ *       return create(extras.get<String>(KEY_ID))
  *     }
  *
  *     fun create(@Assisted id: String): DetailsViewModel

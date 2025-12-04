@@ -25,13 +25,15 @@ Some releases may introduce prohibitively difficult breaking changes that requir
 
 The following Kotlin versions are tested via CI:
 
-| Kotlin Version |
-|----------------|
-| 2.3.0-RC       |
-| 2.3.0-Beta2    |
-| 2.3.0-Beta1    |
-| 2.2.21         |
-| 2.2.20         |
+| Kotlin Version  |
+|-----------------|
+| 2.3.20-dev-5437 |
+| 2.3.0-RC2       |
+| 2.3.0-RC        |
+| 2.3.0-Beta2     |
+| 2.3.0-Beta1     |
+| 2.2.21          |
+| 2.2.20          |
 
 !!! note
     Versions without dedicated compiler-compat modules will use the nearest available implementation _below_ that version. See [`compiler-compat/version-aliases.txt`](https://github.com/ZacSweers/metro/blob/main/compiler-compat/version-aliases.txt) for the full list.
