@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir.graph.sharding
 import dev.zacsweers.metro.compiler.DEFAULT_KEYS_PER_GRAPH_SHARD
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.buildBlockBody
@@ -14,10 +15,10 @@ import dev.zacsweers.metro.compiler.ir.graph.InitStatement
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
 import dev.zacsweers.metro.compiler.ir.graph.PropertyInitializer
 import dev.zacsweers.metro.compiler.ir.irInvoke
+import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
-import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrElement
@@ -120,11 +121,15 @@ internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext b
   ): List<InitStatement>? {
     val shardGroups = planShardGroups(propertyBindings, plannedGroups)
     if (shardGroups.size <= 1) {
+      // Only warn if user explicitly customized keysPerGraphShard, as this suggests
+      // they expected sharding to occur but the graph is too small
       if (options.keysPerGraphShard != DEFAULT_KEYS_PER_GRAPH_SHARD) {
-        messageCollector.report(
-          CompilerMessageSeverity.WARNING,
-          "Graph sharding is configured using keysPerGraphShard=${options.keysPerGraphShard}, " +
-            "but the graph '${graphClass.name.asString()}' has only ${propertyBindings.size} bindings, so sharding is not being applied.",
+        reportCompat(
+          graphClass,
+          MetroDiagnostics.METRO_WARNING,
+          "Graph sharding is configured with keysPerGraphShard=${options.keysPerGraphShard}, " +
+            "but graph '${graphClass.name.asString()}' has only ${propertyBindings.size} bindings " +
+            "(threshold is ${options.keysPerGraphShard}), so sharding is not applied.",
         )
       }
       return null
