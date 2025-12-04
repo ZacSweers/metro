@@ -26,7 +26,8 @@ kotlin {
         implementation(project(":compose-viewmodels:screen-settings"))
         implementation("dev.zacsweers.metro:metrox-viewmodel-compose")
 
-        implementation(libs.jetbrains.navigation.desktop)
+        implementation(libs.jetbrains.navigation3.ui)
+        implementation(libs.jetbrains.lifecycle.viewmodel.navigation3)
         implementation(libs.kotlinx.serialization.json)
         implementation(compose.material3)
         implementation(compose.runtime)

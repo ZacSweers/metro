@@ -4,8 +4,10 @@ package dev.zacsweers.metro.sample.composeviewmodels.app
 
 import kotlinx.serialization.Serializable
 
-@Serializable data object HomeRoute
+sealed interface Route
 
-@Serializable data class DetailsRoute(val data: String)
+@Serializable data object HomeRoute : Route
 
-@Serializable data class SettingsRoute(val userId: String)
+@Serializable data class DetailsRoute(val data: String) : Route
+
+@Serializable data class SettingsRoute(val userId: String) : Route

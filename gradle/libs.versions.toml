@@ -21,6 +21,8 @@ anvil = "0.5.0"
 atomicfu = "0.29.0"
 circuit = "0.30.0"
 compose-jb = "1.9.3"
+jetbrains-lifecycle-navigation3 = "2.10.0-alpha06"
+jetbrains-navigation3 = "1.0.0-alpha06"
 dagger = "2.57.2"
 gjf = "1.32.0"
 jdk = "24"
@@ -74,7 +76,6 @@ androidx-fragment = "androidx.fragment:fragment-ktx:1.8.9"
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
 androidx-lint-gradle = { module = "androidx.lint:lint-gradle", version.ref = "androidx-lint-gradle" }
 androidx-material3 = "com.google.android.material:material:1.13.0"
-androidx-viewmodelCompose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "androidx-lifecycle" }
 androidx-viewmodelKtx = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "androidx-lifecycle" }
 androidx-work = "androidx.work:work-runtime:2.11.0"
 androidx-test = "androidx.test:core-ktx:1.7.0"
@@ -110,7 +111,8 @@ jakartaInject = "jakarta.inject:jakarta.inject-api:2.0.1"
 
 jetbrains-lifecycle-viewmodel = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel:2.9.6"
 jetbrains-lifecycle-viewmodel-compose = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose:2.9.6"
-jetbrains-navigation-desktop = "org.jetbrains.androidx.navigation:navigation-compose:2.9.1"
+jetbrains-lifecycle-viewmodel-navigation3 = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-navigation3", version.ref = "jetbrains-lifecycle-navigation3" }
+jetbrains-navigation3-ui = { module = "org.jetbrains.androidx.navigation3:navigation3-ui", version.ref = "jetbrains-navigation3" }
 
 kotlinInject-compiler = { module = "me.tatarka.inject:kotlin-inject-compiler-ksp", version.ref = "kotlinInject" }
 kotlinInject-runtime = { module = "me.tatarka.inject:kotlin-inject-runtime", version.ref = "kotlinInject" }
