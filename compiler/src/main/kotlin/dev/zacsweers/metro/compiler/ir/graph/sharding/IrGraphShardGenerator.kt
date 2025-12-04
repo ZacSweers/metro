@@ -127,14 +127,12 @@ internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext b
       return null
     }
 
-    // On JVM, shard classes write to the outer graph's backing fields via irSetField().
-    // This generates direct field access bytecode, which JVM doesn't allow for private fields
-    // across class boundaries (inner classes are separate classes in JVM bytecode).
-    // We use protected (package-private + subclass in JVM) rather than internal (public in
-    // bytecode) to minimize exposure while still allowing inner class access within the same
-    // package.
-    // The alternative is we could generate synthetic accessors (which kotlinc somewhat surprisingly
-    // doens't do here), but in this case it's kind of unnecessary.
+    // On JVM, we must relax backing field visibility from private to protected.
+    // Even though shards use the outer class's this receiver (via inner class implicit access),
+    // irSetField() generates direct field access bytecode. The Kotlin compiler only generates
+    // synthetic accessors for source code that the frontend analyzes - our IR is generated
+    // after that phase. Protected (package-private + subclass in JVM) is the minimum visibility
+    // that allows inner class access while avoiding full public exposure.
     if (pluginContext.platform.isJvm()) {
       for (binding in propertyBindings) {
         binding.property.backingField?.visibility = DescriptorVisibilities.PROTECTED
