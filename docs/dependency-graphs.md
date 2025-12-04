@@ -553,3 +553,114 @@ Dependency graph code gen is designed to largely match how Dagger components are
     * Extendable parent graphs opt-in to generating this metadata. They write information about their available provider and instance fields, binds callable IDs, parent graphs, and provides callable IDs.
     * Extendable parent graphs generate `_metroAccessor`-suffixed `internal` functions that expose instance fields and provider fields.
     * Child graphs read this metadata and look up the relevant callable symbols, then incorporating these when building its own binding graph.
+
+### Optimizations
+
+Metro applies several optimizations to generated graph code to reduce class size and improve runtime performance.
+
+#### Dead binding elimination
+
+By default, Metro removes bindings that are not reachable from any accessor or member injector function. This reduces the size of generated code and avoids unnecessary initialization work.
+
+```kotlin
+@DependencyGraph
+interface AppGraph {
+  val httpClient: HttpClient  // This is a root - it's reachable
+  
+  fun inject(memberInjectedClass: MemberInjectedClass) // This is also a root
+
+  @Provides fun provideHttpClient(): HttpClient = HttpClient()
+
+  // This binding is NOT reachable from any accessor, so it will be eliminated
+  @Provides fun provideUnusedService(): UnusedService = UnusedService()
+}
+```
+
+This can be disabled via `metro.shrinkUnusedBindings=false` if you need all declared bindings to be generated (e.g., for debugging).
+
+#### Property collection
+
+Not all bindings need dedicated provider fields. Metro analyzes the binding graph to determine which bindings require properties and what kind:
+
+**Scoping**: Scoped bindings (e.g. `@SingleIn`) always get a field backed by `DoubleCheck` to ensure lazy, thread-safe instantiation that is a singleton within the enclosing graph.
+
+**Reference counting**: Unscoped bindings used only once are inlined at their call site. Bindings used two or more times get a reusable provider field to avoid duplicate instantiation logic.
+
+**Alias resolution**: When counting references, Metro follows `@Binds` alias chains to the final implementation. If `Api` binds to `ApiImpl`, references to `Api` count toward `ApiImpl`'s ref count.
+
+**Multibinding source accessors**: Bindings contributed to multibindings (`@IntoSet`, `@IntoMap`) that have dependencies are extracted into _getter_ properties. This avoids duplicating dependency resolution code at each multibinding collection site and avoids risking `MethodTooLargeException` issues at compile-time.
+
+#### Chunking
+
+JVM methods have a size limit. For graphs with many bindings, the constructor initialization code can exceed this limit. To avoid this, Metro splits initialization into multiple private `init` functions if necessary, each handling a subset of bindings.
+
+```kotlin
+// Generated structure for a large graph:
+class AppGraph$Impl : AppGraph {
+  private val provider1: Provider<...>
+  private val provider2: Provider<...>
+  // ... hundreds more ...
+
+  init {
+    init1()
+    init2()
+    // ...
+  }
+
+  private fun init1() {
+    provider1 = ...
+    provider2 = ...
+    // ... up to statementsPerInitFun statements ...
+  }
+
+  private fun init2() {
+    // ... next batch ...
+  }
+}
+```
+
+Configuration options:
+
+- `metro.chunkFieldInits` - Enable/disable chunking (default: `true`)
+- `metro.statementsPerInitFun` - Max statements per init function (default: `25`)
+
+#### Sharding
+
+For very large graphs, even chunking may not be enough — the class itself can exceed JVM's class file size limits. Sharding moves initialization logic into inner shard classes, distributing the code across multiple class files while keeping provider fields on the main graph class.
+
+```kotlin
+// Generated structure with sharding:
+class AppGraph$Impl : AppGraph {
+  // Provider fields stay on the main class
+  private val repoProvider: Provider<Repository>
+  private val apiProvider: Provider<ApiService>
+  // ... many more ...
+
+  // Shards hold initialization logic
+  private inner class Shard1 {
+    fun initialize() {
+      repoProvider = provider { Repository.MetroFactory.create() }
+      apiProvider = provider { ApiService.MetroFactory.create(graph.repoProvider) }
+    }
+  }
+
+  private inner class Shard2 {
+    fun initialize() {
+      // ... next batch of initializations ...
+    }
+  }
+
+  init {
+    Shard1().initialize()
+    Shard2().initialize()
+  }
+}
+```
+
+Sharding respects required binding initialization order and keeps strongly connected components (valid cycles broken by `Provider`/`Lazy`) together in the same shard.
+
+Configuration options:
+
+- `metro.enableGraphSharding` - Enable/disable sharding (default: `false`)
+- `metro.keysPerGraphShard` - Max bindings per shard (default: `2000`)
+
