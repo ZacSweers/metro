@@ -136,7 +136,7 @@ internal class SyntheticGraphGenerator(
               arguments[paramIndex++] =
                 irGetField(
                   irGet(samFunction.dispatchReceiverParameter!!),
-                  storedFields.removeFirst(),
+                  storedFields.removeAt(0),
                 )
             }
 
