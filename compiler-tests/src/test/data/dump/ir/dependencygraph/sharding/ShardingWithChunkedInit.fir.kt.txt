@@ -313,16 +313,6 @@ interface TestGraph {
 
     private val fProvider: Provider<F>
 
-    private val shard1: Shard1
-      get(): Shard1 {
-        return <this>.#shard1
-      }
-
-    private val shard2: Shard2
-      get(): Shard2 {
-        return <this>.#shard2
-      }
-
     private inner class Shard1 {
       constructor() /* primary */ {
         super/*Any*/()
@@ -330,19 +320,19 @@ interface TestGraph {
 
       }
 
-      private fun init(graphInstance: Impl) {
-        graphInstance.#aProvider = Companion.provider<Provider<A>, A>(delegate = MetroFactory.create())
-        graphInstance.#bProvider = Companion.provider<Provider<B>, B>(delegate = Companion.create(a = graphInstance.#aProvider))
+      private fun init() {
+        <this>.#aProvider = Companion.provider<Provider<A>, A>(delegate = MetroFactory.create())
+        <this>.#bProvider = Companion.provider<Provider<B>, B>(delegate = Companion.create(a = <this>.#aProvider))
       }
 
-      private fun init2(graphInstance: Impl) {
-        graphInstance.#cProvider = Companion.provider<Provider<C>, C>(delegate = Companion.create(b = graphInstance.#bProvider))
-        graphInstance.#dProvider = Companion.provider<Provider<D>, D>(delegate = Companion.create(c = graphInstance.#cProvider))
+      private fun init2() {
+        <this>.#cProvider = Companion.provider<Provider<C>, C>(delegate = Companion.create(b = <this>.#bProvider))
+        <this>.#dProvider = Companion.provider<Provider<D>, D>(delegate = Companion.create(c = <this>.#cProvider))
       }
 
-      fun initialize(graphInstance: Impl) {
-        <this>.init(graphInstance = graphInstance)
-        <this>.init2(graphInstance = graphInstance)
+      fun initialize() {
+        <this>.init()
+        <this>.init2()
       }
 
     }
@@ -354,9 +344,9 @@ interface TestGraph {
 
       }
 
-      fun initialize(graphInstance: Impl) {
-        graphInstance.#eProvider = Companion.provider<Provider<E>, E>(delegate = Companion.create(d = graphInstance.#dProvider))
-        graphInstance.#fProvider = Companion.provider<Provider<F>, F>(delegate = Companion.create(e = graphInstance.#eProvider))
+      fun initialize() {
+        <this>.#eProvider = Companion.provider<Provider<E>, E>(delegate = Companion.create(d = <this>.#dProvider))
+        <this>.#fProvider = Companion.provider<Provider<F>, F>(delegate = Companion.create(e = <this>.#eProvider))
       }
 
     }
@@ -365,10 +355,8 @@ interface TestGraph {
       super/*Any*/()
       /* <init>() */
 
-      <this>.#shard1 = <this>.Shard1()
-      <this>.#shard2 = <this>.Shard2()
-      <this>.#shard1.initialize(graphInstance = <this>)
-      <this>.#shard2.initialize(graphInstance = <this>)
+      <this>.Shard1().initialize()
+      <this>.Shard2().initialize()
     }
 
     override val f: F
@@ -396,3 +384,4 @@ interface TestGraph {
     abstract get
 
 }
+

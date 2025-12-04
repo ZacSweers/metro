@@ -414,16 +414,6 @@ interface AppGraph : MetroContributionToAppScope {
 
     private val appService3Provider: Provider<AppService3>
 
-    private val shard1: Shard1
-      get(): Shard1 {
-        return <this>.#shard1
-      }
-
-    private val shard2: Shard2
-      get(): Shard2 {
-        return <this>.#shard2
-      }
-
     private inner class Shard1 {
       constructor() /* primary */ {
         super/*Any*/()
@@ -431,8 +421,8 @@ interface AppGraph : MetroContributionToAppScope {
 
       }
 
-      fun initialize(graphInstance: Impl) {
-        graphInstance.#appService1Provider = Companion.provider<Provider<AppService1>, AppService1>(delegate = MetroFactory.create())
+      fun initialize() {
+        <this>.#appService1Provider = Companion.provider<Provider<AppService1>, AppService1>(delegate = MetroFactory.create())
       }
 
     }
@@ -444,9 +434,9 @@ interface AppGraph : MetroContributionToAppScope {
 
       }
 
-      fun initialize(graphInstance: Impl) {
-        graphInstance.#appService2Provider = Companion.provider<Provider<AppService2>, AppService2>(delegate = MetroFactory.create())
-        graphInstance.#appService3Provider = Companion.provider<Provider<AppService3>, AppService3>(delegate = MetroFactory.create())
+      fun initialize() {
+        <this>.#appService2Provider = Companion.provider<Provider<AppService2>, AppService2>(delegate = MetroFactory.create())
+        <this>.#appService3Provider = Companion.provider<Provider<AppService3>, AppService3>(delegate = MetroFactory.create())
       }
 
     }
@@ -465,16 +455,6 @@ interface AppGraph : MetroContributionToAppScope {
 
       private val childService3Provider: Provider<ChildService3>
 
-      private val shard1: Shard1
-        get(): Shard1 {
-          return <this>.#shard1
-        }
-
-      private val shard2: Shard2
-        get(): Shard2 {
-          return <this>.#shard2
-        }
-
       private inner class Shard1 {
         constructor() /* primary */ {
           super/*Any*/()
@@ -482,9 +462,9 @@ interface AppGraph : MetroContributionToAppScope {
 
         }
 
-        fun initialize(graphInstance: ChildGraphImpl, outer_<this>: Impl) {
-          graphInstance.#childService1Provider = Companion.provider<Provider<ChildService1>, ChildService1>(delegate = Companion.create(app1 = outer_<this>.#appService1Provider))
-          graphInstance.#childService2Provider = Companion.provider<Provider<ChildService2>, ChildService2>(delegate = Companion.create(child1 = graphInstance.#childService1Provider))
+        fun initialize(outer_<this>: Impl) {
+          <this>.#childService1Provider = Companion.provider<Provider<ChildService1>, ChildService1>(delegate = Companion.create(app1 = outer_<this>.#appService1Provider))
+          <this>.#childService2Provider = Companion.provider<Provider<ChildService2>, ChildService2>(delegate = Companion.create(child1 = <this>.#childService1Provider))
         }
 
       }
@@ -496,8 +476,8 @@ interface AppGraph : MetroContributionToAppScope {
 
         }
 
-        fun initialize(graphInstance: ChildGraphImpl) {
-          graphInstance.#childService3Provider = Companion.provider<Provider<ChildService3>, ChildService3>(delegate = Companion.create(child2 = graphInstance.#childService2Provider))
+        fun initialize() {
+          <this>.#childService3Provider = Companion.provider<Provider<ChildService3>, ChildService3>(delegate = Companion.create(child2 = <this>.#childService2Provider))
         }
 
       }
@@ -508,16 +488,6 @@ interface AppGraph : MetroContributionToAppScope {
 
         private val grandchildService2Provider: Provider<GrandchildService2>
 
-        private val shard1: Shard1
-          get(): Shard1 {
-            return <this>.#shard1
-          }
-
-        private val shard2: Shard2
-          get(): Shard2 {
-            return <this>.#shard2
-          }
-
         private inner class Shard1 {
           constructor() /* primary */ {
             super/*Any*/()
@@ -525,8 +495,8 @@ interface AppGraph : MetroContributionToAppScope {
 
           }
 
-          fun initialize(graphInstance: GrandchildGraphImpl, outer_<this>: Impl, outer_<this>: ChildGraphImpl) {
-            graphInstance.#grandchildService1Provider = Companion.provider<Provider<GrandchildService1>, GrandchildService1>(delegate = Companion.create(app2 = outer_<this>.#appService2Provider, child3 = outer_<this>.#childService3Provider))
+          fun initialize(outer_<this>: Impl, outer_<this>: ChildGraphImpl) {
+            <this>.#grandchildService1Provider = Companion.provider<Provider<GrandchildService1>, GrandchildService1>(delegate = Companion.create(app2 = outer_<this>.#appService2Provider, child3 = outer_<this>.#childService3Provider))
           }
 
         }
@@ -538,8 +508,8 @@ interface AppGraph : MetroContributionToAppScope {
 
           }
 
-          fun initialize(graphInstance: GrandchildGraphImpl) {
-            graphInstance.#grandchildService2Provider = Companion.provider<Provider<GrandchildService2>, GrandchildService2>(delegate = Companion.create(gc1 = graphInstance.#grandchildService1Provider))
+          fun initialize() {
+            <this>.#grandchildService2Provider = Companion.provider<Provider<GrandchildService2>, GrandchildService2>(delegate = Companion.create(gc1 = <this>.#grandchildService1Provider))
           }
 
         }
@@ -548,10 +518,8 @@ interface AppGraph : MetroContributionToAppScope {
           super/*Any*/()
           /* <init>() */
 
-          <this>.#shard1 = <this>.Shard1()
-          <this>.#shard2 = <this>.Shard2()
-          <this>.#shard1.initialize(graphInstance = <this>, outer_<this> = <this>, outer_<this> = <this>)
-          <this>.#shard2.initialize(graphInstance = <this>)
+          <this>.Shard1().initialize(outer_<this> = <this>, outer_<this> = <this>)
+          <this>.Shard2().initialize()
         }
 
         override val grandchildService2: GrandchildService2
@@ -565,10 +533,8 @@ interface AppGraph : MetroContributionToAppScope {
         super/*Any*/()
         /* <init>() */
 
-        <this>.#shard1 = <this>.Shard1()
-        <this>.#shard2 = <this>.Shard2()
-        <this>.#shard1.initialize(graphInstance = <this>, outer_<this> = <this>)
-        <this>.#shard2.initialize(graphInstance = <this>)
+        <this>.Shard1().initialize(outer_<this> = <this>)
+        <this>.Shard2().initialize()
       }
 
       override fun createGrandchild(): GrandchildGraph {
@@ -591,10 +557,8 @@ interface AppGraph : MetroContributionToAppScope {
       super/*Any*/()
       /* <init>() */
 
-      <this>.#shard1 = <this>.Shard1()
-      <this>.#shard2 = <this>.Shard2()
-      <this>.#shard1.initialize(graphInstance = <this>)
-      <this>.#shard2.initialize(graphInstance = <this>)
+      <this>.Shard1().initialize()
+      <this>.Shard2().initialize()
     }
 
     override fun createChild(): ChildGraph {

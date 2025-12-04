@@ -81,7 +81,6 @@ internal object ShardingDiagnostics {
         appendLine("  Bindings: $bindingCount")
       }
       appendLine("  Outgoing cross-shard edges: ${crossShardEdgeCounts[info.index]}")
-      appendLine("  Instance property: ${info.instanceProperty.name}")
 
       if (info.bindings.size <= 10) {
         // Show all bindings for small shards
