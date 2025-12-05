@@ -10340,5 +10340,13 @@ fun box(): String {
     return "FAIL: Chain 99 broken"
   }
 
+  // Verify sharding via reflection: expect 5 shards for 10k bindings with 2k limit
+  val implClass = graph::class.java
+  val shardClasses = implClass.declaredClasses.filter { it.simpleName.startsWith("Shard") }
+  val expectedShards = 5
+  if (shardClasses.size != expectedShards) {
+    return "FAIL: Expected $expectedShards shard classes but found ${shardClasses.size}: ${shardClasses.map { it.simpleName }}"
+  }
+
   return "OK"
 }
