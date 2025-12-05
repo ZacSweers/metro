@@ -4,6 +4,8 @@ Changelog
 **Unreleased**
 --------------
 
+- **New**: Experimental support for sharding large graphs. For extremely large dependency graphs on the JVM, their generated implementations could exceed the JVM class size limit. To avoid this, Metro now supports sharding within graphs (as needed) to distribute initialization code across multiple inner _shard_ classes. This is currently disabled by default but can be enabled via the `enableGraphSharding` Gradle DSL property.
+
 0.8.2
 -----
 
