@@ -134,10 +134,7 @@ internal class SyntheticGraphGenerator(
             if (implIsInner) {
               // First arg is always the graph instance if it's inner
               arguments[paramIndex++] =
-                irGetField(
-                  irGet(samFunction.dispatchReceiverParameter!!),
-                  storedFields.removeFirst(),
-                )
+                irGetField(irGet(samFunction.dispatchReceiverParameter!!), storedFields.removeAt(0))
             }
 
             samParams.forEach { param -> arguments[paramIndex++] = irGet(param) }

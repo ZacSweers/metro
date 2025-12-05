@@ -4,6 +4,14 @@ Changelog
 **Unreleased**
 --------------
 
+0.8.2
+-----
+
+_2025-12-04_
+
+- **Fix**: Avoid JDK 21 `List.removeFirst()` call in the compiler artifact. That said, Metro's compiler may move to JDK 21+ in the future (note this is separate from the runtime JVM targets).
+- **Fix**: Fix accidental `androidx.test` transitive dependency in `metrox-viewmodel-compose` artifact.
+
 0.8.1
 -----
 
