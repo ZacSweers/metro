@@ -824,6 +824,73 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="General Implementation Notes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#optimizations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optimizations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Optimizations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dead-binding-elimination" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dead binding elimination
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#property-collection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Property collection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#chunking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chunking
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sharding" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sharding
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -1939,6 +2006,73 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="General Implementation Notes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#optimizations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optimizations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Optimizations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dead-binding-elimination" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dead binding elimination
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#property-collection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Property collection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#chunking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chunking
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sharding" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sharding
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -2396,6 +2530,94 @@
 <li>Child graphs read this metadata and look up the relevant callable symbols, then incorporating these when building its own binding graph.</li>
 </ul>
 </li>
+</ul>
+<h3 id="optimizations">Optimizations<a class="headerlink" href="#optimizations" title="Permanent link">&para;</a></h3>
+<p>Metro applies several optimizations to generated graph code to reduce class size and improve runtime performance.</p>
+<h4 id="dead-binding-elimination">Dead binding elimination<a class="headerlink" href="#dead-binding-elimination" title="Permanent link">&para;</a></h4>
+<p>By default, Metro removes bindings that are not reachable from any accessor or member injector function. This reduces the size of generated code and avoids unnecessary initialization work.</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span>
+<span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">httpClient</span><span class="p">:</span><span class="w"> </span><span class="n">HttpClient</span><span class="w">  </span><span class="c1">// This is a root - it&#39;s reachable</span>
+
+<span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">inject</span><span class="p">(</span><span class="n">memberInjectedClass</span><span class="p">:</span><span class="w"> </span><span class="n">MemberInjectedClass</span><span class="p">)</span><span class="w"> </span><span class="c1">// This is also a root</span>
+
+<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideHttpClient</span><span class="p">():</span><span class="w"> </span><span class="n">HttpClient</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">()</span>
+
+<span class="w">  </span><span class="c1">// This binding is NOT reachable from any accessor, so it will be eliminated</span>
+<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideUnusedService</span><span class="p">():</span><span class="w"> </span><span class="n">UnusedService</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">UnusedService</span><span class="p">()</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>This can be disabled via <code>metro.shrinkUnusedBindings=false</code> if you need all declared bindings to be generated (e.g., for debugging).</p>
+<h4 id="property-collection">Property collection<a class="headerlink" href="#property-collection" title="Permanent link">&para;</a></h4>
+<p>Not all bindings need dedicated provider fields. Metro analyzes the binding graph to determine which bindings require properties and what kind:</p>
+<p><strong>Scoping</strong>: Scoped bindings (e.g. <code>@SingleIn</code>) always get a field backed by <code>DoubleCheck</code> to ensure lazy, thread-safe instantiation that is a singleton within the enclosing graph.</p>
+<p><strong>Reference counting</strong>: Unscoped bindings used only once are inlined at their call site. Bindings used two or more times get a reusable provider field to avoid duplicate instantiation logic.</p>
+<p><strong>Alias resolution</strong>: When counting references, Metro follows <code>@Binds</code> alias chains to the final implementation. If <code>Api</code> binds to <code>ApiImpl</code>, references to <code>Api</code> count toward <code>ApiImpl</code>&rsquo;s ref count.</p>
+<p><strong>Multibinding source accessors</strong>: Bindings contributed to multibindings (<code>@IntoSet</code>, <code>@IntoMap</code>) that have dependencies are extracted into <em>getter</em> properties. This avoids duplicating dependency resolution code at each multibinding collection site and avoids risking <code>MethodTooLargeException</code> issues at compile-time.</p>
+<h4 id="chunking">Chunking<a class="headerlink" href="#chunking" title="Permanent link">&para;</a></h4>
+<p>JVM methods have a size limit. For graphs with many bindings, the constructor initialization code can exceed this limit. To avoid this, Metro splits initialization into multiple private <code>init</code> functions if necessary, each handling a subset of bindings.</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// Generated structure for a large graph:</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">AppGraph</span><span class="err">$</span><span class="n">Impl</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">AppGraph</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">private</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">provider1</span><span class="p">:</span><span class="w"> </span><span class="n">Provider</span><span class="o">&lt;</span><span class="p">...</span><span class="o">&gt;</span>
+<span class="w">  </span><span class="kd">private</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">provider2</span><span class="p">:</span><span class="w"> </span><span class="n">Provider</span><span class="o">&lt;</span><span class="p">...</span><span class="o">&gt;</span>
+<span class="w">  </span><span class="c1">// ... hundreds more ...</span>
+
+<span class="w">  </span><span class="k">init</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">init1</span><span class="p">()</span>
+<span class="w">    </span><span class="n">init2</span><span class="p">()</span>
+<span class="w">    </span><span class="c1">// ...</span>
+<span class="w">  </span><span class="p">}</span>
+
+<span class="w">  </span><span class="kd">private</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">init1</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">provider1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">...</span>
+<span class="w">    </span><span class="n">provider2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">...</span>
+<span class="w">    </span><span class="c1">// ... up to statementsPerInitFun statements ...</span>
+<span class="w">  </span><span class="p">}</span>
+
+<span class="w">  </span><span class="kd">private</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">init2</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// ... next batch ...</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Configuration options:</p>
+<ul>
+<li><code>metro.chunkFieldInits</code> - Enable/disable chunking (default: <code>true</code>)</li>
+<li><code>metro.statementsPerInitFun</code> - Max statements per init function (default: <code>25</code>)</li>
+</ul>
+<h4 id="sharding">Sharding<a class="headerlink" href="#sharding" title="Permanent link">&para;</a></h4>
+<p>For very large graphs, even chunking may not be enough — the class itself can exceed JVM&rsquo;s class file size limits. Sharding moves initialization logic into inner shard classes, distributing the code across multiple class files while keeping provider fields on the main graph class.</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// Generated structure with sharding:</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">AppGraph</span><span class="err">$</span><span class="n">Impl</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">AppGraph</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="c1">// Provider fields stay on the main class</span>
+<span class="w">  </span><span class="kd">private</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">repoProvider</span><span class="p">:</span><span class="w"> </span><span class="n">Provider</span><span class="o">&lt;</span><span class="n">Repository</span><span class="o">&gt;</span>
+<span class="w">  </span><span class="kd">private</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">apiProvider</span><span class="p">:</span><span class="w"> </span><span class="n">Provider</span><span class="o">&lt;</span><span class="n">ApiService</span><span class="o">&gt;</span>
+<span class="w">  </span><span class="c1">// ... many more ...</span>
+
+<span class="w">  </span><span class="c1">// Shards hold initialization logic</span>
+<span class="w">  </span><span class="kd">private</span><span class="w"> </span><span class="kd">inner</span><span class="w"> </span><span class="kd">class</span><span class="w"> </span><span class="nc">Shard1</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">fun</span><span class="w"> </span><span class="nf">initialize</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="n">repoProvider</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">provider</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Repository</span><span class="p">.</span><span class="na">MetroFactory</span><span class="p">.</span><span class="na">create</span><span class="p">()</span><span class="w"> </span><span class="p">}</span>
+<span class="w">      </span><span class="n">apiProvider</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">provider</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">ApiService</span><span class="p">.</span><span class="na">MetroFactory</span><span class="p">.</span><span class="na">create</span><span class="p">(</span><span class="n">graph</span><span class="p">.</span><span class="na">repoProvider</span><span class="p">)</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+
+<span class="w">  </span><span class="kd">private</span><span class="w"> </span><span class="kd">inner</span><span class="w"> </span><span class="kd">class</span><span class="w"> </span><span class="nc">Shard2</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">fun</span><span class="w"> </span><span class="nf">initialize</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="c1">// ... next batch of initializations ...</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+
+<span class="w">  </span><span class="k">init</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">Shard1</span><span class="p">().</span><span class="na">initialize</span><span class="p">()</span>
+<span class="w">    </span><span class="n">Shard2</span><span class="p">().</span><span class="na">initialize</span><span class="p">()</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Sharding respects required binding initialization order and keeps strongly connected components (valid cycles broken by <code>Provider</code>/<code>Lazy</code>) together in the same shard.</p>
+<p>Configuration options:</p>
+<ul>
+<li><code>metro.enableGraphSharding</code> - Enable/disable sharding (default: <code>false</code>)</li>
+<li><code>metro.keysPerGraphShard</code> - Max bindings per shard (default: <code>2000</code>)</li>
 </ul>
 
 
