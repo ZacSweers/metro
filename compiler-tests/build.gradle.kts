@@ -150,8 +150,17 @@ val generateTests =
     jvmArgs("-Xss1m")
   }
 
+val enableShardTest = providers.gradleProperty("metro.enableShardTest").isPresent
+
 tasks.withType<Test> {
   outputs.upToDateWhen { false }
+
+  if (enableShardTest) {
+    // Increase heap for LargeGraphStressTest stress test
+    minHeapSize = "512m"
+    maxHeapSize = "2g"
+  }
+
   dependsOn(metroRuntimeClasspath)
   dependsOn(daggerInteropClasspath)
   dependsOn(guiceClasspath)
@@ -172,6 +181,11 @@ tasks.withType<Test> {
   setLibraryProperty("kotlin.test.jar.path", "kotlin-test")
   setLibraryProperty("kotlin.script.runtime.path", "kotlin-script-runtime")
   setLibraryProperty("kotlin.annotations.path", "kotlin-annotations-jvm")
+
+  if (enableShardTest) {
+    systemProperty("metro.enableShardTest", true)
+    systemProperty("metro.singleTestName", "testLargeGraphStressTest")
+  }
 
   systemProperty("metroRuntime.classpath", metroRuntimeClasspath.asPath)
   systemProperty("anvilRuntime.classpath", anvilRuntimeClasspath.asPath)

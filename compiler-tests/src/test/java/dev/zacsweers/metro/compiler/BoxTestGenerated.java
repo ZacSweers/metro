@@ -927,6 +927,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("LargeGraphStressTest.kt")
+      public void testLargeGraphStressTest() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/sharding/LargeGraphStressTest.kt");
+      }
+
+      @Test
       @TestMetadata("MinimalGraphSharding.kt")
       public void testMinimalGraphSharding() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/sharding/MinimalGraphSharding.kt");

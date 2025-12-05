@@ -81,8 +81,12 @@ jobs:
       - name: Check root project
         run: |
           # Regenerate tests per-run on CI to support exclusions, which are unfortunately code-gen level right now
+          echo "Generating tests..."
           ./gradlew :compiler-tests:generateTests --quiet '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+          echo "Running checks..."
           ./gradlew check --continue --quiet '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+          echo "Running sharding tests..."
+          ./gradlew :compiler-tests:test --tests '*Sharding.testLargeGraphStressTest' --quiet '-Pmetro.enableShardTest' '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
       - name: (Fail-only) Upload reports
         if: failure()

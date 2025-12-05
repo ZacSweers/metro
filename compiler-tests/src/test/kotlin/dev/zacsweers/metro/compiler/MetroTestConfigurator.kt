@@ -6,12 +6,25 @@ import dev.zacsweers.metro.compiler.test.COMPILER_VERSION
 import org.jetbrains.kotlin.test.directives.model.DirectivesContainer
 import org.jetbrains.kotlin.test.services.MetaTestConfigurator
 import org.jetbrains.kotlin.test.services.TestServices
+import org.jetbrains.kotlin.test.services.moduleStructure
+import org.jetbrains.kotlin.test.services.testInfo
 
 class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(testServices) {
   override val directiveContainers: List<DirectivesContainer>
     get() = listOf(MetroDirectives)
 
   override fun shouldSkipTest(): Boolean {
+    val enabled =
+      testServices.moduleStructure.allDirectives[MetroDirectives.ENABLE_IF_PROPERTY_SET]
+        .firstOrNull()
+        ?.let { property -> System.getProperty(property, "false")?.toBooleanStrict() == true }
+        ?: false
+    if (!enabled) return true
+
+    System.getProperty("metro.singleTestName")?.let { singleTest ->
+      return testServices.testInfo.methodName != singleTest
+    }
+
     val (targetVersion, requiresFullMatch) = targetKotlinVersion(testServices) ?: return false
     return !versionMatches(targetVersion, requiresFullMatch, COMPILER_VERSION)
   }
