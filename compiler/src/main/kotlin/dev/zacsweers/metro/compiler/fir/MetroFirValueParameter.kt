@@ -29,6 +29,7 @@ internal interface MetroFirValueParameter {
       name: Name? = null,
       memberKey: Name? = null,
       wrapInProvider: Boolean = false,
+      stripLazyIfWrappedInProvider: Boolean = false,
     ): MetroFirValueParameter =
       object : MetroFirValueParameter {
         override val symbol = symbol
@@ -53,10 +54,14 @@ internal interface MetroFirValueParameter {
          * phase.
          */
         private val contextKeyLazy = memoize {
-          FirContextualTypeKey.from(session, symbol, wrapInProvider = wrapInProvider)
+          FirContextualTypeKey.from(
+            session,
+            symbol,
+            wrapInProvider = wrapInProvider,
+            stripLazyIfWrappedInProvider = stripLazyIfWrappedInProvider,
+          )
         }
-        override val contextKey
-          get() = contextKeyLazy.value
+        override val contextKey by contextKeyLazy
 
         override fun toString(): String {
           return buildString {
