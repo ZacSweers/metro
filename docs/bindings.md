@@ -214,9 +214,10 @@ then in the optionally included module:
 ```kotlin
 // Dependency of the src/debug source set
 @Inject
+@ContributesBinding(AppScope::class) // Standard binding
+// Add a nullable binding so it can satisfy the nullable injection
+// in the consuming project when present on the classpath
 @ContributesBinding(AppScope::class, binding = binding<OptionalRepository?>())
-// If you also want it to be available as non nullable
-@ContributesBinding(AppScope::class, binding = binding<OptionalRepository>())
 class OptionalRepositoryImpl : OptionalRepository
 ```
 
