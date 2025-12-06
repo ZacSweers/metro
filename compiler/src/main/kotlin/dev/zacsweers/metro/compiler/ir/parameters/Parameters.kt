@@ -11,8 +11,10 @@ import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.NOOP_TYPE_REMAPPER
 import dev.zacsweers.metro.compiler.ir.contextParameters
 import dev.zacsweers.metro.compiler.ir.extensionReceiverParameterCompat
+import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.memoize
+import org.jetbrains.kotlin.descriptors.isObject
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrParameterKind
@@ -242,14 +244,18 @@ internal class Parameters(
 }
 
 context(context: IrMetroContext)
-internal fun IrFunction.parameters(remapper: TypeRemapper = NOOP_TYPE_REMAPPER): Parameters {
+internal fun IrFunction.parameters(
+  remapper: TypeRemapper = NOOP_TYPE_REMAPPER,
+  includeObjectDispatchReceivers: Boolean = false,
+): Parameters {
   return Parameters(
     callableId = callableId,
     instance =
-      dispatchReceiverParameter?.toConstructorParameter(
-        IrParameterKind.DispatchReceiver,
-        remapper = remapper,
-      ),
+      dispatchReceiverParameter
+        ?.takeUnless {
+          !includeObjectDispatchReceivers && (it.type.rawTypeOrNull()?.kind?.isObject == true)
+        }
+        ?.toConstructorParameter(IrParameterKind.DispatchReceiver, remapper = remapper),
     extensionReceiver =
       extensionReceiverParameterCompat?.toConstructorParameter(
         IrParameterKind.ExtensionReceiver,
