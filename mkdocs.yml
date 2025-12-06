@@ -11,6 +11,7 @@
 site_name: Metro
 repo_name: Metro
 repo_url: https://github.com/ZacSweers/metro
+edit_uri: edit/main/docs/
 site_url: https://zacsweers.github.io/metro/
 site_description: "A multiplatform dependency injection framework for Kotlin"
 site_author: Zac Sweers
