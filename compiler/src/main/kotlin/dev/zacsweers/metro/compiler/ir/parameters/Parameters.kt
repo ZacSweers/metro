@@ -70,6 +70,24 @@ internal class Parameters(
     }
   }
 
+  fun copy(
+    callableId: CallableId = this.callableId,
+    dispatchReceiverParameter: Parameter? = this.dispatchReceiverParameter,
+    extensionReceiverParameter: Parameter? = this.extensionReceiverParameter,
+    regularParameters: List<Parameter> = this.regularParameters,
+    contextParameters: List<Parameter> = this.contextParameters,
+    ir: IrFunction? = this.ir,
+  ): Parameters {
+    return Parameters(
+      callableId,
+      dispatchReceiverParameter,
+      extensionReceiverParameter,
+      regularParameters,
+      contextParameters,
+      ir,
+    )
+  }
+
   val parametersMap by memoize { allParameters.associateBy { it.name } }
 
   operator fun get(name: Name): Parameter? = parametersMap[name]
