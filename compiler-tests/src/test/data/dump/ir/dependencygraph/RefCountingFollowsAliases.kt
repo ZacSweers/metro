@@ -9,10 +9,10 @@ interface Foo
 class FooImpl : Foo
 
 @Inject
-class BarA(val foo: Foo)
+class BarA(val foo: Provider<Foo>)
 
 @Inject
-class BarB(val foo: Foo)
+class BarB(val foo: Provider<Foo>)
 
 // Multi-level alias chain: Baz -> BazMiddle -> BazImpl
 interface Baz
@@ -24,14 +24,14 @@ interface BazMiddle : Baz
 class BazImpl : BazMiddle
 
 @Inject
-class QuxA(val baz: Baz)
+class QuxA(val baz: Provider<Baz>)
 
 @Inject
-class QuxB(val baz: Baz)
+class QuxB(val baz: Provider<Baz>)
 
 @Inject
 @SingleIn(AppScope::class)
-class Main(val barA: BarA, val barB: BarB, val quxA: QuxA, val quxB: QuxB)
+class Main(val barA: Provider<BarA>, val barB: Provider<BarB>, val quxA: Provider<QuxA>, val quxB: Provider<QuxB>)
 
 @DependencyGraph(AppScope::class)
 interface AppGraph {

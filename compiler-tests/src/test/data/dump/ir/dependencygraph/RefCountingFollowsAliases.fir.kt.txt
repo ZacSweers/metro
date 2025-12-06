@@ -1,6 +1,6 @@
 @Inject
 class BarA {
-  val foo: Foo
+  val foo: Provider<Foo>
     field = foo
     get
 
@@ -18,7 +18,7 @@ class BarA {
         return MetroFactory(foo = foo)
       }
 
-      fun newInstance(foo: Foo): BarA {
+      fun newInstance(foo: Provider<Foo>): BarA {
         return BarA(foo = foo)
       }
 
@@ -31,16 +31,16 @@ class BarA {
     }
 
     override operator fun invoke(): BarA {
-      return Companion.newInstance(foo = <this>.#foo.invoke())
+      return Companion.newInstance(foo = <this>.#foo)
     }
 
-    fun mirrorFunction(foo: Foo): BarA {
+    fun mirrorFunction(foo: Provider<Foo>): BarA {
       return error(message = "Never called")
     }
 
   }
 
-  constructor(foo: Foo) /* primary */ {
+  constructor(foo: Provider<Foo>) /* primary */ {
     super/*Any*/()
     /* <init>() */
 
@@ -50,7 +50,7 @@ class BarA {
 
 @Inject
 class BarB {
-  val foo: Foo
+  val foo: Provider<Foo>
     field = foo
     get
 
@@ -68,7 +68,7 @@ class BarB {
         return MetroFactory(foo = foo)
       }
 
-      fun newInstance(foo: Foo): BarB {
+      fun newInstance(foo: Provider<Foo>): BarB {
         return BarB(foo = foo)
       }
 
@@ -81,16 +81,16 @@ class BarB {
     }
 
     override operator fun invoke(): BarB {
-      return Companion.newInstance(foo = <this>.#foo.invoke())
+      return Companion.newInstance(foo = <this>.#foo)
     }
 
-    fun mirrorFunction(foo: Foo): BarB {
+    fun mirrorFunction(foo: Provider<Foo>): BarB {
       return error(message = "Never called")
     }
 
   }
 
-  constructor(foo: Foo) /* primary */ {
+  constructor(foo: Provider<Foo>) /* primary */ {
     super/*Any*/()
     /* <init>() */
 
@@ -219,19 +219,19 @@ class FooImpl : Foo {
 @Inject
 @SingleIn(scope = AppScope::class)
 class Main {
-  val barA: BarA
+  val barA: Provider<BarA>
     field = barA
     get
 
-  val barB: BarB
+  val barB: Provider<BarB>
     field = barB
     get
 
-  val quxA: QuxA
+  val quxA: Provider<QuxA>
     field = quxA
     get
 
-  val quxB: QuxB
+  val quxB: Provider<QuxB>
     field = quxB
     get
 
@@ -252,7 +252,7 @@ class Main {
         return MetroFactory(barA = barA, barB = barB, quxA = quxA, quxB = quxB)
       }
 
-      fun newInstance(barA: BarA, barB: BarB, quxA: QuxA, quxB: QuxB): Main {
+      fun newInstance(barA: Provider<BarA>, barB: Provider<BarB>, quxA: Provider<QuxA>, quxB: Provider<QuxB>): Main {
         return Main(barA = barA, barB = barB, quxA = quxA, quxB = quxB)
       }
 
@@ -265,17 +265,17 @@ class Main {
     }
 
     override operator fun invoke(): Main {
-      return Companion.newInstance(barA = <this>.#barA.invoke(), barB = <this>.#barB.invoke(), quxA = <this>.#quxA.invoke(), quxB = <this>.#quxB.invoke())
+      return Companion.newInstance(barA = <this>.#barA, barB = <this>.#barB, quxA = <this>.#quxA, quxB = <this>.#quxB)
     }
 
     @SingleIn(scope = AppScope::class)
-    fun mirrorFunction(barA: BarA, barB: BarB, quxA: QuxA, quxB: QuxB): Main {
+    fun mirrorFunction(barA: Provider<BarA>, barB: Provider<BarB>, quxA: Provider<QuxA>, quxB: Provider<QuxB>): Main {
       return error(message = "Never called")
     }
 
   }
 
-  constructor(barA: BarA, barB: BarB, quxA: QuxA, quxB: QuxB) /* primary */ {
+  constructor(barA: Provider<BarA>, barB: Provider<BarB>, quxA: Provider<QuxA>, quxB: Provider<QuxB>) /* primary */ {
     super/*Any*/()
     /* <init>() */
 
@@ -285,7 +285,7 @@ class Main {
 
 @Inject
 class QuxA {
-  val baz: Baz
+  val baz: Provider<Baz>
     field = baz
     get
 
@@ -303,7 +303,7 @@ class QuxA {
         return MetroFactory(baz = baz)
       }
 
-      fun newInstance(baz: Baz): QuxA {
+      fun newInstance(baz: Provider<Baz>): QuxA {
         return QuxA(baz = baz)
       }
 
@@ -316,16 +316,16 @@ class QuxA {
     }
 
     override operator fun invoke(): QuxA {
-      return Companion.newInstance(baz = <this>.#baz.invoke())
+      return Companion.newInstance(baz = <this>.#baz)
     }
 
-    fun mirrorFunction(baz: Baz): QuxA {
+    fun mirrorFunction(baz: Provider<Baz>): QuxA {
       return error(message = "Never called")
     }
 
   }
 
-  constructor(baz: Baz) /* primary */ {
+  constructor(baz: Provider<Baz>) /* primary */ {
     super/*Any*/()
     /* <init>() */
 
@@ -335,7 +335,7 @@ class QuxA {
 
 @Inject
 class QuxB {
-  val baz: Baz
+  val baz: Provider<Baz>
     field = baz
     get
 
@@ -353,7 +353,7 @@ class QuxB {
         return MetroFactory(baz = baz)
       }
 
-      fun newInstance(baz: Baz): QuxB {
+      fun newInstance(baz: Provider<Baz>): QuxB {
         return QuxB(baz = baz)
       }
 
@@ -366,16 +366,16 @@ class QuxB {
     }
 
     override operator fun invoke(): QuxB {
-      return Companion.newInstance(baz = <this>.#baz.invoke())
+      return Companion.newInstance(baz = <this>.#baz)
     }
 
-    fun mirrorFunction(baz: Baz): QuxB {
+    fun mirrorFunction(baz: Provider<Baz>): QuxB {
       return error(message = "Never called")
     }
 
   }
 
-  constructor(baz: Baz) /* primary */ {
+  constructor(baz: Provider<Baz>) /* primary */ {
     super/*Any*/()
     /* <init>() */
 
@@ -394,7 +394,7 @@ interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope {
     }
 
     @Binds
-    @CallableMetadata(callableName = "bindBaz", propertyName = "", startOffset = 736, endOffset = 769)
+    @CallableMetadata(callableName = "bindBaz", propertyName = "", startOffset = 816, endOffset = 849)
     abstract fun bindBaz(impl: BazMiddle): Baz
 
   }
