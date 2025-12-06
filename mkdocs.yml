@@ -43,6 +43,8 @@ theme:
   features:
     - content.code.copy
     - content.code.select
+    - content.action.edit
+    - content.action.view
   # Custom dir for theme overrides (eg. custom 404 page)
   # - https://squidfunk.github.io/mkdocs-material/customization/
   custom_dir: 'docs/site-assets/overrides'
