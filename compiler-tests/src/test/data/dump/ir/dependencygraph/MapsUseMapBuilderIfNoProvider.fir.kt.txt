@@ -43,7 +43,7 @@ interface AppGraph {
     private val mapOfIntToInt: Map<Int, Int>
       private get(): Map<Int, Int> {
         return buildMap<Int, Int>(capacity = 1, builderAction = local fun MutableMap<Int, Int>.<anonymous>() {
-          $receiver.put(key = 3, value = Companion.create(instance = <this>.#thisGraphInstance).invoke())
+          $receiver.put(key = 3, value = Companion.provideInt(instance = <this>.#thisGraphInstance))
         }
 )
       }

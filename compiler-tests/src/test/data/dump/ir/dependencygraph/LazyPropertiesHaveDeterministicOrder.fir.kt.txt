@@ -24,9 +24,6 @@ interface AppGraph {
     private val thisGraphInstanceProvider: Provider<AppGraph>
       field = Companion.invoke<AppGraph>(value = <this>.#thisGraphInstance)
 
-    private val provideIntProvider: Provider<Int>
-      field = Companion.create(instance = <this>.#thisGraphInstance)
-
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -38,16 +35,6 @@ interface AppGraph {
     override fun Int.bindInt(): Int {
       return error(message = "Never called")
     }
-
-    private val bindDoubleProvider: Provider<Double>
-      private get(): Provider<Double> {
-        return Companion.create(instance = <this>.#thisGraphInstance, int = <this>.#provideIntProvider)
-      }
-
-    private val bindLongProvider: Provider<Long>
-      private get(): Provider<Long> {
-        return Companion.create(instance = <this>.#thisGraphInstance, int = <this>.#provideIntProvider)
-      }
 
     override val doubleSet: Set<Double>
       override get(): Set<Double> {
@@ -66,17 +53,17 @@ interface AppGraph {
 
     private val setOfDouble: Set<Double>
       private get(): Set<Double> {
-        return setOf<Double>(element = <this>.<get-bindDoubleProvider>().invoke())
+        return setOf<Double>(element = Companion.bindDouble(instance = <this>.#thisGraphInstance, int = Companion.provideInt(instance = <this>.#thisGraphInstance)))
       }
 
     private val setOfInt: Set<Int>
       private get(): Set<Int> {
-        return setOf<Int>(element = <this>.#provideIntProvider.invoke())
+        return setOf<Int>(element = Companion.provideInt(instance = <this>.#thisGraphInstance))
       }
 
     private val setOfLong: Set<Long>
       private get(): Set<Long> {
-        return setOf<Long>(element = <this>.<get-bindLongProvider>().invoke())
+        return setOf<Long>(element = Companion.bindLong(instance = <this>.#thisGraphInstance, int = Companion.provideInt(instance = <this>.#thisGraphInstance)))
       }
 
   }

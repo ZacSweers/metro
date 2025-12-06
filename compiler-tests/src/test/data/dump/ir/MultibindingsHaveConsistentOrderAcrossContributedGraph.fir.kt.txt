@@ -132,22 +132,12 @@ interface ExampleGraph : MetroContributionToAppScope {
       private val setOfTask: Set<Task>
         private get(): Set<Task> {
           return buildSet<Task>(capacity = 4, builderAction = local fun MutableSet<Task>.<anonymous>() {
-            $receiver.add(element = Companion.create(instance = <this>).invoke())
-            $receiver.add(element = Companion.create(instance = <this>).invoke())
-            $receiver.add(element = <this>.<get-taskImpl1Provider>().invoke())
-            $receiver.add(element = <this>.<get-taskImpl2Provider>().invoke())
+            $receiver.add(element = Companion.provide4(instance = <this>))
+            $receiver.add(element = Companion.provide3(instance = <this>))
+            $receiver.add(element = TaskImpl1())
+            $receiver.add(element = TaskImpl2())
           }
 )
-        }
-
-      private val taskImpl1Provider: Provider<TaskImpl1>
-        private get(): Provider<TaskImpl1> {
-          return MetroFactory.create()
-        }
-
-      private val taskImpl2Provider: Provider<TaskImpl2>
-        private get(): Provider<TaskImpl2> {
-          return MetroFactory.create()
         }
 
       override val tasksFromParent: Set<Task>
@@ -184,22 +174,12 @@ interface ExampleGraph : MetroContributionToAppScope {
     private val setOfTask: Set<Task>
       private get(): Set<Task> {
         return buildSet<Task>(capacity = 4, builderAction = local fun MutableSet<Task>.<anonymous>() {
-          $receiver.add(element = Companion.create(instance = <this>.#thisGraphInstance).invoke())
-          $receiver.add(element = Companion.create(instance = <this>.#thisGraphInstance).invoke())
-          $receiver.add(element = <this>.<get-taskImpl1Provider>().invoke())
-          $receiver.add(element = <this>.<get-taskImpl2Provider>().invoke())
+          $receiver.add(element = Companion.provide4(instance = <this>.#thisGraphInstance))
+          $receiver.add(element = Companion.provide3(instance = <this>.#thisGraphInstance))
+          $receiver.add(element = TaskImpl1())
+          $receiver.add(element = TaskImpl2())
         }
 )
-      }
-
-    private val taskImpl1Provider: Provider<TaskImpl1>
-      private get(): Provider<TaskImpl1> {
-        return MetroFactory.create()
-      }
-
-    private val taskImpl2Provider: Provider<TaskImpl2>
-      private get(): Provider<TaskImpl2> {
-        return MetroFactory.create()
       }
 
     override val tasks: Set<Task>

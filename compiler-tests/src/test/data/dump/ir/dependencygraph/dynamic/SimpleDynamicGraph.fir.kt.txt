@@ -16,7 +16,7 @@ class Example {
 
     override val int: Int
       override get(): Int {
-        return Companion.create(instance = <this>.#container0InstanceProvider.invoke()).invoke()
+        return Companion.provideInt(instance = <this>.#container0InstanceProvider.invoke())
       }
 
   }
@@ -109,7 +109,7 @@ interface AppGraph {
 
     override val int: Int
       override get(): Int {
-        return Companion.create(instance = <this>.#thisGraphInstance).invoke()
+        return Companion.provideInt(instance = <this>.#thisGraphInstance)
       }
 
   }

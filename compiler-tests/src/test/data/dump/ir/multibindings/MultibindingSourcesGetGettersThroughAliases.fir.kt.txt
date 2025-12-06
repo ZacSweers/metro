@@ -114,11 +114,6 @@ interface AppGraph {
 
     }
 
-    private val barProvider: Provider<Bar>
-      private get(): Provider<Bar> {
-        return MetroFactory.create()
-      }
-
     @Binds
     @IntoSet
     override val Foo.bind: Any
@@ -139,16 +134,11 @@ interface AppGraph {
         return error(message = "Never called")
       }
 
-    private val fooProvider: Provider<Foo>
-      private get(): Provider<Foo> {
-        return MetroFactory.create()
-      }
-
     private val setOfAny: Set<Any>
       private get(): Set<Any> {
         return buildSet<Any>(capacity = 2, builderAction = local fun MutableSet<Any>.<anonymous>() {
-          $receiver.add(element = <this>.<get-fooProvider>().invoke())
-          $receiver.add(element = <this>.<get-barProvider>().invoke())
+          $receiver.add(element = Foo())
+          $receiver.add(element = Bar())
         }
 )
       }
@@ -192,3 +182,4 @@ interface AppGraph {
     abstract get
 
 }
+

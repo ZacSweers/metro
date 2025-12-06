@@ -49,9 +49,6 @@ interface AppGraph {
     private val thisGraphInstanceProvider: Provider<AppGraph>
       field = Companion.invoke<AppGraph>(value = <this>.#thisGraphInstance)
 
-    private val intHolderProvider: Provider<IntHolder>
-      field = MetroFactory.create()
-
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -60,12 +57,12 @@ interface AppGraph {
 
     override val long: Long
       override get(): Long {
-        return Companion.create(instance = <this>.#thisGraphInstance, holder = <this>.#intHolderProvider).invoke()
+        return Companion.provideLong(instance = <this>.#thisGraphInstance, holder = IntHolder())
       }
 
     override val string: String
       override get(): String {
-        return Companion.create(instance = <this>.#thisGraphInstance, holder = <this>.#intHolderProvider).invoke()
+        return Companion.provideString(instance = <this>.#thisGraphInstance, holder = IntHolder())
       }
 
   }

@@ -21,7 +21,7 @@ interface AppGraph {
     override val intProvider: Provider<Optional<Int>>
       override get(): Provider<Optional<Int>> {
         return provider<Optional<Int>>(provider = local fun <anonymous>(): Optional<Int> {
-          return of<Int>(p0 = Companion.create(instance = <this>.#thisGraphInstance).invoke())
+          return of<Int>(p0 = Companion.provideInt(instance = <this>.#thisGraphInstance))
         }
 )
       }

@@ -123,6 +123,7 @@ interface TestGraph {
 
       fun initialize() {
         <this>.#service1Provider = Companion.provider<Provider<Service1>, Service1>(delegate = MetroFactory.create())
+        <this>.#provideService2Provider = Companion.provider<Provider<Service2>, Service2>(delegate = Companion.create(s1 = <this>.#service1Provider))
       }
 
     }
@@ -135,7 +136,6 @@ interface TestGraph {
       }
 
       fun initialize() {
-        <this>.#provideService2Provider = Companion.provider<Provider<Service2>, Service2>(delegate = Companion.create(s1 = <this>.#service1Provider))
         <this>.#service3Provider = Companion.provider<Provider<Service3>, Service3>(delegate = Companion.create(s2 = <this>.#provideService2Provider))
       }
 

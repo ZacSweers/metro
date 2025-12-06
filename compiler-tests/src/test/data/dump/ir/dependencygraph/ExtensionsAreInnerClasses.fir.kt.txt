@@ -22,7 +22,7 @@ interface AppGraph : Factory {
 
       override val count: Int
         override get(): Int {
-          return Companion.create(instance = <this>).invoke()
+          return Companion.provideCount(instance = <this>)
         }
 
       override val id: String

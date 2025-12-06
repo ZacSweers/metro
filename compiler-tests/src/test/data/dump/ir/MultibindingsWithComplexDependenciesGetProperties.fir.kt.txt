@@ -20,14 +20,9 @@ interface AppGraph {
         return <this>.<get-setOfInt>()
       }
 
-    private val provideIntProvider: Provider<Int>
-      private get(): Provider<Int> {
-        return Companion.create(instance = <this>.#thisGraphInstance, string = Companion.create(instance = <this>.#thisGraphInstance))
-      }
-
     private val setOfInt: Set<Int>
       private get(): Set<Int> {
-        return setOf<Int>(element = <this>.<get-provideIntProvider>().invoke())
+        return setOf<Int>(element = Companion.provideInt(instance = <this>.#thisGraphInstance, string = Companion.provideString(instance = <this>.#thisGraphInstance)))
       }
 
   }
