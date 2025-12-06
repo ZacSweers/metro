@@ -6,6 +6,7 @@ Changelog
 
 - **New**: Experimental support for sharding large graphs. For extremely large dependency graphs on the JVM, their generated implementations could exceed the JVM class size limit. To avoid this, Metro now supports sharding within graphs (as needed) to distribute initialization code across multiple inner _shard_ classes. This is currently disabled by default but can be enabled via the `enableGraphSharding` Gradle DSL property.
 - **Enhancement**: Avoid unnecessary intermediate `Provider` instance allocations during graph expression gen. This means that when a direct type is requested in code gen, Metro will skip instantiating the intermediate `MetroFactory` instance if possible, avoiding unnecessary allocations.
+- **Enhancement**: Don't always generate accessors for multibinding contributors. This is no longer necessary now that we also avoid provider instance allocations, and should significantly reduce generated method counts if using a lot of multibindings.
 - **Fix**: Fix `newInstance()` args not stripping `Lazy` in top-level function inject classes.
 
 0.8.2

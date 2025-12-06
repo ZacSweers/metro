@@ -8,47 +8,21 @@ import dev.zacsweers.metro.compiler.reportCompilerBug
 
 private const val INITIAL_VALUE = 512
 
-/** Computes the set of bindings that must end up in properties. */
-internal class BindingPropertyCollector(private val graph: IrBindingGraph) {
+/**
+ * Computes the set of bindings that must end up in properties.
+ *
+ * Uses reverse topological order to correctly handle second-order effects: if a binding gets a
+ * property (from refcount), it uses the factory path, which means its dependencies are accessed as
+ * providers and should be counted.
+ */
+internal class BindingPropertyCollector(
+  private val graph: IrBindingGraph,
+  private val sortedKeys: List<IrTypeKey>,
+) {
 
   data class CollectedProperty(val binding: IrBinding, val propertyType: PropertyType)
 
-  private data class Node(val binding: IrBinding, var refCount: Int = 0) {
-    val propertyType: PropertyType?
-      get() {
-        // Scoped, graph, and members injector bindings always need provider fields
-        if (binding.isScoped()) return PropertyType.FIELD
-
-        when (binding) {
-          is IrBinding.GraphDependency,
-          // Assisted types always need to be a single field to ensure use of the same provider
-          is IrBinding.Assisted -> return PropertyType.FIELD
-          is IrBinding.ConstructorInjected if binding.isAssisted -> return PropertyType.FIELD
-          // Multibindings are always created adhoc, but we create their properties lazily
-          is IrBinding.Multibinding -> return null
-          else -> {
-            // Do nothing
-          }
-        }
-
-        return if (refCount >= 2) {
-          // If it's unscoped but used more than once, we can generate a reusable field
-          PropertyType.FIELD
-        } else if (binding.isIntoMultibinding && !binding.hasSimpleDependencies) {
-          // If it's into a multibinding with dependencies, extract a getter to reduce code
-          // boilerplate
-          PropertyType.GETTER
-        } else {
-          null
-        }
-      }
-
-    /** @return true if we've referenced this binding before. */
-    fun mark(): Boolean {
-      refCount++
-      return refCount > 1
-    }
-  }
+  private data class Node(val binding: IrBinding, var refCount: Int = 0)
 
   private val nodes = HashMap<IrTypeKey, Node>(INITIAL_VALUE)
 
@@ -56,75 +30,95 @@ internal class BindingPropertyCollector(private val graph: IrBindingGraph) {
   private val resolvedAliasTargets = HashMap<IrTypeKey, IrTypeKey>()
 
   fun collect(): Map<IrTypeKey, CollectedProperty> {
-    val inlineableIntoMultibinding = mutableSetOf<IrTypeKey>()
+    val result = mutableMapOf<IrTypeKey, CollectedProperty>()
 
+    // TODO squish this to a single-pass
+    // First pass: initialize nodes and eagerly add static property bindings
     for ((key, binding) in graph.bindingsSnapshot()) {
-      // Ensure each key has a node
       nodes.getOrPut(key) { Node(binding) }
 
-      // For non-alias bindings, mark dependencies normally.
-      // For alias bindings, skip marking dependencies here - the alias's target will be
-      // marked when something depends on this alias (via resolveAliasTarget below).
-      if (binding !is IrBinding.Alias) {
-        for (dependency in binding.dependencies) {
-          dependency.mark()
-        }
-      }
-
-      // Find all bindings that are directly or transitively aliased into multibindings.
-      // These need properties to avoid inlining their dependency trees at the multibinding call
-      // site.
-      if (
-        binding is IrBinding.Alias && binding.isIntoMultibinding && !binding.hasSimpleDependencies
-      ) {
-        resolveAliasTarget(binding.aliasedType)?.let(inlineableIntoMultibinding::add)
+      val staticPropertyType = staticPropertyType(key, binding)
+      if (staticPropertyType != null) {
+        result[key] = CollectedProperty(binding, staticPropertyType)
       }
     }
 
-    // Decide which bindings actually need provider fields
-    return buildMap(nodes.size) {
-      for ((key, node) in nodes) {
-        val propertyType =
-          // If we've reserved a property for this key already, defer to that because some extension
-          // is expecting it
-          graph.reservedProperty(key)?.let {
-            when {
-              it.property.getter != null -> PropertyType.GETTER
-              it.property.backingField != null -> PropertyType.FIELD
-              else -> reportCompilerBug("No getter or backing field for reserved property")
-            }
-          }
-            ?: node.propertyType
-            // If no property from normal logic, but it's inlineable into a multibinding, use GETTER
-            ?: if (key in inlineableIntoMultibinding) PropertyType.GETTER else continue
-        put(key, CollectedProperty(node.binding, propertyType))
+    // Second pass: reverse topological order (dependents before dependencies)
+    // When we process a binding, all its dependents have already been processed,
+    // so its refCount is finalized.
+    for (key in sortedKeys.asReversed()) {
+      val binding = graph.findBinding(key) ?: continue
+      if (binding is IrBinding.Alias) continue
+
+      val node = nodes[key] ?: continue
+
+      // refCount is finalized - check if needs property from refcount
+      if (key !in result && node.refCount >= 2) {
+        result[key] = CollectedProperty(binding, PropertyType.FIELD)
       }
+
+      // Uses factory path if it has a property (scoped, assisted, or refcount >= 2)
+      val usesFactoryPath = key in result
+
+      // Mark dependencies as provider accesses if:
+      // 1. Explicitly Provider<T> or Lazy<T>
+      // 2. OR this binding uses factory path (factory.create() takes Provider params)
+      for (dependency in binding.dependencies) {
+        if (dependency.requiresProviderInstance || usesFactoryPath) {
+          markProviderAccess(dependency)
+        }
+      }
+    }
+
+    return result
+  }
+
+  /**
+   * Returns the property type for bindings that statically require properties, or null if the
+   * binding's property requirement depends on refcount.
+   */
+  private fun staticPropertyType(key: IrTypeKey, binding: IrBinding): PropertyType? {
+    // Check reserved properties first
+    graph.reservedProperty(key)?.let { reserved ->
+      return when {
+        reserved.property.getter != null -> PropertyType.GETTER
+        reserved.property.backingField != null -> PropertyType.FIELD
+        else -> reportCompilerBug("No getter or backing field for reserved property")
+      }
+    }
+
+    // Scoped bindings always need provider fields (for DoubleCheck)
+    if (binding.isScoped()) return PropertyType.FIELD
+
+    return when (binding) {
+      // Graph dependencies always need fields
+      is IrBinding.GraphDependency -> PropertyType.FIELD
+      // Assisted types always need to be a single field to ensure use of the same provider
+      is IrBinding.Assisted -> PropertyType.FIELD
+      // Assisted inject factories use factory path
+      is IrBinding.ConstructorInjected if binding.isAssisted -> PropertyType.FIELD
+      // Multibindings are always created adhoc, but we create their properties lazily
+      is IrBinding.Multibinding -> null
+      else -> null
     }
   }
 
   /**
-   * Marks a dependency, resolving through alias chains to mark the final non-alias target. This
-   * ensures that if Foo (alias → FooImpl) is referenced N times, FooImpl gets refCount=N.
+   * Marks a dependency as a provider access, resolving through alias chains to mark the final
+   * non-alias target.
    */
-  private fun IrContextualTypeKey.mark(): Boolean {
-    val binding = graph.requireBinding(this)
+  private fun markProviderAccess(contextualTypeKey: IrContextualTypeKey) {
+    val binding = graph.requireBinding(contextualTypeKey)
 
     // For aliases, resolve to the final target and mark that instead.
-    // This avoids double-counting (once via alias dependency, once via external reference)
-    // while ensuring the actual implementation gets the correct ref count.
-    if (binding is IrBinding.Alias && binding.typeKey != binding.aliasedType) {
-      val targetKey = resolveAliasTarget(binding.aliasedType) ?: return false
-      val targetBinding = graph.findBinding(targetKey) ?: return false
-      val targetNode = nodes.getOrPut(targetKey) { Node(targetBinding) }
-      return targetNode.mark()
-    }
+    val targetKey =
+      if (binding is IrBinding.Alias && binding.typeKey != binding.aliasedType) {
+        resolveAliasTarget(binding.aliasedType) ?: return
+      } else {
+        binding.typeKey
+      }
 
-    return binding.mark()
-  }
-
-  private fun IrBinding.mark(): Boolean {
-    val node = nodes.getOrPut(typeKey) { Node(this) }
-    return node.mark()
+    nodes[targetKey]?.refCount++
   }
 
   /** Resolves an alias chain to its final non-alias target, caching all intermediate keys. */
@@ -150,26 +144,3 @@ internal class BindingPropertyCollector(private val graph: IrBindingGraph) {
     return target
   }
 }
-
-private val IrBinding.hasSimpleDependencies: Boolean
-  get() {
-    return when (this) {
-      is IrBinding.Absent -> false
-      // Only one dependency that's always a field
-      is IrBinding.Assisted -> true
-      is IrBinding.ObjectClass -> true
-      is IrBinding.BoundInstance -> true
-      is IrBinding.GraphDependency -> true
-      // Standard types with actual dependencies
-      is IrBinding.ConstructorInjected -> dependencies.isEmpty()
-      is IrBinding.Provided -> parameters.nonDispatchParameters.isEmpty()
-      is IrBinding.MembersInjected -> dependencies.isEmpty()
-      is IrBinding.Multibinding -> sourceBindings.isEmpty()
-      // False because we don't know about the targets
-      is IrBinding.Alias -> false
-      is IrBinding.CustomWrapper -> false
-      // TODO maybe?
-      is IrBinding.GraphExtension -> false
-      is IrBinding.GraphExtensionFactory -> false
-    }
-  }

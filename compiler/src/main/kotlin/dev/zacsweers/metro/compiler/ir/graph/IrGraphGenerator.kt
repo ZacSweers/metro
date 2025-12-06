@@ -405,7 +405,8 @@ internal class IrGraphGenerator(
       // Collect bindings and their dependencies for provider property ordering
       val initOrder =
         parentTracer.traceNested("Collect bindings") {
-          val collectedProperties = BindingPropertyCollector(bindingGraph).collect()
+          val collectedProperties =
+            BindingPropertyCollector(bindingGraph, sealResult.sortedKeys).collect()
           buildList(collectedProperties.size) {
             for (key in sealResult.sortedKeys) {
               if (key in sealResult.reachableKeys) {
