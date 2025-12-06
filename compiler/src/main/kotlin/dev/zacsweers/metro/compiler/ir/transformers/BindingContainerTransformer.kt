@@ -17,6 +17,7 @@ import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsIn
+import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.dispatchReceiverFor
@@ -91,6 +92,7 @@ import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.isFakeOverride
+import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isPropertyAccessor
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -369,7 +371,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
 
     val providerFactory =
       ProviderFactory(
-        sourceTypeKey = reference.typeKey,
+        contextKey = IrContextualTypeKey.from(mirrorFunction),
         clazz = factoryCls,
         mirrorFunction = mirrorFunction,
         sourceAnnotations = reference.annotations,
@@ -738,8 +740,25 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
           )
         }
 
-    val typeKey = IrTypeKey(factoryType.requireSimpleType(factoryCls).arguments.first().typeOrFail)
-    return ProviderFactory(typeKey, factoryCls, mirrorFunction, sourceAnnotations, callableMetadata)
+    val contextKey =
+      factoryType
+        .requireSimpleType(factoryCls)
+        .arguments
+        .first()
+        .typeOrFail
+        .asContextualTypeKey(
+          qualifierAnnotation = sourceAnnotations.qualifier,
+          hasDefault = false,
+          patchMutableCollections = factoryCls.isFromJava(),
+          declaration = callableMetadata.function,
+        )
+    return ProviderFactory(
+      contextKey,
+      factoryCls,
+      mirrorFunction,
+      sourceAnnotations,
+      callableMetadata,
+    )
   }
 
   private fun loadExternalBindingContainer(
@@ -788,20 +807,20 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
             ) {
               val isProperty = decl is IrProperty
               val callableId: CallableId
-              val typeKey: IrTypeKey
+              val contextKey: IrContextualTypeKey
               val parameters: Parameters
               val function: IrFunction
               when (decl) {
                 is IrProperty -> {
                   callableId = decl.callableId
-                  typeKey = IrContextualTypeKey.from(decl.getter!!).typeKey
+                  contextKey = IrContextualTypeKey.from(decl.getter!!)
                   parameters =
                     if (annotations.isBinds) Parameters.empty() else decl.getter!!.parameters()
                   function = decl.getter!!
                 }
                 is IrSimpleFunction -> {
                   callableId = decl.callableId
-                  typeKey = IrContextualTypeKey.from(decl).typeKey
+                  contextKey = IrContextualTypeKey.from(decl)
                   parameters = if (annotations.isBinds) Parameters.empty() else decl.parameters()
                   function = decl
                 }
@@ -823,12 +842,15 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
                   )
                   return null
                 }
-                val transformedTypeKey = typeKey.transformMultiboundQualifier(annotations)
+                val transformedTypeKey =
+                  contextKey.typeKey.transformMultiboundQualifier(annotations)
+
                 providerFactories[callableId] =
                   ProviderFactory.Dagger(
                     factoryClass = factoryClass.owner,
                     typeKey = transformedTypeKey,
-                    rawTypeKey = typeKey,
+                    contextualTypeKey = contextKey.withTypeKey(transformedTypeKey),
+                    rawTypeKey = contextKey.typeKey,
                     callableId = callableId,
                     annotations = annotations,
                     parameters = parameters,
