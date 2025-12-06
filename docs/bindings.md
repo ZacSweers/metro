@@ -208,8 +208,10 @@ interface OptionalRepositoryProvider {
   val optionalRepository: OptionalRepository? get() = null
 }
 ```
+
 then in the optionally included module:
 ```kotlin
+// Dependency of the src/debug source set
 @Inject
 @ContributesBinding(AppScope::class, binding = binding<OptionalRepository?>())
 // If you also want it to be available as non nullable
