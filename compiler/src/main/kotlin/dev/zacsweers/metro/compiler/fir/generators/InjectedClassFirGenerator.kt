@@ -403,7 +403,14 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
             function.contextParameterSymbols
               .plus(function.valueParameterSymbols)
               .filterNot { it.isAnnotatedWithAny(session, session.classIds.assistedAnnotations) }
-              .map { MetroFirValueParameter(session, it, wrapInProvider = true) }
+              .map {
+                MetroFirValueParameter(
+                  session,
+                  it,
+                  wrapInProvider = true,
+                  stripLazyIfWrappedInProvider = true,
+                )
+              }
           InjectedClass(classSymbol, true, params, false)
         } else {
           // If the class is annotated with @Inject, look for its primary constructor

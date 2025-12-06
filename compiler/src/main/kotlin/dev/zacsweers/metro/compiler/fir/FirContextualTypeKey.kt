@@ -111,10 +111,17 @@ internal class FirContextualTypeKey(
       callable: FirCallableSymbol<*>,
       type: ConeKotlinType = callable.resolvedTypeSafe(session),
       wrapInProvider: Boolean = false,
+      stripLazyIfWrappedInProvider: Boolean = false,
     ): FirContextualTypeKey {
       return type
         .letIf(wrapInProvider) {
-          it.wrapInProviderIfNecessary(session, Symbols.ClassIds.metroProvider)
+          val toWrap =
+            if (stripLazyIfWrappedInProvider) {
+              it.stripIfLazy(session)
+            } else {
+              it
+            }
+          toWrap.wrapInProviderIfNecessary(session, Symbols.ClassIds.metroProvider)
         }
         .asFirContextualTypeKey(
           session = session,

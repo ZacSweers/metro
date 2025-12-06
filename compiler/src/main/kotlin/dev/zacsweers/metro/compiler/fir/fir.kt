@@ -804,6 +804,18 @@ internal fun ConeTypeProjection.wrapInLazyIfNecessary(
   return lazyClassId.constructClassLikeType(arrayOf(this))
 }
 
+internal fun ConeTypeProjection.stripIfLazy(session: FirSession): ConeTypeProjection {
+  val type = this.type
+  if (type is ConeClassLikeType) {
+    val classId = type.lookupTag.classId
+    if (classId in session.classIds.lazyTypes) {
+      // It's a lazy, return the type arg
+      return type.typeArguments[0]
+    }
+  }
+  return this
+}
+
 internal fun FirClassSymbol<*>.constructType(
   typeParameterRefs: List<FirTypeParameterRef>
 ): ConeClassLikeType {
