@@ -192,6 +192,31 @@ interface ExampleGraph {
 }
 ```
 
+This let's you easily inject dependencies that are only conditionally included:
+```kotlin
+@Inject
+class ExampleUseCase(
+  val optionalRepository: OptionalRepository? = null
+)
+
+interface OptionalRepository
+
+// If you want to expose it to your graph
+@ContributesTo(AppScope::class)
+interface OptionalRepositoryProvider {
+  @OptionalDependency
+  val optionalRepository: OptionalRepository? get() = null
+}
+```
+then in the optionally included module:
+```kotlin
+@Inject
+@ContributesBinding(AppScope::class, binding = binding<OptionalRepository?>())
+// If you also want it to be available as non nullable
+@ContributesBinding(AppScope::class, binding = binding<OptionalRepository>())
+class OptionalRepositoryImpl : OptionalRepository
+```
+
 ??? note "Implementation Notes"
 
     While kotlin-inject can support this by simply invoking functions with omitted arguments, Metro has to support this in generated factories.
