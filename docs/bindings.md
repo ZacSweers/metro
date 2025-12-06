@@ -194,6 +194,7 @@ interface ExampleGraph {
 
 This pattern can be combined with optional bindings to allow for easy conditional injection, for example with optional bindings across different source sets:
 ```kotlin
+// in src/main
 @Inject
 class ExampleUseCase(
   val optionalRepository: OptionalRepository? = null
