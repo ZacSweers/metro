@@ -128,7 +128,9 @@ internal class InjectConstructorTransformer(
               )
           val parameters =
             factoryCls.requireSimpleFunction(Symbols.StringNames.MIRROR_FUNCTION).owner.parameters()
-          val wrapper = ClassFactory.MetroFactory(factoryCls, parameters)
+          // Look up the injectable constructor for direct invocation optimization
+          val externalTargetConstructor = targetConstructor()
+          val wrapper = ClassFactory.MetroFactory(factoryCls, parameters, externalTargetConstructor)
           // If it's from another module, we're done!
           // TODO this doesn't work as expected in KMP, where things compiled in common are seen
           //  as external but no factory is found?
@@ -150,6 +152,7 @@ internal class InjectConstructorTransformer(
               ClassFactory.DaggerFactory(
                 metroContext,
                 daggerFactoryClass,
+                targetConstructor,
                 targetConstructor.parameters(),
               )
             generatedFactories[injectedClassId] = Optional.of(wrapper)
@@ -274,7 +277,8 @@ internal class InjectConstructorTransformer(
     // Write metadata to indicate Metro generated this factory
     cacheFactoryInMetadata(declaration, factoryCls)
 
-    val wrapper = ClassFactory.MetroFactory(factoryCls, mirrorFunction.parameters())
+    val wrapper =
+      ClassFactory.MetroFactory(factoryCls, mirrorFunction.parameters(), targetConstructor)
     generatedFactories[injectedClassId] = Optional.of(wrapper)
     return wrapper
   }
