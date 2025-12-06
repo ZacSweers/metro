@@ -15,6 +15,7 @@ site_url: https://zacsweers.github.io/metro/
 site_description: "A multiplatform dependency injection framework for Kotlin"
 site_author: Zac Sweers
 remote_branch: gh-pages
+edit_uri: edit/main/docs/
 
 copyright: 'Copyright &copy; 2025 Zac Sweers'
 
