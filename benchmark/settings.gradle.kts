@@ -43,6 +43,12 @@ if (metroVersion.isNullOrEmpty()) {
 val generatedProjects = file("generated-projects.txt")
 
 if (generatedProjects.exists()) {
+  // Static startup benchmark modules
+  include(":startup-jvm")
+  include(":startup-android:app")
+  include(":startup-android:benchmark")
+  include(":startup-android:microbenchmark")
+
   for (p in generatedProjects.readLines()) {
     if (p.isBlank()) continue
     include(p)

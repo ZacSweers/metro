@@ -24,6 +24,9 @@ class GenerateProjectsCommand : CliktCommand() {
   private val totalModules by
     option("--count", "-c", help = "Total number of modules to generate").int().default(500)
 
+
+  private val enableSharding get() = totalModules >= 500
+
   private val processor by
     option("--processor", "-p", help = "Annotation processor: ksp or kapt (anvil mode only)")
       .enum<ProcessorMode>(ignoreCase = true)
@@ -344,6 +347,7 @@ $dependencies
 }
 
 metro {
+  enableGraphSharding.set($enableSharding)
   interop {
     includeJavax()
     includeAnvilForDagger()
@@ -905,6 +909,7 @@ application {
 
 metro {
   // reportsDestination.set(layout.buildDirectory.dir("metro"))
+  enableGraphSharding.set($enableSharding)
   interop {
     includeJavax()
     includeAnvilForDagger()
@@ -1055,24 +1060,34 @@ interface AppComponent : ${(0 until (allModules.size / 50 + 1)).joinToString(", 
   // Multibinding accessors
   fun getAllPlugins(): Set<Plugin>
   fun getAllInitializers(): Set<Initializer>
-  
+
   // Multibind declarations
   @Multibinds
   fun bindPlugins(): Set<Plugin>
-  
+
   @Multibinds
   fun bindInitializers(): Set<Initializer>
 }
 
-fun main() {
+/**
+ * Creates and fully initializes the dependency graph.
+ * This is the primary entry point for benchmarking graph creation and initialization.
+ */
+fun createAndInitialize(): AppComponent {
   val graph = createGraph<AppComponent>()
+  // Force full initialization by accessing all multibindings
+  graph.getAllPlugins()
+  graph.getAllInitializers()
+  return graph
+}
+
+fun main() {
+  val graph = createAndInitialize()
   val fields = graph.javaClass.declaredFields.size
   val methods = graph.javaClass.declaredMethods.size
-  
-  // Exercise some accessors to ensure bindings are generated
   val plugins = graph.getAllPlugins()
   val initializers = graph.getAllInitializers()
-  
+
   println("Metro benchmark graph successfully created!")
   println("  - Fields: ${'$'}fields")
   println("  - Methods: ${'$'}methods")
@@ -1104,15 +1119,25 @@ abstract class AppComponent {
   abstract val allInitializers: Set<Initializer>
 }
 
+/**
+ * Creates and fully initializes the dependency graph.
+ * This is the primary entry point for benchmarking graph creation and initialization.
+ */
+fun createAndInitialize(): AppComponent {
+  val graph = AppComponent::class.create()
+  // Force full initialization by accessing all multibindings
+  graph.allPlugins
+  graph.allInitializers
+  return graph
+}
+
 fun main() {
-  val appComponent = AppComponent::class.create()
+  val appComponent = createAndInitialize()
   val fields = appComponent.javaClass.declaredFields.size
   val methods = appComponent.javaClass.declaredMethods.size
-  
-  // Exercise some accessors to ensure bindings are generated
   val plugins = appComponent.allPlugins
   val initializers = appComponent.allInitializers
-  
+
   println("Pure Kotlin-inject-anvil benchmark graph successfully created!")
   println("  - Fields: ${'$'}fields")
   println("  - Methods: ${'$'}methods")
@@ -1154,20 +1179,30 @@ interface AppComponent : ${(0 until (allModules.size / 50 + 1)).joinToString(", 
 interface AppComponentMultibinds {
   @Multibinds
   fun bindPlugins(): Set<Plugin>
-  
+
   @Multibinds
   fun bindInitializers(): Set<Initializer>
 }
 
+/**
+ * Creates and fully initializes the dependency graph.
+ * This is the primary entry point for benchmarking graph creation and initialization.
+ */
+fun createAndInitialize(): AppComponent {
+  val graph = DaggerAppComponent.factory().create()
+  // Force full initialization by accessing all multibindings
+  graph.getAllPlugins()
+  graph.getAllInitializers()
+  return graph
+}
+
 fun main() {
-  val component = DaggerAppComponent.factory().create()
+  val component = createAndInitialize()
   val fields = component.javaClass.declaredFields.size
   val methods = component.javaClass.declaredMethods.size
-  
-  // Exercise some accessors to ensure bindings are generated
   val plugins = component.getAllPlugins()
   val initializers = component.getAllInitializers()
-  
+
   println("Anvil benchmark graph successfully created!")
   println("  - Fields: ${'$'}fields")
   println("  - Methods: ${'$'}methods")

@@ -153,3 +153,68 @@ The benchmark scales proportionally with the module count:
 
 This provides comprehensive testing of Metro's compilation performance, memory usage, and incremental
 compilation behavior across different project scales.
+
+## Startup Benchmarks
+
+In addition to compilation benchmarks, this project includes startup (runtime) benchmarks that measure
+the time to create and initialize Metro dependency graphs. Both JVM and Android benchmarks use the
+same generated `AppComponent` via the `createAndInitialize()` function.
+
+### JVM Startup Benchmarks
+
+Uses [JMH](https://github.com/openjdk/jmh) (Java Microbenchmark Harness) to measure graph creation time on JVM.
+
+```bash
+# First, generate the benchmark project if not already done
+kotlin generate-projects.main.kts --mode metro
+
+# Run JMH benchmarks
+./gradlew :startup-jvm:jmh
+
+# Results are saved to startup-jvm/build/results/jmh/
+```
+
+The JVM benchmark measures `graphCreationAndInitialization` - the time to create the Metro dependency
+graph and fully initialize it by accessing all multibindings.
+
+### Android Startup Benchmarks
+
+Uses [AndroidX Macrobenchmark](https://developer.android.com/topic/performance/benchmarking/macrobenchmark-overview)
+to measure Metro's impact on Android app startup time. The app calls `createAndInitialize()` in
+`Application.onCreate()`, so the benchmark measures realistic startup performance.
+
+```bash
+# Build and run benchmarks (requires connected device/emulator)
+./gradlew :startup-android:app:assembleBenchmark
+./gradlew :startup-android:benchmark:connectedBenchmarkAndroidTest
+
+# Results are saved to startup-android/benchmark/build/outputs/connected_android_test_additional_output/
+```
+
+The benchmark measures cold startup - when the app is launched after being killed. This includes all
+class loading, Metro graph creation, and initialization.
+
+### Running All Startup Benchmarks
+
+Use the `run_startup_benchmarks.sh` script to run all startup benchmarks and aggregate results:
+
+```bash
+# Run all startup benchmarks
+./run_startup_benchmarks.sh all
+
+# Run only JVM benchmarks
+./run_startup_benchmarks.sh jvm
+
+# Run only Android benchmarks (requires device)
+./run_startup_benchmarks.sh android
+
+# Results are saved to startup-benchmark-results/
+```
+
+### Android App Configuration
+
+The Android benchmark app (`startup-android/app`) is configured with:
+- **R8 optimization**: Minification and shrinking enabled for release/benchmark builds
+- **ProGuard rules**: Keeps Metro-generated factories and application classes
+- **ProfileInstaller**: Enables baseline profile installation for consistent benchmarks
+- **Benchmark build type**: Special build type for benchmarking with obfuscation disabled
