@@ -59,16 +59,9 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
   /**
    * Returns true if the provider function itself can be called directly (not via factory static
    * method). This requires the function to be public and accessible.
-   *
-   * For Dagger factories, we always support this since the original function is accessible. For
-   * Metro factories, we check if the actual function on the parent class is public (not transformed
-   * to private).
    */
-  val supportsDirectFunctionCall: Boolean
+  override val supportsDirectFunctionCall: Boolean
     get() {
-      // Dagger factories always support direct function calls
-      if (isDaggerFactory) return true
-
       val parentClass = providerParentClass ?: return false
 
       // For Metro factories, we need to check the actual function's visibility

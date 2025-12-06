@@ -35,6 +35,7 @@ internal sealed interface IrMetroFactory {
    */
   val realFunction: IrFunction?
   val factoryClass: IrClass
+  val supportsDirectFunctionCall: Boolean
 
   val createFunctionNames: Set<Name>
     get() = setOf(Symbols.Names.create)
@@ -148,11 +149,14 @@ internal sealed class ClassFactory : IrMetroFactory {
     get() = targetConstructor
 
   /**
-   * Returns true if the target constructor is public and can be invoked directly without going
-   * through the factory. This is used to optimize instance access by skipping factory creation.
+   * Returns true if the constructor itself can be called directly (not via factory static method).
+   * This requires the constructor to be public and accessible.
    */
-  val supportsDirectInvocation: Boolean
-    get() = targetConstructor?.visibility == DescriptorVisibilities.PUBLIC && !isAssistedInject
+  override val supportsDirectFunctionCall: Boolean
+    get() {
+      // TODO if it's protected in a supertype?
+      return targetConstructor?.visibility == DescriptorVisibilities.PUBLIC
+    }
 
   context(context: IrMetroContext)
   abstract fun remapTypes(typeRemapper: TypeRemapper): ClassFactory
