@@ -1678,6 +1678,31 @@
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">Int</span><span class="p">.</span><span class="na">bindAsNullable</span><span class="p">:</span><span class="w"> </span><span class="kt">Int?</span>
 <span class="p">}</span>
 </code></pre></div>
+<p>This pattern can be combined with optional bindings to allow for easy conditional injection, for example with optional bindings across different source sets:<br />
+<div class="highlight"><pre><span></span><code><span class="c1">// in src/main</span>
+<span class="nd">@Inject</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">ExampleUseCase</span><span class="p">(</span>
+<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">optionalRepository</span><span class="p">:</span><span class="w"> </span><span class="n">OptionalRepository? </span><span class="o">=</span><span class="w"> </span><span class="kc">null</span>
+<span class="p">)</span>
+
+<span class="kd">interface</span><span class="w"> </span><span class="nc">OptionalRepository</span>
+
+<span class="c1">// If you want to expose it to your graph</span>
+<span class="nd">@ContributesTo</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="kd">interface</span><span class="w"> </span><span class="nc">OptionalRepositoryProvider</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nd">@OptionalDependency</span>
+<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">optionalRepository</span><span class="p">:</span><span class="w"> </span><span class="n">OptionalRepository? </span><span class="k">get</span><span class="p">()</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">null</span>
+<span class="p">}</span>
+</code></pre></div></p>
+<p>then in the optionally included module:<br />
+<div class="highlight"><pre><span></span><code><span class="c1">// Dependency of the src/debug source set</span>
+<span class="nd">@Inject</span>
+<span class="nd">@ContributesBinding</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span><span class="w"> </span><span class="c1">// Standard binding</span>
+<span class="c1">// Add a nullable binding so it can satisfy the nullable injection</span>
+<span class="c1">// in the consuming project when present on the classpath</span>
+<span class="nd">@ContributesBinding</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">,</span><span class="w"> </span><span class="n">binding</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">binding</span><span class="o">&lt;</span><span class="n">OptionalRepository?&gt;</span><span class="p">())</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">OptionalRepositoryImpl</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">OptionalRepository</span>
+</code></pre></div></p>
 <details class="note">
 <summary>Implementation Notes</summary>
 <p>While kotlin-inject can support this by simply invoking functions with omitted arguments, Metro has to support this in generated factories.</p>
