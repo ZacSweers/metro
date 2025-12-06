@@ -405,8 +405,13 @@ internal class IrGraphGenerator(
       // Collect bindings and their dependencies for provider property ordering
       val initOrder =
         parentTracer.traceNested("Collect bindings") {
+          // Collect roots (accessors + injectors) for refcount tracking
+          val roots = buildList {
+            node.accessors.mapTo(this) { it.contextKey }
+            node.injectors.mapTo(this) { it.contextKey }
+          }
           val collectedProperties =
-            BindingPropertyCollector(bindingGraph, sealResult.sortedKeys).collect()
+            BindingPropertyCollector(bindingGraph, sealResult.sortedKeys, roots).collect()
           buildList(collectedProperties.size) {
             for (key in sealResult.sortedKeys) {
               if (key in sealResult.reachableKeys) {

@@ -166,6 +166,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("ProviderAccessorsAreTrackedInRefCounting.kt")
+    public void testProviderAccessorsAreTrackedInRefCounting() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/ProviderAccessorsAreTrackedInRefCounting.kt");
+    }
+
+    @Test
     @TestMetadata("RefCountingFollowsAliases.kt")
     public void testRefCountingFollowsAliases() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/RefCountingFollowsAliases.kt");

@@ -18,6 +18,7 @@ private const val INITIAL_VALUE = 512
 internal class BindingPropertyCollector(
   private val graph: IrBindingGraph,
   private val sortedKeys: List<IrTypeKey>,
+  private val roots: List<IrContextualTypeKey> = emptyList(),
 ) {
 
   data class CollectedProperty(val binding: IrBinding, val propertyType: PropertyType)
@@ -31,6 +32,14 @@ internal class BindingPropertyCollector(
 
   fun collect(): Map<IrTypeKey, CollectedProperty> {
     val keysWithBackingProperties = mutableMapOf<IrTypeKey, CollectedProperty>()
+
+    // Roots (accessors/injectors) don't get properties themselves, but they contribute to
+    // dependency refcounts when they require provider instances so we mark them here
+    for (root in roots) {
+      if (root.requiresProviderInstance) {
+        markProviderAccess(root)
+      }
+    }
 
     // Single pass in reverse topological order (dependents before dependencies).
     // When we process a binding, all its dependents have already been processed,
@@ -52,12 +61,15 @@ internal class BindingPropertyCollector(
       // Skip alias bindings for refcount and dependency processing
       if (binding is IrBinding.Alias) continue
 
-      // refCount is finalized - check if needs property from refcount
-      if (key !in keysWithBackingProperties && node.refCount >= 2) {
+      // Multibindings are always created adhoc, but we create their properties lazily
+      if (binding is IrBinding.Multibinding) continue
+
+      // refCount is finalized - check if we need a property from refcount
+      if (key !in keysWithBackingProperties && node.refCount > 1) {
         keysWithBackingProperties[key] = CollectedProperty(binding, PropertyType.FIELD)
       }
 
-      // Uses factory path if it has a property (scoped, assisted, or refcount >= 2)
+      // Uses factory path if it has a property (scoped, assisted, or refcount > 1)
       val usesFactoryPath = key in keysWithBackingProperties
 
       // Mark dependencies as provider accesses if:
@@ -97,8 +109,6 @@ internal class BindingPropertyCollector(
       is IrBinding.Assisted -> PropertyType.FIELD
       // Assisted inject factories use factory path
       is IrBinding.ConstructorInjected if binding.isAssisted -> PropertyType.FIELD
-      // Multibindings are always created adhoc, but we create their properties lazily
-      is IrBinding.Multibinding -> null
       else -> null
     }
   }

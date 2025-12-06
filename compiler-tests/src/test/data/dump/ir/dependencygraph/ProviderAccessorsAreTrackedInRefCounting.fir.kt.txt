@@ -1,0 +1,157 @@
+@DependencyGraph
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val thisGraphInstance: AppGraph
+      field = <this>
+
+    private val thisGraphInstanceProvider: Provider<AppGraph>
+      field = Companion.invoke<AppGraph>(value = <this>.#thisGraphInstance)
+
+    private val provideIntProvider: Provider<Int>
+      field = Companion.create(instance = <this>.#thisGraphInstance)
+
+    private val provideLongProvider: Provider<Long>
+      field = Companion.create(instance = <this>.#thisGraphInstance)
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val int1: Provider<Int>
+      override get(): Provider<Int> {
+        return <this>.#provideIntProvider
+      }
+
+    override val int2: Provider<Int>
+      override get(): Provider<Int> {
+        return <this>.#provideIntProvider
+      }
+
+    override val long1: Lazy<Long>
+      override get(): Lazy<Long> {
+        return Companion.lazy<Lazy<Long>, Long>(provider = Companion.lazy<Provider<Long>, Long>(provider = <this>.#provideLongProvider))
+      }
+
+    override val long2: Lazy<Long>
+      override get(): Lazy<Long> {
+        return Companion.lazy<Lazy<Long>, Long>(provider = Companion.lazy<Provider<Long>, Long>(provider = <this>.#provideLongProvider))
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 69, endOffset = 104)
+  class ProvideIntMetroFactory : Factory<Int> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(instance: AppGraph): Factory<Int> {
+        return ProvideIntMetroFactory(instance = instance)
+      }
+
+      fun provideInt(instance: AppGraph): Int {
+        return instance.provideInt()
+      }
+
+    }
+
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): Int {
+      return Companion.provideInt(instance = <this>.#instance)
+    }
+
+    fun mirrorFunction(): Int {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideLong", propertyName = "", startOffset = 161, endOffset = 199)
+  class ProvideLongMetroFactory : Factory<Long> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(instance: AppGraph): Factory<Long> {
+        return ProvideLongMetroFactory(instance = instance)
+      }
+
+      fun provideLong(instance: AppGraph): Long {
+        return instance.provideLong()
+      }
+
+    }
+
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): Long {
+      return Companion.provideLong(instance = <this>.#instance)
+    }
+
+    fun mirrorFunction(): Long {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Provides
+  private fun provideInt(): Int {
+    return 3
+  }
+
+  @Provides
+  private fun provideLong(): Long {
+    return 3L
+  }
+
+  abstract val int1: Provider<Int>
+    abstract get
+
+  abstract val int2: Provider<Int>
+    abstract get
+
+  abstract val long1: Lazy<Long>
+    abstract get
+
+  abstract val long2: Lazy<Long>
+    abstract get
+
+}
+
