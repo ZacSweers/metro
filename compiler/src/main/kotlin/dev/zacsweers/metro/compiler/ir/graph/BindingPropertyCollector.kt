@@ -30,7 +30,7 @@ internal class BindingPropertyCollector(
   private val resolvedAliasTargets = HashMap<IrTypeKey, IrTypeKey>()
 
   fun collect(): Map<IrTypeKey, CollectedProperty> {
-    val result = mutableMapOf<IrTypeKey, CollectedProperty>()
+    val keysWithBackingProperties = mutableMapOf<IrTypeKey, CollectedProperty>()
 
     // TODO squish this to a single-pass
     // First pass: initialize nodes and eagerly add static property bindings
@@ -39,7 +39,7 @@ internal class BindingPropertyCollector(
 
       val staticPropertyType = staticPropertyType(key, binding)
       if (staticPropertyType != null) {
-        result[key] = CollectedProperty(binding, staticPropertyType)
+        keysWithBackingProperties[key] = CollectedProperty(binding, staticPropertyType)
       }
     }
 
@@ -53,12 +53,12 @@ internal class BindingPropertyCollector(
       val node = nodes[key] ?: continue
 
       // refCount is finalized - check if needs property from refcount
-      if (key !in result && node.refCount >= 2) {
-        result[key] = CollectedProperty(binding, PropertyType.FIELD)
+      if (key !in keysWithBackingProperties && node.refCount >= 2) {
+        keysWithBackingProperties[key] = CollectedProperty(binding, PropertyType.FIELD)
       }
 
       // Uses factory path if it has a property (scoped, assisted, or refcount >= 2)
-      val usesFactoryPath = key in result
+      val usesFactoryPath = key in keysWithBackingProperties
 
       // Mark dependencies as provider accesses if:
       // 1. Explicitly Provider<T> or Lazy<T>
@@ -70,7 +70,7 @@ internal class BindingPropertyCollector(
       }
     }
 
-    return result
+    return keysWithBackingProperties
   }
 
   /**
