@@ -192,7 +192,7 @@ interface ExampleGraph {
 }
 ```
 
-This let's you easily inject dependencies that are only conditionally included:
+This pattern can be combined with optional bindings to allow for easy conditional injection, for example with optional bindings across different source sets:
 ```kotlin
 @Inject
 class ExampleUseCase(
