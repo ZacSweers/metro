@@ -502,7 +502,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           fun provideValue(): String = "Hello, world!"
 
           @Provides
-          fun provideValueLengths(value: String, value2: String): Int = value.length + value2.length
+          fun provideValueLengths(value: Provider<String>, value2: Provider<String>): Int = value().length + value2().length
         }
 
         """
