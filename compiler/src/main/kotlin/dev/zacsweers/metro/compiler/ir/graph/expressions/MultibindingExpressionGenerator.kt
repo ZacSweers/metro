@@ -206,7 +206,7 @@ internal class MultibindingExpressionGenerator(
                             binding,
                             binding.contextualTypeKey,
                             fieldInitKey,
-                            accessType = AccessType.PROVIDER,
+                            accessType = AccessType.INSTANCE,
                           )
                         ),
                     )
@@ -734,19 +734,21 @@ internal class MultibindingExpressionGenerator(
     accessType: AccessType,
   ): IrExpression =
     with(scope) {
-      val bindingCode =
-        parentGenerator.generateBindingCode(
+      return parentGenerator
+        .generateBindingCode(
           provider,
           contextKey,
           accessType = accessType,
           fieldInitKey = fieldInitKey,
         )
-
-      return typeAsProviderArgument(
-        contextKey = contextKey,
-        bindingCode = bindingCode,
-        isAssisted = false,
-        isGraphInstance = false,
-      )
+        .letIf(accessType == AccessType.PROVIDER) {
+          // If it's a provider, we need to handle the type of provider including interop
+          typeAsProviderArgument(
+            contextKey = contextKey,
+            bindingCode = it,
+            isAssisted = false,
+            isGraphInstance = false,
+          )
+        }
     }
 }

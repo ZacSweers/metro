@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph.expressions
 
+import dev.zacsweers.metro.compiler.asName
+import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
@@ -41,6 +43,7 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.defaultType
+import org.jetbrains.kotlin.ir.util.allParameters
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.hasAnnotation
@@ -156,27 +159,72 @@ private constructor(
 
       return when (binding) {
         is IrBinding.ConstructorInjected -> {
-          // Example_Factory.create(...)
-          binding.classFactory
-            .invokeCreateExpression(binding.typeKey) { createFunction, parameters ->
-              generateBindingArguments(
-                targetParams = parameters,
-                function = createFunction,
-                binding = binding,
-                fieldInitKey = null,
-              )
-            }
-            .let { factoryInstance ->
-              val isAssistedInject = binding.classFactory.isAssistedInject
-              if (isAssistedInject) {
-                return@let factoryInstance
-              }
+          val classFactory = binding.classFactory
+          val isAssistedInject = classFactory.isAssistedInject
+          // Optimization: Skip factory instantiation when possible
+          val canBypassFactory =
+            accessType == AccessType.INSTANCE && binding.supportsDirectInvocation
 
-              factoryInstance.toTargetType(
-                actual = AccessType.PROVIDER,
-                contextualTypeKey = contextualTypeKey,
-              )
+          if (canBypassFactory) {
+            if (classFactory.supportsDirectFunctionCall) {
+              // Call constructor directly
+              val targetConstructor = classFactory.targetConstructor!!
+              irCallConstructor(
+                  targetConstructor.symbol,
+                  binding.type.typeParameters.map { it.defaultType },
+                )
+                .apply {
+                  val args =
+                    generateBindingArguments(
+                      targetParams = classFactory.targetFunctionParameters,
+                      function = targetConstructor,
+                      binding = binding,
+                      fieldInitKey = fieldInitKey,
+                    )
+                  for ((i, arg) in args.withIndex()) {
+                    if (arg == null) continue
+                    arguments[i] = arg
+                  }
+                }
+                .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
+            } else {
+              // Constructor isn't public - call newInstance() on the factory object instead
+              // Example_Factory.newInstance(...)
+              classFactory
+                .invokeNewInstanceExpression(binding.typeKey, Symbols.Names.newInstance) {
+                  newInstanceFunction,
+                  parameters ->
+                  generateBindingArguments(
+                    targetParams = parameters,
+                    function = newInstanceFunction,
+                    binding = binding,
+                    fieldInitKey = null,
+                  )
+                }
+                .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
             }
+          } else {
+            // Example_Factory.create(...)
+            classFactory
+              .invokeCreateExpression(binding.typeKey) { createFunction, parameters ->
+                generateBindingArguments(
+                  targetParams = parameters,
+                  function = createFunction,
+                  binding = binding,
+                  fieldInitKey = null,
+                )
+              }
+              .let { factoryInstance ->
+                if (isAssistedInject) {
+                  return@let factoryInstance
+                }
+
+                factoryInstance.toTargetType(
+                  actual = AccessType.PROVIDER,
+                  contextualTypeKey = contextualTypeKey,
+                )
+              }
+          }
         }
 
         is IrBinding.CustomWrapper -> {
@@ -217,7 +265,7 @@ private constructor(
           // For binds functions, just use the backing type
           val aliasedBinding = binding.aliasedBinding(bindingGraph)
           check(aliasedBinding != binding) { "Aliased binding aliases itself" }
-          return generateBindingCode(
+          generateBindingCode(
             aliasedBinding,
             contextualTypeKey = contextualTypeKey.withTypeKey(aliasedBinding.typeKey),
             accessType = accessType,
@@ -232,17 +280,65 @@ private constructor(
                 "No factory found for Provided binding ${binding.typeKey}. This is likely a bug in the Metro compiler, please report it to the issue tracker."
               )
 
-          // Invoke its factory's create() function
-          providerFactory
-            .invokeCreateExpression(binding.typeKey) { createFunction, params ->
-              generateBindingArguments(
-                targetParams = params,
-                function = createFunction,
-                binding = binding,
-                fieldInitKey = fieldInitKey,
-              )
+          // Optimization: Skip factory instantiation when we don't need a provider instance.
+          // This applies when accessType is INSTANCE and the providerFactory supports direct
+          // invocation
+          val canBypassFactory =
+            providerFactory.supportsDirectInvocation &&
+              // TODO what if the return type is a Provider?
+              accessType == AccessType.INSTANCE
+
+          if (canBypassFactory) {
+            val providerFunction = providerFactory.function
+            val targetParams = providerFactory.parameters
+
+            // If we need a dispatch receiver but couldn't get one, fall back to factory
+            if (providerFactory.supportsDirectFunctionCall) {
+              // Call the provider function directly
+              val realFunction = providerFactory.realFunction ?: providerFunction
+              val args =
+                generateBindingArguments(
+                  targetParams = targetParams,
+                  function = realFunction,
+                  binding = binding,
+                  fieldInitKey = fieldInitKey,
+                )
+
+              irInvoke(callee = realFunction.symbol, args = args, typeHint = binding.typeKey.type)
+                .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
+            } else {
+              // Function isn't public - call factory's static newInstance() method instead
+              // TODO this is brittle, can we just store the property name?
+              val name =
+                if (providerFactory.isPropertyAccessor) {
+                  "get${providerFactory.function.name.asString().capitalizeUS()}".asName()
+                } else {
+                  providerFactory.function.name
+                }
+              providerFactory
+                .invokeNewInstanceExpression(binding.typeKey, name) { newInstanceFunction, params ->
+                  generateBindingArguments(
+                    targetParams = params,
+                    function = newInstanceFunction,
+                    binding = binding,
+                    fieldInitKey = fieldInitKey,
+                  )
+                }
+                .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
             }
-            .toTargetType(actual = AccessType.PROVIDER, contextualTypeKey = contextualTypeKey)
+          } else {
+            // Invoke its factory's create() function
+            providerFactory
+              .invokeCreateExpression(binding.typeKey) { createFunction, params ->
+                generateBindingArguments(
+                  targetParams = params,
+                  function = createFunction,
+                  binding = binding,
+                  fieldInitKey = fieldInitKey,
+                )
+              }
+              .toTargetType(actual = AccessType.PROVIDER, contextualTypeKey = contextualTypeKey)
+          }
         }
 
         is IrBinding.Assisted -> {
@@ -478,6 +574,7 @@ private constructor(
     fieldInitKey: IrTypeKey?,
   ): List<IrExpression?> =
     with(scope) {
+      // TODO clean all this up
       val params = function.parameters()
       var paramsToMap = buildList {
         if (
@@ -512,17 +609,19 @@ private constructor(
                 }
               }
           }
+
         // Construct the list of parameters in order determined by the function
         paramsToMap =
-          function.regularParameters.mapNotNull { functionParam -> nameToParam[functionParam.name] }
+          function.allParameters.mapNotNull { functionParam -> nameToParam[functionParam.name] }
+
         // If we still have a mismatch, log a detailed error
-        check(function.regularParameters.size == paramsToMap.size) {
+        check(params.allParameters.size == paramsToMap.size) {
           """
           Inconsistent parameter types for type ${binding.typeKey}!
           Input type keys:
             - ${paramsToMap.map { it.typeKey }.joinToString()}
           Binding parameters (${function.kotlinFqName}):
-            - ${function.regularParameters.map { IrContextualTypeKey.from(it).typeKey }.joinToString()}
+            - ${params.allParameters.map { it.typeKey }.joinToString()}
           """
             .trimIndent()
         }
@@ -532,19 +631,19 @@ private constructor(
         binding is IrBinding.Provided &&
           binding.providerFactory.function.correspondingPropertySymbol == null
       ) {
-        check(params.regularParameters.size == paramsToMap.size) {
+        check(params.allParameters.size == paramsToMap.size) {
           """
           Inconsistent parameter types for type ${binding.typeKey}!
           Input type keys:
             - ${paramsToMap.map { it.typeKey }.joinToString()}
           Binding parameters (${function.kotlinFqName}):
-            - ${function.regularParameters.map { IrContextualTypeKey.from(it).typeKey }.joinToString()}
+            - ${function.allParameters.map { IrContextualTypeKey.from(it).typeKey }.joinToString()}
           """
             .trimIndent()
         }
       }
 
-      return params.nonDispatchParameters.mapIndexed { i, param ->
+      return params.allParameters.mapIndexed { i, param ->
         val contextualTypeKey = paramsToMap[i].contextualTypeKey
         val typeKey = contextualTypeKey.typeKey
 
