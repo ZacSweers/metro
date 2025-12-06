@@ -32,25 +32,25 @@ internal class BindingPropertyCollector(
   fun collect(): Map<IrTypeKey, CollectedProperty> {
     val keysWithBackingProperties = mutableMapOf<IrTypeKey, CollectedProperty>()
 
-    // TODO squish this to a single-pass
-    // First pass: initialize nodes and eagerly add static property bindings
-    for ((key, binding) in graph.bindingsSnapshot()) {
-      nodes.getOrPut(key) { Node(binding) }
+    // Single pass in reverse topological order (dependents before dependencies).
+    // When we process a binding, all its dependents have already been processed,
+    // so its refCount is finalized. Nodes are created lazily via getOrPut - either
+    // here during iteration or earlier via markProviderAccess when a dependent
+    // marks this binding as a provider access.
+    for (key in sortedKeys.asReversed()) {
+      val binding = graph.findBinding(key) ?: continue
 
+      // Initialize node (may already exist from markProviderAccess)
+      val node = nodes.getOrPut(key) { Node(binding) }
+
+      // Check static property type (applies to all bindings including aliases)
       val staticPropertyType = staticPropertyType(key, binding)
       if (staticPropertyType != null) {
         keysWithBackingProperties[key] = CollectedProperty(binding, staticPropertyType)
       }
-    }
 
-    // Second pass: reverse topological order (dependents before dependencies)
-    // When we process a binding, all its dependents have already been processed,
-    // so its refCount is finalized.
-    for (key in sortedKeys.asReversed()) {
-      val binding = graph.findBinding(key) ?: continue
+      // Skip alias bindings for refcount and dependency processing
       if (binding is IrBinding.Alias) continue
-
-      val node = nodes[key] ?: continue
 
       // refCount is finalized - check if needs property from refcount
       if (key !in keysWithBackingProperties && node.refCount >= 2) {
@@ -118,7 +118,9 @@ internal class BindingPropertyCollector(
         binding.typeKey
       }
 
-    nodes[targetKey]?.refCount++
+    // Create node lazily if needed (the target may not have been processed yet in reverse order)
+    val targetBinding = graph.findBinding(targetKey) ?: return
+    nodes.getOrPut(targetKey) { Node(targetBinding) }.refCount++
   }
 
   /** Resolves an alias chain to its final non-alias target, caching all intermediate keys. */
