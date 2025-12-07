@@ -31,7 +31,6 @@ import dev.zacsweers.metro.compiler.ir.render
 import dev.zacsweers.metro.compiler.ir.renderForDiagnostic
 import dev.zacsweers.metro.compiler.ir.reportableDeclaration
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
-import dev.zacsweers.metro.compiler.isWordPrefixRegex
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -144,7 +143,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
      */
     val supportsDirectInvocation: Boolean
       get() =
-        classFactory.supportsDirectFunctionCall &&
+        classFactory.supportsDirectInvocation &&
           !classFactory.isAssistedInject &&
           injectedMembers.isEmpty()
 
@@ -468,9 +467,6 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
         val property = getter!!.correspondingPropertySymbol
         if (property != null) {
           val propName = property.owner.name.asString()
-          if (!isWordPrefixRegex.matches(propName)) {
-            append("Get")
-          }
           append(propName.capitalizeUS())
         } else {
           append(getter.name.capitalizeUS())

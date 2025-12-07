@@ -13,6 +13,7 @@ import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -33,9 +34,9 @@ internal sealed interface IrMetroFactory {
    * The real, non-synthetic function for invocation. Used when direct function calls are used, as
    * it may have extra metadata like JvmName annotations.
    */
-  val realFunction: IrFunction?
+  val realDeclaration: IrDeclaration?
   val factoryClass: IrClass
-  val supportsDirectFunctionCall: Boolean
+  val supportsDirectInvocation: Boolean
 
   val createFunctionNames: Set<Name>
     get() = setOf(Symbols.Names.create)
@@ -145,14 +146,14 @@ internal sealed class ClassFactory : IrMetroFactory {
    */
   abstract val targetConstructor: IrConstructor?
 
-  override val realFunction: IrConstructor?
+  override val realDeclaration: IrConstructor?
     get() = targetConstructor
 
   /**
    * Returns true if the constructor itself can be called directly (not via factory static method).
    * This requires the constructor to be public and accessible.
    */
-  override val supportsDirectFunctionCall: Boolean
+  override val supportsDirectInvocation: Boolean
     get() {
       // TODO if it's protected in a supertype?
       return targetConstructor?.visibility == DescriptorVisibilities.PUBLIC

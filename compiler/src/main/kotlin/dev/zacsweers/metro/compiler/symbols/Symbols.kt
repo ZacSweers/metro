@@ -9,8 +9,6 @@ import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.joinSimpleNames
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols.FqNames.kotlinCollectionsPackageFqn
-import dev.zacsweers.metro.compiler.symbols.Symbols.StringNames.METRO_RUNTIME_INTERNAL_PACKAGE
-import dev.zacsweers.metro.compiler.symbols.Symbols.StringNames.METRO_RUNTIME_PACKAGE
 import kotlin.lazy
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.declarations.IrEnumEntry
@@ -134,6 +132,7 @@ internal class Symbols(
       ClassId(FqNames.metroRuntimeInternalPackage, "GraphFactoryInvokeFunctionMarker".asName())
     val HasMemberInjections = ClassId(FqNames.metroRuntimePackage, "HasMemberInjections".asName())
     val JavaOptional = ClassId(FqNames.javaUtil, Names.Optional)
+    val JvmField = ClassId(FqName("kotlin.jvm"), "JvmField".asName())
     val Lazy = StandardClassIds.byName("Lazy")
     val MembersInjector = ClassId(FqNames.metroRuntimePackage, Names.membersInjector)
     val MultibindingElement =
@@ -219,10 +218,10 @@ internal class Symbols(
   }
 
   private val metroRuntime: IrPackageFragment by lazy {
-    moduleFragment.createPackage(METRO_RUNTIME_PACKAGE)
+    moduleFragment.createPackage(StringNames.METRO_RUNTIME_PACKAGE)
   }
   private val metroRuntimeInternal: IrPackageFragment by lazy {
-    moduleFragment.createPackage(METRO_RUNTIME_INTERNAL_PACKAGE)
+    moduleFragment.createPackage(StringNames.METRO_RUNTIME_INTERNAL_PACKAGE)
   }
   private val stdlib: IrPackageFragment by lazy {
     moduleFragment.createPackage(kotlinPackageFqn.asString())

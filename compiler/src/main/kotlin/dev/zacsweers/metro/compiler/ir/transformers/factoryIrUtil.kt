@@ -9,12 +9,14 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
+import dev.zacsweers.metro.compiler.ir.extensionReceiverParameterCompat
 import dev.zacsweers.metro.compiler.ir.hasMetroDefault
 import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
+import dev.zacsweers.metro.compiler.ir.setExtensionReceiver
 import dev.zacsweers.metro.compiler.ir.stubExpression
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.metroAnnotations
@@ -27,6 +29,7 @@ import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
+import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
@@ -157,14 +160,19 @@ internal fun generateStaticNewInstanceFunction(
 context(context: IrMetroContext)
 internal fun generateMetadataVisibleMirrorFunction(
   factoryClass: IrClass,
-  target: IrFunction,
+  target: IrFunction?,
+  backingField: IrField?,
   annotations: MetroAnnotations<IrAnnotation>,
 ): IrSimpleFunction {
+  val returnType =
+    target?.returnType
+      ?: backingField?.type
+      ?: error("Either target or backingField must be non-null")
   val function =
     factoryClass
       .addFunction {
         name = Symbols.Names.mirrorFunction
-        returnType = target.returnType
+        this.returnType = returnType
       }
       .apply {
         if (target is IrConstructor) {
@@ -183,7 +191,8 @@ internal fun generateMetadataVisibleMirrorFunction(
           }
           copyTypeParametersFrom(sourceClass)
         } else {
-          // If it's a regular (provides) function, just always copy its annotations
+          // If it's a regular (provides) function or backing field, just always copy its
+          // annotations
           this.annotations =
             annotations
               .mirrorIrConstructorCalls(symbol)
@@ -193,7 +202,10 @@ internal fun generateMetadataVisibleMirrorFunction(
               }
               .map { it.deepCopyWithSymbols() }
         }
-        copyParametersFrom(target)
+        if (target != null) {
+          copyParametersFrom(target)
+          target.extensionReceiverParameterCompat?.let { setExtensionReceiver(it.copyTo(this)) }
+        }
         setDispatchReceiver(factoryClass.thisReceiverOrFail.copyTo(this))
 
         regularParameters.forEach {

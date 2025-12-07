@@ -2,8 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph.expressions
 
-import dev.zacsweers.metro.compiler.asName
-import dev.zacsweers.metro.compiler.capitalizeUS
+import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
@@ -166,7 +165,7 @@ private constructor(
             accessType == AccessType.INSTANCE && binding.supportsDirectInvocation
 
           if (canBypassFactory) {
-            if (classFactory.supportsDirectFunctionCall) {
+            if (classFactory.supportsDirectInvocation) {
               // Call constructor directly
               val targetConstructor = classFactory.targetConstructor!!
               irCallConstructor(
@@ -284,7 +283,7 @@ private constructor(
           // This applies when accessType is INSTANCE and the providerFactory supports direct
           // invocation
           val canBypassFactory =
-            providerFactory.supportsDirectInvocation &&
+            providerFactory.canBypassFactory &&
               // TODO what if the return type is a Provider?
               accessType == AccessType.INSTANCE
 
@@ -293,9 +292,10 @@ private constructor(
             val targetParams = providerFactory.parameters
 
             // If we need a dispatch receiver but couldn't get one, fall back to factory
-            if (providerFactory.supportsDirectFunctionCall) {
+            if (providerFactory.supportsDirectInvocation) {
               // Call the provider function directly
-              val realFunction = providerFactory.realFunction ?: providerFunction
+              val realFunction =
+                providerFactory.realDeclaration?.expectAsOrNull<IrFunction>() ?: providerFunction
               val args =
                 generateBindingArguments(
                   targetParams = targetParams,
@@ -308,15 +308,10 @@ private constructor(
                 .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
             } else {
               // Function isn't public - call factory's static newInstance() method instead
-              // TODO this is brittle, can we just store the property name?
-              val name =
-                if (providerFactory.isPropertyAccessor) {
-                  "get${providerFactory.function.name.asString().capitalizeUS()}".asName()
-                } else {
-                  providerFactory.function.name
-                }
               providerFactory
-                .invokeNewInstanceExpression(binding.typeKey, name) { newInstanceFunction, params ->
+                .invokeNewInstanceExpression(binding.typeKey, providerFactory.newInstanceName) {
+                  newInstanceFunction,
+                  params ->
                   generateBindingArguments(
                     targetParams = params,
                     function = newInstanceFunction,

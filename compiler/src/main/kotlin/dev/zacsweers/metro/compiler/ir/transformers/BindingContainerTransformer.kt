@@ -15,6 +15,7 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
+import dev.zacsweers.metro.compiler.ir.ProviderFactory.Companion.lookupRealDeclaration
 import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
@@ -52,7 +53,6 @@ import dev.zacsweers.metro.compiler.ir.toClassReferences
 import dev.zacsweers.metro.compiler.ir.toProto
 import dev.zacsweers.metro.compiler.ir.transformMultiboundQualifier
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
-import dev.zacsweers.metro.compiler.isWordPrefixRegex
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.memoize
@@ -69,6 +69,7 @@ import org.jetbrains.kotlin.backend.jvm.ir.getJvmNameFromAnnotation
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.builders.irGet
+import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
@@ -91,6 +92,7 @@ import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
+import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isFakeOverride
 import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.isObject
@@ -300,7 +302,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
 
     val sourceParameters =
       Parameters(
-        reference.callee.owner.callableId,
+        reference.callableId,
         instance = instanceParam,
         extensionReceiver = null,
         regularParameters = sourceValueParameters,
@@ -319,7 +321,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
             reportCompilerBug(
               "No source parameter found for $irParam. Index was somehow -1.\n${reference.parent.owner.dumpKotlinLike()}"
             )
-          } else {
+          } else if (reference.callee != null) {
             // Get all regular parameters from the source function
             val regularParams =
               reference.callee.owner.parameters.filter { it.kind == IrParameterKind.Regular }
@@ -331,6 +333,11 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
               ?: reportCompilerBug(
                 "No source parameter found for $irParam\nparam is ${irParam.name} in function ${ctor.dumpKotlinLike()}\n${reference.parent.owner.dumpKotlinLike()}"
               )
+          } else {
+            // Backing field case - no callee, so no regular parameters to match
+            reportCompilerBug(
+              "Unexpected parameter $irParam for backing field provider ${reference.callableId}"
+            )
           }
         sourceParam to field
       }
@@ -358,14 +365,13 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
         )
       }
 
-    val providesFunction = reference.callee.owner
-
     // Generate a metadata-visible function that matches the signature of the target provider
     // This is used in downstream compilations to read the provider's signature
     val mirrorFunction =
       generateMetadataVisibleMirrorFunction(
         factoryClass = factoryCls,
-        target = providesFunction,
+        target = reference.callee?.owner,
+        backingField = reference.backingField,
         annotations = reference.annotations,
       )
 
@@ -417,6 +423,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
         isNullable = typeKey.type.isMarkedNullable(),
         parent = parent.symbol,
         callee = function.symbol,
+        backingField = null,
         annotations = annotations,
       )
     }
@@ -428,24 +435,46 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
   ): CallableReference {
     val callableId = property.callableId
     return references.getOrPut(callableId) {
-      val getter =
-        property.getter
-          ?: reportCompilerBug(
-            "No getter found for property $callableId. Note that field properties are not supported"
-          )
-
-      val typeKey = IrContextualTypeKey.from(getter).typeKey
-
       val parent = property.parentAsClass
+
+      // Check if property has @JvmField - if so, we use backing field instead of getter
+      val backingField = property.backingField
+      val hasJvmField = backingField?.hasAnnotation(Symbols.ClassIds.JvmField) == true
+
+      // Prefer getter if available, otherwise use backing field
+      val getter = property.getter
+      val callee: IrFunctionSymbol?
+      val useBackingField: IrField?
+
+      if (getter != null && !hasJvmField) {
+        // Use getter
+        callee = getter.symbol
+        useBackingField = null
+      } else if (backingField != null) {
+        // Use backing field (for @JvmField or no getter)
+        callee = null
+        useBackingField = backingField
+      } else {
+        reportCompilerBug("No getter or backing field found for property $callableId.")
+      }
+
+      val typeKey =
+        if (getter != null) {
+          IrContextualTypeKey.from(getter).typeKey
+        } else {
+          IrTypeKey(backingField!!.type)
+        }
+
       return CallableReference(
         callableId = callableId,
         name = property.name,
         isPropertyAccessor = true,
-        parameters = property.getter?.parameters() ?: Parameters.empty(),
+        parameters = getter?.parameters() ?: Parameters.empty(),
         typeKey = typeKey,
         isNullable = typeKey.type.isMarkedNullable(),
         parent = parent.symbol,
-        callee = property.getter!!.symbol,
+        callee = callee,
+        backingField = useBackingField,
         annotations = annotations,
       )
     }
@@ -472,20 +501,18 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
       targetClass = factoryCls,
       targetConstructor = factoryConstructor,
       parameters = factoryParameters,
-      providerFunction = reference.callee.owner,
+      providerFunction = reference.callee?.owner,
     )
 
     // Generate the named newInstance function
     val newInstanceFunction =
       generateStaticNewInstanceFunction(
         parentClass = classToGenerateCreatorsIn,
-        targetFunction = reference.callee.owner,
+        targetFunction = reference.callee?.owner,
         sourceMetroParameters = reference.parameters,
         sourceParameters = reference.parameters.regularParameters.map { it.asValueParameter },
       ) { function ->
         val parameters = function.regularParameters
-
-        val args = parameters.filter { it.origin == Origins.RegularParameter }.map { irGet(it) }
 
         val dispatchReceiver =
           if (reference.isInObject) {
@@ -498,12 +525,19 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
             irGet(parameters[0])
           }
 
-        irInvoke(
-          dispatchReceiver = dispatchReceiver,
-          extensionReceiver = null,
-          callee = reference.callee,
-          args = args,
-        )
+        if (reference.backingField != null) {
+          // Backing field case - read field directly
+          irGetField(dispatchReceiver, reference.backingField)
+        } else {
+          // Function call case
+          val args = parameters.filter { it.origin == Origins.RegularParameter }.map { irGet(it) }
+          irInvoke(
+            dispatchReceiver = dispatchReceiver,
+            extensionReceiver = null,
+            callee = reference.callee!!,
+            args = args,
+          )
+        }
       }
 
     return newInstanceFunction
@@ -517,7 +551,15 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     val typeKey: IrTypeKey,
     val isNullable: Boolean,
     val parent: IrClassSymbol,
-    val callee: IrFunctionSymbol,
+    /**
+     * The function to call (getter for properties, function itself for functions). Null if
+     * [backingField] is used instead.
+     */
+    val callee: IrFunctionSymbol?,
+    /**
+     * The backing field to read from (for @JvmField properties). Null if [callee] is used instead.
+     */
+    val backingField: IrField?,
     val annotations: MetroAnnotations<IrAnnotation>,
   ) {
     val isInObject: Boolean
@@ -530,18 +572,8 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
         parent.owner
       }
 
-    // omit the `get-` prefix for property names starting with the *word* `is`, like `isProperty`,
-    // but not for names which just start with those letters, like `issues`.
-    // TODO still necessary in IR?
-    private val useGetPrefix by memoize {
-      isPropertyAccessor && !isWordPrefixRegex.matches(name.asString())
-    }
-
     private val simpleName by lazy {
       buildString {
-        if (useGetPrefix) {
-          append("Get")
-        }
         append(name.capitalizeUS())
         append(Symbols.Names.MetroFactory.asString())
       }
@@ -856,6 +888,8 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
                     parameters = parameters,
                     function = function,
                     isPropertyAccessor = isProperty,
+                    realDeclaration = lookupRealDeclaration(isProperty, function) as IrFunction,
+                    newInstanceName = function.name,
                   )
               } else {
                 // binds or multibinds or bindsOptionalOf

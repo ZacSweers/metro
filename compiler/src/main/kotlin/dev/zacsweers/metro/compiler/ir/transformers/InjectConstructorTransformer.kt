@@ -269,7 +269,8 @@ internal class InjectConstructorTransformer(
       generateMetadataVisibleMirrorFunction(
         factoryClass = factoryCls,
         target = targetConstructor,
-        metroAnnotationsOf(targetConstructor),
+        backingField = null,
+        annotations = metroAnnotationsOf(targetConstructor),
       )
 
     factoryCls.dumpToMetroLog()

@@ -25,6 +25,7 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.CallableId
+import org.jetbrains.kotlin.name.Name
 
 /** Representation of the `@CallableMetadata` annotation contents. */
 @Poko
@@ -33,6 +34,8 @@ internal class IrCallableMetadata(
   val mirrorCallableId: CallableId,
   val annotations: MetroAnnotations<IrAnnotation>,
   val isPropertyAccessor: Boolean,
+  /** The name for the generated newInstance function. */
+  val newInstanceName: Name?,
   @Poko.Skip val function: IrSimpleFunction,
   @Poko.Skip val mirrorFunction: IrSimpleFunction,
 )
@@ -58,6 +61,7 @@ internal fun IrAnnotationContainer.irCallableMetadata(
       annotations =
         sourceAnnotations ?: mirrorFunction.metroAnnotations(context.metroSymbols.classIds),
       isPropertyAccessor = mirrorFunction.isPropertyAccessor,
+      newInstanceName = mirrorFunction.name,
       function = mirrorFunction,
       mirrorFunction = mirrorFunction,
     )
@@ -84,6 +88,7 @@ internal fun IrConstructorCall.toIrCallableMetadata(
   // Read back the original offsets in the original source
   val annoStartOffset = constArgumentOfTypeAt<Int>(2)!!
   val annoEndOffset = constArgumentOfTypeAt<Int>(3)!!
+  val newInstanceName = constArgumentOfTypeAt<String>(4)?.asName()
   val callableId = CallableId(clazz.classIdOrFail.parentClassId!!, callableName.asName())
 
   // Fake a reference to the "real" function by making a copy of this mirror that reflects the
@@ -120,6 +125,7 @@ internal fun IrConstructorCall.toIrCallableMetadata(
     mirrorCallableId = mirrorFunction.callableId,
     annotations = annotations,
     isPropertyAccessor = propertyName.isNotBlank(),
+    newInstanceName = newInstanceName,
     function = function,
     mirrorFunction = mirrorFunction,
   )

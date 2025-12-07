@@ -6,13 +6,20 @@ import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.memoize
+import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
+import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
+import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.name.CallableId
+import org.jetbrains.kotlin.name.Name
 
 internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallable {
   /**
@@ -30,11 +37,9 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
   abstract val annotations: MetroAnnotations<IrAnnotation>
   abstract val parameters: Parameters
   abstract val isPropertyAccessor: Boolean
+  /** The name for the generated newInstance function. */
+  abstract val newInstanceName: Name
   abstract override val function: IrSimpleFunction
-
-  override val realFunction: IrSimpleFunction? by memoize {
-    function.parentClassOrNull?.getSimpleFunction(function.name.asString())?.owner
-  }
 
   /**
    * The class that contains this provider function. For instance methods, this is the graph or
@@ -49,31 +54,28 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
 
   /**
    * Returns true if the provider can bypass factory instantiation. For Metro factories, this means
-   * calling the factory's static method. For Dagger factories, this means calling the original
-   * provider function.
+   * calling the original provider function or property. For Dagger factories, this means calling
+   * the original provider function.
    */
-  val supportsDirectInvocation: Boolean
+  val canBypassFactory: Boolean
     // TODO what about !contextualTypeKey.isDeferrable?
     get() = true
 
   /**
-   * Returns true if the provider function itself can be called directly (not via factory static
-   * method). This requires the function to be public and accessible.
+   * Returns true if the original provides declaration can be called directly (not via factory
+   * static method). This requires the function to be public and accessible.
    */
-  override val supportsDirectFunctionCall: Boolean
+  override val supportsDirectInvocation: Boolean
     get() {
-      val parentClass = providerParentClass ?: return false
-
-      // For Metro factories, we need to check the actual function's visibility
-      // The `function` property is a copy that doesn't reflect transformed visibility,
-      // so we look up the real function on the parent class
-      val actualFunction =
-        parentClass.getSimpleFunction(function.name.asString())?.owner
-          // If we can't find it, don't try direct invocation
-          ?: return false
-
-      // TODO if it's protected in a supertype?
-      return actualFunction.visibility == DescriptorVisibilities.PUBLIC
+      return when (val decl = realDeclaration) {
+        // For Metro factories, we need to check the actual function's visibility
+        // The `function` property is a copy that doesn't reflect transformed visibility,
+        // so we look up the real function on the parent class
+        // TODO if it's protected in a supertype?
+        is IrFunction -> decl.visibility == DescriptorVisibilities.PUBLIC
+        // TODO support fields
+        else -> false
+      }
     }
 
   class Metro(
@@ -81,6 +83,7 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
     override val typeKey: IrTypeKey,
     override val rawTypeKey: IrTypeKey,
     override val contextualTypeKey: IrContextualTypeKey,
+    override val realDeclaration: IrDeclaration?,
     private val callableMetadata: IrCallableMetadata,
     parametersLazy: Lazy<Parameters>,
   ) : ProviderFactory() {
@@ -99,6 +102,13 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
     override val isPropertyAccessor: Boolean
       get() = callableMetadata.isPropertyAccessor
 
+    override val newInstanceName: Name
+      get() =
+        callableMetadata.newInstanceName
+          ?: reportCompilerBug(
+            "No newInstanceName present in CallableMetadata for provider factory for $callableId"
+          )
+
     override val parameters by parametersLazy
 
     override val isDaggerFactory: Boolean = false
@@ -114,6 +124,8 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
     override val parameters: Parameters,
     override val function: IrSimpleFunction,
     override val isPropertyAccessor: Boolean,
+    override val newInstanceName: Name,
+    override val realDeclaration: IrFunction,
   ) : ProviderFactory() {
     override val isDaggerFactory: Boolean = true
   }
@@ -136,8 +148,32 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
         contextualTypeKey = contextKey.withTypeKey(typeKey),
         rawTypeKey = rawTypeKey,
         callableMetadata = callableMetadata,
+        realDeclaration =
+          lookupRealDeclaration(callableMetadata.isPropertyAccessor, callableMetadata.function),
         parametersLazy = memoize { callableMetadata.function.parameters() },
       )
+    }
+
+    context(context: IrMetroContext)
+    fun lookupRealDeclaration(isPropertyAccessor: Boolean, function: IrFunction): IrDeclaration? {
+      val parentClass = function.parentClassOrNull ?: return null
+      return if (isPropertyAccessor) {
+        parentClass.properties
+          .find {
+            it.name == function.name &&
+              it.isAnnotatedWithAny(context.metroSymbols.classIds.providesAnnotations)
+          }
+          ?.let {
+            val backingField = it.backingField
+            if (backingField?.hasAnnotation(Symbols.ClassIds.JvmField) == true) {
+              backingField
+            } else {
+              it.getter ?: it.backingField
+            }
+          }
+      } else {
+        parentClass.getSimpleFunction(function.name.asString())?.owner
+      }
     }
   }
 }

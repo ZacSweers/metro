@@ -16,7 +16,6 @@ import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
-import dev.zacsweers.metro.compiler.isWordPrefixRegex
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.metroAnnotations
@@ -115,7 +114,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
       if (classSymbol.classKind == ClassKind.OBJECT) {
         // Generate create() and newInstance headers
         add(Symbols.Names.create)
-        add(callable.bytecodeName)
+        add(callable.newInstanceName)
       }
     }
   }
@@ -155,10 +154,10 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
             callable.valueParameters,
           )
         }
-        callable.bytecodeName -> {
+        callable.newInstanceName -> {
           buildNewInstanceFunction(
             nonNullContext,
-            callable.bytecodeName,
+            callable.newInstanceName,
             callable.returnType,
             callable.instanceReceiver,
             null,
@@ -204,9 +203,6 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
             providesCallable.asProviderCallable(classSymbol) ?: return@mapNotNullToSet null
           val simpleName =
             buildString {
-                if (providerCallable.useGetPrefix) {
-                  append("Get")
-                }
                 append(providerCallable.name.capitalizeUS())
                 append(Symbols.Names.MetroFactory.asString())
               }
@@ -334,6 +330,16 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
             setType = true,
             prefix = null,
           )
+
+        mapping[Name.identifier("newInstanceName")] =
+          buildLiteralExpression(
+            source = null,
+            kind = ConstantValueKind.String,
+            value = sourceCallable.newInstanceName.asString(),
+            annotations = null,
+            setType = true,
+            prefix = null,
+          )
       }
     }
   }
@@ -355,20 +361,8 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
     val returnType
       get() = symbol.resolvedReturnType
 
-    val useGetPrefix by memoize { isProperty && !isWordPrefixRegex.matches(name.asString()) }
-
-    val bytecodeName: Name by memoize {
-      buildString {
-          when {
-            useGetPrefix -> {
-              append("get")
-              append(name.asString().capitalizeUS())
-            }
-            else -> append(name.asString())
-          }
-        }
-        .asName()
-    }
+    val newInstanceName: Name
+      get() = name
   }
 }
 

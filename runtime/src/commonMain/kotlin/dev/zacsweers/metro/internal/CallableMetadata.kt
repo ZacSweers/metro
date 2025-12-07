@@ -13,4 +13,7 @@ public annotation class CallableMetadata(
   // mirror function, we'll read these back.
   val startOffset: Int,
   val endOffset: Int,
+  // The name for the generated newInstance function. For properties, this may be the property
+  // name (for backing fields or "is"-prefixed properties) or "get${propertyName}" (for getters).
+  val newInstanceName: String = "",
 )
