@@ -49,6 +49,19 @@ print_info() {
     echo -e "${BLUE}ℹ $1${NC}"
 }
 
+# Clean build artifacts more thoroughly (including KSP caches)
+clean_build_artifacts() {
+    print_step "Cleaning build artifacts..."
+    # Stop Gradle daemon to ensure no stale state
+    ./gradlew --stop > /dev/null 2>&1 || true
+    # Remove all build directories to avoid stale JAR/class file issues
+    find . -type d -name "build" -not -path "./.gradle/*" -exec rm -rf {} + 2>/dev/null || true
+    # Remove KSP caches
+    find . -type d -name "kspCaches" -exec rm -rf {} + 2>/dev/null || true
+    # Remove .gradle caches in project
+    rm -rf .gradle/caches 2>/dev/null || true
+}
+
 show_usage() {
     echo "Usage: $0 [command] [options]"
     echo ""
@@ -98,14 +111,27 @@ get_generator_args() {
     esac
 }
 
+# Get extra Gradle arguments for a mode (e.g., disable incremental for flaky KSP)
+get_gradle_args() {
+    local mode="$1"
+    case "$mode" in
+        anvil-ksp|kotlin-inject-anvil)
+            # Disable incremental processing and build cache to avoid flaky KSP builds
+            echo "--no-build-cache -Pksp.incremental=false -Pkotlin.incremental=false"
+            ;;
+        *)
+            echo ""
+            ;;
+    esac
+}
+
 # Run JMH benchmark for a specific mode
 run_jvm_benchmark() {
     local mode="$1"
     local output_dir="$RESULTS_DIR/${TIMESTAMP}/jvm_${mode}"
     mkdir -p "$output_dir"
 
-    print_step "Cleaning build artifacts..."
-    ./gradlew --quiet clean > /dev/null 2>&1 || true
+    clean_build_artifacts
 
     print_step "Generating project for $mode..."
     local gen_args=$(get_generator_args "$mode")
@@ -113,8 +139,10 @@ run_jvm_benchmark() {
 
     print_step "Running JMH benchmark for $mode..."
 
+    local gradle_args=$(get_gradle_args "$mode")
+
     # Run JMH and capture output
-    if ./gradlew --quiet :startup-jvm:jmh 2>&1 | tee "$output_dir/jmh-output.txt"; then
+    if ./gradlew --quiet $gradle_args :startup-jvm:jmh 2>&1 | tee "$output_dir/jmh-output.txt"; then
         # Copy JMH results
         if [ -d "startup-jvm/build/results/jmh" ]; then
             cp -r startup-jvm/build/results/jmh/* "$output_dir/" 2>/dev/null || true
@@ -132,15 +160,16 @@ run_android_benchmark() {
     local output_dir="$RESULTS_DIR/${TIMESTAMP}/android_${mode}"
     mkdir -p "$output_dir"
 
-    print_step "Cleaning build artifacts..."
-    ./gradlew --quiet clean > /dev/null 2>&1 || true
+    clean_build_artifacts
 
     print_step "Generating project for $mode..."
     local gen_args=$(get_generator_args "$mode")
     kotlin generate-projects.main.kts $gen_args --count "$MODULE_COUNT" > /dev/null
 
+    local gradle_args=$(get_gradle_args "$mode")
+
     print_step "Building Android app for $mode..."
-    if ! ./gradlew --quiet :startup-android:app:assembleRelease :startup-android:benchmark:assembleBenchmark :startup-android:microbenchmark:assembleBenchmark 2>&1; then
+    if ! ./gradlew --quiet $gradle_args :startup-android:app:assembleRelease :startup-android:benchmark:assembleBenchmark :startup-android:microbenchmark:assembleBenchmark 2>&1; then
         print_error "Android build failed for $mode"
         return 1
     fi

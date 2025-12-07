@@ -192,6 +192,35 @@ interface ExampleGraph {
 }
 ```
 
+This pattern can be combined with optional bindings to allow for easy conditional injection, for example with optional bindings across different source sets:
+```kotlin
+// in src/main
+@Inject
+class ExampleUseCase(
+  val optionalRepository: OptionalRepository? = null
+)
+
+interface OptionalRepository
+
+// If you want to expose it to your graph
+@ContributesTo(AppScope::class)
+interface OptionalRepositoryProvider {
+  @OptionalDependency
+  val optionalRepository: OptionalRepository? get() = null
+}
+```
+
+then in the optionally included module:
+```kotlin
+// Dependency of the src/debug source set
+@Inject
+@ContributesBinding(AppScope::class) // Standard binding
+// Add a nullable binding so it can satisfy the nullable injection
+// in the consuming project when present on the classpath
+@ContributesBinding(AppScope::class, binding = binding<OptionalRepository?>())
+class OptionalRepositoryImpl : OptionalRepository
+```
+
 ??? note "Implementation Notes"
 
     While kotlin-inject can support this by simply invoking functions with omitted arguments, Metro has to support this in generated factories.
