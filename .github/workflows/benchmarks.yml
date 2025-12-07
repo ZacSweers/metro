@@ -1,0 +1,243 @@
+name: Benchmarks
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref1:
+        description: 'Baseline git ref (branch name or commit SHA)'
+        required: false
+        type: string
+        default: 'main'
+      ref2:
+        description: 'Comparison git ref (branch name or commit SHA)'
+        required: true
+        type: string
+      metro:
+        description: 'Benchmark Metro'
+        required: false
+        type: boolean
+        default: true
+      anvil-ksp:
+        description: 'Benchmark Anvil (KSP)'
+        required: false
+        type: boolean
+        default: true
+      anvil-kapt:
+        description: 'Benchmark Anvil (KAPT)'
+        required: false
+        type: boolean
+        default: false
+      kotlin-inject-anvil:
+        description: 'Benchmark kotlin-inject-anvil'
+        required: false
+        type: boolean
+        default: true
+      module_count:
+        description: 'Number of modules to generate'
+        required: false
+        type: string
+        default: '500'
+      run-startup-benchmarks:
+        description: 'Run startup benchmarks (JMH)'
+        required: false
+        type: boolean
+        default: true
+      run-build-benchmarks:
+        description: 'Run build benchmarks (Gradle Profiler)'
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  # Shared job to validate inputs and build modes string
+  validate:
+    name: "Validate inputs"
+    runs-on: ubuntu-latest
+    outputs:
+      modes: ${{ steps.modes.outputs.modes }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build modes string
+        id: modes
+        run: |
+          modes=""
+          if [ "${{ inputs.metro }}" = "true" ]; then
+            modes="${modes}metro,"
+          fi
+          if [ "${{ inputs.anvil-ksp }}" = "true" ]; then
+            modes="${modes}anvil-ksp,"
+          fi
+          if [ "${{ inputs.anvil-kapt }}" = "true" ]; then
+            modes="${modes}anvil-kapt,"
+          fi
+          if [ "${{ inputs.kotlin-inject-anvil }}" = "true" ]; then
+            modes="${modes}kotlin-inject-anvil,"
+          fi
+          # Remove trailing comma
+          modes="${modes%,}"
+          if [ -z "$modes" ]; then
+            echo "Error: At least one mode must be selected"
+            exit 1
+          fi
+          echo "modes=$modes" >> $GITHUB_OUTPUT
+          echo "Selected modes: $modes"
+
+      - name: Validate git refs
+        run: |
+          echo "Validating ref1: ${{ inputs.ref1 }}"
+          git rev-parse --verify "${{ inputs.ref1 }}" || {
+            echo "Error: Invalid git ref: ${{ inputs.ref1 }}"
+            exit 1
+          }
+          echo "Validating ref2: ${{ inputs.ref2 }}"
+          git rev-parse --verify "${{ inputs.ref2 }}" || {
+            echo "Error: Invalid git ref: ${{ inputs.ref2 }}"
+            exit 1
+          }
+          echo "Both refs are valid"
+
+  # Startup benchmarks using JMH
+  startup-benchmarks:
+    name: "Startup (JMH): ${{ inputs.ref1 }} vs ${{ inputs.ref2 }}"
+    runs-on: ubuntu-latest
+    needs: validate
+    if: inputs.run-startup-benchmarks
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version-file: .github/workflows/.java-version
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-read-only: true
+          gradle-home-cache-strict-match: true
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+
+      - name: Run startup benchmark comparison
+        run: |
+          cd benchmark
+          ./run_startup_benchmarks.sh compare \
+            --ref1 "${{ inputs.ref1 }}" \
+            --ref2 "${{ inputs.ref2 }}" \
+            --modes "${{ needs.validate.outputs.modes }}" \
+            --count "${{ inputs.module_count }}" \
+            --benchmark jvm
+
+      - name: Find results directory
+        id: results
+        run: |
+          results_dir=$(ls -td benchmark/startup-benchmark-results/*/ 2>/dev/null | head -1)
+          if [ -z "$results_dir" ]; then
+            echo "Error: No results directory found"
+            exit 1
+          fi
+          echo "results_dir=$results_dir" >> $GITHUB_OUTPUT
+          echo "Results directory: $results_dir"
+
+      - name: Upload startup benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: startup-benchmark-results
+          path: ${{ steps.results.outputs.results_dir }}
+          retention-days: 30
+
+      - name: Add startup summary to workflow
+        run: |
+          results_dir="${{ steps.results.outputs.results_dir }}"
+          summary_file="${results_dir}comparison-summary.md"
+
+          if [ -f "$summary_file" ]; then
+            echo "## Startup Benchmark Results (JMH)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            cat "$summary_file" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## Startup Benchmark Results (JMH)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "No comparison summary found. Check the uploaded artifacts for raw results." >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # Build benchmarks using Gradle Profiler
+  build-benchmarks:
+    name: "Build (Gradle Profiler): ${{ inputs.ref1 }} vs ${{ inputs.ref2 }}"
+    runs-on: ubuntu-latest
+    needs: validate
+    if: inputs.run-build-benchmarks
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version-file: .github/workflows/.java-version
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-read-only: true
+          gradle-home-cache-strict-match: true
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+
+      - name: Install gradle-profiler
+        run: |
+          cd benchmark
+          ./run_benchmarks.sh --install-gradle-profiler help
+
+      - name: Run build benchmark comparison
+        run: |
+          cd benchmark
+          ./run_benchmarks.sh compare \
+            --ref1 "${{ inputs.ref1 }}" \
+            --ref2 "${{ inputs.ref2 }}" \
+            --modes "${{ needs.validate.outputs.modes }}" \
+            ${{ inputs.module_count }}
+
+      - name: Find results directory
+        id: results
+        run: |
+          results_dir=$(ls -td benchmark/benchmark-results/*/ 2>/dev/null | head -1)
+          if [ -z "$results_dir" ]; then
+            echo "Error: No results directory found"
+            exit 1
+          fi
+          echo "results_dir=$results_dir" >> $GITHUB_OUTPUT
+          echo "Results directory: $results_dir"
+
+      - name: Upload build benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-benchmark-results
+          path: ${{ steps.results.outputs.results_dir }}
+          retention-days: 30
+
+      - name: Add build summary to workflow
+        run: |
+          results_dir="${{ steps.results.outputs.results_dir }}"
+          summary_file="${results_dir}comparison-summary.md"
+
+          if [ -f "$summary_file" ]; then
+            echo "## Build Benchmark Results (Gradle Profiler)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            cat "$summary_file" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## Build Benchmark Results (Gradle Profiler)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "No comparison summary found. Check the uploaded artifacts for raw results." >> $GITHUB_STEP_SUMMARY
+          fi

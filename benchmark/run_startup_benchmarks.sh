@@ -25,6 +25,12 @@ MODULE_COUNT=500
 # Default modes to benchmark
 MODES="metro,anvil-ksp,kotlin-inject-anvil"
 
+# Git comparison refs
+COMPARE_REF1=""
+COMPARE_REF2=""
+ORIGINAL_GIT_REF=""
+ORIGINAL_GIT_IS_BRANCH=false
+
 print_header() {
     echo ""
     echo -e "${GREEN}═══════════════════════════════════════════════════════════════${NC}"
@@ -49,6 +55,79 @@ print_info() {
     echo -e "${BLUE}ℹ $1${NC}"
 }
 
+# Save current git state (branch or commit)
+save_git_state() {
+    # Check if we're on a branch or in detached HEAD state
+    local current_branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
+    if [ -n "$current_branch" ]; then
+        ORIGINAL_GIT_REF="$current_branch"
+        ORIGINAL_GIT_IS_BRANCH=true
+        print_info "Saved current branch: $ORIGINAL_GIT_REF"
+    else
+        # Detached HEAD - save the commit hash
+        ORIGINAL_GIT_REF=$(git rev-parse HEAD)
+        ORIGINAL_GIT_IS_BRANCH=false
+        print_info "Saved current commit: ${ORIGINAL_GIT_REF:0:12}"
+    fi
+}
+
+# Restore to original git state
+restore_git_state() {
+    if [ -z "$ORIGINAL_GIT_REF" ]; then
+        print_error "No git state saved to restore"
+        return 1
+    fi
+
+    print_step "Restoring to original git state..."
+    if [ "$ORIGINAL_GIT_IS_BRANCH" = true ]; then
+        git checkout "$ORIGINAL_GIT_REF" 2>/dev/null || {
+            print_error "Failed to restore to branch: $ORIGINAL_GIT_REF"
+            return 1
+        }
+        print_success "Restored to branch: $ORIGINAL_GIT_REF"
+    else
+        git checkout "$ORIGINAL_GIT_REF" 2>/dev/null || {
+            print_error "Failed to restore to commit: ${ORIGINAL_GIT_REF:0:12}"
+            return 1
+        }
+        print_success "Restored to commit: ${ORIGINAL_GIT_REF:0:12}"
+    fi
+}
+
+# Checkout a git ref (branch or commit)
+checkout_ref() {
+    local ref="$1"
+    print_step "Checking out: $ref"
+    git checkout "$ref" 2>/dev/null || {
+        print_error "Failed to checkout: $ref"
+        return 1
+    }
+    local short_ref=$(git rev-parse --short HEAD)
+    print_success "Checked out: $ref ($short_ref)"
+}
+
+# Get a short display name for a git ref
+get_ref_display_name() {
+    local ref="$1"
+    # Try to resolve to a short commit hash
+    local short_hash=$(git rev-parse --short "$ref" 2>/dev/null || echo "$ref")
+    # If it's a branch name, use that; otherwise use the short hash
+    if git show-ref --verify --quiet "refs/heads/$ref" 2>/dev/null; then
+        echo "$ref"
+    elif git show-ref --verify --quiet "refs/remotes/origin/$ref" 2>/dev/null; then
+        echo "$ref"
+    else
+        echo "$short_hash"
+    fi
+}
+
+# Get a filesystem-safe name for a git ref
+get_ref_safe_name() {
+    local ref="$1"
+    # Replace slashes and other special chars with underscores
+    echo "$ref" | sed 's/[^a-zA-Z0-9._-]/_/g'
+}
+
 # Clean build artifacts more thoroughly (including KSP caches)
 clean_build_artifacts() {
     print_step "Cleaning build artifacts..."
@@ -69,6 +148,7 @@ show_usage() {
     echo "  jvm       Run JVM startup benchmarks using JMH"
     echo "  android   Run Android benchmarks (requires device)"
     echo "  all       Run all benchmarks (default)"
+    echo "  compare   Compare benchmarks across two git refs (branches or commits)"
     echo "  summary   Regenerate summary from existing results (use with --timestamp)"
     echo "  help      Show this help message"
     echo ""
@@ -79,11 +159,21 @@ show_usage() {
     echo "  --count <n>         Number of modules to generate (default: 500)"
     echo "  --timestamp <ts>    Use specific timestamp for results directory"
     echo ""
+    echo "Compare Options:"
+    echo "  --ref1 <ref>        First git ref (baseline) - branch name or commit hash"
+    echo "  --ref2 <ref>        Second git ref to compare against baseline"
+    echo "  --benchmark <type>  Benchmark type for compare: jvm, android, or all (default: jvm)"
+    echo ""
     echo "Examples:"
     echo "  $0 jvm                              # Run JVM benchmarks for all modes"
     echo "  $0 jvm --modes metro,anvil-ksp      # Run JVM benchmarks for specific modes"
     echo "  $0 all --count 250                  # Run all benchmarks with 250 modules"
     echo "  $0 summary --timestamp 20251205_125203 --modes metro,anvil-ksp"
+    echo ""
+    echo "  # Compare benchmarks across git refs:"
+    echo "  $0 compare --ref1 main --ref2 feature-branch"
+    echo "  $0 compare --ref1 abc123 --ref2 def456 --benchmark all"
+    echo "  $0 compare --ref1 v1.0.0 --ref2 HEAD --modes metro"
     echo ""
     echo "Results will be saved to: $RESULTS_DIR/"
 }
@@ -115,8 +205,8 @@ get_generator_args() {
 get_gradle_args() {
     local mode="$1"
     case "$mode" in
-        anvil-ksp|kotlin-inject-anvil)
-            # Disable incremental processing and build cache to avoid flaky KSP builds
+        anvil-ksp|anvil-kapt|kotlin-inject-anvil)
+            # Disable incremental processing and build cache to avoid flaky KSP/KAPT builds
             echo "--no-build-cache -Pksp.incremental=false -Pkotlin.incremental=false"
             ;;
         *)
@@ -125,17 +215,21 @@ get_gradle_args() {
     esac
 }
 
-# Run JMH benchmark for a specific mode
-run_jvm_benchmark() {
+# Setup project for a specific mode (clean and generate)
+setup_for_mode() {
     local mode="$1"
-    local output_dir="$RESULTS_DIR/${TIMESTAMP}/jvm_${mode}"
-    mkdir -p "$output_dir"
-
     clean_build_artifacts
 
     print_step "Generating project for $mode..."
     local gen_args=$(get_generator_args "$mode")
     kotlin generate-projects.main.kts $gen_args --count "$MODULE_COUNT" > /dev/null
+}
+
+# Run JMH benchmark only (no clean/generate)
+run_jvm_benchmark_only() {
+    local mode="$1"
+    local output_dir="$RESULTS_DIR/${TIMESTAMP}/jvm_${mode}"
+    mkdir -p "$output_dir"
 
     print_step "Running JMH benchmark for $mode..."
 
@@ -154,17 +248,18 @@ run_jvm_benchmark() {
     fi
 }
 
-# Run Android benchmark for a specific mode
-run_android_benchmark() {
+# Run JMH benchmark for a specific mode (with clean/generate)
+run_jvm_benchmark() {
+    local mode="$1"
+    setup_for_mode "$mode"
+    run_jvm_benchmark_only "$mode"
+}
+
+# Run Android benchmark only (no clean/generate)
+run_android_benchmark_only() {
     local mode="$1"
     local output_dir="$RESULTS_DIR/${TIMESTAMP}/android_${mode}"
     mkdir -p "$output_dir"
-
-    clean_build_artifacts
-
-    print_step "Generating project for $mode..."
-    local gen_args=$(get_generator_args "$mode")
-    kotlin generate-projects.main.kts $gen_args --count "$MODULE_COUNT" > /dev/null
 
     local gradle_args=$(get_gradle_args "$mode")
 
@@ -200,6 +295,13 @@ run_android_benchmark() {
         print_error "Android microbenchmark failed for $mode"
         return 1
     fi
+}
+
+# Run Android benchmark for a specific mode (with clean/generate)
+run_android_benchmark() {
+    local mode="$1"
+    setup_for_mode "$mode"
+    run_android_benchmark_only "$mode"
 }
 
 # Extract JMH score from results
@@ -449,6 +551,375 @@ run_android_benchmarks() {
     done
 }
 
+# Run all benchmarks grouped by mode (build once per mode)
+run_all_benchmarks() {
+    print_header "Running All Startup Benchmarks (Grouped by Mode)"
+
+    IFS=',' read -ra MODE_ARRAY <<< "$MODES"
+    for mode in "${MODE_ARRAY[@]}"; do
+        print_header "Benchmarking: $mode"
+
+        # Setup once for this mode
+        setup_for_mode "$mode"
+
+        # Run JVM benchmarks
+        print_info "Running JVM benchmarks for $mode..."
+        run_jvm_benchmark_only "$mode" || true
+
+        # Run Android benchmarks (reuses the same generated project)
+        print_info "Running Android benchmarks for $mode..."
+        run_android_benchmark_only "$mode" || true
+    done
+}
+
+# Run benchmarks for a specific git ref
+# Arguments: ref, benchmark_type (jvm|android|all), ref_label
+run_benchmarks_for_ref() {
+    local ref="$1"
+    local benchmark_type="$2"
+    local ref_label="$3"
+
+    print_header "Running benchmarks for: $ref_label"
+
+    # Checkout the ref
+    checkout_ref "$ref" || return 1
+
+    # Create ref-specific results directory
+    local ref_dir="$RESULTS_DIR/${TIMESTAMP}/${ref_label}"
+    mkdir -p "$ref_dir"
+
+    # Save the commit hash for reference
+    git rev-parse HEAD > "$ref_dir/commit.txt"
+    git log -1 --format='%h %s' > "$ref_dir/commit-info.txt"
+
+    IFS=',' read -ra MODE_ARRAY <<< "$MODES"
+    for mode in "${MODE_ARRAY[@]}"; do
+        print_header "Benchmarking $mode for $ref_label"
+
+        # Setup for this mode
+        setup_for_mode "$mode"
+
+        case "$benchmark_type" in
+            jvm)
+                run_jvm_benchmark_only "$mode" || true
+                # Move results to ref-specific directory
+                if [ -d "$RESULTS_DIR/${TIMESTAMP}/jvm_${mode}" ]; then
+                    mkdir -p "$ref_dir/jvm_${mode}"
+                    cp -r "$RESULTS_DIR/${TIMESTAMP}/jvm_${mode}"/* "$ref_dir/jvm_${mode}/" 2>/dev/null || true
+                    rm -rf "$RESULTS_DIR/${TIMESTAMP}/jvm_${mode}"
+                fi
+                ;;
+            android)
+                run_android_benchmark_only "$mode" || true
+                # Move results to ref-specific directory
+                if [ -d "$RESULTS_DIR/${TIMESTAMP}/android_${mode}" ]; then
+                    mkdir -p "$ref_dir/android_${mode}"
+                    cp -r "$RESULTS_DIR/${TIMESTAMP}/android_${mode}"/* "$ref_dir/android_${mode}/" 2>/dev/null || true
+                    rm -rf "$RESULTS_DIR/${TIMESTAMP}/android_${mode}"
+                fi
+                ;;
+            all)
+                run_jvm_benchmark_only "$mode" || true
+                if [ -d "$RESULTS_DIR/${TIMESTAMP}/jvm_${mode}" ]; then
+                    mkdir -p "$ref_dir/jvm_${mode}"
+                    cp -r "$RESULTS_DIR/${TIMESTAMP}/jvm_${mode}"/* "$ref_dir/jvm_${mode}/" 2>/dev/null || true
+                    rm -rf "$RESULTS_DIR/${TIMESTAMP}/jvm_${mode}"
+                fi
+                run_android_benchmark_only "$mode" || true
+                if [ -d "$RESULTS_DIR/${TIMESTAMP}/android_${mode}" ]; then
+                    mkdir -p "$ref_dir/android_${mode}"
+                    cp -r "$RESULTS_DIR/${TIMESTAMP}/android_${mode}"/* "$ref_dir/android_${mode}/" 2>/dev/null || true
+                    rm -rf "$RESULTS_DIR/${TIMESTAMP}/android_${mode}"
+                fi
+                ;;
+        esac
+    done
+
+    print_success "Completed benchmarks for $ref_label"
+}
+
+# Extract JMH score for a ref
+extract_jmh_score_for_ref() {
+    local ref_label="$1"
+    local mode="$2"
+    local jvm_dir="$RESULTS_DIR/${TIMESTAMP}/${ref_label}/jvm_${mode}"
+    local score=""
+
+    # Try to get score from JSON first, then text output
+    if [ -f "$jvm_dir/results.json" ]; then
+        score=$(extract_jmh_score "$jvm_dir/results.json")
+    fi
+
+    # Fallback: parse from results.txt or jmh-output.txt
+    if [ -z "$score" ] && [ -f "$jvm_dir/results.txt" ]; then
+        score=$(grep 'graphCreationAndInitialization' "$jvm_dir/results.txt" 2>/dev/null | awk '{print $4}' || echo "")
+    fi
+    if [ -z "$score" ] && [ -f "$jvm_dir/jmh-output.txt" ]; then
+        score=$(grep 'graphCreationAndInitialization' "$jvm_dir/jmh-output.txt" 2>/dev/null | grep 'avgt' | tail -1 | awk '{print $4}' || echo "")
+    fi
+
+    echo "$score"
+}
+
+# Extract Android macro score for a ref
+extract_android_macro_score_for_ref() {
+    local ref_label="$1"
+    local mode="$2"
+    local android_dir="$RESULTS_DIR/${TIMESTAMP}/${ref_label}/android_${mode}"
+    extract_android_macro_score "$android_dir"
+}
+
+# Extract Android micro score for a ref
+extract_android_micro_score_for_ref() {
+    local ref_label="$1"
+    local mode="$2"
+    local android_dir="$RESULTS_DIR/${TIMESTAMP}/${ref_label}/android_${mode}"
+    extract_android_micro_score "$android_dir"
+}
+
+# Generate comparison summary between two refs
+generate_comparison_summary() {
+    local ref1_label="$1"
+    local ref2_label="$2"
+    local benchmark_type="$3"
+
+    local summary_file="$RESULTS_DIR/${TIMESTAMP}/comparison-summary.md"
+    local ref1_commit=$(cat "$RESULTS_DIR/${TIMESTAMP}/${ref1_label}/commit-info.txt" 2>/dev/null || echo "unknown")
+    local ref2_commit=$(cat "$RESULTS_DIR/${TIMESTAMP}/${ref2_label}/commit-info.txt" 2>/dev/null || echo "unknown")
+
+    print_header "Generating Comparison Summary"
+
+    cat > "$summary_file" << EOF
+# Benchmark Comparison: $ref1_label vs $ref2_label
+
+**Date:** $(date)
+**Module Count:** $MODULE_COUNT
+**Modes:** $MODES
+
+## Git Refs
+
+| Ref | Commit |
+|-----|--------|
+| $ref1_label (baseline) | $ref1_commit |
+| $ref2_label | $ref2_commit |
+
+EOF
+
+    if [ "$benchmark_type" = "jvm" ] || [ "$benchmark_type" = "all" ]; then
+        cat >> "$summary_file" << EOF
+## JVM Benchmarks (JMH)
+
+Graph creation and initialization time (lower is better):
+
+| Framework | $ref1_label (baseline) | $ref2_label | Difference |
+|-----------|------------------------|-------------|------------|
+EOF
+
+        IFS=',' read -ra MODE_ARRAY <<< "$MODES"
+        for mode in "${MODE_ARRAY[@]}"; do
+            local score1=$(extract_jmh_score_for_ref "$ref1_label" "$mode")
+            local score2=$(extract_jmh_score_for_ref "$ref2_label" "$mode")
+
+            local display1="${score1:-N/A}"
+            local display2="${score2:-N/A}"
+            local diff="-"
+
+            if [ -n "$score1" ]; then
+                display1=$(printf "%.3f ms" "$score1")
+            fi
+            if [ -n "$score2" ]; then
+                display2=$(printf "%.3f ms" "$score2")
+            fi
+
+            if [ -n "$score1" ] && [ -n "$score2" ] && [ "$score1" != "0" ]; then
+                local pct=$(printf "%.1f" "$(echo "scale=4; (($score2 - $score1) / $score1) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                if [ -n "$pct" ]; then
+                    if [[ "$pct" == -* ]]; then
+                        diff="${pct}% (faster)"
+                    elif [[ "$pct" == "0.0" ]]; then
+                        diff="no change"
+                    else
+                        diff="+${pct}% (slower)"
+                    fi
+                fi
+            fi
+
+            echo "| $mode | $display1 | $display2 | $diff |" >> "$summary_file"
+        done
+
+        echo "" >> "$summary_file"
+    fi
+
+    if [ "$benchmark_type" = "android" ] || [ "$benchmark_type" = "all" ]; then
+        cat >> "$summary_file" << EOF
+## Android Benchmarks (Macrobenchmark)
+
+Cold startup time including graph initialization (lower is better):
+
+| Framework | $ref1_label (baseline) | $ref2_label | Difference |
+|-----------|------------------------|-------------|------------|
+EOF
+
+        IFS=',' read -ra MODE_ARRAY <<< "$MODES"
+        for mode in "${MODE_ARRAY[@]}"; do
+            local score1=$(extract_android_macro_score_for_ref "$ref1_label" "$mode")
+            local score2=$(extract_android_macro_score_for_ref "$ref2_label" "$mode")
+
+            local display1="${score1:-N/A}"
+            local display2="${score2:-N/A}"
+            local diff="-"
+
+            if [ -n "$score1" ]; then
+                display1=$(printf "%.0f ms" "$score1")
+            fi
+            if [ -n "$score2" ]; then
+                display2=$(printf "%.0f ms" "$score2")
+            fi
+
+            if [ -n "$score1" ] && [ -n "$score2" ] && [ "$score1" != "0" ]; then
+                local pct=$(printf "%.1f" "$(echo "scale=4; (($score2 - $score1) / $score1) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                if [ -n "$pct" ]; then
+                    if [[ "$pct" == -* ]]; then
+                        diff="${pct}% (faster)"
+                    elif [[ "$pct" == "0.0" ]]; then
+                        diff="no change"
+                    else
+                        diff="+${pct}% (slower)"
+                    fi
+                fi
+            fi
+
+            echo "| $mode | $display1 | $display2 | $diff |" >> "$summary_file"
+        done
+
+        cat >> "$summary_file" << EOF
+
+## Android Benchmarks (Microbenchmark)
+
+Graph creation and initialization time on Android (lower is better):
+
+| Framework | $ref1_label (baseline) | $ref2_label | Difference |
+|-----------|------------------------|-------------|------------|
+EOF
+
+        for mode in "${MODE_ARRAY[@]}"; do
+            local score1=$(extract_android_micro_score_for_ref "$ref1_label" "$mode")
+            local score2=$(extract_android_micro_score_for_ref "$ref2_label" "$mode")
+
+            local display1="${score1:-N/A}"
+            local display2="${score2:-N/A}"
+            local diff="-"
+
+            if [ -n "$score1" ]; then
+                display1=$(printf "%.3f ms" "$score1")
+            fi
+            if [ -n "$score2" ]; then
+                display2=$(printf "%.3f ms" "$score2")
+            fi
+
+            if [ -n "$score1" ] && [ -n "$score2" ] && [ "$score1" != "0" ]; then
+                local pct=$(printf "%.1f" "$(echo "scale=4; (($score2 - $score1) / $score1) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                if [ -n "$pct" ]; then
+                    if [[ "$pct" == -* ]]; then
+                        diff="${pct}% (faster)"
+                    elif [[ "$pct" == "0.0" ]]; then
+                        diff="no change"
+                    else
+                        diff="+${pct}% (slower)"
+                    fi
+                fi
+            fi
+
+            echo "| $mode | $display1 | $display2 | $diff |" >> "$summary_file"
+        done
+
+        echo "" >> "$summary_file"
+    fi
+
+    cat >> "$summary_file" << EOF
+## Raw Results
+
+Results are stored in: \`$RESULTS_DIR/${TIMESTAMP}/\`
+
+- \`${ref1_label}/\` - Results for baseline ($ref1_commit)
+- \`${ref2_label}/\` - Results for comparison ($ref2_commit)
+EOF
+
+    print_success "Comparison summary saved to $summary_file"
+    echo ""
+    cat "$summary_file"
+}
+
+# Run compare command
+run_compare() {
+    local benchmark_type="${COMPARE_BENCHMARK_TYPE:-jvm}"
+
+    if [ -z "$COMPARE_REF1" ] || [ -z "$COMPARE_REF2" ]; then
+        print_error "Compare requires both --ref1 and --ref2 arguments"
+        show_usage
+        exit 1
+    fi
+
+    # Validate refs exist
+    if ! git rev-parse --verify "$COMPARE_REF1" > /dev/null 2>&1; then
+        print_error "Invalid git ref: $COMPARE_REF1"
+        exit 1
+    fi
+    if ! git rev-parse --verify "$COMPARE_REF2" > /dev/null 2>&1; then
+        print_error "Invalid git ref: $COMPARE_REF2"
+        exit 1
+    fi
+
+    # Check for uncommitted changes
+    if ! git diff-index --quiet HEAD -- 2>/dev/null; then
+        print_error "You have uncommitted changes. Please commit or stash them before comparing."
+        exit 1
+    fi
+
+    print_header "Comparing Benchmarks Across Git Refs"
+    print_info "Baseline (ref1): $COMPARE_REF1"
+    print_info "Compare (ref2):  $COMPARE_REF2"
+    print_info "Benchmark type:  $benchmark_type"
+    print_info "Modes:           $MODES"
+    echo ""
+
+    # Save current git state
+    save_git_state
+
+    # Create safe labels for directory names
+    local ref1_label=$(get_ref_safe_name "$COMPARE_REF1")
+    local ref2_label=$(get_ref_safe_name "$COMPARE_REF2")
+
+    # Ensure unique labels if they resolve to the same name
+    if [ "$ref1_label" = "$ref2_label" ]; then
+        ref1_label="${ref1_label}_base"
+        ref2_label="${ref2_label}_compare"
+    fi
+
+    # Set up trap to restore git state on exit
+    trap 'restore_git_state' EXIT
+
+    # Run benchmarks for ref1 (baseline)
+    run_benchmarks_for_ref "$COMPARE_REF1" "$benchmark_type" "$ref1_label" || {
+        print_error "Failed to run benchmarks for $COMPARE_REF1"
+        exit 1
+    }
+
+    # Run benchmarks for ref2
+    run_benchmarks_for_ref "$COMPARE_REF2" "$benchmark_type" "$ref2_label" || {
+        print_error "Failed to run benchmarks for $COMPARE_REF2"
+        exit 1
+    }
+
+    # Generate comparison summary
+    generate_comparison_summary "$ref1_label" "$ref2_label" "$benchmark_type"
+
+    # Restore will happen via trap
+}
+
+# Default benchmark type for compare
+COMPARE_BENCHMARK_TYPE="jvm"
+
 main() {
     local command="${1:-all}"
     shift || true
@@ -466,6 +937,18 @@ main() {
                 ;;
             --timestamp)
                 TIMESTAMP="$2"
+                shift 2
+                ;;
+            --ref1)
+                COMPARE_REF1="$2"
+                shift 2
+                ;;
+            --ref2)
+                COMPARE_REF2="$2"
+                shift 2
+                ;;
+            --benchmark)
+                COMPARE_BENCHMARK_TYPE="$2"
                 shift 2
                 ;;
             *)
@@ -488,13 +971,15 @@ main() {
             generate_summary
             ;;
         all)
-            run_jvm_benchmarks
-            run_android_benchmarks
+            run_all_benchmarks
             generate_summary
             ;;
         summary)
             # Just regenerate the summary from existing results
             generate_summary
+            ;;
+        compare)
+            run_compare
             ;;
         help|--help|-h)
             show_usage
@@ -507,9 +992,11 @@ main() {
             ;;
     esac
 
-    print_header "Benchmarks Complete"
-    echo "Results saved to: $RESULTS_DIR/${TIMESTAMP}/"
-    echo ""
+    if [ "$command" != "compare" ]; then
+        print_header "Benchmarks Complete"
+        echo "Results saved to: $RESULTS_DIR/${TIMESTAMP}/"
+        echo ""
+    fi
 }
 
 main "$@"

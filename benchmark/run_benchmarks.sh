@@ -12,6 +12,13 @@ DEFAULT_MODULE_COUNT=500
 RESULTS_DIR="benchmark-results"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
+# Git comparison refs
+COMPARE_REF1=""
+COMPARE_REF2=""
+COMPARE_BENCHMARK_TYPE="all"
+ORIGINAL_GIT_REF=""
+ORIGINAL_GIT_IS_BRANCH=false
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -40,6 +47,64 @@ print_header() {
     echo -e "\n${BLUE}========================================${NC}"
     echo -e "${BLUE} $1${NC}"
     echo -e "${BLUE}========================================${NC}\n"
+}
+
+# Save current git state (branch or commit)
+save_git_state() {
+    # Check if we're on a branch or in detached HEAD state
+    local current_branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
+    if [ -n "$current_branch" ]; then
+        ORIGINAL_GIT_REF="$current_branch"
+        ORIGINAL_GIT_IS_BRANCH=true
+        print_status "Saved current branch: $ORIGINAL_GIT_REF"
+    else
+        # Detached HEAD - save the commit hash
+        ORIGINAL_GIT_REF=$(git rev-parse HEAD)
+        ORIGINAL_GIT_IS_BRANCH=false
+        print_status "Saved current commit: ${ORIGINAL_GIT_REF:0:12}"
+    fi
+}
+
+# Restore to original git state
+restore_git_state() {
+    if [ -z "$ORIGINAL_GIT_REF" ]; then
+        print_error "No git state saved to restore"
+        return 1
+    fi
+
+    print_status "Restoring to original git state..."
+    if [ "$ORIGINAL_GIT_IS_BRANCH" = true ]; then
+        git checkout "$ORIGINAL_GIT_REF" 2>/dev/null || {
+            print_error "Failed to restore to branch: $ORIGINAL_GIT_REF"
+            return 1
+        }
+        print_success "Restored to branch: $ORIGINAL_GIT_REF"
+    else
+        git checkout "$ORIGINAL_GIT_REF" 2>/dev/null || {
+            print_error "Failed to restore to commit: ${ORIGINAL_GIT_REF:0:12}"
+            return 1
+        }
+        print_success "Restored to commit: ${ORIGINAL_GIT_REF:0:12}"
+    fi
+}
+
+# Checkout a git ref (branch or commit)
+checkout_ref() {
+    local ref="$1"
+    print_status "Checking out: $ref"
+    git checkout "$ref" 2>/dev/null || {
+        print_error "Failed to checkout: $ref"
+        return 1
+    }
+    local short_ref=$(git rev-parse --short HEAD)
+    print_success "Checked out: $ref ($short_ref)"
+}
+
+# Get a filesystem-safe name for a git ref
+get_ref_safe_name() {
+    local ref="$1"
+    # Replace slashes and other special chars with underscores
+    echo "$ref" | sed 's/[^a-zA-Z0-9._-]/_/g'
 }
 
 # Function to install gradle-profiler from source
@@ -410,6 +475,7 @@ show_usage() {
     echo "  anvil-ksp [COUNT]            Run only Anvil + KSP mode benchmarks"
     echo "  anvil-kapt [COUNT]           Run only Anvil + KAPT mode benchmarks"
     echo "  kotlin-inject-anvil [COUNT]  Run only Kotlin-inject + Anvil mode benchmarks"
+    echo "  compare                       Compare benchmarks across two git refs"
     echo "  help                         Show this help message"
     echo ""
     echo "Options:"
@@ -417,6 +483,13 @@ show_usage() {
     echo "  --build-only                 Only run ./gradlew :app:component:run --quiet, skip gradle-profiler"
     echo "  --include-clean-builds       Include clean build scenarios in benchmarks"
     echo "  --install-gradle-profiler    Install gradle-profiler from source before running benchmarks"
+    echo ""
+    echo "Compare Options:"
+    echo "  --ref1 <ref>                 First git ref (baseline) - branch name or commit hash"
+    echo "  --ref2 <ref>                 Second git ref to compare against baseline"
+    echo "  --modes <list>               Comma-separated list of modes to benchmark"
+    echo "                               Available: metro, anvil-ksp, anvil-kapt, kotlin-inject-anvil"
+    echo "                               Default: metro,anvil-ksp,kotlin-inject-anvil"
     echo ""
     echo "Examples:"
     echo "  $0                           # Run all benchmarks with default settings"
@@ -431,6 +504,10 @@ show_usage() {
     echo "  $0 --install-gradle-profiler # Install gradle-profiler from source then run all benchmarks"
     echo "  $0 metro --install-gradle-profiler # Install gradle-profiler then run Metro benchmarks"
     echo ""
+    echo "  # Compare benchmarks across git refs:"
+    echo "  $0 compare --ref1 main --ref2 feature-branch"
+    echo "  $0 compare --ref1 abc123 --ref2 def456 --modes metro,anvil-ksp"
+    echo ""
     echo "Results will be saved to the '$RESULTS_DIR' directory with timestamps."
 }
 
@@ -444,6 +521,305 @@ validate_count() {
     fi
 }
 
+# Default modes for comparison
+COMPARE_MODES="metro,anvil-ksp,kotlin-inject-anvil"
+
+# Run benchmarks for a specific git ref
+# Arguments: ref, ref_label, count, include_clean_builds
+run_benchmarks_for_ref() {
+    local ref="$1"
+    local ref_label="$2"
+    local count="$3"
+    local include_clean_builds="$4"
+    local modes="$5"
+
+    print_header "Running benchmarks for: $ref_label"
+
+    # Checkout the ref
+    checkout_ref "$ref" || return 1
+
+    # Create ref-specific results directory
+    local ref_dir="$RESULTS_DIR/${TIMESTAMP}/${ref_label}"
+    mkdir -p "$ref_dir"
+
+    # Save the commit hash for reference
+    git rev-parse HEAD > "$ref_dir/commit.txt"
+    git log -1 --format='%h %s' > "$ref_dir/commit-info.txt"
+
+    # Run benchmarks for each mode
+    IFS=',' read -ra MODE_ARRAY <<< "$modes"
+    for mode in "${MODE_ARRAY[@]}"; do
+        print_header "Benchmarking $mode for $ref_label"
+
+        case "$mode" in
+            "metro")
+                generate_projects "metro" "" "$count"
+                run_scenarios "metro" "" "$include_clean_builds"
+                # Move results to ref-specific directory
+                for scenario_dir in "$RESULTS_DIR"/metro_*"$TIMESTAMP"*; do
+                    if [ -d "$scenario_dir" ]; then
+                        mv "$scenario_dir" "$ref_dir/" 2>/dev/null || true
+                    fi
+                done
+                ;;
+            "anvil-ksp")
+                generate_projects "anvil" "ksp" "$count"
+                run_scenarios "anvil" "ksp" "$include_clean_builds"
+                for scenario_dir in "$RESULTS_DIR"/anvil_ksp_*"$TIMESTAMP"*; do
+                    if [ -d "$scenario_dir" ]; then
+                        mv "$scenario_dir" "$ref_dir/" 2>/dev/null || true
+                    fi
+                done
+                ;;
+            "anvil-kapt")
+                generate_projects "anvil" "kapt" "$count"
+                run_scenarios "anvil" "kapt" "$include_clean_builds"
+                for scenario_dir in "$RESULTS_DIR"/anvil_kapt_*"$TIMESTAMP"*; do
+                    if [ -d "$scenario_dir" ]; then
+                        mv "$scenario_dir" "$ref_dir/" 2>/dev/null || true
+                    fi
+                done
+                ;;
+            "kotlin-inject-anvil")
+                generate_projects "kotlin-inject-anvil" "" "$count"
+                run_scenarios "kotlin-inject-anvil" "" "$include_clean_builds"
+                for scenario_dir in "$RESULTS_DIR"/kotlin_inject_anvil_*"$TIMESTAMP"*; do
+                    if [ -d "$scenario_dir" ]; then
+                        mv "$scenario_dir" "$ref_dir/" 2>/dev/null || true
+                    fi
+                done
+                ;;
+            *)
+                print_warning "Unknown mode: $mode, skipping"
+                ;;
+        esac
+    done
+
+    print_success "Completed benchmarks for $ref_label"
+}
+
+# Extract median time from benchmark CSV for a specific test type
+extract_median_for_ref() {
+    local ref_label="$1"
+    local mode_prefix="$2"
+    local test_type="$3"
+
+    local csv_file="$RESULTS_DIR/${TIMESTAMP}/${ref_label}/${mode_prefix}_${TIMESTAMP}/${mode_prefix}_${test_type}/benchmark.csv"
+
+    if [ -f "$csv_file" ]; then
+        # Extract measured build times (skip header and warm-up builds)
+        local times=$(awk -F, '/^measured build/ {print $2}' "$csv_file" | sort -n)
+
+        if [ -z "$times" ]; then
+            echo ""
+            return
+        fi
+
+        # Convert to array and calculate median
+        local times_array=($times)
+        local count=${#times_array[@]}
+
+        if [ $count -eq 0 ]; then
+            echo ""
+            return
+        fi
+
+        local median_index=$((count / 2))
+
+        if [ $((count % 2)) -eq 1 ]; then
+            echo "${times_array[$median_index]}"
+        else
+            local mid1_index=$((median_index - 1))
+            local mid1=${times_array[$mid1_index]}
+            local mid2=${times_array[$median_index]}
+            echo "scale=2; ($mid1 + $mid2) / 2" | bc 2>/dev/null || echo ""
+        fi
+    else
+        echo ""
+    fi
+}
+
+# Generate comparison summary between two refs
+generate_comparison_summary() {
+    local ref1_label="$1"
+    local ref2_label="$2"
+    local modes="$3"
+
+    local summary_file="$RESULTS_DIR/${TIMESTAMP}/comparison-summary.md"
+    local ref1_commit=$(cat "$RESULTS_DIR/${TIMESTAMP}/${ref1_label}/commit-info.txt" 2>/dev/null || echo "unknown")
+    local ref2_commit=$(cat "$RESULTS_DIR/${TIMESTAMP}/${ref2_label}/commit-info.txt" 2>/dev/null || echo "unknown")
+
+    print_header "Generating Comparison Summary"
+
+    cat > "$summary_file" << EOF
+# Benchmark Comparison: $ref1_label vs $ref2_label
+
+**Date:** $(date)
+**Module Count:** $DEFAULT_MODULE_COUNT
+**Modes:** $modes
+
+## Git Refs
+
+| Ref | Commit |
+|-----|--------|
+| $ref1_label (baseline) | $ref1_commit |
+| $ref2_label | $ref2_commit |
+
+EOF
+
+    # Test types to compare
+    local test_types=("abi_change" "non_abi_change" "plain_abi_change" "plain_non_abi_change" "raw_compilation")
+    local test_names=("ABI Change" "Non-ABI Change" "Plain Kotlin ABI" "Plain Kotlin Non-ABI" "Graph Processing")
+
+    for i in "${!test_types[@]}"; do
+        local test_type="${test_types[$i]}"
+        local test_name="${test_names[$i]}"
+
+        cat >> "$summary_file" << EOF
+## $test_name
+
+| Framework | $ref1_label (baseline) | $ref2_label | Difference |
+|-----------|------------------------|-------------|------------|
+EOF
+
+        IFS=',' read -ra MODE_ARRAY <<< "$modes"
+        for mode in "${MODE_ARRAY[@]}"; do
+            local mode_prefix
+            case "$mode" in
+                "metro") mode_prefix="metro" ;;
+                "anvil-ksp") mode_prefix="anvil_ksp" ;;
+                "anvil-kapt") mode_prefix="anvil_kapt" ;;
+                "kotlin-inject-anvil") mode_prefix="kotlin_inject_anvil" ;;
+                *) continue ;;
+            esac
+
+            local score1=$(extract_median_for_ref "$ref1_label" "$mode_prefix" "$test_type")
+            local score2=$(extract_median_for_ref "$ref2_label" "$mode_prefix" "$test_type")
+
+            local display1="N/A"
+            local display2="N/A"
+            local diff="-"
+
+            if [ -n "$score1" ]; then
+                local secs1=$(echo "scale=1; $score1 / 1000" | bc 2>/dev/null || echo "")
+                if [ -n "$secs1" ]; then
+                    display1="${secs1}s"
+                fi
+            fi
+            if [ -n "$score2" ]; then
+                local secs2=$(echo "scale=1; $score2 / 1000" | bc 2>/dev/null || echo "")
+                if [ -n "$secs2" ]; then
+                    display2="${secs2}s"
+                fi
+            fi
+
+            if [ -n "$score1" ] && [ -n "$score2" ] && [ "$score1" != "0" ]; then
+                local pct=$(echo "scale=1; (($score2 - $score1) / $score1) * 100" | bc 2>/dev/null || echo "")
+                if [ -n "$pct" ]; then
+                    # Check if negative (faster)
+                    if [[ "$pct" == -* ]]; then
+                        diff="${pct}% (faster)"
+                    elif [[ "$pct" == "0" ]] || [[ "$pct" == "0.0" ]] || [[ "$pct" == ".0" ]]; then
+                        diff="no change"
+                    else
+                        diff="+${pct}% (slower)"
+                    fi
+                fi
+            fi
+
+            echo "| $mode | $display1 | $display2 | $diff |" >> "$summary_file"
+        done
+
+        echo "" >> "$summary_file"
+    done
+
+    cat >> "$summary_file" << EOF
+## Raw Results
+
+Results are stored in: \`$RESULTS_DIR/${TIMESTAMP}/\`
+
+- \`${ref1_label}/\` - Results for baseline ($ref1_commit)
+- \`${ref2_label}/\` - Results for comparison ($ref2_commit)
+EOF
+
+    print_success "Comparison summary saved to $summary_file"
+    echo ""
+    cat "$summary_file"
+}
+
+# Run compare command
+run_compare() {
+    local count="${1:-$DEFAULT_MODULE_COUNT}"
+    local include_clean_builds="${2:-false}"
+
+    if [ -z "$COMPARE_REF1" ] || [ -z "$COMPARE_REF2" ]; then
+        print_error "Compare requires both --ref1 and --ref2 arguments"
+        show_usage
+        exit 1
+    fi
+
+    # Validate refs exist
+    if ! git rev-parse --verify "$COMPARE_REF1" > /dev/null 2>&1; then
+        print_error "Invalid git ref: $COMPARE_REF1"
+        exit 1
+    fi
+    if ! git rev-parse --verify "$COMPARE_REF2" > /dev/null 2>&1; then
+        print_error "Invalid git ref: $COMPARE_REF2"
+        exit 1
+    fi
+
+    # Check for uncommitted changes
+    if ! git diff-index --quiet HEAD -- 2>/dev/null; then
+        print_error "You have uncommitted changes. Please commit or stash them before comparing."
+        exit 1
+    fi
+
+    print_header "Comparing Benchmarks Across Git Refs"
+    print_status "Baseline (ref1): $COMPARE_REF1"
+    print_status "Compare (ref2):  $COMPARE_REF2"
+    print_status "Modes:           $COMPARE_MODES"
+    print_status "Module count:    $count"
+    echo ""
+
+    # Save current git state
+    save_git_state
+
+    # Create safe labels for directory names
+    local ref1_label=$(get_ref_safe_name "$COMPARE_REF1")
+    local ref2_label=$(get_ref_safe_name "$COMPARE_REF2")
+
+    # Ensure unique labels if they resolve to the same name
+    if [ "$ref1_label" = "$ref2_label" ]; then
+        ref1_label="${ref1_label}_base"
+        ref2_label="${ref2_label}_compare"
+    fi
+
+    # Create results directory
+    mkdir -p "$RESULTS_DIR/${TIMESTAMP}"
+
+    # Set up trap to restore git state on exit
+    trap 'restore_git_state' EXIT
+
+    # Run benchmarks for ref1 (baseline)
+    run_benchmarks_for_ref "$COMPARE_REF1" "$ref1_label" "$count" "$include_clean_builds" "$COMPARE_MODES" || {
+        print_error "Failed to run benchmarks for $COMPARE_REF1"
+        exit 1
+    }
+
+    # Run benchmarks for ref2
+    run_benchmarks_for_ref "$COMPARE_REF2" "$ref2_label" "$count" "$include_clean_builds" "$COMPARE_MODES" || {
+        print_error "Failed to run benchmarks for $COMPARE_REF2"
+        exit 1
+    }
+
+    # Generate comparison summary
+    generate_comparison_summary "$ref1_label" "$ref2_label" "$COMPARE_MODES"
+
+    print_header "Comparison Complete"
+    echo "Results saved to: $RESULTS_DIR/${TIMESTAMP}/"
+    echo ""
+}
+
 # Function to parse arguments and handle flags
 parse_args() {
     local args=("$@")
@@ -451,19 +827,31 @@ parse_args() {
     local build_only=false
     local include_clean_builds=false
     local install_profiler=false
-    
-    for arg in "${args[@]}"; do
+    local i=0
+
+    while [ $i -lt ${#args[@]} ]; do
+        local arg="${args[$i]}"
         if [ "$arg" = "--build-only" ]; then
             build_only=true
         elif [ "$arg" = "--include-clean-builds" ]; then
             include_clean_builds=true
         elif [ "$arg" = "--install-gradle-profiler" ]; then
             install_profiler=true
+        elif [ "$arg" = "--ref1" ]; then
+            ((i++))
+            COMPARE_REF1="${args[$i]}"
+        elif [ "$arg" = "--ref2" ]; then
+            ((i++))
+            COMPARE_REF2="${args[$i]}"
+        elif [ "$arg" = "--modes" ]; then
+            ((i++))
+            COMPARE_MODES="${args[$i]}"
         else
             parsed_args+=("$arg")
         fi
+        ((i++))
     done
-    
+
     echo "$build_only"
     echo "$include_clean_builds"
     echo "$install_profiler"
@@ -547,6 +935,11 @@ main() {
             local count=${args[1]:-$DEFAULT_MODULE_COUNT}
             validate_count "$count"
             run_mode_benchmark "kotlin-inject-anvil" "" "$count" "$build_only" "$include_clean_builds"
+            ;;
+        "compare")
+            local count=${args[1]:-$DEFAULT_MODULE_COUNT}
+            validate_count "$count"
+            run_compare "$count" "$include_clean_builds"
             ;;
         "help"|"-h"|"--help")
             show_usage

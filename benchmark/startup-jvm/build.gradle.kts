@@ -8,8 +8,8 @@ plugins {
 dependencies { jmh(project(":app:component")) }
 
 jmh {
-  warmupIterations = 3
-  iterations = 5
+  warmupIterations = 4
+  iterations = 10
   fork = 2
   resultFormat = "JSON"
 }
