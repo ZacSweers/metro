@@ -18,10 +18,10 @@ interface ExampleGraph {
     private val accessorsInstanceProvider: Provider<Accessors>
       field = Companion.invoke<Accessors>(value = <this>.#accessorsInstance)
 
-    private val accessorsGetIntProvider: Provider<Int>
+    private val accessorsIntProvider: Provider<Int>
       field = <this>.#accessorsInstance.<get-intProvider>()
 
-    private val accessorsGetStringProvider: Provider<String>
+    private val accessorsStringProvider: Provider<String>
       field = provider<String>(provider = local fun <anonymous>(): String {
         return <this>.#accessorsInstance.<get-string>()
       }
@@ -35,12 +35,12 @@ interface ExampleGraph {
 
     override val int: Int
       override get(): Int {
-        return <this>.#accessorsGetIntProvider.invoke()
+        return <this>.#accessorsIntProvider.invoke()
       }
 
     override val string: String
       override get(): String {
-        return <this>.#accessorsGetStringProvider.invoke()
+        return <this>.#accessorsStringProvider.invoke()
       }
 
   }

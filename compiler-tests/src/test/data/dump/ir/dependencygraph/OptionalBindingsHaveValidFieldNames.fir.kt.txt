@@ -40,8 +40,8 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "string", propertyName = "string", startOffset = 211, endOffset = 282)
-  class GetStringMetroFactory : Factory<String> {
+  @CallableMetadata(callableName = "string", propertyName = "string", startOffset = 211, endOffset = 282, newInstanceName = "string")
+  class StringMetroFactory : Factory<String> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
       private constructor() /* primary */ {
@@ -51,10 +51,10 @@ interface AppGraph {
       }
 
       fun create(instance: AppGraph): Factory<String> {
-        return GetStringMetroFactory(instance = instance)
+        return StringMetroFactory(instance = instance)
       }
 
-      fun getString(instance: AppGraph): String {
+      fun string(instance: AppGraph): String {
         return instance.<get-string>()
       }
 
@@ -67,7 +67,7 @@ interface AppGraph {
     }
 
     override operator fun invoke(): String {
-      return Companion.getString(instance = <this>.#instance)
+      return Companion.string(instance = <this>.#instance)
     }
 
     @SingleIn(scope = AppScope::class)

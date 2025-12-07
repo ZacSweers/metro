@@ -41,7 +41,7 @@ class TestIntProvider {
     private get
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 471, endOffset = 510)
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 471, endOffset = 510, newInstanceName = "provideInt")
   class ProvideIntMetroFactory : Factory<Int> {
     private /* final field */ val instance: TestIntProvider = instance
     companion object Companion {
@@ -129,7 +129,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 85, endOffset = 152)
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 85, endOffset = 152, newInstanceName = "provideInt")
   class ProvideIntMetroFactory : Factory<Int> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {

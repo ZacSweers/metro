@@ -82,7 +82,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideLong", propertyName = "", startOffset = 108, endOffset = 180)
+  @CallableMetadata(callableName = "provideLong", propertyName = "", startOffset = 108, endOffset = 180, newInstanceName = "provideLong")
   class ProvideLongMetroFactory : Factory<Long> {
     private /* final field */ val instance: AppGraph = instance
     private /* final field */ val holder: Provider<IntHolder> = holder
@@ -120,7 +120,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 183, endOffset = 261)
+  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 183, endOffset = 261, newInstanceName = "provideString")
   class ProvideStringMetroFactory : Factory<String> {
     private /* final field */ val instance: AppGraph = instance
     private /* final field */ val holder: Provider<IntHolder> = holder

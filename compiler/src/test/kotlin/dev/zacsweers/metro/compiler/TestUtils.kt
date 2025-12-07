@@ -24,14 +24,12 @@ import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import java.util.concurrent.Callable
 import kotlin.reflect.KCallable
-import kotlin.reflect.KProperty
 import kotlin.reflect.full.callSuspend
 import kotlin.reflect.full.companionObject
 import kotlin.reflect.full.declaredFunctions
 import kotlin.reflect.full.functions
 import kotlin.reflect.full.hasAnnotation
 import kotlin.reflect.full.memberProperties
-import kotlin.reflect.jvm.javaMethod
 import kotlin.test.assertFailsWith
 import org.jetbrains.kotlin.descriptors.runtime.structure.primitiveByWrapper
 
@@ -122,12 +120,7 @@ fun Class<*>.providesFactoryClass(
         // Exclude synthetic annotation holder methods
         it.hasAnnotation<Provides>()
       }
-      .mapToSet {
-        when (it) {
-          is KProperty<*> -> it.getter.javaMethod!!.name
-          else -> it.name
-        }
-      }
+      .mapToSet { it.name }
 
   assertWithMessage("No @Provides methods found in $this").that(providesCallables).isNotEmpty()
 
@@ -269,7 +262,13 @@ fun Class<*>.invokeStaticInvokeOperator(vararg args: Any): Any {
 }
 
 fun Class<Factory<*>>.invokeProvider(providerName: String, vararg args: Any): Any {
-  return staticMethods().single { it.name == providerName }.invoke(*args)!!
+  val method = staticMethods().singleOrNull { it.name == providerName }
+  checkNotNull(method) {
+    "No provider method with name '$providerName' found in $this. Available: ${
+      staticMethods().map { it.name }
+    }"
+  }
+  return method.invoke(*args)!!
 }
 
 fun <T> Class<Factory<*>>.invokeCreateAs(vararg args: Any): T {

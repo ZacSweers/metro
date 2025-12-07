@@ -71,7 +71,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
     val providesFactoryClass = result.ExampleGraph.providesFactoryClass()
     // Exercise calling the static provideValue function directly
-    val providedValue = providesFactoryClass.provideValueAs<String>("getValue", graph)
+    val providedValue = providesFactoryClass.provideValueAs<String>("value", graph)
     assertThat(providedValue).isEqualTo("Hello, world!")
 
     // Exercise calling the create + invoke() functions
@@ -133,7 +133,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
     // TODO these appear to need metadata annotations written correctly to work
     //    assertThat(providesFactoryClass.kotlin.objectInstance).isNotNull()
     // Exercise calling the static provideValue function directly
-    val providedValue = providesFactoryClass.provideValueAs<String>("getValue")
+    val providedValue = providesFactoryClass.provideValueAs<String>("value")
     assertThat(providedValue).isEqualTo("Hello, world!")
 
     // Exercise calling the create + invoke() functions
