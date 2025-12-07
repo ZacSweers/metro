@@ -24,3 +24,4 @@ site/
 temp-clone/
 /benchmark/
 .cache/
+tmp/
