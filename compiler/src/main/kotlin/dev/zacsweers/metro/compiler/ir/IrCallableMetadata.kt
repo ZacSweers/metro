@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.asName
+import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -12,6 +13,7 @@ import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.builders.declarations.buildProperty
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
+import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.util.callableId
@@ -38,7 +40,37 @@ internal class IrCallableMetadata(
   val newInstanceName: Name?,
   @Poko.Skip val function: IrSimpleFunction,
   @Poko.Skip val mirrorFunction: IrSimpleFunction,
-)
+) {
+  companion object {
+    /**
+     * Creates an [IrCallableMetadata] for in-compilation scenarios where we already have direct
+     * access to the source function. This avoids the round-trip through the `@CallableMetadata`
+     * annotation that external compilations require.
+     */
+    fun forInCompilation(
+      sourceFunction: IrSimpleFunction,
+      mirrorFunction: IrSimpleFunction,
+      annotations: MetroAnnotations<IrAnnotation>,
+      isPropertyAccessor: Boolean,
+    ): IrCallableMetadata {
+      val callableId =
+        if (isPropertyAccessor) {
+          sourceFunction.propertyIfAccessor.expectAs<IrProperty>().callableId
+        } else {
+          sourceFunction.callableId
+        }
+      return IrCallableMetadata(
+        callableId = callableId,
+        mirrorCallableId = mirrorFunction.callableId,
+        annotations = annotations,
+        isPropertyAccessor = isPropertyAccessor,
+        newInstanceName = sourceFunction.name,
+        function = sourceFunction,
+        mirrorFunction = mirrorFunction,
+      )
+    }
+  }
+}
 
 context(context: IrMetroContext)
 internal fun IrSimpleFunction.irCallableMetadata(
@@ -75,7 +107,6 @@ internal fun IrAnnotationContainer.irCallableMetadata(
   return callableMetadataAnno.toIrCallableMetadata(mirrorFunction, sourceAnnotations)
 }
 
-// TODO for in-compilation, no need to round-trip this
 context(context: IrMetroContext)
 internal fun IrConstructorCall.toIrCallableMetadata(
   mirrorFunction: IrSimpleFunction,

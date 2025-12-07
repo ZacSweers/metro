@@ -623,7 +623,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 [test.ExampleGraph] test.ExampleGraph.value2
 
         Similar bindings:
-          - String (Subtype). Type: Provided. Source: ExampleGraph.kt:12:3
+          - String (Subtype). Type: Provided. Source: ExampleGraph.kt:13:3
         """
           .trimIndent()
       )
@@ -1850,10 +1850,10 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         """
         e: ExampleGraph.kt:7:11 [Metro/DuplicateBinding] Multiple bindings found for test.ExampleClass
 
-          ExampleGraph.kt:10:3
+          ExampleGraph.kt:10:13
             @Provides fun provideExampleClass1(): test.ExampleClass
                                                   ~~~~~~~~~~~~~~~~~
-          ExampleGraph.kt:11:3
+          ExampleGraph.kt:11:13
             @Provides fun provideExampleClass2(): test.ExampleClass
                                                   ~~~~~~~~~~~~~~~~~
         """
@@ -1887,7 +1887,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         """
         e: ExampleGraph.kt:7:11 [Metro/DuplicateBinding] Multiple bindings found for test.ExampleClass
 
-          ExampleGraph.kt:10:3
+          ExampleGraph.kt:10:13
             @Provides fun provideExampleClass1(): test.ExampleClass
                                                   ~~~~~~~~~~~~~~~~~
           ExampleGraph.kt:11:10
@@ -2212,7 +2212,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 [test.ExampleGraph] test.ExampleGraph.int
 
         Similar bindings:
-          - @Named("qualified") Int (Different qualifier). Type: Provided. Source: ExampleGraph.kt:10:3
+          - @Named("qualified") Int (Different qualifier). Type: Provided. Source: ExampleGraph.kt:10:33
         """
           .trimIndent()
       )
@@ -2243,7 +2243,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 [test.ExampleGraph] test.ExampleGraph.int
 
         Similar bindings:
-          - Int (Different qualifier). Type: Provided. Source: ExampleGraph.kt:10:3
+          - Int (Different qualifier). Type: Provided. Source: ExampleGraph.kt:10:13
         """
           .trimIndent()
       )
@@ -2336,7 +2336,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 [test.ExampleGraph] test.ExampleGraph.int
 
         Similar bindings:
-          - Int (Subtype). Type: Provided. Source: ExampleGraph.kt:10:3
+          - Int (Subtype). Type: Provided. Source: ExampleGraph.kt:10:13
         """
           .trimIndent()
       )
@@ -2367,7 +2367,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 [test.ExampleGraph] test.ExampleGraph.int
 
         Similar bindings:
-          - Number (Supertype). Type: Provided. Source: ExampleGraph.kt:10:3
+          - Number (Supertype). Type: Provided. Source: ExampleGraph.kt:10:13
         """
           .trimIndent()
       )
@@ -2400,8 +2400,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 [test.ExampleGraph] test.ExampleGraph.int
 
         Similar bindings:
-          - @Named("qualified") Int (Different qualifier). Type: Provided. Source: ExampleGraph.kt:11:3
-          - Number (Supertype). Type: Provided. Source: ExampleGraph.kt:10:3
+          - @Named("qualified") Int (Different qualifier). Type: Provided. Source: ExampleGraph.kt:11:33
+          - Number (Supertype). Type: Provided. Source: ExampleGraph.kt:10:13
           - Set<Int> (Multibinding). Type: Multibinding.
         """
           .trimIndent()
@@ -2843,7 +2843,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        $$"""
+        """
         e: Parent1.kt:11:1 [Metro/QualifierOverrideMismatch] Overridden accessor property 'test.AppGraph.Impl.prop' must have the same qualifier annotations as the overridden accessor property. However, the final accessor property qualifier is 'null' but overridden symbol test.Parent1.prop has '@Named("qualified")'.'
         e: Parent1.kt:11:1 [Metro/QualifierOverrideMismatch] Overridden accessor function 'test.AppGraph.Impl.function' must have the same qualifier annotations as the overridden accessor function. However, the final accessor function qualifier is 'null' but overridden symbol test.Parent1.function has '@Named("qualified")'.'
         e: Parent1.kt:13:16 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
@@ -2852,7 +2852,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 [test.AppGraph] test.AppGraph.function()
 
         Similar bindings:
-          - @Named("qualified") String (Different qualifier). Type: Provided. Source: Parent1.kt:15:3
+          - @Named("qualified") String (Different qualifier). Type: Provided. Source: Parent1.kt:15:33
         """
           .trimIndent()
       )

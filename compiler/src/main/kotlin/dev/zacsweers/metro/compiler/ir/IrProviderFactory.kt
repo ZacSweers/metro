@@ -138,6 +138,8 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
       mirrorFunction: IrSimpleFunction,
       sourceAnnotations: MetroAnnotations<IrAnnotation>?,
       callableMetadata: IrCallableMetadata,
+      /** Pre-computed real declaration for in-compilation case. If null, will be looked up. */
+      realDeclaration: IrDeclaration? = null,
     ): Metro {
       val rawTypeKey = contextKey.typeKey.copy(qualifier = callableMetadata.annotations.qualifier)
       val typeKey = rawTypeKey.transformMultiboundQualifier(callableMetadata.annotations)
@@ -149,7 +151,8 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
         rawTypeKey = rawTypeKey,
         callableMetadata = callableMetadata,
         realDeclaration =
-          lookupRealDeclaration(callableMetadata.isPropertyAccessor, callableMetadata.function),
+          realDeclaration
+            ?: lookupRealDeclaration(callableMetadata.isPropertyAccessor, callableMetadata.function),
         parametersLazy = memoize { callableMetadata.function.parameters() },
       )
     }

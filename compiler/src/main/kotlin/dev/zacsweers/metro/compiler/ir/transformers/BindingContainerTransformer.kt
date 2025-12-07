@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.generatedClass
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
+import dev.zacsweers.metro.compiler.ir.IrCallableMetadata
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
@@ -367,13 +368,31 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
 
     // Generate a metadata-visible function that matches the signature of the target provider
     // This is used in downstream compilations to read the provider's signature
+    val sourceFunction = reference.callee?.owner as? IrSimpleFunction
     val mirrorFunction =
       generateMetadataVisibleMirrorFunction(
         factoryClass = factoryCls,
-        target = reference.callee?.owner,
+        target = sourceFunction,
         backingField = reference.backingField,
         annotations = reference.annotations,
       )
+
+    // For in-compilation, use direct reference to source function to avoid round-tripping
+    // through @CallableMetadata annotation
+    val callableMetadata =
+      if (sourceFunction != null) {
+        IrCallableMetadata.forInCompilation(
+          sourceFunction = sourceFunction,
+          mirrorFunction = mirrorFunction,
+          annotations = reference.annotations,
+          isPropertyAccessor = reference.isPropertyAccessor,
+        )
+      } else {
+        factoryCls.irCallableMetadata(mirrorFunction, reference.annotations, isInterop = false)
+      }
+
+    // For in-compilation, we already have the real declaration from the reference
+    val realDeclaration = reference.callee?.owner ?: reference.backingField
 
     val providerFactory =
       ProviderFactory(
@@ -381,8 +400,8 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
         clazz = factoryCls,
         mirrorFunction = mirrorFunction,
         sourceAnnotations = reference.annotations,
-        callableMetadata =
-          factoryCls.irCallableMetadata(mirrorFunction, reference.annotations, isInterop = false),
+        callableMetadata = callableMetadata,
+        realDeclaration = realDeclaration,
       )
 
     factoryCls.dumpToMetroLog()
