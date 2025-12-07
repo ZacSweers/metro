@@ -1,0 +1,91 @@
+@DependencyGraph
+abstract class AppGraph {
+  @Provides
+  val stringField: String
+    field = "Hello"
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val thisGraphInstance: AppGraph
+      field = <this>
+
+    private val thisGraphInstanceProvider: Provider<AppGraph>
+      field = Companion.invoke<AppGraph>(value = <this>.#thisGraphInstance)
+
+    private constructor() /* primary */ {
+      super/*AppGraph*/()
+      /* <init>() */
+
+    }
+
+    override val string: String
+      override get(): String {
+        return Companion.stringField(instance = <this>.#thisGraphInstance)
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "stringField", propertyName = "stringField", startOffset = 285, endOffset = 338, newInstanceName = "stringField")
+  class StringFieldMetroFactory : Factory<String> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(instance: AppGraph): Factory<String> {
+        return StringFieldMetroFactory(instance = instance)
+      }
+
+      fun stringField(instance: AppGraph): String {
+        return instance.#stringField
+      }
+
+    }
+
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): String {
+      return Companion.stringField(instance = <this>.#instance)
+    }
+
+    fun mirrorFunction(): String {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+  abstract val string: String
+    abstract get
+
+}
+

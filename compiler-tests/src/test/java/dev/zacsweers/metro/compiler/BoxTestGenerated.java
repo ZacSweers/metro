@@ -1682,6 +1682,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("JvmFieldProvidersAreRespected.kt")
+    public void testJvmFieldProvidersAreRespected() {
+      runTest("compiler-tests/src/test/data/box/provides/JvmFieldProvidersAreRespected.kt");
+    }
+
+    @Test
     @TestMetadata("ProvidesParametersCanHaveDefaults.kt")
     public void testProvidesParametersCanHaveDefaults() {
       runTest("compiler-tests/src/test/data/box/provides/ProvidesParametersCanHaveDefaults.kt");

@@ -347,4 +347,20 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
       runTest("compiler-tests/src/test/data/dump/ir/multibindings/MultibindingSourcesGetGettersThroughAliases.kt");
     }
   }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/dump/ir/provides")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Provides {
+    @Test
+    public void testAllFilesPresentInProvides() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/provides"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    }
+
+    @Test
+    @TestMetadata("JvmFieldProvidersUseFieldAccess.kt")
+    public void testJvmFieldProvidersUseFieldAccess() {
+      runTest("compiler-tests/src/test/data/dump/ir/provides/JvmFieldProvidersUseFieldAccess.kt");
+    }
+  }
 }
