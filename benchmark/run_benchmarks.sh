@@ -18,6 +18,8 @@ COMPARE_REF2=""
 COMPARE_BENCHMARK_TYPE="all"
 ORIGINAL_GIT_REF=""
 ORIGINAL_GIT_IS_BRANCH=false
+# Whether to re-run non-metro modes in ref2 (default: false to save time)
+RERUN_NON_METRO=false
 
 # Colors for output
 RED='\033[0;31m'
@@ -490,6 +492,8 @@ show_usage() {
     echo "  --modes <list>               Comma-separated list of modes to benchmark"
     echo "                               Available: metro, anvil-ksp, anvil-kapt, kotlin-inject-anvil"
     echo "                               Default: metro,anvil-ksp,kotlin-inject-anvil"
+    echo "  --rerun-non-metro            Re-run non-metro modes on ref2 (default: only run metro on ref2)"
+    echo "                               When disabled (default), ref2 uses ref1's non-metro results for comparison"
     echo ""
     echo "Examples:"
     echo "  $0                           # Run all benchmarks with default settings"
@@ -507,6 +511,7 @@ show_usage() {
     echo "  # Compare benchmarks across git refs:"
     echo "  $0 compare --ref1 main --ref2 feature-branch"
     echo "  $0 compare --ref1 abc123 --ref2 def456 --modes metro,anvil-ksp"
+    echo "  $0 compare --ref1 main --ref2 feature --rerun-non-metro  # Re-run all modes on both refs"
     echo ""
     echo "Results will be saved to the '$RESULTS_DIR' directory with timestamps."
 }
@@ -525,13 +530,14 @@ validate_count() {
 COMPARE_MODES="metro,anvil-ksp,kotlin-inject-anvil"
 
 # Run benchmarks for a specific git ref
-# Arguments: ref, ref_label, count, include_clean_builds
+# Arguments: ref, ref_label, count, include_clean_builds, modes, is_second_ref
 run_benchmarks_for_ref() {
     local ref="$1"
     local ref_label="$2"
     local count="$3"
     local include_clean_builds="$4"
     local modes="$5"
+    local is_second_ref="${6:-false}"
 
     print_header "Running benchmarks for: $ref_label"
 
@@ -549,6 +555,12 @@ run_benchmarks_for_ref() {
     # Run benchmarks for each mode
     IFS=',' read -ra MODE_ARRAY <<< "$modes"
     for mode in "${MODE_ARRAY[@]}"; do
+        # Skip non-metro modes on second ref unless RERUN_NON_METRO is true
+        if [ "$is_second_ref" = true ] && [ "$mode" != "metro" ] && [ "$RERUN_NON_METRO" != true ]; then
+            print_status "Skipping $mode for $ref_label (using ref1 results for comparison)"
+            continue
+        fi
+
         print_header "Benchmarking $mode for $ref_label"
 
         case "$mode" in
@@ -639,6 +651,19 @@ extract_median_for_ref() {
     fi
 }
 
+# Check if a mode was run for a given ref (by checking if results exist)
+mode_was_run_for_ref() {
+    local ref_label="$1"
+    local mode_prefix="$2"
+    local ref_dir="$RESULTS_DIR/${TIMESTAMP}/${ref_label}"
+
+    # Check if any results exist for this mode
+    if ls "$ref_dir"/${mode_prefix}_* 1> /dev/null 2>&1; then
+        return 0
+    fi
+    return 1
+}
+
 # Generate comparison summary between two refs
 generate_comparison_summary() {
     local ref1_label="$1"
@@ -651,12 +676,33 @@ generate_comparison_summary() {
 
     print_header "Generating Comparison Summary"
 
+    # Determine which modes were actually run on ref2
+    local ref2_modes=""
+    IFS=',' read -ra MODE_ARRAY <<< "$modes"
+    for mode in "${MODE_ARRAY[@]}"; do
+        local mode_prefix
+        case "$mode" in
+            "metro") mode_prefix="metro" ;;
+            "anvil-ksp") mode_prefix="anvil_ksp" ;;
+            "anvil-kapt") mode_prefix="anvil_kapt" ;;
+            "kotlin-inject-anvil") mode_prefix="kotlin_inject_anvil" ;;
+            *) continue ;;
+        esac
+        if mode_was_run_for_ref "$ref2_label" "$mode_prefix"; then
+            if [ -n "$ref2_modes" ]; then
+                ref2_modes="${ref2_modes},"
+            fi
+            ref2_modes="${ref2_modes}${mode}"
+        fi
+    done
+
     cat > "$summary_file" << EOF
 # Benchmark Comparison: $ref1_label vs $ref2_label
 
 **Date:** $(date)
 **Module Count:** $DEFAULT_MODULE_COUNT
-**Modes:** $modes
+**Modes benchmarked on ref1:** $modes
+**Modes benchmarked on ref2:** ${ref2_modes:-metro}
 
 ## Git Refs
 
@@ -682,7 +728,6 @@ EOF
 |-----------|------------------------|-------------|------------|
 EOF
 
-        IFS=',' read -ra MODE_ARRAY <<< "$modes"
         for mode in "${MODE_ARRAY[@]}"; do
             local mode_prefix
             case "$mode" in
@@ -694,7 +739,17 @@ EOF
             esac
 
             local score1=$(extract_median_for_ref "$ref1_label" "$mode_prefix" "$test_type")
-            local score2=$(extract_median_for_ref "$ref2_label" "$mode_prefix" "$test_type")
+
+            # Check if this mode was run on ref2
+            local mode_ran_on_ref2=false
+            if mode_was_run_for_ref "$ref2_label" "$mode_prefix"; then
+                mode_ran_on_ref2=true
+            fi
+
+            local score2=""
+            if [ "$mode_ran_on_ref2" = true ]; then
+                score2=$(extract_median_for_ref "$ref2_label" "$mode_prefix" "$test_type")
+            fi
 
             local display1="N/A"
             local display2="N/A"
@@ -706,25 +761,32 @@ EOF
                     display1="${secs1}s"
                 fi
             fi
-            if [ -n "$score2" ]; then
-                local secs2=$(echo "scale=1; $score2 / 1000" | bc 2>/dev/null || echo "")
-                if [ -n "$secs2" ]; then
-                    display2="${secs2}s"
-                fi
-            fi
 
-            if [ -n "$score1" ] && [ -n "$score2" ] && [ "$score1" != "0" ]; then
-                local pct=$(echo "scale=1; (($score2 - $score1) / $score1) * 100" | bc 2>/dev/null || echo "")
-                if [ -n "$pct" ]; then
-                    # Check if negative (faster)
-                    if [[ "$pct" == -* ]]; then
-                        diff="${pct}% (faster)"
-                    elif [[ "$pct" == "0" ]] || [[ "$pct" == "0.0" ]] || [[ "$pct" == ".0" ]]; then
-                        diff="no change"
-                    else
-                        diff="+${pct}% (slower)"
+            if [ "$mode_ran_on_ref2" = true ]; then
+                if [ -n "$score2" ]; then
+                    local secs2=$(echo "scale=1; $score2 / 1000" | bc 2>/dev/null || echo "")
+                    if [ -n "$secs2" ]; then
+                        display2="${secs2}s"
                     fi
                 fi
+
+                if [ -n "$score1" ] && [ -n "$score2" ] && [ "$score1" != "0" ]; then
+                    local pct=$(echo "scale=1; (($score2 - $score1) / $score1) * 100" | bc 2>/dev/null || echo "")
+                    if [ -n "$pct" ]; then
+                        # Check if negative (faster)
+                        if [[ "$pct" == -* ]]; then
+                            diff="${pct}% (faster)"
+                        elif [[ "$pct" == "0" ]] || [[ "$pct" == "0.0" ]] || [[ "$pct" == ".0" ]]; then
+                            diff="no change"
+                        else
+                            diff="+${pct}% (slower)"
+                        fi
+                    fi
+                fi
+            else
+                # Mode was not run on ref2 - show ref1 value as reference
+                display2="(not run)"
+                diff="n/a"
             fi
 
             echo "| $mode | $display1 | $display2 | $diff |" >> "$summary_file"
@@ -779,6 +841,11 @@ run_compare() {
     print_status "Compare (ref2):  $COMPARE_REF2"
     print_status "Modes:           $COMPARE_MODES"
     print_status "Module count:    $count"
+    if [ "$RERUN_NON_METRO" = true ]; then
+        print_status "Re-run non-metro on ref2: yes"
+    else
+        print_status "Re-run non-metro on ref2: no (using ref1 results)"
+    fi
     echo ""
 
     # Save current git state
@@ -800,14 +867,14 @@ run_compare() {
     # Set up trap to restore git state on exit
     trap 'restore_git_state' EXIT
 
-    # Run benchmarks for ref1 (baseline)
-    run_benchmarks_for_ref "$COMPARE_REF1" "$ref1_label" "$count" "$include_clean_builds" "$COMPARE_MODES" || {
+    # Run benchmarks for ref1 (baseline) - run all modes
+    run_benchmarks_for_ref "$COMPARE_REF1" "$ref1_label" "$count" "$include_clean_builds" "$COMPARE_MODES" false || {
         print_error "Failed to run benchmarks for $COMPARE_REF1"
         exit 1
     }
 
-    # Run benchmarks for ref2
-    run_benchmarks_for_ref "$COMPARE_REF2" "$ref2_label" "$count" "$include_clean_builds" "$COMPARE_MODES" || {
+    # Run benchmarks for ref2 - only metro by default (is_second_ref=true)
+    run_benchmarks_for_ref "$COMPARE_REF2" "$ref2_label" "$count" "$include_clean_builds" "$COMPARE_MODES" true || {
         print_error "Failed to run benchmarks for $COMPARE_REF2"
         exit 1
     }
@@ -846,6 +913,8 @@ parse_args() {
         elif [ "$arg" = "--modes" ]; then
             ((i++))
             COMPARE_MODES="${args[$i]}"
+        elif [ "$arg" = "--rerun-non-metro" ]; then
+            RERUN_NON_METRO=true
         else
             parsed_args+=("$arg")
         fi

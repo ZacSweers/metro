@@ -30,6 +30,8 @@ COMPARE_REF1=""
 COMPARE_REF2=""
 ORIGINAL_GIT_REF=""
 ORIGINAL_GIT_IS_BRANCH=false
+# Whether to re-run non-metro modes in ref2 (default: false to save time)
+RERUN_NON_METRO=false
 
 print_header() {
     echo ""
@@ -163,6 +165,8 @@ show_usage() {
     echo "  --ref1 <ref>        First git ref (baseline) - branch name or commit hash"
     echo "  --ref2 <ref>        Second git ref to compare against baseline"
     echo "  --benchmark <type>  Benchmark type for compare: jvm, android, or all (default: jvm)"
+    echo "  --rerun-non-metro   Re-run non-metro modes on ref2 (default: only run metro on ref2)"
+    echo "                      When disabled (default), ref2 uses ref1's non-metro results for comparison"
     echo ""
     echo "Examples:"
     echo "  $0 jvm                              # Run JVM benchmarks for all modes"
@@ -174,6 +178,7 @@ show_usage() {
     echo "  $0 compare --ref1 main --ref2 feature-branch"
     echo "  $0 compare --ref1 abc123 --ref2 def456 --benchmark all"
     echo "  $0 compare --ref1 v1.0.0 --ref2 HEAD --modes metro"
+    echo "  $0 compare --ref1 main --ref2 feature --rerun-non-metro  # Re-run all modes on both refs"
     echo ""
     echo "Results will be saved to: $RESULTS_DIR/"
 }
@@ -573,11 +578,12 @@ run_all_benchmarks() {
 }
 
 # Run benchmarks for a specific git ref
-# Arguments: ref, benchmark_type (jvm|android|all), ref_label
+# Arguments: ref, benchmark_type (jvm|android|all), ref_label, is_second_ref
 run_benchmarks_for_ref() {
     local ref="$1"
     local benchmark_type="$2"
     local ref_label="$3"
+    local is_second_ref="${4:-false}"
 
     print_header "Running benchmarks for: $ref_label"
 
@@ -594,6 +600,12 @@ run_benchmarks_for_ref() {
 
     IFS=',' read -ra MODE_ARRAY <<< "$MODES"
     for mode in "${MODE_ARRAY[@]}"; do
+        # Skip non-metro modes on second ref unless RERUN_NON_METRO is true
+        if [ "$is_second_ref" = true ] && [ "$mode" != "metro" ] && [ "$RERUN_NON_METRO" != true ]; then
+            print_info "Skipping $mode for $ref_label (using ref1 results for comparison)"
+            continue
+        fi
+
         print_header "Benchmarking $mode for $ref_label"
 
         # Setup for this mode
@@ -677,6 +689,27 @@ extract_android_micro_score_for_ref() {
     extract_android_micro_score "$android_dir"
 }
 
+# Check if a mode was run for a given ref (by checking if results exist)
+mode_was_run_for_ref() {
+    local ref_label="$1"
+    local mode="$2"
+    local benchmark_type="$3"
+    local ref_dir="$RESULTS_DIR/${TIMESTAMP}/${ref_label}"
+
+    # Check based on benchmark type
+    case "$benchmark_type" in
+        jvm)
+            [ -d "$ref_dir/jvm_${mode}" ]
+            ;;
+        android)
+            [ -d "$ref_dir/android_${mode}" ]
+            ;;
+        all)
+            [ -d "$ref_dir/jvm_${mode}" ] || [ -d "$ref_dir/android_${mode}" ]
+            ;;
+    esac
+}
+
 # Generate comparison summary between two refs
 generate_comparison_summary() {
     local ref1_label="$1"
@@ -689,12 +722,25 @@ generate_comparison_summary() {
 
     print_header "Generating Comparison Summary"
 
+    # Determine which modes were actually run on ref2
+    local ref2_modes=""
+    IFS=',' read -ra MODE_ARRAY <<< "$MODES"
+    for mode in "${MODE_ARRAY[@]}"; do
+        if mode_was_run_for_ref "$ref2_label" "$mode" "$benchmark_type"; then
+            if [ -n "$ref2_modes" ]; then
+                ref2_modes="${ref2_modes},"
+            fi
+            ref2_modes="${ref2_modes}${mode}"
+        fi
+    done
+
     cat > "$summary_file" << EOF
 # Benchmark Comparison: $ref1_label vs $ref2_label
 
 **Date:** $(date)
 **Module Count:** $MODULE_COUNT
-**Modes:** $MODES
+**Modes benchmarked on ref1:** $MODES
+**Modes benchmarked on ref2:** ${ref2_modes:-metro}
 
 ## Git Refs
 
@@ -715,33 +761,48 @@ Graph creation and initialization time (lower is better):
 |-----------|------------------------|-------------|------------|
 EOF
 
-        IFS=',' read -ra MODE_ARRAY <<< "$MODES"
         for mode in "${MODE_ARRAY[@]}"; do
             local score1=$(extract_jmh_score_for_ref "$ref1_label" "$mode")
-            local score2=$(extract_jmh_score_for_ref "$ref2_label" "$mode")
+
+            # Check if this mode was run on ref2
+            local mode_ran_on_ref2=false
+            if mode_was_run_for_ref "$ref2_label" "$mode" "jvm"; then
+                mode_ran_on_ref2=true
+            fi
+
+            local score2=""
+            if [ "$mode_ran_on_ref2" = true ]; then
+                score2=$(extract_jmh_score_for_ref "$ref2_label" "$mode")
+            fi
 
             local display1="${score1:-N/A}"
-            local display2="${score2:-N/A}"
+            local display2="N/A"
             local diff="-"
 
             if [ -n "$score1" ]; then
                 display1=$(printf "%.3f ms" "$score1")
             fi
-            if [ -n "$score2" ]; then
-                display2=$(printf "%.3f ms" "$score2")
-            fi
 
-            if [ -n "$score1" ] && [ -n "$score2" ] && [ "$score1" != "0" ]; then
-                local pct=$(printf "%.1f" "$(echo "scale=4; (($score2 - $score1) / $score1) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                if [ -n "$pct" ]; then
-                    if [[ "$pct" == -* ]]; then
-                        diff="${pct}% (faster)"
-                    elif [[ "$pct" == "0.0" ]]; then
-                        diff="no change"
-                    else
-                        diff="+${pct}% (slower)"
+            if [ "$mode_ran_on_ref2" = true ]; then
+                if [ -n "$score2" ]; then
+                    display2=$(printf "%.3f ms" "$score2")
+                fi
+
+                if [ -n "$score1" ] && [ -n "$score2" ] && [ "$score1" != "0" ]; then
+                    local pct=$(printf "%.1f" "$(echo "scale=4; (($score2 - $score1) / $score1) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                    if [ -n "$pct" ]; then
+                        if [[ "$pct" == -* ]]; then
+                            diff="${pct}% (faster)"
+                        elif [[ "$pct" == "0.0" ]]; then
+                            diff="no change"
+                        else
+                            diff="+${pct}% (slower)"
+                        fi
                     fi
                 fi
+            else
+                display2="(not run)"
+                diff="n/a"
             fi
 
             echo "| $mode | $display1 | $display2 | $diff |" >> "$summary_file"
@@ -760,33 +821,48 @@ Cold startup time including graph initialization (lower is better):
 |-----------|------------------------|-------------|------------|
 EOF
 
-        IFS=',' read -ra MODE_ARRAY <<< "$MODES"
         for mode in "${MODE_ARRAY[@]}"; do
             local score1=$(extract_android_macro_score_for_ref "$ref1_label" "$mode")
-            local score2=$(extract_android_macro_score_for_ref "$ref2_label" "$mode")
+
+            # Check if this mode was run on ref2
+            local mode_ran_on_ref2=false
+            if mode_was_run_for_ref "$ref2_label" "$mode" "android"; then
+                mode_ran_on_ref2=true
+            fi
+
+            local score2=""
+            if [ "$mode_ran_on_ref2" = true ]; then
+                score2=$(extract_android_macro_score_for_ref "$ref2_label" "$mode")
+            fi
 
             local display1="${score1:-N/A}"
-            local display2="${score2:-N/A}"
+            local display2="N/A"
             local diff="-"
 
             if [ -n "$score1" ]; then
                 display1=$(printf "%.0f ms" "$score1")
             fi
-            if [ -n "$score2" ]; then
-                display2=$(printf "%.0f ms" "$score2")
-            fi
 
-            if [ -n "$score1" ] && [ -n "$score2" ] && [ "$score1" != "0" ]; then
-                local pct=$(printf "%.1f" "$(echo "scale=4; (($score2 - $score1) / $score1) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                if [ -n "$pct" ]; then
-                    if [[ "$pct" == -* ]]; then
-                        diff="${pct}% (faster)"
-                    elif [[ "$pct" == "0.0" ]]; then
-                        diff="no change"
-                    else
-                        diff="+${pct}% (slower)"
+            if [ "$mode_ran_on_ref2" = true ]; then
+                if [ -n "$score2" ]; then
+                    display2=$(printf "%.0f ms" "$score2")
+                fi
+
+                if [ -n "$score1" ] && [ -n "$score2" ] && [ "$score1" != "0" ]; then
+                    local pct=$(printf "%.1f" "$(echo "scale=4; (($score2 - $score1) / $score1) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                    if [ -n "$pct" ]; then
+                        if [[ "$pct" == -* ]]; then
+                            diff="${pct}% (faster)"
+                        elif [[ "$pct" == "0.0" ]]; then
+                            diff="no change"
+                        else
+                            diff="+${pct}% (slower)"
+                        fi
                     fi
                 fi
+            else
+                display2="(not run)"
+                diff="n/a"
             fi
 
             echo "| $mode | $display1 | $display2 | $diff |" >> "$summary_file"
@@ -804,30 +880,46 @@ EOF
 
         for mode in "${MODE_ARRAY[@]}"; do
             local score1=$(extract_android_micro_score_for_ref "$ref1_label" "$mode")
-            local score2=$(extract_android_micro_score_for_ref "$ref2_label" "$mode")
+
+            # Check if this mode was run on ref2
+            local mode_ran_on_ref2=false
+            if mode_was_run_for_ref "$ref2_label" "$mode" "android"; then
+                mode_ran_on_ref2=true
+            fi
+
+            local score2=""
+            if [ "$mode_ran_on_ref2" = true ]; then
+                score2=$(extract_android_micro_score_for_ref "$ref2_label" "$mode")
+            fi
 
             local display1="${score1:-N/A}"
-            local display2="${score2:-N/A}"
+            local display2="N/A"
             local diff="-"
 
             if [ -n "$score1" ]; then
                 display1=$(printf "%.3f ms" "$score1")
             fi
-            if [ -n "$score2" ]; then
-                display2=$(printf "%.3f ms" "$score2")
-            fi
 
-            if [ -n "$score1" ] && [ -n "$score2" ] && [ "$score1" != "0" ]; then
-                local pct=$(printf "%.1f" "$(echo "scale=4; (($score2 - $score1) / $score1) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                if [ -n "$pct" ]; then
-                    if [[ "$pct" == -* ]]; then
-                        diff="${pct}% (faster)"
-                    elif [[ "$pct" == "0.0" ]]; then
-                        diff="no change"
-                    else
-                        diff="+${pct}% (slower)"
+            if [ "$mode_ran_on_ref2" = true ]; then
+                if [ -n "$score2" ]; then
+                    display2=$(printf "%.3f ms" "$score2")
+                fi
+
+                if [ -n "$score1" ] && [ -n "$score2" ] && [ "$score1" != "0" ]; then
+                    local pct=$(printf "%.1f" "$(echo "scale=4; (($score2 - $score1) / $score1) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                    if [ -n "$pct" ]; then
+                        if [[ "$pct" == -* ]]; then
+                            diff="${pct}% (faster)"
+                        elif [[ "$pct" == "0.0" ]]; then
+                            diff="no change"
+                        else
+                            diff="+${pct}% (slower)"
+                        fi
                     fi
                 fi
+            else
+                display2="(not run)"
+                diff="n/a"
             fi
 
             echo "| $mode | $display1 | $display2 | $diff |" >> "$summary_file"
@@ -881,6 +973,11 @@ run_compare() {
     print_info "Compare (ref2):  $COMPARE_REF2"
     print_info "Benchmark type:  $benchmark_type"
     print_info "Modes:           $MODES"
+    if [ "$RERUN_NON_METRO" = true ]; then
+        print_info "Re-run non-metro on ref2: yes"
+    else
+        print_info "Re-run non-metro on ref2: no (using ref1 results)"
+    fi
     echo ""
 
     # Save current git state
@@ -899,14 +996,14 @@ run_compare() {
     # Set up trap to restore git state on exit
     trap 'restore_git_state' EXIT
 
-    # Run benchmarks for ref1 (baseline)
-    run_benchmarks_for_ref "$COMPARE_REF1" "$benchmark_type" "$ref1_label" || {
+    # Run benchmarks for ref1 (baseline) - run all modes
+    run_benchmarks_for_ref "$COMPARE_REF1" "$benchmark_type" "$ref1_label" false || {
         print_error "Failed to run benchmarks for $COMPARE_REF1"
         exit 1
     }
 
-    # Run benchmarks for ref2
-    run_benchmarks_for_ref "$COMPARE_REF2" "$benchmark_type" "$ref2_label" || {
+    # Run benchmarks for ref2 - only metro by default (is_second_ref=true)
+    run_benchmarks_for_ref "$COMPARE_REF2" "$benchmark_type" "$ref2_label" true || {
         print_error "Failed to run benchmarks for $COMPARE_REF2"
         exit 1
     }
@@ -950,6 +1047,10 @@ main() {
             --benchmark)
                 COMPARE_BENCHMARK_TYPE="$2"
                 shift 2
+                ;;
+            --rerun-non-metro)
+                RERUN_NON_METRO=true
+                shift
                 ;;
             *)
                 print_error "Unknown option: $1"
