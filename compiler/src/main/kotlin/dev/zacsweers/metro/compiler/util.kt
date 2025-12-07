@@ -139,10 +139,6 @@ internal inline fun <T> T?.escapeIfNull(block: () -> Nothing): T {
   return this
 }
 
-// omit the `get-` prefix for property names starting with the *word* `is`, like `isProperty`,
-// but not for names which just start with those letters, like `issues`.
-internal val isWordPrefixRegex = "^is([^a-z].*)".toRegex()
-
 internal fun String.asName(): Name = Name.identifier(this)
 
 internal val String.withoutLineBreaks: String
