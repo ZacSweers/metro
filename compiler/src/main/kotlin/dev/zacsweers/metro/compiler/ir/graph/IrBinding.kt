@@ -139,11 +139,14 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
      * Returns true if the target constructor is public and can be invoked directly without going
      * through the factory. This is used to optimize instance access by skipping factory creation.
      *
-     * We can't use direct invocation if there are injected members because the factory handles member
-     * injection
+     * We can't use direct invocation if there are injected members because the factory handles
+     * member injection
      */
     val supportsDirectInvocation: Boolean
-      get() = classFactory.supportsDirectFunctionCall && !classFactory.isAssistedInject && injectedMembers.isEmpty()
+      get() =
+        classFactory.supportsDirectFunctionCall &&
+          !classFactory.isAssistedInject &&
+          injectedMembers.isEmpty()
 
     fun parameterFor(typeKey: IrTypeKey) =
       classFactory.function.regularParameters.getOrNull(
