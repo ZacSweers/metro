@@ -32,6 +32,8 @@ ORIGINAL_GIT_REF=""
 ORIGINAL_GIT_IS_BRANCH=false
 # Whether to re-run non-metro modes in ref2 (default: false to save time)
 RERUN_NON_METRO=false
+# Whether to include macrobenchmarks (disabled by default as startup time is low-signal for DI perf)
+INCLUDE_MACROBENCHMARK=false
 
 print_header() {
     echo ""
@@ -155,11 +157,13 @@ show_usage() {
     echo "  help      Show this help message"
     echo ""
     echo "Options:"
-    echo "  --modes <list>      Comma-separated list of modes to benchmark"
-    echo "                      Available: metro, anvil-ksp, anvil-kapt, kotlin-inject-anvil"
-    echo "                      Default: metro,anvil-ksp,kotlin-inject-anvil"
-    echo "  --count <n>         Number of modules to generate (default: 500)"
-    echo "  --timestamp <ts>    Use specific timestamp for results directory"
+    echo "  --modes <list>          Comma-separated list of modes to benchmark"
+    echo "                          Available: metro, anvil-ksp, anvil-kapt, kotlin-inject-anvil"
+    echo "                          Default: metro,anvil-ksp,kotlin-inject-anvil"
+    echo "  --count <n>             Number of modules to generate (default: 500)"
+    echo "  --timestamp <ts>        Use specific timestamp for results directory"
+    echo "  --include-macrobenchmark  Include Android macrobenchmarks (startup time)"
+    echo "                          Disabled by default as startup time is low-signal for DI perf"
     echo ""
     echo "Compare Options:"
     echo "  --ref1 <ref>        First git ref (baseline) - branch name or commit hash"
@@ -172,6 +176,7 @@ show_usage() {
     echo "  $0 jvm                              # Run JVM benchmarks for all modes"
     echo "  $0 jvm --modes metro,anvil-ksp      # Run JVM benchmarks for specific modes"
     echo "  $0 all --count 250                  # Run all benchmarks with 250 modules"
+    echo "  $0 android --include-macrobenchmark # Run Android benchmarks including macrobenchmarks"
     echo "  $0 summary --timestamp 20251205_125203 --modes metro,anvil-ksp"
     echo ""
     echo "  # Compare benchmarks across git refs:"
@@ -268,23 +273,32 @@ run_android_benchmark_only() {
 
     local gradle_args=$(get_gradle_args "$mode")
 
+    # Build tasks - only include macrobenchmark if enabled
+    local build_tasks=":startup-android:app:assembleRelease :startup-android:microbenchmark:assembleBenchmark"
+    if [ "$INCLUDE_MACROBENCHMARK" = true ]; then
+        build_tasks="$build_tasks :startup-android:benchmark:assembleBenchmark"
+    fi
+
     print_step "Building Android app for $mode..."
-    if ! ./gradlew --quiet $gradle_args :startup-android:app:assembleRelease :startup-android:benchmark:assembleBenchmark :startup-android:microbenchmark:assembleBenchmark 2>&1; then
+    if ! ./gradlew --quiet $gradle_args $build_tasks 2>&1; then
         print_error "Android build failed for $mode"
         return 1
     fi
 
-    print_step "Running Android macrobenchmark for $mode (requires connected device)..."
-    if ./gradlew --quiet :startup-android:benchmark:connectedBenchmarkAndroidTest 2>&1 | tee "$output_dir/macro-benchmark-output.txt"; then
-        # Copy macrobenchmark results
-        local macro_output="startup-android/benchmark/build/outputs/connected_android_test_additional_output"
-        if [ -d "$macro_output" ]; then
-            cp -r "$macro_output"/* "$output_dir/" 2>/dev/null || true
+    # Run macrobenchmark only if enabled
+    if [ "$INCLUDE_MACROBENCHMARK" = true ]; then
+        print_step "Running Android macrobenchmark for $mode (requires connected device)..."
+        if ./gradlew --quiet :startup-android:benchmark:connectedBenchmarkAndroidTest 2>&1 | tee "$output_dir/macro-benchmark-output.txt"; then
+            # Copy macrobenchmark results
+            local macro_output="startup-android/benchmark/build/outputs/connected_android_test_additional_output"
+            if [ -d "$macro_output" ]; then
+                cp -r "$macro_output"/* "$output_dir/" 2>/dev/null || true
+            fi
+            print_success "Android macrobenchmark complete for $mode"
+        else
+            print_error "Android macrobenchmark failed for $mode (is a device connected?)"
+            return 1
         fi
-        print_success "Android macrobenchmark complete for $mode"
-    else
-        print_error "Android macrobenchmark failed for $mode (is a device connected?)"
-        return 1
     fi
 
     print_step "Running Android microbenchmark for $mode..."
@@ -427,7 +441,9 @@ EOF
         echo "| $mode | $display_score | $comparison |" >> "$summary_file"
     done
 
-    cat >> "$summary_file" << EOF
+    # Only include macrobenchmark section if enabled or if results exist
+    if [ "$INCLUDE_MACROBENCHMARK" = true ] || [ -f "$RESULTS_DIR/${TIMESTAMP}/android_metro/macro-benchmark-output.txt" ]; then
+        cat >> "$summary_file" << EOF
 
 ## Android Benchmarks (Macrobenchmark)
 
@@ -437,42 +453,43 @@ Cold startup time including graph initialization (lower is better):
 |-----------|-----------|----------|
 EOF
 
-    # Collect Android macrobenchmark results
-    local metro_android_score=""
+        # Collect Android macrobenchmark results
+        local metro_android_score=""
 
-    for mode in "${MODE_ARRAY[@]}"; do
-        local android_dir="$RESULTS_DIR/${TIMESTAMP}/android_${mode}"
-        local score=$(extract_android_macro_score "$android_dir")
+        for mode in "${MODE_ARRAY[@]}"; do
+            local android_dir="$RESULTS_DIR/${TIMESTAMP}/android_${mode}"
+            local score=$(extract_android_macro_score "$android_dir")
 
-        if [ "$mode" = "metro" ]; then
-            metro_android_score="$score"
-        fi
-
-        # Calculate comparison
-        local comparison="-"
-        if [ -n "$score" ] && [ -n "$metro_android_score" ] && [ "$metro_android_score" != "0" ]; then
             if [ "$mode" = "metro" ]; then
-                comparison="baseline"
-            else
-                local pct=$(printf "%.1f" "$(echo "scale=4; (($score - $metro_android_score) / $metro_android_score) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                if [ -n "$pct" ]; then
-                    # Add + sign for positive percentages (slower than baseline)
-                    if [[ "$pct" != -* ]]; then
-                        comparison="+${pct}%"
-                    else
-                        comparison="${pct}%"
+                metro_android_score="$score"
+            fi
+
+            # Calculate comparison
+            local comparison="-"
+            if [ -n "$score" ] && [ -n "$metro_android_score" ] && [ "$metro_android_score" != "0" ]; then
+                if [ "$mode" = "metro" ]; then
+                    comparison="baseline"
+                else
+                    local pct=$(printf "%.1f" "$(echo "scale=4; (($score - $metro_android_score) / $metro_android_score) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                    if [ -n "$pct" ]; then
+                        # Add + sign for positive percentages (slower than baseline)
+                        if [[ "$pct" != -* ]]; then
+                            comparison="+${pct}%"
+                        else
+                            comparison="${pct}%"
+                        fi
                     fi
                 fi
             fi
-        fi
 
-        local display_score="${score:-N/A}"
-        if [ -n "$score" ]; then
-            display_score=$(printf "%.0f" "$score")
-        fi
+            local display_score="${score:-N/A}"
+            if [ -n "$score" ]; then
+                display_score=$(printf "%.0f" "$score")
+            fi
 
-        echo "| $mode | $display_score | $comparison |" >> "$summary_file"
-    done
+            echo "| $mode | $display_score | $comparison |" >> "$summary_file"
+        done
+    fi
 
     cat >> "$summary_file" << EOF
 
@@ -711,6 +728,7 @@ mode_was_run_for_ref() {
 }
 
 # Generate comparison summary between two refs
+# When non-metro modes are not run on ref2, we compare ref2's metro against ref1's non-metro results
 generate_comparison_summary() {
     local ref1_label="$1"
     local ref2_label="$2"
@@ -733,6 +751,11 @@ generate_comparison_summary() {
             ref2_modes="${ref2_modes}${mode}"
         fi
     done
+
+    # Get ref2 metro scores for comparison with ref1 non-metro modes
+    local ref2_metro_jvm_score=$(extract_jmh_score_for_ref "$ref2_label" "metro")
+    local ref2_metro_macro_score=$(extract_android_macro_score_for_ref "$ref2_label" "metro")
+    local ref2_metro_micro_score=$(extract_android_micro_score_for_ref "$ref2_label" "metro")
 
     cat > "$summary_file" << EOF
 # Benchmark Comparison: $ref1_label vs $ref2_label
@@ -771,38 +794,38 @@ EOF
             fi
 
             local score2=""
-            if [ "$mode_ran_on_ref2" = true ]; then
-                score2=$(extract_jmh_score_for_ref "$ref2_label" "$mode")
-            fi
-
-            local display1="${score1:-N/A}"
             local display2="N/A"
             local diff="-"
 
+            if [ "$mode_ran_on_ref2" = true ]; then
+                # Mode was run on ref2, use its result
+                score2=$(extract_jmh_score_for_ref "$ref2_label" "$mode")
+                if [ -n "$score2" ]; then
+                    display2=$(printf "%.3f ms" "$score2")
+                fi
+            elif [ "$mode" != "metro" ] && [ -n "$ref2_metro_jvm_score" ]; then
+                # Mode was NOT run on ref2 and it's not metro
+                # Compare ref2's metro against ref1's this mode
+                score2="$ref2_metro_jvm_score"
+                display2="-"
+            fi
+
+            local display1="${score1:-N/A}"
             if [ -n "$score1" ]; then
                 display1=$(printf "%.3f ms" "$score1")
             fi
 
-            if [ "$mode_ran_on_ref2" = true ]; then
-                if [ -n "$score2" ]; then
-                    display2=$(printf "%.3f ms" "$score2")
-                fi
-
-                if [ -n "$score1" ] && [ -n "$score2" ] && [ "$score1" != "0" ]; then
-                    local pct=$(printf "%.1f" "$(echo "scale=4; (($score2 - $score1) / $score1) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                    if [ -n "$pct" ]; then
-                        if [[ "$pct" == -* ]]; then
-                            diff="${pct}% (faster)"
-                        elif [[ "$pct" == "0.0" ]]; then
-                            diff="no change"
-                        else
-                            diff="+${pct}% (slower)"
-                        fi
+            if [ -n "$score1" ] && [ -n "$score2" ] && [ "$score1" != "0" ]; then
+                local pct=$(printf "%.1f" "$(echo "scale=4; (($score2 - $score1) / $score1) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                if [ -n "$pct" ]; then
+                    if [[ "$pct" == -* ]]; then
+                        diff="${pct}% (faster)"
+                    elif [[ "$pct" == "0.0" ]]; then
+                        diff="no change"
+                    else
+                        diff="+${pct}% (slower)"
                     fi
                 fi
-            else
-                display2="(not run)"
-                diff="n/a"
             fi
 
             echo "| $mode | $display1 | $display2 | $diff |" >> "$summary_file"
@@ -812,7 +835,18 @@ EOF
     fi
 
     if [ "$benchmark_type" = "android" ] || [ "$benchmark_type" = "all" ]; then
-        cat >> "$summary_file" << EOF
+        # Only include macrobenchmark section if enabled or if results exist
+        local has_macro_results=false
+        if [ -n "$ref2_metro_macro_score" ] || [ -d "$RESULTS_DIR/${TIMESTAMP}/${ref1_label}/android_metro" ]; then
+            # Check if macro results actually exist
+            local macro_json=$(find "$RESULTS_DIR/${TIMESTAMP}/${ref1_label}/android_metro" -name "*benchmarkData.json" -not -path "*/microbenchmark/*" -type f 2>/dev/null | head -1)
+            if [ -n "$macro_json" ]; then
+                has_macro_results=true
+            fi
+        fi
+
+        if [ "$INCLUDE_MACROBENCHMARK" = true ] || [ "$has_macro_results" = true ]; then
+            cat >> "$summary_file" << EOF
 ## Android Benchmarks (Macrobenchmark)
 
 Cold startup time including graph initialization (lower is better):
@@ -821,31 +855,35 @@ Cold startup time including graph initialization (lower is better):
 |-----------|------------------------|-------------|------------|
 EOF
 
-        for mode in "${MODE_ARRAY[@]}"; do
-            local score1=$(extract_android_macro_score_for_ref "$ref1_label" "$mode")
+            for mode in "${MODE_ARRAY[@]}"; do
+                local score1=$(extract_android_macro_score_for_ref "$ref1_label" "$mode")
 
-            # Check if this mode was run on ref2
-            local mode_ran_on_ref2=false
-            if mode_was_run_for_ref "$ref2_label" "$mode" "android"; then
-                mode_ran_on_ref2=true
-            fi
+                # Check if this mode was run on ref2
+                local mode_ran_on_ref2=false
+                if mode_was_run_for_ref "$ref2_label" "$mode" "android"; then
+                    mode_ran_on_ref2=true
+                fi
 
-            local score2=""
-            if [ "$mode_ran_on_ref2" = true ]; then
-                score2=$(extract_android_macro_score_for_ref "$ref2_label" "$mode")
-            fi
+                local score2=""
+                local display2="N/A"
+                local diff="-"
 
-            local display1="${score1:-N/A}"
-            local display2="N/A"
-            local diff="-"
+                if [ "$mode_ran_on_ref2" = true ]; then
+                    # Mode was run on ref2, use its result
+                    score2=$(extract_android_macro_score_for_ref "$ref2_label" "$mode")
+                    if [ -n "$score2" ]; then
+                        display2=$(printf "%.0f ms" "$score2")
+                    fi
+                elif [ "$mode" != "metro" ] && [ -n "$ref2_metro_macro_score" ]; then
+                    # Mode was NOT run on ref2 and it's not metro
+                    # Compare ref2's metro against ref1's this mode
+                    score2="$ref2_metro_macro_score"
+                    display2="-"
+                fi
 
-            if [ -n "$score1" ]; then
-                display1=$(printf "%.0f ms" "$score1")
-            fi
-
-            if [ "$mode_ran_on_ref2" = true ]; then
-                if [ -n "$score2" ]; then
-                    display2=$(printf "%.0f ms" "$score2")
+                local display1="${score1:-N/A}"
+                if [ -n "$score1" ]; then
+                    display1=$(printf "%.0f ms" "$score1")
                 fi
 
                 if [ -n "$score1" ] && [ -n "$score2" ] && [ "$score1" != "0" ]; then
@@ -860,16 +898,14 @@ EOF
                         fi
                     fi
                 fi
-            else
-                display2="(not run)"
-                diff="n/a"
-            fi
 
-            echo "| $mode | $display1 | $display2 | $diff |" >> "$summary_file"
-        done
+                echo "| $mode | $display1 | $display2 | $diff |" >> "$summary_file"
+            done
+
+            echo "" >> "$summary_file"
+        fi
 
         cat >> "$summary_file" << EOF
-
 ## Android Benchmarks (Microbenchmark)
 
 Graph creation and initialization time on Android (lower is better):
@@ -888,38 +924,38 @@ EOF
             fi
 
             local score2=""
-            if [ "$mode_ran_on_ref2" = true ]; then
-                score2=$(extract_android_micro_score_for_ref "$ref2_label" "$mode")
-            fi
-
-            local display1="${score1:-N/A}"
             local display2="N/A"
             local diff="-"
 
+            if [ "$mode_ran_on_ref2" = true ]; then
+                # Mode was run on ref2, use its result
+                score2=$(extract_android_micro_score_for_ref "$ref2_label" "$mode")
+                if [ -n "$score2" ]; then
+                    display2=$(printf "%.3f ms" "$score2")
+                fi
+            elif [ "$mode" != "metro" ] && [ -n "$ref2_metro_micro_score" ]; then
+                # Mode was NOT run on ref2 and it's not metro
+                # Compare ref2's metro against ref1's this mode
+                score2="$ref2_metro_micro_score"
+                display2="-"
+            fi
+
+            local display1="${score1:-N/A}"
             if [ -n "$score1" ]; then
                 display1=$(printf "%.3f ms" "$score1")
             fi
 
-            if [ "$mode_ran_on_ref2" = true ]; then
-                if [ -n "$score2" ]; then
-                    display2=$(printf "%.3f ms" "$score2")
-                fi
-
-                if [ -n "$score1" ] && [ -n "$score2" ] && [ "$score1" != "0" ]; then
-                    local pct=$(printf "%.1f" "$(echo "scale=4; (($score2 - $score1) / $score1) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                    if [ -n "$pct" ]; then
-                        if [[ "$pct" == -* ]]; then
-                            diff="${pct}% (faster)"
-                        elif [[ "$pct" == "0.0" ]]; then
-                            diff="no change"
-                        else
-                            diff="+${pct}% (slower)"
-                        fi
+            if [ -n "$score1" ] && [ -n "$score2" ] && [ "$score1" != "0" ]; then
+                local pct=$(printf "%.1f" "$(echo "scale=4; (($score2 - $score1) / $score1) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                if [ -n "$pct" ]; then
+                    if [[ "$pct" == -* ]]; then
+                        diff="${pct}% (faster)"
+                    elif [[ "$pct" == "0.0" ]]; then
+                        diff="no change"
+                    else
+                        diff="+${pct}% (slower)"
                     fi
                 fi
-            else
-                display2="(not run)"
-                diff="n/a"
             fi
 
             echo "| $mode | $display1 | $display2 | $diff |" >> "$summary_file"
@@ -1050,6 +1086,10 @@ main() {
                 ;;
             --rerun-non-metro)
                 RERUN_NON_METRO=true
+                shift
+                ;;
+            --include-macrobenchmark)
+                INCLUDE_MACROBENCHMARK=true
                 shift
                 ;;
             *)
