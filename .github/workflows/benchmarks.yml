@@ -148,7 +148,7 @@ jobs:
           echo "Results directory: $results_dir"
 
       - name: Upload startup benchmark results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: startup-benchmark-results
           path: ${{ steps.results.outputs.results_dir }}
@@ -221,7 +221,7 @@ jobs:
           echo "Results directory: $results_dir"
 
       - name: Upload build benchmark results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: build-benchmark-results
           path: ${{ steps.results.outputs.results_dir }}
