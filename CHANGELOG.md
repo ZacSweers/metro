@@ -8,6 +8,7 @@ Changelog
 - **Enhancement**: Avoid unnecessary intermediate `Provider` instance allocations during graph expression gen. This means that when a direct type is requested in code gen, Metro will skip instantiating the intermediate `MetroFactory` instance if possible, avoiding unnecessary allocations.
 - **Enhancement**: Don't always generate accessors for multibinding contributors. This is no longer necessary now that we also avoid provider instance allocations, and should significantly reduce generated method counts if using a lot of multibindings.
 - **Enhancement**: Include graph roots in `Provider` refcounting. Previously, when detecting if `Provider` instance were used multiple times, Metro only checked for usages from other bindings.
+- **Enhancement**: For multibindings that would use `Provider` elements/values, mark their sources as provider-accessed in refcounting.
 - **Fix**: Fix `newInstance()` args not stripping `Lazy` in top-level function inject classes.
 
 0.8.2

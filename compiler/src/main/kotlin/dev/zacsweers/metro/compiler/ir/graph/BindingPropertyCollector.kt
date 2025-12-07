@@ -2,9 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
+import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import org.jetbrains.kotlin.ir.types.IrType
 
 private const val INITIAL_VALUE = 512
 
@@ -34,11 +36,13 @@ internal class BindingPropertyCollector(
     val keysWithBackingProperties = mutableMapOf<IrTypeKey, CollectedProperty>()
 
     // Roots (accessors/injectors) don't get properties themselves, but they contribute to
-    // dependency refcounts when they require provider instances so we mark them here
+    // dependency refcounts when they require provider instances so we mark them here.
+    // This includes both direct Provider/Lazy wrapping and map types with Provider values.
     for (root in roots) {
       if (root.requiresProviderInstance) {
         markProviderAccess(root)
       }
+      maybeMarkMultibindingSourcesAsProviderAccess(root)
     }
 
     // Single pass in reverse topological order (dependents before dependencies).
@@ -79,6 +83,7 @@ internal class BindingPropertyCollector(
         if (dependency.requiresProviderInstance || usesFactoryPath) {
           markProviderAccess(dependency)
         }
+        maybeMarkMultibindingSourcesAsProviderAccess(dependency)
       }
     }
 
@@ -131,6 +136,37 @@ internal class BindingPropertyCollector(
     // Create node lazily if needed (the target may not have been processed yet in reverse order)
     val targetBinding = graph.findBinding(targetKey) ?: return
     nodes.getOrPut(targetKey) { Node(targetBinding) }.refCount++
+  }
+
+  /**
+   * If the given contextual type key corresponds to a multibinding that would use Provider
+   * elements, marks all its source bindings as provider accesses. This handles:
+   * - Map multibindings with Provider<V> values (e.g., `Map<Int, Provider<Int>>`)
+   * - Any multibinding wrapped in Provider/Lazy (e.g., `Provider<Set<E>>`, `Lazy<Map<K, V>>`)
+   */
+  private fun maybeMarkMultibindingSourcesAsProviderAccess(contextKey: IrContextualTypeKey) {
+    val binding = graph.findBinding(contextKey.typeKey) as? IrBinding.Multibinding ?: return
+
+    // Check if this multibinding access would use Provider elements:
+    // 1. Wrapped in Provider/Lazy (e.g., Provider<Set<E>>)
+    // 2. Map with Provider values (e.g., Map<Int, Provider<Int>>)
+    val usesProviderElements =
+      contextKey.requiresProviderInstance || contextKey.wrappedType.hasProviderMapValues()
+
+    if (usesProviderElements) {
+      for (sourceKey in binding.sourceBindings) {
+        markProviderAccess(IrContextualTypeKey(sourceKey))
+      }
+    }
+  }
+
+  /**
+   * Checks if this wrapped type is a map with Provider<V> value types. For example, `Map<Int,
+   * Provider<Int>>` would return true, while `Map<Int, Int>` would return false.
+   */
+  private fun WrappedType<IrType>.hasProviderMapValues(): Boolean {
+    val mapValueType = findMapValueType() ?: return false
+    return mapValueType is WrappedType.Provider
   }
 
   /** Resolves an alias chain to its final non-alias target, caching all intermediate keys. */

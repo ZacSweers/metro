@@ -1,0 +1,132 @@
+@DependencyGraph
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  abstract class BindsMirror {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Binds
+    @IntoMap
+    @IntKey(value = 3)
+    @CallableMetadata(callableName = "bindInt", propertyName = "", startOffset = 134, endOffset = 156)
+    abstract fun Int.bindInt4013004651_intomap(): Int
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val thisGraphInstance: AppGraph
+      field = <this>
+
+    private val thisGraphInstanceProvider: Provider<AppGraph>
+      field = Companion.invoke<AppGraph>(value = <this>.#thisGraphInstance)
+
+    private val provideIntProvider: Provider<Int>
+      field = Companion.create(instance = <this>.#thisGraphInstance)
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Binds
+    @IntoMap
+    @IntKey(value = 3)
+    override fun Int.bindInt(): Int {
+      return error(message = "Never called")
+    }
+
+    override val int: Provider<Int>
+      override get(): Provider<Int> {
+        return <this>.#provideIntProvider
+      }
+
+    override val ints: Map<Int, Provider<Int>>
+      override get(): Map<Int, Provider<Int>> {
+        return <this>.<get-mapOfIntToInt>()
+      }
+
+    private val mapOfIntToInt: Map<Int, Provider<Int>>
+      private get(): Map<Int, Provider<Int>> {
+        return buildMap<Int, Provider<Int>>(capacity = 1, builderAction = local fun MutableMap<Int, Provider<Int>>.<anonymous>() {
+          $receiver.put(key = 3, value = <this>.#provideIntProvider)
+        }
+)
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 69, endOffset = 104)
+  class ProvideIntMetroFactory : Factory<Int> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(instance: AppGraph): Factory<Int> {
+        return ProvideIntMetroFactory(instance = instance)
+      }
+
+      fun provideInt(instance: AppGraph): Int {
+        return instance.provideInt()
+      }
+
+    }
+
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): Int {
+      return Companion.provideInt(instance = <this>.#instance)
+    }
+
+    fun mirrorFunction(): Int {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Binds
+  @IntoMap
+  @IntKey(value = 3)
+  abstract fun Int.bindInt(): Int
+
+  @Provides
+  private fun provideInt(): Int {
+    return 3
+  }
+
+  abstract val int: Provider<Int>
+    abstract get
+
+  abstract val ints: Map<Int, Provider<Int>>
+    abstract get
+
+}
+

@@ -336,6 +336,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("MapProvidersParticipateInProviderRefcounting.kt")
+    public void testMapProvidersParticipateInProviderRefcounting() {
+      runTest("compiler-tests/src/test/data/dump/ir/multibindings/MapProvidersParticipateInProviderRefcounting.kt");
+    }
+
+    @Test
     @TestMetadata("MultibindingSourcesGetGettersThroughAliases.kt")
     public void testMultibindingSourcesGetGettersThroughAliases() {
       runTest("compiler-tests/src/test/data/dump/ir/multibindings/MultibindingSourcesGetGettersThroughAliases.kt");
