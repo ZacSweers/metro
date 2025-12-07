@@ -26,7 +26,7 @@ on:
         description: 'Benchmark Anvil (KAPT)'
         required: false
         type: boolean
-        default: false
+        default: true
       kotlin-inject-anvil:
         description: 'Benchmark kotlin-inject-anvil'
         required: false
@@ -93,13 +93,15 @@ jobs:
 
       - name: Validate git refs
         run: |
+          # Fetch all remote branches to ensure we can resolve branch names
+          git fetch --all
           echo "Validating ref1: ${{ inputs.ref1 }}"
-          git rev-parse --verify "${{ inputs.ref1 }}" || {
+          git rev-parse --verify "${{ inputs.ref1 }}" || git rev-parse --verify "origin/${{ inputs.ref1 }}" || {
             echo "Error: Invalid git ref: ${{ inputs.ref1 }}"
             exit 1
           }
           echo "Validating ref2: ${{ inputs.ref2 }}"
-          git rev-parse --verify "${{ inputs.ref2 }}" || {
+          git rev-parse --verify "${{ inputs.ref2 }}" || git rev-parse --verify "origin/${{ inputs.ref2 }}" || {
             echo "Error: Invalid git ref: ${{ inputs.ref2 }}"
             exit 1
           }
@@ -130,6 +132,15 @@ jobs:
           cache-read-only: true
           gradle-home-cache-strict-match: true
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+
+      - name: Fetch and checkout both refs
+        run: |
+          git fetch --all
+          # Checkout both refs to create local branches so the scripts can find them
+          git checkout "${{ inputs.ref1 }}" || git checkout -b "${{ inputs.ref1 }}" "origin/${{ inputs.ref1 }}"
+          git checkout "${{ inputs.ref2 }}" || git checkout -b "${{ inputs.ref2 }}" "origin/${{ inputs.ref2 }}"
+          # Return to ref1 as the starting point
+          git checkout "${{ inputs.ref1 }}"
 
       - name: Run startup benchmark comparison
         run: |
@@ -205,10 +216,17 @@ jobs:
           gradle-home-cache-strict-match: true
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
-      - name: Install gradle-profiler
+      - name: Fetch and checkout both refs
         run: |
-          cd benchmark
-          ./run_benchmarks.sh --install-gradle-profiler help
+          git fetch --all
+          # Checkout both refs to create local branches so the scripts can find them
+          git checkout "${{ inputs.ref1 }}" || git checkout -b "${{ inputs.ref1 }}" "origin/${{ inputs.ref1 }}"
+          git checkout "${{ inputs.ref2 }}" || git checkout -b "${{ inputs.ref2 }}" "origin/${{ inputs.ref2 }}"
+          # Return to ref1 as the starting point
+          git checkout "${{ inputs.ref1 }}"
+
+      - name: Install gradle-profiler
+        run: ./benchmark/install-gradle-profiler.sh
 
       - name: Run build benchmark comparison
         run: |
