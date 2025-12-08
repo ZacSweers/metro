@@ -44,7 +44,7 @@ on:
         type: boolean
         default: true
       run-startup-r8-benchmarks:
-        description: 'Run R8-minified startup benchmarks (Metro only)'
+        description: 'Run R8-minified startup benchmarks'
         required: false
         type: boolean
         default: true
@@ -232,12 +232,12 @@ jobs:
             echo "No summary found. Check the uploaded artifacts for raw results." >> $GITHUB_STEP_SUMMARY
           fi
 
-  # Startup benchmarks with R8 minification (Metro only)
+  # Startup benchmarks with R8 minification
   startup-r8-benchmarks:
     name: "Startup R8 (JMH): ${{ inputs.ref2 && format('{0} vs {1}', inputs.ref1, inputs.ref2) || inputs.ref1 }}"
     runs-on: ubuntu-latest
     needs: validate
-    if: inputs.run-startup-r8-benchmarks && contains(needs.validate.outputs.modes, 'metro')
+    if: inputs.run-startup-r8-benchmarks
 
     steps:
       - name: Checkout
@@ -277,17 +277,22 @@ jobs:
             # Single-ref mode
             ./run_startup_benchmarks.sh single \
               --ref "${{ inputs.ref1 }}" \
-              --modes "metro" \
+              --modes "${{ needs.validate.outputs.modes }}" \
               --count "${{ inputs.module_count }}" \
               --benchmark jvm-r8
           else
             # Comparison mode
+            RERUN_FLAG=""
+            if [ "${{ inputs.rerun-non-metro }}" = "true" ]; then
+              RERUN_FLAG="--rerun-non-metro"
+            fi
             ./run_startup_benchmarks.sh compare \
               --ref1 "${{ inputs.ref1 }}" \
               --ref2 "${{ inputs.ref2 }}" \
-              --modes "metro" \
+              --modes "${{ needs.validate.outputs.modes }}" \
               --count "${{ inputs.module_count }}" \
-              --benchmark jvm-r8
+              --benchmark jvm-r8 \
+              $RERUN_FLAG
           fi
 
       - name: Find results directory
