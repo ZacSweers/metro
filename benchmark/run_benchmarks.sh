@@ -867,7 +867,7 @@ EOF
                 if [ "$mode" = "metro" ]; then
                     vs_metro1="baseline"
                 elif [ -n "$metro_score1" ] && [ "$metro_score1" != "0" ]; then
-                    local pct1=$(echo "scale=0; ($score1 / $metro_score1) * 100" | bc 2>/dev/null || echo "")
+                    local pct1=$(echo "scale=1; (($score1 - $metro_score1) / $metro_score1) * 100" | bc 2>/dev/null | sed 's/\.0$//' || echo "")
                     local mult1=$(echo "scale=1; $score1 / $metro_score1" | bc 2>/dev/null || echo "")
                     if [ -n "$pct1" ] && [ -n "$mult1" ]; then
                         vs_metro1="+${pct1}% (${mult1}x)"
@@ -885,7 +885,7 @@ EOF
                     if [ "$mode" = "metro" ]; then
                         vs_metro2="baseline"
                     elif [ -n "$metro_score2" ] && [ "$metro_score2" != "0" ]; then
-                        local pct2=$(echo "scale=0; ($score2 / $metro_score2) * 100" | bc 2>/dev/null || echo "")
+                        local pct2=$(echo "scale=1; (($score2 - $metro_score2) / $metro_score2) * 100" | bc 2>/dev/null | sed 's/\.0$//' || echo "")
                         local mult2=$(echo "scale=1; $score2 / $metro_score2" | bc 2>/dev/null || echo "")
                         if [ -n "$pct2" ] && [ -n "$mult2" ]; then
                             vs_metro2="+${pct2}% (${mult2}x)"
@@ -1440,7 +1440,7 @@ EOF
                 if [ "$mode" = "metro" ]; then
                     vs_metro="baseline"
                 elif [ -n "$metro_score" ] && [ "$metro_score" != "0" ]; then
-                    local pct=$(echo "scale=0; ($score / $metro_score) * 100" | bc 2>/dev/null || echo "")
+                    local pct=$(echo "scale=1; (($score - $metro_score) / $metro_score) * 100" | bc 2>/dev/null | sed 's/\.0$//' || echo "")
                     local mult=$(echo "scale=1; $score / $metro_score" | bc 2>/dev/null || echo "")
                     if [ -n "$pct" ] && [ -n "$mult" ]; then
                         vs_metro="+${pct}% (${mult}x)"

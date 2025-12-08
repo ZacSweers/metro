@@ -63,13 +63,16 @@ ms_to_seconds() {
 calculate_percentage() {
     local baseline="$1"
     local value="$2"
-    
+
     if [ "$baseline" = "0" ] || [ -z "$baseline" ]; then
         echo "0"
         return
     fi
-    
-    echo "scale=0; (($value - $baseline) * 100) / $baseline" | bc
+
+    # Use scale=1 for one decimal place, then truncate trailing zeros
+    local pct=$(echo "scale=1; (($value - $baseline) * 100) / $baseline" | bc)
+    # Remove trailing .0 if present
+    echo "$pct" | sed 's/\.0$//'
 }
 
 # Function to collect performance data for a test type

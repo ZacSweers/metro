@@ -2,16 +2,23 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Metro Startup Benchmark Results</title>
+    <title>Metro Benchmark Results</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --metro-color: #4CAF50; --dagger-ksp-color: #2196F3; --dagger-kapt-color: #FF9800; --kotlin-inject-color: #9C27B0; }
+        :root { --metro-color: #4CAF50; --noop-color: #607D8B; --dagger-ksp-color: #2196F3; --dagger-kapt-color: #FF9800; --kotlin-inject-color: #9C27B0; }
         * { box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background: #f5f5f5; color: #333; }
         .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 2rem; text-align: center; }
         .header h1 { margin: 0 0 0.5rem 0; font-weight: 300; font-size: 2rem; }
         .header .subtitle { opacity: 0.8; font-size: 0.9rem; }
         .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .refs-info { display: flex; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap; }
+        .ref-card { background: white; border-radius: 8px; padding: 1rem 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex: 1; min-width: 250px; }
+        .ref-card.baseline { border-left: 4px solid var(--metro-color); }
+        .ref-card.comparison { border-left: 4px solid var(--anvil-ksp-color); }
+        .ref-card h3 { margin: 0 0 0.5rem 0; font-size: 0.85rem; text-transform: uppercase; color: #666; }
+        .ref-card .ref-name { font-size: 1.2rem; font-weight: 600; font-family: monospace; }
+        .ref-card .commit { font-size: 0.85rem; color: #888; margin-top: 0.25rem; }
         .benchmark-section { background: white; border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .benchmark-section h2 { margin: 0 0 0.25rem 0; font-size: 1.3rem; font-weight: 500; }
         .benchmark-section .chart-hint { font-size: 0.8rem; color: #888; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid #eee; }
@@ -29,13 +36,21 @@
         .vs-baseline.baseline { color: var(--metro-color); font-weight: 500; }
         .vs-baseline.slower { color: #e53935; }
         .vs-baseline.faster { color: #43a047; }
+        .diff { font-weight: 500; }
+        .diff.positive { color: #e53935; }
+        .diff.negative { color: #43a047; }
+        .diff.neutral { color: #888; }
         .legend { display: flex; gap: 1.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
         .legend-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; }
         .legend-color { width: 16px; height: 16px; border-radius: 3px; }
         .no-data { color: #999; font-style: italic; }
+        .summary-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .stat-card { background: white; border-radius: 8px; padding: 1.5rem; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .stat-card .value { font-size: 2rem; font-weight: 600; color: var(--metro-color); }
+        .stat-card .label { font-size: 0.85rem; color: #666; margin-top: 0.25rem; }
         .metadata-section { background: white; border-radius: 8px; padding: 1.5rem; margin-top: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .metadata-section h2 { margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 500; color: #666; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }
-        .metadata-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
+        .metadata-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
         .metadata-group h3 { margin: 0 0 0.75rem 0; font-size: 0.9rem; font-weight: 600; color: #555; text-transform: uppercase; }
         .metadata-group dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 1rem; font-size: 0.85rem; }
         .metadata-group dt { color: #888; }
@@ -44,19 +59,23 @@
 </head>
 <body>
     <div class="header">
-        <h1>Metro Startup Benchmark Results</h1>
+        <h1>Metro Build Benchmark Results</h1>
         <div class="subtitle" id="date"></div>
     </div>
     <div class="container">
+        <div class="refs-info" id="refs-info"></div>
         <div id="benchmarks"></div>
         <div class="metadata-section" id="metadata"></div>
     </div>
 <script>
 const benchmarkData =
 {
-  "title": "Startup Benchmark Results",
-  "date": "2025-12-08T12:21:28-05:00",
+  "title": "Build Benchmark Comparison",
+  "date": "2025-12-08T19:49:59+00:00",
   "moduleCount": 500,
+  "refs": {
+    "ref1": { "label": "main", "commit": "a1f9a939 Optimize factory and multibinding gen (#1485)" }
+  },
   "metadata": {
     "versions": {
       "kotlin": "2.2.20",
@@ -67,119 +86,184 @@ const benchmarkData =
       "kotlinInjectAnvil": "0.1.6"
     },
     "build": {
+      "gradle": "9.2.1",
+      "gradleProfiler": "source (a27c6559)",
       "jdk": "24.0.2",
-      "jvmTarget": "11",
-      "jmhPlugin": "0.7.3",
-      "androidxBenchmark": "1.4.1"
+      "jvmTarget": "11"
     },
     "system": {
-      "os": "Darwin",
-      "cpu": "Apple M4 Pro",
-      "ram": "48 GB"
-    },
-    "android": {
-      "device": "Pixel 9",
-      "version": "16"
+      "os": "Linux",
+      "cpu": "AMD EPYC 7763 64-Core Processor",
+      "ram": "15Gi",
+      "daemonJvmArgs": "-Xmx1g -Dfile.encoding=UTF-8 --enable-native-access=ALL-UNNAMED"
     }
   },
   "benchmarks": [
     {
-      "name": "JVM Startup (JMH)",
-      "key": "jvm",
-      "unit": "ms",
+      "name": "ABI Change",
+      "key": "abi_change",
       "results": [
         {
           "framework": "Metro",
           "key": "metro",
-          "value": 0.16802429521997675
+          "ref1": 17483.18,
+          "ref2": null
         },
         {
           "framework": "Dagger (KSP)",
           "key": "dagger_ksp",
-          "value": 0.16716651975694252
+          "ref1": 119632.99,
+          "ref2": null
         },
         {
           "framework": "Dagger (KAPT)",
           "key": "dagger_kapt",
-          "value": 0.16800631929906623
+          "ref1": 93195.04,
+          "ref2": null
         },
         {
           "framework": "kotlin-inject-anvil",
           "key": "kotlin_inject_anvil",
-          "value": 0.21527532967935503
+          "ref1": 32297.22,
+          "ref2": null
         }
       ]
     },
     {
-      "name": "JVM Startup R8 Minified (JMH)",
-      "key": "jvm_r8",
-      "unit": "ms",
+      "name": "Non-ABI Change",
+      "key": "non_abi_change",
       "results": [
         {
           "framework": "Metro",
           "key": "metro",
-          "value": 0.15640682329788375
+          "ref1": 11552.18,
+          "ref2": null
         },
         {
           "framework": "Dagger (KSP)",
           "key": "dagger_ksp",
-          "value": 0.16155119157781478
+          "ref1": 13819.26,
+          "ref2": null
         },
         {
           "framework": "Dagger (KAPT)",
           "key": "dagger_kapt",
-          "value": 0.16164561019243706
+          "ref1": 23177.53,
+          "ref2": null
         },
         {
           "framework": "kotlin-inject-anvil",
           "key": "kotlin_inject_anvil",
-          "value": 0.20484185885872247
+          "ref1": 11336.05,
+          "ref2": null
         }
       ]
     },
     {
-      "name": "Android Component Init (Microbenchmark)",
-      "key": "android_micro",
-      "unit": "ms",
+      "name": "Plain Kotlin ABI",
+      "key": "plain_abi_change",
       "results": [
         {
           "framework": "Metro",
           "key": "metro",
-          "value": .102
+          "ref1": 17501.49,
+          "ref2": null
         },
         {
           "framework": "Dagger (KSP)",
           "key": "dagger_ksp",
-          "value": .125
+          "ref1": 121273.14,
+          "ref2": null
         },
         {
           "framework": "Dagger (KAPT)",
           "key": "dagger_kapt",
-          "value": .123
+          "ref1": 92521.81,
+          "ref2": null
         },
         {
           "framework": "kotlin-inject-anvil",
           "key": "kotlin_inject_anvil",
-          "value": 12.051
+          "ref1": 31702.09,
+          "ref2": null
+        }
+      ]
+    },
+    {
+      "name": "Plain Kotlin Non-ABI",
+      "key": "plain_non_abi_change",
+      "results": [
+        {
+          "framework": "Metro",
+          "key": "metro",
+          "ref1": 10083.62,
+          "ref2": null
+        },
+        {
+          "framework": "Dagger (KSP)",
+          "key": "dagger_ksp",
+          "ref1": 12232.19,
+          "ref2": null
+        },
+        {
+          "framework": "Dagger (KAPT)",
+          "key": "dagger_kapt",
+          "ref1": 26049.74,
+          "ref2": null
+        },
+        {
+          "framework": "kotlin-inject-anvil",
+          "key": "kotlin_inject_anvil",
+          "ref1": 11460.08,
+          "ref2": null
+        }
+      ]
+    },
+    {
+      "name": "Graph Processing",
+      "key": "raw_compilation",
+      "results": [
+        {
+          "framework": "Metro",
+          "key": "metro",
+          "ref1": 22612.15,
+          "ref2": null
+        },
+        {
+          "framework": "Dagger (KSP)",
+          "key": "dagger_ksp",
+          "ref1": 88085.83,
+          "ref2": null
+        },
+        {
+          "framework": "Dagger (KAPT)",
+          "key": "dagger_kapt",
+          "ref1": 25986.25,
+          "ref2": null
+        },
+        {
+          "framework": "kotlin-inject-anvil",
+          "key": "kotlin_inject_anvil",
+          "ref1": 28250.25,
+          "ref2": null
         }
       ]
     }
   ]
 }
 ;
-const colors = { 'metro': '#4CAF50', 'dagger_ksp': '#2196F3', 'dagger_kapt': '#FF9800', 'kotlin_inject_anvil': '#9C27B0' };
+const colors = { 'metro': '#4CAF50', 'noop': '#607D8B', 'dagger_ksp': '#2196F3', 'dagger_kapt': '#FF9800', 'kotlin_inject_anvil': '#9C27B0' };
+
+// State for selectable baseline
 let selectedBaseline = 'metro';
 
-function formatTime(ms, unit) {
+function formatTime(ms) {
     if (ms === null || ms === undefined) return '—';
-    if (unit === 'ms') {
-        if (ms < 1) return ms.toFixed(3) + ' ms';
-        if (ms < 100) return ms.toFixed(2) + ' ms';
-        return ms.toFixed(0) + ' ms';
-    }
-    return ms.toFixed(2);
+    return (ms / 1000).toFixed(1) + 's';
 }
 
+// Calculate percentage difference vs baseline: (value - baseline) / baseline * 100
+// e.g., 30s vs 24s baseline = (30-24)/24*100 = +25%
 function calculateVsBaseline(value, baselineValue) {
     if (!value || !baselineValue) return { text: '—', class: '' };
     if (value === baselineValue) return { text: 'baseline', class: 'baseline' };
@@ -187,8 +271,30 @@ function calculateVsBaseline(value, baselineValue) {
     // Remove trailing .0 for cleaner display
     pct = pct.replace(/\.0$/, '');
     const mult = (value / baselineValue).toFixed(1);
-    if (parseFloat(pct) < 0) return { text: `${pct}% (${mult}x)`, class: 'faster' };
+    if (parseFloat(pct) < 0) {
+        return { text: `${pct}% (${mult}x)`, class: 'faster' };
+    }
     return { text: `+${pct}% (${mult}x)`, class: 'slower' };
+}
+
+function calculateDiff(newVal, oldVal) {
+    if (!newVal || !oldVal) return { text: '—', class: 'neutral' };
+    const pct = ((newVal - oldVal) / oldVal * 100).toFixed(2);
+    if (Math.abs(pct) < 0.01) return { text: '+0.00%', class: 'neutral' };
+    const prefix = pct > 0 ? '+' : '';
+    return { text: `${prefix}${pct}%`, class: pct > 0 ? 'positive' : 'negative' };
+}
+
+function renderRefsInfo() {
+    const container = document.getElementById('refs-info');
+    let html = '';
+    if (benchmarkData.refs.ref1) {
+        html += `<div class="ref-card baseline"><h3>Baseline (ref1)</h3><div class="ref-name">${benchmarkData.refs.ref1.label}</div><div class="commit">${benchmarkData.refs.ref1.commit}</div></div>`;
+    }
+    if (benchmarkData.refs.ref2) {
+        html += `<div class="ref-card comparison"><h3>Comparison (ref2)</h3><div class="ref-name">${benchmarkData.refs.ref2.label}</div><div class="commit">${benchmarkData.refs.ref2.commit}</div></div>`;
+    }
+    container.innerHTML = html;
 }
 
 function renderSummaryStats() {
@@ -197,10 +303,10 @@ function renderSummaryStats() {
     let counts = { dagger_ksp: 0, dagger_kapt: 0, kotlin_inject_anvil: 0 };
     benchmarkData.benchmarks.forEach(benchmark => {
         const metroResult = benchmark.results.find(r => r.key === 'metro');
-        if (!metroResult || !metroResult.value) return;
+        if (!metroResult || !metroResult.ref1) return;
         benchmark.results.forEach(result => {
-            if (result.key !== 'metro' && result.value) {
-                totalSpeedup[result.key] += result.value / metroResult.value;
+            if (result.key !== 'metro' && result.ref1) {
+                totalSpeedup[result.key] += result.ref1 / metroResult.ref1;
                 counts[result.key]++;
             }
         });
@@ -229,7 +335,11 @@ function renderBenchmarks() {
             <div class="chart-hint">Lower is better</div>
             <div class="legend">${benchmark.results.map(r => `<div class="legend-item"><div class="legend-color" style="background: ${colors[r.key]}"></div><span>${r.framework}</span></div>`).join('')}</div>
             <div class="chart-container"><canvas id="chart-${idx}"></canvas></div>
-            <table><thead><tr><th></th><th>Framework</th><th>Time</th><th>vs <span class="baseline-header">${getBaselineLabel()}</span></th></tr></thead><tbody id="table-${idx}"></tbody></table></div>`;
+            <table><thead><tr><th></th><th>Framework</th>
+                ${benchmarkData.refs.ref1 ? `<th>${benchmarkData.refs.ref1.label}</th><th>vs <span class="baseline-header">${getBaselineLabel()}</span></th>` : ''}
+                ${benchmarkData.refs.ref2 ? `<th>${benchmarkData.refs.ref2.label}</th><th>vs <span class="baseline-header">${getBaselineLabel()}</span></th>` : ''}
+                ${benchmarkData.refs.ref1 && benchmarkData.refs.ref2 ? '<th>Difference</th>' : ''}
+            </tr></thead><tbody id="table-${idx}"></tbody></table></div>`;
     });
     container.innerHTML = html;
     benchmarkData.benchmarks.forEach((benchmark, idx) => { renderChart(benchmark, idx); renderTable(benchmark, idx); });
@@ -238,34 +348,44 @@ function renderBenchmarks() {
 const charts = [];
 function renderChart(benchmark, idx) {
     const ctx = document.getElementById(`chart-${idx}`).getContext('2d');
-    const labels = [], data = [], backgroundColors = [];
+    const labels = [], ref1Data = [], ref2Data = [], backgroundColors = [];
     benchmark.results.forEach(result => {
         labels.push(result.framework);
-        data.push(result.value || 0);
+        ref1Data.push(result.ref1 ? result.ref1 / 1000 : 0);
+        ref2Data.push(result.ref2 ? result.ref2 / 1000 : 0);
         backgroundColors.push(colors[result.key]);
     });
-    charts[idx] = new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label: 'Time', data, backgroundColor: backgroundColors.map(c => c + 'CC'), borderColor: backgroundColors, borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.raw.toFixed(2) + ' ' + (benchmark.unit || 'ms') } } }, scales: { y: { beginAtZero: true, title: { display: true, text: 'Time (' + (benchmark.unit || 'ms') + ')' } } } } });
+    const datasets = [];
+    if (benchmarkData.refs.ref1) datasets.push({ label: benchmarkData.refs.ref1.label, data: ref1Data, backgroundColor: backgroundColors.map(c => c + 'CC'), borderColor: backgroundColors, borderWidth: 2 });
+    if (benchmarkData.refs.ref2) datasets.push({ label: benchmarkData.refs.ref2.label, data: ref2Data, backgroundColor: backgroundColors.map(c => c + '66'), borderColor: backgroundColors, borderWidth: 2, borderDash: [5, 5] });
+    charts[idx] = new Chart(ctx, { type: 'bar', data: { labels, datasets }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: datasets.length > 1 }, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.raw.toFixed(1) + 's' } } }, scales: { y: { beginAtZero: true, title: { display: true, text: 'Time (seconds)' } } } } });
 }
 
 function renderTable(benchmark, idx) {
     const tbody = document.getElementById(`table-${idx}`);
-    const baselineValue = benchmark.results.find(r => r.key === selectedBaseline)?.value;
+    const baselineRef1 = benchmark.results.find(r => r.key === selectedBaseline)?.ref1;
+    const baselineRef2 = benchmark.results.find(r => r.key === selectedBaseline)?.ref2;
     let html = '';
     benchmark.results.forEach(result => {
         const isBaseline = result.key === selectedBaseline;
-        const vsBaseline = calculateVsBaseline(result.value, baselineValue);
+        const vsBaseline1 = calculateVsBaseline(result.ref1, baselineRef1);
+        const vsBaseline2 = calculateVsBaseline(result.ref2, baselineRef2);
+        const diff = calculateDiff(result.ref2, result.ref1);
         html += `<tr class="${isBaseline ? 'baseline-row' : ''}" data-key="${result.key}">
             <td class="baseline-select" onclick="setBaseline('${result.key}')"><span class="baseline-radio ${isBaseline ? 'selected' : ''}"></span></td>
             <td class="framework" style="color: ${colors[result.key]}">${result.framework}</td>
-            <td class="numeric">${result.value ? formatTime(result.value, benchmark.unit) : '<span class="no-data">N/A</span>'}</td>
-            <td class="numeric vs-baseline ${vsBaseline.class}">${vsBaseline.text}</td></tr>`;
+            ${benchmarkData.refs.ref1 ? `<td class="numeric">${result.ref1 ? formatTime(result.ref1) : '<span class="no-data">N/A</span>'}</td><td class="numeric vs-baseline ${vsBaseline1.class}">${vsBaseline1.text}</td>` : ''}
+            ${benchmarkData.refs.ref2 ? `<td class="numeric">${result.ref2 ? formatTime(result.ref2) : '<span class="no-data">(not run)</span>'}</td><td class="numeric vs-baseline ${vsBaseline2.class}">${vsBaseline2.text}</td>` : ''}
+            ${benchmarkData.refs.ref1 && benchmarkData.refs.ref2 ? `<td class="numeric diff ${diff.class}">${diff.text}</td>` : ''}</tr>`;
     });
     tbody.innerHTML = html;
 }
 
 function setBaseline(key) {
     selectedBaseline = key;
+    // Update all tables
     benchmarkData.benchmarks.forEach((benchmark, idx) => { renderTable(benchmark, idx); });
+    // Update header labels
     document.querySelectorAll('.baseline-header').forEach(el => { el.textContent = getBaselineLabel(); });
 }
 
@@ -273,7 +393,6 @@ function renderMetadata() {
     const container = document.getElementById('metadata');
     if (!benchmarkData.metadata) { container.style.display = 'none'; return; }
     const m = benchmarkData.metadata;
-    const hasAndroid = m.android?.device || m.android?.version;
     container.innerHTML = `
         <h2>Build Environment</h2>
         <div class="metadata-grid">
@@ -291,10 +410,10 @@ function renderMetadata() {
             <div class="metadata-group">
                 <h3>Build Tools</h3>
                 <dl>
+                    <dt>Gradle</dt><dd>${m.build?.gradle || '—'}</dd>
+                    <dt>Gradle Profiler</dt><dd>${m.build?.gradleProfiler || '—'}</dd>
                     <dt>JDK</dt><dd>${m.build?.jdk || '—'}</dd>
                     <dt>JVM Target</dt><dd>${m.build?.jvmTarget || '—'}</dd>
-                    <dt>JMH Plugin</dt><dd>${m.build?.jmhPlugin || '—'}</dd>
-                    <dt>AndroidX Benchmark</dt><dd>${m.build?.androidxBenchmark || '—'}</dd>
                 </dl>
             </div>
             <div class="metadata-group">
@@ -303,20 +422,14 @@ function renderMetadata() {
                     <dt>OS</dt><dd>${m.system?.os || '—'}</dd>
                     <dt>CPU</dt><dd>${m.system?.cpu || '—'}</dd>
                     <dt>RAM</dt><dd>${m.system?.ram || '—'}</dd>
+                    <dt>Daemon JVM Args</dt><dd>${m.system?.daemonJvmArgs || '—'}</dd>
                 </dl>
             </div>
-            ${hasAndroid ? `<div class="metadata-group">
-                <h3>Android Device</h3>
-                <dl>
-                    <dt>Device</dt><dd>${m.android?.device || '—'}</dd>
-                    <dt>Android Version</dt><dd>${m.android?.version || '—'}</dd>
-                </dl>
-            </div>` : ''}
         </div>`;
 }
 
 document.getElementById('date').textContent = new Date(benchmarkData.date).toLocaleString();
-renderBenchmarks(); renderMetadata();
+renderRefsInfo(); renderBenchmarks(); renderMetadata();
 </script>
 </body>
 </html>
