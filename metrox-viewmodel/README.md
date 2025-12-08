@@ -40,7 +40,9 @@ It also provides a `metroViewModelFactory` property for creating ViewModels.
 
 ### MetroViewModelFactory
 
-A `ViewModelProvider.Factory` implementation that uses injected maps to create ViewModels. Subclass it to provide your own bindings:
+`MetroViewModelFactory` is a `ViewModelProvider.Factory` implementation that uses injected maps to create ViewModels. 
+
+`ViewModelGraph` requires you to provide a `MetroViewModelFactory` subclass with your bindings:
 
 ```kotlin
 @Inject
