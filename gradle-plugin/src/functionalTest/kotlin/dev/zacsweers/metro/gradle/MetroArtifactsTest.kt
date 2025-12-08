@@ -82,7 +82,7 @@ class MetroArtifactsTest {
                     }
                   ],
                   "isSynthetic": false,
-                  "origin": "AppGraph.kt:10:3",
+                  "origin": "AppGraph.kt:11:3",
                   "declaration": "provideValue",
                   "multibinding": null,
                   "optionalWrapper": null
