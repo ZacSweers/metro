@@ -93,7 +93,7 @@ The benchmark suite includes several types of performance tests for each mode:
 
 **Standard Scenarios (always included):**
 - **ABI Change**: Measures incremental compilation when public API changes
-- **Non-ABI Change**: Measures incremental compilation when implementation changes  
+- **Non-ABI Change**: Measures incremental compilation when implementation changes
 - **Raw Compilation**: Measures compilation performance of the (`:app:component`) module specifically with `--rerun-tasks`. This benchmarks raw contribution merging + graph/component generation + validation.
 
 **Clean Build Scenarios (opt-in with `--include-clean-builds`):**
@@ -103,7 +103,7 @@ The benchmark suite includes several types of performance tests for each mode:
   - Lower iteration count (3) and warm-ups (2) due to longer execution time
 
 Clean build scenarios are useful for:
-- Measuring cold build performance 
+- Measuring cold build performance
 - Testing CI/ephemeral build scenarios
 - Comparing full compilation times across different DI frameworks
 
@@ -177,6 +177,27 @@ kotlin generate-projects.main.kts --mode metro
 The JVM benchmark measures `graphCreationAndInitialization` - the time to create the Metro dependency
 graph and fully initialize it by accessing all multibindings.
 
+### JVM Startup Benchmarks (R8 Minified)
+
+For measuring performance of optimized/minified builds, there's also an R8-minified JVM benchmark. This
+runs the same JMH benchmarks but against an R8-processed jar that simulates production Android builds.
+
+```bash
+# Run JMH benchmarks with R8-minified Metro classes
+./gradlew :startup-jvm-minified:jmh
+
+# Results are saved to startup-jvm-minified/build/results/jmh/
+```
+
+The R8 benchmark uses the `:startup-jvm:minified-jar` module which:
+- Takes the `:app:component` classes and all dependencies
+- Runs R8 with optimization flags (`-allowaccessmodification`, `-repackageclasses`)
+- Keeps only the `createAndInitialize()` entry point and `AppComponent` interface
+
+The `:startup-jvm-minified` module then depends on this minified jar and runs standard JMH benchmarks.
+
+This provides insight into how Metro performs in production Android apps where R8 is typically enabled.
+
 ### Android Startup Benchmarks
 
 Uses [AndroidX Macrobenchmark](https://developer.android.com/topic/performance/benchmarking/macrobenchmark-overview)
@@ -199,11 +220,14 @@ class loading, Metro graph creation, and initialization.
 Use the `run_startup_benchmarks.sh` script to run all startup benchmarks and aggregate results:
 
 ```bash
-# Run all startup benchmarks
+# Run all startup benchmarks (includes JVM, JVM-R8, and Android)
 ./run_startup_benchmarks.sh all
 
 # Run only JVM benchmarks
 ./run_startup_benchmarks.sh jvm
+
+# Run only JVM R8-minified benchmarks (Metro only)
+./run_startup_benchmarks.sh jvm-r8
 
 # Run only Android benchmarks (requires device)
 ./run_startup_benchmarks.sh android

@@ -24,8 +24,8 @@ class GenerateProjectsCommand : CliktCommand() {
   private val totalModules by
     option("--count", "-c", help = "Total number of modules to generate").int().default(500)
 
-
-  private val enableSharding get() = totalModules >= 500
+  private val enableSharding
+    get() = totalModules >= 500
 
   private val processor by
     option("--processor", "-p", help = "Annotation processor: ksp or kapt (anvil mode only)")
@@ -268,6 +268,7 @@ class GenerateProjectsCommand : CliktCommand() {
 
   enum class BuildMode {
     METRO,
+    NOOP,
     ANVIL,
     KOTLIN_INJECT_ANVIL,
   }
@@ -352,6 +353,22 @@ metro {
     includeJavax()
     includeAnvilForDagger()
   }
+}
+"""
+          .trimIndent()
+
+      BuildMode.NOOP ->
+        """
+plugins {
+  id("org.jetbrains.kotlin.jvm")
+}
+
+dependencies {
+  implementation("javax.inject:javax.inject:1")
+  implementation("dev.zacsweers.anvil:annotations:0.4.1")
+  implementation("dev.zacsweers.metro:runtime:+")
+  implementation(project(":core:foundation"))
+$dependencies
 }
 """
           .trimIndent()
@@ -470,7 +487,8 @@ anvil {
 
     val imports =
       when (buildMode) {
-        BuildMode.METRO ->
+        BuildMode.METRO,
+        BuildMode.NOOP ->
           """
 import com.squareup.anvil.annotations.ContributesBinding
 import com.squareup.anvil.annotations.ContributesMultibinding
@@ -512,14 +530,16 @@ $dependencyImports
 
     val scopeAnnotation =
       when (buildMode) {
-        BuildMode.METRO -> "@SingleIn(AppScope::class)"
+        BuildMode.METRO,
+        BuildMode.NOOP -> "@SingleIn(AppScope::class)"
         BuildMode.KOTLIN_INJECT_ANVIL -> "@SingleIn(AppScope::class)"
         BuildMode.ANVIL -> "@Singleton"
       }
 
     val scopeParam =
       when (buildMode) {
-        BuildMode.METRO -> "AppScope::class"
+        BuildMode.METRO,
+        BuildMode.NOOP -> "AppScope::class"
         BuildMode.KOTLIN_INJECT_ANVIL -> "AppScope::class"
         BuildMode.ANVIL -> "Unit::class"
       }
@@ -561,14 +581,16 @@ $subcomponent
   fun generateBindingContribution(className: String, index: Int, buildMode: BuildMode): String {
     val scopeAnnotation =
       when (buildMode) {
-        BuildMode.METRO -> "@SingleIn(AppScope::class)"
+        BuildMode.METRO,
+        BuildMode.NOOP -> "@SingleIn(AppScope::class)"
         BuildMode.KOTLIN_INJECT_ANVIL -> "@SingleIn(AppScope::class)"
         BuildMode.ANVIL -> "@Singleton"
       }
 
     val scopeParam =
       when (buildMode) {
-        BuildMode.METRO -> "AppScope::class"
+        BuildMode.METRO,
+        BuildMode.NOOP -> "AppScope::class"
         BuildMode.KOTLIN_INJECT_ANVIL -> "AppScope::class"
         BuildMode.ANVIL -> "Unit::class"
       }
@@ -590,7 +612,8 @@ class ${className}ServiceImpl$index @Inject constructor() : ${className}Service$
   ): String {
     val scopeParam =
       when (buildMode) {
-        BuildMode.METRO -> "AppScope::class"
+        BuildMode.METRO,
+        BuildMode.NOOP -> "AppScope::class"
         BuildMode.KOTLIN_INJECT_ANVIL -> "AppScope::class"
         BuildMode.ANVIL -> "Unit::class"
       }
@@ -622,7 +645,8 @@ class ${className}PluginImpl$index @Inject constructor() : ${className}Plugin$in
   ): String {
     val scopeParam =
       when (buildMode) {
-        BuildMode.METRO -> "AppScope::class"
+        BuildMode.METRO,
+        BuildMode.NOOP -> "AppScope::class"
         BuildMode.KOTLIN_INJECT_ANVIL -> "AppScope::class"
         BuildMode.ANVIL -> "Unit::class"
       }
@@ -670,7 +694,8 @@ class ${className}InitializerImpl$index @Inject constructor() : ${className}Init
       }
 
     return when (buildMode) {
-      BuildMode.METRO ->
+      BuildMode.METRO,
+      BuildMode.NOOP ->
         """
 // Subcomponent-scoped services that depend on parent scope
 ${(1..3).joinToString("\n") { i ->
@@ -695,7 +720,7 @@ class ${className}LocalServiceImpl$i @Inject constructor(${if (availableDependen
 interface ${className}Subcomponent {
   ${if (availableDependencies.isNotEmpty()) "// Access parent scope bindings\n$parentAccessors\n  \n" else ""}// Access subcomponent scope bindings
 $subcomponentAccessors
-  
+
   @ContributesTo(AppScope::class)
   @GraphExtension.Factory
   interface Factory {
@@ -729,7 +754,7 @@ class ${className}LocalServiceImpl$i @Inject constructor(${if (availableDependen
 interface ${className}Subcomponent {
   ${if (availableDependencies.isNotEmpty()) "// Access parent scope bindings\n$parentAccessors\n  \n" else ""}// Access subcomponent scope bindings
 $subcomponentAccessors
-  
+
   @ContributesSubcomponent.Factory(AppScope::class)
   interface Factory {
     fun create${className}Subcomponent(): ${className}Subcomponent
@@ -766,7 +791,7 @@ class ${className}LocalServiceImpl$i @Inject constructor(${if (availableDependen
 interface ${className}Subcomponent {
   ${if (availableDependencies.isNotEmpty()) "// Access parent scope bindings\n$parentAccessors\n  \n" else ""}// Access subcomponent scope bindings
 $subcomponentAccessors
-  
+
   @ContributesTo(Unit::class)
   interface Factory {
     fun create${className}Subcomponent(): ${className}Subcomponent
@@ -860,12 +885,12 @@ package dev.zacsweers.metro.benchmark.core.foundation
  */
 class PlainDataProcessor {
   private var counter = 0
-  
+
   fun processData(input: String): String {
     counter++
     return "Processed: ${'$'}input (#${'$'}counter)"
   }
-  
+
   fun getProcessedCount(): Int {
     return counter
   }
@@ -914,6 +939,28 @@ metro {
     includeJavax()
     includeAnvilForDagger()
   }
+}
+"""
+
+        BuildMode.NOOP ->
+          """
+plugins {
+  id("org.jetbrains.kotlin.jvm")
+  application
+}
+
+dependencies {
+  implementation("javax.inject:javax.inject:1")
+  implementation("dev.zacsweers.anvil:annotations:0.4.1")
+  implementation("dev.zacsweers.metro:runtime:+")
+  implementation(project(":core:foundation"))
+
+  // Depend on all generated modules to aggregate everything
+${allModules.joinToString("\n") { "  implementation(project(\":${it.layer.path}:${it.name}\"))" }}
+}
+
+application {
+  mainClass = "dev.zacsweers.metro.benchmark.app.component.AppComponentKt"
 }
 """
 
@@ -1095,6 +1142,51 @@ fun main() {
   println("  - Initializers: ${'$'}{initializers.size}")
   println("  - Total modules: ${allModules.size}")
   println("  - Total contributions: ${allModules.sumOf { it.contributionsCount }}")
+}
+"""
+
+        BuildMode.NOOP ->
+          """
+package dev.zacsweers.metro.benchmark.app.component
+
+import dev.zacsweers.metro.DependencyGraph
+import dev.zacsweers.metro.AppScope
+import dev.zacsweers.metro.SingleIn
+import dev.zacsweers.metro.Multibinds
+import dev.zacsweers.metro.benchmark.core.foundation.Plugin
+import dev.zacsweers.metro.benchmark.core.foundation.Initializer
+$serviceImports
+
+${generateAccessors(allModules)}
+
+/**
+ * NOOP mode - Metro runtime is present but compiler plugin is not applied.
+ * This interface has the same structure as Metro mode but no code generation occurs.
+ * Used as a baseline to measure build times without any DI compiler plugin overhead.
+ */
+@SingleIn(AppScope::class)
+@DependencyGraph(AppScope::class)
+interface AppComponent : ${(0 until (allModules.size / 50 + 1)).joinToString(", ") { "AccessorInterface$it" }} {
+  // Multibinding accessors
+  fun getAllPlugins(): Set<Plugin>
+  fun getAllInitializers(): Set<Initializer>
+
+  // Multibind declarations
+  @Multibinds
+  fun bindPlugins(): Set<Plugin>
+
+  @Multibinds
+  fun bindInitializers(): Set<Initializer>
+}
+
+fun main() {
+  // NOOP mode - no DI graph is created since the compiler plugin is not applied.
+  // This serves as a baseline for measuring pure Kotlin compilation overhead.
+  println("NOOP benchmark completed!")
+  println("  - Metro runtime present but compiler plugin NOT applied")
+  println("  - Total modules: ${allModules.size}")
+  println("  - Total contributions: ${allModules.sumOf { it.contributionsCount }}")
+  println("  - This is a baseline measurement for build times without DI compiler overhead")
 }
 """
 

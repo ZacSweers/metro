@@ -43,6 +43,11 @@ on:
         required: false
         type: boolean
         default: true
+      run-startup-r8-benchmarks:
+        description: 'Run R8-minified startup benchmarks (Metro only)'
+        required: false
+        type: boolean
+        default: true
       run-build-benchmarks:
         description: 'Run build benchmarks (Gradle Profiler)'
         required: false
@@ -223,6 +228,104 @@ jobs:
             cat "$summary_file" >> $GITHUB_STEP_SUMMARY
           else
             echo "## Startup Benchmark Results (JMH)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "No summary found. Check the uploaded artifacts for raw results." >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # Startup benchmarks with R8 minification (Metro only)
+  startup-r8-benchmarks:
+    name: "Startup R8 (JMH): ${{ inputs.ref2 && format('{0} vs {1}', inputs.ref1, inputs.ref2) || inputs.ref1 }}"
+    runs-on: ubuntu-latest
+    needs: validate
+    if: inputs.run-startup-r8-benchmarks && contains(needs.validate.outputs.modes, 'metro')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Configure JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version-file: .github/workflows/.java-version
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-read-only: true
+          gradle-home-cache-strict-match: true
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+
+      - name: Fetch and checkout refs
+        run: |
+          git fetch --all
+          # Checkout ref1
+          git checkout "${{ inputs.ref1 }}" || git checkout -b "${{ inputs.ref1 }}" "origin/${{ inputs.ref1 }}"
+          # Checkout ref2 if in comparison mode
+          if [ -n "${{ inputs.ref2 }}" ]; then
+            git checkout "${{ inputs.ref2 }}" || git checkout -b "${{ inputs.ref2 }}" "origin/${{ inputs.ref2 }}"
+          fi
+          # Return to ref1 as the starting point
+          git checkout "${{ inputs.ref1 }}"
+
+      - name: Run R8 startup benchmarks
+        run: |
+          cd benchmark
+          if [ "${{ needs.validate.outputs.is_single_ref }}" = "true" ]; then
+            # Single-ref mode
+            ./run_startup_benchmarks.sh single \
+              --ref "${{ inputs.ref1 }}" \
+              --modes "metro" \
+              --count "${{ inputs.module_count }}" \
+              --benchmark jvm-r8
+          else
+            # Comparison mode
+            ./run_startup_benchmarks.sh compare \
+              --ref1 "${{ inputs.ref1 }}" \
+              --ref2 "${{ inputs.ref2 }}" \
+              --modes "metro" \
+              --count "${{ inputs.module_count }}" \
+              --benchmark jvm-r8
+          fi
+
+      - name: Find results directory
+        id: results
+        run: |
+          results_dir=$(ls -td benchmark/startup-benchmark-results/*/ 2>/dev/null | head -1)
+          if [ -z "$results_dir" ]; then
+            echo "Error: No results directory found"
+            exit 1
+          fi
+          echo "results_dir=$results_dir" >> $GITHUB_OUTPUT
+          echo "Results directory: $results_dir"
+
+      - name: Upload R8 startup benchmark results
+        uses: actions/upload-artifact@v5
+        with:
+          name: startup-r8-benchmark-results
+          path: ${{ steps.results.outputs.results_dir }}
+          retention-days: 30
+
+      - name: Add R8 startup summary to workflow
+        run: |
+          results_dir="${{ steps.results.outputs.results_dir }}"
+          # Try comparison-summary.md first, then single-summary.md
+          if [ -f "${results_dir}comparison-summary.md" ]; then
+            summary_file="${results_dir}comparison-summary.md"
+          elif [ -f "${results_dir}single-summary.md" ]; then
+            summary_file="${results_dir}single-summary.md"
+          else
+            summary_file=""
+          fi
+
+          if [ -n "$summary_file" ]; then
+            echo "## Startup Benchmark Results - R8 Minified (JMH)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            cat "$summary_file" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## Startup Benchmark Results - R8 Minified (JMH)" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "No summary found. Check the uploaded artifacts for raw results." >> $GITHUB_STEP_SUMMARY
           fi

@@ -14,7 +14,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertSame
-import kotlin.test.assertTrue
 
 class MetroViewModelFactoryTest {
 
@@ -66,7 +65,6 @@ class MetroViewModelFactoryTest {
 
     val result = factory.create(AssistedTestViewModel::class, CreationExtras.Empty)
 
-    assertTrue(result is AssistedTestViewModel)
     assertEquals("assisted", result.extra)
   }
 
@@ -152,7 +150,7 @@ class MetroViewModelFactoryTest {
     val result = factory.create(AssistedTestViewModel::class, extras)
 
     assertNotNull(receivedExtras)
-    assertEquals("from-extras", (result as AssistedTestViewModel).extra)
+    assertEquals("from-extras", result.extra)
   }
 
   @Test
@@ -167,7 +165,6 @@ class MetroViewModelFactoryTest {
     val provider = ViewModelProvider.create(viewModelStore, factory)
 
     val viewModel = provider[TestViewModel::class]
-    assertTrue(viewModel is TestViewModel)
 
     // Same instance should be returned on subsequent calls
     val viewModel2 = provider[TestViewModel::class]
@@ -191,7 +188,6 @@ class MetroViewModelFactoryTest {
     val provider = ViewModelProvider.create(viewModelStore, factory)
 
     val viewModel = provider[AssistedTestViewModel::class]
-    assertTrue(viewModel is AssistedTestViewModel)
     assertEquals("assisted", viewModel.extra)
 
     viewModelStore.clear()

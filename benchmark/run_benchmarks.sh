@@ -264,6 +264,8 @@ generate_projects() {
         kotlin generate-projects.main.kts --mode "ANVIL" --processor "$(echo $processor | tr '[:lower:]' '[:upper:]')" --count "$count"
     elif [ "$mode" = "kotlin-inject-anvil" ]; then
         kotlin generate-projects.main.kts --mode "KOTLIN_INJECT_ANVIL" --count "$count"
+    elif [ "$mode" = "noop" ]; then
+        kotlin generate-projects.main.kts --mode "NOOP" --count "$count"
     else
         kotlin generate-projects.main.kts --mode "$(echo $mode | tr '[:lower:]' '[:upper:]')" --count "$count"
     fi
@@ -287,6 +289,9 @@ run_scenarios() {
     if [ "$mode" = "metro" ]; then
         scenario_prefix="metro"
         mode_name="metro"
+    elif [ "$mode" = "noop" ]; then
+        scenario_prefix="noop"
+        mode_name="noop"
     elif [ "$mode" = "anvil" ] && [ "$processor" = "ksp" ]; then
         scenario_prefix="anvil_ksp"
         mode_name="anvil_ksp"
@@ -538,6 +543,7 @@ show_usage() {
     echo "Commands:"
     echo "  all                           Run all benchmark modes (default)"
     echo "  metro [COUNT]                 Run only Metro mode benchmarks"
+    echo "  noop [COUNT]                  Run only NOOP mode benchmarks (baseline, no compiler plugin)"
     echo "  anvil-ksp [COUNT]            Run only Anvil + KSP mode benchmarks"
     echo "  anvil-kapt [COUNT]           Run only Anvil + KAPT mode benchmarks"
     echo "  kotlin-inject-anvil [COUNT]  Run only Kotlin-inject + Anvil mode benchmarks"
@@ -573,6 +579,7 @@ show_usage() {
     echo "  $0                           # Run all benchmarks with default settings"
     echo "  $0 all 1000                  # Run all benchmarks with 1000 modules"
     echo "  $0 metro 250                 # Run only Metro benchmarks with 250 modules"
+    echo "  $0 noop 500                  # Run NOOP baseline benchmarks (no compiler plugin)"
     echo "  $0 anvil-ksp                 # Run only Anvil KSP benchmarks with default count"
     echo "  $0 metro --build-only        # Generate Metro project and run build only"
     echo "  $0 anvil-ksp 100 --build-only # Generate Anvil KSP project with 100 modules and run build only"
@@ -645,6 +652,15 @@ run_benchmarks_for_ref() {
                 run_scenarios "metro" "" "$include_clean_builds"
                 # Move results to ref-specific directory
                 for scenario_dir in "$RESULTS_DIR"/metro_*"$TIMESTAMP"*; do
+                    if [ -d "$scenario_dir" ]; then
+                        mv "$scenario_dir" "$ref_dir/" 2>/dev/null || true
+                    fi
+                done
+                ;;
+            "noop")
+                generate_projects "noop" "" "$count"
+                run_scenarios "noop" "" "$include_clean_builds"
+                for scenario_dir in "$RESULTS_DIR"/noop_*"$TIMESTAMP"*; do
                     if [ -d "$scenario_dir" ]; then
                         mv "$scenario_dir" "$ref_dir/" 2>/dev/null || true
                     fi
@@ -759,6 +775,7 @@ generate_comparison_summary() {
         local mode_prefix
         case "$mode" in
             "metro") mode_prefix="metro" ;;
+            "noop") mode_prefix="noop" ;;
             "anvil-ksp") mode_prefix="anvil_ksp" ;;
             "anvil-kapt") mode_prefix="anvil_kapt" ;;
             "kotlin-inject-anvil") mode_prefix="kotlin_inject_anvil" ;;
@@ -815,6 +832,7 @@ EOF
             local mode_prefix
             case "$mode" in
                 "metro") mode_prefix="metro" ;;
+                "noop") mode_prefix="noop" ;;
                 "anvil-ksp") mode_prefix="anvil_ksp" ;;
                 "anvil-kapt") mode_prefix="anvil_kapt" ;;
                 "kotlin-inject-anvil") mode_prefix="kotlin_inject_anvil" ;;
@@ -940,7 +958,7 @@ generate_html_report() {
     <title>Metro Benchmark Results</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --metro-color: #4CAF50; --anvil-ksp-color: #2196F3; --anvil-kapt-color: #FF9800; --kotlin-inject-color: #9C27B0; }
+        :root { --metro-color: #4CAF50; --noop-color: #607D8B; --anvil-ksp-color: #2196F3; --anvil-kapt-color: #FF9800; --kotlin-inject-color: #9C27B0; }
         * { box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background: #f5f5f5; color: #333; }
         .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 2rem; text-align: center; }
@@ -1010,7 +1028,7 @@ HTMLHEAD
 
     cat >> "$html_file" << 'HTMLTAIL'
 ;
-const colors = { 'metro': '#4CAF50', 'anvil_ksp': '#2196F3', 'anvil_kapt': '#FF9800', 'kotlin_inject_anvil': '#9C27B0' };
+const colors = { 'metro': '#4CAF50', 'noop': '#607D8B', 'anvil_ksp': '#2196F3', 'anvil_kapt': '#FF9800', 'kotlin_inject_anvil': '#9C27B0' };
 
 // State for selectable baseline
 let selectedBaseline = 'metro';
@@ -1314,6 +1332,7 @@ build_benchmark_json() {
             local mode_name
             case "$mode" in
                 "metro") mode_prefix="metro"; mode_name="Metro" ;;
+                "noop") mode_prefix="noop"; mode_name="NOOP (Baseline)" ;;
                 "anvil-ksp") mode_prefix="anvil_ksp"; mode_name="Anvil (KSP)" ;;
                 "anvil-kapt") mode_prefix="anvil_kapt"; mode_name="Anvil (KAPT)" ;;
                 "kotlin-inject-anvil") mode_prefix="kotlin_inject_anvil"; mode_name="kotlin-inject-anvil" ;;
@@ -1399,6 +1418,7 @@ EOF
             local mode_prefix
             case "$mode" in
                 "metro") mode_prefix="metro" ;;
+                "noop") mode_prefix="noop" ;;
                 "anvil-ksp") mode_prefix="anvil_ksp" ;;
                 "anvil-kapt") mode_prefix="anvil_kapt" ;;
                 "kotlin-inject-anvil") mode_prefix="kotlin_inject_anvil" ;;
@@ -1684,6 +1704,9 @@ main() {
             ;;
         metro)
             run_mode_benchmark "metro" "" "$count" "$build_only" "$include_clean_builds"
+            ;;
+        noop)
+            run_mode_benchmark "noop" "" "$count" "$build_only" "$include_clean_builds"
             ;;
         anvil-ksp)
             run_mode_benchmark "anvil" "ksp" "$count" "$build_only" "$include_clean_builds"
