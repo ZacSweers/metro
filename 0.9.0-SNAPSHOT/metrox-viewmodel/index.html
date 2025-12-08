@@ -1661,7 +1661,8 @@
 - <code>manualAssistedFactoryProviders</code> - Manual assisted factory providers</p>
 <p>It also provides a <code>metroViewModelFactory</code> property for creating ViewModels.</p>
 <h3 id="metroviewmodelfactory">MetroViewModelFactory<a class="headerlink" href="#metroviewmodelfactory" title="Permanent link">&para;</a></h3>
-<p>A <code>ViewModelProvider.Factory</code> implementation that uses injected maps to create ViewModels. Subclass it to provide your own bindings:</p>
+<p><code>MetroViewModelFactory</code> is a <code>ViewModelProvider.Factory</code> implementation that uses injected maps to create ViewModels.</p>
+<p><code>ViewModelGraph</code> requires you to provide a <code>MetroViewModelFactory</code> subclass with your bindings:</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@Inject</span>
 <span class="nd">@ContributesBinding</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
 <span class="nd">@SingleIn</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
@@ -1680,6 +1681,10 @@
 <span class="w">  </span><span class="c1">// ...</span>
 <span class="p">}</span>
 </code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">Migrating from <code>@HiltViewModel</code></p>
+<p>If you are migrating from <code>@HiltViewModel</code> be aware that by default <code>@ContributesIntoMap</code> will bind your ViewModel to the immediate parent type. If you have an intermediate parent type such as <code>class MyViewModel : BaseViewModel()</code> you will want to specify the binding type with <code>@ContributesIntoMap(AppScope::class, binding&lt;ViewModel&gt;())</code>.</p>
+</div>
 <h3 id="assisted-viewmodel-creation">Assisted ViewModel Creation<a class="headerlink" href="#assisted-viewmodel-creation" title="Permanent link">&para;</a></h3>
 <p>For ViewModels requiring runtime parameters and only using <code>CreationParams</code> can use <code>ViewModelAssistedFactory</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@AssistedInject</span>
