@@ -40,7 +40,7 @@ It also provides a `metroViewModelFactory` property for creating ViewModels.
 
 ### MetroViewModelFactory
 
-`MetroViewModelFactory` is a `ViewModelProvider.Factory` implementation that uses injected maps to create ViewModels. 
+`MetroViewModelFactory` is a `ViewModelProvider.Factory` implementation that uses injected maps to create ViewModels.
 
 `ViewModelGraph` requires you to provide a `MetroViewModelFactory` subclass with your bindings:
 
