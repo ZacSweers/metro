@@ -30,7 +30,7 @@ Metro's compiler plugin is designed to be _fast_. Running as a compiler plugin a
 This benchmark uses [gradle-profiler](https://github.com/gradle/gradle-profiler) to benchmark build performance using different tools.
 
 !!! tip "Summary"
-    Results as of Metro `0.5.2`, Anvil-KSP `0.5.1`, Dagger `2.57.2`, and Kotlin-Inject `0.8.0` with kotlin-inject-anvil `0.1.6` are as follows.
+    Results as of Metro `0.8.3`, Anvil-KSP `0.5.1`, Dagger `2.57.2`, and Kotlin-Inject `0.8.0` with kotlin-inject-anvil `0.1.6` are as follows.
 
     _(Median times in seconds)_
 
