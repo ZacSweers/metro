@@ -17,7 +17,7 @@ class GenerateProjectsCommand : CliktCommand() {
   }
 
   private val mode by
-    option("--mode", "-m", help = "Build mode: metro, anvil, or kotlin-inject-anvil")
+    option("--mode", "-m", help = "Build mode: metro, dagger, or kotlin_inject_anvil")
       .enum<BuildMode>(ignoreCase = true)
       .default(BuildMode.METRO)
 
@@ -28,7 +28,7 @@ class GenerateProjectsCommand : CliktCommand() {
     get() = totalModules >= 500
 
   private val processor by
-    option("--processor", "-p", help = "Annotation processor: ksp or kapt (anvil mode only)")
+    option("--processor", "-p", help = "Annotation processor: ksp or kapt (dagger mode only)")
       .enum<ProcessorMode>(ignoreCase = true)
       .default(ProcessorMode.KSP)
 
@@ -243,7 +243,7 @@ class GenerateProjectsCommand : CliktCommand() {
 
     println("Generated benchmark project with ${allModules.size} modules!")
     println("Build mode: $mode")
-    if (mode == BuildMode.ANVIL) {
+    if (mode == BuildMode.DAGGER) {
       println("Processor: $processor")
     }
 
@@ -269,7 +269,7 @@ class GenerateProjectsCommand : CliktCommand() {
   enum class BuildMode {
     METRO,
     NOOP,
-    ANVIL,
+    DAGGER,
     KOTLIN_INJECT_ANVIL,
   }
 
@@ -392,7 +392,7 @@ $dependencies
 """
           .trimIndent()
 
-      BuildMode.ANVIL ->
+      BuildMode.DAGGER ->
         when (processor) {
           ProcessorMode.KSP ->
             """
@@ -514,7 +514,7 @@ $dependencyImports
 """
             .trimIndent()
 
-        BuildMode.ANVIL ->
+        BuildMode.DAGGER ->
           """
 import com.squareup.anvil.annotations.ContributesBinding
 import com.squareup.anvil.annotations.ContributesMultibinding
@@ -533,7 +533,7 @@ $dependencyImports
         BuildMode.METRO,
         BuildMode.NOOP -> "@SingleIn(AppScope::class)"
         BuildMode.KOTLIN_INJECT_ANVIL -> "@SingleIn(AppScope::class)"
-        BuildMode.ANVIL -> "@Singleton"
+        BuildMode.DAGGER -> "@Singleton"
       }
 
     val scopeParam =
@@ -541,7 +541,7 @@ $dependencyImports
         BuildMode.METRO,
         BuildMode.NOOP -> "AppScope::class"
         BuildMode.KOTLIN_INJECT_ANVIL -> "AppScope::class"
-        BuildMode.ANVIL -> "Unit::class"
+        BuildMode.DAGGER -> "Unit::class"
       }
 
     return """
@@ -584,7 +584,7 @@ $subcomponent
         BuildMode.METRO,
         BuildMode.NOOP -> "@SingleIn(AppScope::class)"
         BuildMode.KOTLIN_INJECT_ANVIL -> "@SingleIn(AppScope::class)"
-        BuildMode.ANVIL -> "@Singleton"
+        BuildMode.DAGGER -> "@Singleton"
       }
 
     val scopeParam =
@@ -592,7 +592,7 @@ $subcomponent
         BuildMode.METRO,
         BuildMode.NOOP -> "AppScope::class"
         BuildMode.KOTLIN_INJECT_ANVIL -> "AppScope::class"
-        BuildMode.ANVIL -> "Unit::class"
+        BuildMode.DAGGER -> "Unit::class"
       }
 
     return """
@@ -615,7 +615,7 @@ class ${className}ServiceImpl$index @Inject constructor() : ${className}Service$
         BuildMode.METRO,
         BuildMode.NOOP -> "AppScope::class"
         BuildMode.KOTLIN_INJECT_ANVIL -> "AppScope::class"
-        BuildMode.ANVIL -> "Unit::class"
+        BuildMode.DAGGER -> "Unit::class"
       }
 
     val multibindingAnnotation =
@@ -648,7 +648,7 @@ class ${className}PluginImpl$index @Inject constructor() : ${className}Plugin$in
         BuildMode.METRO,
         BuildMode.NOOP -> "AppScope::class"
         BuildMode.KOTLIN_INJECT_ANVIL -> "AppScope::class"
-        BuildMode.ANVIL -> "Unit::class"
+        BuildMode.DAGGER -> "Unit::class"
       }
 
     val multibindingAnnotation =
@@ -766,7 +766,7 @@ $subcomponentAccessors
 annotation class ${className}Scope
 """
 
-      BuildMode.ANVIL ->
+      BuildMode.DAGGER ->
         """
 // Subcomponent-scoped services that depend on parent scope
 ${(1..3).joinToString("\n") { i ->
@@ -989,7 +989,7 @@ application {
 }
 """
 
-        BuildMode.ANVIL ->
+        BuildMode.DAGGER ->
           when (processor) {
             ProcessorMode.KSP ->
               """
@@ -1240,7 +1240,7 @@ fun main() {
 }
 """
 
-        BuildMode.ANVIL ->
+        BuildMode.DAGGER ->
           """
 package dev.zacsweers.metro.benchmark.app.component
 

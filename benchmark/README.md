@@ -66,13 +66,13 @@ kotlin generate-projects.main.kts --mode kotlin-inject-anvil
 Use the `run_benchmarks.sh` script for comprehensive performance testing:
 
 ```bash
-# Run all benchmark modes (metro, anvil-ksp, anvil-kapt, kotlin-inject-anvil)
+# Run all benchmark modes (metro, dagger-ksp, dagger-kapt, kotlin-inject)
 ./run_benchmarks.sh all
 
 # Run specific modes
 ./run_benchmarks.sh metro 500
-./run_benchmarks.sh anvil-ksp 250
-./run_benchmarks.sh anvil-kapt 750
+./run_benchmarks.sh dagger-ksp 250
+./run_benchmarks.sh dagger-kapt 750
 ./run_benchmarks.sh kotlin-inject-anvil 500
 
 # Include clean build scenarios (opt-in)
@@ -115,8 +115,9 @@ Clean build scenarios are useful for:
 - Supports `AppScope` and `@SingleIn` scoping
 - Generates `createGraph<AppComponent>()` for runtime execution
 
-### Anvil Mode
-- Uses `dev.zacsweers.anvil:compiler` with KSP or KAPT
+### Dagger + Anvil Mode
+- Uses `dagger-compiler` with KSP or KAPT for component/factory generation
+- Uses `dev.zacsweers.anvil:compiler` with KSP for contribution merging
 - Uses `dagger.runtime` for dependency injection
 - Uses standard `com.squareup.anvil.annotations` (via anvil-ksp fork)
 - Uses `@Singleton` and `Unit::class` scope

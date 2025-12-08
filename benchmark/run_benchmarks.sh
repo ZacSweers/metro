@@ -259,9 +259,9 @@ generate_projects() {
     local count=${3:-$DEFAULT_MODULE_COUNT}
     
     print_status "Generating $count modules for $mode mode"
-    if [ "$mode" = "anvil" ]; then
+    if [ "$mode" = "dagger" ]; then
         print_status "Using $processor processor"
-        kotlin generate-projects.main.kts --mode "ANVIL" --processor "$(echo $processor | tr '[:lower:]' '[:upper:]')" --count "$count"
+        kotlin generate-projects.main.kts --mode "DAGGER" --processor "$(echo $processor | tr '[:lower:]' '[:upper:]')" --count "$count"
     elif [ "$mode" = "kotlin-inject-anvil" ]; then
         kotlin generate-projects.main.kts --mode "KOTLIN_INJECT_ANVIL" --count "$count"
     elif [ "$mode" = "noop" ]; then
@@ -292,12 +292,12 @@ run_scenarios() {
     elif [ "$mode" = "noop" ]; then
         scenario_prefix="noop"
         mode_name="noop"
-    elif [ "$mode" = "anvil" ] && [ "$processor" = "ksp" ]; then
-        scenario_prefix="anvil_ksp"
-        mode_name="anvil_ksp"
-    elif [ "$mode" = "anvil" ] && [ "$processor" = "kapt" ]; then
-        scenario_prefix="anvil_kapt"
-        mode_name="anvil_kapt"
+    elif [ "$mode" = "dagger" ] && [ "$processor" = "ksp" ]; then
+        scenario_prefix="dagger_ksp"
+        mode_name="dagger_ksp"
+    elif [ "$mode" = "dagger" ] && [ "$processor" = "kapt" ]; then
+        scenario_prefix="dagger_kapt"
+        mode_name="dagger_kapt"
     elif [ "$mode" = "kotlin-inject-anvil" ]; then
         scenario_prefix="kotlin_inject_anvil"
         mode_name="kotlin_inject_anvil"
@@ -444,34 +444,34 @@ run_all_benchmarks() {
         run_scenarios "metro" "" "$include_clean_builds"
     fi
     
-    # 2. Anvil + KSP Mode  
+    # 2. Dagger (KSP) Mode
     if [ "$build_only" = true ]; then
-        print_header "Running Anvil + KSP Mode Build"
+        print_header "Running Dagger (KSP) Mode Build"
     else
-        print_header "Running Anvil + KSP Mode Benchmarks"
+        print_header "Running Dagger (KSP) Mode Benchmarks"
     fi
-    generate_projects "anvil" "ksp" "$count"
+    generate_projects "dagger" "ksp" "$count"
     if [ "$build_only" = true ]; then
         print_status "Build-only mode: running ./gradlew :app:component:run --quiet"
         ./gradlew :app:component:run --quiet
-        print_success "Anvil + KSP build completed!"
+        print_success "Dagger (KSP) build completed!"
     else
-        run_scenarios "anvil" "ksp" "$include_clean_builds"
+        run_scenarios "dagger" "ksp" "$include_clean_builds"
     fi
-    
-    # 3. Anvil + KAPT Mode
+
+    # 3. Dagger (KAPT) Mode
     if [ "$build_only" = true ]; then
-        print_header "Running Anvil + KAPT Mode Build"
+        print_header "Running Dagger (KAPT) Mode Build"
     else
-        print_header "Running Anvil + KAPT Mode Benchmarks"
+        print_header "Running Dagger (KAPT) Mode Benchmarks"
     fi
-    generate_projects "anvil" "kapt" "$count"
+    generate_projects "dagger" "kapt" "$count"
     if [ "$build_only" = true ]; then
         print_status "Build-only mode: running ./gradlew :app:component:run --quiet"
         ./gradlew :app:component:run --quiet
-        print_success "Anvil + KAPT build completed!"
+        print_success "Dagger (KAPT) build completed!"
     else
-        run_scenarios "anvil" "kapt" "$include_clean_builds"
+        run_scenarios "dagger" "kapt" "$include_clean_builds"
     fi
     
     # 4. Kotlin-inject + Anvil Mode
@@ -544,8 +544,8 @@ show_usage() {
     echo "  all                           Run all benchmark modes (default)"
     echo "  metro [COUNT]                 Run only Metro mode benchmarks"
     echo "  noop [COUNT]                  Run only NOOP mode benchmarks (baseline, no compiler plugin)"
-    echo "  anvil-ksp [COUNT]            Run only Anvil + KSP mode benchmarks"
-    echo "  anvil-kapt [COUNT]           Run only Anvil + KAPT mode benchmarks"
+    echo "  dagger-ksp [COUNT]           Run only Dagger (KSP) mode benchmarks"
+    echo "  dagger-kapt [COUNT]          Run only Dagger (KAPT) mode benchmarks"
     echo "  kotlin-inject-anvil [COUNT]  Run only Kotlin-inject + Anvil mode benchmarks"
     echo "  single                        Run benchmarks on a single git ref"
     echo "  compare                       Compare benchmarks across two git refs"
@@ -559,15 +559,15 @@ show_usage() {
     echo "Single Options:"
     echo "  --ref <ref>                  Git ref to benchmark - branch name or commit hash"
     echo "  --modes <list>               Comma-separated list of modes to benchmark"
-    echo "                               Available: metro, anvil-ksp, anvil-kapt, kotlin-inject-anvil"
-    echo "                               Default: metro,anvil-ksp,kotlin-inject-anvil"
+    echo "                               Available: metro, dagger-ksp, dagger-kapt, kotlin-inject-anvil"
+    echo "                               Default: metro,dagger-ksp,kotlin-inject-anvil"
     echo ""
     echo "Compare Options:"
     echo "  --ref1 <ref>                 First git ref (baseline) - branch name or commit hash"
     echo "  --ref2 <ref>                 Second git ref to compare against baseline"
     echo "  --modes <list>               Comma-separated list of modes to benchmark"
-    echo "                               Available: metro, anvil-ksp, anvil-kapt, kotlin-inject-anvil"
-    echo "                               Default: metro,anvil-ksp,kotlin-inject-anvil"
+    echo "                               Available: metro, dagger-ksp, dagger-kapt, kotlin-inject-anvil"
+    echo "                               Default: metro,dagger-ksp,kotlin-inject-anvil"
     echo "  --rerun-non-metro            Re-run non-metro modes on ref2 (default: only run metro on ref2)"
     echo "                               When disabled (default), ref2 uses ref1's non-metro results for comparison"
     echo ""
@@ -580,20 +580,20 @@ show_usage() {
     echo "  $0 all 1000                  # Run all benchmarks with 1000 modules"
     echo "  $0 metro 250                 # Run only Metro benchmarks with 250 modules"
     echo "  $0 noop 500                  # Run NOOP baseline benchmarks (no compiler plugin)"
-    echo "  $0 anvil-ksp                 # Run only Anvil KSP benchmarks with default count"
+    echo "  $0 dagger-ksp                # Run only Dagger (KSP) benchmarks with default count"
     echo "  $0 metro --build-only        # Generate Metro project and run build only"
-    echo "  $0 anvil-ksp 100 --build-only # Generate Anvil KSP project with 100 modules and run build only"
+    echo "  $0 dagger-ksp 100 --build-only # Generate Dagger (KSP) project with 100 modules and run build only"
     echo "  $0 all --build-only          # Generate and build all projects, skip benchmarks"
     echo "  $0 all --include-clean-builds # Run all benchmarks including clean build scenarios"
     echo "  $0 metro 250 --include-clean-builds # Run Metro benchmarks with 250 modules including clean builds"
     echo ""
     echo "  # Run benchmarks on a single git ref:"
     echo "  $0 single --ref main"
-    echo "  $0 single --ref feature-branch --modes metro,anvil-ksp"
+    echo "  $0 single --ref feature-branch --modes metro,dagger-ksp"
     echo ""
     echo "  # Compare benchmarks across git refs:"
     echo "  $0 compare --ref1 main --ref2 feature-branch"
-    echo "  $0 compare --ref1 abc123 --ref2 def456 --modes metro,anvil-ksp"
+    echo "  $0 compare --ref1 abc123 --ref2 def456 --modes metro,dagger-ksp"
     echo "  $0 compare --ref1 main --ref2 feature --rerun-non-metro  # Re-run all modes on both refs"
     echo ""
     echo "Results will be saved to the '$RESULTS_DIR' directory with timestamps."
@@ -666,19 +666,19 @@ run_benchmarks_for_ref() {
                     fi
                 done
                 ;;
-            "anvil-ksp")
-                generate_projects "anvil" "ksp" "$count"
-                run_scenarios "anvil" "ksp" "$include_clean_builds"
-                for scenario_dir in "$RESULTS_DIR"/anvil_ksp_*"$TIMESTAMP"*; do
+            "dagger-ksp")
+                generate_projects "dagger" "ksp" "$count"
+                run_scenarios "dagger" "ksp" "$include_clean_builds"
+                for scenario_dir in "$RESULTS_DIR"/dagger_ksp_*"$TIMESTAMP"*; do
                     if [ -d "$scenario_dir" ]; then
                         mv "$scenario_dir" "$ref_dir/" 2>/dev/null || true
                     fi
                 done
                 ;;
-            "anvil-kapt")
-                generate_projects "anvil" "kapt" "$count"
-                run_scenarios "anvil" "kapt" "$include_clean_builds"
-                for scenario_dir in "$RESULTS_DIR"/anvil_kapt_*"$TIMESTAMP"*; do
+            "dagger-kapt")
+                generate_projects "dagger" "kapt" "$count"
+                run_scenarios "dagger" "kapt" "$include_clean_builds"
+                for scenario_dir in "$RESULTS_DIR"/dagger_kapt_*"$TIMESTAMP"*; do
                     if [ -d "$scenario_dir" ]; then
                         mv "$scenario_dir" "$ref_dir/" 2>/dev/null || true
                     fi
@@ -776,8 +776,8 @@ generate_comparison_summary() {
         case "$mode" in
             "metro") mode_prefix="metro" ;;
             "noop") mode_prefix="noop" ;;
-            "anvil-ksp") mode_prefix="anvil_ksp" ;;
-            "anvil-kapt") mode_prefix="anvil_kapt" ;;
+            "dagger-ksp") mode_prefix="dagger_ksp" ;;
+            "dagger-kapt") mode_prefix="dagger_kapt" ;;
             "kotlin-inject-anvil") mode_prefix="kotlin_inject_anvil" ;;
             *) continue ;;
         esac
@@ -833,8 +833,8 @@ EOF
             case "$mode" in
                 "metro") mode_prefix="metro" ;;
                 "noop") mode_prefix="noop" ;;
-                "anvil-ksp") mode_prefix="anvil_ksp" ;;
-                "anvil-kapt") mode_prefix="anvil_kapt" ;;
+                "dagger-ksp") mode_prefix="dagger_ksp" ;;
+                "dagger-kapt") mode_prefix="dagger_kapt" ;;
                 "kotlin-inject-anvil") mode_prefix="kotlin_inject_anvil" ;;
                 *) continue ;;
             esac
@@ -958,7 +958,7 @@ generate_html_report() {
     <title>Metro Benchmark Results</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --metro-color: #4CAF50; --noop-color: #607D8B; --anvil-ksp-color: #2196F3; --anvil-kapt-color: #FF9800; --kotlin-inject-color: #9C27B0; }
+        :root { --metro-color: #4CAF50; --noop-color: #607D8B; --dagger-ksp-color: #2196F3; --dagger-kapt-color: #FF9800; --kotlin-inject-color: #9C27B0; }
         * { box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background: #f5f5f5; color: #333; }
         .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 2rem; text-align: center; }
@@ -968,7 +968,7 @@ generate_html_report() {
         .refs-info { display: flex; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap; }
         .ref-card { background: white; border-radius: 8px; padding: 1rem 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex: 1; min-width: 250px; }
         .ref-card.baseline { border-left: 4px solid var(--metro-color); }
-        .ref-card.comparison { border-left: 4px solid var(--anvil-ksp-color); }
+        .ref-card.comparison { border-left: 4px solid var(--dagger-ksp-color); }
         .ref-card h3 { margin: 0 0 0.5rem 0; font-size: 0.85rem; text-transform: uppercase; color: #666; }
         .ref-card .ref-name { font-size: 1.2rem; font-weight: 600; font-family: monospace; }
         .ref-card .commit { font-size: 0.85rem; color: #888; margin-top: 0.25rem; }
@@ -1028,7 +1028,8 @@ HTMLHEAD
 
     cat >> "$html_file" << 'HTMLTAIL'
 ;
-const colors = { 'metro': '#4CAF50', 'noop': '#607D8B', 'anvil_ksp': '#2196F3', 'anvil_kapt': '#FF9800', 'kotlin_inject_anvil': '#9C27B0' };
+const colors = { 'metro': '#4CAF50', 'noop': '#607D8B', 'dagger_ksp': '#2196F3', 'dagger_kapt': '#FF9800', 'kotlin_inject_anvil': '#9C27B0' };
+const displayNames = { 'metro': 'Metro', 'noop': 'NOOP (Baseline)', 'dagger_ksp': 'Dagger (KSP)', 'dagger_kapt': 'Dagger (KAPT)', 'kotlin_inject_anvil': 'kotlin-inject' };
 
 // State for selectable baseline
 let selectedBaseline = 'metro';
@@ -1073,8 +1074,8 @@ function renderRefsInfo() {
 
 function renderSummaryStats() {
     const container = document.getElementById('summary-stats');
-    let totalSpeedup = { anvil_ksp: 0, anvil_kapt: 0, kotlin_inject_anvil: 0 };
-    let counts = { anvil_ksp: 0, anvil_kapt: 0, kotlin_inject_anvil: 0 };
+    let totalSpeedup = { dagger_ksp: 0, dagger_kapt: 0, kotlin_inject_anvil: 0 };
+    let counts = { dagger_ksp: 0, dagger_kapt: 0, kotlin_inject_anvil: 0 };
     benchmarkData.benchmarks.forEach(benchmark => {
         const metroResult = benchmark.results.find(r => r.key === 'metro');
         if (!metroResult || !metroResult.ref1) return;
@@ -1086,7 +1087,7 @@ function renderSummaryStats() {
         });
     });
     let html = '';
-    const names = { 'anvil_ksp': 'Anvil KSP', 'anvil_kapt': 'Anvil KAPT', 'kotlin_inject_anvil': 'kotlin-inject' };
+    const names = { 'dagger_ksp': 'Dagger (KSP)', 'dagger_kapt': 'Dagger (KAPT)', 'kotlin_inject_anvil': 'kotlin-inject' };
     Object.keys(totalSpeedup).forEach(key => {
         if (counts[key] > 0) {
             const avgSpeedup = (totalSpeedup[key] / counts[key]).toFixed(1);
@@ -1333,9 +1334,9 @@ build_benchmark_json() {
             case "$mode" in
                 "metro") mode_prefix="metro"; mode_name="Metro" ;;
                 "noop") mode_prefix="noop"; mode_name="NOOP (Baseline)" ;;
-                "anvil-ksp") mode_prefix="anvil_ksp"; mode_name="Anvil (KSP)" ;;
-                "anvil-kapt") mode_prefix="anvil_kapt"; mode_name="Anvil (KAPT)" ;;
-                "kotlin-inject-anvil") mode_prefix="kotlin_inject_anvil"; mode_name="kotlin-inject-anvil" ;;
+                "dagger-ksp") mode_prefix="dagger_ksp"; mode_name="Dagger (KSP)" ;;
+                "dagger-kapt") mode_prefix="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
+                "kotlin-inject-anvil") mode_prefix="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
                 *) continue ;;
             esac
 
@@ -1419,8 +1420,8 @@ EOF
             case "$mode" in
                 "metro") mode_prefix="metro" ;;
                 "noop") mode_prefix="noop" ;;
-                "anvil-ksp") mode_prefix="anvil_ksp" ;;
-                "anvil-kapt") mode_prefix="anvil_kapt" ;;
+                "dagger-ksp") mode_prefix="dagger_ksp" ;;
+                "dagger-kapt") mode_prefix="dagger_kapt" ;;
                 "kotlin-inject-anvil") mode_prefix="kotlin_inject_anvil" ;;
                 *) continue ;;
             esac
@@ -1708,11 +1709,11 @@ main() {
         noop)
             run_mode_benchmark "noop" "" "$count" "$build_only" "$include_clean_builds"
             ;;
-        anvil-ksp)
-            run_mode_benchmark "anvil" "ksp" "$count" "$build_only" "$include_clean_builds"
+        dagger-ksp)
+            run_mode_benchmark "dagger" "ksp" "$count" "$build_only" "$include_clean_builds"
             ;;
-        anvil-kapt)
-            run_mode_benchmark "anvil" "kapt" "$count" "$build_only" "$include_clean_builds"
+        dagger-kapt)
+            run_mode_benchmark "dagger" "kapt" "$count" "$build_only" "$include_clean_builds"
             ;;
         kotlin-inject-anvil)
             run_mode_benchmark "kotlin-inject-anvil" "" "$count" "$build_only" "$include_clean_builds"

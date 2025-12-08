@@ -11,9 +11,9 @@ The below sections describe the two scenarios Metro's benchmarks run against usi
 **Modes**
 
 - `Metro`: Purely running metro
-- `Anvil KSP`: Running dagger-ksp with anvil-ksp for contribution merging.
-- `Anvil KAPT`: Running dagger with kapt with anvil-ksp for contribution merging.
-- `Kotlin Inject`: Running kotlin-inject + kotlin-inject-anvil for contribution merging.
+- `Dagger (KSP)`: Running dagger-ksp with anvil-ksp for contribution merging.
+- `Dagger (KAPT)`: Running dagger-kapt with anvil-ksp for contribution merging.
+- `Kotlin-Inject`: Running kotlin-inject with kotlin-inject-anvil for contribution merging.
 
 ### Build Performance
 
@@ -34,10 +34,10 @@ This benchmark uses [gradle-profiler](https://github.com/gradle/gradle-profiler)
     
     _(Median times in seconds)_
     
-    |                      | Metro | Anvil KSP     | Anvil Kapt    | Kotlin-Inject |
+    |                      | Metro | Dagger (KSP)  | Dagger (KAPT) | Kotlin-Inject |
     |----------------------|-------|---------------|---------------|---------------|
-    | **ABI**              | 5.3s  | 40.5s (+663%) | 25.3s (+377%) | 10.3s (+94%)  | 
-    | **Non-ABI**          | 2.6s  | 3.8s (+45%)   | 7.1s (+171%)  | 3.3s (+26%)   | 
+    | **ABI**              | 5.3s  | 40.5s (+663%) | 25.3s (+377%) | 10.3s (+94%)  |
+    | **Non-ABI**          | 2.6s  | 3.8s (+45%)   | 7.1s (+171%)  | 3.3s (+26%)   |
     | **Graph processing** | 6.9s  | 28.9s (+318%) | 8.7s (+25%)   | 11s (+59%)    |
 
 ##### ABI Change
@@ -77,7 +77,7 @@ To measure and compare runtime performance, Metro benchmarks graph initializatio
 
 These benchmarks run with JMH.
 
-On the JVM, Metro, anvil-ksp + dagger-ksp, and anvil-ksp + dagger-kapt all perform nearly identically since they generate similar factory-based code. kotlin-inject is slightly slower due to its different code generation approach.
+On the JVM, Metro, Dagger (KSP), and Dagger (KAPT) all perform nearly identically since they generate similar factory-based code. kotlin-inject is slightly slower due to its different code generation approach.
 
 ![](benchmark_assets/runtime_jvm.png)
 
