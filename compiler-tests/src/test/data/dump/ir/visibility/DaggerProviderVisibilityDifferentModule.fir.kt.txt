@@ -1,0 +1,99 @@
+// MODULE: lib
+// FILE: InternalModule.kt
+package test
+
+@Module
+class InternalModule {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 362, endOffset = 407, newInstanceName = "provideInt")
+  class ProvideIntMetroFactory : Factory<Int> {
+    private /* final field */ val instance: InternalModule = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(instance: InternalModule): Factory<Int> {
+        return ProvideIntMetroFactory(instance = instance)
+      }
+
+      fun provideInt(instance: InternalModule): Int {
+        return instance.provideInt()
+      }
+
+    }
+
+    private constructor(instance: InternalModule) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): Int {
+      return Companion.provideInt(instance = <this>.#instance)
+    }
+
+    fun mirrorFunction(): Int {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+  @Provides
+  internal fun provideInt(): Int {
+    return 42
+  }
+
+}
+
+// MODULE: main
+// FILE: ExampleGraph.kt
+package test
+
+@DependencyGraph(bindingContainers = [InternalModule::class])
+interface ExampleGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : ExampleGraph {
+    private val internalModuleInstanceProvider: Provider<InternalModule>
+      field = Companion.invoke<InternalModule>(value = InternalModule())
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val int: Int
+      override get(): Int {
+        return Companion.provideInt(instance = <this>.#internalModuleInstanceProvider.invoke())
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): ExampleGraph {
+      return Impl()
+    }
+
+  }
+
+  abstract val int: Int
+    abstract get
+
+}

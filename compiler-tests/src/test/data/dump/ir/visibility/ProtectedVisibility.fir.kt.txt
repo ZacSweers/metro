@@ -1,0 +1,194 @@
+@DependencyGraph
+abstract class AppGraph : BaseGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val thisGraphInstance: AppGraph
+      field = <this>
+
+    private val thisGraphInstanceProvider: Provider<AppGraph>
+      field = Companion.invoke<AppGraph>(value = <this>.#thisGraphInstance)
+
+    private constructor() /* primary */ {
+      super/*AppGraph*/()
+      /* <init>() */
+
+    }
+
+    override val int: Int
+      override get(): Int {
+        return <this>.#thisGraphInstance.provideInt()
+      }
+
+    override val protectedConstructorClass: ProtectedConstructorClass
+      override get(): ProtectedConstructorClass {
+        return ProtectedConstructorClass()
+      }
+
+    override val string: String
+      override get(): String {
+        return <this>.#thisGraphInstance.provideString()
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 521, endOffset = 578, newInstanceName = "provideString")
+  class ProvideStringMetroFactory : Factory<String> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(instance: AppGraph): Factory<String> {
+        return ProvideStringMetroFactory(instance = instance)
+      }
+
+      fun provideString(instance: AppGraph): String {
+        return instance.provideString()
+      }
+
+    }
+
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): String {
+      return Companion.provideString(instance = <this>.#instance)
+    }
+
+    fun mirrorFunction(): String {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*BaseGraph*/()
+    /* <init>() */
+
+  }
+
+  @Provides
+  protected fun provideString(): String {
+    return "hello"
+  }
+
+  abstract val int: Int
+    abstract get
+
+  abstract val protectedConstructorClass: ProtectedConstructorClass
+    abstract get
+
+  abstract val string: String
+    abstract get
+
+}
+
+open class BaseGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 254, endOffset = 300, newInstanceName = "provideInt")
+  class ProvideIntMetroFactory : Factory<Int> {
+    private /* final field */ val instance: BaseGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(instance: BaseGraph): Factory<Int> {
+        return ProvideIntMetroFactory(instance = instance)
+      }
+
+      fun provideInt(instance: BaseGraph): Int {
+        return instance.provideInt()
+      }
+
+    }
+
+    private constructor(instance: BaseGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): Int {
+      return Companion.provideInt(instance = <this>.#instance)
+    }
+
+    fun mirrorFunction(): Int {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+  @Provides
+  protected fun provideInt(): Int {
+    return 42
+  }
+
+}
+
+@Inject
+class ProtectedConstructorClass {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<ProtectedConstructorClass> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    fun create(): Factory<ProtectedConstructorClass> {
+      return MetroFactory
+    }
+
+    fun newInstance(): ProtectedConstructorClass {
+      return ProtectedConstructorClass()
+    }
+
+    override operator fun invoke(): ProtectedConstructorClass {
+      return MetroFactory.newInstance()
+    }
+
+    fun mirrorFunction(): ProtectedConstructorClass {
+      return error(message = "Never called")
+    }
+
+  }
+
+  protected constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+

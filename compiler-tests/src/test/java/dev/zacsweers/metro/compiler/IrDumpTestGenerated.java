@@ -363,4 +363,44 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
       runTest("compiler-tests/src/test/data/dump/ir/provides/JvmFieldProvidersUseFieldAccess.kt");
     }
   }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/dump/ir/visibility")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Visibility {
+    @Test
+    public void testAllFilesPresentInVisibility() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/visibility"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    }
+
+    @Test
+    @TestMetadata("DaggerProviderVisibility.kt")
+    public void testDaggerProviderVisibility() {
+      runTest("compiler-tests/src/test/data/dump/ir/visibility/DaggerProviderVisibility.kt");
+    }
+
+    @Test
+    @TestMetadata("DaggerProviderVisibilityDifferentModule.kt")
+    public void testDaggerProviderVisibilityDifferentModule() {
+      runTest("compiler-tests/src/test/data/dump/ir/visibility/DaggerProviderVisibilityDifferentModule.kt");
+    }
+
+    @Test
+    @TestMetadata("InternalVisibility.kt")
+    public void testInternalVisibility() {
+      runTest("compiler-tests/src/test/data/dump/ir/visibility/InternalVisibility.kt");
+    }
+
+    @Test
+    @TestMetadata("InternalVisibilityDifferentModule.kt")
+    public void testInternalVisibilityDifferentModule() {
+      runTest("compiler-tests/src/test/data/dump/ir/visibility/InternalVisibilityDifferentModule.kt");
+    }
+
+    @Test
+    @TestMetadata("ProtectedVisibility.kt")
+    public void testProtectedVisibility() {
+      runTest("compiler-tests/src/test/data/dump/ir/visibility/ProtectedVisibility.kt");
+    }
+  }
 }

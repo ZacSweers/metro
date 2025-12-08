@@ -1,0 +1,135 @@
+// MODULE: lib
+// FILE: module_lib_InternalVisibilityDifferentModule.kt
+
+@Inject
+class InternalClass {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<InternalClass> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    fun create(): Factory<InternalClass> {
+      return MetroFactory
+    }
+
+    fun newInstance(): InternalClass {
+      return InternalClass()
+    }
+
+    override operator fun invoke(): InternalClass {
+      return MetroFactory.newInstance()
+    }
+
+    fun mirrorFunction(): InternalClass {
+      return error(message = "Never called")
+    }
+
+  }
+
+  internal constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@BindingContainer
+object IntProvider {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 290, endOffset = 335, newInstanceName = "provideInt")
+  object ProvideIntMetroFactory : Factory<Int> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    fun create(): Factory<Int> {
+      return ProvideIntMetroFactory
+    }
+
+    fun provideInt(): Int {
+      return IntProvider.provideInt()
+    }
+
+    override operator fun invoke(): Int {
+      return ProvideIntMetroFactory.provideInt()
+    }
+
+    fun mirrorFunction(): Int {
+      return error(message = "Never called")
+    }
+
+  }
+
+  private constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+  @Provides
+  internal fun provideInt(): Int {
+    return 42
+  }
+
+}
+
+// MODULE: main
+// FILE: module_main_InternalVisibilityDifferentModule.kt
+
+@DependencyGraph(bindingContainers = [IntProvider::class])
+abstract class AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private constructor() /* primary */ {
+      super/*AppGraph*/()
+      /* <init>() */
+
+    }
+
+    override val int: Int
+      override get(): Int {
+        return ProvideIntMetroFactory.provideInt()
+      }
+
+    override val internalClass: InternalClass
+      override get(): InternalClass {
+        return MetroFactory.newInstance()
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+  abstract val int: Int
+    abstract get
+
+  abstract val internalClass: InternalClass
+    abstract get
+
+}
+

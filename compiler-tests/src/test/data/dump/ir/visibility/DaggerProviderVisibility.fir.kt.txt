@@ -1,0 +1,115 @@
+// FILE: ExampleGraph.kt
+
+@DependencyGraph(bindingContainers = [ModuleWithInternal::class])
+interface ExampleGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : ExampleGraph {
+    private val moduleWithInternalInstance: ModuleWithInternal
+      field = ModuleWithInternal()
+
+    private val moduleWithInternalInstanceProvider: Provider<ModuleWithInternal>
+      field = Companion.invoke<ModuleWithInternal>(value = <this>.#moduleWithInternalInstance)
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val int: Int
+      override get(): Int {
+        return <this>.#moduleWithInternalInstance.provideInt()
+      }
+
+    override val packagePrivateClass: PackagePrivateClass
+      override get(): PackagePrivateClass {
+        return PackagePrivateClass()
+      }
+
+    override val protectedClass: ProtectedClass
+      override get(): ProtectedClass {
+        return ProtectedClass()
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): ExampleGraph {
+      return Impl()
+    }
+
+  }
+
+  abstract val int: Int
+    abstract get
+
+  abstract val packagePrivateClass: PackagePrivateClass
+    abstract get
+
+  abstract val protectedClass: ProtectedClass
+    abstract get
+
+}
+
+// FILE: InternalModule.kt
+
+@Module
+class ModuleWithInternal {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 155, endOffset = 200, newInstanceName = "provideInt")
+  class ProvideIntMetroFactory : Factory<Int> {
+    private /* final field */ val instance: ModuleWithInternal = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(instance: ModuleWithInternal): Factory<Int> {
+        return ProvideIntMetroFactory(instance = instance)
+      }
+
+      fun provideInt(instance: ModuleWithInternal): Int {
+        return instance.provideInt()
+      }
+
+    }
+
+    private constructor(instance: ModuleWithInternal) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): Int {
+      return Companion.provideInt(instance = <this>.#instance)
+    }
+
+    fun mirrorFunction(): Int {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+  @Provides
+  internal fun provideInt(): Int {
+    return 42
+  }
+
+}
+
