@@ -2695,8 +2695,19 @@
 
 <h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
 <h2 id="unreleased"><strong>Unreleased</strong><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
+<p>This release significantly improves the runtime performance of Metro-generated graphs, bringing them to parity with Dagger components&rsquo; typical runtime performance (without fastInit enabled).</p>
 <ul>
+<li>🚀 Improves graph init runtime performance by <strong>30–40%</strong></li>
+<li>🤏 Reduces generated graph code size by <strong>60–70%</strong> (even higher if you heavily use multibindings)</li>
 <li><strong>New</strong>: Experimental support for sharding large graphs. For extremely large dependency graphs on the JVM, their generated implementations could exceed the JVM class size limit. To avoid this, Metro now supports sharding within graphs (as needed) to distribute initialization code across multiple inner <em>shard</em> classes. This is currently disabled by default but can be enabled via the <code>enableGraphSharding</code> Gradle DSL property.</li>
+<li><strong>New</strong>: Support <code>@Provides</code> properties with <code>@JvmField</code> annotations.</li>
+<li><strong>Enhancement</strong>: Avoid unnecessary intermediate <code>Provider</code> instance allocations during graph expression gen. This means that when a direct type is requested in code gen, Metro will skip instantiating the intermediate <code>MetroFactory</code> instance if possible, avoiding unnecessary allocations.</li>
+<li><strong>Enhancement</strong>: Don&rsquo;t always generate accessors for multibinding contributors. This is no longer necessary now that we also avoid provider instance allocations, and should significantly reduce generated method counts if using a lot of multibindings.</li>
+<li><strong>Enhancement</strong>: Include graph roots in <code>Provider</code> refcounting. Previously, when detecting if <code>Provider</code> instance were used multiple times, Metro only checked for usages from other bindings.</li>
+<li><strong>Enhancement</strong>: For multibindings that would use <code>Provider</code> elements/values, mark their sources as provider-accessed in refcounting.</li>
+<li><strong>Enhancement</strong>: Don&rsquo;t generate provider fields for graph self instances unless necessary.</li>
+<li><strong>Enhancement</strong>: Improve accuracy of diagnostic location when reporting graph validation issues from binding callable declarations.</li>
+<li><strong>Fix</strong>: Fix <code>newInstance()</code> args not stripping <code>Lazy</code> in top-level function inject classes.</li>
 </ul>
 <h2 id="082">0.8.2<a class="headerlink" href="#082" title="Permanent link">&para;</a></h2>
 <p><em>2025-12-04</em></p>
