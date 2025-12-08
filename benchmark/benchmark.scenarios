@@ -45,7 +45,42 @@ metro_raw_compilation {
 }
 
 # ====================================
-# ANVIL + KSP MODE SCENARIOS  
+# NOOP MODE SCENARIOS (BASELINE)
+# ====================================
+# NOOP mode: Metro runtime is present but the compiler plugin is NOT applied.
+# This provides a baseline for measuring build times without any DI compiler overhead.
+
+noop_abi_change {
+    title = "NOOP (Baseline) - ABI"
+    warm-ups = 3
+    iterations = 5
+
+    tasks = [":app:component:compileKotlin"]
+
+    apply-abi-change-to = "core/foundation/src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation/CommonInterfaces.kt"
+}
+
+noop_non_abi_change {
+    title = "NOOP (Baseline) - Non-ABI"
+    warm-ups = 3
+    iterations = 5
+
+    tasks = [":app:component:compileKotlin"]
+
+    apply-non-abi-change-to = "features/auth-feature-10/src/main/kotlin/dev/zacsweers/metro/benchmark/features/authfeature10/AuthFeature10.kt"
+}
+
+noop_raw_compilation {
+    title = "NOOP (Baseline) - Raw Compilation Performance"
+    warm-ups = 3
+    iterations = 5
+
+    tasks = [":app:component:compileKotlin"]
+    gradle-args = ["--rerun-tasks", "-a"]
+}
+
+# ====================================
+# ANVIL + KSP MODE SCENARIOS
 # ====================================
 
 anvil_ksp_abi_change {
@@ -221,9 +256,29 @@ kotlin_inject_anvil_plain_non_abi_change {
     title = "Kotlin-inject + Anvil - Plain Kotlin Non-ABI"
     warm-ups = 3
     iterations = 5
-    
+
     tasks = [":app:component:compileKotlin"]
-    
+
+    apply-non-abi-change-to = "core/foundation/src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation/PlainKotlinFile.kt"
+}
+
+noop_plain_abi_change {
+    title = "NOOP (Baseline) - Plain Kotlin ABI"
+    warm-ups = 3
+    iterations = 5
+
+    tasks = [":app:component:compileKotlin"]
+
+    apply-abi-change-to = "core/foundation/src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation/PlainKotlinFile.kt"
+}
+
+noop_plain_non_abi_change {
+    title = "NOOP (Baseline) - Plain Kotlin Non-ABI"
+    warm-ups = 3
+    iterations = 5
+
+    tasks = [":app:component:compileKotlin"]
+
     apply-non-abi-change-to = "core/foundation/src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation/PlainKotlinFile.kt"
 }
 
@@ -265,7 +320,17 @@ kotlin_inject_anvil_clean_build {
     title = "Kotlin-inject + Anvil - Clean Build"
     warm-ups = 2
     iterations = 3
-    
+
+    tasks = ["assemble"]
+    cleanup-tasks = ["clean"]
+    clear-build-cache-before = BUILD
+}
+
+noop_clean_build {
+    title = "NOOP (Baseline) - Clean Build"
+    warm-ups = 2
+    iterations = 3
+
     tasks = ["assemble"]
     cleanup-tasks = ["clean"]
     clear-build-cache-before = BUILD
@@ -283,6 +348,7 @@ kotlin_inject_anvil_clean_build {
 #
 # To generate different project configurations, use the generation script:
 #   kotlin generate-projects.main.kts --mode metro --count 500
-#   kotlin generate-projects.main.kts --mode anvil --processor ksp --count 500  
+#   kotlin generate-projects.main.kts --mode noop --count 500
+#   kotlin generate-projects.main.kts --mode anvil --processor ksp --count 500
 #   kotlin generate-projects.main.kts --mode anvil --processor kapt --count 500
 #   kotlin generate-projects.main.kts --mode kotlin-inject-anvil --count 500
