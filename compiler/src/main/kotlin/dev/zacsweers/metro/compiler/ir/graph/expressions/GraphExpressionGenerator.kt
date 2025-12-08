@@ -161,7 +161,7 @@ private constructor(
           val classFactory = binding.classFactory
           val isAssistedInject = classFactory.isAssistedInject
           // Optimization: Skip factory instantiation when possible
-          val canBypassFactory = accessType == AccessType.INSTANCE
+          val canBypassFactory = accessType == AccessType.INSTANCE && binding.canBypassFactory()
 
           if (canBypassFactory) {
             if (classFactory.supportsDirectInvocation(node.metroGraphOrFail)) {

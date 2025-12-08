@@ -5,8 +5,11 @@ class Example {
 
   @DependencyGraph
   private class DynamicAppGraphImpl_6fU3C9Y : AppGraph {
+    private val container0Instance: TestIntProvider
+      field = container0
+
     private val container0InstanceProvider: Provider<TestIntProvider>
-      field = Companion.invoke<TestIntProvider>(value = container0)
+      field = Companion.invoke<TestIntProvider>(value = <this>.#container0Instance)
 
     constructor(container0: TestIntProvider) /* primary */ {
       super/*Any*/()
@@ -16,7 +19,7 @@ class Example {
 
     override val int: Int
       override get(): Int {
-        return Companion.provideInt(instance = <this>.#container0InstanceProvider.invoke())
+        return Companion.provideInt(instance = <this>.#container0Instance)
       }
 
   }

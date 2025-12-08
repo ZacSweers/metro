@@ -63,8 +63,11 @@ interface ExampleGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : ExampleGraph {
+    private val internalModuleInstance: InternalModule
+      field = InternalModule()
+
     private val internalModuleInstanceProvider: Provider<InternalModule>
-      field = Companion.invoke<InternalModule>(value = InternalModule())
+      field = Companion.invoke<InternalModule>(value = <this>.#internalModuleInstance)
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -74,7 +77,7 @@ interface ExampleGraph {
 
     override val int: Int
       override get(): Int {
-        return Companion.provideInt(instance = <this>.#internalModuleInstanceProvider.invoke())
+        return Companion.provideInt(instance = <this>.#internalModuleInstance)
       }
 
   }
@@ -97,3 +100,4 @@ interface ExampleGraph {
     abstract get
 
 }
+

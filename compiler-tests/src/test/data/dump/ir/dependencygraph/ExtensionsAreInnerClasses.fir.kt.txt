@@ -11,8 +11,11 @@ interface AppGraph : Factory {
 
     @DependencyGraph
     private inner class LoggedInGraphImpl : LoggedInGraph {
+      private val idInstance: String
+        field = id
+
       private val idInstanceProvider: Provider<String>
-        field = Companion.invoke<String>(value = id)
+        field = Companion.invoke<String>(value = <this>.#idInstance)
 
       constructor(@Provides id: String) /* primary */ {
         super/*Any*/()

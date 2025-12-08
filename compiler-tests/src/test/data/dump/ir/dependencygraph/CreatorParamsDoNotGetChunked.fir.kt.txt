@@ -1578,8 +1578,11 @@ interface TestGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : TestGraph {
+    private val providedExampleInstance: ProvidedExample
+      field = providedExample
+
     private val providedExampleInstanceProvider: Provider<ProvidedExample>
-      field = Companion.invoke<ProvidedExample>(value = providedExample)
+      field = Companion.invoke<ProvidedExample>(value = <this>.#providedExampleInstance)
 
     private val service1Provider: Provider<Service1>
 
