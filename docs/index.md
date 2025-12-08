@@ -13,6 +13,10 @@ In short, Metro stands on the shoulders of giants. It doesn’t try to reinvent 
 !!! note
     _I’m aware of the [XKCD comic](https://xkcd.com/927/) 🙂, I think Metro offers a compelling feature set with interop hooks that make it easy to integrate with an existing codebase._
 
+## Getting Started
+
+Check out the [Quick Start](quickstart.md) guide to get up and running with Metro, including installation and common patterns like the api/impl binding pattern.
+
 ## Installation
 
 Apply the gradle plugin.
@@ -35,7 +39,7 @@ metro {
 
   // Enable (extremely) verbose debug logging
   debug = false // Default
-  
+
   // See the kdoc on MetroPluginExtension for full details
 }
 ```

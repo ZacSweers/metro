@@ -60,6 +60,17 @@ update_gradle_properties() {
     done
 }
 
+# Updates the version in docs/quickstart.md
+# usage: update_quickstart_version $new_version
+update_quickstart_version() {
+    local new_version=$1
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        sed -i '' "s/id(\"dev.zacsweers.metro\") version \"[^\"]*\"/id(\"dev.zacsweers.metro\") version \"${new_version}\"/g" docs/quickstart.md
+    else
+        sed -i "s/id(\"dev.zacsweers.metro\") version \"[^\"]*\"/id(\"dev.zacsweers.metro\") version \"${new_version}\"/g" docs/quickstart.md
+    fi
+}
+
 # default to patch if no second argument is given
 version_type=${1:---patch}
 LATEST_VERSION=$(get_latest_version CHANGELOG.md)
@@ -70,6 +81,7 @@ echo "Publishing $NEW_VERSION"
 
 # Prepare release
 update_gradle_properties "$NEW_VERSION"
+update_quickstart_version "$NEW_VERSION"
 
 ./metrow regen
 

@@ -17,6 +17,9 @@ class SpecificConstructorInjection(val text: String) {
 
 Constructor-injected classes can be instantiated+managed entirely by Metro and encourages immutability.
 
+!!! tip "Binding implementations to interfaces"
+    To bind your injected class to an interface it implements, see [`@Binds`](bindings.md#binds) for explicit bindings or [`@ContributesBinding`](aggregation.md#contributesbinding) for automatic multi-module aggregation.
+
 ## Assisted Injection
 
 For types that require dynamic dependencies at instantiation, assisted injection can be used to supply these inputs. In this case - an injected constructor (or class with one constructor) must be annotated with `@AssistedInject`, assisted parameters annotated with `@Assisted`, and a factory interface or abstract class with one single abstract function that accepts these assisted parameters and returns the target class.

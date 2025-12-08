@@ -23,7 +23,7 @@ TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 MODULE_COUNT=500
 
 # Default modes to benchmark
-MODES="metro,anvil-ksp,kotlin-inject-anvil"
+MODES="metro,anvil-ksp,anvil-kapt,kotlin-inject-anvil"
 
 # Git refs
 SINGLE_REF=""
@@ -151,7 +151,7 @@ show_usage() {
     echo ""
     echo "Commands:"
     echo "  jvm       Run JVM startup benchmarks using JMH"
-    echo "  jvm-r8    Run JVM startup benchmarks with R8-minified classes (Metro only)"
+    echo "  jvm-r8    Run JVM startup benchmarks with R8-minified classes"
     echo "  android   Run Android benchmarks (requires device)"
     echo "  all       Run all benchmarks (default)"
     echo "  single    Run benchmarks on a single git ref"
@@ -162,7 +162,7 @@ show_usage() {
     echo "Options:"
     echo "  --modes <list>          Comma-separated list of modes to benchmark"
     echo "                          Available: metro, anvil-ksp, anvil-kapt, kotlin-inject-anvil"
-    echo "                          Default: metro,anvil-ksp,kotlin-inject-anvil"
+    echo "                          Default: metro,anvil-ksp,anvil-kapt,kotlin-inject-anvil"
     echo "  --count <n>             Number of modules to generate (default: 500)"
     echo "  --timestamp <ts>        Use specific timestamp for results directory"
     echo "  --include-macrobenchmark  Include Android macrobenchmarks (startup time)"
@@ -181,7 +181,7 @@ show_usage() {
     echo ""
     echo "Examples:"
     echo "  $0 jvm                              # Run JVM benchmarks for all modes"
-    echo "  $0 jvm-r8                           # Run JVM benchmarks with R8-minified Metro"
+    echo "  $0 jvm-r8                           # Run JVM benchmarks with R8-minified classes for all modes"
     echo "  $0 jvm --modes metro,anvil-ksp      # Run JVM benchmarks for specific modes"
     echo "  $0 all --count 250                  # Run all benchmarks with 250 modules"
     echo "  $0 android --include-macrobenchmark # Run Android benchmarks including macrobenchmarks"
@@ -190,7 +190,7 @@ show_usage() {
     echo "  # Run benchmarks on a single git ref:"
     echo "  $0 single --ref main"
     echo "  $0 single --ref feature-branch --modes metro,anvil-ksp --benchmark jvm"
-    echo "  $0 single --ref main --benchmark jvm-r8  # Run R8-minified Metro benchmark"
+    echo "  $0 single --ref main --benchmark jvm-r8  # Run R8-minified benchmark for all modes"
     echo ""
     echo "  # Compare benchmarks across git refs:"
     echo "  $0 compare --ref1 main --ref2 feature-branch"
@@ -278,12 +278,13 @@ run_jvm_benchmark() {
     run_jvm_benchmark_only "$mode"
 }
 
-# Run JMH R8 benchmark only (no clean/generate) - Metro only
+# Run JMH R8 benchmark only (no clean/generate)
 run_jvm_r8_benchmark_only() {
-    local output_dir="$RESULTS_DIR/${TIMESTAMP}/jvm-r8_metro"
+    local mode="${1:-metro}"
+    local output_dir="$RESULTS_DIR/${TIMESTAMP}/jvm-r8_${mode}"
     mkdir -p "$output_dir"
 
-    print_step "Running JMH R8 benchmark for metro (minified)..."
+    print_step "Running JMH R8 benchmark for $mode (minified)..."
 
     # Run JMH with R8-minified classes and capture output
     if ./gradlew --quiet :startup-jvm-minified:jmh 2>&1 | tee "$output_dir/jmh-output.txt"; then
@@ -291,17 +292,18 @@ run_jvm_r8_benchmark_only() {
         if [ -d "startup-jvm-minified/build/results/jmh" ]; then
             cp -r startup-jvm-minified/build/results/jmh/* "$output_dir/" 2>/dev/null || true
         fi
-        print_success "JMH R8 benchmark complete for metro"
+        print_success "JMH R8 benchmark complete for $mode"
     else
-        print_error "JMH R8 benchmark failed for metro"
+        print_error "JMH R8 benchmark failed for $mode"
         return 1
     fi
 }
 
-# Run JMH R8 benchmark for metro (with clean/generate)
+# Run JMH R8 benchmark for a specific mode (with clean/generate)
 run_jvm_r8_benchmark() {
-    setup_for_mode "metro"
-    run_jvm_r8_benchmark_only
+    local mode="${1:-metro}"
+    setup_for_mode "$mode"
+    run_jvm_r8_benchmark_only "$mode"
 }
 
 # Run Android benchmark only (no clean/generate)
@@ -480,45 +482,71 @@ EOF
         echo "| $mode | $display_score | $comparison |" >> "$summary_file"
     done
 
-    # Add JVM R8 results if they exist
-    local jvm_r8_dir="$RESULTS_DIR/${TIMESTAMP}/jvm-r8_metro"
-    if [ -d "$jvm_r8_dir" ]; then
+    # Add JVM R8 results if any exist
+    local has_r8_results=false
+    for mode in "${MODE_ARRAY[@]}"; do
+        if [ -d "$RESULTS_DIR/${TIMESTAMP}/jvm-r8_${mode}" ]; then
+            has_r8_results=true
+            break
+        fi
+    done
+
+    if [ "$has_r8_results" = true ]; then
+        # Get metro R8 score for "vs Metro R8" column
+        local metro_jvm_r8_score=""
+        local r8_dir="$RESULTS_DIR/${TIMESTAMP}/jvm-r8_metro"
+        if [ -f "$r8_dir/results.json" ]; then
+            metro_jvm_r8_score=$(extract_jmh_score "$r8_dir/results.json")
+        fi
+        if [ -z "$metro_jvm_r8_score" ] && [ -f "$r8_dir/jmh-output.txt" ]; then
+            metro_jvm_r8_score=$(grep 'graphCreationAndInitialization' "$r8_dir/jmh-output.txt" 2>/dev/null | grep 'avgt' | tail -1 | awk '{print $4}' || echo "")
+        fi
+
         cat >> "$summary_file" << EOF
 
 ## JVM Benchmarks - R8 Minified (JMH)
 
-Graph creation and initialization time with R8 optimization (Metro only, lower is better):
+Graph creation and initialization time with R8 optimization (lower is better):
 
-| Framework | Time (ms) | vs Metro (non-R8) |
-|-----------|-----------|-------------------|
+| Framework | Time (ms) | vs Metro R8 |
+|-----------|-----------|-------------|
 EOF
 
-        local r8_score=""
-        if [ -f "$jvm_r8_dir/results.json" ]; then
-            r8_score=$(extract_jmh_score "$jvm_r8_dir/results.json")
-        fi
-        if [ -z "$r8_score" ] && [ -f "$jvm_r8_dir/jmh-output.txt" ]; then
-            r8_score=$(grep 'graphCreationAndInitialization' "$jvm_r8_dir/jmh-output.txt" 2>/dev/null | grep 'avgt' | tail -1 | awk '{print $4}' || echo "")
-        fi
+        for mode in "${MODE_ARRAY[@]}"; do
+            local jvm_r8_dir="$RESULTS_DIR/${TIMESTAMP}/jvm-r8_${mode}"
+            if [ ! -d "$jvm_r8_dir" ]; then
+                continue
+            fi
 
-        local r8_comparison="-"
-        if [ -n "$r8_score" ] && [ -n "$metro_jvm_score" ] && [ "$metro_jvm_score" != "0" ]; then
-            local pct=$(printf "%.1f" "$(echo "scale=4; (($r8_score - $metro_jvm_score) / $metro_jvm_score) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-            if [ -n "$pct" ]; then
-                if [[ "$pct" != -* ]]; then
-                    r8_comparison="+${pct}%"
-                else
-                    r8_comparison="${pct}%"
+            local r8_score=""
+            if [ -f "$jvm_r8_dir/results.json" ]; then
+                r8_score=$(extract_jmh_score "$jvm_r8_dir/results.json")
+            fi
+            if [ -z "$r8_score" ] && [ -f "$jvm_r8_dir/jmh-output.txt" ]; then
+                r8_score=$(grep 'graphCreationAndInitialization' "$jvm_r8_dir/jmh-output.txt" 2>/dev/null | grep 'avgt' | tail -1 | awk '{print $4}' || echo "")
+            fi
+
+            if [ -z "$r8_score" ]; then
+                continue
+            fi
+
+            local r8_comparison="-"
+            if [ "$mode" = "metro" ]; then
+                r8_comparison="baseline"
+            elif [ -n "$metro_jvm_r8_score" ] && [ "$metro_jvm_r8_score" != "0" ]; then
+                local pct=$(printf "%.1f" "$(echo "scale=4; (($r8_score - $metro_jvm_r8_score) / $metro_jvm_r8_score) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                if [ -n "$pct" ]; then
+                    if [[ "$pct" != -* ]]; then
+                        r8_comparison="+${pct}%"
+                    else
+                        r8_comparison="${pct}%"
+                    fi
                 fi
             fi
-        fi
 
-        local r8_display_score="${r8_score:-N/A}"
-        if [ -n "$r8_score" ]; then
-            r8_display_score=$(printf "%.2f" "$r8_score")
-        fi
-
-        echo "| Metro (R8) | $r8_display_score | $r8_comparison |" >> "$summary_file"
+            local r8_display_score=$(printf "%.2f" "$r8_score")
+            echo "| $mode | $r8_display_score | $r8_comparison |" >> "$summary_file"
+        done
     fi
 
     # Only include macrobenchmark section if enabled or if results exist
@@ -1008,6 +1036,71 @@ build_non_ref_benchmark_json() {
         echo -n '    }'
     fi
 
+    # JVM R8 section
+    if [ "$benchmark_type" = "jvm-r8" ] || [ "$benchmark_type" = "all" ]; then
+        # Check if any R8 results exist
+        local has_r8_results=false
+        for mode in "${MODE_ARRAY[@]}"; do
+            if [ -d "$RESULTS_DIR/${TIMESTAMP}/jvm-r8_${mode}" ]; then
+                has_r8_results=true
+                break
+            fi
+        done
+
+        if [ "$has_r8_results" = true ]; then
+            if [ "$first_test" = false ]; then echo ","; fi
+            first_test=false
+
+            echo '    {'
+            echo '      "name": "JVM Startup R8 Minified (JMH)",'
+            echo '      "key": "jvm_r8",'
+            echo '      "unit": "ms",'
+            echo '      "results": ['
+
+            local first_mode=true
+            for mode in "${MODE_ARRAY[@]}"; do
+                local mode_key mode_name
+                case "$mode" in
+                    "metro") mode_key="metro"; mode_name="Metro" ;;
+                    "anvil-ksp") mode_key="anvil_ksp"; mode_name="Anvil (KSP)" ;;
+                    "anvil-kapt") mode_key="anvil_kapt"; mode_name="Anvil (KAPT)" ;;
+                    "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject-anvil" ;;
+                    *) continue ;;
+                esac
+
+                local score=""
+                local jvm_r8_dir="$RESULTS_DIR/${TIMESTAMP}/jvm-r8_${mode}"
+                if [ -f "$jvm_r8_dir/results.json" ]; then
+                    score=$(extract_jmh_score "$jvm_r8_dir/results.json")
+                fi
+                if [ -z "$score" ] && [ -f "$jvm_r8_dir/results.txt" ]; then
+                    score=$(grep 'graphCreationAndInitialization' "$jvm_r8_dir/results.txt" 2>/dev/null | awk '{print $4}' || echo "")
+                fi
+                if [ -z "$score" ] && [ -f "$jvm_r8_dir/jmh-output.txt" ]; then
+                    score=$(grep 'graphCreationAndInitialization' "$jvm_r8_dir/jmh-output.txt" 2>/dev/null | grep 'avgt' | tail -1 | awk '{print $4}' || echo "")
+                fi
+
+                # Skip if no R8 results for this mode
+                if [ -z "$score" ]; then
+                    continue
+                fi
+
+                if [ "$first_mode" = false ]; then echo ","; fi
+                first_mode=false
+
+                echo '        {'
+                echo '          "framework": "'"$mode_name"'",'
+                echo '          "key": "'"$mode_key"'",'
+                echo '          "value": '"$score"
+                echo -n '        }'
+            done
+
+            echo ''
+            echo '      ]'
+            echo -n '    }'
+        fi
+    fi
+
     # Android macrobenchmark section
     if [ "$benchmark_type" = "android" ] || [ "$benchmark_type" = "all" ]; then
         local has_macro_results=false
@@ -1122,8 +1215,13 @@ run_jvm_benchmarks() {
 }
 
 run_jvm_r8_benchmarks() {
-    print_header "Running JVM R8 Startup Benchmarks (Metro Only)"
-    run_jvm_r8_benchmark || true
+    print_header "Running JVM R8 Startup Benchmarks"
+
+    IFS=',' read -ra MODE_ARRAY <<< "$MODES"
+    for mode in "${MODE_ARRAY[@]}"; do
+        print_info "Benchmarking: $mode (R8 minified)"
+        run_jvm_r8_benchmark "$mode" || true
+    done
 }
 
 run_android_benchmarks() {
@@ -1150,6 +1248,10 @@ run_all_benchmarks() {
         # Run JVM benchmarks
         print_info "Running JVM benchmarks for $mode..."
         run_jvm_benchmark_only "$mode" || true
+
+        # Run JVM R8 benchmarks
+        print_info "Running JVM R8 benchmarks for $mode..."
+        run_jvm_r8_benchmark_only "$mode" || true
 
         # Run Android benchmarks (reuses the same generated project)
         print_info "Running Android benchmarks for $mode..."
@@ -1202,14 +1304,11 @@ run_benchmarks_for_ref() {
                 fi
                 ;;
             jvm-r8)
-                # Only run R8 benchmarks for metro mode
-                if [ "$mode" = "metro" ]; then
-                    run_jvm_r8_benchmark_only || true
-                    if [ -d "$RESULTS_DIR/${TIMESTAMP}/jvm-r8_metro" ]; then
-                        mkdir -p "$ref_dir/jvm-r8_metro"
-                        cp -r "$RESULTS_DIR/${TIMESTAMP}/jvm-r8_metro"/* "$ref_dir/jvm-r8_metro/" 2>/dev/null || true
-                        rm -rf "$RESULTS_DIR/${TIMESTAMP}/jvm-r8_metro"
-                    fi
+                run_jvm_r8_benchmark_only "$mode" || true
+                if [ -d "$RESULTS_DIR/${TIMESTAMP}/jvm-r8_${mode}" ]; then
+                    mkdir -p "$ref_dir/jvm-r8_${mode}"
+                    cp -r "$RESULTS_DIR/${TIMESTAMP}/jvm-r8_${mode}"/* "$ref_dir/jvm-r8_${mode}/" 2>/dev/null || true
+                    rm -rf "$RESULTS_DIR/${TIMESTAMP}/jvm-r8_${mode}"
                 fi
                 ;;
             android)
@@ -1228,14 +1327,12 @@ run_benchmarks_for_ref() {
                     cp -r "$RESULTS_DIR/${TIMESTAMP}/jvm_${mode}"/* "$ref_dir/jvm_${mode}/" 2>/dev/null || true
                     rm -rf "$RESULTS_DIR/${TIMESTAMP}/jvm_${mode}"
                 fi
-                # Run R8 benchmark for metro mode
-                if [ "$mode" = "metro" ]; then
-                    run_jvm_r8_benchmark_only || true
-                    if [ -d "$RESULTS_DIR/${TIMESTAMP}/jvm-r8_metro" ]; then
-                        mkdir -p "$ref_dir/jvm-r8_metro"
-                        cp -r "$RESULTS_DIR/${TIMESTAMP}/jvm-r8_metro"/* "$ref_dir/jvm-r8_metro/" 2>/dev/null || true
-                        rm -rf "$RESULTS_DIR/${TIMESTAMP}/jvm-r8_metro"
-                    fi
+                # Run R8 benchmark
+                run_jvm_r8_benchmark_only "$mode" || true
+                if [ -d "$RESULTS_DIR/${TIMESTAMP}/jvm-r8_${mode}" ]; then
+                    mkdir -p "$ref_dir/jvm-r8_${mode}"
+                    cp -r "$RESULTS_DIR/${TIMESTAMP}/jvm-r8_${mode}"/* "$ref_dir/jvm-r8_${mode}/" 2>/dev/null || true
+                    rm -rf "$RESULTS_DIR/${TIMESTAMP}/jvm-r8_${mode}"
                 fi
                 run_android_benchmark_only "$mode" || true
                 if [ -d "$RESULTS_DIR/${TIMESTAMP}/android_${mode}" ]; then
@@ -1255,6 +1352,29 @@ extract_jmh_score_for_ref() {
     local ref_label="$1"
     local mode="$2"
     local jvm_dir="$RESULTS_DIR/${TIMESTAMP}/${ref_label}/jvm_${mode}"
+    local score=""
+
+    # Try to get score from JSON first, then text output
+    if [ -f "$jvm_dir/results.json" ]; then
+        score=$(extract_jmh_score "$jvm_dir/results.json")
+    fi
+
+    # Fallback: parse from results.txt or jmh-output.txt
+    if [ -z "$score" ] && [ -f "$jvm_dir/results.txt" ]; then
+        score=$(grep 'graphCreationAndInitialization' "$jvm_dir/results.txt" 2>/dev/null | awk '{print $4}' || echo "")
+    fi
+    if [ -z "$score" ] && [ -f "$jvm_dir/jmh-output.txt" ]; then
+        score=$(grep 'graphCreationAndInitialization' "$jvm_dir/jmh-output.txt" 2>/dev/null | grep 'avgt' | tail -1 | awk '{print $4}' || echo "")
+    fi
+
+    echo "$score"
+}
+
+# Extract JMH R8 score for a ref
+extract_jmh_r8_score_for_ref() {
+    local ref_label="$1"
+    local mode="$2"
+    local jvm_dir="$RESULTS_DIR/${TIMESTAMP}/${ref_label}/jvm-r8_${mode}"
     local score=""
 
     # Try to get score from JSON first, then text output
@@ -1301,11 +1421,14 @@ mode_was_run_for_ref() {
         jvm)
             [ -d "$ref_dir/jvm_${mode}" ]
             ;;
+        jvm-r8)
+            [ -d "$ref_dir/jvm-r8_${mode}" ]
+            ;;
         android)
             [ -d "$ref_dir/android_${mode}" ]
             ;;
         all)
-            [ -d "$ref_dir/jvm_${mode}" ] || [ -d "$ref_dir/android_${mode}" ]
+            [ -d "$ref_dir/jvm_${mode}" ] || [ -d "$ref_dir/jvm-r8_${mode}" ] || [ -d "$ref_dir/android_${mode}" ]
             ;;
     esac
 }
@@ -1447,6 +1570,110 @@ EOF
         done
 
         echo "" >> "$summary_file"
+    fi
+
+    # JVM R8 section
+    if [ "$benchmark_type" = "jvm-r8" ] || [ "$benchmark_type" = "all" ]; then
+        # Check if any R8 results exist
+        local has_r8_results=false
+        for mode in "${MODE_ARRAY[@]}"; do
+            if [ -d "$RESULTS_DIR/${TIMESTAMP}/${ref1_label}/jvm-r8_${mode}" ]; then
+                has_r8_results=true
+                break
+            fi
+        done
+
+        if [ "$has_r8_results" = true ]; then
+            # Get metro R8 scores for "vs Metro R8" column
+            local metro_jvm_r8_score1=$(extract_jmh_r8_score_for_ref "$ref1_label" "metro")
+            local metro_jvm_r8_score2=""
+            if mode_was_run_for_ref "$ref2_label" "metro" "jvm-r8"; then
+                metro_jvm_r8_score2=$(extract_jmh_r8_score_for_ref "$ref2_label" "metro")
+            fi
+
+            cat >> "$summary_file" << EOF
+## JVM Benchmarks - R8 Minified (JMH)
+
+Graph creation and initialization time with R8 optimization (lower is better):
+
+| Framework | $ref1_label | vs Metro R8 | $ref2_label | vs Metro R8 | Difference |
+|-----------|-------------|-------------|-------------|-------------|------------|
+EOF
+
+            for mode in "${MODE_ARRAY[@]}"; do
+                local score1=$(extract_jmh_r8_score_for_ref "$ref1_label" "$mode")
+
+                # Skip if no R8 results for this mode
+                if [ -z "$score1" ] && ! mode_was_run_for_ref "$ref2_label" "$mode" "jvm-r8"; then
+                    continue
+                fi
+
+                # Check if this mode was run on ref2
+                local mode_ran_on_ref2=false
+                if mode_was_run_for_ref "$ref2_label" "$mode" "jvm-r8"; then
+                    mode_ran_on_ref2=true
+                fi
+
+                local score2=""
+                local display2="N/A"
+                local vs_metro1="—"
+                local vs_metro2="—"
+                local diff="-"
+
+                if [ "$mode_ran_on_ref2" = true ]; then
+                    score2=$(extract_jmh_r8_score_for_ref "$ref2_label" "$mode")
+                    if [ -n "$score2" ]; then
+                        display2=$(printf "%.3f ms" "$score2")
+                    fi
+                elif [ "$mode" != "metro" ] && [ -n "$metro_jvm_r8_score2" ]; then
+                    score2="$metro_jvm_r8_score2"
+                    display2="-"
+                fi
+
+                local display1="${score1:-N/A}"
+                if [ -n "$score1" ]; then
+                    display1=$(printf "%.3f ms" "$score1")
+                    if [ "$mode" = "metro" ]; then
+                        vs_metro1="baseline"
+                    elif [ -n "$metro_jvm_r8_score1" ] && [ "$metro_jvm_r8_score1" != "0" ]; then
+                        local pct1=$(printf "%.0f" "$(echo "scale=4; ($score1 / $metro_jvm_r8_score1) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                        local mult1=$(printf "%.1f" "$(echo "scale=4; $score1 / $metro_jvm_r8_score1" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                        if [ -n "$pct1" ] && [ -n "$mult1" ]; then
+                            vs_metro1="+${pct1}% (${mult1}x)"
+                        fi
+                    fi
+                fi
+
+                if [ -n "$score2" ]; then
+                    if [ "$mode" = "metro" ]; then
+                        vs_metro2="baseline"
+                    elif [ -n "$metro_jvm_r8_score2" ] && [ "$metro_jvm_r8_score2" != "0" ]; then
+                        local pct2=$(printf "%.0f" "$(echo "scale=4; ($score2 / $metro_jvm_r8_score2) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                        local mult2=$(printf "%.1f" "$(echo "scale=4; $score2 / $metro_jvm_r8_score2" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                        if [ -n "$pct2" ] && [ -n "$mult2" ]; then
+                            vs_metro2="+${pct2}% (${mult2}x)"
+                        fi
+                    fi
+                fi
+
+                if [ -n "$score1" ] && [ -n "$score2" ] && [ "$score1" != "0" ]; then
+                    local pct=$(printf "%.2f" "$(echo "scale=4; (($score2 - $score1) / $score1) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                    if [ -n "$pct" ]; then
+                        if [[ "$pct" == -* ]]; then
+                            diff="${pct}%"
+                        elif [[ "$pct" == "0.00" ]]; then
+                            diff="+0.00% (no change)"
+                        else
+                            diff="+${pct}%"
+                        fi
+                    fi
+                fi
+
+                echo "| $mode | $display1 | $vs_metro1 | $display2 | $vs_metro2 | $diff |" >> "$summary_file"
+            done
+
+            echo "" >> "$summary_file"
+        fi
     fi
 
     if [ "$benchmark_type" = "android" ] || [ "$benchmark_type" = "all" ]; then
@@ -1718,6 +1945,57 @@ EOF
         echo "" >> "$summary_file"
     fi
 
+    # JVM R8 section
+    if [ "$benchmark_type" = "jvm-r8" ] || [ "$benchmark_type" = "all" ]; then
+        # Check if any R8 results exist
+        local has_r8_results=false
+        for mode in "${MODE_ARRAY[@]}"; do
+            if [ -d "$RESULTS_DIR/${TIMESTAMP}/${ref_label}/jvm-r8_${mode}" ]; then
+                has_r8_results=true
+                break
+            fi
+        done
+
+        if [ "$has_r8_results" = true ]; then
+            # Get metro R8 score for "vs Metro R8" column
+            local metro_jvm_r8_score=$(extract_jmh_r8_score_for_ref "$ref_label" "metro")
+
+            cat >> "$summary_file" << EOF
+## JVM Benchmarks - R8 Minified (JMH)
+
+Graph creation and initialization time with R8 optimization (lower is better):
+
+| Framework | Time (ms) | vs Metro R8 |
+|-----------|-----------|-------------|
+EOF
+
+            for mode in "${MODE_ARRAY[@]}"; do
+                local score=$(extract_jmh_r8_score_for_ref "$ref_label" "$mode")
+
+                # Skip if no R8 results for this mode
+                if [ -z "$score" ]; then
+                    continue
+                fi
+
+                local display=$(printf "%.3f" "$score")
+                local vs_metro="—"
+
+                if [ "$mode" = "metro" ]; then
+                    vs_metro="baseline"
+                elif [ -n "$metro_jvm_r8_score" ] && [ "$metro_jvm_r8_score" != "0" ]; then
+                    local pct=$(printf "%.0f" "$(echo "scale=4; ($score / $metro_jvm_r8_score) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                    local mult=$(printf "%.1f" "$(echo "scale=4; $score / $metro_jvm_r8_score" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                    if [ -n "$pct" ] && [ -n "$mult" ]; then
+                        vs_metro="+${pct}% (${mult}x)"
+                    fi
+                fi
+                echo "| $mode | $display | $vs_metro |" >> "$summary_file"
+            done
+
+            echo "" >> "$summary_file"
+        fi
+    fi
+
     if [ "$benchmark_type" = "android" ] || [ "$benchmark_type" = "all" ]; then
         # Check if macro results exist
         local has_macro_results=false
@@ -1973,6 +2251,75 @@ build_startup_benchmark_json() {
         echo ''
         echo '      ]'
         echo -n '    }'
+    fi
+
+    # JVM R8 section
+    if [ "$benchmark_type" = "jvm-r8" ] || [ "$benchmark_type" = "all" ]; then
+        # Check if any R8 results exist
+        local has_r8_results=false
+        for mode in "${MODE_ARRAY[@]}"; do
+            if [ -d "$RESULTS_DIR/${TIMESTAMP}/${ref1_label}/jvm-r8_${mode}" ]; then
+                has_r8_results=true
+                break
+            fi
+        done
+
+        if [ "$has_r8_results" = true ]; then
+            if [ "$first_test" = false ]; then echo ","; fi
+            first_test=false
+
+            echo '    {'
+            echo '      "name": "JVM Startup R8 Minified (JMH)",'
+            echo '      "key": "jvm_r8",'
+            echo '      "unit": "ms",'
+            echo '      "results": ['
+
+            local first_mode=true
+            for mode in "${MODE_ARRAY[@]}"; do
+                local mode_key
+                local mode_name
+                case "$mode" in
+                    "metro") mode_key="metro"; mode_name="Metro" ;;
+                    "anvil-ksp") mode_key="anvil_ksp"; mode_name="Anvil (KSP)" ;;
+                    "anvil-kapt") mode_key="anvil_kapt"; mode_name="Anvil (KAPT)" ;;
+                    "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject-anvil" ;;
+                    *) continue ;;
+                esac
+
+                local score1=$(extract_jmh_r8_score_for_ref "$ref1_label" "$mode")
+                local score2=""
+                if [ -n "$ref2_label" ]; then
+                    score2=$(extract_jmh_r8_score_for_ref "$ref2_label" "$mode")
+                fi
+
+                # Skip if no R8 results for this mode in either ref
+                if [ -z "$score1" ] && [ -z "$score2" ]; then
+                    continue
+                fi
+
+                if [ "$first_mode" = false ]; then echo ","; fi
+                first_mode=false
+
+                echo '        {'
+                echo '          "framework": "'"$mode_name"'",'
+                echo '          "key": "'"$mode_key"'",'
+                if [ -n "$score1" ]; then
+                    echo '          "ref1": '"$score1"','
+                else
+                    echo '          "ref1": null,'
+                fi
+                if [ -n "$score2" ]; then
+                    echo '          "ref2": '"$score2"
+                else
+                    echo '          "ref2": null'
+                fi
+                echo -n '        }'
+            done
+
+            echo ''
+            echo '      ]'
+            echo -n '    }'
+        fi
     fi
 
     # Android macrobenchmark section (only if enabled or results exist)

@@ -239,6 +239,3 @@ Use the `run_startup_benchmarks.sh` script to run all startup benchmarks and agg
 
 The Android benchmark app (`startup-android/app`) is configured with:
 - **R8 optimization**: Minification and shrinking enabled for release/benchmark builds
-- **ProGuard rules**: Keeps Metro-generated factories and application classes
-- **ProfileInstaller**: Enables baseline profile installation for consistent benchmarks
-- **Benchmark build type**: Special build type for benchmarking with obfuscation disabled
