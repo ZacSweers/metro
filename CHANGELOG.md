@@ -4,6 +4,10 @@ Changelog
 **Unreleased**
 --------------
 
+This release significantly improves the runtime performance of Metro-generated graphs, bringing them to parity with Dagger components' typical runtime performance (without fastInit enabled).
+
+- 🚀 Improves graph init runtime performance by **30–40%**
+- 🤏 Reduces generated graph code size by **60–70%** (even higher if you heavily use multibindings)
 - **New**: Experimental support for sharding large graphs. For extremely large dependency graphs on the JVM, their generated implementations could exceed the JVM class size limit. To avoid this, Metro now supports sharding within graphs (as needed) to distribute initialization code across multiple inner _shard_ classes. This is currently disabled by default but can be enabled via the `enableGraphSharding` Gradle DSL property.
 - **New**: Support `@Provides` properties with `@JvmField` annotations.
 - **Enhancement**: Avoid unnecessary intermediate `Provider` instance allocations during graph expression gen. This means that when a direct type is requested in code gen, Metro will skip instantiating the intermediate `MetroFactory` instance if possible, avoiding unnecessary allocations.
