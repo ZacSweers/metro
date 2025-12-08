@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Metro Startup Benchmark Results</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --metro-color: #4CAF50; --anvil-ksp-color: #2196F3; --anvil-kapt-color: #FF9800; --kotlin-inject-color: #9C27B0; }
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background: #f5f5f5; color: #333; }
+        .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 2rem; text-align: center; }
+        .header h1 { margin: 0 0 0.5rem 0; font-weight: 300; font-size: 2rem; }
+        .header .subtitle { opacity: 0.8; font-size: 0.9rem; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .benchmark-section { background: white; border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .benchmark-section h2 { margin: 0 0 0.25rem 0; font-size: 1.3rem; font-weight: 500; }
+        .benchmark-section .chart-hint { font-size: 0.8rem; color: #888; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid #eee; }
+        .chart-container { position: relative; height: 300px; margin-bottom: 1.5rem; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; font-weight: 600; color: #555; font-size: 0.8rem; text-transform: uppercase; }
+        td.numeric { text-align: right; font-family: 'SF Mono', Monaco, monospace; }
+        td.framework { font-weight: 500; }
+        .baseline-select { cursor: pointer; width: 30px; }
+        .baseline-radio { display: inline-block; width: 16px; height: 16px; border: 2px solid #ccc; border-radius: 50%; }
+        .baseline-radio.selected { border-color: var(--metro-color); background: var(--metro-color); }
+        .baseline-row { background: #f0fdf4; }
+        .vs-baseline { color: #888; font-size: 0.85em; }
+        .vs-baseline.baseline { color: var(--metro-color); font-weight: 500; }
+        .vs-baseline.slower { color: #e53935; }
+        .vs-baseline.faster { color: #43a047; }
+        .legend { display: flex; gap: 1.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+        .legend-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; }
+        .legend-color { width: 16px; height: 16px; border-radius: 3px; }
+        .no-data { color: #999; font-style: italic; }
+        .metadata-section { background: white; border-radius: 8px; padding: 1.5rem; margin-top: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .metadata-section h2 { margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 500; color: #666; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }
+        .metadata-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
+        .metadata-group h3 { margin: 0 0 0.75rem 0; font-size: 0.9rem; font-weight: 600; color: #555; text-transform: uppercase; }
+        .metadata-group dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 1rem; font-size: 0.85rem; }
+        .metadata-group dt { color: #888; }
+        .metadata-group dd { margin: 0; font-family: 'SF Mono', Monaco, monospace; color: #333; word-break: break-all; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Metro Startup Benchmark Results</h1>
+        <div class="subtitle" id="date"></div>
+    </div>
+    <div class="container">
+        <div id="benchmarks"></div>
+        <div class="metadata-section" id="metadata"></div>
+    </div>
+<script>
+const benchmarkData =
+{
+  "title": "Startup Benchmark Results",
+  "date": "2025-12-08T12:21:28-05:00",
+  "moduleCount": 500,
+  "metadata": {
+    "versions": {
+      "kotlin": "2.2.20",
+      "dagger": "2.57.2",
+      "ksp": "2.3.3",
+      "kotlinInject": "0.8.0",
+      "anvil": "0.5.1",
+      "kotlinInjectAnvil": "0.1.6"
+    },
+    "build": {
+      "jdk": "24.0.2",
+      "jvmTarget": "11",
+      "jmhPlugin": "0.7.3",
+      "androidxBenchmark": "1.4.1"
+    },
+    "system": {
+      "os": "Darwin",
+      "cpu": "Apple M4 Pro",
+      "ram": "48 GB"
+    },
+    "android": {
+      "device": "Pixel 9",
+      "version": "16"
+    }
+  },
+  "benchmarks": [
+    {
+      "name": "JVM Startup (JMH)",
+      "key": "jvm",
+      "unit": "ms",
+      "results": [
+        {
+          "framework": "Metro",
+          "key": "metro",
+          "value": 0.16802429521997675
+        },
+        {
+          "framework": "Anvil (KSP)",
+          "key": "anvil_ksp",
+          "value": 0.16716651975694252
+        },
+        {
+          "framework": "Anvil (KAPT)",
+          "key": "anvil_kapt",
+          "value": 0.16800631929906623
+        },
+        {
+          "framework": "kotlin-inject-anvil",
+          "key": "kotlin_inject_anvil",
+          "value": 0.21527532967935503
+        }
+      ]
+    },
+    {
+      "name": "JVM Startup R8 Minified (JMH)",
+      "key": "jvm_r8",
+      "unit": "ms",
+      "results": [
+        {
+          "framework": "Metro",
+          "key": "metro",
+          "value": 0.15640682329788375
+        },
+        {
+          "framework": "Anvil (KSP)",
+          "key": "anvil_ksp",
+          "value": 0.16155119157781478
+        },
+        {
+          "framework": "Anvil (KAPT)",
+          "key": "anvil_kapt",
+          "value": 0.16164561019243706
+        },
+        {
+          "framework": "kotlin-inject-anvil",
+          "key": "kotlin_inject_anvil",
+          "value": 0.20484185885872247
+        }
+      ]
+    },
+    {
+      "name": "Android Component Init (Microbenchmark)",
+      "key": "android_micro",
+      "unit": "ms",
+      "results": [
+        {
+          "framework": "Metro",
+          "key": "metro",
+          "value": .102
+        },
+        {
+          "framework": "Anvil (KSP)",
+          "key": "anvil_ksp",
+          "value": .125
+        },
+        {
+          "framework": "Anvil (KAPT)",
+          "key": "anvil_kapt",
+          "value": .123
+        },
+        {
+          "framework": "kotlin-inject-anvil",
+          "key": "kotlin_inject_anvil",
+          "value": 12.051
+        }
+      ]
+    }
+  ]
+}
+;
+const colors = { 'metro': '#4CAF50', 'anvil_ksp': '#2196F3', 'anvil_kapt': '#FF9800', 'kotlin_inject_anvil': '#9C27B0' };
+let selectedBaseline = 'metro';
+
+function formatTime(ms, unit) {
+    if (ms === null || ms === undefined) return '—';
+    if (unit === 'ms') {
+        if (ms < 1) return ms.toFixed(3) + ' ms';
+        if (ms < 100) return ms.toFixed(2) + ' ms';
+        return ms.toFixed(0) + ' ms';
+    }
+    return ms.toFixed(2);
+}
+
+function calculateVsBaseline(value, baselineValue) {
+    if (!value || !baselineValue) return { text: '—', class: '' };
+    if (value === baselineValue) return { text: 'baseline', class: 'baseline' };
+    const pct = ((value - baselineValue) / baselineValue * 100).toFixed(0);
+    const mult = (value / baselineValue).toFixed(1);
+    if (pct < 0) return { text: `${pct}% (${mult}x)`, class: 'faster' };
+    return { text: `+${pct}% (${mult}x)`, class: 'slower' };
+}
+
+function renderSummaryStats() {
+    const container = document.getElementById('summary-stats');
+    let totalSpeedup = { anvil_ksp: 0, anvil_kapt: 0, kotlin_inject_anvil: 0 };
+    let counts = { anvil_ksp: 0, anvil_kapt: 0, kotlin_inject_anvil: 0 };
+    benchmarkData.benchmarks.forEach(benchmark => {
+        const metroResult = benchmark.results.find(r => r.key === 'metro');
+        if (!metroResult || !metroResult.value) return;
+        benchmark.results.forEach(result => {
+            if (result.key !== 'metro' && result.value) {
+                totalSpeedup[result.key] += result.value / metroResult.value;
+                counts[result.key]++;
+            }
+        });
+    });
+    let html = '';
+    const names = { 'anvil_ksp': 'Anvil KSP', 'anvil_kapt': 'Anvil KAPT', 'kotlin_inject_anvil': 'kotlin-inject' };
+    Object.keys(totalSpeedup).forEach(key => {
+        if (counts[key] > 0) {
+            const avgSpeedup = (totalSpeedup[key] / counts[key]).toFixed(1);
+            html += `<div class="stat-card"><div class="value">${avgSpeedup}x</div><div class="label">faster than ${names[key]}</div></div>`;
+        }
+    });
+    container.innerHTML = html;
+}
+
+function getBaselineLabel() {
+    const result = benchmarkData.benchmarks[0]?.results.find(r => r.key === selectedBaseline);
+    return result?.framework || 'Baseline';
+}
+
+function renderBenchmarks() {
+    const container = document.getElementById('benchmarks');
+    let html = '';
+    benchmarkData.benchmarks.forEach((benchmark, idx) => {
+        html += `<div class="benchmark-section"><h2>${benchmark.name}</h2>
+            <div class="chart-hint">Lower is better</div>
+            <div class="legend">${benchmark.results.map(r => `<div class="legend-item"><div class="legend-color" style="background: ${colors[r.key]}"></div><span>${r.framework}</span></div>`).join('')}</div>
+            <div class="chart-container"><canvas id="chart-${idx}"></canvas></div>
+            <table><thead><tr><th></th><th>Framework</th><th>Time</th><th>vs <span class="baseline-header">${getBaselineLabel()}</span></th></tr></thead><tbody id="table-${idx}"></tbody></table></div>`;
+    });
+    container.innerHTML = html;
+    benchmarkData.benchmarks.forEach((benchmark, idx) => { renderChart(benchmark, idx); renderTable(benchmark, idx); });
+}
+
+const charts = [];
+function renderChart(benchmark, idx) {
+    const ctx = document.getElementById(`chart-${idx}`).getContext('2d');
+    const labels = [], data = [], backgroundColors = [];
+    benchmark.results.forEach(result => {
+        labels.push(result.framework);
+        data.push(result.value || 0);
+        backgroundColors.push(colors[result.key]);
+    });
+    charts[idx] = new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label: 'Time', data, backgroundColor: backgroundColors.map(c => c + 'CC'), borderColor: backgroundColors, borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.raw.toFixed(2) + ' ' + (benchmark.unit || 'ms') } } }, scales: { y: { beginAtZero: true, title: { display: true, text: 'Time (' + (benchmark.unit || 'ms') + ')' } } } } });
+}
+
+function renderTable(benchmark, idx) {
+    const tbody = document.getElementById(`table-${idx}`);
+    const baselineValue = benchmark.results.find(r => r.key === selectedBaseline)?.value;
+    let html = '';
+    benchmark.results.forEach(result => {
+        const isBaseline = result.key === selectedBaseline;
+        const vsBaseline = calculateVsBaseline(result.value, baselineValue);
+        html += `<tr class="${isBaseline ? 'baseline-row' : ''}" data-key="${result.key}">
+            <td class="baseline-select" onclick="setBaseline('${result.key}')"><span class="baseline-radio ${isBaseline ? 'selected' : ''}"></span></td>
+            <td class="framework" style="color: ${colors[result.key]}">${result.framework}</td>
+            <td class="numeric">${result.value ? formatTime(result.value, benchmark.unit) : '<span class="no-data">N/A</span>'}</td>
+            <td class="numeric vs-baseline ${vsBaseline.class}">${vsBaseline.text}</td></tr>`;
+    });
+    tbody.innerHTML = html;
+}
+
+function setBaseline(key) {
+    selectedBaseline = key;
+    benchmarkData.benchmarks.forEach((benchmark, idx) => { renderTable(benchmark, idx); });
+    document.querySelectorAll('.baseline-header').forEach(el => { el.textContent = getBaselineLabel(); });
+}
+
+function renderMetadata() {
+    const container = document.getElementById('metadata');
+    if (!benchmarkData.metadata) { container.style.display = 'none'; return; }
+    const m = benchmarkData.metadata;
+    const hasAndroid = m.android?.device || m.android?.version;
+    container.innerHTML = `
+        <h2>Build Environment</h2>
+        <div class="metadata-grid">
+            <div class="metadata-group">
+                <h3>Library Versions</h3>
+                <dl>
+                    <dt>Kotlin</dt><dd>${m.versions?.kotlin || '—'}</dd>
+                    <dt>Dagger</dt><dd>${m.versions?.dagger || '—'}</dd>
+                    <dt>KSP</dt><dd>${m.versions?.ksp || '—'}</dd>
+                    <dt>kotlin-inject</dt><dd>${m.versions?.kotlinInject || '—'}</dd>
+                    <dt>Anvil</dt><dd>${m.versions?.anvil || '—'}</dd>
+                    <dt>kotlin-inject-anvil</dt><dd>${m.versions?.kotlinInjectAnvil || '—'}</dd>
+                </dl>
+            </div>
+            <div class="metadata-group">
+                <h3>Build Tools</h3>
+                <dl>
+                    <dt>JDK</dt><dd>${m.build?.jdk || '—'}</dd>
+                    <dt>JVM Target</dt><dd>${m.build?.jvmTarget || '—'}</dd>
+                    <dt>JMH Plugin</dt><dd>${m.build?.jmhPlugin || '—'}</dd>
+                    <dt>AndroidX Benchmark</dt><dd>${m.build?.androidxBenchmark || '—'}</dd>
+                </dl>
+            </div>
+            <div class="metadata-group">
+                <h3>System</h3>
+                <dl>
+                    <dt>OS</dt><dd>${m.system?.os || '—'}</dd>
+                    <dt>CPU</dt><dd>${m.system?.cpu || '—'}</dd>
+                    <dt>RAM</dt><dd>${m.system?.ram || '—'}</dd>
+                </dl>
+            </div>
+            ${hasAndroid ? `<div class="metadata-group">
+                <h3>Android Device</h3>
+                <dl>
+                    <dt>Device</dt><dd>${m.android?.device || '—'}</dd>
+                    <dt>Android Version</dt><dd>${m.android?.version || '—'}</dd>
+                </dl>
+            </div>` : ''}
+        </div>`;
+}
+
+document.getElementById('date').textContent = new Date(benchmarkData.date).toLocaleString();
+renderBenchmarks(); renderMetadata();
+</script>
+</body>
+</html>
