@@ -24,8 +24,8 @@ class GenerateProjectsCommand : CliktCommand() {
   private val totalModules by
     option("--count", "-c", help = "Total number of modules to generate").int().default(500)
 
-
-  private val enableSharding get() = totalModules >= 500
+  private val enableSharding
+    get() = totalModules >= 500
 
   private val processor by
     option("--processor", "-p", help = "Annotation processor: ksp or kapt (anvil mode only)")
@@ -487,7 +487,8 @@ anvil {
 
     val imports =
       when (buildMode) {
-        BuildMode.METRO, BuildMode.NOOP ->
+        BuildMode.METRO,
+        BuildMode.NOOP ->
           """
 import com.squareup.anvil.annotations.ContributesBinding
 import com.squareup.anvil.annotations.ContributesMultibinding
@@ -529,14 +530,16 @@ $dependencyImports
 
     val scopeAnnotation =
       when (buildMode) {
-        BuildMode.METRO, BuildMode.NOOP -> "@SingleIn(AppScope::class)"
+        BuildMode.METRO,
+        BuildMode.NOOP -> "@SingleIn(AppScope::class)"
         BuildMode.KOTLIN_INJECT_ANVIL -> "@SingleIn(AppScope::class)"
         BuildMode.ANVIL -> "@Singleton"
       }
 
     val scopeParam =
       when (buildMode) {
-        BuildMode.METRO, BuildMode.NOOP -> "AppScope::class"
+        BuildMode.METRO,
+        BuildMode.NOOP -> "AppScope::class"
         BuildMode.KOTLIN_INJECT_ANVIL -> "AppScope::class"
         BuildMode.ANVIL -> "Unit::class"
       }
@@ -578,14 +581,16 @@ $subcomponent
   fun generateBindingContribution(className: String, index: Int, buildMode: BuildMode): String {
     val scopeAnnotation =
       when (buildMode) {
-        BuildMode.METRO, BuildMode.NOOP -> "@SingleIn(AppScope::class)"
+        BuildMode.METRO,
+        BuildMode.NOOP -> "@SingleIn(AppScope::class)"
         BuildMode.KOTLIN_INJECT_ANVIL -> "@SingleIn(AppScope::class)"
         BuildMode.ANVIL -> "@Singleton"
       }
 
     val scopeParam =
       when (buildMode) {
-        BuildMode.METRO, BuildMode.NOOP -> "AppScope::class"
+        BuildMode.METRO,
+        BuildMode.NOOP -> "AppScope::class"
         BuildMode.KOTLIN_INJECT_ANVIL -> "AppScope::class"
         BuildMode.ANVIL -> "Unit::class"
       }
@@ -607,7 +612,8 @@ class ${className}ServiceImpl$index @Inject constructor() : ${className}Service$
   ): String {
     val scopeParam =
       when (buildMode) {
-        BuildMode.METRO, BuildMode.NOOP -> "AppScope::class"
+        BuildMode.METRO,
+        BuildMode.NOOP -> "AppScope::class"
         BuildMode.KOTLIN_INJECT_ANVIL -> "AppScope::class"
         BuildMode.ANVIL -> "Unit::class"
       }
@@ -639,7 +645,8 @@ class ${className}PluginImpl$index @Inject constructor() : ${className}Plugin$in
   ): String {
     val scopeParam =
       when (buildMode) {
-        BuildMode.METRO, BuildMode.NOOP -> "AppScope::class"
+        BuildMode.METRO,
+        BuildMode.NOOP -> "AppScope::class"
         BuildMode.KOTLIN_INJECT_ANVIL -> "AppScope::class"
         BuildMode.ANVIL -> "Unit::class"
       }
@@ -687,7 +694,8 @@ class ${className}InitializerImpl$index @Inject constructor() : ${className}Init
       }
 
     return when (buildMode) {
-      BuildMode.METRO, BuildMode.NOOP ->
+      BuildMode.METRO,
+      BuildMode.NOOP ->
         """
 // Subcomponent-scoped services that depend on parent scope
 ${(1..3).joinToString("\n") { i ->
