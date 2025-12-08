@@ -124,11 +124,14 @@ internal class IrBindingGraph(
   fun findAnyReservedProperty(key: IrTypeKey): ParentContext.PropertyAccess? {
     // Check instance property
     val instanceKey = IrContextualTypeKey.create(key)
-    reservedProperties[instanceKey]?.let { return it }
+    reservedProperties[instanceKey]?.let {
+      return it
+    }
 
     // Check provider property
     val providerType = metroContext.metroSymbols.metroProvider.typeWith(key.type)
-    val providerKey = IrContextualTypeKey.create(key, isWrappedInProvider = true, rawType = providerType)
+    val providerKey =
+      IrContextualTypeKey.create(key, isWrappedInProvider = true, rawType = providerType)
     return reservedProperties[providerKey]
   }
 

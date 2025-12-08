@@ -211,11 +211,7 @@ internal class ParentContext(private val metroContext: IrMetroContext) {
     }
   }
 
-  private fun createPropertyInLevel(
-    level: Level,
-    key: IrTypeKey,
-    isProvider: Boolean,
-  ): IrProperty {
+  private fun createPropertyInLevel(level: Level, key: IrTypeKey, isProvider: Boolean): IrProperty {
     val graphClass = level.node.metroGraphOrFail
     val propertyType =
       if (isProvider) {

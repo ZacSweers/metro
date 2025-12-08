@@ -420,7 +420,10 @@ internal class DependencyGraphTransformer(
         for (contextKey in usedContextKeys) {
           bindingGraph.keep(contextKey, IrBindingStack.Entry.simpleTypeRef(contextKey))
           // Reserve the property with the exact contextual key that was used
-          bindingGraph.reserveProperty(contextKey, localParentContext.getPropertyAccess(contextKey)!!)
+          bindingGraph.reserveProperty(
+            contextKey,
+            localParentContext.getPropertyAccess(contextKey)!!,
+          )
         }
       }
 

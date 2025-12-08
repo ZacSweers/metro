@@ -452,8 +452,7 @@ internal class IrGraphGenerator(
       val deferredProperties: Map<IrTypeKey, IrProperty> =
         sealResult.deferredTypes.associateWith { deferredTypeKey ->
           val binding = bindingGraph.requireBinding(deferredTypeKey)
-          val deferredProviderType =
-            deferredTypeKey.type.wrapInProvider(metroSymbols.metroProvider)
+          val deferredProviderType = deferredTypeKey.type.wrapInProvider(metroSymbols.metroProvider)
           val deferredContextKey =
             IrContextualTypeKey.create(
               binding.typeKey,
@@ -537,7 +536,11 @@ internal class IrGraphGenerator(
           // If we've reserved a property for this key here, pull it out and use that
           val bindingContextKey =
             if (isProviderType) {
-              IrContextualTypeKey.create(binding.typeKey, isWrappedInProvider = true, rawType = irType)
+              IrContextualTypeKey.create(
+                binding.typeKey,
+                isWrappedInProvider = true,
+                rawType = irType,
+              )
             } else {
               IrContextualTypeKey.create(binding.typeKey)
             }

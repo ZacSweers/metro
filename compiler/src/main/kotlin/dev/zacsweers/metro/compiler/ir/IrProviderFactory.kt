@@ -8,7 +8,6 @@ import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
-import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithVisibility
@@ -151,7 +150,10 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
         callableMetadata = callableMetadata,
         realDeclaration =
           realDeclaration
-            ?: lookupRealDeclaration(callableMetadata.isPropertyAccessor, callableMetadata.function),
+            ?: lookupRealDeclaration(
+              callableMetadata.isPropertyAccessor,
+              callableMetadata.function,
+            ),
         parametersLazy = memoize { callableMetadata.function.parameters() },
       )
     }
