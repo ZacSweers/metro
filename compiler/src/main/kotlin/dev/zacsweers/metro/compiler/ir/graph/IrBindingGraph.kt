@@ -43,6 +43,7 @@ import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.makeNotNull
 import org.jetbrains.kotlin.ir.types.makeNullable
 import org.jetbrains.kotlin.ir.types.typeOrFail
+import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
@@ -88,7 +89,7 @@ internal class IrBindingGraph(
   private val accessors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
   private val injectors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
   private val extraKeeps = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
-  private val reservedProperties = mutableMapOf<IrTypeKey, ParentContext.PropertyAccess>()
+  private val reservedProperties = mutableMapOf<IrContextualTypeKey, ParentContext.PropertyAccess>()
 
   // Thin immutable view over the internal bindings
   fun bindingsSnapshot(): Map<IrTypeKey, IrBinding> = realGraph.bindings
@@ -109,11 +110,27 @@ internal class IrBindingGraph(
     extraKeeps[key] = entry
   }
 
-  fun reserveProperty(key: IrTypeKey, access: ParentContext.PropertyAccess) {
-    reservedProperties[key] = access
+  fun reserveProperty(contextKey: IrContextualTypeKey, access: ParentContext.PropertyAccess) {
+    reservedProperties[contextKey] = access
   }
 
-  fun reservedProperty(key: IrTypeKey): ParentContext.PropertyAccess? = reservedProperties[key]
+  fun reservedProperty(contextKey: IrContextualTypeKey): ParentContext.PropertyAccess? =
+    reservedProperties[contextKey]
+
+  /**
+   * Finds any reserved property for the given type key, checking both instance and provider
+   * variants.
+   */
+  fun findAnyReservedProperty(key: IrTypeKey): ParentContext.PropertyAccess? {
+    // Check instance property
+    val instanceKey = IrContextualTypeKey.create(key)
+    reservedProperties[instanceKey]?.let { return it }
+
+    // Check provider property
+    val providerType = metroContext.metroSymbols.metroProvider.typeWith(key.type)
+    val providerKey = IrContextualTypeKey.create(key, isWrappedInProvider = true, rawType = providerType)
+    return reservedProperties[providerKey]
+  }
 
   fun findBinding(key: IrTypeKey): IrBinding? = realGraph[key]
 

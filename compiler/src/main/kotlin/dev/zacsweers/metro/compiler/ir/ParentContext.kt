@@ -33,8 +33,10 @@ internal class ParentContext(private val metroContext: IrMetroContext) {
     val node: DependencyGraphNode,
     val propertyNameAllocator: NameAllocator,
     val deltaProvided: MutableSet<IrTypeKey> = mutableSetOf(),
-    val usedKeys: MutableSet<IrTypeKey> = mutableSetOf(),
-    val properties: MutableMap<IrTypeKey, IrProperty> = mutableMapOf(),
+    /** Tracks which contextual keys were used (preserving instance vs provider distinction) */
+    val usedContextKeys: MutableSet<IrContextualTypeKey> = mutableSetOf(),
+    /** Properties keyed by contextual type to support both instance and provider properties */
+    val properties: MutableMap<IrContextualTypeKey, IrProperty> = mutableMapOf(),
   )
 
   // Stack of parent graphs (root at 0, top is last)
@@ -60,18 +62,35 @@ internal class ParentContext(private val metroContext: IrMetroContext) {
     if (keys.isNotEmpty()) pending.addAll(keys)
   }
 
+  /**
+   * Marks a key as used and returns property access information.
+   *
+   * @param key The type key to mark
+   * @param scope Optional scope annotation for scoped bindings
+   * @param requiresProviderProperty If true, creates/uses a Provider<T> property. If false, creates
+   *   an instance property for direct access.
+   */
   // TODO stick a cache in front of this
-  fun mark(key: IrTypeKey, scope: IrAnnotation? = null): PropertyAccess? {
+  fun mark(
+    key: IrTypeKey,
+    scope: IrAnnotation? = null,
+    requiresProviderProperty: Boolean = true,
+  ): PropertyAccess? {
     // Prefer the nearest provider (deepest level that introduced this key)
     keyIntroStack[key]?.lastOrNull()?.let { providerIdx ->
       val providerLevel = levels[providerIdx]
 
+      // Create the contextual key based on what kind of property is needed
+      val contextKey = createContextKey(key, requiresProviderProperty)
+
       // Get or create field in the provider level
       val property =
-        providerLevel.properties.getOrPut(key) { createPropertyInLevel(providerLevel, key) }
+        providerLevel.properties.getOrPut(contextKey) {
+          createPropertyInLevel(providerLevel, key, requiresProviderProperty)
+        }
 
       // Only mark in the provider level - inner classes can access parent fields directly
-      providerLevel.usedKeys.add(key)
+      providerLevel.usedContextKeys.add(contextKey)
       return PropertyAccess(
         providerLevel.node.typeKey,
         property,
@@ -86,11 +105,17 @@ internal class ParentContext(private val metroContext: IrMetroContext) {
         if (scope in level.node.scopes) {
           introduceAtLevel(i, key)
 
+          // Create the contextual key based on what kind of property is needed
+          val contextKey = createContextKey(key, requiresProviderProperty)
+
           // Get or create field
-          val field = level.properties.getOrPut(key) { createPropertyInLevel(level, key) }
+          val field =
+            level.properties.getOrPut(contextKey) {
+              createPropertyInLevel(level, key, requiresProviderProperty)
+            }
 
           // Only mark in the level that owns the scope
-          level.usedKeys.add(key)
+          level.usedContextKeys.add(contextKey)
           return PropertyAccess(
             level.node.typeKey,
             field,
@@ -101,6 +126,15 @@ internal class ParentContext(private val metroContext: IrMetroContext) {
     }
     // Else: no-op (unknown key without scope)
     return null
+  }
+
+  private fun createContextKey(key: IrTypeKey, isProvider: Boolean): IrContextualTypeKey {
+    return if (isProvider) {
+      val providerType = metroContext.metroSymbols.metroProvider.typeWith(key.type)
+      IrContextualTypeKey.create(key, isWrappedInProvider = true, rawType = providerType)
+    } else {
+      IrContextualTypeKey.create(key)
+    }
   }
 
   fun pushParentGraph(node: DependencyGraphNode, fieldNameAllocator: NameAllocator) {
@@ -118,7 +152,7 @@ internal class ParentContext(private val metroContext: IrMetroContext) {
     }
   }
 
-  fun popParentGraph(): Set<IrTypeKey> {
+  fun popParentGraph(): Set<IrContextualTypeKey> {
     check(levels.isNotEmpty()) { "No parent graph to pop" }
     val idx = levels.lastIndex
     val removed = levels.removeLast()
@@ -137,8 +171,8 @@ internal class ParentContext(private val metroContext: IrMetroContext) {
       // If non-empty, key remains available due to an earlier level
     }
 
-    // Return the keys that were used from this parent level
-    return removed.usedKeys.toSet()
+    // Return the contextual keys that were used from this parent level
+    return removed.usedContextKeys
   }
 
   val currentParentGraph: IrClass
@@ -163,8 +197,8 @@ internal class ParentContext(private val metroContext: IrMetroContext) {
     }
   }
 
-  fun usedKeys(): Set<IrTypeKey> {
-    return levels.lastOrNull()?.usedKeys ?: emptySet()
+  fun usedContextKeys(): Set<IrContextualTypeKey> {
+    return levels.lastOrNull()?.usedContextKeys ?: emptySet()
   }
 
   private fun introduceAtLevel(levelIdx: Int, key: IrTypeKey) {
@@ -177,33 +211,44 @@ internal class ParentContext(private val metroContext: IrMetroContext) {
     }
   }
 
-  private fun createPropertyInLevel(level: Level, key: IrTypeKey): IrProperty {
+  private fun createPropertyInLevel(
+    level: Level,
+    key: IrTypeKey,
+    isProvider: Boolean,
+  ): IrProperty {
     val graphClass = level.node.metroGraphOrFail
+    val propertyType =
+      if (isProvider) {
+        metroContext.metroSymbols.metroProvider.typeWith(key.type)
+      } else {
+        key.type
+      }
+    val contextKey = createContextKey(key, isProvider)
+    val suffix = if (isProvider) "Provider" else "Instance"
     // Build but don't add, order will matter and be handled by the graph generator
     return graphClass.factory
       .buildProperty {
         name =
           level.propertyNameAllocator.newName(
-            key.type.rawType().name.asString().decapitalizeUS().suffixIfNot("Provider").asName()
+            key.type.rawType().name.asString().decapitalizeUS().suffixIfNot(suffix).asName()
           )
         // TODO revisit? Can we skip synth accessors? Only if graph has extensions
         visibility = DescriptorVisibilities.PRIVATE
       }
       .apply {
         parent = graphClass
-        graphPropertyData =
-          GraphPropertyData(key, metroContext.metroSymbols.metroProvider.typeWith(key.type))
+        graphPropertyData = GraphPropertyData(contextKey, propertyType)
 
         // These must always be fields
         with(metroContext) { ensureInitialized(PropertyType.FIELD) }
       }
   }
 
-  // Get the property access for a key if it exists
-  fun getPropertyAccess(key: IrTypeKey): PropertyAccess? {
-    keyIntroStack[key]?.lastOrNull()?.let { providerIdx ->
+  // Get the property access for a contextual key if it exists
+  fun getPropertyAccess(contextKey: IrContextualTypeKey): PropertyAccess? {
+    keyIntroStack[contextKey.typeKey]?.lastOrNull()?.let { providerIdx ->
       val level = levels[providerIdx]
-      level.properties[key]?.let { property ->
+      level.properties[contextKey]?.let { property ->
         return PropertyAccess(
           level.node.typeKey,
           property,

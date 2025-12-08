@@ -11,7 +11,6 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ir.IrBindingContainerResolver
-import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrContributionMerger
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -386,17 +385,16 @@ internal class DependencyGraphTransformer(
           )
 
         // Capture the used keys for this graph extension
-        val usedKeys = localParentContext.usedKeys()
+        val usedContextKeys = localParentContext.usedContextKeys()
 
         if (contributedGraphKey in directExtensions) {
-          val dependencies = usedKeys.map { IrContextualTypeKey.create(it) }
           val binding =
             IrBinding.GraphExtension(
               typeKey = contributedGraphKey,
               parent = node.sourceGraph,
               accessor = accessor.ir,
               extensionScopes = contributedExtension.scopeAnnotations(),
-              dependencies = dependencies,
+              dependencies = usedContextKeys.toList(),
             )
           // Replace the binding with the updated version
           bindingGraph.addBinding(contributedGraphKey, binding, IrBindingStack.empty())
@@ -414,25 +412,25 @@ internal class DependencyGraphTransformer(
         writeDiagnostic({
           "parent-keys-used-${node.sourceGraph.name}-by-${contributedGraph.name}.txt"
         }) {
-          usedKeys.sorted().joinToString(separator = "\n")
+          usedContextKeys.sortedBy { it.typeKey }.joinToString(separator = "\n")
         }
 
         // For any key both child uses and parent has as a scoped static binding,
         // mark it as a keep in the parent graph so it materializes during seal
-        for (key in usedKeys) {
-          val contextKey = IrContextualTypeKey.create(key)
+        for (contextKey in usedContextKeys) {
           bindingGraph.keep(contextKey, IrBindingStack.Entry.simpleTypeRef(contextKey))
-          bindingGraph.reserveProperty(key, localParentContext.getPropertyAccess(key)!!)
+          // Reserve the property with the exact contextual key that was used
+          bindingGraph.reserveProperty(contextKey, localParentContext.getPropertyAccess(contextKey)!!)
         }
       }
 
       // Pop the parent graph after all contributed graphs are processed
-      val usedParentKeys = localParentContext.popParentGraph()
+      val usedParentContextKeys = localParentContext.popParentGraph()
 
       // Write diagnostic for parent keys used in child graphs
-      if (usedParentKeys.isNotEmpty()) {
+      if (usedParentContextKeys.isNotEmpty()) {
         writeDiagnostic({ "parent-keys-used-all-${node.sourceGraph.name}.txt" }) {
-          usedParentKeys.sorted().joinToString(separator = "\n")
+          usedParentContextKeys.sortedBy { it.typeKey }.joinToString(separator = "\n")
         }
       }
     }

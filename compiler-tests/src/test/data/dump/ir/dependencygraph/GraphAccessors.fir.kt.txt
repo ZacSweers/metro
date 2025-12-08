@@ -15,9 +15,6 @@ interface ExampleGraph {
     private val accessorsInstance: Accessors
       field = accessors
 
-    private val accessorsInstanceProvider: Provider<Accessors>
-      field = Companion.invoke<Accessors>(value = <this>.#accessorsInstance)
-
     private val accessorsIntProvider: Provider<Int>
       field = <this>.#accessorsInstance.<get-intProvider>()
 

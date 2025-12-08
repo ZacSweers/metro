@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
+import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
-import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import org.jetbrains.kotlin.ir.builders.declarations.addGetter
@@ -47,4 +47,4 @@ internal fun IrProperty.ensureInitialized(
 
 internal var IrProperty.graphPropertyData: GraphPropertyData? by irAttribute(copyByDefault = false)
 
-internal data class GraphPropertyData(val typeKey: IrTypeKey, val type: IrType)
+internal data class GraphPropertyData(val contextKey: IrContextualTypeKey, val type: IrType)

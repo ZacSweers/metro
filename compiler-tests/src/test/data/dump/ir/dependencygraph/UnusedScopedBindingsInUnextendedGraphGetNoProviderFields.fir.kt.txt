@@ -7,9 +7,6 @@ interface AppGraph {
     private val thisGraphInstance: AppGraph
       field = <this>
 
-    private val thisGraphInstanceProvider: Provider<AppGraph>
-      field = Companion.invoke<AppGraph>(value = <this>.#thisGraphInstance)
-
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */

@@ -96,7 +96,7 @@ internal class BindingPropertyCollector(
    */
   private fun staticPropertyType(key: IrTypeKey, binding: IrBinding): PropertyType? {
     // Check reserved properties first
-    graph.reservedProperty(key)?.let { reserved ->
+    graph.findAnyReservedProperty(key)?.let { reserved ->
       return when {
         reserved.property.getter != null -> PropertyType.GETTER
         reserved.property.backingField != null -> PropertyType.FIELD
