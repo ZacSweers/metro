@@ -64,7 +64,11 @@ update_gradle_properties() {
 # usage: update_quickstart_version $new_version
 update_quickstart_version() {
     local new_version=$1
-    sed -i '' "s/id(\"dev.zacsweers.metro\") version \"[^\"]*\"/id(\"dev.zacsweers.metro\") version \"${new_version}\"/g" docs/quickstart.md
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        sed -i '' "s/id(\"dev.zacsweers.metro\") version \"[^\"]*\"/id(\"dev.zacsweers.metro\") version \"${new_version}\"/g" docs/quickstart.md
+    else
+        sed -i "s/id(\"dev.zacsweers.metro\") version \"[^\"]*\"/id(\"dev.zacsweers.metro\") version \"${new_version}\"/g" docs/quickstart.md
+    fi
 }
 
 # default to patch if no second argument is given
