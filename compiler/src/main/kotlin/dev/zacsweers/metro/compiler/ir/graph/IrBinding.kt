@@ -38,6 +38,7 @@ import java.util.TreeSet
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationContainer
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithVisibility
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrPackageFragment
 import org.jetbrains.kotlin.ir.declarations.IrProperty
@@ -141,11 +142,10 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
      * We can't use direct invocation if there are injected members because the factory handles
      * member injection
      */
-    val supportsDirectInvocation: Boolean
-      get() =
-        classFactory.supportsDirectInvocation &&
-          !classFactory.isAssistedInject &&
-          injectedMembers.isEmpty()
+    fun supportsDirectInvocation(from: IrDeclarationWithVisibility): Boolean =
+        !classFactory.isAssistedInject &&
+        injectedMembers.isEmpty() &&
+      classFactory.supportsDirectInvocation(from)
 
     fun parameterFor(typeKey: IrTypeKey) =
       classFactory.function.regularParameters.getOrNull(

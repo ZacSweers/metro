@@ -9,11 +9,11 @@ import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.symbols.Symbols
-import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithVisibility
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -36,7 +36,8 @@ internal sealed interface IrMetroFactory {
    */
   val realDeclaration: IrDeclaration?
   val factoryClass: IrClass
-  val supportsDirectInvocation: Boolean
+
+  fun supportsDirectInvocation(from: IrDeclarationWithVisibility): Boolean
 
   val createFunctionNames: Set<Name>
     get() = setOf(Symbols.Names.create)
@@ -153,11 +154,9 @@ internal sealed class ClassFactory : IrMetroFactory {
    * Returns true if the constructor itself can be called directly (not via factory static method).
    * This requires the constructor to be public and accessible.
    */
-  override val supportsDirectInvocation: Boolean
-    get() {
-      // TODO if it's protected in a supertype?
-      return targetConstructor?.visibility == DescriptorVisibilities.PUBLIC
-    }
+  override fun supportsDirectInvocation(from: IrDeclarationWithVisibility): Boolean {
+    return targetConstructor?.isVisibleTo(from) == true
+  }
 
   context(context: IrMetroContext)
   abstract fun remapTypes(typeRemapper: TypeRemapper): ClassFactory

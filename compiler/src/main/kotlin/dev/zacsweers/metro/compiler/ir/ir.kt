@@ -31,11 +31,13 @@ import org.jetbrains.kotlin.DeprecatedForRemovalCompilerApi
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.ir.createExtensionReceiver
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
+import org.jetbrains.kotlin.backend.jvm.ir.isEffectivelyInlineOnly
 import org.jetbrains.kotlin.backend.jvm.ir.isWithFlexibleNullability
 import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
+import org.jetbrains.kotlin.descriptors.DescriptorVisibility
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.isObject
 import org.jetbrains.kotlin.fir.lazy.Fir2IrLazyClass
@@ -98,6 +100,7 @@ import org.jetbrains.kotlin.ir.expressions.impl.IrFunctionExpressionImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrGetEnumValueImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrInstanceInitializerCallImpl
 import org.jetbrains.kotlin.ir.expressions.impl.fromSymbolOwner
+import org.jetbrains.kotlin.ir.overrides.isEffectivelyPrivate
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
@@ -132,6 +135,7 @@ import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
+import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.functions
@@ -151,6 +155,7 @@ import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.ir.util.remapTypes
 import org.jetbrains.kotlin.ir.util.superClass
+import org.jetbrains.kotlin.load.java.JavaDescriptorVisibilities
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.StandardClassIds
@@ -1598,6 +1603,65 @@ internal fun IrDeclarationWithVisibility.isVisibleAsInternal(file: IrFile): Bool
   return module.descriptor.shouldSeeInternalsOf(
     referencedDeclarationPackageFragment.moduleDescriptor
   )
+}
+
+private fun IrDeclarationWithVisibility.isPackagePrivateIsh(): Boolean {
+  if (isFromJava()) {
+    when (visibility) {
+      JavaDescriptorVisibilities.PACKAGE_VISIBILITY,
+      JavaDescriptorVisibilities.PROTECTED_AND_PACKAGE,
+      JavaDescriptorVisibilities.PROTECTED_STATIC_VISIBILITY -> return true
+    }
+  }
+  return false
+}
+
+internal fun IrDeclarationWithVisibility.isVisibleTo(other: IrDeclarationWithVisibility): Boolean {
+  if (isPackagePrivateIsh()) {
+    return object : IrDeclarationWithVisibility by this {
+        override var visibility: DescriptorVisibility = DescriptorVisibilities.PROTECTED
+      }
+      .isVisibleTo(other)
+  } else if (other.isPackagePrivateIsh()) {
+    return isVisibleTo(
+      object : IrDeclarationWithVisibility by other {
+        override var visibility: DescriptorVisibility = DescriptorVisibilities.PROTECTED
+      }
+    )
+  }
+  if (isEffectivelyPrivate() || isEffectivelyInlineOnly()) return false
+  return when (visibility) {
+    JavaDescriptorVisibilities.PACKAGE_VISIBILITY,
+    JavaDescriptorVisibilities.PROTECTED_AND_PACKAGE,
+    JavaDescriptorVisibilities.PROTECTED_STATIC_VISIBILITY -> true
+    DescriptorVisibilities.PUBLIC -> true
+    DescriptorVisibilities.PROTECTED -> {
+      // Protected members are visible to the same class or subclasses or same package
+
+      if (
+        visibility.visibleFromPackage(
+          other.getPackageFragment().packageFqName,
+          getPackageFragment().packageFqName,
+        )
+      ) {
+        true
+      } else {
+
+        val protectedMemberClass = (this as? IrDeclaration)?.parent as? IrClass ?: return false
+        val accessingClass = (other as? IrDeclaration)?.parent as? IrClass ?: return false
+
+        // Check if accessingClass is the same as or a subclass of protectedMemberClass
+        var current: IrClass? = accessingClass
+        while (current != null) {
+          if (current.classId == protectedMemberClass.classId) return true
+          current = current.superClass
+        }
+        false
+      }
+    }
+    DescriptorVisibilities.INTERNAL -> isVisibleAsInternal(other.file)
+    else -> false
+  }
 }
 
 context(context: IrMetroContext)

@@ -123,7 +123,7 @@ internal class IrGraphGenerator(
       return _functionNameAllocator
     }
 
-  private val bindingPropertyContext = BindingPropertyContext()
+  private val bindingPropertyContext = BindingPropertyContext(bindingGraph)
 
   /**
    * Cache for lazily-created properties (e.g., multibinding getters). These are created on-demand
@@ -250,28 +250,39 @@ internal class IrGraphGenerator(
 
       val thisReceiverParameter = thisReceiverOrFail
 
-      fun addBoundInstanceField(
+      fun addBoundInstanceProperty(
         typeKey: IrTypeKey,
         name: Name,
-        propertyType: PropertyType,
         initializer:
           IrBuilderWithScope.(thisReceiver: IrValueParameter, typeKey: IrTypeKey) -> IrExpression,
       ) {
         // Don't add it if it's not used
         if (typeKey !in sealResult.reachableKeys) return
 
-        bindingPropertyContext.putProviderProperty(
-          typeKey,
+        val instanceProperty =
           getOrCreateBindingProperty(
               typeKey,
-              { name.asString().decapitalizeUS().suffixIfNot("Instance").suffixIfNot("Provider") },
+              { name.asString().decapitalizeUS().suffixIfNot("Instance") },
+              { typeKey.type },
+              PropertyType.FIELD,
+            )
+            .initFinal { initializer(thisReceiverParameter, typeKey) }
+        bindingPropertyContext.putInstanceProperty(typeKey, instanceProperty)
+
+        val providerProperty =
+          getOrCreateBindingProperty(
+              typeKey,
+              { instanceProperty.name.asString().suffixIfNot("Provider") },
               { metroSymbols.metroProvider.typeWith(typeKey.type) },
-              propertyType,
+              PropertyType.FIELD,
             )
             .initFinal {
-              instanceFactory(typeKey.type, initializer(thisReceiverParameter, typeKey))
-            },
-        )
+              instanceFactory(
+                typeKey.type,
+                irGetProperty(irGet(thisReceiverParameter), instanceProperty),
+              )
+            }
+        bindingPropertyContext.putProviderProperty(typeKey, providerProperty)
       }
 
       node.creator?.let { creator ->
@@ -290,9 +301,7 @@ internal class IrGraphGenerator(
               // Don't add it if there's a dynamic replacement
               continue
             }
-            addBoundInstanceField(param.typeKey, param.name, PropertyType.FIELD) { _, _ ->
-              irGet(irParam)
-            }
+            addBoundInstanceProperty(param.typeKey, param.name) { _, _ -> irGet(irParam) }
           } else {
             // It's a graph dep. Add all its accessors as available keys and point them at
             // this constructor parameter for provider property initialization
@@ -341,9 +350,7 @@ internal class IrGraphGenerator(
             if (graphDep.hasExtensions) {
               val depMetroGraph = graphDep.sourceGraph.metroGraphOrFail
               val paramName = depMetroGraph.sourceGraphIfMetroGraph.name
-              addBoundInstanceField(param.typeKey, paramName, PropertyType.FIELD) { _, _ ->
-                irGet(irParam)
-              }
+              addBoundInstanceProperty(param.typeKey, paramName) { _, _ -> irGet(irParam) }
             }
           }
         }
@@ -360,7 +367,7 @@ internal class IrGraphGenerator(
           val typeKey = IrTypeKey(clazz)
           if (typeKey !in node.dynamicTypeKeys) {
             // Only add if not replaced with a dynamic instance
-            addBoundInstanceField(IrTypeKey(clazz), clazz.name, PropertyType.FIELD) { _, _ ->
+            addBoundInstanceProperty(IrTypeKey(clazz), clazz.name) { _, _ ->
               // Can't use primaryConstructor here because it may be a Java dagger Module in interop
               val noArgConstructor = clazz.constructors.first { it.parameters.isEmpty() }
               irCallConstructor(noArgConstructor.symbol, emptyList())

@@ -5,7 +5,9 @@ package dev.zacsweers.metro.compiler.ir.graph
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 
-internal class BindingPropertyContext {
+internal class BindingPropertyContext(
+  private val bindingGraph: IrBindingGraph,
+) {
   // TODO we can end up in awkward situations where we
   //  have the same type keys in both instance and provider fields
   //  this is tricky because depending on the context, it's not valid
@@ -34,7 +36,14 @@ internal class BindingPropertyContext {
   }
 
   fun instanceProperty(key: IrTypeKey): IrProperty? {
-    return instanceProperties[key]
+    instanceProperties[key]?.let { return it }
+    bindingGraph.findBinding(key)?.let {
+      if (it is IrBinding.Alias) {
+        // try the aliased target
+        return instanceProperty(it.aliasedType)
+      }
+    }
+    return null
   }
 
   fun providerProperty(key: IrTypeKey): IrProperty? {

@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithVisibility
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
@@ -65,18 +66,16 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
    * Returns true if the original provides declaration can be called directly (not via factory
    * static method). This requires the function to be public and accessible.
    */
-  override val supportsDirectInvocation: Boolean
-    get() {
-      return when (val decl = realDeclaration) {
-        // For Metro factories, we need to check the actual function's visibility
-        // The `function` property is a copy that doesn't reflect transformed visibility,
-        // so we look up the real function on the parent class
-        // TODO if it's protected in a supertype?
-        is IrFunction -> decl.visibility == DescriptorVisibilities.PUBLIC
-        // TODO support fields
-        else -> false
-      }
+  override fun supportsDirectInvocation(from: IrDeclarationWithVisibility): Boolean {
+    return when (val decl = realDeclaration) {
+      // For Metro factories, we need to check the actual function's visibility
+      // The `function` property is a copy that doesn't reflect transformed visibility,
+      // so we look up the real function on the parent class
+      is IrFunction -> decl.isVisibleTo(from)
+      // TODO support fields
+      else -> false
     }
+  }
 
   class Metro(
     override val factoryClass: IrClass,

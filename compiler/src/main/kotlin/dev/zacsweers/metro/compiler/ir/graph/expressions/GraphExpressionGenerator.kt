@@ -161,11 +161,10 @@ private constructor(
           val classFactory = binding.classFactory
           val isAssistedInject = classFactory.isAssistedInject
           // Optimization: Skip factory instantiation when possible
-          val canBypassFactory =
-            accessType == AccessType.INSTANCE && binding.supportsDirectInvocation
+          val canBypassFactory = accessType == AccessType.INSTANCE
 
           if (canBypassFactory) {
-            if (classFactory.supportsDirectInvocation) {
+            if (classFactory.supportsDirectInvocation(node.metroGraphOrFail)) {
               // Call constructor directly
               val targetConstructor = classFactory.targetConstructor!!
               irCallConstructor(
@@ -292,7 +291,7 @@ private constructor(
             val targetParams = providerFactory.parameters
 
             // If we need a dispatch receiver but couldn't get one, fall back to factory
-            if (providerFactory.supportsDirectInvocation) {
+            if (providerFactory.supportsDirectInvocation(node.metroGraphOrFail)) {
               // Call the provider function directly
               val realFunction =
                 providerFactory.realDeclaration?.expectAsOrNull<IrFunction>() ?: providerFunction
