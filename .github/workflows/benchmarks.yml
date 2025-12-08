@@ -9,9 +9,10 @@ on:
         type: string
         default: 'main'
       ref2:
-        description: 'Comparison git ref (branch name or commit SHA)'
-        required: true
+        description: 'Comparison git ref (branch name or commit SHA). Leave empty for single-ref benchmark.'
+        required: false
         type: string
+        default: ''
       metro:
         description: 'Benchmark Metro'
         required: false
@@ -60,11 +61,23 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       modes: ${{ steps.modes.outputs.modes }}
+      is_single_ref: ${{ steps.check_mode.outputs.is_single_ref }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+
+      - name: Check benchmark mode
+        id: check_mode
+        run: |
+          if [ -z "${{ inputs.ref2 }}" ]; then
+            echo "is_single_ref=true" >> $GITHUB_OUTPUT
+            echo "Running in single-ref mode (ref1 only)"
+          else
+            echo "is_single_ref=false" >> $GITHUB_OUTPUT
+            echo "Running in comparison mode (ref1 vs ref2)"
+          fi
 
       - name: Build modes string
         id: modes
@@ -100,16 +113,20 @@ jobs:
             echo "Error: Invalid git ref: ${{ inputs.ref1 }}"
             exit 1
           }
-          echo "Validating ref2: ${{ inputs.ref2 }}"
-          git rev-parse --verify "${{ inputs.ref2 }}" || git rev-parse --verify "origin/${{ inputs.ref2 }}" || {
-            echo "Error: Invalid git ref: ${{ inputs.ref2 }}"
-            exit 1
-          }
-          echo "Both refs are valid"
+          if [ -n "${{ inputs.ref2 }}" ]; then
+            echo "Validating ref2: ${{ inputs.ref2 }}"
+            git rev-parse --verify "${{ inputs.ref2 }}" || git rev-parse --verify "origin/${{ inputs.ref2 }}" || {
+              echo "Error: Invalid git ref: ${{ inputs.ref2 }}"
+              exit 1
+            }
+            echo "Both refs are valid"
+          else
+            echo "Single ref mode - ref1 is valid"
+          fi
 
   # Startup benchmarks using JMH
   startup-benchmarks:
-    name: "Startup (JMH): ${{ inputs.ref1 }} vs ${{ inputs.ref2 }}"
+    name: "Startup (JMH): ${{ inputs.ref2 && format('{0} vs {1}', inputs.ref1, inputs.ref2) || inputs.ref1 }}"
     runs-on: ubuntu-latest
     needs: validate
     if: inputs.run-startup-benchmarks
@@ -133,29 +150,42 @@ jobs:
           gradle-home-cache-strict-match: true
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
-      - name: Fetch and checkout both refs
+      - name: Fetch and checkout refs
         run: |
           git fetch --all
-          # Checkout both refs to create local branches so the scripts can find them
+          # Checkout ref1
           git checkout "${{ inputs.ref1 }}" || git checkout -b "${{ inputs.ref1 }}" "origin/${{ inputs.ref1 }}"
-          git checkout "${{ inputs.ref2 }}" || git checkout -b "${{ inputs.ref2 }}" "origin/${{ inputs.ref2 }}"
+          # Checkout ref2 if in comparison mode
+          if [ -n "${{ inputs.ref2 }}" ]; then
+            git checkout "${{ inputs.ref2 }}" || git checkout -b "${{ inputs.ref2 }}" "origin/${{ inputs.ref2 }}"
+          fi
           # Return to ref1 as the starting point
           git checkout "${{ inputs.ref1 }}"
 
-      - name: Run startup benchmark comparison
+      - name: Run startup benchmarks
         run: |
           cd benchmark
-          RERUN_FLAG=""
-          if [ "${{ inputs.rerun-non-metro }}" = "true" ]; then
-            RERUN_FLAG="--rerun-non-metro"
+          if [ "${{ needs.validate.outputs.is_single_ref }}" = "true" ]; then
+            # Single-ref mode
+            ./run_startup_benchmarks.sh single \
+              --ref "${{ inputs.ref1 }}" \
+              --modes "${{ needs.validate.outputs.modes }}" \
+              --count "${{ inputs.module_count }}" \
+              --benchmark jvm
+          else
+            # Comparison mode
+            RERUN_FLAG=""
+            if [ "${{ inputs.rerun-non-metro }}" = "true" ]; then
+              RERUN_FLAG="--rerun-non-metro"
+            fi
+            ./run_startup_benchmarks.sh compare \
+              --ref1 "${{ inputs.ref1 }}" \
+              --ref2 "${{ inputs.ref2 }}" \
+              --modes "${{ needs.validate.outputs.modes }}" \
+              --count "${{ inputs.module_count }}" \
+              --benchmark jvm \
+              $RERUN_FLAG
           fi
-          ./run_startup_benchmarks.sh compare \
-            --ref1 "${{ inputs.ref1 }}" \
-            --ref2 "${{ inputs.ref2 }}" \
-            --modes "${{ needs.validate.outputs.modes }}" \
-            --count "${{ inputs.module_count }}" \
-            --benchmark jvm \
-            $RERUN_FLAG
 
       - name: Find results directory
         id: results
@@ -178,21 +208,28 @@ jobs:
       - name: Add startup summary to workflow
         run: |
           results_dir="${{ steps.results.outputs.results_dir }}"
-          summary_file="${results_dir}comparison-summary.md"
+          # Try comparison-summary.md first, then single-summary.md
+          if [ -f "${results_dir}comparison-summary.md" ]; then
+            summary_file="${results_dir}comparison-summary.md"
+          elif [ -f "${results_dir}single-summary.md" ]; then
+            summary_file="${results_dir}single-summary.md"
+          else
+            summary_file=""
+          fi
 
-          if [ -f "$summary_file" ]; then
+          if [ -n "$summary_file" ]; then
             echo "## Startup Benchmark Results (JMH)" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             cat "$summary_file" >> $GITHUB_STEP_SUMMARY
           else
             echo "## Startup Benchmark Results (JMH)" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "No comparison summary found. Check the uploaded artifacts for raw results." >> $GITHUB_STEP_SUMMARY
+            echo "No summary found. Check the uploaded artifacts for raw results." >> $GITHUB_STEP_SUMMARY
           fi
 
   # Build benchmarks using Gradle Profiler
   build-benchmarks:
-    name: "Build (Gradle Profiler): ${{ inputs.ref1 }} vs ${{ inputs.ref2 }}"
+    name: "Build (Gradle Profiler): ${{ inputs.ref2 && format('{0} vs {1}', inputs.ref1, inputs.ref2) || inputs.ref1 }}"
     runs-on: ubuntu-latest
     needs: validate
     if: inputs.run-build-benchmarks
@@ -216,31 +253,43 @@ jobs:
           gradle-home-cache-strict-match: true
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
-      - name: Fetch and checkout both refs
+      - name: Fetch and checkout refs
         run: |
           git fetch --all
-          # Checkout both refs to create local branches so the scripts can find them
+          # Checkout ref1
           git checkout "${{ inputs.ref1 }}" || git checkout -b "${{ inputs.ref1 }}" "origin/${{ inputs.ref1 }}"
-          git checkout "${{ inputs.ref2 }}" || git checkout -b "${{ inputs.ref2 }}" "origin/${{ inputs.ref2 }}"
+          # Checkout ref2 if in comparison mode
+          if [ -n "${{ inputs.ref2 }}" ]; then
+            git checkout "${{ inputs.ref2 }}" || git checkout -b "${{ inputs.ref2 }}" "origin/${{ inputs.ref2 }}"
+          fi
           # Return to ref1 as the starting point
           git checkout "${{ inputs.ref1 }}"
 
       - name: Install gradle-profiler
         run: ./benchmark/install-gradle-profiler.sh
 
-      - name: Run build benchmark comparison
+      - name: Run build benchmarks
         run: |
           cd benchmark
-          RERUN_FLAG=""
-          if [ "${{ inputs.rerun-non-metro }}" = "true" ]; then
-            RERUN_FLAG="--rerun-non-metro"
+          if [ "${{ needs.validate.outputs.is_single_ref }}" = "true" ]; then
+            # Single-ref mode
+            ./run_benchmarks.sh single \
+              --ref "${{ inputs.ref1 }}" \
+              --modes "${{ needs.validate.outputs.modes }}" \
+              ${{ inputs.module_count }}
+          else
+            # Comparison mode
+            RERUN_FLAG=""
+            if [ "${{ inputs.rerun-non-metro }}" = "true" ]; then
+              RERUN_FLAG="--rerun-non-metro"
+            fi
+            ./run_benchmarks.sh compare \
+              --ref1 "${{ inputs.ref1 }}" \
+              --ref2 "${{ inputs.ref2 }}" \
+              --modes "${{ needs.validate.outputs.modes }}" \
+              $RERUN_FLAG \
+              ${{ inputs.module_count }}
           fi
-          ./run_benchmarks.sh compare \
-            --ref1 "${{ inputs.ref1 }}" \
-            --ref2 "${{ inputs.ref2 }}" \
-            --modes "${{ needs.validate.outputs.modes }}" \
-            $RERUN_FLAG \
-            ${{ inputs.module_count }}
 
       - name: Find results directory
         id: results
@@ -263,14 +312,21 @@ jobs:
       - name: Add build summary to workflow
         run: |
           results_dir="${{ steps.results.outputs.results_dir }}"
-          summary_file="${results_dir}comparison-summary.md"
+          # Try comparison-summary.md first, then single-summary.md
+          if [ -f "${results_dir}comparison-summary.md" ]; then
+            summary_file="${results_dir}comparison-summary.md"
+          elif [ -f "${results_dir}single-summary.md" ]; then
+            summary_file="${results_dir}single-summary.md"
+          else
+            summary_file=""
+          fi
 
-          if [ -f "$summary_file" ]; then
+          if [ -n "$summary_file" ]; then
             echo "## Build Benchmark Results (Gradle Profiler)" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             cat "$summary_file" >> $GITHUB_STEP_SUMMARY
           else
             echo "## Build Benchmark Results (Gradle Profiler)" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "No comparison summary found. Check the uploaded artifacts for raw results." >> $GITHUB_STEP_SUMMARY
+            echo "No summary found. Check the uploaded artifacts for raw results." >> $GITHUB_STEP_SUMMARY
           fi

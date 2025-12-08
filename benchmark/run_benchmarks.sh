@@ -14,7 +14,8 @@ DEFAULT_MODULE_COUNT=500
 RESULTS_DIR="benchmark-results"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
-# Git comparison refs
+# Git refs
+SINGLE_REF=""
 COMPARE_REF1=""
 COMPARE_REF2=""
 COMPARE_BENCHMARK_TYPE="all"
@@ -116,6 +117,111 @@ source "$SCRIPT_DIR/install-gradle-profiler.sh"
 
 # Get the path to gradle-profiler binary
 GRADLE_PROFILER_BIN="$(get_gradle_profiler_bin)"
+
+# Collect build environment metadata and save to JSON file
+collect_build_metadata() {
+    local output_dir="$1"
+    local metadata_file="$output_dir/build-metadata.json"
+
+    print_status "Collecting build environment metadata..."
+
+    # Get repo root for libs.versions.toml
+    local repo_root
+    repo_root="$(cd "$SCRIPT_DIR/.." && pwd)"
+    local versions_file="$repo_root/gradle/libs.versions.toml"
+
+    # Helper to extract version from libs.versions.toml
+    get_version() {
+        local key="$1"
+        grep "^${key} = " "$versions_file" 2>/dev/null | sed 's/.*= *"\([^"]*\)".*/\1/' | head -1
+    }
+
+    # Git info
+    local git_branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "detached")
+    local git_sha=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
+    local git_sha_short=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+
+    # Versions from libs.versions.toml
+    local kotlin_version=$(get_version "kotlin")
+    local dagger_version=$(get_version "dagger")
+    local ksp_version=$(get_version "ksp")
+    local kotlin_inject_version=$(get_version "kotlinInject")
+    local anvil_version=$(get_version "anvil")
+    local kotlin_inject_anvil_version=$(get_version "kotlinInject-anvil")
+    local jvm_target=$(get_version "jvmTarget")
+    local jdk_version=$(get_version "jdk")
+
+    # Gradle version
+    local gradle_version=$("$repo_root/gradlew" --version 2>/dev/null | grep "^Gradle " | awk '{print $2}' || echo "unknown")
+
+    # Gradle-profiler version (check if built from source)
+    local profiler_version="unknown"
+    local profiler_sha=""
+    local profiler_source_dir="$repo_root/tmp/gradle-profiler-source"
+    if [ -d "$profiler_source_dir/.git" ]; then
+        profiler_sha=$(cd "$profiler_source_dir" && git rev-parse --short HEAD 2>/dev/null || echo "")
+        profiler_version="source ($profiler_sha)"
+    elif command -v gradle-profiler &> /dev/null; then
+        profiler_version=$(gradle-profiler --version 2>/dev/null | head -1 || echo "unknown")
+    fi
+
+    # JDK info
+    local java_version=$(java -version 2>&1 | head -1 | sed 's/.*"\([^"]*\)".*/\1/' || echo "unknown")
+    local java_home_info=$(java -XshowSettings:properties -version 2>&1 | grep "java.home" | awk '{print $NF}' || echo "unknown")
+
+    # System info
+    local cpu_info=""
+    local ram_info=""
+    local os_info=$(uname -s 2>/dev/null || echo "unknown")
+
+    if [ "$os_info" = "Darwin" ]; then
+        cpu_info=$(sysctl -n machdep.cpu.brand_string 2>/dev/null || echo "unknown")
+        ram_info=$(sysctl -n hw.memsize 2>/dev/null | awk '{printf "%.0f GB", $1/1024/1024/1024}' || echo "unknown")
+    elif [ "$os_info" = "Linux" ]; then
+        cpu_info=$(grep "model name" /proc/cpuinfo 2>/dev/null | head -1 | cut -d: -f2 | xargs || echo "unknown")
+        ram_info=$(free -h 2>/dev/null | awk '/^Mem:/ {print $2}' || echo "unknown")
+    fi
+
+    # Gradle daemon JVM args (from gradle.properties or default)
+    local daemon_jvm_args=""
+    if [ -f "$repo_root/gradle.properties" ]; then
+        daemon_jvm_args=$(grep "org.gradle.jvmargs" "$repo_root/gradle.properties" 2>/dev/null | cut -d= -f2- || echo "")
+    fi
+
+    # Write JSON
+    cat > "$metadata_file" << EOF
+{
+  "git": {
+    "branch": "$git_branch",
+    "sha": "$git_sha",
+    "shaShort": "$git_sha_short"
+  },
+  "versions": {
+    "kotlin": "$kotlin_version",
+    "dagger": "$dagger_version",
+    "ksp": "$ksp_version",
+    "kotlinInject": "$kotlin_inject_version",
+    "anvil": "$anvil_version",
+    "kotlinInjectAnvil": "$kotlin_inject_anvil_version"
+  },
+  "build": {
+    "gradle": "$gradle_version",
+    "gradleProfiler": "$profiler_version",
+    "jdk": "$java_version",
+    "jvmTarget": "$jvm_target"
+  },
+  "system": {
+    "os": "$os_info",
+    "cpu": "$cpu_info",
+    "ram": "$ram_info",
+    "daemonJvmArgs": "$daemon_jvm_args"
+  },
+  "timestamp": "$(date -Iseconds)"
+}
+EOF
+
+    print_success "Build metadata saved to $metadata_file"
+}
 
 # Function to check if required tools are available
 check_prerequisites() {
@@ -435,6 +541,7 @@ show_usage() {
     echo "  anvil-ksp [COUNT]            Run only Anvil + KSP mode benchmarks"
     echo "  anvil-kapt [COUNT]           Run only Anvil + KAPT mode benchmarks"
     echo "  kotlin-inject-anvil [COUNT]  Run only Kotlin-inject + Anvil mode benchmarks"
+    echo "  single                        Run benchmarks on a single git ref"
     echo "  compare                       Compare benchmarks across two git refs"
     echo "  help                         Show this help message"
     echo ""
@@ -442,6 +549,12 @@ show_usage() {
     echo "  COUNT                        Number of modules to generate (default: $DEFAULT_MODULE_COUNT)"
     echo "  --build-only                 Only run ./gradlew :app:component:run --quiet, skip gradle-profiler"
     echo "  --include-clean-builds       Include clean build scenarios in benchmarks"
+    echo ""
+    echo "Single Options:"
+    echo "  --ref <ref>                  Git ref to benchmark - branch name or commit hash"
+    echo "  --modes <list>               Comma-separated list of modes to benchmark"
+    echo "                               Available: metro, anvil-ksp, anvil-kapt, kotlin-inject-anvil"
+    echo "                               Default: metro,anvil-ksp,kotlin-inject-anvil"
     echo ""
     echo "Compare Options:"
     echo "  --ref1 <ref>                 First git ref (baseline) - branch name or commit hash"
@@ -466,6 +579,10 @@ show_usage() {
     echo "  $0 all --build-only          # Generate and build all projects, skip benchmarks"
     echo "  $0 all --include-clean-builds # Run all benchmarks including clean build scenarios"
     echo "  $0 metro 250 --include-clean-builds # Run Metro benchmarks with 250 modules including clean builds"
+    echo ""
+    echo "  # Run benchmarks on a single git ref:"
+    echo "  $0 single --ref main"
+    echo "  $0 single --ref feature-branch --modes metro,anvil-ksp"
     echo ""
     echo "  # Compare benchmarks across git refs:"
     echo "  $0 compare --ref1 main --ref2 feature-branch"
@@ -680,11 +797,18 @@ EOF
         local test_type="${test_types[$i]}"
         local test_name="${test_names[$i]}"
 
+        # Get metro scores for this test type to use as baseline for "vs Metro" column
+        local metro_score1=$(extract_median_for_ref "$ref1_label" "metro" "$test_type")
+        local metro_score2=""
+        if mode_was_run_for_ref "$ref2_label" "metro"; then
+            metro_score2=$(extract_median_for_ref "$ref2_label" "metro" "$test_type")
+        fi
+
         cat >> "$summary_file" << EOF
 ## $test_name
 
-| Framework | $ref1_label (baseline) | $ref2_label | Difference |
-|-----------|------------------------|-------------|------------|
+| Framework | $ref1_label | vs Metro | $ref2_label | vs Metro | Difference |
+|-----------|-------------|----------|-------------|----------|------------|
 EOF
 
         for mode in "${MODE_ARRAY[@]}"; do
@@ -712,12 +836,24 @@ EOF
 
             local display1="N/A"
             local display2="N/A"
+            local vs_metro1="—"
+            local vs_metro2="—"
             local diff="-"
 
             if [ -n "$score1" ]; then
                 local secs1=$(echo "scale=1; $score1 / 1000" | bc 2>/dev/null || echo "")
                 if [ -n "$secs1" ]; then
                     display1="${secs1}s"
+                fi
+                # Calculate vs Metro for ref1
+                if [ "$mode" = "metro" ]; then
+                    vs_metro1="baseline"
+                elif [ -n "$metro_score1" ] && [ "$metro_score1" != "0" ]; then
+                    local pct1=$(echo "scale=0; ($score1 / $metro_score1) * 100" | bc 2>/dev/null || echo "")
+                    local mult1=$(echo "scale=1; $score1 / $metro_score1" | bc 2>/dev/null || echo "")
+                    if [ -n "$pct1" ] && [ -n "$mult1" ]; then
+                        vs_metro1="+${pct1}% (${mult1}x)"
+                    fi
                 fi
             fi
 
@@ -727,18 +863,28 @@ EOF
                     if [ -n "$secs2" ]; then
                         display2="${secs2}s"
                     fi
+                    # Calculate vs Metro for ref2
+                    if [ "$mode" = "metro" ]; then
+                        vs_metro2="baseline"
+                    elif [ -n "$metro_score2" ] && [ "$metro_score2" != "0" ]; then
+                        local pct2=$(echo "scale=0; ($score2 / $metro_score2) * 100" | bc 2>/dev/null || echo "")
+                        local mult2=$(echo "scale=1; $score2 / $metro_score2" | bc 2>/dev/null || echo "")
+                        if [ -n "$pct2" ] && [ -n "$mult2" ]; then
+                            vs_metro2="+${pct2}% (${mult2}x)"
+                        fi
+                    fi
                 fi
 
                 if [ -n "$score1" ] && [ -n "$score2" ] && [ "$score1" != "0" ]; then
-                    local pct=$(echo "scale=1; (($score2 - $score1) / $score1) * 100" | bc 2>/dev/null || echo "")
+                    local pct=$(echo "scale=2; (($score2 - $score1) / $score1) * 100" | bc 2>/dev/null || echo "")
                     if [ -n "$pct" ]; then
                         # Check if negative (faster)
                         if [[ "$pct" == -* ]]; then
-                            diff="${pct}% (faster)"
-                        elif [[ "$pct" == "0" ]] || [[ "$pct" == "0.0" ]] || [[ "$pct" == ".0" ]]; then
-                            diff="no change"
+                            diff="${pct}%"
+                        elif [[ "$pct" == "0" ]] || [[ "$pct" == "0.00" ]] || [[ "$pct" == ".00" ]]; then
+                            diff="+0.00% (no change)"
                         else
-                            diff="+${pct}% (slower)"
+                            diff="+${pct}%"
                         fi
                     fi
                 fi
@@ -748,7 +894,7 @@ EOF
                 diff="n/a"
             fi
 
-            echo "| $mode | $display1 | $display2 | $diff |" >> "$summary_file"
+            echo "| $mode | $display1 | $vs_metro1 | $display2 | $vs_metro2 | $diff |" >> "$summary_file"
         done
 
         echo "" >> "$summary_file"
@@ -766,6 +912,596 @@ EOF
     print_success "Comparison summary saved to $summary_file"
     echo ""
     cat "$summary_file"
+
+    # Generate HTML report
+    generate_html_report "$ref1_label" "$ref2_label" "$modes"
+}
+
+# Generate HTML report for benchmarks
+generate_html_report() {
+    local ref1_label="$1"
+    local ref2_label="${2:-}"
+    local modes="$3"
+
+    local html_file="$RESULTS_DIR/${TIMESTAMP}/benchmark-report.html"
+
+    print_header "Generating HTML Report"
+
+    # Build JSON data
+    local json_data
+    json_data=$(build_benchmark_json "$ref1_label" "$ref2_label" "$modes")
+
+    # Generate HTML
+    cat > "$html_file" << 'HTMLHEAD'
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Metro Benchmark Results</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --metro-color: #4CAF50; --anvil-ksp-color: #2196F3; --anvil-kapt-color: #FF9800; --kotlin-inject-color: #9C27B0; }
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background: #f5f5f5; color: #333; }
+        .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 2rem; text-align: center; }
+        .header h1 { margin: 0 0 0.5rem 0; font-weight: 300; font-size: 2rem; }
+        .header .subtitle { opacity: 0.8; font-size: 0.9rem; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .refs-info { display: flex; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap; }
+        .ref-card { background: white; border-radius: 8px; padding: 1rem 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex: 1; min-width: 250px; }
+        .ref-card.baseline { border-left: 4px solid var(--metro-color); }
+        .ref-card.comparison { border-left: 4px solid var(--anvil-ksp-color); }
+        .ref-card h3 { margin: 0 0 0.5rem 0; font-size: 0.85rem; text-transform: uppercase; color: #666; }
+        .ref-card .ref-name { font-size: 1.2rem; font-weight: 600; font-family: monospace; }
+        .ref-card .commit { font-size: 0.85rem; color: #888; margin-top: 0.25rem; }
+        .benchmark-section { background: white; border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .benchmark-section h2 { margin: 0 0 0.25rem 0; font-size: 1.3rem; font-weight: 500; }
+        .benchmark-section .chart-hint { font-size: 0.8rem; color: #888; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid #eee; }
+        .chart-container { position: relative; height: 300px; margin-bottom: 1.5rem; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; font-weight: 600; color: #555; font-size: 0.8rem; text-transform: uppercase; }
+        td.numeric { text-align: right; font-family: 'SF Mono', Monaco, monospace; }
+        td.framework { font-weight: 500; }
+        .baseline-select { cursor: pointer; width: 30px; }
+        .baseline-radio { display: inline-block; width: 16px; height: 16px; border: 2px solid #ccc; border-radius: 50%; }
+        .baseline-radio.selected { border-color: var(--metro-color); background: var(--metro-color); }
+        .baseline-row { background: #f0fdf4; }
+        .vs-baseline { color: #888; font-size: 0.85em; }
+        .vs-baseline.baseline { color: var(--metro-color); font-weight: 500; }
+        .vs-baseline.slower { color: #e53935; }
+        .vs-baseline.faster { color: #43a047; }
+        .diff { font-weight: 500; }
+        .diff.positive { color: #e53935; }
+        .diff.negative { color: #43a047; }
+        .diff.neutral { color: #888; }
+        .legend { display: flex; gap: 1.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+        .legend-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; }
+        .legend-color { width: 16px; height: 16px; border-radius: 3px; }
+        .no-data { color: #999; font-style: italic; }
+        .summary-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .stat-card { background: white; border-radius: 8px; padding: 1.5rem; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .stat-card .value { font-size: 2rem; font-weight: 600; color: var(--metro-color); }
+        .stat-card .label { font-size: 0.85rem; color: #666; margin-top: 0.25rem; }
+        .metadata-section { background: white; border-radius: 8px; padding: 1.5rem; margin-top: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .metadata-section h2 { margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 500; color: #666; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }
+        .metadata-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+        .metadata-group h3 { margin: 0 0 0.75rem 0; font-size: 0.9rem; font-weight: 600; color: #555; text-transform: uppercase; }
+        .metadata-group dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 1rem; font-size: 0.85rem; }
+        .metadata-group dt { color: #888; }
+        .metadata-group dd { margin: 0; font-family: 'SF Mono', Monaco, monospace; color: #333; word-break: break-all; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Metro Build Benchmark Results</h1>
+        <div class="subtitle" id="date"></div>
+    </div>
+    <div class="container">
+        <div class="refs-info" id="refs-info"></div>
+        <div id="benchmarks"></div>
+        <div class="metadata-section" id="metadata"></div>
+    </div>
+<script>
+const benchmarkData =
+HTMLHEAD
+
+    echo "$json_data" >> "$html_file"
+
+    cat >> "$html_file" << 'HTMLTAIL'
+;
+const colors = { 'metro': '#4CAF50', 'anvil_ksp': '#2196F3', 'anvil_kapt': '#FF9800', 'kotlin_inject_anvil': '#9C27B0' };
+
+// State for selectable baseline
+let selectedBaseline = 'metro';
+
+function formatTime(ms) {
+    if (ms === null || ms === undefined) return '—';
+    return (ms / 1000).toFixed(1) + 's';
+}
+
+// Calculate percentage difference vs baseline: (value - baseline) / baseline * 100
+// e.g., 30s vs 24s baseline = (30-24)/24*100 = +25%
+function calculateVsBaseline(value, baselineValue) {
+    if (!value || !baselineValue) return { text: '—', class: '' };
+    if (value === baselineValue) return { text: 'baseline', class: 'baseline' };
+    const pct = ((value - baselineValue) / baselineValue * 100).toFixed(0);
+    const mult = (value / baselineValue).toFixed(1);
+    if (pct < 0) {
+        return { text: `${pct}% (${mult}x)`, class: 'faster' };
+    }
+    return { text: `+${pct}% (${mult}x)`, class: 'slower' };
+}
+
+function calculateDiff(newVal, oldVal) {
+    if (!newVal || !oldVal) return { text: '—', class: 'neutral' };
+    const pct = ((newVal - oldVal) / oldVal * 100).toFixed(2);
+    if (Math.abs(pct) < 0.01) return { text: '+0.00%', class: 'neutral' };
+    const prefix = pct > 0 ? '+' : '';
+    return { text: `${prefix}${pct}%`, class: pct > 0 ? 'positive' : 'negative' };
+}
+
+function renderRefsInfo() {
+    const container = document.getElementById('refs-info');
+    let html = '';
+    if (benchmarkData.refs.ref1) {
+        html += `<div class="ref-card baseline"><h3>Baseline (ref1)</h3><div class="ref-name">${benchmarkData.refs.ref1.label}</div><div class="commit">${benchmarkData.refs.ref1.commit}</div></div>`;
+    }
+    if (benchmarkData.refs.ref2) {
+        html += `<div class="ref-card comparison"><h3>Comparison (ref2)</h3><div class="ref-name">${benchmarkData.refs.ref2.label}</div><div class="commit">${benchmarkData.refs.ref2.commit}</div></div>`;
+    }
+    container.innerHTML = html;
+}
+
+function renderSummaryStats() {
+    const container = document.getElementById('summary-stats');
+    let totalSpeedup = { anvil_ksp: 0, anvil_kapt: 0, kotlin_inject_anvil: 0 };
+    let counts = { anvil_ksp: 0, anvil_kapt: 0, kotlin_inject_anvil: 0 };
+    benchmarkData.benchmarks.forEach(benchmark => {
+        const metroResult = benchmark.results.find(r => r.key === 'metro');
+        if (!metroResult || !metroResult.ref1) return;
+        benchmark.results.forEach(result => {
+            if (result.key !== 'metro' && result.ref1) {
+                totalSpeedup[result.key] += result.ref1 / metroResult.ref1;
+                counts[result.key]++;
+            }
+        });
+    });
+    let html = '';
+    const names = { 'anvil_ksp': 'Anvil KSP', 'anvil_kapt': 'Anvil KAPT', 'kotlin_inject_anvil': 'kotlin-inject' };
+    Object.keys(totalSpeedup).forEach(key => {
+        if (counts[key] > 0) {
+            const avgSpeedup = (totalSpeedup[key] / counts[key]).toFixed(1);
+            html += `<div class="stat-card"><div class="value">${avgSpeedup}x</div><div class="label">faster than ${names[key]}</div></div>`;
+        }
+    });
+    container.innerHTML = html;
+}
+
+function getBaselineLabel() {
+    const result = benchmarkData.benchmarks[0]?.results.find(r => r.key === selectedBaseline);
+    return result?.framework || 'Baseline';
+}
+
+function renderBenchmarks() {
+    const container = document.getElementById('benchmarks');
+    let html = '';
+    benchmarkData.benchmarks.forEach((benchmark, idx) => {
+        html += `<div class="benchmark-section"><h2>${benchmark.name}</h2>
+            <div class="chart-hint">Lower is better</div>
+            <div class="legend">${benchmark.results.map(r => `<div class="legend-item"><div class="legend-color" style="background: ${colors[r.key]}"></div><span>${r.framework}</span></div>`).join('')}</div>
+            <div class="chart-container"><canvas id="chart-${idx}"></canvas></div>
+            <table><thead><tr><th></th><th>Framework</th>
+                ${benchmarkData.refs.ref1 ? `<th>${benchmarkData.refs.ref1.label}</th><th>vs <span class="baseline-header">${getBaselineLabel()}</span></th>` : ''}
+                ${benchmarkData.refs.ref2 ? `<th>${benchmarkData.refs.ref2.label}</th><th>vs <span class="baseline-header">${getBaselineLabel()}</span></th>` : ''}
+                ${benchmarkData.refs.ref1 && benchmarkData.refs.ref2 ? '<th>Difference</th>' : ''}
+            </tr></thead><tbody id="table-${idx}"></tbody></table></div>`;
+    });
+    container.innerHTML = html;
+    benchmarkData.benchmarks.forEach((benchmark, idx) => { renderChart(benchmark, idx); renderTable(benchmark, idx); });
+}
+
+const charts = [];
+function renderChart(benchmark, idx) {
+    const ctx = document.getElementById(`chart-${idx}`).getContext('2d');
+    const labels = [], ref1Data = [], ref2Data = [], backgroundColors = [];
+    benchmark.results.forEach(result => {
+        labels.push(result.framework);
+        ref1Data.push(result.ref1 ? result.ref1 / 1000 : 0);
+        ref2Data.push(result.ref2 ? result.ref2 / 1000 : 0);
+        backgroundColors.push(colors[result.key]);
+    });
+    const datasets = [];
+    if (benchmarkData.refs.ref1) datasets.push({ label: benchmarkData.refs.ref1.label, data: ref1Data, backgroundColor: backgroundColors.map(c => c + 'CC'), borderColor: backgroundColors, borderWidth: 2 });
+    if (benchmarkData.refs.ref2) datasets.push({ label: benchmarkData.refs.ref2.label, data: ref2Data, backgroundColor: backgroundColors.map(c => c + '66'), borderColor: backgroundColors, borderWidth: 2, borderDash: [5, 5] });
+    charts[idx] = new Chart(ctx, { type: 'bar', data: { labels, datasets }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: datasets.length > 1 }, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.raw.toFixed(1) + 's' } } }, scales: { y: { beginAtZero: true, title: { display: true, text: 'Time (seconds)' } } } } });
+}
+
+function renderTable(benchmark, idx) {
+    const tbody = document.getElementById(`table-${idx}`);
+    const baselineRef1 = benchmark.results.find(r => r.key === selectedBaseline)?.ref1;
+    const baselineRef2 = benchmark.results.find(r => r.key === selectedBaseline)?.ref2;
+    let html = '';
+    benchmark.results.forEach(result => {
+        const isBaseline = result.key === selectedBaseline;
+        const vsBaseline1 = calculateVsBaseline(result.ref1, baselineRef1);
+        const vsBaseline2 = calculateVsBaseline(result.ref2, baselineRef2);
+        const diff = calculateDiff(result.ref2, result.ref1);
+        html += `<tr class="${isBaseline ? 'baseline-row' : ''}" data-key="${result.key}">
+            <td class="baseline-select" onclick="setBaseline('${result.key}')"><span class="baseline-radio ${isBaseline ? 'selected' : ''}"></span></td>
+            <td class="framework" style="color: ${colors[result.key]}">${result.framework}</td>
+            ${benchmarkData.refs.ref1 ? `<td class="numeric">${result.ref1 ? formatTime(result.ref1) : '<span class="no-data">N/A</span>'}</td><td class="numeric vs-baseline ${vsBaseline1.class}">${vsBaseline1.text}</td>` : ''}
+            ${benchmarkData.refs.ref2 ? `<td class="numeric">${result.ref2 ? formatTime(result.ref2) : '<span class="no-data">(not run)</span>'}</td><td class="numeric vs-baseline ${vsBaseline2.class}">${vsBaseline2.text}</td>` : ''}
+            ${benchmarkData.refs.ref1 && benchmarkData.refs.ref2 ? `<td class="numeric diff ${diff.class}">${diff.text}</td>` : ''}</tr>`;
+    });
+    tbody.innerHTML = html;
+}
+
+function setBaseline(key) {
+    selectedBaseline = key;
+    // Update all tables
+    benchmarkData.benchmarks.forEach((benchmark, idx) => { renderTable(benchmark, idx); });
+    // Update header labels
+    document.querySelectorAll('.baseline-header').forEach(el => { el.textContent = getBaselineLabel(); });
+}
+
+function renderMetadata() {
+    const container = document.getElementById('metadata');
+    if (!benchmarkData.metadata) { container.style.display = 'none'; return; }
+    const m = benchmarkData.metadata;
+    container.innerHTML = `
+        <h2>Build Environment</h2>
+        <div class="metadata-grid">
+            <div class="metadata-group">
+                <h3>Library Versions</h3>
+                <dl>
+                    <dt>Kotlin</dt><dd>${m.versions?.kotlin || '—'}</dd>
+                    <dt>Dagger</dt><dd>${m.versions?.dagger || '—'}</dd>
+                    <dt>KSP</dt><dd>${m.versions?.ksp || '—'}</dd>
+                    <dt>kotlin-inject</dt><dd>${m.versions?.kotlinInject || '—'}</dd>
+                    <dt>Anvil</dt><dd>${m.versions?.anvil || '—'}</dd>
+                    <dt>kotlin-inject-anvil</dt><dd>${m.versions?.kotlinInjectAnvil || '—'}</dd>
+                </dl>
+            </div>
+            <div class="metadata-group">
+                <h3>Build Tools</h3>
+                <dl>
+                    <dt>Gradle</dt><dd>${m.build?.gradle || '—'}</dd>
+                    <dt>Gradle Profiler</dt><dd>${m.build?.gradleProfiler || '—'}</dd>
+                    <dt>JDK</dt><dd>${m.build?.jdk || '—'}</dd>
+                    <dt>JVM Target</dt><dd>${m.build?.jvmTarget || '—'}</dd>
+                </dl>
+            </div>
+            <div class="metadata-group">
+                <h3>System</h3>
+                <dl>
+                    <dt>OS</dt><dd>${m.system?.os || '—'}</dd>
+                    <dt>CPU</dt><dd>${m.system?.cpu || '—'}</dd>
+                    <dt>RAM</dt><dd>${m.system?.ram || '—'}</dd>
+                    <dt>Daemon JVM Args</dt><dd>${m.system?.daemonJvmArgs || '—'}</dd>
+                </dl>
+            </div>
+        </div>`;
+}
+
+document.getElementById('date').textContent = new Date(benchmarkData.date).toLocaleString();
+renderRefsInfo(); renderBenchmarks(); renderMetadata();
+</script>
+</body>
+</html>
+HTMLTAIL
+
+    print_success "HTML report saved to $html_file"
+}
+
+# Build JSON data for HTML report
+build_benchmark_json() {
+    local ref1_label="$1"
+    local ref2_label="${2:-}"
+    local modes="$3"
+
+    local test_types=("abi_change" "non_abi_change" "plain_abi_change" "plain_non_abi_change" "raw_compilation")
+    local test_names=("ABI Change" "Non-ABI Change" "Plain Kotlin ABI" "Plain Kotlin Non-ABI" "Graph Processing")
+
+    IFS=',' read -ra MODE_ARRAY <<< "$modes"
+
+    # Get repo root and read metadata
+    local repo_root
+    repo_root="$(cd "$SCRIPT_DIR/.." && pwd)"
+    local versions_file="$repo_root/gradle/libs.versions.toml"
+
+    # Helper to extract version from libs.versions.toml
+    get_toml_version() {
+        local key="$1"
+        grep "^${key} = " "$versions_file" 2>/dev/null | sed 's/.*= *"\([^"]*\)".*/\1/' | head -1
+    }
+
+    echo "{"
+    echo '  "title": "Build Benchmark Comparison",'
+    echo '  "date": "'$(date -Iseconds)'",'
+    echo '  "moduleCount": '"$DEFAULT_MODULE_COUNT"','
+
+    # Refs info
+    echo '  "refs": {'
+    local ref1_commit=$(cat "$RESULTS_DIR/${TIMESTAMP}/${ref1_label}/commit-info.txt" 2>/dev/null || echo "unknown")
+    echo '    "ref1": { "label": "'"$ref1_label"'", "commit": "'"$ref1_commit"'" }'
+    if [ -n "$ref2_label" ]; then
+        local ref2_commit=$(cat "$RESULTS_DIR/${TIMESTAMP}/${ref2_label}/commit-info.txt" 2>/dev/null || echo "unknown")
+        echo '    ,"ref2": { "label": "'"$ref2_label"'", "commit": "'"$ref2_commit"'" }'
+    fi
+    echo '  },'
+
+    # Build metadata
+    local kotlin_version=$(get_toml_version "kotlin")
+    local dagger_version=$(get_toml_version "dagger")
+    local ksp_version=$(get_toml_version "ksp")
+    local kotlin_inject_version=$(get_toml_version "kotlinInject")
+    local anvil_version=$(get_toml_version "anvil")
+    local kotlin_inject_anvil_version=$(get_toml_version "kotlinInject-anvil")
+    local jvm_target=$(get_toml_version "jvmTarget")
+
+    local gradle_version=$("$repo_root/gradlew" --version 2>/dev/null | grep "^Gradle " | awk '{print $2}' || echo "unknown")
+
+    local profiler_version="unknown"
+    local profiler_source_dir="$repo_root/tmp/gradle-profiler-source"
+    if [ -d "$profiler_source_dir/.git" ]; then
+        local profiler_sha=$(cd "$profiler_source_dir" && git rev-parse --short HEAD 2>/dev/null || echo "")
+        profiler_version="source ($profiler_sha)"
+    elif command -v gradle-profiler &> /dev/null; then
+        profiler_version=$(gradle-profiler --version 2>/dev/null | head -1 || echo "unknown")
+    fi
+
+    local java_version=$(java -version 2>&1 | head -1 | sed 's/.*"\([^"]*\)".*/\1/' || echo "unknown")
+
+    local os_info=$(uname -s 2>/dev/null || echo "unknown")
+    local cpu_info=""
+    local ram_info=""
+    if [ "$os_info" = "Darwin" ]; then
+        cpu_info=$(sysctl -n machdep.cpu.brand_string 2>/dev/null || echo "unknown")
+        ram_info=$(sysctl -n hw.memsize 2>/dev/null | awk '{printf "%.0f GB", $1/1024/1024/1024}' || echo "unknown")
+    elif [ "$os_info" = "Linux" ]; then
+        cpu_info=$(grep "model name" /proc/cpuinfo 2>/dev/null | head -1 | cut -d: -f2 | xargs || echo "unknown")
+        ram_info=$(free -h 2>/dev/null | awk '/^Mem:/ {print $2}' || echo "unknown")
+    fi
+
+    local daemon_jvm_args=""
+    if [ -f "$repo_root/gradle.properties" ]; then
+        daemon_jvm_args=$(grep "org.gradle.jvmargs" "$repo_root/gradle.properties" 2>/dev/null | cut -d= -f2- | sed 's/"/\\"/g' || echo "")
+    fi
+
+    echo '  "metadata": {'
+    echo '    "versions": {'
+    echo '      "kotlin": "'"$kotlin_version"'",'
+    echo '      "dagger": "'"$dagger_version"'",'
+    echo '      "ksp": "'"$ksp_version"'",'
+    echo '      "kotlinInject": "'"$kotlin_inject_version"'",'
+    echo '      "anvil": "'"$anvil_version"'",'
+    echo '      "kotlinInjectAnvil": "'"$kotlin_inject_anvil_version"'"'
+    echo '    },'
+    echo '    "build": {'
+    echo '      "gradle": "'"$gradle_version"'",'
+    echo '      "gradleProfiler": "'"$profiler_version"'",'
+    echo '      "jdk": "'"$java_version"'",'
+    echo '      "jvmTarget": "'"$jvm_target"'"'
+    echo '    },'
+    echo '    "system": {'
+    echo '      "os": "'"$os_info"'",'
+    echo '      "cpu": "'"$cpu_info"'",'
+    echo '      "ram": "'"$ram_info"'",'
+    echo '      "daemonJvmArgs": "'"$daemon_jvm_args"'"'
+    echo '    }'
+    echo '  },'
+
+    # Benchmarks data
+    echo '  "benchmarks": ['
+
+    local first_test=true
+    for i in "${!test_types[@]}"; do
+        local test_type="${test_types[$i]}"
+        local test_name="${test_names[$i]}"
+
+        if [ "$first_test" = false ]; then echo ","; fi
+        first_test=false
+
+        echo '    {'
+        echo '      "name": "'"$test_name"'",'
+        echo '      "key": "'"$test_type"'",'
+        echo '      "results": ['
+
+        local first_mode=true
+        for mode in "${MODE_ARRAY[@]}"; do
+            local mode_prefix
+            local mode_name
+            case "$mode" in
+                "metro") mode_prefix="metro"; mode_name="Metro" ;;
+                "anvil-ksp") mode_prefix="anvil_ksp"; mode_name="Anvil (KSP)" ;;
+                "anvil-kapt") mode_prefix="anvil_kapt"; mode_name="Anvil (KAPT)" ;;
+                "kotlin-inject-anvil") mode_prefix="kotlin_inject_anvil"; mode_name="kotlin-inject-anvil" ;;
+                *) continue ;;
+            esac
+
+            if [ "$first_mode" = false ]; then echo ","; fi
+            first_mode=false
+
+            local score1=$(extract_median_for_ref "$ref1_label" "$mode_prefix" "$test_type")
+            local score2=""
+            if [ -n "$ref2_label" ]; then
+                score2=$(extract_median_for_ref "$ref2_label" "$mode_prefix" "$test_type")
+            fi
+
+            echo '        {'
+            echo '          "framework": "'"$mode_name"'",'
+            echo '          "key": "'"$mode_prefix"'",'
+            if [ -n "$score1" ]; then
+                echo '          "ref1": '"$score1"','
+            else
+                echo '          "ref1": null,'
+            fi
+            if [ -n "$score2" ]; then
+                echo '          "ref2": '"$score2"
+            else
+                echo '          "ref2": null'
+            fi
+            echo -n '        }'
+        done
+
+        echo ''
+        echo '      ]'
+        echo -n '    }'
+    done
+
+    echo ''
+    echo '  ]'
+    echo "}"
+}
+
+# Generate summary for single ref benchmarks
+generate_single_summary() {
+    local ref_label="$1"
+    local modes="$2"
+
+    local summary_file="$RESULTS_DIR/${TIMESTAMP}/single-summary.md"
+    local ref_commit=$(cat "$RESULTS_DIR/${TIMESTAMP}/${ref_label}/commit-info.txt" 2>/dev/null || echo "unknown")
+
+    print_header "Generating Single Ref Summary"
+
+    cat > "$summary_file" << EOF
+# Benchmark Results: $ref_label
+
+**Date:** $(date)
+**Module Count:** $DEFAULT_MODULE_COUNT
+**Modes:** $modes
+**Commit:** $ref_commit
+
+EOF
+
+    # Test types to show
+    local test_types=("abi_change" "non_abi_change" "plain_abi_change" "plain_non_abi_change" "raw_compilation")
+    local test_names=("ABI Change" "Non-ABI Change" "Plain Kotlin ABI" "Plain Kotlin Non-ABI" "Graph Processing")
+
+    IFS=',' read -ra MODE_ARRAY <<< "$modes"
+
+    for i in "${!test_types[@]}"; do
+        local test_type="${test_types[$i]}"
+        local test_name="${test_names[$i]}"
+
+        # Get metro score for this test type to use as baseline
+        local metro_score=$(extract_median_for_ref "$ref_label" "metro" "$test_type")
+
+        cat >> "$summary_file" << EOF
+## $test_name
+
+| Framework | Time | vs Metro |
+|-----------|------|----------|
+EOF
+
+        for mode in "${MODE_ARRAY[@]}"; do
+            local mode_prefix
+            case "$mode" in
+                "metro") mode_prefix="metro" ;;
+                "anvil-ksp") mode_prefix="anvil_ksp" ;;
+                "anvil-kapt") mode_prefix="anvil_kapt" ;;
+                "kotlin-inject-anvil") mode_prefix="kotlin_inject_anvil" ;;
+                *) continue ;;
+            esac
+
+            local score=$(extract_median_for_ref "$ref_label" "$mode_prefix" "$test_type")
+
+            local display="N/A"
+            local vs_metro="—"
+
+            if [ -n "$score" ]; then
+                local secs=$(echo "scale=1; $score / 1000" | bc 2>/dev/null || echo "")
+                if [ -n "$secs" ]; then
+                    display="${secs}s"
+                fi
+                # Calculate vs Metro
+                if [ "$mode" = "metro" ]; then
+                    vs_metro="baseline"
+                elif [ -n "$metro_score" ] && [ "$metro_score" != "0" ]; then
+                    local pct=$(echo "scale=0; ($score / $metro_score) * 100" | bc 2>/dev/null || echo "")
+                    local mult=$(echo "scale=1; $score / $metro_score" | bc 2>/dev/null || echo "")
+                    if [ -n "$pct" ] && [ -n "$mult" ]; then
+                        vs_metro="+${pct}% (${mult}x)"
+                    fi
+                fi
+            fi
+
+            echo "| $mode | $display | $vs_metro |" >> "$summary_file"
+        done
+
+        echo "" >> "$summary_file"
+    done
+
+    cat >> "$summary_file" << EOF
+## Raw Results
+
+Results are stored in: \`$RESULTS_DIR/${TIMESTAMP}/\`
+
+- \`${ref_label}/\` - Results ($ref_commit)
+EOF
+
+    print_success "Summary saved to $summary_file"
+    echo ""
+    cat "$summary_file"
+
+    # Generate HTML report
+    generate_html_report "$ref_label" "" "$modes"
+}
+
+# Run single ref command
+run_single() {
+    local count="${1:-$DEFAULT_MODULE_COUNT}"
+    local include_clean_builds="${2:-false}"
+
+    if [ -z "$SINGLE_REF" ]; then
+        print_error "Single requires --ref argument"
+        show_usage
+        exit 1
+    fi
+
+    # Validate ref exists
+    if ! git rev-parse --verify "$SINGLE_REF" > /dev/null 2>&1; then
+        print_error "Invalid git ref: $SINGLE_REF"
+        exit 1
+    fi
+
+    # Check for uncommitted changes
+    if ! git diff-index --quiet HEAD -- 2>/dev/null; then
+        print_error "You have uncommitted changes. Please commit or stash them before running benchmarks."
+        exit 1
+    fi
+
+    print_header "Running Benchmarks on Single Git Ref"
+    print_status "Ref: $SINGLE_REF"
+    print_status "Modes: $COMPARE_MODES"
+    print_status "Module count: $count"
+    echo ""
+
+    # Save current git state
+    save_git_state
+
+    # Create safe label for directory name
+    local ref_label=$(get_ref_safe_name "$SINGLE_REF")
+
+    # Create results directory
+    mkdir -p "$RESULTS_DIR/${TIMESTAMP}"
+
+    # Set up trap to restore git state on exit
+    trap 'restore_git_state' EXIT
+
+    # Run benchmarks for the ref (all modes, not second ref)
+    run_benchmarks_for_ref "$SINGLE_REF" "$ref_label" "$count" "$include_clean_builds" "$COMPARE_MODES" false || {
+        print_error "Failed to run benchmarks for $SINGLE_REF"
+        exit 1
+    }
+
+    # Generate summary
+    generate_single_summary "$ref_label" "$COMPARE_MODES"
+
+    print_header "Benchmarks Complete"
+    echo "Results saved to: $RESULTS_DIR/${TIMESTAMP}/"
+    echo ""
 }
 
 # Run compare command
@@ -874,6 +1610,10 @@ main() {
                 install_profiler=true
                 shift
                 ;;
+            --ref)
+                SINGLE_REF="$2"
+                shift 2
+                ;;
             --ref1)
                 COMPARE_REF1="$2"
                 shift 2
@@ -953,6 +1693,9 @@ main() {
             ;;
         kotlin-inject-anvil)
             run_mode_benchmark "kotlin-inject-anvil" "" "$count" "$build_only" "$include_clean_builds"
+            ;;
+        single)
+            run_single "$count" "$include_clean_builds"
             ;;
         compare)
             run_compare "$count" "$include_clean_builds"
