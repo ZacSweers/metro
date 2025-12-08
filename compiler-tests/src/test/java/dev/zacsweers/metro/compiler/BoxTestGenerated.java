@@ -1343,6 +1343,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("DaggerModulesWithPropertyProviders.kt")
+      public void testDaggerModulesWithPropertyProviders() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/DaggerModulesWithPropertyProviders.kt");
+      }
+
+      @Test
       @TestMetadata("DaggerMultibindsAllowEmptyByDefault.kt")
       public void testDaggerMultibindsAllowEmptyByDefault() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/DaggerMultibindsAllowEmptyByDefault.kt");
