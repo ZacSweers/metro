@@ -176,6 +176,10 @@ subprojects {
   group = project.property("GROUP") as String
   version = project.property("VERSION_NAME") as String
 
+  // Suppress native access warnings in forked JVMs (Java 22+)
+  tasks.withType<Test>().configureEach { jvmArgs("--enable-native-access=ALL-UNNAMED") }
+  tasks.withType<JavaExec>().configureEach { jvmArgs("--enable-native-access=ALL-UNNAMED") }
+
   pluginManager.withPlugin("java") {
     configure<JavaPluginExtension> {
       toolchain { languageVersion.set(libs.versions.jdk.map(JavaLanguageVersion::of)) }

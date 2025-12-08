@@ -7,12 +7,15 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Configuration
 DEFAULT_MODULE_COUNT=500
 RESULTS_DIR="benchmark-results"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
-# Git comparison refs
+# Git refs
+SINGLE_REF=""
 COMPARE_REF1=""
 COMPARE_REF2=""
 COMPARE_BENCHMARK_TYPE="all"
@@ -109,55 +112,11 @@ get_ref_safe_name() {
     echo "$ref" | sed 's/[^a-zA-Z0-9._-]/_/g'
 }
 
-# Function to install gradle-profiler from source
-install_gradle_profiler() {
-    print_header "Installing gradle-profiler from source"
-    
-    # Check if local gradle-profiler symlink already exists
-    if [ -x "./gradle-profiler" ]; then
-        print_success "Local gradle-profiler already exists, skipping installation"
-        print_status "Using existing: ./gradle-profiler"
-        return 0
-    fi
-    
-    local profiler_dir="gradle-profiler-source"
-    local profiler_repo="https://github.com/gradle/gradle-profiler"
-    
-    # Clone or update the repository
-    if [ -d "$profiler_dir" ]; then
-        print_status "Updating existing gradle-profiler repository"
-        cd "$profiler_dir"
-        git pull origin master
-        cd ..
-    else
-        print_status "Cloning gradle-profiler repository"
-        git clone "$profiler_repo" "$profiler_dir"
-    fi
-    
-    # Build gradle-profiler
-    print_status "Building gradle-profiler (this may take a few minutes)"
-    cd "$profiler_dir"
-    if ./gradlew installDist; then
-        local profiler_bin
-        profiler_bin="$(pwd)/build/install/gradle-profiler/bin/gradle-profiler"
-        cd ..
-        
-        # Create a symlink or alias in the benchmark directory
-        if [ -f "$profiler_bin" ]; then
-            ln -sf "$profiler_bin" ./gradle-profiler
-            print_success "gradle-profiler installed successfully"
-            print_status "Created symlink: ./gradle-profiler -> $profiler_bin"
-            return 0
-        else
-            print_error "gradle-profiler binary not found at expected location"
-            return 1
-        fi
-    else
-        cd ..
-        print_error "Failed to build gradle-profiler"
-        return 1
-    fi
-}
+# Source the gradle-profiler installer script
+source "$SCRIPT_DIR/install-gradle-profiler.sh"
+
+# Get the path to gradle-profiler binary
+GRADLE_PROFILER_BIN="$(get_gradle_profiler_bin)"
 
 # Function to check if required tools are available
 check_prerequisites() {
@@ -169,8 +128,8 @@ check_prerequisites() {
         missing_tools+=("kotlin")
     fi
     
-    # Check for gradle-profiler (either in PATH or local symlink)
-    if ! command -v gradle-profiler &> /dev/null && [ ! -x "./gradle-profiler" ]; then
+    # Check for gradle-profiler (either in PATH or in tmp/)
+    if ! command -v gradle-profiler &> /dev/null && [ ! -x "$GRADLE_PROFILER_BIN" ]; then
         missing_tools+=("gradle-profiler")
     fi
     
@@ -181,7 +140,7 @@ check_prerequisites() {
     if [ ${#missing_tools[@]} -gt 0 ]; then
         print_error "Missing required tools: ${missing_tools[*]}"
         print_error "Please install missing tools and try again"
-        print_error "You can use --install-gradle-profiler to install gradle-profiler from source"
+        print_error "You can run benchmark/install-gradle-profiler.sh to install gradle-profiler from source"
         exit 1
     fi
     
@@ -263,13 +222,13 @@ run_scenarios() {
         mkdir -p "$scenario_output_dir"
         
         print_status "Running scenario: $scenario"
-        
-        # Use local gradle-profiler if available, otherwise use system one
+
+        # Use gradle-profiler from tmp/ if available, otherwise use system one
         local profiler_cmd="gradle-profiler"
-        if [ -x "./gradle-profiler" ]; then
-            profiler_cmd="./gradle-profiler"
+        if [ -x "$GRADLE_PROFILER_BIN" ]; then
+            profiler_cmd="$GRADLE_PROFILER_BIN"
         fi
-        
+
         $profiler_cmd \
             --benchmark \
             --scenario-file benchmark.scenarios \
@@ -477,6 +436,7 @@ show_usage() {
     echo "  anvil-ksp [COUNT]            Run only Anvil + KSP mode benchmarks"
     echo "  anvil-kapt [COUNT]           Run only Anvil + KAPT mode benchmarks"
     echo "  kotlin-inject-anvil [COUNT]  Run only Kotlin-inject + Anvil mode benchmarks"
+    echo "  single                        Run benchmarks on a single git ref"
     echo "  compare                       Compare benchmarks across two git refs"
     echo "  help                         Show this help message"
     echo ""
@@ -484,7 +444,12 @@ show_usage() {
     echo "  COUNT                        Number of modules to generate (default: $DEFAULT_MODULE_COUNT)"
     echo "  --build-only                 Only run ./gradlew :app:component:run --quiet, skip gradle-profiler"
     echo "  --include-clean-builds       Include clean build scenarios in benchmarks"
-    echo "  --install-gradle-profiler    Install gradle-profiler from source before running benchmarks"
+    echo ""
+    echo "Single Options:"
+    echo "  --ref <ref>                  Git ref to benchmark - branch name or commit hash"
+    echo "  --modes <list>               Comma-separated list of modes to benchmark"
+    echo "                               Available: metro, anvil-ksp, anvil-kapt, kotlin-inject-anvil"
+    echo "                               Default: metro,anvil-ksp,kotlin-inject-anvil"
     echo ""
     echo "Compare Options:"
     echo "  --ref1 <ref>                 First git ref (baseline) - branch name or commit hash"
@@ -494,6 +459,10 @@ show_usage() {
     echo "                               Default: metro,anvil-ksp,kotlin-inject-anvil"
     echo "  --rerun-non-metro            Re-run non-metro modes on ref2 (default: only run metro on ref2)"
     echo "                               When disabled (default), ref2 uses ref1's non-metro results for comparison"
+    echo ""
+    echo "Prerequisites:"
+    echo "  Run benchmark/install-gradle-profiler.sh to install gradle-profiler from source"
+    echo "  Or pass --install-gradle-profiler to install before running benchmarks"
     echo ""
     echo "Examples:"
     echo "  $0                           # Run all benchmarks with default settings"
@@ -505,8 +474,10 @@ show_usage() {
     echo "  $0 all --build-only          # Generate and build all projects, skip benchmarks"
     echo "  $0 all --include-clean-builds # Run all benchmarks including clean build scenarios"
     echo "  $0 metro 250 --include-clean-builds # Run Metro benchmarks with 250 modules including clean builds"
-    echo "  $0 --install-gradle-profiler # Install gradle-profiler from source then run all benchmarks"
-    echo "  $0 metro --install-gradle-profiler # Install gradle-profiler then run Metro benchmarks"
+    echo ""
+    echo "  # Run benchmarks on a single git ref:"
+    echo "  $0 single --ref main"
+    echo "  $0 single --ref feature-branch --modes metro,anvil-ksp"
     echo ""
     echo "  # Compare benchmarks across git refs:"
     echo "  $0 compare --ref1 main --ref2 feature-branch"
@@ -771,15 +742,15 @@ EOF
                 fi
 
                 if [ -n "$score1" ] && [ -n "$score2" ] && [ "$score1" != "0" ]; then
-                    local pct=$(echo "scale=1; (($score2 - $score1) / $score1) * 100" | bc 2>/dev/null || echo "")
+                    local pct=$(echo "scale=2; (($score2 - $score1) / $score1) * 100" | bc 2>/dev/null || echo "")
                     if [ -n "$pct" ]; then
                         # Check if negative (faster)
                         if [[ "$pct" == -* ]]; then
-                            diff="${pct}% (faster)"
-                        elif [[ "$pct" == "0" ]] || [[ "$pct" == "0.0" ]] || [[ "$pct" == ".0" ]]; then
-                            diff="no change"
+                            diff="${pct}%"
+                        elif [[ "$pct" == "0" ]] || [[ "$pct" == "0.00" ]] || [[ "$pct" == ".00" ]]; then
+                            diff="+0.00% (no change)"
                         else
-                            diff="+${pct}% (slower)"
+                            diff="+${pct}%"
                         fi
                     fi
                 fi
@@ -807,6 +778,137 @@ EOF
     print_success "Comparison summary saved to $summary_file"
     echo ""
     cat "$summary_file"
+}
+
+# Generate summary for single ref benchmarks
+generate_single_summary() {
+    local ref_label="$1"
+    local modes="$2"
+
+    local summary_file="$RESULTS_DIR/${TIMESTAMP}/single-summary.md"
+    local ref_commit=$(cat "$RESULTS_DIR/${TIMESTAMP}/${ref_label}/commit-info.txt" 2>/dev/null || echo "unknown")
+
+    print_header "Generating Single Ref Summary"
+
+    cat > "$summary_file" << EOF
+# Benchmark Results: $ref_label
+
+**Date:** $(date)
+**Module Count:** $DEFAULT_MODULE_COUNT
+**Modes:** $modes
+**Commit:** $ref_commit
+
+EOF
+
+    # Test types to show
+    local test_types=("abi_change" "non_abi_change" "plain_abi_change" "plain_non_abi_change" "raw_compilation")
+    local test_names=("ABI Change" "Non-ABI Change" "Plain Kotlin ABI" "Plain Kotlin Non-ABI" "Graph Processing")
+
+    IFS=',' read -ra MODE_ARRAY <<< "$modes"
+
+    for i in "${!test_types[@]}"; do
+        local test_type="${test_types[$i]}"
+        local test_name="${test_names[$i]}"
+
+        cat >> "$summary_file" << EOF
+## $test_name
+
+| Framework | Time |
+|-----------|------|
+EOF
+
+        for mode in "${MODE_ARRAY[@]}"; do
+            local mode_prefix
+            case "$mode" in
+                "metro") mode_prefix="metro" ;;
+                "anvil-ksp") mode_prefix="anvil_ksp" ;;
+                "anvil-kapt") mode_prefix="anvil_kapt" ;;
+                "kotlin-inject-anvil") mode_prefix="kotlin_inject_anvil" ;;
+                *) continue ;;
+            esac
+
+            local score=$(extract_median_for_ref "$ref_label" "$mode_prefix" "$test_type")
+
+            local display="N/A"
+            if [ -n "$score" ]; then
+                local secs=$(echo "scale=1; $score / 1000" | bc 2>/dev/null || echo "")
+                if [ -n "$secs" ]; then
+                    display="${secs}s"
+                fi
+            fi
+
+            echo "| $mode | $display |" >> "$summary_file"
+        done
+
+        echo "" >> "$summary_file"
+    done
+
+    cat >> "$summary_file" << EOF
+## Raw Results
+
+Results are stored in: \`$RESULTS_DIR/${TIMESTAMP}/\`
+
+- \`${ref_label}/\` - Results ($ref_commit)
+EOF
+
+    print_success "Summary saved to $summary_file"
+    echo ""
+    cat "$summary_file"
+}
+
+# Run single ref command
+run_single() {
+    local count="${1:-$DEFAULT_MODULE_COUNT}"
+    local include_clean_builds="${2:-false}"
+
+    if [ -z "$SINGLE_REF" ]; then
+        print_error "Single requires --ref argument"
+        show_usage
+        exit 1
+    fi
+
+    # Validate ref exists
+    if ! git rev-parse --verify "$SINGLE_REF" > /dev/null 2>&1; then
+        print_error "Invalid git ref: $SINGLE_REF"
+        exit 1
+    fi
+
+    # Check for uncommitted changes
+    if ! git diff-index --quiet HEAD -- 2>/dev/null; then
+        print_error "You have uncommitted changes. Please commit or stash them before running benchmarks."
+        exit 1
+    fi
+
+    print_header "Running Benchmarks on Single Git Ref"
+    print_status "Ref: $SINGLE_REF"
+    print_status "Modes: $COMPARE_MODES"
+    print_status "Module count: $count"
+    echo ""
+
+    # Save current git state
+    save_git_state
+
+    # Create safe label for directory name
+    local ref_label=$(get_ref_safe_name "$SINGLE_REF")
+
+    # Create results directory
+    mkdir -p "$RESULTS_DIR/${TIMESTAMP}"
+
+    # Set up trap to restore git state on exit
+    trap 'restore_git_state' EXIT
+
+    # Run benchmarks for the ref (all modes, not second ref)
+    run_benchmarks_for_ref "$SINGLE_REF" "$ref_label" "$count" "$include_clean_builds" "$COMPARE_MODES" false || {
+        print_error "Failed to run benchmarks for $SINGLE_REF"
+        exit 1
+    }
+
+    # Generate summary
+    generate_single_summary "$ref_label" "$COMPARE_MODES"
+
+    print_header "Benchmarks Complete"
+    echo "Results saved to: $RESULTS_DIR/${TIMESTAMP}/"
+    echo ""
 }
 
 # Run compare command
@@ -887,65 +989,67 @@ run_compare() {
     echo ""
 }
 
-# Function to parse arguments and handle flags
-parse_args() {
-    local args=("$@")
-    local parsed_args=()
-    local build_only=false
-    local include_clean_builds=false
-    local install_profiler=false
-    local i=0
-
-    while [ $i -lt ${#args[@]} ]; do
-        local arg="${args[$i]}"
-        if [ "$arg" = "--build-only" ]; then
-            build_only=true
-        elif [ "$arg" = "--include-clean-builds" ]; then
-            include_clean_builds=true
-        elif [ "$arg" = "--install-gradle-profiler" ]; then
-            install_profiler=true
-        elif [ "$arg" = "--ref1" ]; then
-            ((i++))
-            COMPARE_REF1="${args[$i]}"
-        elif [ "$arg" = "--ref2" ]; then
-            ((i++))
-            COMPARE_REF2="${args[$i]}"
-        elif [ "$arg" = "--modes" ]; then
-            ((i++))
-            COMPARE_MODES="${args[$i]}"
-        elif [ "$arg" = "--rerun-non-metro" ]; then
-            RERUN_NON_METRO=true
-        else
-            parsed_args+=("$arg")
-        fi
-        ((i++))
-    done
-
-    echo "$build_only"
-    echo "$include_clean_builds"
-    echo "$install_profiler"
-    printf '%s\n' "${parsed_args[@]}"
-}
-
 # Main script logic
 main() {
     # Change to script directory
     cd "$(dirname "$0")"
-    
-    # Parse arguments to extract flags
-    local parsed_output
-    parsed_output=$(parse_args "$@")
-    local build_only
-    build_only=$(echo "$parsed_output" | head -n1)
-    local include_clean_builds
-    include_clean_builds=$(echo "$parsed_output" | head -n2 | tail -n1)
-    local install_profiler
-    install_profiler=$(echo "$parsed_output" | head -n3 | tail -n1)
-    local args=()
-    while IFS= read -r line; do
-        args+=("$line")
-    done < <(echo "$parsed_output" | tail -n+4)
-    
+
+    local command="${1:-all}"
+    shift || true
+
+    local build_only=false
+    local include_clean_builds=false
+    local install_profiler=false
+    local count="$DEFAULT_MODULE_COUNT"
+
+    # Parse options
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --build-only)
+                build_only=true
+                shift
+                ;;
+            --include-clean-builds)
+                include_clean_builds=true
+                shift
+                ;;
+            --install-gradle-profiler)
+                install_profiler=true
+                shift
+                ;;
+            --ref)
+                SINGLE_REF="$2"
+                shift 2
+                ;;
+            --ref1)
+                COMPARE_REF1="$2"
+                shift 2
+                ;;
+            --ref2)
+                COMPARE_REF2="$2"
+                shift 2
+                ;;
+            --modes)
+                COMPARE_MODES="$2"
+                shift 2
+                ;;
+            --rerun-non-metro)
+                RERUN_NON_METRO=true
+                shift
+                ;;
+            [0-9]*)
+                # Positional count argument
+                count="$1"
+                shift
+                ;;
+            *)
+                print_error "Unknown option: $1"
+                show_usage
+                exit 1
+                ;;
+        esac
+    done
+
     # Install gradle-profiler if requested
     if [ "$install_profiler" = true ]; then
         if ! install_gradle_profiler; then
@@ -953,68 +1057,61 @@ main() {
             exit 1
         fi
     fi
-    
+
     # Check prerequisites (skip gradle-profiler check if build-only mode)
     if [ "$build_only" = true ]; then
         print_header "Checking Prerequisites (Build-only mode)"
-        
+
         local missing_tools=()
-        
+
         if ! command -v kotlin &> /dev/null; then
             missing_tools+=("kotlin")
         fi
-        
+
         if ! command -v ./gradlew &> /dev/null; then
             missing_tools+=("gradlew (not executable)")
         fi
-        
+
         if [ ${#missing_tools[@]} -gt 0 ]; then
             print_error "Missing required tools: ${missing_tools[*]}"
             print_error "Please install missing tools and try again"
             exit 1
         fi
-        
+
         print_success "All prerequisites available"
     else
         check_prerequisites
     fi
-    
-    case "${args[0]:-all}" in
-        "all")
-            local count=${args[1]:-$DEFAULT_MODULE_COUNT}
-            validate_count "$count"
+
+    validate_count "$count"
+
+    case "$command" in
+        all)
             run_all_benchmarks "$count" "$build_only" "$include_clean_builds"
             ;;
-        "metro")
-            local count=${args[1]:-$DEFAULT_MODULE_COUNT}
-            validate_count "$count"
+        metro)
             run_mode_benchmark "metro" "" "$count" "$build_only" "$include_clean_builds"
             ;;
-        "anvil-ksp")
-            local count=${args[1]:-$DEFAULT_MODULE_COUNT}
-            validate_count "$count"
+        anvil-ksp)
             run_mode_benchmark "anvil" "ksp" "$count" "$build_only" "$include_clean_builds"
             ;;
-        "anvil-kapt")
-            local count=${args[1]:-$DEFAULT_MODULE_COUNT}
-            validate_count "$count"
+        anvil-kapt)
             run_mode_benchmark "anvil" "kapt" "$count" "$build_only" "$include_clean_builds"
             ;;
-        "kotlin-inject-anvil")
-            local count=${args[1]:-$DEFAULT_MODULE_COUNT}
-            validate_count "$count"
+        kotlin-inject-anvil)
             run_mode_benchmark "kotlin-inject-anvil" "" "$count" "$build_only" "$include_clean_builds"
             ;;
-        "compare")
-            local count=${args[1]:-$DEFAULT_MODULE_COUNT}
-            validate_count "$count"
+        single)
+            run_single "$count" "$include_clean_builds"
+            ;;
+        compare)
             run_compare "$count" "$include_clean_builds"
             ;;
-        "help"|"-h"|"--help")
+        help|-h|--help)
             show_usage
             ;;
         *)
-            print_error "Unknown command: ${args[0]}"
+            print_error "Unknown command: $command"
             echo ""
             show_usage
             exit 1

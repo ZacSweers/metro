@@ -2,7 +2,7 @@
 
 ViewModel integration for Metro. This artifact provides core utilities for injecting ViewModels using Metro's dependency injection.
 
-For Compose-specific APIs (`LocalMetroViewModelFactory`, `metroViewModel()`, etc.), see the [`metrox-viewmodel-compose`](../metrox-viewmodel-compose.md) artifact.
+For Compose-specific APIs (`LocalMetroViewModelFactory`, `metroViewModel()`, etc.), see the [`metrox-viewmodel-compose`](metrox-viewmodel-compose.md) artifact.
 
 > Should I use this?
 

@@ -25,7 +25,8 @@ MODULE_COUNT=500
 # Default modes to benchmark
 MODES="metro,anvil-ksp,kotlin-inject-anvil"
 
-# Git comparison refs
+# Git refs
+SINGLE_REF=""
 COMPARE_REF1=""
 COMPARE_REF2=""
 ORIGINAL_GIT_REF=""
@@ -152,6 +153,7 @@ show_usage() {
     echo "  jvm       Run JVM startup benchmarks using JMH"
     echo "  android   Run Android benchmarks (requires device)"
     echo "  all       Run all benchmarks (default)"
+    echo "  single    Run benchmarks on a single git ref"
     echo "  compare   Compare benchmarks across two git refs (branches or commits)"
     echo "  summary   Regenerate summary from existing results (use with --timestamp)"
     echo "  help      Show this help message"
@@ -164,6 +166,10 @@ show_usage() {
     echo "  --timestamp <ts>        Use specific timestamp for results directory"
     echo "  --include-macrobenchmark  Include Android macrobenchmarks (startup time)"
     echo "                          Disabled by default as startup time is low-signal for DI perf"
+    echo ""
+    echo "Single Options:"
+    echo "  --ref <ref>         Git ref to benchmark - branch name or commit hash"
+    echo "  --benchmark <type>  Benchmark type: jvm, android, or all (default: jvm)"
     echo ""
     echo "Compare Options:"
     echo "  --ref1 <ref>        First git ref (baseline) - branch name or commit hash"
@@ -178,6 +184,10 @@ show_usage() {
     echo "  $0 all --count 250                  # Run all benchmarks with 250 modules"
     echo "  $0 android --include-macrobenchmark # Run Android benchmarks including macrobenchmarks"
     echo "  $0 summary --timestamp 20251205_125203 --modes metro,anvil-ksp"
+    echo ""
+    echo "  # Run benchmarks on a single git ref:"
+    echo "  $0 single --ref main"
+    echo "  $0 single --ref feature-branch --modes metro,anvil-ksp --benchmark jvm"
     echo ""
     echo "  # Compare benchmarks across git refs:"
     echo "  $0 compare --ref1 main --ref2 feature-branch"
@@ -978,6 +988,168 @@ EOF
     cat "$summary_file"
 }
 
+# Generate summary for single ref benchmarks
+generate_single_summary() {
+    local ref_label="$1"
+    local benchmark_type="$2"
+
+    local summary_file="$RESULTS_DIR/${TIMESTAMP}/single-summary.md"
+    local ref_commit=$(cat "$RESULTS_DIR/${TIMESTAMP}/${ref_label}/commit-info.txt" 2>/dev/null || echo "unknown")
+
+    print_header "Generating Single Ref Summary"
+
+    cat > "$summary_file" << EOF
+# Startup Benchmark Results: $ref_label
+
+**Date:** $(date)
+**Module Count:** $MODULE_COUNT
+**Modes:** $MODES
+**Commit:** $ref_commit
+
+EOF
+
+    IFS=',' read -ra MODE_ARRAY <<< "$MODES"
+
+    if [ "$benchmark_type" = "jvm" ] || [ "$benchmark_type" = "all" ]; then
+        cat >> "$summary_file" << EOF
+## JVM Benchmarks (JMH)
+
+Graph creation and initialization time (lower is better):
+
+| Framework | Time (ms) |
+|-----------|-----------|
+EOF
+
+        for mode in "${MODE_ARRAY[@]}"; do
+            local score=$(extract_jmh_score_for_ref "$ref_label" "$mode")
+            local display="${score:-N/A}"
+            if [ -n "$score" ]; then
+                display=$(printf "%.3f" "$score")
+            fi
+            echo "| $mode | $display |" >> "$summary_file"
+        done
+
+        echo "" >> "$summary_file"
+    fi
+
+    if [ "$benchmark_type" = "android" ] || [ "$benchmark_type" = "all" ]; then
+        # Check if macro results exist
+        local has_macro_results=false
+        for mode in "${MODE_ARRAY[@]}"; do
+            local macro_score=$(extract_android_macro_score_for_ref "$ref_label" "$mode")
+            if [ -n "$macro_score" ]; then
+                has_macro_results=true
+                break
+            fi
+        done
+
+        if [ "$INCLUDE_MACROBENCHMARK" = true ] || [ "$has_macro_results" = true ]; then
+            cat >> "$summary_file" << EOF
+## Android Benchmarks (Macrobenchmark)
+
+Cold startup time including graph initialization (lower is better):
+
+| Framework | Time (ms) |
+|-----------|-----------|
+EOF
+
+            for mode in "${MODE_ARRAY[@]}"; do
+                local score=$(extract_android_macro_score_for_ref "$ref_label" "$mode")
+                local display="${score:-N/A}"
+                if [ -n "$score" ]; then
+                    display=$(printf "%.0f" "$score")
+                fi
+                echo "| $mode | $display |" >> "$summary_file"
+            done
+
+            echo "" >> "$summary_file"
+        fi
+
+        cat >> "$summary_file" << EOF
+## Android Benchmarks (Microbenchmark)
+
+Graph creation and initialization time on Android (lower is better):
+
+| Framework | Time (ms) |
+|-----------|-----------|
+EOF
+
+        for mode in "${MODE_ARRAY[@]}"; do
+            local score=$(extract_android_micro_score_for_ref "$ref_label" "$mode")
+            local display="${score:-N/A}"
+            if [ -n "$score" ]; then
+                display=$(printf "%.3f" "$score")
+            fi
+            echo "| $mode | $display |" >> "$summary_file"
+        done
+
+        echo "" >> "$summary_file"
+    fi
+
+    cat >> "$summary_file" << EOF
+## Raw Results
+
+Results are stored in: \`$RESULTS_DIR/${TIMESTAMP}/\`
+
+- \`${ref_label}/\` - Results ($ref_commit)
+EOF
+
+    print_success "Summary saved to $summary_file"
+    echo ""
+    cat "$summary_file"
+}
+
+# Run single ref command
+run_single() {
+    local benchmark_type="${COMPARE_BENCHMARK_TYPE:-jvm}"
+
+    if [ -z "$SINGLE_REF" ]; then
+        print_error "Single requires --ref argument"
+        show_usage
+        exit 1
+    fi
+
+    # Validate ref exists
+    if ! git rev-parse --verify "$SINGLE_REF" > /dev/null 2>&1; then
+        print_error "Invalid git ref: $SINGLE_REF"
+        exit 1
+    fi
+
+    # Check for uncommitted changes
+    if ! git diff-index --quiet HEAD -- 2>/dev/null; then
+        print_error "You have uncommitted changes. Please commit or stash them before running benchmarks."
+        exit 1
+    fi
+
+    print_header "Running Benchmarks on Single Git Ref"
+    print_info "Ref: $SINGLE_REF"
+    print_info "Benchmark type: $benchmark_type"
+    print_info "Modes: $MODES"
+    echo ""
+
+    # Save current git state
+    save_git_state
+
+    # Create safe label for directory name
+    local ref_label=$(get_ref_safe_name "$SINGLE_REF")
+
+    # Set up trap to restore git state on exit
+    trap 'restore_git_state' EXIT
+
+    # Run benchmarks for the ref (all modes, not second ref)
+    run_benchmarks_for_ref "$SINGLE_REF" "$benchmark_type" "$ref_label" false || {
+        print_error "Failed to run benchmarks for $SINGLE_REF"
+        exit 1
+    }
+
+    # Generate summary
+    generate_single_summary "$ref_label" "$benchmark_type"
+
+    print_header "Benchmarks Complete"
+    echo "Results saved to: $RESULTS_DIR/${TIMESTAMP}/"
+    echo ""
+}
+
 # Run compare command
 run_compare() {
     local benchmark_type="${COMPARE_BENCHMARK_TYPE:-jvm}"
@@ -1072,6 +1244,10 @@ main() {
                 TIMESTAMP="$2"
                 shift 2
                 ;;
+            --ref)
+                SINGLE_REF="$2"
+                shift 2
+                ;;
             --ref1)
                 COMPARE_REF1="$2"
                 shift 2
@@ -1119,6 +1295,9 @@ main() {
             # Just regenerate the summary from existing results
             generate_summary
             ;;
+        single)
+            run_single
+            ;;
         compare)
             run_compare
             ;;
@@ -1133,7 +1312,7 @@ main() {
             ;;
     esac
 
-    if [ "$command" != "compare" ]; then
+    if [ "$command" != "compare" ] && [ "$command" != "single" ]; then
         print_header "Benchmarks Complete"
         echo "Results saved to: $RESULTS_DIR/${TIMESTAMP}/"
         echo ""
