@@ -68,6 +68,9 @@ class HomeViewModel : ViewModel() {
 }
 ```
 
+!!! warning "Migrating from `@HiltViewModel`"
+    If you are migrating from `@HiltViewModel` be aware that by default `@ContributesIntoMap` will bind your ViewModel to the immediate parent type. If you have an intermediate parent type such as `class MyViewModel : BaseViewModel()` you will want to specify the binding type with `@ContributesIntoMap(AppScope::class, binding<ViewModel>())`.
+
 ### Assisted ViewModel Creation
 
 For ViewModels requiring runtime parameters and only using `CreationParams` can use `ViewModelAssistedFactory`:
