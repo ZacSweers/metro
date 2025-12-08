@@ -27,6 +27,9 @@ In many cases, a developer may have an implementation type on the graph that the
 
 Like Dagger, Metro supports this with `@Binds`.
 
+!!! tip "For multi-module projects"
+    If you're working across multiple modules and want bindings to be automatically discovered, see [`@ContributesBinding`](aggregation.md#contributesbinding) for a more powerful approach that supports aggregation.
+
 For these cases, an abstract provider can be specified with the following conditions.
 
 * It must be abstract
