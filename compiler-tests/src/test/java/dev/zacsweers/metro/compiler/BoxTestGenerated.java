@@ -992,6 +992,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("DefaultValuesPropagateToNewInstanceParams.kt")
+    public void testDefaultValuesPropagateToNewInstanceParams() {
+      runTest("compiler-tests/src/test/data/box/inject/DefaultValuesPropagateToNewInstanceParams.kt");
+    }
+
+    @Test
     @TestMetadata("InjectedConstructorParametersWithGenericsWork.kt")
     public void testInjectedConstructorParametersWithGenericsWork() {
       runTest("compiler-tests/src/test/data/box/inject/InjectedConstructorParametersWithGenericsWork.kt");
@@ -1673,6 +1679,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("CapitalizedProvides.kt")
     public void testCapitalizedProvides() {
       runTest("compiler-tests/src/test/data/box/provides/CapitalizedProvides.kt");
+    }
+
+    @Test
+    @TestMetadata("DefaultValuesPropagateToNewInstanceParams.kt")
+    public void testDefaultValuesPropagateToNewInstanceParams() {
+      runTest("compiler-tests/src/test/data/box/provides/DefaultValuesPropagateToNewInstanceParams.kt");
     }
 
     @Test
