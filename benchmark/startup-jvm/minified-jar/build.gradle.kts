@@ -10,7 +10,8 @@ plugins { alias(libs.plugins.kotlin.jvm) }
 val r8Configuration: Configuration by configurations.creating
 
 dependencies {
-  implementation(project(":app:component"))
+  // Only used for R8 processing, not exposed transitively
+  compileOnly(project(":app:component"))
   r8Configuration("com.android.tools:r8:8.13.17")
 }
 
@@ -23,11 +24,26 @@ abstract class BaseR8Task : JavaExec() {
   @get:PathSensitive(PathSensitivity.RELATIVE)
   abstract val runtimeClasspathProp: ConfigurableFileCollection
 
+  /** Whether to pass runtime classpath as --classpath (library) or as program jars */
+  @get:Input abstract val useClasspathForDeps: Property<Boolean>
+
   fun r8ArgumentProvider(): CommandLineArgumentProvider {
     return CommandLineArgumentProvider {
       buildList {
         addAll(computeArgs())
-        runtimeClasspathProp.files.filter { it.isFile }.forEach { file -> add(file.absolutePath) }
+        val classpathFiles = runtimeClasspathProp.files.filter { it.isFile }
+        if (useClasspathForDeps.getOrElse(false) && classpathFiles.isNotEmpty()) {
+          // Pass dependencies as --classpath so they're used for analysis only, not included in
+          // output
+          // Each file needs its own --classpath argument
+          classpathFiles.forEach { file ->
+            add("--classpath")
+            add(file.absolutePath)
+          }
+        } else {
+          // Pass as program jars (included in output)
+          classpathFiles.forEach { file -> add(file.absolutePath) }
+        }
         add(componentJarProp.get().asFile.absolutePath)
       }
     }
@@ -101,10 +117,12 @@ val componentJar =
     destinationDirectory.set(layout.buildDirectory.dir("intermediates"))
   }
 
-// Get runtime classpath excluding the component project's build outputs
+// Get the component project's runtime classpath (all its dependencies)
+// This excludes the component project's own build outputs since we're creating our own jar from
+// sources
 val componentBuildPath = componentProject.layout.buildDirectory.get().asFile.absolutePath
-val runtimeClasspath =
-  configurations.named("runtimeClasspath").get().filter { file ->
+val componentRuntimeClasspath =
+  componentProject.configurations.named("runtimeClasspath").get().filter { file ->
     !file.absolutePath.startsWith(componentBuildPath)
   }
 
@@ -119,7 +137,9 @@ val r8RulesExtractTask =
     mainClass.set("com.android.tools.r8.ExtractR8Rules")
 
     r8Rules.set(layout.buildDirectory.file("shrinker/r8.txt"))
-    configureR8Inputs(componentJar.flatMap { it.archiveFile }, runtimeClasspath)
+    configureR8Inputs(componentJar.flatMap { it.archiveFile }, componentRuntimeClasspath)
+    // Extract rules needs all jars as program input
+    useClasspathForDeps.set(false)
     argumentProviders += r8ArgumentProvider()
   }
 
@@ -138,7 +158,9 @@ val r8Task =
     customRules.set(customR8RulesFile)
     r8Jar.set(layout.buildDirectory.file("libs/${project.name}.jar"))
     mapping.set(layout.buildDirectory.file("libs/${project.name}-mapping.txt"))
-    configureR8Inputs(componentJar.flatMap { it.archiveFile }, runtimeClasspath)
+    configureR8Inputs(componentJar.flatMap { it.archiveFile }, componentRuntimeClasspath)
+    // Include all deps in output (fat jar) - we want to test R8 optimization benefits
+    useClasspathForDeps.set(false)
     argumentProviders += r8ArgumentProvider()
 
     doLast {
