@@ -1,7 +1,5 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-@file:DependsOn("com.github.ajalt.clikt:clikt-jvm:5.0.3")
-
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.core.main
@@ -24,8 +22,8 @@ class GenerateProjectsCommand : CliktCommand() {
   private val totalModules by
     option("--count", "-c", help = "Total number of modules to generate").int().default(500)
 
-
-  private val enableSharding get() = totalModules >= 500
+  private val enableSharding
+    get() = totalModules >= 500
 
   private val processor by
     option("--processor", "-p", help = "Annotation processor: ksp or kapt (anvil mode only)")
@@ -695,7 +693,7 @@ class ${className}LocalServiceImpl$i @Inject constructor(${if (availableDependen
 interface ${className}Subcomponent {
   ${if (availableDependencies.isNotEmpty()) "// Access parent scope bindings\n$parentAccessors\n  \n" else ""}// Access subcomponent scope bindings
 $subcomponentAccessors
-  
+
   @ContributesTo(AppScope::class)
   @GraphExtension.Factory
   interface Factory {
@@ -729,7 +727,7 @@ class ${className}LocalServiceImpl$i @Inject constructor(${if (availableDependen
 interface ${className}Subcomponent {
   ${if (availableDependencies.isNotEmpty()) "// Access parent scope bindings\n$parentAccessors\n  \n" else ""}// Access subcomponent scope bindings
 $subcomponentAccessors
-  
+
   @ContributesSubcomponent.Factory(AppScope::class)
   interface Factory {
     fun create${className}Subcomponent(): ${className}Subcomponent
@@ -766,7 +764,7 @@ class ${className}LocalServiceImpl$i @Inject constructor(${if (availableDependen
 interface ${className}Subcomponent {
   ${if (availableDependencies.isNotEmpty()) "// Access parent scope bindings\n$parentAccessors\n  \n" else ""}// Access subcomponent scope bindings
 $subcomponentAccessors
-  
+
   @ContributesTo(Unit::class)
   interface Factory {
     fun create${className}Subcomponent(): ${className}Subcomponent
@@ -860,12 +858,12 @@ package dev.zacsweers.metro.benchmark.core.foundation
  */
 class PlainDataProcessor {
   private var counter = 0
-  
+
   fun processData(input: String): String {
     counter++
     return "Processed: ${'$'}input (#${'$'}counter)"
   }
-  
+
   fun getProcessedCount(): Int {
     return counter
   }

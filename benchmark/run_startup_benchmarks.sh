@@ -151,6 +151,7 @@ show_usage() {
     echo ""
     echo "Commands:"
     echo "  jvm       Run JVM startup benchmarks using JMH"
+    echo "  jvm-r8    Run JVM startup benchmarks with R8-minified classes (Metro only)"
     echo "  android   Run Android benchmarks (requires device)"
     echo "  all       Run all benchmarks (default)"
     echo "  single    Run benchmarks on a single git ref"
@@ -169,17 +170,18 @@ show_usage() {
     echo ""
     echo "Single Options:"
     echo "  --ref <ref>         Git ref to benchmark - branch name or commit hash"
-    echo "  --benchmark <type>  Benchmark type: jvm, android, or all (default: jvm)"
+    echo "  --benchmark <type>  Benchmark type: jvm, jvm-r8, android, or all (default: jvm)"
     echo ""
     echo "Compare Options:"
     echo "  --ref1 <ref>        First git ref (baseline) - branch name or commit hash"
     echo "  --ref2 <ref>        Second git ref to compare against baseline"
-    echo "  --benchmark <type>  Benchmark type for compare: jvm, android, or all (default: jvm)"
+    echo "  --benchmark <type>  Benchmark type for compare: jvm, jvm-r8, android, or all (default: jvm)"
     echo "  --rerun-non-metro   Re-run non-metro modes on ref2 (default: only run metro on ref2)"
     echo "                      When disabled (default), ref2 uses ref1's non-metro results for comparison"
     echo ""
     echo "Examples:"
     echo "  $0 jvm                              # Run JVM benchmarks for all modes"
+    echo "  $0 jvm-r8                           # Run JVM benchmarks with R8-minified Metro"
     echo "  $0 jvm --modes metro,anvil-ksp      # Run JVM benchmarks for specific modes"
     echo "  $0 all --count 250                  # Run all benchmarks with 250 modules"
     echo "  $0 android --include-macrobenchmark # Run Android benchmarks including macrobenchmarks"
@@ -188,6 +190,7 @@ show_usage() {
     echo "  # Run benchmarks on a single git ref:"
     echo "  $0 single --ref main"
     echo "  $0 single --ref feature-branch --modes metro,anvil-ksp --benchmark jvm"
+    echo "  $0 single --ref main --benchmark jvm-r8  # Run R8-minified Metro benchmark"
     echo ""
     echo "  # Compare benchmarks across git refs:"
     echo "  $0 compare --ref1 main --ref2 feature-branch"
@@ -273,6 +276,32 @@ run_jvm_benchmark() {
     local mode="$1"
     setup_for_mode "$mode"
     run_jvm_benchmark_only "$mode"
+}
+
+# Run JMH R8 benchmark only (no clean/generate) - Metro only
+run_jvm_r8_benchmark_only() {
+    local output_dir="$RESULTS_DIR/${TIMESTAMP}/jvm-r8_metro"
+    mkdir -p "$output_dir"
+
+    print_step "Running JMH R8 benchmark for metro (minified)..."
+
+    # Run JMH with R8-minified classes and capture output
+    if ./gradlew --quiet :startup-jvm-minified:jmh 2>&1 | tee "$output_dir/jmh-output.txt"; then
+        # Copy JMH results
+        if [ -d "startup-jvm-minified/build/results/jmh" ]; then
+            cp -r startup-jvm-minified/build/results/jmh/* "$output_dir/" 2>/dev/null || true
+        fi
+        print_success "JMH R8 benchmark complete for metro"
+    else
+        print_error "JMH R8 benchmark failed for metro"
+        return 1
+    fi
+}
+
+# Run JMH R8 benchmark for metro (with clean/generate)
+run_jvm_r8_benchmark() {
+    setup_for_mode "metro"
+    run_jvm_r8_benchmark_only
 }
 
 # Run Android benchmark only (no clean/generate)
@@ -450,6 +479,47 @@ EOF
 
         echo "| $mode | $display_score | $comparison |" >> "$summary_file"
     done
+
+    # Add JVM R8 results if they exist
+    local jvm_r8_dir="$RESULTS_DIR/${TIMESTAMP}/jvm-r8_metro"
+    if [ -d "$jvm_r8_dir" ]; then
+        cat >> "$summary_file" << EOF
+
+## JVM Benchmarks - R8 Minified (JMH)
+
+Graph creation and initialization time with R8 optimization (Metro only, lower is better):
+
+| Framework | Time (ms) | vs Metro (non-R8) |
+|-----------|-----------|-------------------|
+EOF
+
+        local r8_score=""
+        if [ -f "$jvm_r8_dir/results.json" ]; then
+            r8_score=$(extract_jmh_score "$jvm_r8_dir/results.json")
+        fi
+        if [ -z "$r8_score" ] && [ -f "$jvm_r8_dir/jmh-output.txt" ]; then
+            r8_score=$(grep 'graphCreationAndInitialization' "$jvm_r8_dir/jmh-output.txt" 2>/dev/null | grep 'avgt' | tail -1 | awk '{print $4}' || echo "")
+        fi
+
+        local r8_comparison="-"
+        if [ -n "$r8_score" ] && [ -n "$metro_jvm_score" ] && [ "$metro_jvm_score" != "0" ]; then
+            local pct=$(printf "%.1f" "$(echo "scale=4; (($r8_score - $metro_jvm_score) / $metro_jvm_score) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
+            if [ -n "$pct" ]; then
+                if [[ "$pct" != -* ]]; then
+                    r8_comparison="+${pct}%"
+                else
+                    r8_comparison="${pct}%"
+                fi
+            fi
+        fi
+
+        local r8_display_score="${r8_score:-N/A}"
+        if [ -n "$r8_score" ]; then
+            r8_display_score=$(printf "%.2f" "$r8_score")
+        fi
+
+        echo "| Metro (R8) | $r8_display_score | $r8_comparison |" >> "$summary_file"
+    fi
 
     # Only include macrobenchmark section if enabled or if results exist
     if [ "$INCLUDE_MACROBENCHMARK" = true ] || [ -f "$RESULTS_DIR/${TIMESTAMP}/android_metro/macro-benchmark-output.txt" ]; then
@@ -1051,6 +1121,11 @@ run_jvm_benchmarks() {
     done
 }
 
+run_jvm_r8_benchmarks() {
+    print_header "Running JVM R8 Startup Benchmarks (Metro Only)"
+    run_jvm_r8_benchmark || true
+}
+
 run_android_benchmarks() {
     print_header "Running Android Startup Benchmarks"
 
@@ -1126,6 +1201,17 @@ run_benchmarks_for_ref() {
                     rm -rf "$RESULTS_DIR/${TIMESTAMP}/jvm_${mode}"
                 fi
                 ;;
+            jvm-r8)
+                # Only run R8 benchmarks for metro mode
+                if [ "$mode" = "metro" ]; then
+                    run_jvm_r8_benchmark_only || true
+                    if [ -d "$RESULTS_DIR/${TIMESTAMP}/jvm-r8_metro" ]; then
+                        mkdir -p "$ref_dir/jvm-r8_metro"
+                        cp -r "$RESULTS_DIR/${TIMESTAMP}/jvm-r8_metro"/* "$ref_dir/jvm-r8_metro/" 2>/dev/null || true
+                        rm -rf "$RESULTS_DIR/${TIMESTAMP}/jvm-r8_metro"
+                    fi
+                fi
+                ;;
             android)
                 run_android_benchmark_only "$mode" || true
                 # Move results to ref-specific directory
@@ -1141,6 +1227,15 @@ run_benchmarks_for_ref() {
                     mkdir -p "$ref_dir/jvm_${mode}"
                     cp -r "$RESULTS_DIR/${TIMESTAMP}/jvm_${mode}"/* "$ref_dir/jvm_${mode}/" 2>/dev/null || true
                     rm -rf "$RESULTS_DIR/${TIMESTAMP}/jvm_${mode}"
+                fi
+                # Run R8 benchmark for metro mode
+                if [ "$mode" = "metro" ]; then
+                    run_jvm_r8_benchmark_only || true
+                    if [ -d "$RESULTS_DIR/${TIMESTAMP}/jvm-r8_metro" ]; then
+                        mkdir -p "$ref_dir/jvm-r8_metro"
+                        cp -r "$RESULTS_DIR/${TIMESTAMP}/jvm-r8_metro"/* "$ref_dir/jvm-r8_metro/" 2>/dev/null || true
+                        rm -rf "$RESULTS_DIR/${TIMESTAMP}/jvm-r8_metro"
+                    fi
                 fi
                 run_android_benchmark_only "$mode" || true
                 if [ -d "$RESULTS_DIR/${TIMESTAMP}/android_${mode}" ]; then
@@ -2477,12 +2572,18 @@ main() {
             run_jvm_benchmarks
             generate_summary
             ;;
+        jvm-r8)
+            run_jvm_r8_benchmarks
+            generate_summary
+            ;;
         android)
             run_android_benchmarks
             generate_summary
             ;;
         all)
             run_all_benchmarks
+            # Also run R8 benchmarks for metro
+            run_jvm_r8_benchmarks
             generate_summary
             ;;
         summary)

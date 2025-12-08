@@ -45,6 +45,8 @@ val generatedProjects = file("generated-projects.txt")
 if (generatedProjects.exists()) {
   // Static startup benchmark modules
   include(":startup-jvm")
+  include(":startup-jvm:minified-jar")
+  include(":startup-jvm-minified")
   include(":startup-android:app")
   include(":startup-android:benchmark")
   include(":startup-android:microbenchmark")

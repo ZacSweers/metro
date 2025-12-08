@@ -5,7 +5,12 @@ plugins {
   alias(libs.plugins.jmh)
 }
 
-dependencies { jmh(project(":app:component")) }
+dependencies {
+  // Compile against the original component (for Kotlin metadata)
+  jmhCompileOnly(project(":app:component"))
+  // Run against the minified jar
+  jmhRuntimeOnly(project(":startup-jvm:minified-jar"))
+}
 
 jmh {
   warmupIterations = 4
