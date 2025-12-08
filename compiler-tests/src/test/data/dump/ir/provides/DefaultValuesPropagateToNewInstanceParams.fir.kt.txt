@@ -1,0 +1,60 @@
+interface IntProvider {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 55, endOffset = 141, newInstanceName = "provideInt")
+  class ProvideIntMetroFactory : Factory<Int> {
+    private /* final field */ val instance: IntProvider = instance
+    private /* final field */ val stringValue: Provider<String?> = stringValue
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(instance: IntProvider, stringValue: Provider<String?> = provider<String?>(provider = local fun <anonymous>(): String? {
+        return null
+      }
+)): Factory<Int> {
+        return ProvideIntMetroFactory(instance = instance, stringValue = stringValue)
+      }
+
+      fun provideInt(instance: IntProvider, stringValue: String? = null): Int {
+        return instance.provideInt(stringValue = stringValue)
+      }
+
+    }
+
+    private constructor(instance: IntProvider, stringValue: Provider<String?>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): Int {
+      return Companion.provideInt(instance = <this>.#instance, stringValue = <this>.#stringValue.invoke())
+    }
+
+    fun mirrorFunction(stringValue: String? = error(message = "Never called")): Int {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Provides
+  private fun provideInt(stringValue: String? = null): Int {
+    return { // BLOCK
+      val tmp_0: Int? = { // BLOCK
+        val tmp_1: String? = stringValue
+        when {
+          EQEQ(arg0 = tmp_1, arg1 = null) -> null
+          else -> toInt(/* <this> = tmp_1 /*as String */ */)
+        }
+      }
+      when {
+        EQEQ(arg0 = tmp_0, arg1 = null) -> 0
+        else -> tmp_0
+      }
+    }
+  }
+
+}

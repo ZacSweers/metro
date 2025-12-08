@@ -330,6 +330,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     public void testConstructorFunctionSignatures() {
       runTest("compiler-tests/src/test/data/dump/ir/injectconstructor/ConstructorFunctionSignatures.kt");
     }
+
+    @Test
+    @TestMetadata("DefaultValuesPropagateToNewInstanceParams.kt")
+    public void testDefaultValuesPropagateToNewInstanceParams() {
+      runTest("compiler-tests/src/test/data/dump/ir/injectconstructor/DefaultValuesPropagateToNewInstanceParams.kt");
+    }
   }
 
   @Nested
@@ -361,6 +367,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     @Test
     public void testAllFilesPresentInProvides() {
       KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/provides"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    }
+
+    @Test
+    @TestMetadata("DefaultValuesPropagateToNewInstanceParams.kt")
+    public void testDefaultValuesPropagateToNewInstanceParams() {
+      runTest("compiler-tests/src/test/data/dump/ir/provides/DefaultValuesPropagateToNewInstanceParams.kt");
     }
 
     @Test

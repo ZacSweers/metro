@@ -1,0 +1,48 @@
+@Inject
+class ValueHolder {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<ValueHolder> {
+    private /* final field */ val stringValue: Provider<String?> = stringValue
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(stringValue: Provider<String?> = provider<String?>(provider = local fun <anonymous>(): String? {
+        return null
+      }
+)): Factory<ValueHolder> {
+        return MetroFactory(stringValue = stringValue)
+      }
+
+      fun newInstance(stringValue: String? = null): ValueHolder {
+        return ValueHolder(stringValue = stringValue)
+      }
+
+    }
+
+    private constructor(stringValue: Provider<String?>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): ValueHolder {
+      return Companion.newInstance(stringValue = <this>.#stringValue.invoke())
+    }
+
+    fun mirrorFunction(stringValue: String? = error(message = "Never called")): ValueHolder {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(stringValue: String? = null) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
