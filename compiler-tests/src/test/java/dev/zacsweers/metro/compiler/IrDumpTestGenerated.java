@@ -148,6 +148,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("MapBuildersUseInlineInstantiation.kt")
+    public void testMapBuildersUseInlineInstantiation() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/MapBuildersUseInlineInstantiation.kt");
+    }
+
+    @Test
     @TestMetadata("MapsUseMapBuilderIfNoProvider.kt")
     public void testMapsUseMapBuilderIfNoProvider() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/MapsUseMapBuilderIfNoProvider.kt");

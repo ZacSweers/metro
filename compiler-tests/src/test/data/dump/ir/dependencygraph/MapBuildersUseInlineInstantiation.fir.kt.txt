@@ -1,0 +1,240 @@
+// FILE: MapBuildersUseInlineInstantiation.kt
+
+@Inject
+@IntKey(value = 3)
+@ContributesIntoMap(scope = AppScope::class)
+class IntHolderImpl : IntHolder {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<IntHolderImpl> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    fun create(): Factory<IntHolderImpl> {
+      return MetroFactory
+    }
+
+    fun newInstance(): IntHolderImpl {
+      return IntHolderImpl()
+    }
+
+    override operator fun invoke(): IntHolderImpl {
+      return MetroFactory.newInstance()
+    }
+
+    fun mirrorFunction(): IntHolderImpl {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AppScope::class)
+  interface MetroContributionToAppScope {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    abstract class BindsMirror {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @Binds
+      @IntoMap
+      @IntKey(value = 3)
+      @CallableMetadata(callableName = "bindIntoMapAsIntHolder4013004651", propertyName = "", startOffset = -1, endOffset = -1)
+      abstract fun bindIntoMapAsIntHolder40130046514013004651_intomap(instance: IntHolderImpl): IntHolder
+
+    }
+
+    @IntoMap
+    @Binds
+    @IntKey(value = 3)
+    abstract fun bindIntoMapAsIntHolder4013004651(instance: IntHolderImpl): IntHolder
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@DependencyGraph(scope = AppScope::class)
+interface AppGraph : MetroContributionToAppScope {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val thisGraphInstance: AppGraph
+      field = <this>
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @IntoMap
+    @Binds
+    @IntKey(value = 3)
+    override fun bindIntoMapAsIntHolder4013004651(instance: IntHolderImpl): IntHolder {
+      return error(message = "Never called")
+    }
+
+    override val intHolder: Map<Int, IntHolder>
+      override get(): Map<Int, IntHolder> {
+        return <this>.<get-mapOfIntToIntHolder>()
+      }
+
+    override val ints: Map<Int, Int>
+      override get(): Map<Int, Int> {
+        return <this>.<get-mapOfIntToInt>()
+      }
+
+    private val mapOfIntToInt: Map<Int, Int>
+      private get(): Map<Int, Int> {
+        return buildMap<Int, Int>(capacity = 2, builderAction = local fun MutableMap<Int, Int>.<anonymous>() {
+          $receiver.put(key = 2, value = <this>.#thisGraphInstance.provideInt2())
+          $receiver.put(key = 1, value = <this>.#thisGraphInstance.provideInt1())
+        }
+)
+      }
+
+    private val mapOfIntToIntHolder: Map<Int, IntHolder>
+      private get(): Map<Int, IntHolder> {
+        return buildMap<Int, IntHolder>(capacity = 1, builderAction = local fun MutableMap<Int, IntHolder>.<anonymous>() {
+          $receiver.put(key = 3, value = IntHolderImpl())
+        }
+)
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideInt1", propertyName = "", startOffset = 303, endOffset = 359, newInstanceName = "provideInt1")
+  class ProvideInt1MetroFactory : Factory<Int> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(instance: AppGraph): Factory<Int> {
+        return ProvideInt1MetroFactory(instance = instance)
+      }
+
+      fun provideInt1(instance: AppGraph): Int {
+        return instance.provideInt1()
+      }
+
+    }
+
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): Int {
+      return Companion.provideInt1(instance = <this>.#instance)
+    }
+
+    @IntoMap
+    @IntKey(value = 1)
+    fun mirrorFunction(): Int {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideInt2", propertyName = "", startOffset = 362, endOffset = 418, newInstanceName = "provideInt2")
+  class ProvideInt2MetroFactory : Factory<Int> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(instance: AppGraph): Factory<Int> {
+        return ProvideInt2MetroFactory(instance = instance)
+      }
+
+      fun provideInt2(instance: AppGraph): Int {
+        return instance.provideInt2()
+      }
+
+    }
+
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): Int {
+      return Companion.provideInt2(instance = <this>.#instance)
+    }
+
+    @IntoMap
+    @IntKey(value = 2)
+    fun mirrorFunction(): Int {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Provides
+  @IntKey(value = 1)
+  @IntoMap
+  fun provideInt1(): Int {
+    return 1
+  }
+
+  @Provides
+  @IntKey(value = 2)
+  @IntoMap
+  fun provideInt2(): Int {
+    return 2
+  }
+
+  abstract val intHolder: Map<Int, IntHolder>
+    abstract get
+
+  abstract val ints: Map<Int, Int>
+    abstract get
+
+}
+
+interface IntHolder {
+}
+
+// FILE: intHolderImplAppScope.kt
+package metro.hints
+
+fun AppScope(contributed: IntHolderImpl) {
+  return error(message = "Never called")
+}
+
