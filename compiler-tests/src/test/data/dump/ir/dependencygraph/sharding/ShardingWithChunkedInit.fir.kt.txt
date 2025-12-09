@@ -313,11 +313,25 @@ interface TestGraph {
 
     private val fProvider: Provider<F>
 
-    private inner class Shard1 {
-      constructor() /* primary */ {
-        super/*Any*/()
-        /* <init>() */
+    protected val shard1: Shard1
 
+    protected val shard2: Shard2
+
+    private class Shard1 {
+      private /* final field */ val graph: Impl
+      private val aProvider: Provider<A>
+
+      private val bProvider: Provider<B>
+
+      private val cProvider: Provider<C>
+
+      private val dProvider: Provider<D>
+
+      constructor(graph: Impl) /* primary */ {
+        super/*Any*/()
+        <this>.#graph = graph
+        <this>.init()
+        <this>.init2()
       }
 
       private fun init() {
@@ -330,22 +344,18 @@ interface TestGraph {
         <this>.#dProvider = Companion.provider<Provider<D>, D>(delegate = Companion.create(c = <this>.#cProvider))
       }
 
-      fun initialize() {
-        <this>.init()
-        <this>.init2()
-      }
-
     }
 
-    private inner class Shard2 {
-      constructor() /* primary */ {
+    private class Shard2 {
+      private /* final field */ val graph: Impl
+      private val eProvider: Provider<E>
+
+      private val fProvider: Provider<F>
+
+      constructor(graph: Impl) /* primary */ {
         super/*Any*/()
-        /* <init>() */
-
-      }
-
-      fun initialize() {
-        <this>.#eProvider = Companion.provider<Provider<E>, E>(delegate = Companion.create(d = <this>.#dProvider))
+        <this>.#graph = graph
+        <this>.#eProvider = Companion.provider<Provider<E>, E>(delegate = Companion.create(d = <this>.#graph.#shard1.#dProvider))
         <this>.#fProvider = Companion.provider<Provider<F>, F>(delegate = Companion.create(e = <this>.#eProvider))
       }
 
@@ -355,13 +365,13 @@ interface TestGraph {
       super/*Any*/()
       /* <init>() */
 
-      <this>.Shard1().initialize()
-      <this>.Shard2().initialize()
+      <this>.#shard1 = Shard1(graph = <this>)
+      <this>.#shard2 = Shard2(graph = <this>)
     }
 
     override val f: F
       override get(): F {
-        return <this>.#fProvider.invoke()
+        return <this>.#shard2.#fProvider.invoke()
       }
 
   }

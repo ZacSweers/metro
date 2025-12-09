@@ -264,43 +264,50 @@ interface TestGraph {
 
     private val eProvider: Provider<E>
 
-    private inner class Shard1 {
-      constructor() /* primary */ {
+    protected val shard1: Shard1
+
+    protected val shard2: Shard2
+
+    protected val shard3: Shard3
+
+    private class Shard1 {
+      private /* final field */ val graph: Impl
+      private val aProvider: Provider<A>
+
+      private val bProvider: Provider<B>
+
+      constructor(graph: Impl) /* primary */ {
         super/*Any*/()
-        /* <init>() */
-
-      }
-
-      fun initialize() {
+        <this>.#graph = graph
         <this>.#aProvider = Companion.provider<Provider<A>, A>(delegate = MetroFactory.create())
         <this>.#bProvider = Companion.provider<Provider<B>, B>(delegate = Companion.create(a = <this>.#aProvider))
       }
 
     }
 
-    private inner class Shard2 {
-      constructor() /* primary */ {
+    private class Shard2 {
+      private /* final field */ val graph: Impl
+      private val cProvider: Provider<C>
+
+      private val dProvider: Provider<D>
+
+      constructor(graph: Impl) /* primary */ {
         super/*Any*/()
-        /* <init>() */
-
-      }
-
-      fun initialize() {
+        <this>.#graph = graph
         <this>.#cProvider = DelegateFactory<C>()
         <this>.#dProvider = Companion.provider<Provider<D>, D>(delegate = Companion.create(c = <this>.#cProvider))
       }
 
     }
 
-    private inner class Shard3 {
-      constructor() /* primary */ {
+    private class Shard3 {
+      private /* final field */ val graph: Impl
+      private val eProvider: Provider<E>
+
+      constructor(graph: Impl) /* primary */ {
         super/*Any*/()
-        /* <init>() */
-
-      }
-
-      fun initialize() {
-        <this>.#eProvider = Companion.provider<Provider<E>, E>(delegate = Companion.create(c = <this>.#cProvider))
+        <this>.#graph = graph
+        <this>.#eProvider = Companion.provider<Provider<E>, E>(delegate = Companion.create(c = <this>.#graph.#shard2.#cProvider))
       }
 
     }
@@ -309,15 +316,15 @@ interface TestGraph {
       super/*Any*/()
       /* <init>() */
 
-      <this>.Shard1().initialize()
-      <this>.Shard2().initialize()
-      <this>.Shard3().initialize()
-      Companion.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = Companion.provider<Provider<C>, C>(delegate = Companion.create(b = <this>.#bProvider, d = <this>.#dProvider)))
+      <this>.#shard1 = Shard1(graph = <this>)
+      <this>.#shard2 = Shard2(graph = <this>)
+      <this>.#shard3 = Shard3(graph = <this>)
+      Companion.setDelegate<C>(delegateFactory = <this>.#shard2.#cProvider, delegate = Companion.provider<Provider<C>, C>(delegate = Companion.create(b = <this>.#shard1.#bProvider, d = <this>.#shard2.#dProvider)))
     }
 
     override val e: E
       override get(): E {
-        return <this>.#eProvider.invoke()
+        return <this>.#shard3.#eProvider.invoke()
       }
 
   }

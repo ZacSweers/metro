@@ -143,14 +143,21 @@ interface TestGraph {
 
     private val collectorProvider: Provider<Collector>
 
-    private inner class Shard1 {
-      constructor() /* primary */ {
+    protected val shard1: Shard1
+
+    protected val shard2: Shard2
+
+    private class Shard1 {
+      private /* final field */ val graph: Impl
+      private val service1Provider: Provider<Service1>
+
+      private val provideService1Provider: Provider<Any>
+
+      private val service2Provider: Provider<Service2>
+
+      constructor(graph: Impl) /* primary */ {
         super/*Any*/()
-        /* <init>() */
-
-      }
-
-      fun initialize() {
+        <this>.#graph = graph
         <this>.#service1Provider = Companion.provider<Provider<Service1>, Service1>(delegate = MetroFactory.create())
         <this>.#provideService1Provider = Companion.provider<Provider<Any>, Any>(delegate = Companion.create(s1 = <this>.#service1Provider))
         <this>.#service2Provider = Companion.provider<Provider<Service2>, Service2>(delegate = MetroFactory.create())
@@ -158,17 +165,23 @@ interface TestGraph {
 
     }
 
-    private inner class Shard2 {
-      constructor() /* primary */ {
+    private class Shard2 {
+      private /* final field */ val graph: Impl
+      private val provideService2Provider: Provider<Any>
+
+      private val collectorProvider: Provider<Collector>
+
+      constructor(graph: Impl) /* primary */ {
         super/*Any*/()
-        /* <init>() */
-
-      }
-
-      fun initialize() {
-        <this>.#provideService2Provider = Companion.provider<Provider<Any>, Any>(delegate = Companion.create(s2 = <this>.#service2Provider))
+        <this>.#graph = graph
+        <this>.#provideService2Provider = Companion.provider<Provider<Any>, Any>(delegate = Companion.create(s2 = <this>.#graph.#shard1.#service2Provider))
         <this>.#collectorProvider = Companion.provider<Provider<Collector>, Collector>(delegate = Companion.create(services = <this>.<get-setOfAny>()))
       }
+
+      protected val setOfAny: Provider<Set<Any>>
+        protected get(): Provider<Set<Any>> {
+          return Companion.builder<Any>(individualProviderSize = 2, collectionProviderSize = 0).addProvider(individualProvider = <this>.#graph.#shard1.#provideService1Provider).addProvider(individualProvider = <this>.#provideService2Provider).build()
+        }
 
     }
 
@@ -176,18 +189,13 @@ interface TestGraph {
       super/*Any*/()
       /* <init>() */
 
-      <this>.Shard1().initialize()
-      <this>.Shard2().initialize()
+      <this>.#shard1 = Shard1(graph = <this>)
+      <this>.#shard2 = Shard2(graph = <this>)
     }
 
     override val collector: Collector
       override get(): Collector {
-        return <this>.#collectorProvider.invoke()
-      }
-
-    private val setOfAny: Provider<Set<Any>>
-      private get(): Provider<Set<Any>> {
-        return Companion.builder<Any>(individualProviderSize = 2, collectionProviderSize = 0).addProvider(individualProvider = <this>.#provideService1Provider).addProvider(individualProvider = <this>.#provideService2Provider).build()
+        return <this>.#shard2.#collectorProvider.invoke()
       }
 
   }

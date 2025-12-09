@@ -114,29 +114,33 @@ interface TestGraph {
 
     private val service3Provider: Provider<Service3>
 
-    private inner class Shard1 {
-      constructor() /* primary */ {
+    protected val shard1: Shard1
+
+    protected val shard2: Shard2
+
+    private class Shard1 {
+      private /* final field */ val graph: Impl
+      private val service1Provider: Provider<Service1>
+
+      private val provideService2Provider: Provider<Service2>
+
+      constructor(graph: Impl) /* primary */ {
         super/*Any*/()
-        /* <init>() */
-
-      }
-
-      fun initialize() {
+        <this>.#graph = graph
         <this>.#service1Provider = Companion.provider<Provider<Service1>, Service1>(delegate = MetroFactory.create())
         <this>.#provideService2Provider = Companion.provider<Provider<Service2>, Service2>(delegate = Companion.create(s1 = <this>.#service1Provider))
       }
 
     }
 
-    private inner class Shard2 {
-      constructor() /* primary */ {
+    private class Shard2 {
+      private /* final field */ val graph: Impl
+      private val service3Provider: Provider<Service3>
+
+      constructor(graph: Impl) /* primary */ {
         super/*Any*/()
-        /* <init>() */
-
-      }
-
-      fun initialize() {
-        <this>.#service3Provider = Companion.provider<Provider<Service3>, Service3>(delegate = Companion.create(s2 = <this>.#provideService2Provider))
+        <this>.#graph = graph
+        <this>.#service3Provider = Companion.provider<Provider<Service3>, Service3>(delegate = Companion.create(s2 = <this>.#graph.#shard1.#provideService2Provider))
       }
 
     }
@@ -145,23 +149,23 @@ interface TestGraph {
       super/*Any*/()
       /* <init>() */
 
-      <this>.Shard1().initialize()
-      <this>.Shard2().initialize()
+      <this>.#shard1 = Shard1(graph = <this>)
+      <this>.#shard2 = Shard2(graph = <this>)
     }
 
     override val service1: Service1
       override get(): Service1 {
-        return <this>.#service1Provider.invoke()
+        return <this>.#shard1.#service1Provider.invoke()
       }
 
     override val service2: Service2
       override get(): Service2 {
-        return <this>.#provideService2Provider.invoke()
+        return <this>.#shard1.#provideService2Provider.invoke()
       }
 
     override val service3: Service3
       override get(): Service3 {
-        return <this>.#service3Provider.invoke()
+        return <this>.#shard2.#service3Provider.invoke()
       }
 
   }

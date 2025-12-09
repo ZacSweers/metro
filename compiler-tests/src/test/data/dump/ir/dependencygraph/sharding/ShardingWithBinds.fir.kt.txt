@@ -124,28 +124,30 @@ interface TestGraph {
 
     private val serviceProvider: Provider<Service>
 
-    private inner class Shard1 {
-      constructor() /* primary */ {
+    protected val shard1: Shard1
+
+    protected val shard2: Shard2
+
+    private class Shard1 {
+      private /* final field */ val graph: Impl
+      private val repositoryImplProvider: Provider<RepositoryImpl>
+
+      constructor(graph: Impl) /* primary */ {
         super/*Any*/()
-        /* <init>() */
-
-      }
-
-      fun initialize() {
+        <this>.#graph = graph
         <this>.#repositoryImplProvider = Companion.provider<Provider<RepositoryImpl>, RepositoryImpl>(delegate = MetroFactory.create())
       }
 
     }
 
-    private inner class Shard2 {
-      constructor() /* primary */ {
+    private class Shard2 {
+      private /* final field */ val graph: Impl
+      private val serviceProvider: Provider<Service>
+
+      constructor(graph: Impl) /* primary */ {
         super/*Any*/()
-        /* <init>() */
-
-      }
-
-      fun initialize() {
-        <this>.#serviceProvider = Companion.provider<Provider<Service>, Service>(delegate = Companion.create(repo = <this>.#repositoryImplProvider))
+        <this>.#graph = graph
+        <this>.#serviceProvider = Companion.provider<Provider<Service>, Service>(delegate = Companion.create(repo = <this>.#graph.#shard1.#repositoryImplProvider))
       }
 
     }
@@ -154,18 +156,18 @@ interface TestGraph {
       super/*Any*/()
       /* <init>() */
 
-      <this>.Shard1().initialize()
-      <this>.Shard2().initialize()
+      <this>.#shard1 = Shard1(graph = <this>)
+      <this>.#shard2 = Shard2(graph = <this>)
     }
 
     override val repository: Repository
       override get(): Repository {
-        return <this>.#repositoryImplProvider.invoke()
+        return <this>.#shard1.#repositoryImplProvider.invoke()
       }
 
     override val service: Service
       override get(): Service {
-        return <this>.#serviceProvider.invoke()
+        return <this>.#shard2.#serviceProvider.invoke()
       }
 
   }
