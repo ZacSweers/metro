@@ -55,6 +55,7 @@ internal class MultibindingExpressionGenerator(
     (
       IrBinding, IrContextualTypeKey, IrBuilderWithScope.(MultibindingExpressionGenerator) -> IrBody,
     ) -> IrProperty,
+  private val shardAwareIrGetProperty: IrBuilderWithScope.(IrProperty) -> IrExpression,
 ) : BindingExpressionGenerator<IrBinding.Multibinding>(parentGenerator) {
   override val thisReceiver: IrValueParameter
     get() = parentGenerator.thisReceiver
@@ -113,8 +114,8 @@ internal class MultibindingExpressionGenerator(
           irExprBodySafe(generateCode(expressionGenerator))
         }
 
-      // Return the property access, which will be the provider
-      return irGetProperty(irGet(thisReceiver), property)
+      // Return the property access
+      return shardAwareIrGetProperty(property)
     }
 
   context(scope: IrBuilderWithScope)
@@ -417,8 +418,8 @@ internal class MultibindingExpressionGenerator(
           irExprBodySafe(generateCode(expressionGenerator))
         }
 
-      // Return the property access, which will be the provider
-      return irGetProperty(irGet(thisReceiver), property)
+      // Return the property access
+      return shardAwareIrGetProperty(property)
     }
 
   context(scope: IrBuilderWithScope)

@@ -21,9 +21,17 @@ internal class BindingPropertyCollector(
   private val graph: IrBindingGraph,
   private val sortedKeys: List<IrTypeKey>,
   private val roots: List<IrContextualTypeKey> = emptyList(),
+  private val deferredTypes: Set<IrTypeKey> = emptySet(),
 ) {
 
-  data class CollectedProperty(val binding: IrBinding, val propertyType: PropertyType)
+  data class BindingProperty(val binding: IrBinding, val propertyType: PropertyType)
+
+  data class CollectResult(
+    /** Bindings that need backing properties (fields or getters). Excludes multibindings. */
+    val properties: Map<IrTypeKey, BindingProperty>,
+    /** For each multibinding, the set of contextual type keys that need getter variants. */
+    val multibindingAccesses: Map<IrTypeKey, Set<IrContextualTypeKey>>,
+  )
 
   private data class Node(val binding: IrBinding, var refCount: Int = 0)
 
@@ -32,8 +40,11 @@ internal class BindingPropertyCollector(
   /** Cache of alias type keys to their resolved non-alias target type keys. */
   private val resolvedAliasTargets = HashMap<IrTypeKey, IrTypeKey>()
 
-  fun collect(): Map<IrTypeKey, CollectedProperty> {
-    val keysWithBackingProperties = mutableMapOf<IrTypeKey, CollectedProperty>()
+  /** Tracks which contextual type keys are used to access each multibinding. */
+  private val multibindingAccesses = HashMap<IrTypeKey, MutableSet<IrContextualTypeKey>>()
+
+  fun collect(): CollectResult {
+    val keysWithBackingProperties = mutableMapOf<IrTypeKey, BindingProperty>()
 
     // Roots (accessors/injectors) don't get properties themselves, but they contribute to
     // dependency refcounts when they require provider instances so we mark them here.
@@ -42,7 +53,7 @@ internal class BindingPropertyCollector(
       if (root.requiresProviderInstance) {
         markProviderAccess(root)
       }
-      maybeMarkMultibindingSourcesAsProviderAccess(root)
+      processMultibindingAccess(root, recordAccess = true)
     }
 
     // Single pass in reverse topological order (dependents before dependencies).
@@ -59,22 +70,22 @@ internal class BindingPropertyCollector(
       // Check static property type (applies to all bindings including aliases)
       val staticPropertyType = staticPropertyType(key, binding)
       if (staticPropertyType != null) {
-        keysWithBackingProperties[key] = CollectedProperty(binding, staticPropertyType)
+        keysWithBackingProperties[key] = BindingProperty(binding, staticPropertyType)
       }
 
       // Skip alias bindings for refcount and dependency processing
       if (binding is IrBinding.Alias) continue
 
-      // Multibindings are always created adhoc, but we create their properties lazily
+      // Skip multibindings - they're handled separately via multibindingAccesses
       if (binding is IrBinding.Multibinding) continue
 
       // refCount is finalized - check if we need a property from refcount
       if (key !in keysWithBackingProperties && node.refCount > 1) {
-        keysWithBackingProperties[key] = CollectedProperty(binding, PropertyType.FIELD)
+        keysWithBackingProperties[key] = BindingProperty(binding, PropertyType.FIELD)
       }
 
-      // Uses factory path if it has a property (scoped, assisted, or refcount > 1)
-      val usesFactoryPath = key in keysWithBackingProperties
+      // Uses factory path if it has a property (scoped, assisted, refcount > 1) or is deferred (cycle)
+      val usesFactoryPath = key in keysWithBackingProperties || key in deferredTypes
 
       // Mark dependencies as provider accesses if:
       // 1. Explicitly Provider<T> or Lazy<T>
@@ -83,11 +94,16 @@ internal class BindingPropertyCollector(
         if (dependency.requiresProviderInstance || usesFactoryPath) {
           markProviderAccess(dependency)
         }
-        maybeMarkMultibindingSourcesAsProviderAccess(dependency)
+        // Only record multibinding access for the actual access type used at runtime:
+        // - If explicitly Provider/Lazy wrapped, record (contextKey is already PROVIDER)
+        // - If parent uses factory path (not explicit), skip recording - the INSTANCE
+        //   contextKey would be wrong since it's actually accessed as PROVIDER
+        val recordAccess = dependency.requiresProviderInstance || !usesFactoryPath
+        processMultibindingAccess(dependency, recordAccess)
       }
     }
 
-    return keysWithBackingProperties
+    return CollectResult(keysWithBackingProperties, multibindingAccesses)
   }
 
   /**
@@ -139,13 +155,28 @@ internal class BindingPropertyCollector(
   }
 
   /**
-   * If the given contextual type key corresponds to a multibinding that would use Provider
-   * elements, marks all its source bindings as provider accesses. This handles:
+   * Processes a multibinding access:
+   * 1. Optionally records the access contextual type key for getter variant generation
+   * 2. If the multibinding uses Provider elements, marks all source bindings as provider accesses
+   *
+   * This handles:
    * - Map multibindings with Provider<V> values (e.g., `Map<Int, Provider<Int>>`)
    * - Any multibinding wrapped in Provider/Lazy (e.g., `Provider<Set<E>>`, `Lazy<Map<K, V>>`)
+   *
+   * @param recordAccess Whether to record this access in multibindingAccesses. Set to false when
+   *   the contextKey doesn't represent the actual runtime access type (e.g., when parent uses
+   *   factory path but the dependency isn't explicitly Provider-wrapped).
    */
-  private fun maybeMarkMultibindingSourcesAsProviderAccess(contextKey: IrContextualTypeKey) {
+  private fun processMultibindingAccess(contextKey: IrContextualTypeKey, recordAccess: Boolean) {
     val binding = graph.findBinding(contextKey.typeKey) as? IrBinding.Multibinding ?: return
+
+    // Skip empty multibindings entirely - no getters or provider marking needed
+    if (binding.sourceBindings.isEmpty()) return
+
+    // Record access if requested - tracks whether INSTANCE or PROVIDER variants are needed
+    if (recordAccess) {
+      multibindingAccesses.getOrPut(binding.typeKey, ::mutableSetOf).add(contextKey)
+    }
 
     // Check if this multibinding access would use Provider elements:
     // 1. Wrapped in Provider/Lazy (e.g., Provider<Set<E>>)

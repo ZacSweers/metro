@@ -2,19 +2,33 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph.expressions
 
+import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
+import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyContext
 import dev.zacsweers.metro.compiler.ir.graph.DependencyGraphNode
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
 import dev.zacsweers.metro.compiler.ir.graph.IrGraphExtensionGenerator
+import dev.zacsweers.metro.compiler.ir.graph.BindingProperty
+import dev.zacsweers.metro.compiler.ir.graph.PropertyLocation
+import dev.zacsweers.metro.compiler.ir.graph.ShardContext
 import dev.zacsweers.metro.compiler.ir.graph.generatedGraphExtensionData
 import dev.zacsweers.metro.compiler.ir.irGetProperty
 import dev.zacsweers.metro.compiler.ir.irInvoke
+import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
+import dev.zacsweers.metro.compiler.ir.toIrType
+import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
+import org.jetbrains.kotlin.ir.builders.declarations.addGetter
+import org.jetbrains.kotlin.ir.builders.declarations.buildProperty
+import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.util.addChild
+import org.jetbrains.kotlin.ir.util.copyTo
+import org.jetbrains.kotlin.name.Name.identifier
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
@@ -34,6 +48,7 @@ import dev.zacsweers.metro.compiler.tracing.Tracer
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irGet
+import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrProperty
@@ -56,7 +71,6 @@ internal class GraphExpressionGenerator
 private constructor(
   context: IrMetroContext,
   private val node: DependencyGraphNode,
-  override val thisReceiver: IrValueParameter,
   private val bindingPropertyContext: BindingPropertyContext,
   override val bindingGraph: IrBindingGraph,
   private val bindingContainerTransformer: BindingContainerTransformer,
@@ -64,11 +78,15 @@ private constructor(
   private val assistedFactoryTransformer: AssistedFactoryTransformer,
   private val graphExtensionGenerator: IrGraphExtensionGenerator,
   override val parentTracer: Tracer,
-  getterPropertyFor:
+  private val shardContext: ShardContext,
+  private val getterPropertyFor:
     (
       IrBinding, IrContextualTypeKey, IrBuilderWithScope.(GraphExpressionGenerator) -> IrBody,
     ) -> IrProperty,
 ) : BindingExpressionGenerator<IrBinding>(context) {
+
+  override val thisReceiver: IrValueParameter
+    get() = shardContext.thisReceiver
 
   class Factory(
     private val context: IrMetroContext,
@@ -85,11 +103,10 @@ private constructor(
         IrBinding, IrContextualTypeKey, IrBuilderWithScope.(GraphExpressionGenerator) -> IrBody,
       ) -> IrProperty,
   ) {
-    fun create(thisReceiver: IrValueParameter): GraphExpressionGenerator {
+    fun create(shardContext: ShardContext): GraphExpressionGenerator {
       return GraphExpressionGenerator(
         context = context,
         node = node,
-        thisReceiver = thisReceiver,
         bindingPropertyContext = bindingPropertyContext,
         bindingGraph = bindingGraph,
         bindingContainerTransformer = bindingContainerTransformer,
@@ -97,23 +114,157 @@ private constructor(
         assistedFactoryTransformer = assistedFactoryTransformer,
         graphExtensionGenerator = graphExtensionGenerator,
         parentTracer = parentTracer,
+        shardContext = shardContext,
         getterPropertyFor = getterPropertyFor,
       )
     }
   }
 
   private val wrappedTypeGenerators = listOf(IrOptionalExpressionGenerator).associateBy { it.key }
+
+  /** Cache for shard-local lazy properties, keyed by (shard class, contextual type key) */
+  private val shardLazyProperties = mutableMapOf<Pair<IrClass, IrContextualTypeKey>, IrProperty>()
+
   private val multibindingExpressionGenerator by memoize {
-    MultibindingExpressionGenerator(this) { binding, contextKey, generateCode ->
-      getterPropertyFor(binding, contextKey) { parentGenerator ->
-        generateCode(parentGenerator.multibindingGetter)
-      }
+    MultibindingExpressionGenerator(
+      parentGenerator = this,
+      getterPropertyFor = { binding, contextKey, generateCode ->
+        if (shardContext.graphBackingField != null) {
+          // During shard init, create the getter in the shard to avoid circular initialization
+          getOrCreateShardLocalLazyProperty(binding, contextKey) { parentGenerator ->
+            generateCode(parentGenerator.multibindingGetter)
+          }
+        } else {
+          getterPropertyFor(binding, contextKey) { parentGenerator ->
+            generateCode(parentGenerator.multibindingGetter)
+          }
+        }
+      },
+      shardAwareIrGetProperty = { property ->
+        if (property.parent == shardContext.currentClass) {
+          // Same-class property - access via this
+          with(scope) { irGetProperty(irGet(shardContext.thisReceiver), property) }
+        } else {
+          shardAwareIrGetProperty(property)
+        }
+      },
+    )
+  }
+
+  /**
+   * Creates or retrieves a lazily-generated property in the current shard.
+   * Used for multibinding getters that need to access shard providers during shard init.
+   */
+  private fun getOrCreateShardLocalLazyProperty(
+    binding: IrBinding,
+    contextualTypeKey: IrContextualTypeKey,
+    bodyGenerator: IrBuilderWithScope.(GraphExpressionGenerator) -> IrBody,
+  ): IrProperty {
+    val cacheKey = shardContext.currentClass to contextualTypeKey
+    return shardLazyProperties.getOrPut(cacheKey) {
+      shardContext.currentClass.factory
+        .buildProperty {
+          this.name = identifier(binding.nameHint.decapitalizeUS())
+          this.visibility = DescriptorVisibilities.PROTECTED
+        }
+        .apply {
+          parent = shardContext.currentClass
+          shardContext.currentClass.addChild(this)
+
+          // Add getter with the provided body generator
+          addGetter {
+              returnType = contextualTypeKey.toIrType()
+              visibility = DescriptorVisibilities.PROTECTED
+            }
+            .apply {
+              val getterReceiver = shardContext.currentClass.thisReceiver!!.copyTo(this)
+              setDispatchReceiver(getterReceiver)
+              // Create a new ShardContext with the getter's receiver
+              // This is critical: we need to use getterReceiver (the getter's `this`) not shardContext.thisReceiver
+              val getterShardContext = ShardContext(
+                currentClass = shardContext.currentClass,
+                thisReceiver = getterReceiver,
+                graphBackingField = shardContext.graphBackingField,
+              )
+              // Create expression generator for the shard context
+              // We pass `this@GraphExpressionGenerator` as IrMetroContext since it implements IrMetroContext by delegation
+              val expressionGenerator = Factory(
+                context = this@GraphExpressionGenerator,
+                node = node,
+                bindingPropertyContext = bindingPropertyContext,
+                bindingGraph = bindingGraph,
+                bindingContainerTransformer = bindingContainerTransformer,
+                membersInjectorTransformer = membersInjectorTransformer,
+                assistedFactoryTransformer = assistedFactoryTransformer,
+                graphExtensionGenerator = graphExtensionGenerator,
+                parentTracer = parentTracer,
+                getterPropertyFor = getterPropertyFor,
+              ).create(getterShardContext)
+              this.body = createIrBuilder(symbol).bodyGenerator(expressionGenerator)
+            }
+        }
     }
   }
 
   // Here to defeat type checking
   private val multibindingGetter: MultibindingExpressionGenerator
     get() = multibindingExpressionGenerator
+
+  /**
+   * Returns an expression to access the graph instance based on current context.
+   *
+   * - In graph-direct context (`graphBackingField == null`): returns `this`
+   * - In shard context: returns `this.graph` (via the backing field)
+   */
+  context(scope: IrBuilderWithScope)
+  private fun irGetGraphExpr(): IrExpression = with(scope) {
+    val backingField = shardContext.graphBackingField
+    if (backingField != null) {
+      irGetField(irGet(shardContext.thisReceiver), backingField)
+    } else {
+      irGet(shardContext.thisReceiver)
+    }
+  }
+
+  /**
+   * Gets a property with proper access path based on its location and current context.
+   *
+   * For properties on the graph class: accesses via `irGetGraphExpr().property`
+   * For properties in a shard class:
+   * - Same class as current context: `this.property`
+   * - Different class: `irGetGraphExpr().shardField.property`
+   */
+  context(scope: IrBuilderWithScope)
+  private fun irGetBindingProperty(property: BindingProperty): IrExpression {
+    return with(scope) {
+      when (val location = property.location) {
+        is PropertyLocation.InGraphImpl -> {
+          irGetProperty(irGetGraphExpr(), property.irProperty)
+        }
+        is PropertyLocation.InShard -> {
+          if (location.shardClass == shardContext.currentClass) {
+            // Same class - access directly via this
+            irGetProperty(irGet(shardContext.thisReceiver), property.irProperty)
+          } else {
+            // Different class - go through graph then shard field
+            val shardAccess = irGetProperty(irGetGraphExpr(), location.shardField)
+            irGetProperty(shardAccess, property.irProperty)
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Gets access to a property with shard-aware navigation.
+   * Used for lazy getter properties like multibinding getters.
+   *
+   * Accesses via `irGetGraphExpr().property` to handle both graph-direct and shard contexts.
+   */
+  context(scope: IrBuilderWithScope)
+  fun shardAwareIrGetProperty(property: IrProperty): IrExpression {
+    return with(scope) { irGetProperty(irGetGraphExpr(), property) }
+  }
 
   context(scope: IrBuilderWithScope)
   override fun generateBindingCode(
@@ -143,12 +294,12 @@ private constructor(
       // This is important for cases like DelegateFactory and breaking cycles.
       if (fieldInitKey == null || fieldInitKey != binding.typeKey) {
         if (bindingPropertyContext.hasKey(binding.typeKey)) {
-          bindingPropertyContext.providerProperty(binding.typeKey)?.let {
-            return irGetProperty(irGet(thisReceiver), it)
+          bindingPropertyContext.providerPropertyEntry(binding.typeKey)?.let { entry ->
+            return irGetBindingProperty(entry)
               .toTargetType(actual = AccessType.PROVIDER, contextualTypeKey = contextualTypeKey)
           }
-          bindingPropertyContext.instanceProperty(binding.typeKey)?.let {
-            return irGetProperty(irGet(thisReceiver), it)
+          bindingPropertyContext.instancePropertyEntry(binding.typeKey)?.let { entry ->
+            return irGetBindingProperty(entry)
               .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
           }
           // Should never get here
@@ -514,14 +665,19 @@ private constructor(
           val ownerKey = binding.ownerKey
           val bindingGetter =
             if (binding.propertyAccess != null) {
-              // Just get the property
-              irGetProperty(
-                irGet(binding.propertyAccess.receiverParameter),
-                binding.propertyAccess.property,
-              )
+              // Get the property from the parent graph.
+              // Note: Extension graphs with parent property dependencies are NOT sharded,
+              // so we can always access the property directly here (no shard context handling needed).
+              val receiver = irGet(binding.propertyAccess.receiverParameter)
+              val backingField = binding.propertyAccess.property.backingField
+              if (backingField != null) {
+                irGetField(receiver, backingField)
+              } else {
+                irGetProperty(receiver, binding.propertyAccess.property)
+              }
             } else if (binding.getter != null) {
-              val graphInstanceProperty =
-                bindingPropertyContext.instanceProperty(ownerKey)
+              val graphInstanceEntry =
+                bindingPropertyContext.instancePropertyEntry(ownerKey)
                   ?: reportCompilerBug(
                     "No matching included type instance found for type $ownerKey while processing ${node.typeKey}. Available instance fields ${bindingPropertyContext.availableInstanceKeys}"
                   )
@@ -530,7 +686,7 @@ private constructor(
 
               val invokeGetter =
                 irInvoke(
-                  dispatchReceiver = irGetProperty(irGet(thisReceiver), graphInstanceProperty),
+                  dispatchReceiver = irGetBindingProperty(graphInstanceEntry),
                   callee = binding.getter.symbol,
                   typeHint = binding.typeKey.type,
                 )
@@ -651,16 +807,16 @@ private constructor(
         // TODO consolidate this logic with generateBindingCode
         if (accessType == AccessType.INSTANCE) {
           // IFF the parameter can take a direct instance, try our instance fields
-          bindingPropertyContext.instanceProperty(typeKey)?.let { instanceField ->
-            return@mapIndexed irGetProperty(irGet(thisReceiver), instanceField)
+          bindingPropertyContext.instancePropertyEntry(typeKey)?.let { entry ->
+            return@mapIndexed irGetBindingProperty(entry)
               .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
           }
         }
 
         val providerInstance =
-          bindingPropertyContext.providerProperty(typeKey)?.let { field ->
+          bindingPropertyContext.providerPropertyEntry(typeKey)?.let { entry ->
             // If it's in provider fields, invoke that field
-            irGetProperty(irGet(thisReceiver), field)
+            irGetBindingProperty(entry)
           }
             ?: run {
               // Generate binding code for each param
