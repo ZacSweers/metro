@@ -155,6 +155,9 @@ val enableShardTest = providers.gradleProperty("metro.enableShardTest").isPresen
 tasks.withType<Test> {
   outputs.upToDateWhen { false }
 
+  // Work around a memory leak in KSP
+  forkEvery = 200
+
   if (enableShardTest) {
     // Increase heap for LargeGraphStressTest stress test
     minHeapSize = "512m"
