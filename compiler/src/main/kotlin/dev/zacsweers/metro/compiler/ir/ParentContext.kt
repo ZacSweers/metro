@@ -5,8 +5,10 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.decapitalizeUS
+import dev.zacsweers.metro.compiler.ir.graph.BindingProperty
 import dev.zacsweers.metro.compiler.ir.graph.DependencyGraphNode
 import dev.zacsweers.metro.compiler.ir.graph.GraphPropertyData
+import dev.zacsweers.metro.compiler.ir.graph.PropertyLocation
 import dev.zacsweers.metro.compiler.ir.graph.PropertyType
 import dev.zacsweers.metro.compiler.ir.graph.ensureInitialized
 import dev.zacsweers.metro.compiler.ir.graph.graphPropertyData
@@ -25,7 +27,7 @@ internal class ParentContext(private val metroContext: IrMetroContext) {
   // Data for property access tracking
   internal data class PropertyAccess(
     val parentKey: IrTypeKey,
-    val property: IrProperty,
+    val bindingProperty: BindingProperty,
     val receiverParameter: IrValueParameter,
   )
 
@@ -93,7 +95,7 @@ internal class ParentContext(private val metroContext: IrMetroContext) {
       providerLevel.usedContextKeys.add(contextKey)
       return PropertyAccess(
         providerLevel.node.typeKey,
-        property,
+        BindingProperty(property, PropertyLocation.InGraphImpl),
         providerLevel.node.metroGraphOrFail.thisReceiverOrFail,
       )
     }
@@ -118,7 +120,7 @@ internal class ParentContext(private val metroContext: IrMetroContext) {
           level.usedContextKeys.add(contextKey)
           return PropertyAccess(
             level.node.typeKey,
-            field,
+            BindingProperty(field, PropertyLocation.InGraphImpl),
             level.node.metroGraphOrFail.thisReceiverOrFail,
           )
         }
@@ -221,22 +223,25 @@ internal class ParentContext(private val metroContext: IrMetroContext) {
       }
     val contextKey = createContextKey(key, isProvider)
     val suffix = if (isProvider) "Provider" else "Instance"
-    // Build but don't add, order will matter and be handled by the graph generator
+    // Build but don't add, order will matter and be handled by the graph generator.
+    // Create the property with a getter (no body) so child graphs can generate access code.
+    // The backing field will be added by getOrCreateBindingProperty when the parent graph
+    // is processed. The getter body is set later by generateReservedPropertyGetters.
     return graphClass.factory
       .buildProperty {
         name =
           level.propertyNameAllocator.newName(
             key.type.rawType().name.asString().decapitalizeUS().suffixIfNot(suffix).asName()
           )
-        // TODO revisit? Can we skip synth accessors? Only if graph has extensions
-        visibility = DescriptorVisibilities.PRIVATE
+        // Protected so child graphs (inner classes) can access
+        visibility = DescriptorVisibilities.PROTECTED
       }
       .apply {
         parent = graphClass
         graphPropertyData = GraphPropertyData(contextKey, propertyType)
-
-        // These must always be fields
-        with(metroContext) { ensureInitialized(PropertyType.FIELD) }
+        // Add getter (no body) for child access. Body will be set after parent processing.
+        // The backing field is added later by getOrCreateBindingProperty.
+        with(metroContext) { ensureInitialized(PropertyType.FIELD_WITH_INLINE_GETTER) }
       }
   }
 
@@ -247,7 +252,7 @@ internal class ParentContext(private val metroContext: IrMetroContext) {
       level.properties[contextKey]?.let { property ->
         return PropertyAccess(
           level.node.typeKey,
-          property,
+          BindingProperty(property, PropertyLocation.InGraphImpl),
           level.node.metroGraphOrFail.thisReceiverOrFail,
         )
       }
