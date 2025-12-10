@@ -329,8 +329,11 @@ interface CycleGraph {
     private val thisGraphInstance: CycleGraph
       field = <this>
 
-    private val cycleGraphProvider: Provider<CycleGraph>
+    protected val cycleGraphProvider: Provider<CycleGraph>
       field = Companion.invoke<CycleGraph>(value = <this>.#thisGraphInstance)
+      protected inline get(): Provider<CycleGraph> {
+        return <this>.#cycleGraphProvider
+      }
 
     private val cProvider: Provider<C>
       field = DelegateFactory<C>()
@@ -343,6 +346,7 @@ interface CycleGraph {
 
     @DependencyGraph
     private inner class ChildCycleGraphImpl : ChildCycleGraph {
+      protected /* final field */ val parentGraph: Impl = <this>
       private val cProvider: Provider<C>
         field = DelegateFactory<C>()
 

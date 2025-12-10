@@ -476,10 +476,16 @@ interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope {
     private val thisGraphInstance: AppGraph
       field = <this>
 
-    private val appGraphProvider: Provider<AppGraph>
+    protected val appGraphProvider: Provider<AppGraph>
       field = Companion.invoke<AppGraph>(value = <this>.#thisGraphInstance)
+      protected inline get(): Provider<AppGraph> {
+        return <this>.#appGraphProvider
+      }
 
-    private val appService1Provider: Provider<AppService1>
+    protected val appService1Provider: Provider<AppService1>
+      protected inline get(): Provider<AppService1> {
+        return <this>.#appService1Provider
+      }
 
     private val appService2Provider: Provider<AppService2>
 
@@ -491,7 +497,7 @@ interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope {
 
     protected val shard2: Shard2
 
-    private class Shard1 {
+    protected class Shard1 {
       private /* final field */ val graph: Impl
       private val appService2Provider: Provider<AppService2>
 
@@ -506,7 +512,7 @@ interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope {
 
     }
 
-    private class Shard2 {
+    protected class Shard2 {
       private /* final field */ val graph: Impl
       private val appService4Provider: Provider<AppService4>
 
@@ -520,6 +526,7 @@ interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope {
 
     @DependencyGraph(scope = Feature1Scope::class)
     private inner class Feature1GraphImpl : Feature1Graph {
+      protected /* final field */ val parentGraph: Impl = <this>
       private val feature1Service1Provider: Provider<Feature1Service1>
 
       private val feature1Service2Provider: Provider<Feature1Service2>
@@ -530,7 +537,7 @@ interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope {
 
       protected val shard2: Shard2
 
-      private class Shard1 {
+      protected class Shard1 {
         private /* final field */ val graph: Feature1GraphImpl
         private val feature1Service1Provider: Provider<Feature1Service1>
 
@@ -545,7 +552,7 @@ interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope {
 
       }
 
-      private class Shard2 {
+      protected class Shard2 {
         private /* final field */ val graph: Feature1GraphImpl
         private val feature1Service3Provider: Provider<Feature1Service3>
 
@@ -574,24 +581,55 @@ interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope {
 
     @DependencyGraph(scope = Feature2Scope::class)
     private inner class Feature2GraphImpl : Feature2Graph {
+      protected /* final field */ val parentGraph: Impl = <this>
       private val feature2Service1Provider: Provider<Feature2Service1>
-        field = Companion.provider<Provider<Feature2Service1>, Feature2Service1>(delegate = Companion.create(app = <this>.#appService1Provider))
 
       private val feature2Service2Provider: Provider<Feature2Service2>
-        field = Companion.provider<Provider<Feature2Service2>, Feature2Service2>(delegate = Companion.create(f2s1 = <this>.#feature2Service1Provider))
 
       private val feature2Service3Provider: Provider<Feature2Service3>
-        field = Companion.provider<Provider<Feature2Service3>, Feature2Service3>(delegate = Companion.create(f2s2 = <this>.#feature2Service2Provider))
+
+      protected val shard1: Shard1
+
+      protected val shard2: Shard2
+
+      protected class Shard1 {
+        private /* final field */ val graph: Feature2GraphImpl
+        private val feature2Service1Provider: Provider<Feature2Service1>
+
+        private val feature2Service2Provider: Provider<Feature2Service2>
+
+        constructor(graph: Feature2GraphImpl) /* primary */ {
+          super/*Any*/()
+          <this>.#graph = graph
+          <this>.#feature2Service1Provider = Companion.provider<Provider<Feature2Service1>, Feature2Service1>(delegate = Companion.create(app = <this>.#graph.#parentGraph.#appService1Provider))
+          <this>.#feature2Service2Provider = Companion.provider<Provider<Feature2Service2>, Feature2Service2>(delegate = Companion.create(f2s1 = <this>.#feature2Service1Provider))
+        }
+
+      }
+
+      protected class Shard2 {
+        private /* final field */ val graph: Feature2GraphImpl
+        private val feature2Service3Provider: Provider<Feature2Service3>
+
+        constructor(graph: Feature2GraphImpl) /* primary */ {
+          super/*Any*/()
+          <this>.#graph = graph
+          <this>.#feature2Service3Provider = Companion.provider<Provider<Feature2Service3>, Feature2Service3>(delegate = Companion.create(f2s2 = <this>.#graph.#shard1.#feature2Service2Provider))
+        }
+
+      }
 
       constructor() /* primary */ {
         super/*Any*/()
         /* <init>() */
 
+        <this>.#shard1 = Shard1(graph = <this>)
+        <this>.#shard2 = Shard2(graph = <this>)
       }
 
       override val feature2Service3: Feature2Service3
         override get(): Feature2Service3 {
-          return <this>.#feature2Service3Provider.invoke()
+          return <this>.#shard2.#feature2Service3Provider.invoke()
         }
 
     }

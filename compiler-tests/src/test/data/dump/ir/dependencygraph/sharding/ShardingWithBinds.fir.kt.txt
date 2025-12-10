@@ -128,7 +128,7 @@ interface TestGraph {
 
     protected val shard2: Shard2
 
-    private class Shard1 {
+    protected class Shard1 {
       private /* final field */ val graph: Impl
       private val repositoryImplProvider: Provider<RepositoryImpl>
 
@@ -140,7 +140,7 @@ interface TestGraph {
 
     }
 
-    private class Shard2 {
+    protected class Shard2 {
       private /* final field */ val graph: Impl
       private val serviceProvider: Provider<Service>
 

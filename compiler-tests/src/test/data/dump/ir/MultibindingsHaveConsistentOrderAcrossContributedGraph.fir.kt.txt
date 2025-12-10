@@ -118,11 +118,15 @@ interface ExampleGraph : MetroContributionToAppScope {
     private val thisGraphInstance: ExampleGraph
       field = <this>
 
-    private val exampleGraphProvider: Provider<ExampleGraph>
+    protected val exampleGraphProvider: Provider<ExampleGraph>
       field = Companion.invoke<ExampleGraph>(value = <this>.#thisGraphInstance)
+      protected inline get(): Provider<ExampleGraph> {
+        return <this>.#exampleGraphProvider
+      }
 
     @DependencyGraph(scope = Unit::class)
     private inner class LoggedInGraphImpl : LoggedInGraph {
+      protected /* final field */ val parentGraph: Impl = <this>
       constructor() /* primary */ {
         super/*Any*/()
         /* <init>() */

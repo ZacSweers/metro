@@ -405,37 +405,79 @@ interface AppGraph : MetroContributionToAppScope {
     private val thisGraphInstance: AppGraph
       field = <this>
 
-    private val appGraphProvider: Provider<AppGraph>
+    protected val appGraphProvider: Provider<AppGraph>
       field = Companion.invoke<AppGraph>(value = <this>.#thisGraphInstance)
+      protected inline get(): Provider<AppGraph> {
+        return <this>.#appGraphProvider
+      }
 
-    private val appService1Provider: Provider<AppService1>
+    protected val appService1Provider: Provider<AppService1>
       field = Companion.provider<Provider<AppService1>, AppService1>(delegate = MetroFactory.create())
+      protected inline get(): Provider<AppService1> {
+        return <this>.#appService1Provider
+      }
 
-    private val appService2Provider: Provider<AppService2>
+    protected val appService2Provider: Provider<AppService2>
       field = Companion.provider<Provider<AppService2>, AppService2>(delegate = MetroFactory.create())
+      protected inline get(): Provider<AppService2> {
+        return <this>.#appService2Provider
+      }
 
     private val appService3Provider: Provider<AppService3>
       field = Companion.provider<Provider<AppService3>, AppService3>(delegate = MetroFactory.create())
 
     @DependencyGraph(scope = ChildScope::class)
     private inner class ChildGraphImpl : ChildGraph, MetroContributionToChildScope {
+      protected /* final field */ val parentGraph: Impl = <this>
       private val thisGraphInstance: ChildGraphImpl
         field = <this>
 
-      private val childGraphImplProvider: Provider<ChildGraphImpl>
+      protected val childGraphImplProvider: Provider<ChildGraphImpl>
         field = Companion.invoke<ChildGraphImpl>(value = <this>.#thisGraphInstance)
+        protected inline get(): Provider<ChildGraphImpl> {
+          return <this>.#childGraphImplProvider
+        }
 
       private val childService1Provider: Provider<ChildService1>
-        field = Companion.provider<Provider<ChildService1>, ChildService1>(delegate = Companion.create(app1 = <this>.#appService1Provider))
 
       private val childService2Provider: Provider<ChildService2>
-        field = Companion.provider<Provider<ChildService2>, ChildService2>(delegate = Companion.create(child1 = <this>.#childService1Provider))
 
-      private val childService3Provider: Provider<ChildService3>
-        field = Companion.provider<Provider<ChildService3>, ChildService3>(delegate = Companion.create(child2 = <this>.#childService2Provider))
+      protected val childService3Provider: Provider<ChildService3>
+        protected inline get(): Provider<ChildService3> {
+          return <this>.#childService3Provider
+        }
+
+      protected val shard1: Shard1
+
+      protected val shard2: Shard2
+
+      protected class Shard1 {
+        private /* final field */ val graph: ChildGraphImpl
+        private val childService1Provider: Provider<ChildService1>
+
+        constructor(graph: ChildGraphImpl) /* primary */ {
+          super/*Any*/()
+          <this>.#graph = graph
+          <this>.#childService1Provider = Companion.provider<Provider<ChildService1>, ChildService1>(delegate = Companion.create(app1 = <this>.#graph.#parentGraph.#appService1Provider))
+        }
+
+      }
+
+      protected class Shard2 {
+        private /* final field */ val graph: ChildGraphImpl
+        private val childService2Provider: Provider<ChildService2>
+
+        constructor(graph: ChildGraphImpl) /* primary */ {
+          super/*Any*/()
+          <this>.#graph = graph
+          <this>.#childService2Provider = Companion.provider<Provider<ChildService2>, ChildService2>(delegate = Companion.create(child1 = <this>.#graph.#shard1.#childService1Provider))
+        }
+
+      }
 
       @DependencyGraph(scope = GrandchildScope::class)
       private inner class GrandchildGraphImpl : GrandchildGraph {
+        protected /* final field */ val parentGraph: ChildGraphImpl = <this>
         private val grandchildService1Provider: Provider<GrandchildService1>
           field = Companion.provider<Provider<GrandchildService1>, GrandchildService1>(delegate = Companion.create(app2 = <this>.#appService2Provider, child3 = <this>.#childService3Provider))
 
@@ -459,6 +501,9 @@ interface AppGraph : MetroContributionToAppScope {
         super/*Any*/()
         /* <init>() */
 
+        <this>.#shard1 = Shard1(graph = <this>)
+        <this>.#shard2 = Shard2(graph = <this>)
+        <this>.#childService3Provider = Companion.provider<Provider<ChildService3>, ChildService3>(delegate = Companion.create(child2 = <this>.#shard2.#childService2Provider))
       }
 
       override fun createGrandchild(): GrandchildGraph {
