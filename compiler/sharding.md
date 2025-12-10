@@ -8,17 +8,19 @@ When a dependency graph has many bindings, the generated `Impl` graph implementa
 
 ## Solution Overview
 
-Sharding distributes initialization logic across multiple inner classes ("shards") while keeping provider fields on the main graph class. Each shard is responsible for initializing a subset of provider fields.
+Sharding distributes provider fields across multiple **static nested classes** ("shards"). Each shard owns its subset of provider fields and initializes them in its constructor.
 
 ### Key Design Decisions
 
-1. **Provider fields stay on the main class** — Bindings are accessed via fields on the graph class itself, ensuring consistent access patterns regardless of sharding.
+1. **Provider fields live in shards** — Each shard class owns and initializes its own provider fields. The graph class holds shard instance fields and delegates to them.
 
-2. **Shards are inner classes** — As inner classes, shards have implicit access to the outer graph's `this` receiver, allowing direct field assignment without explicit parameters.
+2. **Shards are static nested classes** — Shards receive an explicit `graph` parameter in their constructor rather than using implicit `this` access. This allows cleaner field ownership.
 
-3. **Shards are instantiated inline** — Shard instances are created and used immediately (`Shard1().initialize()`), not stored in fields. This reduces the main class size further.
+3. **Shard instances are stored as fields** — The graph class has `private val shard1: Shard1` fields. Accessors navigate through these fields to reach providers.
 
 4. **SCC-aware partitioning** — Bindings that form dependency cycles (broken by `Provider`/`Lazy`) are kept together in the same shard to maintain correct initialization order.
+
+5. **Reserved properties stay on graph class** — Properties exposed to child graphs (via `ParentContext`) remain on the graph class with inline getters that delegate to sharded providers.
 
 ## Architecture
 
@@ -26,11 +28,16 @@ Sharding distributes initialization logic across multiple inner classes ("shards
 
 ```
 compiler/src/main/kotlin/dev/zacsweers/metro/compiler/
-├── graph/
-│   ├── GraphPartitioner.kt      # SCC-aware partitioning algorithm
-│   └── sharding/
-│       ├── IrGraphShardGenerator.kt  # IR code generation for shards
-│       └── ShardingDiagnostics.kt    # Diagnostic report generation
+├── ir/
+│   ├── ParentContext.kt             # Tracks parent graph properties for child access
+│   └── graph/
+│       ├── BindingPropertyContext.kt    # Maps type keys to property locations
+│       ├── BindingPropertyCollector.kt  # Determines which bindings need properties
+│       ├── GraphPartitioner.kt          # SCC-aware partitioning algorithm
+│       ├── GraphPropertyData.kt         # Property type enum and IR attributes
+│       └── sharding/
+│           ├── IrGraphShardGenerator.kt # IR code generation for shards
+│           └── ShardingDiagnostics.kt   # Diagnostic report generation
 ```
 
 ### Data Flow
@@ -107,67 +114,188 @@ If a single SCC exceeds `keysPerGraphShard`, it's kept together anyway. This is 
 
 ```kotlin
 class AppGraph$Impl : AppGraph {
-    // Provider fields (visibility relaxed to protected on JVM)
-    protected val service1Provider: Provider<Service1>
-    protected val service2Provider: Provider<Service2>
-    // ...
+    // Shard instance fields
+    private val shard1: Shard1
+    private val shard2: Shard2
 
-    private inner class Shard1 {
-        fun initialize() {
-            service1Provider = provider { Service1.MetroFactory.create() }
-            service2Provider = provider { Service2.MetroFactory.create(service1Provider) }
-        }
-    }
-
-    private inner class Shard2 {
-        fun initialize() {
-            // ... more initializations
-        }
-    }
+    // Reserved properties for child graph access (with inline getters)
+    protected val appService1Provider: Provider<AppService1>
+        inline get() = shard1.appService1Provider
 
     init {
-        Shard1().initialize()
-        Shard2().initialize()
+        shard1 = Shard1(this)
+        shard2 = Shard2(this)
+    }
+
+    override val appService1: AppService1
+        get() = shard1.appService1Provider()
+
+    // Static nested class - owns its provider fields
+    protected class Shard1(private val graph: AppGraph$Impl) {
+        val appService1Provider: Provider<AppService1> =
+            DoubleCheck.provider(AppService1.MetroFactory.create())
+
+        val appService2Provider: Provider<AppService2> =
+            DoubleCheck.provider(AppService2.MetroFactory.create())
+    }
+
+    protected class Shard2(private val graph: AppGraph$Impl) {
+        // Can reference other shards via graph.shard1.provider
+        val appService3Provider: Provider<AppService3> =
+            provider { AppService3(graph.shard1.appService1Provider) }
     }
 }
 ```
+
+### Property Location Tracking
+
+`BindingPropertyContext` tracks where each provider property lives:
+
+```kotlin
+sealed interface PropertyLocation {
+    data object InGraphImpl : PropertyLocation
+    data class InShard(val shardField: IrProperty) : PropertyLocation
+}
+```
+
+When generating accessor bodies or other code that needs a provider, the location determines the access path:
+
+- `InGraphImpl`: `this.providerProperty`
+- `InShard`: `this.shardField.providerProperty`
+
+### Reserved Properties and Child Graph Access
+
+When child graphs (graph extensions) need to access parent bindings, `ParentContext` reserves properties on the parent graph class. These reserved properties:
+
+1. Have **inline getters** that delegate to the actual provider (which may be in a shard)
+2. Are `protected` visibility so child inner classes can access them
+3. Use `PropertyType.FIELD_WITH_INLINE_GETTER` to enable compiler optimization
+
+The inline getter pattern allows the Kotlin compiler to optimize calls to direct field access during IR lowering:
+
+```kotlin
+// Reserved property on parent graph
+protected val appService1Provider: Provider<AppService1>
+    inline get() = shard1.appService1Provider  // Inlined to direct field access
+
+// Child graph can access via parent's getter
+inner class ChildGraphImpl {
+    init {
+        // Compiler optimizes this to: parentGraph.shard1.appService1Provider
+        val provider = parentGraph.appService1Provider
+    }
+}
+```
+
+### Initialization Order
+
+Initialization order is critical for sharded graphs with extensions:
+
+1. **Shard instances first** — Shards are created and their constructors run, initializing all provider fields
+2. **Reserved properties second** — Reserved properties (for child access) may depend on sharded providers
+3. **Deferred `setDelegate` calls last** — For cycle-breaking `DelegateFactory` instances
+
+This order ensures that when a reserved property's backing field is initialized, the sharded provider it depends on already exists.
+
+### Cross-Shard Dependencies
+
+When a provider in Shard2 depends on a provider in Shard1:
+
+```kotlin
+class Shard2(private val graph: AppGraph$Impl) {
+    val service3Provider: Provider<Service3> =
+        provider { Service3(graph.shard1.service1Provider()) }
+}
+```
+
+The shard holds a `graph` reference and navigates through it to access other shards. Since bindings are processed in topological order and shards are created in that order, forward references don't occur.
+
+### Parent Graph Access in Extensions
+
+For graph extensions (child graphs), accessing parent/grandparent bindings requires special handling:
+
+```kotlin
+// AppGraph -> ChildGraph -> GrandchildGraph hierarchy
+class GrandchildGraphImpl {
+    // parentGraph points to ChildGraphImpl
+    protected val parentGraph: ChildGraphImpl = this@ChildGraphImpl
+
+    init {
+        // Accessing grandparent (AppGraph) binding:
+        // Navigate: this.parentGraph.parentGraph.shard1.appService1Provider
+        val provider = parentGraph.parentGraph.appService1Provider
+    }
+}
+```
+
+Key implementation details:
+- `parentGraphClass` IR attribute stores the parent graph class reference
+- `parentGraphField` IR attribute stores the explicit field (for shards that can't use implicit `this`)
+- `BindingLookup.createParentGraphDependency` uses `propertyAccess.parentKey` to find the actual owning graph, not just the immediate parent on the stack
 
 ### JVM Visibility Considerations
 
-On JVM, inner classes are compiled as separate class files. Even though shards use the outer class's `this` receiver (via inner class implicit access), `irSetField()` generates direct field access bytecode. The Kotlin compiler only generates synthetic accessors for **source code** that the frontend analyzes — our IR is generated after that phase, so no accessors are created.
-
-We must relax backing field visibility from private to protected:
+On JVM, static nested classes are compiled as separate class files. Provider fields in shards need `protected` visibility so the graph class can access them:
 
 ```kotlin
-// In IrGraphShardGenerator.generateShards()
+// In IrGraphShardGenerator
 if (pluginContext.platform.isJvm()) {
-    for (binding in propertyBindings) {
-        binding.property.backingField?.visibility = DescriptorVisibilities.PROTECTED
+    shardClass.visibility = DescriptorVisibilities.PROTECTED
+    for (property in shardProperties) {
+        property.backingField?.visibility = DescriptorVisibilities.PROTECTED
     }
 }
 ```
 
-`protected` maps to package-private + subclass access in JVM bytecode, which is more restrictive than `internal` (which becomes public). This is the minimum visibility that allows inner class access while avoiding full exposure.
-
-Non-JVM platforms (Native, JS, Wasm) don't have this restriction since they handle inner class access differently.
+`protected` maps to package-private + subclass access in JVM bytecode.
 
 ### Chunking Within Shards
 
 If a shard has many statements, they're further chunked into private `init1()`, `init2()`, etc. functions to avoid method size limits:
 
 ```kotlin
-private inner class Shard1 {
-    private fun init1() { /* first batch */ }
-    private fun init2() { /* second batch */ }
+protected class Shard1(private val graph: AppGraph$Impl) {
+    val provider1: Provider<Service1>
+    val provider2: Provider<Service2>
+    // ...
 
-    fun initialize() {
+    init {
         init1()
         init2()
     }
+
+    private fun init1() { /* first batch */ }
+    private fun init2() { /* second batch */ }
 }
 ```
 
 This is controlled by `statementsPerInitFun` (default: 25).
+
+### Graph Extensions and Dynamic Graphs
+
+Sharding works with graph extensions and dynamic graphs:
+
+**Graph Extensions**: Graph extensions can also be sharded. Each level in the hierarchy can have its own shards:
+
+```kotlin
+class AppGraph$Impl : AppGraph {
+    protected val shard1: Shard1
+
+    // Child graph is an inner class with its own shards
+    inner class ChildGraphImpl : ChildGraph {
+        protected val parentGraph: AppGraph$Impl = this@Impl
+        protected val shard1: Shard1  // Child's own shard
+
+        protected class Shard1(private val graph: ChildGraphImpl) {
+            val childService1Provider: Provider<ChildService1> =
+                // Can access parent's sharded providers via parentGraph
+                ChildService1.MetroFactory.create(graph.parentGraph.shard1.appService1Provider())
+        }
+    }
+}
+```
+
+**Dynamic Graphs**: Graphs created at runtime with dynamic parameters also support sharding. The sharding logic is the same; dynamic bindings are just additional bound instances that shards can reference.
 
 ## Configuration
 
