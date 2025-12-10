@@ -12,7 +12,7 @@ pluginManagement {
     // https://kotlinlang.slack.com/archives/C7L3JB43G/p1757001642402909
     maven("https://packages.jetbrains.team/maven/p/ij/intellij-dependencies/")
   }
-  plugins { id("com.gradle.develocity") version "4.2.2" }
+  plugins { id("com.gradle.develocity") version "4.3" }
 }
 
 dependencyResolutionManagement {
