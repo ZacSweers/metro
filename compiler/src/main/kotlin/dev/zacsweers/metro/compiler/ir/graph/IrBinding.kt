@@ -449,7 +449,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val typeKey: IrTypeKey,
     @Poko.Skip val propertyAccess: ParentContext.PropertyAccess? = null,
     val callableId: CallableId =
-      propertyAccess?.property?.callableId
+      propertyAccess?.bindingProperty?.irProperty?.callableId
         ?: getter?.callableId
         ?: reportCompilerBug("One of getter or fieldAccess must be present"),
   ) : IrBinding {
@@ -458,7 +458,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val nameHint: String = buildString {
       append(graph.name)
       if (propertyAccess != null) {
-        append(propertyAccess.property.name)
+        append(propertyAccess.bindingProperty.irProperty.name)
       } else {
         val property = getter!!.correspondingPropertySymbol
         if (property != null) {
@@ -474,13 +474,15 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
 
     override val reportableDeclaration: IrDeclarationWithName?
       get() =
-        propertyAccess?.property ?: getter?.propertyIfAccessor?.expectAs<IrDeclarationWithName>()
+        propertyAccess?.bindingProperty?.irProperty
+          ?: getter?.propertyIfAccessor?.expectAs<IrDeclarationWithName>()
 
     override fun renderDescriptionDiagnostic(short: Boolean, underlineTypeKey: Boolean): String {
       // TODO render parent?
       return buildString {
         renderForDiagnostic(
-          declaration = propertyAccess?.property?.reportableDeclaration ?: getter!!,
+          declaration =
+            propertyAccess?.bindingProperty?.irProperty?.reportableDeclaration ?: getter!!,
           short = short,
           typeKey = typeKey,
           annotations = MetroAnnotations.none(),
