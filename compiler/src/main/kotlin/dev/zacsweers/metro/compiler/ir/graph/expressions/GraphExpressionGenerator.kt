@@ -9,26 +9,17 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
+import dev.zacsweers.metro.compiler.ir.graph.BindingProperty
 import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyContext
 import dev.zacsweers.metro.compiler.ir.graph.DependencyGraphNode
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
 import dev.zacsweers.metro.compiler.ir.graph.IrGraphExtensionGenerator
-import dev.zacsweers.metro.compiler.ir.graph.BindingProperty
 import dev.zacsweers.metro.compiler.ir.graph.PropertyLocation
 import dev.zacsweers.metro.compiler.ir.graph.ShardContext
 import dev.zacsweers.metro.compiler.ir.graph.generatedGraphExtensionData
 import dev.zacsweers.metro.compiler.ir.irGetProperty
 import dev.zacsweers.metro.compiler.ir.irInvoke
-import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
-import dev.zacsweers.metro.compiler.ir.toIrType
-import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
-import org.jetbrains.kotlin.ir.builders.declarations.addGetter
-import org.jetbrains.kotlin.ir.builders.declarations.buildProperty
-import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.util.addChild
-import org.jetbrains.kotlin.ir.util.copyTo
-import org.jetbrains.kotlin.name.Name.identifier
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
@@ -37,6 +28,9 @@ import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
+import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
+import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
+import dev.zacsweers.metro.compiler.ir.toIrType
 import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
@@ -45,11 +39,16 @@ import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.Tracer
+import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
+import org.jetbrains.kotlin.ir.builders.declarations.addGetter
+import org.jetbrains.kotlin.ir.builders.declarations.buildProperty
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
+import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -57,8 +56,11 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.defaultType
+import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.allParameters
+import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.companionObject
+import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isObject
@@ -66,6 +68,7 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.superClass
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.name.Name.identifier
 
 internal class GraphExpressionGenerator
 private constructor(
@@ -83,6 +86,8 @@ private constructor(
     (
       IrBinding, IrContextualTypeKey, IrBuilderWithScope.(GraphExpressionGenerator) -> IrBody,
     ) -> IrProperty,
+  /** For each graph impl, the chain of parentGraph fields to traverse to reach the root. */
+  private val parentGraphFieldChains: Map<IrClass, List<IrField>>,
 ) : BindingExpressionGenerator<IrBinding>(context) {
 
   override val thisReceiver: IrValueParameter
@@ -103,6 +108,62 @@ private constructor(
         IrBinding, IrContextualTypeKey, IrBuilderWithScope.(GraphExpressionGenerator) -> IrBody,
       ) -> IrProperty,
   ) {
+    /**
+     * For each graph impl class, the chain of parentGraph fields to traverse to reach the root.
+     * Built from the node's parent hierarchy since IR attributes may not be set yet (children are
+     * processed before parents).
+     *
+     * Example for GrandchildGraphImpl -> ChildGraphImpl -> AppGraph$Impl:
+     * ```
+     * - GrandchildGraphImpl -> [GrandchildGraphImpl.parentGraph, ChildGraphImpl.parentGraph]
+     * - ChildGraphImpl -> [ChildGraphImpl.parentGraph]
+     * - AppGraph$Impl -> []
+     * ```
+     */
+    private val parentGraphFieldChains: Map<IrClass, List<IrField>> by lazy {
+      // First, build a map of each graph to its immediate parentGraph field
+      val immediateParentFields = mutableMapOf<IrClass, IrField>()
+      val graphToParent = mutableMapOf<IrClass, IrClass>()
+
+      // Collect all graphs and their parent relationships
+      val allGraphs = buildList {
+        add(node.metroGraphOrFail)
+        node.allExtendedNodes.values.forEach { add(it.metroGraphOrFail) }
+      }
+
+      for (graphClass in allGraphs) {
+        // Look up parentGraph field by name from declarations
+        graphClass.declarations
+          .filterIsInstance<IrField>()
+          .find { it.name.asString() == "parentGraph" }
+          ?.let { field ->
+            immediateParentFields[graphClass] = field
+            // The field's type tells us the parent class
+            field.type.rawTypeOrNull()?.let { parentClass ->
+              graphToParent[graphClass] = parentClass
+            }
+          }
+      }
+
+      // Now build the chains for each graph
+      buildMap {
+        for (graphClass in allGraphs) {
+          val chain = mutableListOf<IrField>()
+          var current: IrClass? = graphClass
+          while (current != null) {
+            val field = immediateParentFields[current]
+            if (field != null) {
+              chain.add(field)
+              current = graphToParent[current]
+            } else {
+              break
+            }
+          }
+          put(graphClass, chain)
+        }
+      }
+    }
+
     fun create(shardContext: ShardContext): GraphExpressionGenerator {
       return GraphExpressionGenerator(
         context = context,
@@ -116,6 +177,7 @@ private constructor(
         parentTracer = parentTracer,
         shardContext = shardContext,
         getterPropertyFor = getterPropertyFor,
+        parentGraphFieldChains = parentGraphFieldChains,
       )
     }
   }
@@ -152,8 +214,8 @@ private constructor(
   }
 
   /**
-   * Creates or retrieves a lazily-generated property in the current shard.
-   * Used for multibinding getters that need to access shard providers during shard init.
+   * Creates or retrieves a lazily-generated property in the current shard. Used for multibinding
+   * getters that need to access shard providers during shard init.
    */
   private fun getOrCreateShardLocalLazyProperty(
     binding: IrBinding,
@@ -180,26 +242,31 @@ private constructor(
               val getterReceiver = shardContext.currentClass.thisReceiver!!.copyTo(this)
               setDispatchReceiver(getterReceiver)
               // Create a new ShardContext with the getter's receiver
-              // This is critical: we need to use getterReceiver (the getter's `this`) not shardContext.thisReceiver
-              val getterShardContext = ShardContext(
-                currentClass = shardContext.currentClass,
-                thisReceiver = getterReceiver,
-                graphBackingField = shardContext.graphBackingField,
-              )
+              // This is critical: we need to use getterReceiver (the getter's `this`) not
+              // shardContext.thisReceiver
+              val getterShardContext =
+                ShardContext(
+                  currentClass = shardContext.currentClass,
+                  thisReceiver = getterReceiver,
+                  graphBackingField = shardContext.graphBackingField,
+                )
               // Create expression generator for the shard context
-              // We pass `this@GraphExpressionGenerator` as IrMetroContext since it implements IrMetroContext by delegation
-              val expressionGenerator = Factory(
-                context = this@GraphExpressionGenerator,
-                node = node,
-                bindingPropertyContext = bindingPropertyContext,
-                bindingGraph = bindingGraph,
-                bindingContainerTransformer = bindingContainerTransformer,
-                membersInjectorTransformer = membersInjectorTransformer,
-                assistedFactoryTransformer = assistedFactoryTransformer,
-                graphExtensionGenerator = graphExtensionGenerator,
-                parentTracer = parentTracer,
-                getterPropertyFor = getterPropertyFor,
-              ).create(getterShardContext)
+              // We pass `this@GraphExpressionGenerator` as IrMetroContext since it implements
+              // IrMetroContext by delegation
+              val expressionGenerator =
+                Factory(
+                    context = this@GraphExpressionGenerator,
+                    node = node,
+                    bindingPropertyContext = bindingPropertyContext,
+                    bindingGraph = bindingGraph,
+                    bindingContainerTransformer = bindingContainerTransformer,
+                    membersInjectorTransformer = membersInjectorTransformer,
+                    assistedFactoryTransformer = assistedFactoryTransformer,
+                    graphExtensionGenerator = graphExtensionGenerator,
+                    parentTracer = parentTracer,
+                    getterPropertyFor = getterPropertyFor,
+                  )
+                  .create(getterShardContext)
               this.body = createIrBuilder(symbol).bodyGenerator(expressionGenerator)
             }
         }
@@ -217,20 +284,96 @@ private constructor(
    * - In shard context: returns `this.graph` (via the backing field)
    */
   context(scope: IrBuilderWithScope)
-  private fun irGetGraphExpr(): IrExpression = with(scope) {
-    val backingField = shardContext.graphBackingField
-    if (backingField != null) {
-      irGetField(irGet(shardContext.thisReceiver), backingField)
-    } else {
-      irGet(shardContext.thisReceiver)
+  private fun irGetGraphExpr(): IrExpression =
+    with(scope) {
+      val backingField = shardContext.graphBackingField
+      if (backingField != null) {
+        irGetField(irGet(shardContext.thisReceiver), backingField)
+      } else {
+        irGet(shardContext.thisReceiver)
+      }
     }
-  }
+
+  /**
+   * Gets an expression to access a specific ancestor graph by traversing the parent chain.
+   *
+   * For `GraphDependency` bindings, the binding may be owned by a grandparent or further ancestor,
+   * not just the immediate parent. This function traverses the parent chain from the current graph
+   * until it finds the graph matching `targetOwnerKey`.
+   * - In graph-direct context: Uses implicit outer class access via `thisReceiver`
+   * - In shard context: Uses explicit `parentGraph` fields via `this.graph.parentGraph...`
+   *
+   * @param targetOwnerKey The type key of the ancestor graph interface that owns the binding
+   * @throws IllegalStateException if the target graph is not found in the parent chain
+   */
+  context(scope: IrBuilderWithScope)
+  private fun irGetAncestorGraphExpr(targetOwnerKey: IrTypeKey): IrExpression =
+    with(scope) {
+      val sourceGraph = node.sourceGraph
+
+      // Check if a graph impl class matches the target (by classId to ignore type args)
+      fun IrClass.matchesTarget(): Boolean {
+        val targetClassId = targetOwnerKey.classId
+        // Check if this class IS the target
+        if (classId == targetClassId) return true
+        // Or check if it implements the target interface (transitively)
+        return allSupertypesSequence().any { it.rawTypeOrNull()?.classId == targetClassId }
+      }
+
+      // Get the field chain from sourceGraph to root
+      val fieldChain =
+        parentGraphFieldChains[sourceGraph]
+          ?: reportCompilerBug(
+            "No parentGraph field chain found for ${sourceGraph.name}. " +
+              "Available chains: ${parentGraphFieldChains.keys.map { it.name }}"
+          )
+
+      // Find how many levels we need to traverse to reach the target
+      // Each field in the chain takes us one level up
+      var levelsToTraverse = 0
+      var currentGraph: IrClass? = sourceGraph
+      while (currentGraph != null && levelsToTraverse <= fieldChain.size) {
+        currentGraph =
+          if (levelsToTraverse < fieldChain.size) {
+            fieldChain[levelsToTraverse].type.rawTypeOrNull()
+          } else {
+            null
+          }
+        if (currentGraph?.matchesTarget() == true) {
+          levelsToTraverse++
+          break
+        }
+        levelsToTraverse++
+      }
+
+      if (levelsToTraverse == 0 || levelsToTraverse > fieldChain.size) {
+        reportCompilerBug(
+          "Could not find ancestor graph $targetOwnerKey in parent chain of ${sourceGraph.name}"
+        )
+      }
+
+      // In shard context, traverse via explicit parentGraph fields: this.graph.parentGraph...
+      if (shardContext.graphBackingField != null) {
+        var expr: IrExpression = irGetGraphExpr()
+        for (i in 0 until levelsToTraverse) {
+          expr = irGetField(expr, fieldChain[i])
+        }
+        expr
+      } else {
+        // Graph-direct context (inner class) - directly access the target's thisReceiver
+        // Inner classes can access any enclosing class's this directly
+        val targetGraph =
+          fieldChain.getOrNull(levelsToTraverse - 1)?.type?.rawTypeOrNull()
+            ?: reportCompilerBug("Could not determine target graph class for $targetOwnerKey")
+        irGet(targetGraph.thisReceiverOrFail)
+      }
+    }
 
   /**
    * Gets a property with proper access path based on its location and current context.
    *
-   * For properties on the graph class: accesses via `irGetGraphExpr().property`
-   * For properties in a shard class:
+   * For properties on the graph class: accesses via `irGetGraphExpr().property` For properties in a
+   * shard class:
    * - Same class as current context: `this.property`
    * - Different class: `irGetGraphExpr().shardField.property`
    */
@@ -256,8 +399,8 @@ private constructor(
   }
 
   /**
-   * Gets access to a property with shard-aware navigation.
-   * Used for lazy getter properties like multibinding getters.
+   * Gets access to a property with shard-aware navigation. Used for lazy getter properties like
+   * multibinding getters.
    *
    * Accesses via `irGetGraphExpr().property` to handle both graph-direct and shard contexts.
    */
@@ -578,7 +721,7 @@ private constructor(
                 // We need the provider
                 irGetProperty(
                   irGet(binding.classReceiverParameter),
-                  binding.providerPropertyAccess!!.property,
+                  binding.providerPropertyAccess!!.bindingProperty.irProperty,
                 )
               }
             }
@@ -665,16 +808,11 @@ private constructor(
           val ownerKey = binding.ownerKey
           val bindingGetter =
             if (binding.propertyAccess != null) {
-              // Get the property from the parent graph.
-              // Note: Extension graphs with parent property dependencies are NOT sharded,
-              // so we can always access the property directly here (no shard context handling needed).
-              val receiver = irGet(binding.propertyAccess.receiverParameter)
-              val backingField = binding.propertyAccess.property.backingField
-              if (backingField != null) {
-                irGetField(receiver, backingField)
-              } else {
-                irGetProperty(receiver, binding.propertyAccess.property)
-              }
+              // Get the reserved property from the ancestor graph that owns the binding.
+              // This may be the immediate parent or a grandparent/further ancestor.
+              // irGetAncestorGraphExpr traverses the parent chain to find the correct graph.
+              val reservedProperty = binding.propertyAccess.bindingProperty.irProperty
+              irGetProperty(irGetAncestorGraphExpr(ownerKey), reservedProperty)
             } else if (binding.getter != null) {
               val graphInstanceEntry =
                 bindingPropertyContext.instancePropertyEntry(ownerKey)

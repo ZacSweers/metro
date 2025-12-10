@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.buildBlockBody
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
@@ -47,6 +48,7 @@ import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.isSyntheticGeneratedGraph
 import dev.zacsweers.metro.compiler.letIf
+import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.suffixIfNot
@@ -64,6 +66,7 @@ import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
+import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irSetField
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -171,7 +174,8 @@ internal class IrGraphGenerator(
         this.body =
           createIrBuilder(symbol).run {
             // Graph-direct context for getter bodies (these are on the graph class)
-            val graphContext = ShardContext(graphClass, dispatchReceiverParameter!!, graphBackingField = null)
+            val graphContext =
+              ShardContext(graphClass, dispatchReceiverParameter!!, graphBackingField = null)
             irExprBodySafe(init(typeKey, graphContext))
           }
       }
@@ -198,13 +202,25 @@ internal class IrGraphGenerator(
     propertyType: PropertyType,
     visibility: DescriptorVisibility = DescriptorVisibilities.PRIVATE,
   ): IrProperty {
+    // Graph extensions may reserve property names, we reuse them to maintain naming consistency.
+    // Reserved properties are created by ParentContext with a getter stub (no body, no field).
+    // We add the backing field here _before_ returning so .withInit() defers initialization.
+    val reservedProperty = bindingGraph.reservedProperty(contextKey)?.bindingProperty?.irProperty
     val property =
-      bindingGraph.reservedProperty(contextKey)?.property?.also { addChild(it) }
+      reservedProperty?.also { addChild(it) }
         ?: addProperty {
             this.name = propertyNameAllocator.newName(name()).asName()
             this.visibility = visibility
           }
           .apply { graphPropertyData = GraphPropertyData(contextKey, type()) }
+
+    // For properties that already have a getter (reserved properties from ParentContext) but need
+    // a backing field, add the field BEFORE ensureInitialized. This ensures .withInit() sees
+    // the backing field and defers field initialization rather than generating a getter body.
+    val needsBackingField = propertyType == PropertyType.FIELD && property.backingField == null && property.getter != null
+    if (needsBackingField) {
+      property.addBackingFieldCompat { this.type = type() }
+    }
 
     return property.ensureInitialized(propertyType, type)
   }
@@ -444,21 +460,23 @@ internal class IrGraphGenerator(
             node.injectors.mapTo(this) { it.contextKey }
           }
           BindingPropertyCollector(
-            bindingGraph,
-            sealResult.sortedKeys,
-            roots,
-            sealResult.deferredTypes,
-          ).collect()
+              bindingGraph,
+              sealResult.sortedKeys,
+              roots,
+              sealResult.deferredTypes,
+            )
+            .collect()
         }
 
       // Build sorted list of binding properties in topological order
-      val initOrder = buildList(bindingProperties.size) {
-        for (key in sealResult.sortedKeys) {
-          if (key in sealResult.reachableKeys) {
-            bindingProperties[key]?.let(::add)
+      val initOrder =
+        buildList(bindingProperties.size) {
+          for (key in sealResult.sortedKeys) {
+            if (key in sealResult.reachableKeys) {
+              bindingProperties[key]?.let(::add)
+            }
           }
         }
-      }
 
       // For all deferred types, assign them first as factories
       // DelegateFactory properties can be initialized inline since they're just empty factories.
@@ -629,7 +647,8 @@ internal class IrGraphGenerator(
                 listOf(
                   delegateFactoryAccess,
                   createIrBuilder(symbol).run {
-                    val graphContext = ShardContext(graphClass, thisReceiver, graphBackingField = null)
+                    val graphContext =
+                      ShardContext(graphClass, thisReceiver, graphBackingField = null)
                     expressionGeneratorFactory
                       .create(graphContext)
                       .generateBindingCode(
@@ -650,20 +669,14 @@ internal class IrGraphGenerator(
         }
       }
 
-      // Check if this is an extension graph that has bindings depending on parent properties.
-      // Such graphs cannot be sharded because static nested shard classes cannot access
-      // outer class members (parent properties live on the outer class).
-      val hasParentPropertyDependencies = node.allExtendedNodes.isNotEmpty() &&
-        bindingGraph.bindingsSnapshot().values.any { binding ->
-          binding is IrBinding.GraphDependency && binding.propertyAccess != null
-        }
+      // Reserved properties (used by child graphs) stay on the graph class - they have their own
+      // backing fields and shouldn't be moved to shards. Only non-reserved properties can be
+      // sharded.
+      val reservedPropertyKeys = bindingGraph.allReservedProperties().keys.mapToSet { it.typeKey }
 
-      // Separate reserved properties (for extension linking) from regular binding properties.
-      // Reserved properties must stay on the graph class so child graphs can access them.
-      val (reservedPropertyInitializers, shardablePropertyInitializers) =
-        propertyInitializers.partition { (property, _) ->
-          val typeKey = propertiesToTypeKeys.getValue(property)
-          bindingGraph.findAnyReservedProperty(typeKey) != null
+      val shardablePropertyInitializers =
+        propertyInitializers.filter { (property, _) ->
+          propertiesToTypeKeys[property] !in reservedPropertyKeys
         }
 
       // Collect binding inputs for sharding decision (only non-reserved properties)
@@ -678,47 +691,53 @@ internal class IrGraphGenerator(
         }
 
       // Generate sharded inits if needed or fall back to chunked inits at graph level.
-      // Skip sharding for extension graphs with parent property dependencies since
-      // static nested shard classes cannot access outer class members.
       val shardGenerator = IrGraphShardGenerator(metroContext)
       val shardResult =
-        if (hasParentPropertyDependencies) {
-          // Skip sharding for this extension graph
-          null
-        } else {
-          shardGenerator.generateShards(
-            graphClass = graphClass,
-            bindingInputs = bindingInputs,
-            plannedGroups = sealResult.shardGroups,
-            bindingGraph = bindingGraph,
-            bindingPropertyContext = bindingPropertyContext,
-            diagnosticTag = parentTracer.tag,
-          )
-        }
+        shardGenerator.generateShards(
+          graphClass = graphClass,
+          bindingInputs = bindingInputs,
+          plannedGroups = sealResult.shardGroups,
+          bindingGraph = bindingGraph,
+          bindingPropertyContext = bindingPropertyContext,
+          diagnosticTag = parentTracer.tag,
+        )
 
       if (shardResult != null) {
         // Shard properties are already registered in bindingPropertyContext by generateShards()
 
-        // Add shard initialization statements
+        val reservedPropertyInitializers =
+          propertyInitializers.filter { (property, _) ->
+            propertiesToTypeKeys[property] in reservedPropertyKeys
+          }
+
+        // Add shard initialization statements first.
+        // Shards may reference parent graph properties via getters (which work even if
+        // backing fields aren't set), but reserved properties may depend on shard bindings
+        // (like childService3Provider depending on shard2.childService2Provider).
         for (initStatement in shardResult.initStatements) {
           constructorStatements.add { thisReceiver -> initStatement(thisReceiver) }
         }
 
-        // Initialize reserved properties (for extension linking) AFTER shards are initialized.
-        // These properties delegate to sharded providers so child graphs can access parent bindings.
+        // Initialize reserved properties on the graph class (they weren't sharded).
+        // These come after shards since they may depend on sharded bindings.
         for ((property, init) in reservedPropertyInitializers) {
           val typeKey = propertiesToTypeKeys.getValue(property)
+          // Add constructor init statement (not inline field initializer)
           constructorStatements.add { thisReceiver ->
             val graphContext = ShardContext(graphClass, thisReceiver, graphBackingField = null)
-            irSetField(
-              irGet(thisReceiver),
-              property.backingField!!,
-              init(typeKey, graphContext),
-            )
+            irSetField(irGet(thisReceiver), property.backingField!!, init(typeKey, graphContext))
           }
-          // Also register these properties in bindingPropertyContext with GraphDirect location
-          bindingPropertyContext.putProviderProperty(typeKey, property, PropertyLocation.InGraphImpl)
+          // Register in bindingPropertyContext so accessors can find it
+          bindingPropertyContext.putProviderProperty(
+            typeKey,
+            property,
+            PropertyLocation.InGraphImpl,
+          )
         }
+
+        // Generate getter bodies for reserved properties (for extension linking).
+        // Reserved properties have backing fields, so getters return the backing field directly.
+        generateReservedPropertyGetters(bindingGraph, bindingPropertyContext)
 
         // Add deferred setDelegate calls at the end
         addDeferredSetDelegateCalls(constructorStatements)
@@ -739,7 +758,8 @@ internal class IrGraphGenerator(
 
                   // Add this property's initialization (graph-direct context for graph-level init)
                   add { thisReceiver ->
-                    val graphContext = ShardContext(graphClass, thisReceiver, graphBackingField = null)
+                    val graphContext =
+                      ShardContext(graphClass, thisReceiver, graphBackingField = null)
                     irSetField(
                       irGet(thisReceiver),
                       property.backingField!!,
@@ -784,12 +804,17 @@ internal class IrGraphGenerator(
             property.initFinal {
               val typeKey = propertiesToTypeKeys.getValue(property)
               // Graph-direct context for graph-level initialization
-              val graphContext = ShardContext(graphClass, thisReceiverParameter, graphBackingField = null)
+              val graphContext =
+                ShardContext(graphClass, thisReceiverParameter, graphBackingField = null)
               init(typeKey, graphContext)
             }
           }
           addDeferredSetDelegateCalls(constructorStatements)
         }
+
+        // Generate getter bodies for reserved properties (for extension linking).
+        // Reserved properties are getters that delegate to the provider property.
+        generateReservedPropertyGetters(bindingGraph, bindingPropertyContext)
       }
 
       // Add extra constructor statements
@@ -833,6 +858,65 @@ internal class IrGraphGenerator(
       }
     }
 
+  /**
+   * Generates getter bodies for reserved properties.
+   *
+   * Reserved properties are created by [ParentContext] when child graphs mark bindings they need
+   * from the parent. These properties are getters that delegate to the actual provider property,
+   * which may be in a shard.
+   *
+   * @param bindingGraph The binding graph containing reserved property info
+   * @param bindingPropertyContext Context mapping type keys to their property locations
+   */
+  private fun generateReservedPropertyGetters(
+    bindingGraph: IrBindingGraph,
+    bindingPropertyContext: BindingPropertyContext,
+  ) {
+    for ((contextKey, propertyAccess) in bindingGraph.allReservedProperties()) {
+      val reservedProperty = propertyAccess.bindingProperty.irProperty
+      val getter = reservedProperty.getter ?: continue
+
+      // If the reserved property has its own backing field, the getter returns it directly.
+      val backingField = reservedProperty.backingField
+      if (backingField != null) {
+        getter.body =
+          createIrBuilder(getter.symbol).run {
+            val thisParam = getter.dispatchReceiverParameter!!
+            irExprBodySafe(irGetField(irGet(thisParam), backingField))
+          }
+        continue
+      }
+
+      // No backing field - this is a sharded case where we delegate to another property.
+      // Find the actual provider property for this type key.
+      val providerEntry = bindingPropertyContext.providerPropertyEntry(contextKey.typeKey)
+      if (providerEntry == null) {
+        // Binding may not have materialized (e.g., optional or not used)
+        // In this case, the reserved property won't be accessible anyway
+        continue
+      }
+
+      // Generate getter body that accesses the provider property (handling shard navigation)
+      getter.body =
+        createIrBuilder(getter.symbol).run {
+          val thisParam = getter.dispatchReceiverParameter!!
+          val providerAccess =
+            when (val location = providerEntry.location) {
+              is PropertyLocation.InGraphImpl -> {
+                // Provider is directly on graph class
+                irGetProperty(irGet(thisParam), providerEntry.irProperty)
+              }
+              is PropertyLocation.InShard -> {
+                // Provider is in a shard: this.shardField.property
+                val shardAccess = irGetProperty(irGet(thisParam), location.shardField)
+                irGetProperty(shardAccess, providerEntry.irProperty)
+              }
+            }
+          irExprBodySafe(providerAccess)
+        }
+    }
+  }
+
   // TODO add asProvider support?
   private fun IrClass.addSimpleInstanceProperty(
     name: String,
@@ -872,7 +956,12 @@ internal class IrGraphGenerator(
               //  one and make the rest call that one. Not multibinding specific. Maybe
               //  groupBy { typekey }?
             }
-            val graphContext = ShardContext(graphClass, irFunction.dispatchReceiverParameter!!, graphBackingField = null)
+            val graphContext =
+              ShardContext(
+                graphClass,
+                irFunction.dispatchReceiverParameter!!,
+                graphBackingField = null,
+              )
             irExprBodySafe(
               typeAsProviderArgument(
                 contextualTypeKey,
@@ -939,7 +1028,12 @@ internal class IrGraphGenerator(
                       add(irGet(targetParam))
                       for (parameter in parameters.regularParameters) {
                         val paramBinding = bindingGraph.requireBinding(parameter.contextualTypeKey)
-                        val graphContext = ShardContext(graphClass, overriddenFunction.ir.dispatchReceiverParameter!!, graphBackingField = null)
+                        val graphContext =
+                          ShardContext(
+                            graphClass,
+                            overriddenFunction.ir.dispatchReceiverParameter!!,
+                            graphBackingField = null,
+                          )
                         add(
                           typeAsProviderArgument(
                             parameter.contextualTypeKey,
@@ -1007,7 +1101,12 @@ internal class IrGraphGenerator(
                   dependencies = emptyList(),
                 )
             val contextKey = IrContextualTypeKey.from(irFunction)
-            val graphContext = ShardContext(graphClass, irFunction.dispatchReceiverParameter!!, graphBackingField = null)
+            val graphContext =
+              ShardContext(
+                graphClass,
+                irFunction.dispatchReceiverParameter!!,
+                graphBackingField = null,
+              )
             body =
               createIrBuilder(symbol).run {
                 irExprBodySafe(
