@@ -47,8 +47,8 @@ import dev.zacsweers.metro.compiler.ir.typeRemapperFor
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.isSyntheticGeneratedGraph
+import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.letIf
-import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.suffixIfNot
@@ -217,7 +217,8 @@ internal class IrGraphGenerator(
     // For properties that already have a getter (reserved properties from ParentContext) but need
     // a backing field, add the field BEFORE ensureInitialized. This ensures .withInit() sees
     // the backing field and defers field initialization rather than generating a getter body.
-    val needsBackingField = propertyType == PropertyType.FIELD && property.backingField == null && property.getter != null
+    val needsBackingField =
+      propertyType == PropertyType.FIELD && property.backingField == null && property.getter != null
     if (needsBackingField) {
       property.addBackingFieldCompat { this.type = type() }
     }
@@ -669,19 +670,11 @@ internal class IrGraphGenerator(
         }
       }
 
-      // Reserved properties (used by child graphs) stay on the graph class - they have their own
-      // backing fields and shouldn't be moved to shards. Only non-reserved properties can be
-      // sharded.
-      val reservedPropertyKeys = bindingGraph.allReservedProperties().keys.mapToSet { it.typeKey }
-
-      val shardablePropertyInitializers =
-        propertyInitializers.filter { (property, _) ->
-          propertiesToTypeKeys[property] !in reservedPropertyKeys
-        }
-
-      // Collect binding inputs for sharding decision (only non-reserved properties)
+      // Collect binding inputs for sharding decision.
+      // Reserved properties (used by child graphs) are included - if their binding ends up in a
+      // shard, the reserved property will just have a delegating getter instead of its own field.
       val bindingInputs =
-        shardablePropertyInitializers.map { (property, initializer) ->
+        propertyInitializers.map { (property, initializer) ->
           BindingInput(
             typeKey = propertiesToTypeKeys.getValue(property),
             propertyName = property.name.asString(),
@@ -705,38 +698,31 @@ internal class IrGraphGenerator(
       if (shardResult != null) {
         // Shard properties are already registered in bindingPropertyContext by generateShards()
 
-        val reservedPropertyInitializers =
-          propertyInitializers.filter { (property, _) ->
-            propertiesToTypeKeys[property] in reservedPropertyKeys
-          }
-
-        // Add shard initialization statements first.
-        // Shards may reference parent graph properties via getters (which work even if
-        // backing fields aren't set), but reserved properties may depend on shard bindings
-        // (like childService3Provider depending on shard2.childService2Provider).
+        // Add shard initialization statements.
         for (initStatement in shardResult.initStatements) {
           constructorStatements.add { thisReceiver -> initStatement(thisReceiver) }
         }
 
-        // Initialize reserved properties on the graph class (they weren't sharded).
-        // These come after shards since they may depend on sharded bindings.
-        for ((property, init) in reservedPropertyInitializers) {
-          val typeKey = propertiesToTypeKeys.getValue(property)
-          // Add constructor init statement (not inline field initializer)
-          constructorStatements.add { thisReceiver ->
-            val graphContext = ShardContext(graphClass, thisReceiver, graphBackingField = null)
-            irSetField(irGet(thisReceiver), property.backingField!!, init(typeKey, graphContext))
+        // Reserved properties whose bindings ended up in shards don't need their own backing
+        // fields - their getters will delegate to the shard property. Remove the backing field
+        // so generateReservedPropertyGetters knows to generate a delegating getter.
+        val shardedTypeKeys = shardResult.shardInfos.flatMapToSet { it.propertyMap.keys }
+
+        for ((contextKey, propertyAccess) in bindingGraph.allReservedProperties()) {
+          val typeKey = contextKey.typeKey
+          val reservedProperty = propertyAccess.bindingProperty.irProperty
+
+          if (typeKey in shardedTypeKeys) {
+            // Binding is in a shard - remove backing field so getter delegates to shard property.
+            reservedProperty.backingField = null
           }
-          // Register in bindingPropertyContext so accessors can find it
-          bindingPropertyContext.putProviderProperty(
-            typeKey,
-            property,
-            PropertyLocation.InGraphImpl,
-          )
+          // Otherwise keep the backing field - it was already initialized via .initFinal() or
+          // will be initialized below for properties that went through .withInit()
         }
 
         // Generate getter bodies for reserved properties (for extension linking).
-        // Reserved properties have backing fields, so getters return the backing field directly.
+        // Sharded bindings (no backing field): getter delegates to shard.property
+        // Non-sharded bindings (has backing field): getter returns backing field
         generateReservedPropertyGetters(bindingGraph, bindingPropertyContext)
 
         // Add deferred setDelegate calls at the end

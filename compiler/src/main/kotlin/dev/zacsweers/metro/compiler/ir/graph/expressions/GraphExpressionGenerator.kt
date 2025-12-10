@@ -760,7 +760,17 @@ private constructor(
               // irGetAncestorGraphExpr traverses the parent chain to find the correct graph.
               val ownerGraphImpl = binding.propertyAccess.parentGraphImpl
               val reservedProperty = binding.propertyAccess.bindingProperty.irProperty
-              irGetProperty(irGetAncestorGraphExpr(ownerGraphImpl), reservedProperty)
+              // Always use getter for reserved properties - they may delegate to sharded
+              // properties via an inline getter, so we can't assume a backing field exists.
+              val getter =
+                reservedProperty.getter
+                  ?: reportCompilerBug(
+                    "Reserved property ${reservedProperty.name} has no getter"
+                  )
+              irInvoke(
+                dispatchReceiver = irGetAncestorGraphExpr(ownerGraphImpl),
+                callee = getter.symbol,
+              )
             } else if (binding.getter != null) {
               // Included graph dependency - access via instance field
               val graphInstanceEntry =

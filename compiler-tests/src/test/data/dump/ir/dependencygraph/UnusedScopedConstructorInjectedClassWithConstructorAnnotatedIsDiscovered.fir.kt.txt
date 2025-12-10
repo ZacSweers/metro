@@ -114,7 +114,7 @@ interface ExampleGraph : MetroContributionToAppScope {
     private inner class LoggedInGraphImpl : LoggedInGraph {
       protected /* final field */ val parentGraph: Impl = <this>
       private val childDependencyProvider: Provider<ChildDependency>
-        field = Companion.provider<Provider<ChildDependency>, ChildDependency>(delegate = Companion.create(dep = <this>.#dependencyProvider))
+        field = Companion.provider<Provider<ChildDependency>, ChildDependency>(delegate = Companion.create(dep = <this>.<get-dependencyProvider>()))
 
       constructor() /* primary */ {
         super/*Any*/()

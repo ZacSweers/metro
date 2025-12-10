@@ -156,7 +156,7 @@ tasks.withType<Test> {
   outputs.upToDateWhen { false }
 
   // Work around a memory leak in KSP
-  forkEvery = 50
+  forkEvery = 1
 
   if (enableShardTest) {
     // Increase heap for LargeGraphStressTest stress test
