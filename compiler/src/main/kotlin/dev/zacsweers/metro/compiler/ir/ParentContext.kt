@@ -26,7 +26,8 @@ internal class ParentContext(private val metroContext: IrMetroContext) {
 
   // Data for property access tracking
   internal data class PropertyAccess(
-    val parentKey: IrTypeKey,
+    /** The parent graph impl class that owns the binding. */
+    val parentGraphImpl: IrClass,
     val bindingProperty: BindingProperty,
     val receiverParameter: IrValueParameter,
   )
@@ -93,10 +94,11 @@ internal class ParentContext(private val metroContext: IrMetroContext) {
 
       // Only mark in the provider level - inner classes can access parent fields directly
       providerLevel.usedContextKeys.add(contextKey)
+      val providerGraphImpl = providerLevel.node.metroGraphOrFail
       return PropertyAccess(
-        providerLevel.node.typeKey,
+        providerGraphImpl,
         BindingProperty(property, PropertyLocation.InGraphImpl),
-        providerLevel.node.metroGraphOrFail.thisReceiverOrFail,
+        providerGraphImpl.thisReceiverOrFail,
       )
     }
 
@@ -118,10 +120,11 @@ internal class ParentContext(private val metroContext: IrMetroContext) {
 
           // Only mark in the level that owns the scope
           level.usedContextKeys.add(contextKey)
+          val levelGraphImpl = level.node.metroGraphOrFail
           return PropertyAccess(
-            level.node.typeKey,
+            levelGraphImpl,
             BindingProperty(field, PropertyLocation.InGraphImpl),
-            level.node.metroGraphOrFail.thisReceiverOrFail,
+            levelGraphImpl.thisReceiverOrFail,
           )
         }
       }
@@ -250,10 +253,11 @@ internal class ParentContext(private val metroContext: IrMetroContext) {
     keyIntroStack[contextKey.typeKey]?.lastOrNull()?.let { providerIdx ->
       val level = levels[providerIdx]
       level.properties[contextKey]?.let { property ->
+        val graphImpl = level.node.metroGraphOrFail
         return PropertyAccess(
-          level.node.typeKey,
+          graphImpl,
           BindingProperty(property, PropertyLocation.InGraphImpl),
-          level.node.metroGraphOrFail.thisReceiverOrFail,
+          graphImpl.thisReceiverOrFail,
         )
       }
     }

@@ -39,6 +39,7 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.typeWithArguments
 import org.jetbrains.kotlin.ir.util.classIdOrFail
+import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
@@ -688,7 +689,8 @@ internal class BindingGraphGenerator(
             reservedProperty.name.asString(),
           )
 
-          if (key == propertyAccess.parentKey) {
+          val parentImplKey = IrTypeKey(propertyAccess.parentGraphImpl.defaultType)
+          if (key == parentImplKey) {
             // Add bindings for the parent itself as a field reference
             IrBinding.BoundInstance(
               key,

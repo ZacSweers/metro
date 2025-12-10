@@ -40,6 +40,7 @@ import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
+import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.isObject
@@ -413,13 +414,13 @@ internal class BindingLookup(
     key: IrTypeKey,
     propertyAccess: ParentContext.PropertyAccess,
   ): IrBinding.GraphDependency {
-    // Use the owning parent's type key from propertyAccess, not the immediate parent on the stack.
+    // Use the owning parent's graph impl from propertyAccess, not the immediate parent on the stack.
     // This is important when a child graph needs a binding from a grandparent or further ancestor.
-    val ownerKey = propertyAccess.parentKey
-    val cacheKey = ParentGraphDepKey(ownerKey.type.rawType(), key)
+    val ownerGraphImpl = propertyAccess.parentGraphImpl
+    val cacheKey = ParentGraphDepKey(ownerGraphImpl, key)
     return parentGraphDepCache.getOrPut(cacheKey) {
       IrBinding.GraphDependency(
-        ownerKey = ownerKey,
+        ownerKey = IrTypeKey(ownerGraphImpl.defaultType),
         graph = sourceGraph,
         propertyAccess = propertyAccess,
         typeKey = key,

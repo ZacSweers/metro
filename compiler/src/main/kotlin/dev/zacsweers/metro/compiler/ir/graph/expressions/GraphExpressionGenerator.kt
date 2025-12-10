@@ -18,6 +18,8 @@ import dev.zacsweers.metro.compiler.ir.graph.IrGraphExtensionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.PropertyLocation
 import dev.zacsweers.metro.compiler.ir.graph.ShardContext
 import dev.zacsweers.metro.compiler.ir.graph.generatedGraphExtensionData
+import dev.zacsweers.metro.compiler.ir.graph.parentGraphClass
+import dev.zacsweers.metro.compiler.ir.graph.parentGraphField
 import dev.zacsweers.metro.compiler.ir.irGetProperty
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
@@ -59,9 +61,11 @@ import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.allParameters
 import org.jetbrains.kotlin.ir.util.classId
+import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.defaultType
+import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -86,12 +90,24 @@ private constructor(
     (
       IrBinding, IrContextualTypeKey, IrBuilderWithScope.(GraphExpressionGenerator) -> IrBody,
     ) -> IrProperty,
-  /** For each graph impl, the chain of parentGraph fields to traverse to reach the root. */
-  private val parentGraphFieldChains: Map<IrClass, List<IrField>>,
+  /** Cache for ancestor graph access info, keyed by target graph impl class. */
+  private val ancestorGraphCache: MutableMap<IrClass, AncestorGraphAccess>,
 ) : BindingExpressionGenerator<IrBinding>(context) {
 
   override val thisReceiver: IrValueParameter
     get() = shardContext.thisReceiver
+
+  /**
+   * Cached information for accessing an ancestor graph.
+   *
+   * @param targetGraph The ancestor graph class to access
+   * @param fieldsToTraverse For shard context, the list of parentGraph fields to traverse from
+   *   current graph to target. Empty for graph-direct context (uses thisReceiver directly).
+   */
+  private data class AncestorGraphAccess(
+    val targetGraph: IrClass,
+    val fieldsToTraverse: ArrayDeque<IrField>,
+  )
 
   class Factory(
     private val context: IrMetroContext,
@@ -109,60 +125,9 @@ private constructor(
       ) -> IrProperty,
   ) {
     /**
-     * For each graph impl class, the chain of parentGraph fields to traverse to reach the root.
-     * Built from the node's parent hierarchy since IR attributes may not be set yet (children are
-     * processed before parents).
-     *
-     * Example for GrandchildGraphImpl -> ChildGraphImpl -> AppGraph$Impl:
-     * ```
-     * - GrandchildGraphImpl -> [GrandchildGraphImpl.parentGraph, ChildGraphImpl.parentGraph]
-     * - ChildGraphImpl -> [ChildGraphImpl.parentGraph]
-     * - AppGraph$Impl -> []
-     * ```
+     * Shared cache for ancestor graph access across all expression generators from this factory.
      */
-    private val parentGraphFieldChains: Map<IrClass, List<IrField>> by lazy {
-      // First, build a map of each graph to its immediate parentGraph field
-      val immediateParentFields = mutableMapOf<IrClass, IrField>()
-      val graphToParent = mutableMapOf<IrClass, IrClass>()
-
-      // Collect all graphs and their parent relationships
-      val allGraphs = buildList {
-        add(node.metroGraphOrFail)
-        node.allExtendedNodes.values.forEach { add(it.metroGraphOrFail) }
-      }
-
-      for (graphClass in allGraphs) {
-        // Look up parentGraph field by name from declarations
-        graphClass.declarations
-          .filterIsInstance<IrField>()
-          .find { it.name.asString() == "parentGraph" }
-          ?.let { field ->
-            immediateParentFields[graphClass] = field
-            // The field's type tells us the parent class
-            field.type.rawTypeOrNull()?.let { parentClass ->
-              graphToParent[graphClass] = parentClass
-            }
-          }
-      }
-
-      // Now build the chains for each graph
-      buildMap {
-        for (graphClass in allGraphs) {
-          val chain = mutableListOf<IrField>()
-          var current: IrClass? = graphClass
-          while (current != null) {
-            val field = immediateParentFields[current]
-            if (field != null) {
-              chain.add(field)
-              current = graphToParent[current]
-            } else {
-              break
-            }
-          }
-          put(graphClass, chain)
-        }
-      }
-    }
+    private val ancestorGraphCache = mutableMapOf<IrClass, AncestorGraphAccess>()
 
     fun create(shardContext: ShardContext): GraphExpressionGenerator {
       return GraphExpressionGenerator(
@@ -177,7 +142,7 @@ private constructor(
         parentTracer = parentTracer,
         shardContext = shardContext,
         getterPropertyFor = getterPropertyFor,
-        parentGraphFieldChains = parentGraphFieldChains,
+        ancestorGraphCache = ancestorGraphCache,
       )
     }
   }
@@ -279,7 +244,6 @@ private constructor(
 
   /**
    * Returns an expression to access the graph instance based on current context.
-   *
    * - In graph-direct context (`graphBackingField == null`): returns `this`
    * - In shard context: returns `this.graph` (via the backing field)
    */
@@ -299,75 +263,59 @@ private constructor(
    *
    * For `GraphDependency` bindings, the binding may be owned by a grandparent or further ancestor,
    * not just the immediate parent. This function traverses the parent chain from the current graph
-   * until it finds the graph matching `targetOwnerKey`.
+   * until it finds the target graph impl class.
    * - In graph-direct context: Uses implicit outer class access via `thisReceiver`
    * - In shard context: Uses explicit `parentGraph` fields via `this.graph.parentGraph...`
    *
-   * @param targetOwnerKey The type key of the ancestor graph interface that owns the binding
+   * Results are cached per target graph.
+   *
+   * @param targetGraphImpl The ancestor graph impl class that owns the binding
    * @throws IllegalStateException if the target graph is not found in the parent chain
    */
   context(scope: IrBuilderWithScope)
-  private fun irGetAncestorGraphExpr(targetOwnerKey: IrTypeKey): IrExpression =
+  private fun irGetAncestorGraphExpr(targetGraphImpl: IrClass): IrExpression =
     with(scope) {
-      val sourceGraph = node.sourceGraph
+      val access =
+        ancestorGraphCache.getOrPut(targetGraphImpl) { computeAncestorGraphAccess(targetGraphImpl) }
 
-      // Check if a graph impl class matches the target (by classId to ignore type args)
-      fun IrClass.matchesTarget(): Boolean {
-        val targetClassId = targetOwnerKey.classId
-        // Check if this class IS the target
-        if (classId == targetClassId) return true
-        // Or check if it implements the target interface (transitively)
-        return allSupertypesSequence().any { it.rawTypeOrNull()?.classId == targetClassId }
-      }
-
-      // Get the field chain from sourceGraph to root
-      val fieldChain =
-        parentGraphFieldChains[sourceGraph]
-          ?: reportCompilerBug(
-            "No parentGraph field chain found for ${sourceGraph.name}. " +
-              "Available chains: ${parentGraphFieldChains.keys.map { it.name }}"
-          )
-
-      // Find how many levels we need to traverse to reach the target
-      // Each field in the chain takes us one level up
-      var levelsToTraverse = 0
-      var currentGraph: IrClass? = sourceGraph
-      while (currentGraph != null && levelsToTraverse <= fieldChain.size) {
-        currentGraph =
-          if (levelsToTraverse < fieldChain.size) {
-            fieldChain[levelsToTraverse].type.rawTypeOrNull()
-          } else {
-            null
-          }
-        if (currentGraph?.matchesTarget() == true) {
-          levelsToTraverse++
-          break
-        }
-        levelsToTraverse++
-      }
-
-      if (levelsToTraverse == 0 || levelsToTraverse > fieldChain.size) {
-        reportCompilerBug(
-          "Could not find ancestor graph $targetOwnerKey in parent chain of ${sourceGraph.name}"
-        )
-      }
-
-      // In shard context, traverse via explicit parentGraph fields: this.graph.parentGraph...
       if (shardContext.graphBackingField != null) {
-        var expr: IrExpression = irGetGraphExpr()
-        for (i in 0 until levelsToTraverse) {
-          expr = irGetField(expr, fieldChain[i])
+        // We're in a shard, traverse via explicit parentGraph fields
+        // i.e. #graph.parentGraph.parentGraph
+        access.fieldsToTraverse.fold(irGetGraphExpr()) { expr, parentGraphField ->
+          irGetField(expr, parentGraphField)
         }
-        expr
       } else {
-        // Graph-direct context (inner class) - directly access the target's thisReceiver
-        // Inner classes can access any enclosing class's this directly
-        val targetGraph =
-          fieldChain.getOrNull(levelsToTraverse - 1)?.type?.rawTypeOrNull()
-            ?: reportCompilerBug("Could not determine target graph class for $targetOwnerKey")
-        irGet(targetGraph.thisReceiverOrFail)
+        // Graph-direct context (inner class): directly access the target's thisReceiver
+        irGet(access.targetGraph.thisReceiverOrFail)
       }
     }
+
+  /**
+   * Computes the access path to an ancestor graph by traversing parentGraphClass/parentGraphField
+   * IR attributes.
+   */
+  private fun computeAncestorGraphAccess(targetGraphImpl: IrClass): AncestorGraphAccess {
+    val fieldsToTraverse = ArrayDeque<IrField>()
+    var currentGraph: IrClass = node.metroGraphOrFail
+    val targetClassId = targetGraphImpl.classIdOrFail
+
+    // Traverse up using parentGraphClass/parentGraphField IR attributes until we find the target
+    while (currentGraph.classId != targetClassId) {
+      fieldsToTraverse +=
+        currentGraph.parentGraphField
+          ?: reportCompilerBug(
+            "No parentGraphField found on ${currentGraph.fqNameWhenAvailable} while looking for ${targetClassId.asSingleFqName()}"
+          )
+
+      currentGraph =
+        currentGraph.parentGraphClass
+          ?: reportCompilerBug(
+            "No parentGraphClass found on ${currentGraph.fqNameWhenAvailable} while looking for ${targetClassId.asSingleFqName()}"
+          )
+    }
+
+    return AncestorGraphAccess(targetGraph = currentGraph, fieldsToTraverse = fieldsToTraverse)
+  }
 
   /**
    * Gets a property with proper access path based on its location and current context.
@@ -805,19 +753,20 @@ private constructor(
         }
 
         is IrBinding.GraphDependency -> {
-          val ownerKey = binding.ownerKey
           val bindingGetter =
             if (binding.propertyAccess != null) {
               // Get the reserved property from the ancestor graph that owns the binding.
               // This may be the immediate parent or a grandparent/further ancestor.
               // irGetAncestorGraphExpr traverses the parent chain to find the correct graph.
+              val ownerGraphImpl = binding.propertyAccess.parentGraphImpl
               val reservedProperty = binding.propertyAccess.bindingProperty.irProperty
-              irGetProperty(irGetAncestorGraphExpr(ownerKey), reservedProperty)
+              irGetProperty(irGetAncestorGraphExpr(ownerGraphImpl), reservedProperty)
             } else if (binding.getter != null) {
+              // Included graph dependency - access via instance field
               val graphInstanceEntry =
-                bindingPropertyContext.instancePropertyEntry(ownerKey)
+                bindingPropertyContext.instancePropertyEntry(binding.ownerKey)
                   ?: reportCompilerBug(
-                    "No matching included type instance found for type $ownerKey while processing ${node.typeKey}. Available instance fields ${bindingPropertyContext.availableInstanceKeys}"
+                    "No matching included type instance found for type ${binding.ownerKey} while processing ${node.typeKey}. Available instance fields ${bindingPropertyContext.availableInstanceKeys}"
                   )
 
               val getterContextKey = IrContextualTypeKey.from(binding.getter)
