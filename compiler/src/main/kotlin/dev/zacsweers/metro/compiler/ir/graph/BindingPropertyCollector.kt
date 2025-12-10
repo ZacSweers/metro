@@ -5,7 +5,6 @@ package dev.zacsweers.metro.compiler.ir.graph
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
-import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.types.IrType
 
 private const val INITIAL_VALUE = 512
@@ -84,7 +83,8 @@ internal class BindingPropertyCollector(
         keysWithBackingProperties[key] = BindingProperty(binding, PropertyType.FIELD)
       }
 
-      // Uses factory path if it has a property (scoped, assisted, refcount > 1) or is deferred (cycle)
+      // Uses factory path if it has a property (scoped, assisted, refcount > 1) or is deferred
+      // (cycle)
       val usesFactoryPath = key in keysWithBackingProperties || key in deferredTypes
 
       // Mark dependencies as provider accesses if:
@@ -111,26 +111,26 @@ internal class BindingPropertyCollector(
    * binding's property requirement depends on refcount.
    */
   private fun staticPropertyType(key: IrTypeKey, binding: IrBinding): PropertyType? {
-    // Check reserved properties first
-    graph.findAnyReservedProperty(key)?.let { reserved ->
-      return when {
-        reserved.property.getter != null -> PropertyType.GETTER
-        reserved.property.backingField != null -> PropertyType.FIELD
-        else -> reportCompilerBug("No getter or backing field for reserved property")
-      }
-    }
+    // Check binding requirements first, these take precedence over reserved property structure.
+    // Reserved properties may only have a getter (from ParentContext), but we still need
+    // to convert them to have backing fields for scoped bindings, assisted, etc.
 
     // Scoped bindings always need provider fields (for DoubleCheck)
     if (binding.isScoped()) return PropertyType.FIELD
 
     return when (binding) {
       // Graph dependencies always need fields
-      is IrBinding.GraphDependency -> PropertyType.FIELD
+      is IrBinding.GraphDependency -> return PropertyType.FIELD
       // Assisted types always need to be a single field to ensure use of the same provider
-      is IrBinding.Assisted -> PropertyType.FIELD
+      is IrBinding.Assisted -> return PropertyType.FIELD
       // Assisted inject factories use factory path
-      is IrBinding.ConstructorInjected if binding.isAssisted -> PropertyType.FIELD
-      else -> null
+      is IrBinding.ConstructorInjected if binding.isAssisted -> return PropertyType.FIELD
+      else -> {
+        // For bindings that don't require a specific property type, check if there's a reserved
+        // property. Reserved properties always need backing fields so the parent graph can store
+        // and initialize the provider. The getter will return this backing field.
+        graph.findAnyReservedProperty(key)?.let { PropertyType.FIELD }
+      }
     }
   }
 
