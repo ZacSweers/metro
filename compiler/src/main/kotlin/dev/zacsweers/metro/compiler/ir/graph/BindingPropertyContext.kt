@@ -97,7 +97,8 @@ internal sealed interface PropertyLocation {
 internal data class BindingProperty(val irProperty: IrProperty, val location: PropertyLocation)
 
 /**
- * Context for generating property access expressions, handling both graph-direct and shard contexts.
+ * Context for generating property access expressions, handling both graph-direct and shard
+ * contexts.
  *
  * In graph-direct context (`graphBackingField == null`):
  * - `currentClass` is the graph impl class
@@ -112,7 +113,8 @@ internal data class BindingProperty(val irProperty: IrProperty, val location: Pr
  *
  * @param currentClass The class where code is being generated (graph impl or shard)
  * @param thisReceiver The `this` receiver for the current class
- * @param graphBackingField The backing field for graph access from a shard, or null if in graph-direct context
+ * @param graphBackingField The backing field for graph access from a shard, or null if in
+ *   graph-direct context
  */
 internal data class ShardContext(
   val currentClass: IrClass,
