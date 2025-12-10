@@ -50,7 +50,7 @@ import org.jetbrains.kotlin.name.Name
  *
  * When a dependency graph has many bindings, the generated class can exceed JVM class size limits.
  * Sharding distributes provider fields and their initialization across multiple shard classes. Each
- * shard is a private static nested class that owns its provider fields directly.
+ * shard is a protected static nested class that owns its provider fields directly.
  *
  * Unlike inner classes, static nested classes don't have implicit access to the outer `this`, so
  * shards receive the graph instance as an explicit constructor parameter. This allows shards to
@@ -60,7 +60,7 @@ import org.jetbrains.kotlin.name.Name
  * ```kotlin
  * class AppGraph$Impl : AppGraph {
  *   // Shard instance fields
- *   private val shard1: Shard1
+ *   protected val shard1: Shard1
  *
  *   init {
  *     // Shards initialized at end (after non-sharded properties)
@@ -70,7 +70,7 @@ import org.jetbrains.kotlin.name.Name
  *   // Accessors use shard fields
  *   override fun getRepo(): Repository = shard1.repoProvider.get()
  *
- *   private class Shard1(graph: AppGraph$Impl) {
+ *   protected class Shard1(graph: AppGraph$Impl) {
  *     protected val graph: AppGraph$Impl = graph
  *     // Provider fields owned by this shard, initialized in constructor
  *     protected val repoProvider: Provider<Repository> = provider { Repository.MetroFactory.create() }
@@ -136,19 +136,20 @@ internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext b
 
     // Create initialization statements that instantiate each shard.
     // Shard constructors initialize all their provider fields directly.
-    val initStatements = shardInfos.map { info ->
-      { thisReceiver: IrValueParameter ->
-        createIrBuilder(graphClass.primaryConstructor!!.symbol).run {
-          irSetField(
-            irGet(thisReceiver),
-            info.shardFieldInGraph.backingField!!,
-            irCallConstructor(info.shardClass.primaryConstructor!!.symbol, emptyList()).apply {
-              arguments[0] = irGet(thisReceiver)
-            },
-          )
+    val initStatements =
+      shardInfos.map { info ->
+        { thisReceiver: IrValueParameter ->
+          createIrBuilder(graphClass.primaryConstructor!!.symbol).run {
+            irSetField(
+              irGet(thisReceiver),
+              info.shardFieldInGraph.backingField!!,
+              irCallConstructor(info.shardClass.primaryConstructor!!.symbol, emptyList()).apply {
+                arguments[0] = irGet(thisReceiver)
+              },
+            )
+          }
         }
       }
-    }
 
     return ShardResult(shardInfos, initStatements)
   }
@@ -177,9 +178,7 @@ internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext b
     }
   }
 
-  /**
-   * Intermediate data for shard generation, used between Phase 1 and Phase 2.
-   */
+  /** Intermediate data for shard generation, used between Phase 1 and Phase 2. */
   private data class PendingShardInit(
     val shardClass: IrClass,
     val graphParam: IrValueParameter,
@@ -196,9 +195,10 @@ internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext b
     bindingPropertyContext: BindingPropertyContext,
   ): List<ShardInfo> {
     // Phase 1: Create all shard classes with properties (but defer init code)
-    val pendingInits = shardGroups.mapIndexed { index, bindingInputs ->
-      createShardClassWithProperties(graphClass, index, bindingInputs)
-    }
+    val pendingInits =
+      shardGroups.mapIndexed { index, bindingInputs ->
+        createShardClassWithProperties(graphClass, index, bindingInputs)
+      }
 
     // Register all shard properties in bindingPropertyContext BEFORE generating init code.
     // This is critical because init code generation uses expression generators that query
@@ -214,14 +214,10 @@ internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext b
     }
 
     // Phase 2: Generate init code for each shard
-    return pendingInits.map { pending ->
-      generateShardInitCode(pending)
-    }
+    return pendingInits.map { pending -> generateShardInitCode(pending) }
   }
 
-  /**
-   * Phase 1: Create shard class structure with properties but without init code.
-   */
+  /** Phase 1: Create shard class structure with properties but without init code. */
   private fun createShardClassWithProperties(
     graphClass: IrClass,
     index: Int,
@@ -231,11 +227,12 @@ internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext b
     val shardFieldName = "shard${index + 1}"
 
     // Create the shard class as a static nested class (not inner)
+    // Protected visibility allows extension graphs (inner classes) to access shards
     val shardClass =
       irFactory
         .buildClass {
           name = Name.identifier(shardName)
-          visibility = DescriptorVisibilities.PRIVATE
+          visibility = DescriptorVisibilities.PROTECTED
           modality = Modality.FINAL
           isInner = false // Static nested class
         }
@@ -254,11 +251,10 @@ internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext b
         origin = Origins.Default
       }
       .apply {
-        graphParam =
-          addValueParameter {
-            name = Name.identifier("graph")
-            type = graphClass.defaultType
-          }
+        graphParam = addValueParameter {
+          name = Name.identifier("graph")
+          type = graphClass.defaultType
+        }
       }
 
     // Create a backing field to hold the graph reference (no getter needed for private field)
@@ -271,9 +267,7 @@ internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext b
           isFinal = true
           origin = IrDeclarationOrigin.PROPERTY_BACKING_FIELD
         }
-        .apply {
-          parent = shardClass
-        }
+        .apply { parent = shardClass }
     shardClass.declarations.add(graphBackingField)
 
     // Create provider properties in the shard class
@@ -347,8 +341,8 @@ internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext b
   /**
    * Phase 2: Generate init code for a shard.
    *
-   * All provider fields are initialized in the shard's constructor. The expression generator
-   * uses ShardContext to generate correct property access expressions from the start:
+   * All provider fields are initialized in the shard's constructor. The expression generator uses
+   * ShardContext to generate correct property access expressions from the start:
    * - Same-shard access: `this.property`
    * - Cross-shard access: `this.graph.otherShard.property`
    * - Graph-direct access: `this.graph.property`
@@ -365,8 +359,7 @@ internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext b
 
     // Build the constructor body with all initialization.
     // If chunking is needed, create private init functions called from the constructor.
-    val mustChunk =
-      options.chunkFieldInits && initStatementData.size > options.statementsPerInitFun
+    val mustChunk = options.chunkFieldInits && initStatementData.size > options.statementsPerInitFun
 
     if (mustChunk) {
       val functionNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
@@ -382,11 +375,12 @@ internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext b
               setDispatchReceiver(localShardReceiver)
 
               // Create shard context with the function's receiver
-              val shardContext = ShardContext(
-                currentClass = shardClass,
-                thisReceiver = localShardReceiver,
-                graphBackingField = graphBackingField,
-              )
+              val shardContext =
+                ShardContext(
+                  currentClass = shardClass,
+                  thisReceiver = localShardReceiver,
+                  graphBackingField = graphBackingField,
+                )
 
               buildBlockBody {
                 for ((property, typeKey, initializer) in chunk) {
@@ -403,19 +397,17 @@ internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext b
           +irDelegatingConstructorCall(irBuiltIns.anyClass.owner.primaryConstructor!!)
           +irSetField(irGet(shardThisReceiver), graphBackingField, irGet(graphParam))
           for (chunkedFn in chunkedFunctions) {
-            +irInvoke(
-              dispatchReceiver = irGet(shardThisReceiver),
-              callee = chunkedFn.symbol,
-            )
+            +irInvoke(dispatchReceiver = irGet(shardThisReceiver), callee = chunkedFn.symbol)
           }
         }
     } else {
       // Create shard context with the constructor's receiver
-      val shardContext = ShardContext(
-        currentClass = shardClass,
-        thisReceiver = shardThisReceiver,
-        graphBackingField = graphBackingField,
-      )
+      val shardContext =
+        ShardContext(
+          currentClass = shardClass,
+          thisReceiver = shardThisReceiver,
+          graphBackingField = graphBackingField,
+        )
 
       // Constructor initializes all provider fields directly
       ctor.body =
@@ -436,10 +428,7 @@ internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext b
       propertyMap = propertyMap,
       bindings =
         pending.bindingInputs.map { input ->
-          PropertyBinding(
-            property = propertyMap.getValue(input.typeKey),
-            typeKey = input.typeKey,
-          )
+          PropertyBinding(property = propertyMap.getValue(input.typeKey), typeKey = input.typeKey)
         },
     )
   }
