@@ -31,9 +31,11 @@ import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
+import org.jetbrains.kotlin.ir.builders.declarations.addField
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
+import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -221,6 +223,31 @@ internal class SyntheticGraphGenerator(
 
       // Must be added to the container before we generate a factory impl
       containerToAddTo.addChild(this)
+
+      // For inner class graphs, store a reference to the parent graph class
+      if (parentGraph != null) {
+        parentGraphClass = parentGraph
+      }
+    }
+
+    // For inner class graphs, add a protected field to store the parent graph reference.
+    // This is needed for shards (static nested classes) which can't access the implicit
+    // outer class reference - they use this field via `this.graph.parentGraph`.
+    // TODO nameAllocator
+    if (parentGraph != null) {
+      graphImpl
+        .addField(
+          Name.identifier("parentGraph"),
+          parentGraph.thisReceiverOrFail.type,
+          DescriptorVisibilities.PROTECTED,
+        )
+        .apply {
+          isFinal = true
+          // Initialize inline from the outer class's this receiver
+          initializer =
+            createIrBuilder(symbol).run { irExprBody(irGet(parentGraph.thisReceiverOrFail)) }
+        }
+        .also { graphImpl.parentGraphField = it }
     }
 
     val ctor =
