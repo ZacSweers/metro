@@ -413,13 +413,13 @@ internal class BindingLookup(
     key: IrTypeKey,
     propertyAccess: ParentContext.PropertyAccess,
   ): IrBinding.GraphDependency {
-    val parentGraph = parentContext!!.currentParentGraph
-    val cacheKey = ParentGraphDepKey(parentGraph, key)
+    // Use the owning parent's type key from propertyAccess, not the immediate parent on the stack.
+    // This is important when a child graph needs a binding from a grandparent or further ancestor.
+    val ownerKey = propertyAccess.parentKey
+    val cacheKey = ParentGraphDepKey(ownerKey.type.rawType(), key)
     return parentGraphDepCache.getOrPut(cacheKey) {
-      val parentTypeKey = IrTypeKey(parentGraph.typeWith())
-
       IrBinding.GraphDependency(
-        ownerKey = parentTypeKey,
+        ownerKey = ownerKey,
         graph = sourceGraph,
         propertyAccess = propertyAccess,
         typeKey = key,
