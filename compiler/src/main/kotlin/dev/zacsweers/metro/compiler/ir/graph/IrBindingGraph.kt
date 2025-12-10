@@ -117,6 +117,10 @@ internal class IrBindingGraph(
   fun reservedProperty(contextKey: IrContextualTypeKey): ParentContext.PropertyAccess? =
     reservedProperties[contextKey]
 
+  /** Returns all reserved properties (for getter body generation after sharding). */
+  fun allReservedProperties(): Map<IrContextualTypeKey, ParentContext.PropertyAccess> =
+    reservedProperties
+
   /**
    * Finds any reserved property for the given type key, checking both instance and provider
    * variants.
