@@ -680,11 +680,12 @@ internal class BindingGraphGenerator(
             parentContext.mark(key) ?: reportCompilerBug("Missing parent key $key")
 
           // Record a lookup for IC when the binding is actually created
-          val propertyParentClass = propertyAccess.property.parentAsClass
+          val reservedProperty = propertyAccess.bindingProperty.irProperty
+          val propertyParentClass = reservedProperty.parentAsClass
           trackMemberDeclarationCall(
             node.sourceGraph,
             propertyParentClass.kotlinFqName,
-            propertyAccess.property.name.asString(),
+            reservedProperty.name.asString(),
           )
 
           if (key == propertyAccess.parentKey) {
@@ -692,7 +693,7 @@ internal class BindingGraphGenerator(
             IrBinding.BoundInstance(
               key,
               "parent",
-              propertyAccess.property,
+              reservedProperty,
               classReceiverParameter = propertyAccess.receiverParameter,
               providerPropertyAccess = propertyAccess,
             )
