@@ -1,0 +1,471 @@
+@Inject
+class A {
+  val x: X
+    field = x
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<A> {
+    private /* final field */ val x: Provider<X> = x
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(x: Provider<X>): Factory<A> {
+        return MetroFactory(x = x)
+      }
+
+      fun newInstance(x: X): A {
+        return A(x = x)
+      }
+
+    }
+
+    private constructor(x: Provider<X>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): A {
+      return Companion.newInstance(x = <this>.#x.invoke())
+    }
+
+    fun mirrorFunction(x: X): A {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(x: X) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class B {
+  val x: X
+    field = x
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<B> {
+    private /* final field */ val x: Provider<X> = x
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(x: Provider<X>): Factory<B> {
+        return MetroFactory(x = x)
+      }
+
+      fun newInstance(x: X): B {
+        return B(x = x)
+      }
+
+    }
+
+    private constructor(x: Provider<X>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): B {
+      return Companion.newInstance(x = <this>.#x.invoke())
+    }
+
+    fun mirrorFunction(x: X): B {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(x: X) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class C {
+  val x: X
+    field = x
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<C> {
+    private /* final field */ val x: Provider<X> = x
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(x: Provider<X>): Factory<C> {
+        return MetroFactory(x = x)
+      }
+
+      fun newInstance(x: X): C {
+        return C(x = x)
+      }
+
+    }
+
+    private constructor(x: Provider<X>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): C {
+      return Companion.newInstance(x = <this>.#x.invoke())
+    }
+
+    fun mirrorFunction(x: X): C {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(x: X) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class MapConsumer {
+  val map: Provider<Map<Int, B>>
+    field = map
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<MapConsumer> {
+    private /* final field */ val map: Provider<Map<Int, B>> = map
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(map: Provider<Map<Int, B>>): Factory<MapConsumer> {
+        return MetroFactory(map = map)
+      }
+
+      fun newInstance(map: Provider<Map<Int, B>>): MapConsumer {
+        return MapConsumer(map = map)
+      }
+
+    }
+
+    private constructor(map: Provider<Map<Int, B>>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): MapConsumer {
+      return Companion.newInstance(map = <this>.#map)
+    }
+
+    fun mirrorFunction(map: Provider<Map<Int, B>>): MapConsumer {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(map: Provider<Map<Int, B>>) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class ProviderMapConsumer {
+  val map: Map<Int, Provider<C>>
+    field = map
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<ProviderMapConsumer> {
+    private /* final field */ val map: Provider<Map<Int, Provider<C>>> = map
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(map: Provider<Map<Int, Provider<C>>>): Factory<ProviderMapConsumer> {
+        return MetroFactory(map = map)
+      }
+
+      fun newInstance(map: Map<Int, C>): ProviderMapConsumer {
+        return ProviderMapConsumer(map = map)
+      }
+
+    }
+
+    private constructor(map: Provider<Map<Int, Provider<C>>>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): ProviderMapConsumer {
+      return Companion.newInstance(map = <this>.#map.invoke())
+    }
+
+    fun mirrorFunction(map: Map<Int, Provider<C>>): ProviderMapConsumer {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(map: Map<Int, Provider<C>>) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class SetConsumer {
+  val set: Provider<Set<A>>
+    field = set
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<SetConsumer> {
+    private /* final field */ val set: Provider<Set<A>> = set
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(set: Provider<Set<A>>): Factory<SetConsumer> {
+        return MetroFactory(set = set)
+      }
+
+      fun newInstance(set: Provider<Set<A>>): SetConsumer {
+        return SetConsumer(set = set)
+      }
+
+    }
+
+    private constructor(set: Provider<Set<A>>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): SetConsumer {
+      return Companion.newInstance(set = <this>.#set)
+    }
+
+    fun mirrorFunction(set: Provider<Set<A>>): SetConsumer {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(set: Provider<Set<A>>) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class X {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<X> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    fun create(): Factory<X> {
+      return MetroFactory
+    }
+
+    fun newInstance(): X {
+      return X()
+    }
+
+    override operator fun invoke(): X {
+      return MetroFactory.newInstance()
+    }
+
+    fun mirrorFunction(): X {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@DependencyGraph
+interface TestGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  abstract class BindsMirror {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Binds
+    @IntoSet
+    @CallableMetadata(callableName = "bindA", propertyName = "", startOffset = 878, endOffset = 894)
+    abstract fun A.bindA_intoset(): A
+
+    @Binds
+    @IntoMap
+    @IntKey(value = 1)
+    @CallableMetadata(callableName = "bindB", propertyName = "", startOffset = 955, endOffset = 971)
+    abstract fun B.bindB4013004649_intomap(): B
+
+    @Binds
+    @IntoMap
+    @IntKey(value = 1)
+    @CallableMetadata(callableName = "bindC", propertyName = "", startOffset = 1060, endOffset = 1076)
+    abstract fun C.bindC4013004649_intomap(): C
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : TestGraph {
+    private val xProvider: Provider<X>
+      field = MetroFactory.create()
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Binds
+    @IntoSet
+    override fun A.bindA(): A {
+      return error(message = "Never called")
+    }
+
+    @Binds
+    @IntoMap
+    @IntKey(value = 1)
+    override fun B.bindB(): B {
+      return error(message = "Never called")
+    }
+
+    @Binds
+    @IntoMap
+    @IntKey(value = 1)
+    override fun C.bindC(): C {
+      return error(message = "Never called")
+    }
+
+    override val mapConsumer: MapConsumer
+      override get(): MapConsumer {
+        return MapConsumer(map = <this>.<get-mapOfIntToB>())
+      }
+
+    private val mapOfIntToB: Provider<Map<Int, B>>
+      private get(): Provider<Map<Int, B>> {
+        return Companion.builder<Int, B>(size = 1).put(key = 1, providerOfValue = Companion.create(x = <this>.#xProvider)).build()
+      }
+
+    private val mapOfIntToC: Map<Int, Provider<C>>
+      private get(): Map<Int, Provider<C>> {
+        return buildMap<Int, Provider<C>>(capacity = 1, builderAction = local fun MutableMap<Int, Provider<C>>.<anonymous>() {
+          $receiver.put(key = 1, value = Companion.create(x = <this>.#xProvider))
+        }
+)
+      }
+
+    override val providerMapConsumer: ProviderMapConsumer
+      override get(): ProviderMapConsumer {
+        return ProviderMapConsumer(map = <this>.<get-mapOfIntToC>())
+      }
+
+    override val setConsumer: SetConsumer
+      override get(): SetConsumer {
+        return SetConsumer(set = <this>.<get-setOfA>())
+      }
+
+    private val setOfA: Provider<Set<A>>
+      private get(): Provider<Set<A>> {
+        return Companion.builder<A>(individualProviderSize = 1, collectionProviderSize = 0).addProvider(individualProvider = Companion.create(x = <this>.#xProvider)).build()
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): TestGraph {
+      return Impl()
+    }
+
+  }
+
+  @Binds
+  @IntoSet
+  abstract fun A.bindA(): A
+
+  @Binds
+  @IntoMap
+  @IntKey(value = 1)
+  abstract fun B.bindB(): B
+
+  @Binds
+  @IntoMap
+  @IntKey(value = 1)
+  abstract fun C.bindC(): C
+
+  abstract val mapConsumer: MapConsumer
+    abstract get
+
+  abstract val providerMapConsumer: ProviderMapConsumer
+    abstract get
+
+  abstract val setConsumer: SetConsumer
+    abstract get
+
+}
+
