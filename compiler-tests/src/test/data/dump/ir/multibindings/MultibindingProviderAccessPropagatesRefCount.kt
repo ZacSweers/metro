@@ -16,6 +16,8 @@ interface TestGraph {
   val mapConsumer: MapConsumer
   val providerMapConsumer: ProviderMapConsumer
 
+  @Binds fun XImpl.bindX(): X
+
   // Set<A> multibinding
   @Binds @IntoSet fun A.bindA(): A
 
@@ -29,8 +31,10 @@ interface TestGraph {
 // X is a transitive dependency - used by sources of all multibindings
 // If sources are properly marked, X should have factoryRefCount = 3 (one from each source)
 // and get a backing field
+// interface + impl to ensure we follow aliases too
+interface X
 @Inject
-class X
+class XImpl : X
 @Inject
 class A(val x: X)
 @Inject

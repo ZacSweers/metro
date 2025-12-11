@@ -299,28 +299,28 @@ class SetConsumer {
 }
 
 @Inject
-class X {
+class XImpl : X {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  object MetroFactory : Factory<X> {
+  object MetroFactory : Factory<XImpl> {
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
-    fun create(): Factory<X> {
+    fun create(): Factory<XImpl> {
       return MetroFactory
     }
 
-    fun newInstance(): X {
-      return X()
+    fun newInstance(): XImpl {
+      return XImpl()
     }
 
-    override operator fun invoke(): X {
+    override operator fun invoke(): XImpl {
       return MetroFactory.newInstance()
     }
 
-    fun mirrorFunction(): X {
+    fun mirrorFunction(): XImpl {
       return error(message = "Never called")
     }
 
@@ -346,27 +346,31 @@ interface TestGraph {
 
     @Binds
     @IntoSet
-    @CallableMetadata(callableName = "bindA", propertyName = "", startOffset = 878, endOffset = 894)
+    @CallableMetadata(callableName = "bindA", propertyName = "", startOffset = 909, endOffset = 925)
     abstract fun A.bindA_intoset(): A
 
     @Binds
     @IntoMap
     @IntKey(value = 1)
-    @CallableMetadata(callableName = "bindB", propertyName = "", startOffset = 955, endOffset = 971)
+    @CallableMetadata(callableName = "bindB", propertyName = "", startOffset = 986, endOffset = 1002)
     abstract fun B.bindB4013004649_intomap(): B
 
     @Binds
     @IntoMap
     @IntKey(value = 1)
-    @CallableMetadata(callableName = "bindC", propertyName = "", startOffset = 1060, endOffset = 1076)
+    @CallableMetadata(callableName = "bindC", propertyName = "", startOffset = 1091, endOffset = 1107)
     abstract fun C.bindC4013004649_intomap(): C
+
+    @Binds
+    @CallableMetadata(callableName = "bindX", propertyName = "", startOffset = 844, endOffset = 864)
+    abstract fun XImpl.bindX(): X
 
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : TestGraph {
-    private val xProvider: Provider<X>
+    private val xImplProvider: Provider<XImpl>
       field = MetroFactory.create()
 
     private constructor() /* primary */ {
@@ -395,6 +399,11 @@ interface TestGraph {
       return error(message = "Never called")
     }
 
+    @Binds
+    override fun XImpl.bindX(): X {
+      return error(message = "Never called")
+    }
+
     override val mapConsumer: MapConsumer
       override get(): MapConsumer {
         return MapConsumer(map = <this>.<get-mapOfIntToB>())
@@ -402,13 +411,13 @@ interface TestGraph {
 
     private val mapOfIntToB: Provider<Map<Int, B>>
       private get(): Provider<Map<Int, B>> {
-        return Companion.builder<Int, B>(size = 1).put(key = 1, providerOfValue = Companion.create(x = <this>.#xProvider)).build()
+        return Companion.builder<Int, B>(size = 1).put(key = 1, providerOfValue = Companion.create(x = <this>.#xImplProvider)).build()
       }
 
     private val mapOfIntToC: Map<Int, Provider<C>>
       private get(): Map<Int, Provider<C>> {
         return buildMap<Int, Provider<C>>(capacity = 1, builderAction = local fun MutableMap<Int, Provider<C>>.<anonymous>() {
-          $receiver.put(key = 1, value = Companion.create(x = <this>.#xProvider))
+          $receiver.put(key = 1, value = Companion.create(x = <this>.#xImplProvider))
         }
 )
       }
@@ -425,7 +434,7 @@ interface TestGraph {
 
     private val setOfA: Provider<Set<A>>
       private get(): Provider<Set<A>> {
-        return Companion.builder<A>(individualProviderSize = 1, collectionProviderSize = 0).addProvider(individualProvider = Companion.create(x = <this>.#xProvider)).build()
+        return Companion.builder<A>(individualProviderSize = 1, collectionProviderSize = 0).addProvider(individualProvider = Companion.create(x = <this>.#xImplProvider)).build()
       }
 
   }
@@ -458,6 +467,9 @@ interface TestGraph {
   @IntKey(value = 1)
   abstract fun C.bindC(): C
 
+  @Binds
+  abstract fun XImpl.bindX(): X
+
   abstract val mapConsumer: MapConsumer
     abstract get
 
@@ -467,5 +479,8 @@ interface TestGraph {
   abstract val setConsumer: SetConsumer
     abstract get
 
+}
+
+interface X {
 }
 
