@@ -338,8 +338,11 @@ interface CycleGraph {
     private val provideObjectWithCycleProvider: Provider<Any>
       field = DelegateFactory<Any>()
 
+    private val bProvider: Provider<B>
+      field = Companion.create(c = <this>.#cProvider)
+
     private val aProvider: Provider<A>
-      field = Companion.create(b = Companion.create(c = <this>.#cProvider), e = Companion.create(d = Companion.create(b = Companion.create(c = <this>.#cProvider))))
+      field = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider)))
 
     @DependencyGraph
     private inner class ChildCycleGraphImpl : ChildCycleGraph {
@@ -349,8 +352,11 @@ interface CycleGraph {
       private val provideObjectWithCycleProvider: Provider<Any>
         field = DelegateFactory<Any>()
 
+      private val bProvider: Provider<B>
+        field = Companion.create(c = <this>.#cProvider)
+
       private val aProvider: Provider<A>
-        field = Companion.create(b = Companion.create(c = <this>.#cProvider), e = Companion.create(d = Companion.create(b = Companion.create(c = <this>.#cProvider))))
+        field = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider)))
 
       private class FactoryImpl : Factory {
         private /* final field */ val parentInstance: Impl = parentInstance

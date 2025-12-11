@@ -13,9 +13,13 @@ private const val INITIAL_VALUE = 512
 /**
  * Computes the set of bindings that must end up in properties.
  *
- * Uses reverse topological order to correctly handle second-order effects: if a binding gets a
- * property (from refcount), it uses the factory path, which means its dependencies are accessed as
- * providers and should be counted.
+ * Uses reverse topological order to correctly handle second-order effects: if a binding is in a
+ * factory path, its dependencies are accessed as providers and should be counted.
+ *
+ * A binding is in a "factory path" when its factory is created (either cached in a property or
+ * inline). This happens when:
+ * 1. The binding has a property (scoped, assisted, or factoryRefCount > 1)
+ * 2. The binding is accessed via Provider/Lazy (factoryRefCount > 0)
  */
 internal class BindingPropertyCollector(
   private val graph: IrBindingGraph,
@@ -25,7 +29,12 @@ internal class BindingPropertyCollector(
 
   data class CollectedProperty(val binding: IrBinding, val propertyType: PropertyType)
 
-  private data class Node(val binding: IrBinding, var refCount: Int = 0)
+  /**
+   * Tracks factory reference counts for bindings. [factoryRefCount] is incremented when a binding
+   * is accessed in a factory path context (explicit Provider/Lazy or as a dependency of something
+   * in a factory path). If factoryRefCount > 1, the binding needs a property to cache its factory.
+   */
+  private data class Node(val binding: IrBinding, var factoryRefCount: Int = 0)
 
   private val nodes = HashMap<IrTypeKey, Node>(INITIAL_VALUE)
 
@@ -36,24 +45,27 @@ internal class BindingPropertyCollector(
     val keysWithBackingProperties = mutableMapOf<IrTypeKey, CollectedProperty>()
 
     // Roots (accessors/injectors) don't get properties themselves, but they contribute to
-    // dependency refcounts when they require provider instances so we mark them here.
+    // factory refcounts when they require provider instances so we mark them here.
     // This includes both direct Provider/Lazy wrapping and map types with Provider values.
     for (root in roots) {
       if (root.requiresProviderInstance) {
-        markProviderAccess(root)
+        markFactoryAccess(root)
       }
-      maybeMarkMultibindingSourcesAsProviderAccess(root)
+      maybeMarkMultibindingSourcesAsFactoryAccess(
+        root,
+        inFactoryPath = root.requiresProviderInstance,
+      )
     }
 
     // Single pass in reverse topological order (dependents before dependencies).
     // When we process a binding, all its dependents have already been processed,
-    // so its refCount is finalized. Nodes are created lazily via getOrPut - either
-    // here during iteration or earlier via markProviderAccess when a dependent
-    // marks this binding as a provider access.
+    // so its factoryRefCount is finalized. Nodes are created lazily via getOrPut - either
+    // here during iteration or earlier via markFactoryAccess when a dependent
+    // marks this binding as a factory access.
     for (key in sortedKeys.asReversed()) {
       val binding = graph.findBinding(key) ?: continue
 
-      // Initialize node (may already exist from markProviderAccess)
+      // Initialize node (may already exist from markFactoryAccess)
       val node = nodes.getOrPut(key) { Node(binding) }
 
       // Check static property type (applies to all bindings including aliases)
@@ -65,25 +77,29 @@ internal class BindingPropertyCollector(
       // Skip alias bindings for refcount and dependency processing
       if (binding is IrBinding.Alias) continue
 
-      // Multibindings are always created adhoc, but we create their properties lazily
+      // Multibindings are always created adhoc and don't get properties
       if (binding is IrBinding.Multibinding) continue
 
-      // refCount is finalized - check if we need a property from refcount
-      if (key !in keysWithBackingProperties && node.refCount > 1) {
+      // factoryRefCount is finalized - check if we need a property to cache the factory
+      if (key !in keysWithBackingProperties && node.factoryRefCount > 1) {
         keysWithBackingProperties[key] = CollectedProperty(binding, PropertyType.FIELD)
       }
 
-      // Uses factory path if it has a property (scoped, assisted, or refcount > 1)
-      val usesFactoryPath = key in keysWithBackingProperties
+      // A binding is in a factory path if:
+      // - It has a property (factory created at graph init)
+      // - t's accessed via Provider (factoryRefCount > 0, factory created inline)
+      //
+      // In both cases, its dependencies are accessed via Provider params in the factory.
+      val inFactoryPath = key in keysWithBackingProperties || node.factoryRefCount > 0
 
-      // Mark dependencies as provider accesses if:
-      // 1. Explicitly Provider<T> or Lazy<T>
-      // 2. OR this binding uses factory path (factory.create() takes Provider params)
+      // Mark dependencies as factory accesses if:
+      // - Explicitly Provider<T> or Lazy<T>
+      // - This binding is in a factory path (factory.create() takes Provider params)
       for (dependency in binding.dependencies) {
-        if (dependency.requiresProviderInstance || usesFactoryPath) {
-          markProviderAccess(dependency)
+        if (dependency.requiresProviderInstance || inFactoryPath) {
+          markFactoryAccess(dependency)
         }
-        maybeMarkMultibindingSourcesAsProviderAccess(dependency)
+        maybeMarkMultibindingSourcesAsFactoryAccess(dependency, inFactoryPath = inFactoryPath)
       }
     }
 
@@ -119,10 +135,10 @@ internal class BindingPropertyCollector(
   }
 
   /**
-   * Marks a dependency as a provider access, resolving through alias chains to mark the final
-   * non-alias target.
+   * Marks a dependency as a factory access, resolving through alias chains to mark the final
+   * non-alias target. Increments the target's factoryRefCount.
    */
-  private fun markProviderAccess(contextualTypeKey: IrContextualTypeKey) {
+  private fun markFactoryAccess(contextualTypeKey: IrContextualTypeKey) {
     val binding = graph.requireBinding(contextualTypeKey)
 
     // For aliases, resolve to the final target and mark that instead.
@@ -135,27 +151,35 @@ internal class BindingPropertyCollector(
 
     // Create node lazily if needed (the target may not have been processed yet in reverse order)
     val targetBinding = graph.findBinding(targetKey) ?: return
-    nodes.getOrPut(targetKey) { Node(targetBinding) }.refCount++
+    nodes.getOrPut(targetKey) { Node(targetBinding) }.factoryRefCount++
   }
 
   /**
    * If the given contextual type key corresponds to a multibinding that would use Provider
-   * elements, marks all its source bindings as provider accesses. This handles:
+   * elements, marks all its source bindings as factory accesses. This handles:
    * - Map multibindings with Provider<V> values (e.g., `Map<Int, Provider<Int>>`)
    * - Any multibinding wrapped in Provider/Lazy (e.g., `Provider<Set<E>>`, `Lazy<Map<K, V>>`)
+   * - Multibindings accessed in a factory path (the factory takes Provider<Multibinding> as a
+   *   param)
    */
-  private fun maybeMarkMultibindingSourcesAsProviderAccess(contextKey: IrContextualTypeKey) {
+  private fun maybeMarkMultibindingSourcesAsFactoryAccess(
+    contextKey: IrContextualTypeKey,
+    inFactoryPath: Boolean = false,
+  ) {
     val binding = graph.findBinding(contextKey.typeKey) as? IrBinding.Multibinding ?: return
 
     // Check if this multibinding access would use Provider elements:
     // 1. Wrapped in Provider/Lazy (e.g., Provider<Set<E>>)
     // 2. Map with Provider values (e.g., Map<Int, Provider<Int>>)
+    // 3. Accessed in a factory path (the factory takes Provider<Multibinding> as a param)
     val usesProviderElements =
-      contextKey.requiresProviderInstance || contextKey.wrappedType.hasProviderMapValues()
+      contextKey.requiresProviderInstance ||
+        inFactoryPath ||
+        contextKey.wrappedType.hasProviderMapValues()
 
     if (usesProviderElements) {
       for (sourceKey in binding.sourceBindings) {
-        markProviderAccess(IrContextualTypeKey(sourceKey))
+        markFactoryAccess(IrContextualTypeKey(sourceKey))
       }
     }
   }

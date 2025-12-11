@@ -354,9 +354,27 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("MultibindingProviderAccessPropagatesRefCount.kt")
+    public void testMultibindingProviderAccessPropagatesRefCount() {
+      runTest("compiler-tests/src/test/data/dump/ir/multibindings/MultibindingProviderAccessPropagatesRefCount.kt");
+    }
+
+    @Test
+    @TestMetadata("MultibindingRefCountFromFactoryPath.kt")
+    public void testMultibindingRefCountFromFactoryPath() {
+      runTest("compiler-tests/src/test/data/dump/ir/multibindings/MultibindingRefCountFromFactoryPath.kt");
+    }
+
+    @Test
     @TestMetadata("MultibindingSourcesGetGettersThroughAliases.kt")
     public void testMultibindingSourcesGetGettersThroughAliases() {
       runTest("compiler-tests/src/test/data/dump/ir/multibindings/MultibindingSourcesGetGettersThroughAliases.kt");
+    }
+
+    @Test
+    @TestMetadata("MultibindingSourcesGetRefcountedViaFactoryPath.kt")
+    public void testMultibindingSourcesGetRefcountedViaFactoryPath() {
+      runTest("compiler-tests/src/test/data/dump/ir/multibindings/MultibindingSourcesGetRefcountedViaFactoryPath.kt");
     }
   }
 
