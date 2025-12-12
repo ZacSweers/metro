@@ -236,6 +236,42 @@ Use the `run_startup_benchmarks.sh` script to run all startup benchmarks and agg
 # Results are saved to startup-benchmark-results/
 ```
 
+### Binary Metrics Only Mode
+
+For quick testing of binary metrics (class analysis, JAR sizes, APK sizes) without running full JMH/device benchmarks:
+
+```bash
+# Build and extract binary metrics only (skips JMH and device benchmarks)
+./run_startup_benchmarks.sh single --ref main --modes metro --count 500 --binary-metrics-only
+
+# Compare binary metrics between two git refs
+./run_startup_benchmarks.sh compare --ref1 main --ref2 feature-branch --modes metro --binary-metrics-only
+
+# Run only JVM-R8 binary metrics
+./run_startup_benchmarks.sh single --ref main --modes metro --benchmark jvm-r8 --binary-metrics-only
+
+# Useful for quickly comparing:
+# - Pre-minification class metrics (fields, methods, shards, size)
+# - R8-minified JAR sizes
+# - Android APK sizes and diffuse analysis
+```
+
+This mode is also available in the GitHub Actions workflow via the `binary-metrics-only` checkbox.
+
+### Using Current Working State
+
+You can benchmark the current working state (including uncommitted changes) without needing to commit or stash:
+
+```bash
+# Benchmark current state (includes uncommitted changes)
+./run_startup_benchmarks.sh single --ref HEAD --modes metro
+
+# Also accepts 'head' or 'current' as aliases
+./run_startup_benchmarks.sh single --ref current --modes metro --binary-metrics-only
+```
+
+This is useful for quickly testing local changes before committing.
+
 ### Android App Configuration
 
 The Android benchmark app (`startup-android/app`) is configured with:

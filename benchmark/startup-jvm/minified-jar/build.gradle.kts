@@ -95,6 +95,8 @@ abstract class R8Task : BaseR8Task() {
       add(mapping.get().asFile.absolutePath)
       add("--lib")
       add(javaHome.get())
+      // Suppress duplicate resource warnings (META-INF/MANIFEST.MF, module-info.class)
+      add("--map-diagnostics:warning:info")
     }
   }
 }
@@ -112,6 +114,9 @@ val componentJar =
 
     from(componentProject.layout.buildDirectory.dir("classes/kotlin/main"))
     from(componentProject.layout.buildDirectory.dir("classes/java/main"))
+
+    // Exclude duplicate META-INF resources to avoid R8 warnings
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
     archiveBaseName.set("component")
     destinationDirectory.set(layout.buildDirectory.dir("intermediates"))
