@@ -170,7 +170,7 @@ jobs:
   # Run multiplatform tests on main only to reduce PR time
   # Note: We use step-level conditions instead of job-level to ensure matrix expands and shows nice names
   multiplatform-tests:
-    name: "multiplatform / ${{ matrix.os }}"
+    name: ${{ format('multiplatform / {0}{1}', matrix.os, github.ref != 'refs/heads/main' && ' (skipped)' || '') }}
     runs-on: ${{ github.ref == 'refs/heads/main' && matrix.os || 'ubuntu-latest' }}
     permissions:
       checks: write
