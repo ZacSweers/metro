@@ -96,7 +96,9 @@ abstract class R8Task : BaseR8Task() {
       add("--lib")
       add(javaHome.get())
       // Suppress duplicate resource warnings (META-INF/MANIFEST.MF, module-info.class)
-      add("--map-diagnostics:warning:info")
+      add("--map-diagnostics")
+      add("warning")
+      add("info")
     }
   }
 }

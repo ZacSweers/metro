@@ -320,12 +320,9 @@ extract_class_metrics() {
             fi
 
             # Use javap to extract fields and methods count
-            local javap_output
-            javap_output=$(javap -verbose "$class_file" 2>/dev/null | head -20 || echo "")
-
-            # Extract from line like: "interfaces: 5, fields: 11, methods: 171, attributes: 5"
-            local fields=$(echo "$javap_output" | grep -o 'fields: [0-9]*' | grep -o '[0-9]*' || echo "0")
-            local methods=$(echo "$javap_output" | grep -o 'methods: [0-9]*' | grep -o '[0-9]*' || echo "0")
+            # Look for line like: "interfaces: 5, fields: 11, methods: 171, attributes: 5"
+            local fields=$(javap -verbose "$class_file" 2>/dev/null | grep -o 'fields: [0-9]*' | grep -o '[0-9]*' | head -1 || echo "0")
+            local methods=$(javap -verbose "$class_file" 2>/dev/null | grep -o 'methods: [0-9]*' | grep -o '[0-9]*' | head -1 || echo "0")
 
             if [ -n "$fields" ]; then
                 total_fields=$((total_fields + fields))
@@ -470,11 +467,13 @@ EOF
 
 # Run diffuse comparison between two APKs or JARs
 # Saves full output and extracts summary tables
+# Args: file1, file2, output_dir, file_type (apk/jar), comparison_name
 run_diffuse_diff() {
     local file1="$1"
     local file2="$2"
     local output_dir="$3"
     local file_type="${4:-apk}"  # apk or jar
+    local comparison_name="${5:-comparison}"  # e.g., "metro_ref1_vs_ref2" or "metro_vs_dagger"
 
     mkdir -p "$output_dir"
 
@@ -497,21 +496,15 @@ run_diffuse_diff() {
         type_flag="--jar"
     fi
 
-    print_step "Running diffuse diff..."
+    print_step "Running diffuse diff: $comparison_name..."
 
-    # Run diffuse and capture full output
-    local full_output="$output_dir/diffuse-full-output.txt"
+    # Run diffuse and capture full output with unique filename
+    local full_output="$output_dir/diffuse-${comparison_name}.txt"
     if "$diffuse_bin" diff $type_flag "$file1" "$file2" > "$full_output" 2>&1; then
-        print_success "diffuse diff complete"
-
-        # Extract summary tables (APK/JAR and DEX sections)
-        local summary_output="$output_dir/diffuse-summary.txt"
-        # Extract from start until first "=====" separator after DEX section
-        awk '/^(APK|JAR|DEX)$/,/^=+$/' "$full_output" | head -100 > "$summary_output"
-
+        print_success "diffuse diff complete: $full_output"
         return 0
     else
-        print_error "diffuse diff failed"
+        print_error "diffuse diff failed for $comparison_name"
         cat "$full_output"
         return 1
     fi
@@ -2476,24 +2469,22 @@ EOF
         local diffuse_bin=$(get_diffuse_bin 2>/dev/null || echo "")
 
         if [ -x "$diffuse_bin" ] && [ -f "$apk1" ] && [ -f "$apk2" ]; then
+            local comparison_name="apk_metro_${ref1_label}_vs_${ref2_label}"
             print_step "Running diffuse APK comparison..."
-            if run_diffuse_diff "$apk1" "$apk2" "$diffuse_dir" "apk"; then
+            if run_diffuse_diff "$apk1" "$apk2" "$diffuse_dir" "apk" "$comparison_name"; then
+                local diffuse_output_file="$diffuse_dir/diffuse-${comparison_name}.txt"
                 cat >> "$summary_file" << EOF
 
 ### Android APK (Diffuse)
 
 \`\`\`
 EOF
-                # Include just the APK and DEX summary tables
-                if [ -f "$diffuse_dir/diffuse-summary.txt" ]; then
-                    cat "$diffuse_dir/diffuse-summary.txt" >> "$summary_file"
-                else
-                    head -60 "$diffuse_dir/diffuse-full-output.txt" >> "$summary_file" 2>/dev/null || echo "Diffuse output not available" >> "$summary_file"
-                fi
+                # Include just the APK and DEX summary tables (first ~40 lines usually has these)
+                head -50 "$diffuse_output_file" >> "$summary_file" 2>/dev/null || echo "Diffuse output not available" >> "$summary_file"
                 cat >> "$summary_file" << EOF
 \`\`\`
 
-See \`diffuse/diffuse-full-output.txt\` for complete analysis.
+See \`diffuse/diffuse-${comparison_name}.txt\` for complete analysis.
 EOF
             fi
         elif [ -f "$RESULTS_DIR/${TIMESTAMP}/${ref1_label}/android_metro/apk-metrics.json" ] && [ -f "$RESULTS_DIR/${TIMESTAMP}/${ref2_label}/android_metro/apk-metrics.json" ]; then
@@ -3706,6 +3697,31 @@ function formatDiffCount(ref1, ref2) {
     return `<span class="${cls}">${sign}${diff.toLocaleString()} (${sign}${pct}%)</span>`;
 }
 
+// Format value with delta annotation: "391.4 KB (+2.5%)"
+function formatBytesWithDelta(newVal, oldVal) {
+    if (newVal === null || newVal === undefined) return '—';
+    const formatted = formatBytes(newVal);
+    if (oldVal === null || oldVal === undefined) return formatted;
+    const diff = newVal - oldVal;
+    if (diff === 0) return formatted;
+    const pct = oldVal ? ((diff / oldVal) * 100).toFixed(1) : 0;
+    const sign = diff > 0 ? '+' : '';
+    const cls = diff < 0 ? 'better' : (diff > 0 ? 'worse' : '');
+    return `${formatted} <span class="${cls}">(${sign}${pct}%)</span>`;
+}
+
+function formatCountWithDelta(newVal, oldVal) {
+    if (newVal === null || newVal === undefined) return '—';
+    const formatted = newVal.toLocaleString();
+    if (oldVal === null || oldVal === undefined) return formatted;
+    const diff = newVal - oldVal;
+    if (diff === 0) return formatted;
+    const pct = oldVal ? ((diff / oldVal) * 100).toFixed(1) : 0;
+    const sign = diff > 0 ? '+' : '';
+    const cls = diff < 0 ? 'better' : (diff > 0 ? 'worse' : '');
+    return `${formatted} <span class="${cls}">(${sign}${pct}%)</span>`;
+}
+
 function formatVsBaseline(value, baselineValue) {
     if (value === null || value === undefined || baselineValue === null || baselineValue === undefined) return '—';
     if (value === baselineValue) return '<span class="vs-baseline baseline">baseline</span>';
@@ -3773,17 +3789,26 @@ function renderBinaryMetrics() {
     // R8 JAR metrics
     if (bm.r8Jars && bm.r8Jars.length > 0) {
         const baselineData = getBaseline(bm.r8Jars, 'ref1');
+        // Get metro's ref2 data for comparing non-metro frameworks
+        const metroJar = bm.r8Jars.find(j => j.key === 'metro');
+        const metroRef2 = metroJar?.ref2;
+
         html += '<div class="benchmark-section"><h2>Binary Metrics: R8-Minified JAR</h2>';
         html += '<table><thead><tr>';
         if (showVsBaseline) html += '<th></th>';
         html += '<th>Framework</th>';
         html += '<th class="numeric">JAR Size</th><th class="numeric">Classes</th><th class="numeric">Methods</th><th class="numeric">Fields</th>';
         if (showVsBaseline) html += '<th class="numeric">vs <span class="baseline-header">' + getBaselineLabel() + '</span></th>';
-        if (hasRef2) html += '<th class="numeric">ref2 Size</th><th class="numeric">Δ Size</th><th class="numeric">Δ Classes</th><th class="numeric">Δ Methods</th><th class="numeric">Δ Fields</th>';
+        if (hasRef2) html += '<th class="numeric">ref2 Size</th><th class="numeric">ref2 Classes</th><th class="numeric">ref2 Methods</th><th class="numeric">ref2 Fields</th>';
         html += '</tr></thead><tbody>';
         bm.r8Jars.forEach(j => {
             const isBaseline = j.key === selectedBaseline;
             const rowClass = isBaseline ? 'baseline-row' : '';
+            // For non-metro frameworks, use metro's ref2 as comparison target
+            const isMetro = j.key === 'metro';
+            const compareData = isMetro ? j.ref2 : metroRef2;
+            const compareRef1 = isMetro ? j.ref1 : j.ref1;
+
             html += `<tr class="${rowClass}">`;
             if (showVsBaseline) html += `<td class="baseline-select" onclick="setBaseline('${j.key}')"><span class="baseline-radio ${isBaseline ? 'selected' : ''}"></span></td>`;
             html += `<td class="framework" style="color: ${colors[j.key]}">${j.framework}</td>`;
@@ -3793,11 +3818,11 @@ function renderBinaryMetrics() {
             html += `<td class="numeric">${j.ref1?.fields?.toLocaleString() ?? '—'}</td>`;
             if (showVsBaseline) html += `<td class="numeric">${formatVsBaseline(j.ref1?.sizeBytes, baselineData?.sizeBytes)}</td>`;
             if (hasRef2) {
-                html += `<td class="numeric">${j.ref2 ? formatBytes(j.ref2.sizeBytes) : '—'}</td>`;
-                html += `<td class="numeric diff">${formatDiffBytes(j.ref1?.sizeBytes, j.ref2?.sizeBytes)}</td>`;
-                html += `<td class="numeric diff">${formatDiffCount(j.ref1?.classCount, j.ref2?.classCount)}</td>`;
-                html += `<td class="numeric diff">${formatDiffCount(j.ref1?.methods, j.ref2?.methods)}</td>`;
-                html += `<td class="numeric diff">${formatDiffCount(j.ref1?.fields, j.ref2?.fields)}</td>`;
+                // Show ref2 values with delta annotation (comparing to ref1)
+                html += `<td class="numeric">${formatBytesWithDelta(compareData?.sizeBytes, compareRef1?.sizeBytes)}</td>`;
+                html += `<td class="numeric">${formatCountWithDelta(compareData?.classCount, compareRef1?.classCount)}</td>`;
+                html += `<td class="numeric">${formatCountWithDelta(compareData?.methods, compareRef1?.methods)}</td>`;
+                html += `<td class="numeric">${formatCountWithDelta(compareData?.fields, compareRef1?.fields)}</td>`;
             }
             html += '</tr>';
         });
@@ -3807,6 +3832,10 @@ function renderBinaryMetrics() {
     // APK metrics
     if (bm.apks && bm.apks.length > 0) {
         const baselineData = getBaseline(bm.apks, 'ref1');
+        // Get metro's ref2 data for comparing non-metro frameworks
+        const metroApk = bm.apks.find(a => a.key === 'metro');
+        const metroRef2 = metroApk?.ref2;
+
         html += '<div class="benchmark-section"><h2>Binary Metrics: Android APK</h2>';
         html += '<table><thead><tr>';
         if (showVsBaseline) html += '<th></th>';
@@ -3817,11 +3846,16 @@ function renderBinaryMetrics() {
         html += '<th class="numeric">DEX Methods</th>';
         html += '<th class="numeric">DEX Fields</th>';
         if (showVsBaseline) html += '<th class="numeric">vs <span class="baseline-header">' + getBaselineLabel() + '</span></th>';
-        if (hasRef2) html += '<th class="numeric">ref2 APK</th><th class="numeric">Δ APK</th><th class="numeric">Δ DEX</th><th class="numeric">Δ Classes</th><th class="numeric">Δ Methods</th><th class="numeric">Δ Fields</th>';
+        if (hasRef2) html += '<th class="numeric">ref2 APK</th><th class="numeric">ref2 DEX</th><th class="numeric">ref2 Classes</th><th class="numeric">ref2 Methods</th><th class="numeric">ref2 Fields</th>';
         html += '</tr></thead><tbody>';
         bm.apks.forEach(a => {
             const isBaseline = a.key === selectedBaseline;
             const rowClass = isBaseline ? 'baseline-row' : '';
+            // For non-metro frameworks, use metro's ref2 as comparison target
+            const isMetro = a.key === 'metro';
+            const compareData = isMetro ? a.ref2 : metroRef2;
+            const compareRef1 = isMetro ? a.ref1 : a.ref1;
+
             html += `<tr class="${rowClass}">`;
             if (showVsBaseline) html += `<td class="baseline-select" onclick="setBaseline('${a.key}')"><span class="baseline-radio ${isBaseline ? 'selected' : ''}"></span></td>`;
             html += `<td class="framework" style="color: ${colors[a.key]}">${a.framework}</td>`;
@@ -3832,12 +3866,12 @@ function renderBinaryMetrics() {
             html += `<td class="numeric">${a.ref1?.dexFields?.toLocaleString() ?? '—'}</td>`;
             if (showVsBaseline) html += `<td class="numeric">${formatVsBaseline(a.ref1?.sizeBytes, baselineData?.sizeBytes)}</td>`;
             if (hasRef2) {
-                html += `<td class="numeric">${a.ref2 ? formatBytes(a.ref2.sizeBytes) : '—'}</td>`;
-                html += `<td class="numeric diff">${formatDiffBytes(a.ref1?.sizeBytes, a.ref2?.sizeBytes)}</td>`;
-                html += `<td class="numeric diff">${formatDiffBytes(a.ref1?.dexSizeBytes, a.ref2?.dexSizeBytes)}</td>`;
-                html += `<td class="numeric diff">${formatDiffCount(a.ref1?.dexClasses, a.ref2?.dexClasses)}</td>`;
-                html += `<td class="numeric diff">${formatDiffCount(a.ref1?.dexMethods, a.ref2?.dexMethods)}</td>`;
-                html += `<td class="numeric diff">${formatDiffCount(a.ref1?.dexFields, a.ref2?.dexFields)}</td>`;
+                // Show ref2 values with delta annotation (comparing to ref1)
+                html += `<td class="numeric">${formatBytesWithDelta(compareData?.sizeBytes, compareRef1?.sizeBytes)}</td>`;
+                html += `<td class="numeric">${formatBytesWithDelta(compareData?.dexSizeBytes, compareRef1?.dexSizeBytes)}</td>`;
+                html += `<td class="numeric">${formatCountWithDelta(compareData?.dexClasses, compareRef1?.dexClasses)}</td>`;
+                html += `<td class="numeric">${formatCountWithDelta(compareData?.dexMethods, compareRef1?.dexMethods)}</td>`;
+                html += `<td class="numeric">${formatCountWithDelta(compareData?.dexFields, compareRef1?.dexFields)}</td>`;
             }
             html += '</tr>';
         });
