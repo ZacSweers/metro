@@ -363,9 +363,11 @@ EOF
 
 # Extract JAR metrics using diffuse
 # Diffs JAR against itself to get accurate class/method/field counts
+# Optional third parameter: diffuse output file to save full output
 extract_jar_metrics() {
     local jar_file="$1"
     local output_file="$2"
+    local diffuse_output_file="${3:-}"
 
     if [ ! -f "$jar_file" ]; then
         print_error "JAR file not found: $jar_file"
@@ -378,7 +380,13 @@ extract_jar_metrics() {
 
     # Use diffuse to get accurate metrics by diffing JAR against itself
     local diffuse_output
-    diffuse_output=$(diffuse diff --jar "$jar_file" "$jar_file" 2>/dev/null || echo "")
+    diffuse_output=$(diffuse diff --jar "$jar_file" "$jar_file" 2>&1 || echo "")
+
+    # Save full diffuse output if requested
+    if [ -n "$diffuse_output_file" ]; then
+        echo "$diffuse_output" > "$diffuse_output_file"
+        print_step "Saved diffuse output to: $diffuse_output_file"
+    fi
 
     # Parse diffuse output for CLASSES section
     # Format: " classes │ 3977 │ 3977 │ 0 (+0 -0)"
@@ -407,9 +415,11 @@ EOF
 
 # Extract APK metrics using diffuse
 # Diffs APK against itself to get accurate DEX stats
+# Optional third parameter: diffuse output file to save full output
 extract_apk_metrics() {
     local apk_file="$1"
     local output_file="$2"
+    local diffuse_output_file="${3:-}"
 
     if [ ! -f "$apk_file" ]; then
         print_error "APK file not found: $apk_file"
@@ -422,7 +432,13 @@ extract_apk_metrics() {
 
     # Use diffuse to get accurate metrics by diffing APK against itself
     local diffuse_output
-    diffuse_output=$(diffuse diff --apk "$apk_file" "$apk_file" 2>/dev/null || echo "")
+    diffuse_output=$(diffuse diff --apk "$apk_file" "$apk_file" 2>&1 || echo "")
+
+    # Save full diffuse output if requested
+    if [ -n "$diffuse_output_file" ]; then
+        echo "$diffuse_output" > "$diffuse_output_file"
+        print_step "Saved diffuse output to: $diffuse_output_file"
+    fi
 
     # Parse APK section for DEX size (compressed)
     # Format: "      dex │ 391.4 KiB │ 391.4 KiB │  0 B │ ..."
@@ -576,13 +592,18 @@ run_jvm_r8_benchmark_only() {
     local output_dir="$RESULTS_DIR/${TIMESTAMP}/jvm-r8_${mode}"
     mkdir -p "$output_dir"
 
+    local jar_file="startup-jvm/minified-jar/build/libs/minified-jar.jar"
+
     if [ "$BINARY_METRICS_ONLY" = true ]; then
         # Binary metrics only mode - just build minified jar, skip JMH
         print_step "Building minified JAR for $mode (binary metrics only)..."
         if ./gradlew --quiet :startup-jvm:minified-jar:r8 2>&1 | tee "$output_dir/build-output.txt"; then
             # Extract JAR metrics from minified jar
             print_step "Extracting R8 JAR metrics for $mode..."
-            extract_jar_metrics "startup-jvm/minified-jar/build/libs/minified-jar.jar" "$output_dir/jar-metrics.json"
+            mkdir -p "$output_dir/diffuse"
+            extract_jar_metrics "$jar_file" "$output_dir/jar-metrics.json" "$output_dir/diffuse/diffuse-jar-${mode}.txt"
+            # Copy JAR file to results directory for later diffuse comparison
+            cp "$jar_file" "$output_dir/minified-jar.jar" 2>/dev/null || true
             print_success "Binary metrics extraction complete for $mode"
         else
             print_error "Build failed for $mode"
@@ -601,7 +622,10 @@ run_jvm_r8_benchmark_only() {
 
             # Extract JAR metrics from minified jar
             print_step "Extracting R8 JAR metrics for $mode..."
-            extract_jar_metrics "startup-jvm/minified-jar/build/libs/minified-jar.jar" "$output_dir/jar-metrics.json"
+            mkdir -p "$output_dir/diffuse"
+            extract_jar_metrics "$jar_file" "$output_dir/jar-metrics.json" "$output_dir/diffuse/diffuse-jar-${mode}.txt"
+            # Copy JAR file to results directory for later diffuse comparison
+            cp "$jar_file" "$output_dir/minified-jar.jar" 2>/dev/null || true
 
             print_success "JMH R8 benchmark complete for $mode"
         else
@@ -638,9 +662,10 @@ run_android_benchmark_only() {
         local apk_file="startup-android/app/build/outputs/apk/release/app-release.apk"
         if [ -f "$apk_file" ]; then
             print_step "Extracting APK metrics for $mode..."
-            extract_apk_metrics "$apk_file" "$output_dir/apk-metrics.json"
-            # Save APK path for potential diffuse comparison later
-            echo "$apk_file" > "$output_dir/apk-path.txt"
+            mkdir -p "$output_dir/diffuse"
+            extract_apk_metrics "$apk_file" "$output_dir/apk-metrics.json" "$output_dir/diffuse/diffuse-apk-${mode}.txt"
+            # Copy APK file to results directory for later diffuse comparison
+            cp "$apk_file" "$output_dir/app-release.apk" 2>/dev/null || true
             print_success "Binary metrics extraction complete for $mode"
         else
             print_error "APK not found at expected path: $apk_file"
@@ -664,9 +689,10 @@ run_android_benchmark_only() {
         local apk_file="startup-android/app/build/outputs/apk/release/app-release.apk"
         if [ -f "$apk_file" ]; then
             print_step "Extracting APK metrics for $mode..."
-            extract_apk_metrics "$apk_file" "$output_dir/apk-metrics.json"
-            # Save APK path for potential diffuse comparison later
-            echo "$apk_file" > "$output_dir/apk-path.txt"
+            mkdir -p "$output_dir/diffuse"
+            extract_apk_metrics "$apk_file" "$output_dir/apk-metrics.json" "$output_dir/diffuse/diffuse-apk-${mode}.txt"
+            # Copy APK file to results directory for later diffuse comparison
+            cp "$apk_file" "$output_dir/app-release.apk" 2>/dev/null || true
         else
             print_error "APK not found at expected path: $apk_file"
         fi
@@ -2450,17 +2476,11 @@ EOF
         local class_sign=""
         if [ "$class_diff" -gt 0 ]; then class_sign="+"; fi
         echo "| Class Count | $ref1_class_count | $ref2_class_count | ${class_sign}${class_diff} |" >> "$summary_file"
-    fi
 
-    # Check if APK metrics exist and run diffuse comparison
-    local ref1_metro_apk_path="$RESULTS_DIR/${TIMESTAMP}/${ref1_label}/android_metro/apk-path.txt"
-    local ref2_metro_apk_path="$RESULTS_DIR/${TIMESTAMP}/${ref2_label}/android_metro/apk-path.txt"
+        # Run diffuse JAR comparison between refs using saved JAR files
+        local ref1_jar_file="$RESULTS_DIR/${TIMESTAMP}/${ref1_label}/jvm-r8_metro/minified-jar.jar"
+        local ref2_jar_file="$RESULTS_DIR/${TIMESTAMP}/${ref2_label}/jvm-r8_metro/minified-jar.jar"
 
-    if [ -f "$ref1_metro_apk_path" ] && [ -f "$ref2_metro_apk_path" ]; then
-        local apk1=$(cat "$ref1_metro_apk_path")
-        local apk2=$(cat "$ref2_metro_apk_path")
-
-        # Try to copy APKs to results directory for later analysis
         local diffuse_dir="$RESULTS_DIR/${TIMESTAMP}/diffuse"
         mkdir -p "$diffuse_dir"
 
@@ -2468,31 +2488,54 @@ EOF
         source "$SCRIPT_DIR/install-diffuse.sh" 2>/dev/null || true
         local diffuse_bin=$(get_diffuse_bin 2>/dev/null || echo "")
 
-        if [ -x "$diffuse_bin" ] && [ -f "$apk1" ] && [ -f "$apk2" ]; then
-            local comparison_name="apk_metro_${ref1_label}_vs_${ref2_label}"
-            print_step "Running diffuse APK comparison..."
-            if run_diffuse_diff "$apk1" "$apk2" "$diffuse_dir" "apk" "$comparison_name"; then
-                local diffuse_output_file="$diffuse_dir/diffuse-${comparison_name}.txt"
+        if [ -x "$diffuse_bin" ] && [ -f "$ref1_jar_file" ] && [ -f "$ref2_jar_file" ]; then
+            local jar_comparison_name="jar_metro_${ref1_label}_vs_${ref2_label}"
+            print_step "Running diffuse JAR comparison..."
+            if run_diffuse_diff "$ref1_jar_file" "$ref2_jar_file" "$diffuse_dir" "jar" "$jar_comparison_name"; then
                 cat >> "$summary_file" << EOF
+
+See \`diffuse/diffuse-${jar_comparison_name}.txt\` for detailed JAR analysis.
+EOF
+            fi
+        fi
+    fi
+
+    # Check if APK metrics exist and run diffuse comparison
+    local ref1_metro_apk="$RESULTS_DIR/${TIMESTAMP}/${ref1_label}/android_metro/app-release.apk"
+    local ref2_metro_apk="$RESULTS_DIR/${TIMESTAMP}/${ref2_label}/android_metro/app-release.apk"
+
+    local diffuse_dir="$RESULTS_DIR/${TIMESTAMP}/diffuse"
+    mkdir -p "$diffuse_dir"
+
+    # Run diffuse if available
+    source "$SCRIPT_DIR/install-diffuse.sh" 2>/dev/null || true
+    local diffuse_bin=$(get_diffuse_bin 2>/dev/null || echo "")
+
+    if [ -x "$diffuse_bin" ] && [ -f "$ref1_metro_apk" ] && [ -f "$ref2_metro_apk" ]; then
+        local comparison_name="apk_metro_${ref1_label}_vs_${ref2_label}"
+        print_step "Running diffuse APK comparison..."
+        if run_diffuse_diff "$ref1_metro_apk" "$ref2_metro_apk" "$diffuse_dir" "apk" "$comparison_name"; then
+            local diffuse_output_file="$diffuse_dir/diffuse-${comparison_name}.txt"
+            cat >> "$summary_file" << EOF
 
 ### Android APK (Diffuse)
 
 \`\`\`
 EOF
-                # Include just the APK and DEX summary tables (first ~40 lines usually has these)
-                head -50 "$diffuse_output_file" >> "$summary_file" 2>/dev/null || echo "Diffuse output not available" >> "$summary_file"
-                cat >> "$summary_file" << EOF
+            # Include just the APK and DEX summary tables (first ~40 lines usually has these)
+            head -50 "$diffuse_output_file" >> "$summary_file" 2>/dev/null || echo "Diffuse output not available" >> "$summary_file"
+            cat >> "$summary_file" << EOF
 \`\`\`
 
 See \`diffuse/diffuse-${comparison_name}.txt\` for complete analysis.
 EOF
-            fi
-        elif [ -f "$RESULTS_DIR/${TIMESTAMP}/${ref1_label}/android_metro/apk-metrics.json" ] && [ -f "$RESULTS_DIR/${TIMESTAMP}/${ref2_label}/android_metro/apk-metrics.json" ]; then
-            # Fallback to simple size comparison if diffuse not available
-            local ref1_apk_metrics="$RESULTS_DIR/${TIMESTAMP}/${ref1_label}/android_metro/apk-metrics.json"
-            local ref2_apk_metrics="$RESULTS_DIR/${TIMESTAMP}/${ref2_label}/android_metro/apk-metrics.json"
+        fi
+    elif [ -f "$RESULTS_DIR/${TIMESTAMP}/${ref1_label}/android_metro/apk-metrics.json" ] && [ -f "$RESULTS_DIR/${TIMESTAMP}/${ref2_label}/android_metro/apk-metrics.json" ]; then
+        # Fallback to simple size comparison if diffuse not available
+        local ref1_apk_metrics="$RESULTS_DIR/${TIMESTAMP}/${ref1_label}/android_metro/apk-metrics.json"
+        local ref2_apk_metrics="$RESULTS_DIR/${TIMESTAMP}/${ref2_label}/android_metro/apk-metrics.json"
 
-            cat >> "$summary_file" << EOF
+        cat >> "$summary_file" << EOF
 
 ### Android APK (Metro)
 
@@ -2500,16 +2543,15 @@ EOF
 |--------|-------------|-------------|------------|
 EOF
 
-            local ref1_apk_size=$(jq -r '.size_bytes' "$ref1_apk_metrics" 2>/dev/null || echo "0")
-            local ref2_apk_size=$(jq -r '.size_bytes' "$ref2_apk_metrics" 2>/dev/null || echo "0")
-            local ref1_apk_kb=$(echo "scale=1; $ref1_apk_size / 1024" | bc 2>/dev/null || echo "0")
-            local ref2_apk_kb=$(echo "scale=1; $ref2_apk_size / 1024" | bc 2>/dev/null || echo "0")
-            local apk_diff_bytes=$((ref2_apk_size - ref1_apk_size))
-            local apk_diff_kb=$(echo "scale=1; $apk_diff_bytes / 1024" | bc 2>/dev/null || echo "0")
-            local apk_sign=""
-            if [ "$apk_diff_bytes" -gt 0 ]; then apk_sign="+"; fi
-            echo "| APK Size (KB) | $ref1_apk_kb | $ref2_apk_kb | ${apk_sign}${apk_diff_kb} |" >> "$summary_file"
-        fi
+        local ref1_apk_size=$(jq -r '.size_bytes' "$ref1_apk_metrics" 2>/dev/null || echo "0")
+        local ref2_apk_size=$(jq -r '.size_bytes' "$ref2_apk_metrics" 2>/dev/null || echo "0")
+        local ref1_apk_kb=$(echo "scale=1; $ref1_apk_size / 1024" | bc 2>/dev/null || echo "0")
+        local ref2_apk_kb=$(echo "scale=1; $ref2_apk_size / 1024" | bc 2>/dev/null || echo "0")
+        local apk_diff_bytes=$((ref2_apk_size - ref1_apk_size))
+        local apk_diff_kb=$(echo "scale=1; $apk_diff_bytes / 1024" | bc 2>/dev/null || echo "0")
+        local apk_sign=""
+        if [ "$apk_diff_bytes" -gt 0 ]; then apk_sign="+"; fi
+        echo "| APK Size (KB) | $ref1_apk_kb | $ref2_apk_kb | ${apk_sign}${apk_diff_kb} |" >> "$summary_file"
     fi
 
     # Now add comparison of Metro (ref2) vs other frameworks (ref1)
@@ -2641,6 +2683,36 @@ EOF
                     local size_kb=$(echo "scale=1; $size_bytes / 1024" | bc 2>/dev/null || echo "0")
                     local dex_kb=$(echo "scale=1; $dex_size / 1024" | bc 2>/dev/null || echo "0")
                     echo "| $mode ($ref1_label) | $size_kb | $dex_kb | $dex_classes | $dex_methods | $dex_fields |" >> "$summary_file"
+                fi
+            fi
+        done
+    fi
+
+    # Run cross-framework diffuse comparisons (metro vs other frameworks)
+    # These compare Metro's ref2 build against other frameworks' ref1 builds
+    source "$SCRIPT_DIR/install-diffuse.sh" 2>/dev/null || true
+    local diffuse_bin=$(get_diffuse_bin 2>/dev/null || echo "")
+
+    if [ -x "$diffuse_bin" ]; then
+        local metro_ref2_apk="$RESULTS_DIR/${TIMESTAMP}/${ref2_label}/android_metro/app-release.apk"
+        local metro_ref2_jar="$RESULTS_DIR/${TIMESTAMP}/${ref2_label}/jvm-r8_metro/minified-jar.jar"
+
+        for mode in "${MODE_ARRAY[@]}"; do
+            if [ "$mode" != "metro" ]; then
+                # APK comparison
+                local other_apk="$RESULTS_DIR/${TIMESTAMP}/${ref1_label}/android_${mode}/app-release.apk"
+                if [ -f "$metro_ref2_apk" ] && [ -f "$other_apk" ]; then
+                    local cross_comparison_name="apk_metro_${ref2_label}_vs_${mode}_${ref1_label}"
+                    print_step "Running cross-framework diffuse APK comparison: metro vs $mode..."
+                    run_diffuse_diff "$metro_ref2_apk" "$other_apk" "$diffuse_dir" "apk" "$cross_comparison_name" || true
+                fi
+
+                # JAR comparison
+                local other_jar="$RESULTS_DIR/${TIMESTAMP}/${ref1_label}/jvm-r8_${mode}/minified-jar.jar"
+                if [ -f "$metro_ref2_jar" ] && [ -f "$other_jar" ]; then
+                    local cross_comparison_name="jar_metro_${ref2_label}_vs_${mode}_${ref1_label}"
+                    print_step "Running cross-framework diffuse JAR comparison: metro vs $mode..."
+                    run_diffuse_diff "$metro_ref2_jar" "$other_jar" "$diffuse_dir" "jar" "$cross_comparison_name" || true
                 fi
             fi
         done
@@ -3697,7 +3769,7 @@ function formatDiffCount(ref1, ref2) {
     return `<span class="${cls}">${sign}${diff.toLocaleString()} (${sign}${pct}%)</span>`;
 }
 
-// Format value with delta annotation: "391.4 KB (+2.5%)"
+// Format value with delta annotation on second line for readability
 function formatBytesWithDelta(newVal, oldVal) {
     if (newVal === null || newVal === undefined) return '—';
     const formatted = formatBytes(newVal);
@@ -3707,7 +3779,7 @@ function formatBytesWithDelta(newVal, oldVal) {
     const pct = oldVal ? ((diff / oldVal) * 100).toFixed(1) : 0;
     const sign = diff > 0 ? '+' : '';
     const cls = diff < 0 ? 'better' : (diff > 0 ? 'worse' : '');
-    return `${formatted} <span class="${cls}">(${sign}${pct}%)</span>`;
+    return `${formatted}<br><span class="${cls}">(${sign}${pct}%)</span>`;
 }
 
 function formatCountWithDelta(newVal, oldVal) {
@@ -3719,7 +3791,7 @@ function formatCountWithDelta(newVal, oldVal) {
     const pct = oldVal ? ((diff / oldVal) * 100).toFixed(1) : 0;
     const sign = diff > 0 ? '+' : '';
     const cls = diff < 0 ? 'better' : (diff > 0 ? 'worse' : '');
-    return `${formatted} <span class="${cls}">(${sign}${pct}%)</span>`;
+    return `${formatted}<br><span class="${cls}">(${sign}${pct}%)</span>`;
 }
 
 function formatVsBaseline(value, baselineValue) {
@@ -3757,17 +3829,26 @@ function renderBinaryMetrics() {
     // Class metrics
     if (bm.classes && bm.classes.length > 0) {
         const baselineData = getBaseline(bm.classes, 'ref1');
+        // Get metro's ref2 data for comparing non-metro frameworks
+        const metroClass = bm.classes.find(c => c.key === 'metro');
+        const metroRef2 = metroClass?.ref2;
+
         html += '<div class="benchmark-section"><h2>Binary Metrics: Pre-Minification Classes</h2>';
         html += '<table><thead><tr>';
         if (showVsBaseline) html += '<th></th>';
         html += '<th>Framework</th>';
         html += '<th class="numeric">Fields</th><th class="numeric">Methods</th><th class="numeric">Shards</th><th class="numeric">Size</th><th class="numeric">Classes</th>';
         if (showVsBaseline) html += '<th class="numeric">vs <span class="baseline-header">' + getBaselineLabel() + '</span></th>';
-        if (hasRef2) html += '<th class="numeric">ref2 Size</th><th class="numeric">Ref Diff</th>';
+        if (hasRef2) html += '<th class="numeric">ref2 Fields</th><th class="numeric">ref2 Methods</th><th class="numeric">ref2 Shards</th><th class="numeric">ref2 Size</th>';
         html += '</tr></thead><tbody>';
         bm.classes.forEach(c => {
             const isBaseline = c.key === selectedBaseline;
             const rowClass = isBaseline ? 'baseline-row' : '';
+            // For non-metro frameworks, use metro's ref2 as comparison target
+            const isMetro = c.key === 'metro';
+            const compareData = isMetro ? c.ref2 : metroRef2;
+            const compareRef1 = isMetro ? c.ref1 : c.ref1;
+
             html += `<tr class="${rowClass}">`;
             if (showVsBaseline) html += `<td class="baseline-select" onclick="setBaseline('${c.key}')"><span class="baseline-radio ${isBaseline ? 'selected' : ''}"></span></td>`;
             html += `<td class="framework" style="color: ${colors[c.key]}">${c.framework}</td>`;
@@ -3778,8 +3859,11 @@ function renderBinaryMetrics() {
             html += `<td class="numeric">${c.ref1?.classes?.length ?? '—'}</td>`;
             if (showVsBaseline) html += `<td class="numeric">${formatVsBaseline(c.ref1?.sizeBytes, baselineData?.sizeBytes)}</td>`;
             if (hasRef2) {
-                html += `<td class="numeric">${c.ref2 ? formatBytes(c.ref2.sizeBytes) : '—'}</td>`;
-                html += `<td class="numeric diff">${formatDiffBytes(c.ref1?.sizeBytes, c.ref2?.sizeBytes)}</td>`;
+                // Show ref2 values with delta annotation (comparing to ref1)
+                html += `<td class="numeric">${formatCountWithDelta(compareData?.fields, compareRef1?.fields)}</td>`;
+                html += `<td class="numeric">${formatCountWithDelta(compareData?.methods, compareRef1?.methods)}</td>`;
+                html += `<td class="numeric">${formatCountWithDelta(compareData?.shards, compareRef1?.shards)}</td>`;
+                html += `<td class="numeric">${formatBytesWithDelta(compareData?.sizeBytes, compareRef1?.sizeBytes)}</td>`;
             }
             html += '</tr>';
         });
