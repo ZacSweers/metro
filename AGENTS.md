@@ -1,4 +1,4 @@
-# CLAUDE.md
+# AGENTS.md
 
 See @README.md, @docs, and @.github/CONTRIBUTING.md for project overview.
 
