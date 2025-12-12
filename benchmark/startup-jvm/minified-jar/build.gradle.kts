@@ -55,7 +55,9 @@ abstract class BaseR8Task : JavaExec() {
   ) {
     componentJarProp.set(componentJar)
     programClasspathProp.from(programClasspath)
-    libraryClasspath?.let(libraryClasspathProp::from)
+    if (libraryClasspath != null) {
+      libraryClasspathProp.from(libraryClasspath)
+    }
   }
 }
 
