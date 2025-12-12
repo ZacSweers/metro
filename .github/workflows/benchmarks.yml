@@ -215,7 +215,7 @@ jobs:
           echo "Results directory: $results_dir"
 
       - name: Upload startup benchmark results
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: startup-benchmark-results
           path: ${{ steps.results.outputs.results_dir }}
@@ -327,14 +327,14 @@ jobs:
           echo "Results directory: $results_dir"
 
       - name: Upload R8 startup benchmark results
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: startup-r8-benchmark-results
           path: ${{ steps.results.outputs.results_dir }}
           retention-days: 30
 
       - name: Upload diffuse output
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: diffuse-output
@@ -440,7 +440,7 @@ jobs:
           echo "Results directory: $results_dir"
 
       - name: Upload build benchmark results
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: build-benchmark-results
           path: ${{ steps.results.outputs.results_dir }}
