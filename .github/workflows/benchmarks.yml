@@ -136,7 +136,7 @@ jobs:
 
   # Startup benchmarks using JMH
   startup-benchmarks:
-    name: "Startup (JMH): ${{ inputs.ref2 && format('{0} vs {1}', inputs.ref1, inputs.ref2) || inputs.ref1 }}"
+    name: "${{ !inputs.run-startup-benchmarks && 'Startup (JMH) (skipped)' || (inputs.ref2 && format('Startup (JMH): {0} vs {1}', inputs.ref1, inputs.ref2) || format('Startup (JMH): {0}', inputs.ref1)) }}"
     runs-on: ubuntu-latest
     needs: validate
     if: inputs.run-startup-benchmarks
@@ -245,7 +245,7 @@ jobs:
 
   # Startup benchmarks with R8 minification
   startup-r8-benchmarks:
-    name: "Startup R8 (JMH): ${{ inputs.ref2 && format('{0} vs {1}', inputs.ref1, inputs.ref2) || inputs.ref1 }}"
+    name: "${{ !inputs.run-startup-r8-benchmarks && 'Startup R8 (JMH) (skipped)' || (inputs.ref2 && format('Startup R8 (JMH): {0} vs {1}', inputs.ref1, inputs.ref2) || format('Startup R8 (JMH): {0}', inputs.ref1)) }}"
     runs-on: ubuntu-latest
     needs: validate
     if: inputs.run-startup-r8-benchmarks
@@ -366,7 +366,7 @@ jobs:
 
   # Build benchmarks using Gradle Profiler
   build-benchmarks:
-    name: "Build (Gradle Profiler): ${{ inputs.ref2 && format('{0} vs {1}', inputs.ref1, inputs.ref2) || inputs.ref1 }}"
+    name: "${{ !inputs.run-build-benchmarks && 'Build (Gradle Profiler) (skipped)' || (inputs.ref2 && format('Build (Gradle Profiler): {0} vs {1}', inputs.ref1, inputs.ref2) || format('Build (Gradle Profiler): {0}', inputs.ref1)) }}"
     runs-on: ubuntu-latest
     needs: validate
     if: inputs.run-build-benchmarks
