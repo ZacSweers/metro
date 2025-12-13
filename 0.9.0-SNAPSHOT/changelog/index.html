@@ -2699,6 +2699,7 @@
 <ul>
 <li>🚀 Improves graph init runtime performance by <strong>30–40%</strong></li>
 <li>🤏 Reduces generated graph code size by <strong>60–70%</strong> (even higher if you heavily use multibindings)</li>
+<li><strong>Behavior change</strong>: When using top-level function injection, the generated class now has the same name as the function. Previously it was suffixed with <code>Class</code>.</li>
 <li><strong>New</strong>: Experimental support for sharding large graphs. For extremely large dependency graphs on the JVM, their generated implementations could exceed the JVM class size limit. To avoid this, Metro now supports sharding within graphs (as needed) to distribute initialization code across multiple inner <em>shard</em> classes. This is currently disabled by default but can be enabled via the <code>enableGraphSharding</code> Gradle DSL property.</li>
 <li><strong>New</strong>: Support <code>@Provides</code> properties with <code>@JvmField</code> annotations.</li>
 <li><strong>Enhancement</strong>: Avoid unnecessary intermediate <code>Provider</code> instance allocations during graph expression gen. This means that when a direct type is requested in code gen, Metro will skip instantiating the intermediate <code>MetroFactory</code> instance if possible, avoiding unnecessary allocations.</li>
