@@ -124,4 +124,51 @@ class MetroArtifactsTest {
           .trimIndent()
       )
   }
+
+  @Test
+  fun `analyzeMetroGraph task succeed with cycles`() {
+    val fixture =
+      object : MetroProject() {
+        override fun sources() =
+          listOf(
+            source(
+              """
+              class App : Context {
+                @Inject lateinit var exampleClass: ExampleClass
+              }
+
+              interface Context
+              
+              @DependencyGraph
+              interface AppGraph {
+              
+                @Binds val App.bindContext: Context
+              
+                fun inject(app: App)
+              
+                @DependencyGraph.Factory
+                fun interface Factory {
+                  fun create(@Provides app: App): AppGraph
+                }
+              }
+              
+              @Inject
+              class ExampleClass(context: Context)
+              """,
+              "AppGraph",
+            )
+          )
+      }
+
+    val project = fixture.gradleProject
+
+    // Run the graph analysis task
+    build(project.rootDir, "analyzeMetroGraph")
+
+    val analysisFile = File(project.rootDir, "build/reports/metro/analysis.json")
+    assertTrue(analysisFile.exists(), "Graph analysis file should exist")
+
+    val content = analysisFile.readText()
+    //TODO validate the analysis output?
+  }
 }
