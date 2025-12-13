@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.generators
 
+import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.api.fir.MetroContributionExtension
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
@@ -69,8 +71,17 @@ import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.StandardClassIds
 
-internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
-  FirSupertypeGenerationExtension(session), CompatContext by session.compatContext {
+internal class ContributedInterfaceSupertypeGenerator(
+  session: FirSession,
+  private val loadExternalContributionExtensions:
+    (FirSession, MetroOptions) -> List<MetroContributionExtension>,
+) : FirSupertypeGenerationExtension(session), CompatContext by session.compatContext {
+
+  /** External contribution extensions loaded via ServiceLoader. */
+  private val externalContributionExtensions: List<MetroContributionExtension> by lazy {
+    val options = session.metroFirBuiltIns.options
+    loadExternalContributionExtensions(session, options)
+  }
 
   private val dependencyGraphs by lazy {
     session.predicateBasedProvider
@@ -212,6 +223,10 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
         originPredicate,
       )
     }
+    // Register predicates from external contribution extensions
+    for (extension in externalContributionExtensions) {
+      with(extension) { registerPredicates() }
+    }
   }
 
   override fun computeAdditionalSupertypes(
@@ -260,7 +275,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
 
     // Stable sort
     val contributions =
-      TreeMap<ClassId, ConeClassLikeType>(compareBy(ClassId::asString)).apply {
+      TreeMap<ClassId, ConeKotlinType>(compareBy(ClassId::asString)).apply {
         for (contribution in contributionClassLikes) {
           // This is always the `MetroContribution`, the contribution is its parent
           val classId = contribution.classId?.parentClassId ?: continue
@@ -268,8 +283,35 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
         }
       }
 
+    // Gather contributions from external extensions
+    // These provide supertypes directly along with replacement/origin metadata
+    val externalContributions = mutableListOf<MetroContributionExtension.Contribution>()
+    for (scopeClassId in scopes) {
+      for (extension in externalContributionExtensions) {
+        externalContributions.addAll(extension.getContributions(scopeClassId))
+      }
+    }
+
+    // Track which external contributions replace which classes
+    val externalReplacements = mutableMapOf<ClassId, MutableSet<ClassId>>()
+
+    // Add external contributions to the contributions map
+    for (externalContribution in externalContributions) {
+      externalContribution.supertype.classId ?: continue
+
+      // Use the origin as the key (similar to how native contributions use parentClassId)
+      contributions[externalContribution.originClassId] = externalContribution.supertype
+
+      // Track replacements from external contributions
+      for (replacedClassId in externalContribution.replaces) {
+        externalReplacements
+          .getOrPut(replacedClassId) { mutableSetOf() }
+          .add(externalContribution.originClassId)
+      }
+    }
+
     val excluded = graphAnnotation.resolvedExcludedClassIds(session, typeResolver)
-    if (contributions.isEmpty() && excluded.isEmpty()) {
+    if (contributions.isEmpty() && excluded.isEmpty() && externalContributions.isEmpty()) {
       return emptyList()
     }
 
@@ -320,6 +362,15 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
       }
     }
 
+    // Add external contributions' origins to the mapping
+    // External contributions provide their origin directly in the Contribution data class
+    for (externalContribution in externalContributions) {
+      // The origin maps to itself for external contributions (they are self-referential)
+      originToContributions
+        .getOrPut(externalContribution.originClassId) { mutableSetOf() }
+        .add(externalContribution.originClassId)
+    }
+
     val unmatchedExclusions = mutableSetOf<ClassId>()
 
     for (excludedClassId in excluded) {
@@ -362,7 +413,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
       // TODO warn?
     }
 
-    // Process replacements
+    // Process replacements from native contributions
     val unmatchedReplacements = mutableSetOf<ClassId>()
     contributionClassLikes
       .mapNotNull {
@@ -393,6 +444,16 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
         }
       }
 
+    // Process replacements from external contributions
+    for ((replacedClassId, _) in externalReplacements) {
+      removeContribution(replacedClassId, unmatchedReplacements)
+
+      // Remove contributions that have @Origin annotation pointing to the replaced class
+      originToContributions[replacedClassId]?.forEach { contributionId ->
+        removeContribution(contributionId, unmatchedReplacements)
+      }
+    }
+
     if (unmatchedReplacements.isNotEmpty()) {
       // TODO warn?
     }
@@ -412,7 +473,21 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
     }
 
     val declarationClassId = classLikeDeclaration.classId
+
+    // Collect external contribution supertypes (they don't need the same filtering as native ones)
+    val externalSupertypes =
+      externalContributions
+        .filter {
+          it.originClassId in contributions
+        } // Only include those not removed by exclusions/replacements
+        .map { it.supertype }
+        .toSet()
+
     return contributions.values.filter { metroContribution ->
+      // External contributions pass through directly
+      if (metroContribution in externalSupertypes) {
+        return@filter true
+      }
       // Filter out binding containers at the end, they participate in replacements but not in
       // supertypes
       metroContribution.classId?.parentClassId?.parentClassId != declarationClassId &&

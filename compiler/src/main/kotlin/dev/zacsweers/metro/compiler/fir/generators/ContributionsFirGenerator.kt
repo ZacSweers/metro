@@ -2,10 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.generators
 
-import dev.zacsweers.metro.compiler.asName
-import dev.zacsweers.metro.compiler.capitalizeUS
+import dev.zacsweers.metro.compiler.api.fir.MetroContributions
 import dev.zacsweers.metro.compiler.compat.CompatContext
-import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.annotationsIn
@@ -21,7 +19,6 @@ import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.resolvedClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
-import dev.zacsweers.metro.compiler.joinSimpleNamesAndTruncate
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -80,19 +77,16 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
           .mapNotNull { it.scopeArgument() }
           .distinctBy { it.scopeName(session) }
           .forEach { scopeArgument ->
-            val suffix =
-              scopeArgument.resolvedClassId()?.let { scopeClass ->
-                scopeClass
-                  .joinSimpleNamesAndTruncate(separator = "", camelCase = true)
-                  .asSingleFqName()
-                  .pathSegments()
-                  .joinToString(separator = "") { it.identifier.decapitalizeUS() }
-              }
-                ?: scopeArgument.scopeName(session)
-                ?: reportCompilerBug("Could not get scope name for ${scopeArgument.render()}")
             val nestedContributionName =
-              (Symbols.StringNames.METRO_CONTRIBUTION_NAME_PREFIX + "To" + suffix.capitalizeUS())
-                .asName()
+              scopeArgument.resolvedClassId()?.let { scopeClassId ->
+                MetroContributions.metroContributionName(scopeClassId)
+              }
+                ?: scopeArgument.scopeName(session)?.let { scopeName ->
+                  MetroContributions.metroContributionNameFromSuffix(scopeName)
+                }
+                ?: reportCompilerBug(
+                  "Could not get scope name for ${scopeArgument.render()} on class ${contributingClassSymbol.classId}"
+                )
 
             contributionNamesToScopeArgs[nestedContributionName] = scopeArgument
           }

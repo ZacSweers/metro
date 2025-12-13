@@ -272,6 +272,36 @@ You can benchmark the current working state (including uncommitted changes) with
 
 This is useful for quickly testing local changes before committing.
 
+### Benchmarking Published Metro Versions
+
+You can benchmark against published Metro versions from Maven Central instead of the included build. The scripts automatically detect semantic version strings and configure Gradle accordingly.
+
+```bash
+# Benchmark a specific Metro version
+./run_startup_benchmarks.sh single --ref 1.0.0 --modes metro
+
+# Compare two published versions
+./run_benchmarks.sh compare --ref1 1.0.0 --ref2 1.1.0 --modes metro
+
+# Compare a published version against a git branch
+./run_startup_benchmarks.sh compare --ref1 1.0.0 --ref2 main --modes metro
+
+# Works with pre-release versions too
+./run_startup_benchmarks.sh single --ref 2.0.0-alpha01 --modes metro
+```
+
+**How it works:**
+
+The scripts detect Metro versions using a semantic version pattern (e.g., `1.0.0`, `2.0.0-alpha01`, `1.5.0-RC1`). When a Metro version is detected:
+
+1. The `METRO_VERSION` environment variable is set
+2. Git checkout is skipped (benchmarks run on current branch)
+3. The `settings.gradle.kts` picks up `METRO_VERSION` and:
+   - Overrides the metro version in the version catalog
+   - Skips `includeBuild("..")` so Gradle fetches from Maven Central instead
+
+This allows comparing performance across Metro releases or testing a published version against local changes.
+
 ### Android App Configuration
 
 The Android benchmark app (`startup-android/app`) is configured with:

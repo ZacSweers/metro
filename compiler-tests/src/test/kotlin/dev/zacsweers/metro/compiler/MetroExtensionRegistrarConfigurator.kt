@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
+import dev.zacsweers.metro.compiler.api.GenerateImplContributionExtension
+import dev.zacsweers.metro.compiler.api.GenerateImplExtension
+import dev.zacsweers.metro.compiler.api.GenerateImplIrExtension
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroFirExtensionRegistrar
 import dev.zacsweers.metro.compiler.interop.Ksp2AdditionalSourceProvider
@@ -140,7 +143,14 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
     val classIds = ClassIds.fromOptions(options)
     val compatContext = CompatContext.getInstance()
     FirExtensionRegistrarAdapter.registerExtension(
-      MetroFirExtensionRegistrar(classIds, options, compatContext)
+      MetroFirExtensionRegistrar(
+        classIds,
+        options,
+        compatContext,
+        { session, options -> listOf(GenerateImplExtension.Factory().create(session, options)) },
+      ) { session, options ->
+        listOf(GenerateImplContributionExtension.Factory().create(session, options))
+      }
     )
     IrGenerationExtension.registerExtension(
       MetroIrGenerationExtension(
@@ -153,5 +163,6 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         compatContext = compatContext,
       )
     )
+    IrGenerationExtension.registerExtension(GenerateImplIrExtension())
   }
 }

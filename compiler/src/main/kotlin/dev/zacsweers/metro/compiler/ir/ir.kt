@@ -1571,8 +1571,9 @@ internal fun IrConstructorCall.anvilIgnoreQualifier(): Boolean {
   return getConstBooleanArgumentOrNull(Symbols.Names.ignoreQualifier) ?: false
 }
 
+// public for test extension use
 context(context: IrPluginContext)
-internal fun IrConstructor.generateDefaultConstructorBody(
+public fun IrConstructor.generateDefaultConstructorBody(
   body: IrBlockBodyBuilder.() -> Unit = {}
 ): IrBody? {
   val returnType = returnType as? IrSimpleType ?: return null

@@ -8,6 +8,8 @@ plugins {
   java
 }
 
+kotlin.compilerOptions.freeCompilerArgs.add("-Xcontext-parameters")
+
 sourceSets {
   register("generator220")
   register("generator230")

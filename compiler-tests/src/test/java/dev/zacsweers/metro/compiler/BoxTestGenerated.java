@@ -223,6 +223,22 @@ public class BoxTestGenerated extends AbstractBoxTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/box/api")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Api {
+    @Test
+    public void testAllFilesPresentInApi() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/api"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    }
+
+    @Test
+    @TestMetadata("MetroFirExtensionSample.kt")
+    public void testMetroFirExtensionSample() {
+      runTest("compiler-tests/src/test/data/box/api/MetroFirExtensionSample.kt");
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/box/bindingcontainers")
   @TestDataPath("$PROJECT_ROOT")
   public class Bindingcontainers {
