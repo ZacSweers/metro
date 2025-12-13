@@ -138,20 +138,20 @@ class MetroArtifactsTest {
               }
 
               interface Context
-              
+
               @DependencyGraph
               interface AppGraph {
-              
+
                 @Binds val App.bindContext: Context
-              
+
                 fun inject(app: App)
-              
+
                 @DependencyGraph.Factory
                 fun interface Factory {
                   fun create(@Provides app: App): AppGraph
                 }
               }
-              
+
               @Inject
               class ExampleClass(context: Context)
               """,
@@ -169,6 +169,6 @@ class MetroArtifactsTest {
     assertTrue(analysisFile.exists(), "Graph analysis file should exist")
 
     val content = analysisFile.readText()
-    //TODO validate the analysis output?
+    // TODO validate the analysis output?
   }
 }
