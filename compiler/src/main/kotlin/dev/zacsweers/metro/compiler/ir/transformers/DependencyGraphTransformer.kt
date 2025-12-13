@@ -531,6 +531,7 @@ internal class DependencyGraphTransformer(
         implementCreatorFunctions(node.sourceGraph, node.creator, node.sourceGraph.metroGraphOrFail)
 
         node.accessors
+          .asSequence()
           .map { it.metroFunction.ir }
           .plus(node.injectors.map { it.metroFunction.ir })
           .plus(node.bindsCallables.values.map { it.callableMetadata.function })
