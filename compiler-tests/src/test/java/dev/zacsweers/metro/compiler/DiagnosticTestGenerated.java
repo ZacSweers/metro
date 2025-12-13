@@ -216,6 +216,18 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("GraphWithPrivateMapKeyHasAUsefulError.kt")
+    public void testGraphWithPrivateMapKeyHasAUsefulError() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/GraphWithPrivateMapKeyHasAUsefulError.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphWithPrivateMapKeyHasAUsefulError2.kt")
+    public void testGraphWithPrivateMapKeyHasAUsefulError2() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/GraphWithPrivateMapKeyHasAUsefulError2.kt");
+    }
+
+    @Test
     @TestMetadata("GraphsCannotDirectlyExtendOtherGraphs.kt")
     public void testGraphsCannotDirectlyExtendOtherGraphs() {
       runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/GraphsCannotDirectlyExtendOtherGraphs.kt");
