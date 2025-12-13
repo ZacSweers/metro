@@ -9,7 +9,14 @@ import kotlin.reflect.KClass
 
 /** A [MapKey] annotation for binding ViewModels in a multibinding map. */
 @MapKey
-@Target(AnnotationTarget.CLASS, AnnotationTarget.FUNCTION)
+@Target(
+  AnnotationTarget.FUNCTION,
+  AnnotationTarget.FIELD,
+  AnnotationTarget.PROPERTY,
+  AnnotationTarget.PROPERTY_GETTER,
+  AnnotationTarget.CLASS,
+  AnnotationTarget.TYPE,
+)
 @Retention(AnnotationRetention.RUNTIME)
 public annotation class ViewModelKey(val value: KClass<out ViewModel>)
 
@@ -18,7 +25,14 @@ public annotation class ViewModelKey(val value: KClass<out ViewModel>)
  * multibinding map.
  */
 @MapKey
-@Target(AnnotationTarget.CLASS, AnnotationTarget.FUNCTION)
+@Target(
+  AnnotationTarget.FUNCTION,
+  AnnotationTarget.FIELD,
+  AnnotationTarget.PROPERTY,
+  AnnotationTarget.PROPERTY_GETTER,
+  AnnotationTarget.CLASS,
+  AnnotationTarget.TYPE,
+)
 @Retention(AnnotationRetention.RUNTIME)
 public annotation class ViewModelAssistedFactoryKey(val value: KClass<out ViewModel>)
 
@@ -27,7 +41,14 @@ public annotation class ViewModelAssistedFactoryKey(val value: KClass<out ViewMo
  * [manually assisted ViewModel factories][ManualViewModelAssistedFactory] in a multibinding map.
  */
 @MapKey
-@Target(AnnotationTarget.CLASS, AnnotationTarget.FUNCTION)
+@Target(
+  AnnotationTarget.FUNCTION,
+  AnnotationTarget.FIELD,
+  AnnotationTarget.PROPERTY,
+  AnnotationTarget.PROPERTY_GETTER,
+  AnnotationTarget.CLASS,
+  AnnotationTarget.TYPE,
+)
 @Retention(AnnotationRetention.RUNTIME)
 public annotation class ManualViewModelAssistedFactoryKey(
   val value: KClass<out ManualViewModelAssistedFactory>
