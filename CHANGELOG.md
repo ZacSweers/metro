@@ -21,6 +21,8 @@ This release significantly improves the runtime performance of Metro-generated g
 - **Fix**: Ensure IC lookups are recorded for all merged contributions.
 - **Fix**: Fix `newInstance()` args not stripping `Lazy` in top-level function inject classes.
 - **Fix**: Allow `Any` to be a `binding<...>()` type if no explicit supertypes are declared.
+- **Fix**: Mark `MembersInjected` bindings as deferrable in graph metadata reporting.
+- **Fix**: Use eager graphs for dominator tree analysis.
 
 0.8.2
 -----
