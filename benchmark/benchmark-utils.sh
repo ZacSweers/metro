@@ -5,8 +5,8 @@
 # Common utility functions for benchmark scripts.
 # Source this file from other scripts: source "$(dirname "$0")/benchmark-utils.sh"
 
-# Prevent multiple sourcing
-if [ -n "$BENCHMARK_UTILS_SOURCED" ]; then
+# Prevent multiple sourcing (use ${VAR:-} syntax for set -u compatibility)
+if [ -n "${BENCHMARK_UTILS_SOURCED:-}" ]; then
     return 0
 fi
 BENCHMARK_UTILS_SOURCED=true
