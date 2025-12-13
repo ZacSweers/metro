@@ -13,16 +13,12 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
-import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.deepRemapperFor
-import dev.zacsweers.metro.compiler.ir.graph.expressions.IrOptionalExpressionGenerator
-import dev.zacsweers.metro.compiler.ir.graph.expressions.optionalType
 import dev.zacsweers.metro.compiler.ir.isBindingContainer
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
-import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
@@ -456,35 +452,11 @@ internal class BindingGraphGenerator(
       }
     }
 
+    // Register optional bindings for lazy creation (only when accessed)
     for ((optionalKey, callables) in allOptionalKeys) {
-      val declaration = callables.first().function
-      val type =
-        optionalKey.type.optionalType(declaration)
-          ?: reportCompilerBug(
-            "Optional type not supported: ${optionalKey.type.rawType().classIdOrFail.asSingleFqName()}"
-          )
-
-      // Construct a valid context key for this case
-      val contextKey =
-        type.asContextualTypeKey(
-          qualifierAnnotation = optionalKey.qualifier,
-          // Optionals have default behavior
-          hasDefault = true,
-          patchMutableCollections = true,
-          declaration = null,
-        )
-
-      val binding =
-        IrBinding.CustomWrapper(
-          typeKey = optionalKey,
-          wrapperKey = IrOptionalExpressionGenerator.key,
-          allowsAbsent = true,
-          declaration = declaration,
-          wrappedType = type,
-          wrappedContextKey = contextKey,
-        )
-
-      graph.addBinding(optionalKey, binding, bindingStack)
+      for (callable in callables) {
+        bindingLookup.registerOptionalBinding(optionalKey, callable)
+      }
     }
 
     // Traverse all parent graph supertypes to create binding aliases as needed

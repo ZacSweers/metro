@@ -32,6 +32,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("AnyIsAValidSupertype.kt")
+    public void testAnyIsAValidSupertype() {
+      runTest("compiler-tests/src/test/data/box/aggregation/AnyIsAValidSupertype.kt");
+    }
+
+    @Test
     @TestMetadata("ComputedPropertiesIntoSet.kt")
     public void testComputedPropertiesIntoSet() {
       runTest("compiler-tests/src/test/data/box/aggregation/ComputedPropertiesIntoSet.kt");
@@ -1286,6 +1292,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("BindsOptionalOfInterop.kt")
       public void testBindsOptionalOfInterop() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/BindsOptionalOfInterop.kt");
+      }
+
+      @Test
+      @TestMetadata("BindsOptionalOfUnused.kt")
+      public void testBindsOptionalOfUnused() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/BindsOptionalOfUnused.kt");
       }
 
       @Test

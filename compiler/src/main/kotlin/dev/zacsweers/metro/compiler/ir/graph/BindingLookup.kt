@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir.graph
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
+import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
 import dev.zacsweers.metro.compiler.ir.ClassFactory
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
@@ -11,8 +12,11 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.allowEmpty
+import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.asMemberOf
 import dev.zacsweers.metro.compiler.ir.deepRemapperFor
+import dev.zacsweers.metro.compiler.ir.graph.expressions.IrOptionalExpressionGenerator
+import dev.zacsweers.metro.compiler.ir.graph.expressions.optionalType
 import dev.zacsweers.metro.compiler.ir.mapKeyType
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
@@ -68,6 +72,7 @@ internal class BindingLookup(
   // Multibinding tracking
   // Key: multibinding type (Set<T> or Map<K, V>), Value: set of source binding keys
   private val multibindingContributions = mutableMapOf<IrTypeKey, MutableSet<IrTypeKey>>()
+
   // Cache for created multibindings
   private val multibindingsCache = mutableMapOf<IrTypeKey, IrBinding.Multibinding>()
 
@@ -80,6 +85,13 @@ internal class BindingLookup(
 
   // Explicit @Multibinds declarations
   private val multibindsDeclarations = mutableMapOf<IrTypeKey, MultibindsDeclaration>()
+
+  // Optional binding declarations (@BindsOptionalOf)
+  // Key: Optional<T> type, Value: set of @BindsOptionalOf callables
+  private val optionalBindingDeclarations =
+    mutableMapOf<IrTypeKey, MutableSet<BindsOptionalOfCallable>>()
+  // Cache for created optional bindings
+  private val optionalBindingsCache = mutableMapOf<IrTypeKey, IrBinding.CustomWrapper>()
 
   /** Returns all static bindings for similarity checking. */
   fun getAvailableStaticBindings(): Map<IrTypeKey, IrBinding.StaticBinding> {
@@ -186,6 +198,16 @@ internal class BindingLookup(
       multibindsDeclarations[typeKey] =
         MultibindsDeclaration(declaration, annotation, annotation.allowEmpty())
     }
+  }
+
+  /**
+   * Registers a @BindsOptionalOf declaration.
+   *
+   * @param typeKey The Optional<T> type key
+   * @param callable The @BindsOptionalOf callable
+   */
+  fun registerOptionalBinding(typeKey: IrTypeKey, callable: BindsOptionalOfCallable) {
+    optionalBindingDeclarations.getOrPut(typeKey, ::mutableSetOf) += callable
   }
 
   /**
@@ -310,6 +332,55 @@ internal class BindingLookup(
     return multibinding
   }
 
+  /**
+   * Lazily creates an optional binding for the given type key if it has a @BindsOptionalOf
+   * declaration. Returns null if there is no declaration for this type key.
+   */
+  context(context: IrMetroContext)
+  private fun getOrCreateOptionalBindingIfNeeded(typeKey: IrTypeKey): IrBinding.CustomWrapper? {
+    // Check cache first
+    optionalBindingsCache[typeKey]?.let {
+      return it
+    }
+
+    // Check if we have a @BindsOptionalOf declaration
+    val callables = optionalBindingDeclarations[typeKey] ?: return null
+
+    // Get the first callable for metadata
+    val callable = callables.first()
+    val declaration = callable.function
+
+    // Extract the wrapped type from Optional<T>
+    val wrappedType =
+      typeKey.type.optionalType(declaration)
+        ?: reportCompilerBug(
+          "Optional type not supported: ${typeKey.type.rawType().classIdOrFail.asSingleFqName()}"
+        )
+
+    // Create the context key with hasDefault=true to allow absence
+    val contextKey =
+      wrappedType.asContextualTypeKey(
+        qualifierAnnotation = typeKey.qualifier,
+        hasDefault = true,
+        patchMutableCollections = true,
+        declaration = null,
+      )
+
+    val binding =
+      IrBinding.CustomWrapper(
+        typeKey = typeKey,
+        wrapperKey = IrOptionalExpressionGenerator.key,
+        allowsAbsent = true,
+        declaration = declaration,
+        wrappedType = wrappedType,
+        wrappedContextKey = contextKey,
+      )
+
+    // Cache and return
+    optionalBindingsCache[typeKey] = binding
+    return binding
+  }
+
   context(context: IrMetroContext)
   private fun IrClass.computeMembersInjectorBindings(
     remapper: TypeRemapper
@@ -380,6 +451,11 @@ internal class BindingLookup(
       // Check for multibindings (Set<T> or Map<K, V> with contributions)
       getOrCreateMultibindingIfNeeded(key)?.let { multibinding ->
         return setOf(multibinding)
+      }
+
+      // Check for optional bindings (Optional<T>)
+      getOrCreateOptionalBindingIfNeeded(key)?.let { optionalBinding ->
+        return setOf(optionalBinding)
       }
 
       // Finally, fall back to class-based lookup and cache the result
