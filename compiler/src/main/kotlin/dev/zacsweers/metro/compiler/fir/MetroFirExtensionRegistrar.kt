@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.fir
 import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.api.fir.MetroContributionExtension
 import dev.zacsweers.metro.compiler.api.fir.MetroFirDeclarationGenerationExtension
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.generators.AssistedFactoryFirGenerator
@@ -35,6 +36,8 @@ public class MetroFirExtensionRegistrar(
   private val classIds: ClassIds,
   private val options: MetroOptions,
   private val compatContext: CompatContext,
+  private val loadExternalDeclarationExtensions: (FirSession, MetroOptions) -> List<MetroFirDeclarationGenerationExtension> = ::loadExternalDeclarationExtensions,
+  private val loadExternalContributionExtensions: (FirSession, MetroOptions) -> List<MetroContributionExtension> = ::loadExternalContributionExtensions,
 ) : FirExtensionRegistrar() {
   override fun ExtensionRegistrarContext.configurePlugin() {
     +MetroFirBuiltIns.getFactory(classIds, options)
@@ -42,7 +45,7 @@ public class MetroFirExtensionRegistrar(
     +supertypeGenerator("Supertypes - graph factory", ::GraphFactoryFirSupertypeGenerator, false)
     +supertypeGenerator(
       "Supertypes - contributed interfaces",
-      ::ContributedInterfaceSupertypeGenerator,
+      { ContributedInterfaceSupertypeGenerator(it, loadExternalContributionExtensions) },
       true,
     )
     +supertypeGenerator(
@@ -71,7 +74,7 @@ public class MetroFirExtensionRegistrar(
   private fun compositeDeclarationGenerator(): FirDeclarationGenerationExtension.Factory {
     return FirDeclarationGenerationExtension.Factory { session ->
       // Load external extensions via ServiceLoader
-      val externalExtensions = loadExternalExtensions(session)
+      val externalExtensions = loadExternalDeclarationExtensions(session, options)
 
       // Build list of native Metro generators
       val nativeExtensions = buildList {
@@ -129,29 +132,6 @@ public class MetroFirExtensionRegistrar(
         )
         .kotlinOnly()
     }
-  }
-
-  /** Loads external [MetroFirDeclarationGenerationExtension] implementations via ServiceLoader. */
-  private fun loadExternalExtensions(
-    session: FirSession
-  ): List<MetroFirDeclarationGenerationExtension> {
-    return ServiceLoader.load(
-        MetroFirDeclarationGenerationExtension.Factory::class.java,
-        MetroFirDeclarationGenerationExtension.Factory::class.java.classLoader,
-      )
-      .mapNotNull { factory ->
-        try {
-          factory.create(session, options)
-        } catch (e: Exception) {
-          // Log but don't fail compilation
-          if (options.debug) {
-            System.err.println(
-              "[Metro] Failed to load external FIR extension from ${factory::class}: ${e.message}"
-            )
-          }
-          null
-        }
-      }
   }
 
   /** Wraps a native generator with optional logging support. */
@@ -225,4 +205,52 @@ public class MetroFirExtensionRegistrar(
       extension.kotlinOnly()
     }
   }
+}
+
+/** Loads external [MetroFirDeclarationGenerationExtension] implementations via ServiceLoader. */
+private fun loadExternalDeclarationExtensions(
+  session: FirSession,
+  options: MetroOptions,
+): List<MetroFirDeclarationGenerationExtension> {
+  return ServiceLoader.load(
+    MetroFirDeclarationGenerationExtension.Factory::class.java,
+    MetroFirDeclarationGenerationExtension.Factory::class.java.classLoader,
+  )
+    .mapNotNull { factory ->
+      try {
+        factory.create(session, options)
+      } catch (e: Exception) {
+        // Log but don't fail compilation
+        if (options.debug) {
+          System.err.println(
+            "[Metro] Failed to load external FIR extension from ${factory::class}: ${e.message}"
+          )
+        }
+        null
+      }
+    }
+}
+
+
+
+private fun loadExternalContributionExtensions(
+  session: FirSession,
+  options: MetroOptions
+): List<MetroContributionExtension> {
+  return ServiceLoader.load(
+    MetroContributionExtension.Factory::class.java,
+    MetroContributionExtension.Factory::class.java.classLoader,
+  )
+    .mapNotNull { factory ->
+      try {
+        factory.create(session, options)
+      } catch (e: Exception) {
+        if (options.debug) {
+          System.err.println(
+            "[Metro] Failed to load external contribution extension from ${factory::class}: ${e.message}"
+          )
+        }
+        null
+      }
+    }
 }

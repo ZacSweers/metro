@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.generators
 
+import dev.zacsweers.metro.compiler.MetroOption
+import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.api.fir.MetroContributionExtension
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.expectAsOrNull
@@ -71,28 +73,16 @@ import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.StandardClassIds
 
-internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
+internal class ContributedInterfaceSupertypeGenerator(
+  session: FirSession,
+  private val loadExternalContributionExtensions: (FirSession, MetroOptions) -> List<MetroContributionExtension>
+) :
   FirSupertypeGenerationExtension(session), CompatContext by session.compatContext {
 
   /** External contribution extensions loaded via ServiceLoader. */
   private val externalContributionExtensions: List<MetroContributionExtension> by lazy {
     val options = session.metroFirBuiltIns.options
-    ServiceLoader.load(
-        MetroContributionExtension.Factory::class.java,
-        MetroContributionExtension.Factory::class.java.classLoader,
-      )
-      .mapNotNull { factory ->
-        try {
-          factory.create(session, options)
-        } catch (e: Exception) {
-          if (options.debug) {
-            System.err.println(
-              "[Metro] Failed to load external contribution extension from ${factory::class}: ${e.message}"
-            )
-          }
-          null
-        }
-      }
+    loadExternalContributionExtensions(session, options)
   }
 
   private val dependencyGraphs by lazy {
