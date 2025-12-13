@@ -7,7 +7,7 @@ private annotation class MyKey(val int: Int)
 
 @Inject
 @MyKey(3)
-@ContributesIntoMap(AppScope::class)
+@ContributesIntoMap(AppScope::class, binding = binding<Any>())
 class Something
 
 // MODULE: main(lib)
