@@ -228,7 +228,7 @@ private fun StringBuilder.renderAnnotations(
         if (isBindsOptionalOf) add("@BindsOptionalOf")
         scope?.let { add(it.render(short = short)) }
         if (isIntoMap) add("@IntoMap")
-        mapKeys.forEach { add(it.render(short = short)) }
+        mapKey?.let { add(it.render(short = short)) }
         if (isClass) {
           if (isInject) add("@Inject")
         }

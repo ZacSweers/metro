@@ -36,8 +36,8 @@ internal fun IrTypeKey.transformMultiboundQualifier(
 
   val elementId = declaration.multibindingElementId
   val bindingId =
-    if (annotations.isIntoMap) {
-      val mapKey = annotations.mapKeys.first()
+    if (annotations.mapKey != null) {
+      val mapKey = annotations.mapKey
       val mapKeyType = mapKeyType(mapKey)
       createMapBindingId(mapKeyType, this)
     } else if (annotations.isElementsIntoSet) {

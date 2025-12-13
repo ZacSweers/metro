@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.findInjectConstructor
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.validateBindingSource
 import dev.zacsweers.metro.compiler.fir.validateInjectedClass
 import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
 import dev.zacsweers.metro.compiler.metroAnnotations
@@ -45,6 +46,8 @@ internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common
 
     val isInjected = classInjectLikeAnnotations.isNotEmpty() || injectedConstructor != null
     if (!isInjected) return
+
+    declaration.symbol.validateBindingSource()
 
     declaration
       .getAnnotationByClassId(DaggerSymbols.ClassIds.DAGGER_REUSABLE_CLASS_ID, session)

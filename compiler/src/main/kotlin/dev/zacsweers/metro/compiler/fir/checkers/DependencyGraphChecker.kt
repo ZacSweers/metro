@@ -23,6 +23,7 @@ import dev.zacsweers.metro.compiler.fir.resolvedAdditionalScopesClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
 import dev.zacsweers.metro.compiler.fir.validateApiDeclaration
+import dev.zacsweers.metro.compiler.fir.validateBindingRef
 import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.metroAnnotations
@@ -156,6 +157,9 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
           MetroAnnotations.Kind.OptionalBinding,
           MetroAnnotations.Kind.Provides,
           MetroAnnotations.Kind.Binds,
+          // For checks on binding refs
+          MetroAnnotations.Kind.Qualifier,
+          MetroAnnotations.Kind.Scope,
         )
 
       val isEffectivelyOpen = with(session.compatContext) { callable.isEffectivelyOpen() }
@@ -291,6 +295,8 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
         callable is FirPropertySymbol ||
           (callable is FirNamedFunctionSymbol && callable.valueParameterSymbols.isEmpty())
       ) {
+        callable.validateBindingRef(annotations)
+
         val hasBody =
           when (callable) {
             is FirPropertySymbol -> callable.getterSymbol?.hasBody == true
@@ -341,6 +347,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
         continue
       }
 
+      // Functions with params are possibly injectors
       if (callable is FirNamedFunctionSymbol && callable.valueParameterSymbols.isNotEmpty()) {
         if (!callable.resolvedReturnTypeRef.coneType.isUnit) {
           reporter.reportOn(
@@ -358,6 +365,8 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
             val clazz = parameter.resolvedReturnTypeRef.firClassLike(session) ?: continue
             val classSymbol = clazz.symbol as? FirClassSymbol<*> ?: continue
             val isInjected = classSymbol.findInjectLikeConstructors(session).isNotEmpty()
+
+            parameter.validateBindingRef(annotations)
 
             if (isInjected) {
               reporter.reportOn(

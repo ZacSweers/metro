@@ -164,7 +164,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
       return ConstructorInjected(
         type = type,
         classFactory = classFactory,
-        annotations = annotations.copy(mapKeys = annotations.mapKeys + mapKey),
+        annotations = annotations.copy(mapKey = mapKey),
         typeKey = typeKey,
         injectedMembers = injectedMembers,
       )
@@ -200,7 +200,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
 
     override fun withMapKey(mapKey: IrAnnotation?): ObjectClass {
       if (mapKey == null) return this
-      return ObjectClass(type, annotations.copy(mapKeys = annotations.mapKeys + mapKey), typeKey)
+      return ObjectClass(type, annotations.copy(mapKey = mapKey), typeKey)
     }
   }
 
@@ -238,7 +238,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     val intoMap: Boolean
       get() = annotations.isIntoMap
 
-    val mapKey: IrAnnotation? = annotations.mapKeys.singleOrNull()
+    val mapKey: IrAnnotation? = annotations.mapKey
     override val typeKey: IrTypeKey = contextualTypeKey.typeKey
 
     val isIntoMultibinding
@@ -364,7 +364,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
         type,
         target,
         function,
-        annotations.copy(mapKeys = annotations.mapKeys + mapKey),
+        annotations.copy(mapKey = mapKey),
         parameters,
         typeKey,
       )

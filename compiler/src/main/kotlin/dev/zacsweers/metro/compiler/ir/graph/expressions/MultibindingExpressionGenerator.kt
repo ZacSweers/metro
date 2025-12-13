@@ -232,7 +232,7 @@ internal class MultibindingExpressionGenerator(
   private fun generateMapKeyLiteral(binding: IrBinding): IrExpression {
     val mapKey =
       when (binding) {
-        is IrBinding.BindingWithAnnotations -> binding.annotations.mapKeys.first().ir
+        is IrBinding.BindingWithAnnotations -> binding.annotations.mapKey!!.ir
         else -> reportCompilerBug("Unsupported multibinding source: $binding")
       }
 

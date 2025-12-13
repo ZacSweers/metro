@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ASSISTED_INJECTION_ERRO
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ASSISTED_INJECTION_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.AS_CONTRIBUTION_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.BINDING_CONTAINER_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.BINDING_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.BINDS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.BINDS_OPTIONAL_OF_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.BINDS_OPTIONAL_OF_WARNING
@@ -122,6 +123,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val PROVIDES_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
   val REDUNDANT_PROVIDES by warning1<KtElement, String>(NAME_IDENTIFIER)
   val CONFLICTING_PROVIDES_SCOPE by warning1<KtElement, String>(NAME_IDENTIFIER)
+  val BINDING_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val BINDS_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val BINDS_OPTIONAL_OF_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val BINDS_OPTIONAL_OF_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
@@ -239,6 +241,7 @@ private object FirMetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(MEMBERS_INJECT_WARNING, "{0}", STRING)
         put(MEMBERS_INJECT_RETURN_TYPE_WARNING, "{0}", STRING)
         put(MEMBERS_INJECT_TYPE_PARAMETERS_ERROR, "{0}", STRING)
+        put(BINDING_ERROR, "{0}", STRING)
         put(BINDS_ERROR, "{0}", STRING)
         put(BINDS_OPTIONAL_OF_ERROR, "{0}", STRING)
         put(BINDS_OPTIONAL_OF_WARNING, "{0}", STRING)

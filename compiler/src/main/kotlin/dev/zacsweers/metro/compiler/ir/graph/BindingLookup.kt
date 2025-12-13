@@ -233,7 +233,7 @@ internal class BindingLookup(
 
       annotations.isIntoMap -> {
         val mapKey =
-          annotations.mapKeys.firstOrNull()
+          annotations.mapKey
             ?: run {
               // Hard error because the FIR checker should catch these, so this implies broken
               // FIR code gen

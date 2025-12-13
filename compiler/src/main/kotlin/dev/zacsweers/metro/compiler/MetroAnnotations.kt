@@ -65,7 +65,11 @@ internal class MetroAnnotations<T>(
   val assisted: T? = null,
   val scope: T? = null,
   val qualifier: T? = null,
-  val mapKeys: Set<T> = emptySet(),
+  val mapKey: T? = null,
+  // Only present for diagnostic reporting
+  @Poko.Skip val scopes: Set<T> = emptySet(),
+  @Poko.Skip val qualifiers: Set<T> = emptySet(),
+  @Poko.Skip val mapKeys: Set<T> = emptySet(),
   // An IrAnnotation or FirAnnotation
   // TODO the lack of a type here is unfortunate
   @Poko.Skip val symbol: Any? = null,
@@ -83,7 +87,7 @@ internal class MetroAnnotations<T>(
     get() = qualifier != null
 
   val isIntoMultibinding
-    get() = isIntoSet || isElementsIntoSet || isIntoMap || mapKeys.isNotEmpty()
+    get() = isIntoSet || isElementsIntoSet || isIntoMap || (mapKey != null)
 
   fun copy(
     isDependencyGraph: Boolean = this.isDependencyGraph,
@@ -104,7 +108,7 @@ internal class MetroAnnotations<T>(
     assisted: T? = this.assisted,
     scope: T? = this.scope,
     qualifier: T? = this.qualifier,
-    mapKeys: Set<T> = this.mapKeys,
+    mapKey: T? = this.mapKey,
   ): MetroAnnotations<T> {
     return MetroAnnotations(
       isDependencyGraph = isDependencyGraph,
@@ -125,7 +129,7 @@ internal class MetroAnnotations<T>(
       assisted = assisted,
       scope = scope,
       qualifier = qualifier,
-      mapKeys = mapKeys,
+      mapKey = mapKey,
       symbol = symbol,
     )
   }
@@ -147,7 +151,7 @@ internal class MetroAnnotations<T>(
       assisted = assisted ?: other.assisted,
       scope = scope ?: other.scope,
       qualifier = qualifier ?: other.qualifier,
-      mapKeys = mapKeys + other.mapKeys,
+      mapKey = mapKey ?: other.mapKey,
     )
 
   enum class Kind {
@@ -193,7 +197,7 @@ internal class MetroAnnotations<T>(
         assisted = false,
         scope = null,
         qualifier = null,
-        mapKeys = emptySet(),
+        mapKey = null,
         symbol = null,
       )
 
@@ -246,7 +250,7 @@ private fun IrAnnotationContainer.metroAnnotations(
   var assisted: IrAnnotation? = null
   var scope: IrAnnotation? = null
   var qualifier: IrAnnotation? = null
-  val mapKeys = mutableSetOf<IrAnnotation>()
+  var mapKey: IrAnnotation? = null
 
   for (annotation in annotations) {
     val annotationClass = annotation.type.classOrNull?.owner ?: continue
@@ -354,7 +358,7 @@ private fun IrAnnotationContainer.metroAnnotations(
       qualifier = expectNullAndSet("qualifier", qualifier, annotation.asIrAnnotation())
       continue
     } else if (Kind.MapKey in kinds && annotationClass.isAnnotatedWithAny(ids.mapKeyAnnotations)) {
-      mapKeys += annotation.asIrAnnotation()
+      mapKey = annotation.asIrAnnotation()
       continue
     }
   }
@@ -379,7 +383,7 @@ private fun IrAnnotationContainer.metroAnnotations(
       assisted = assisted,
       scope = scope,
       qualifier = qualifier,
-      mapKeys = mapKeys,
+      mapKey = mapKey,
       symbol = (this as? IrDeclaration)?.symbol,
     )
 
@@ -493,8 +497,8 @@ private fun FirBasedSymbol<*>.metroAnnotations(
   var isOptionalBinding = false
   var multibinds: MetroFirAnnotation? = null
   var assisted: MetroFirAnnotation? = null
-  var scope: MetroFirAnnotation? = null
-  var qualifier: MetroFirAnnotation? = null
+  val scopes = mutableSetOf<MetroFirAnnotation>()
+  val qualifiers = mutableSetOf<MetroFirAnnotation>()
   val mapKeys = mutableSetOf<MetroFirAnnotation>()
 
   for (annotation in resolvedCompilerAnnotationsWithClassIds.filter { it.isResolved }) {
@@ -601,13 +605,13 @@ private fun FirBasedSymbol<*>.metroAnnotations(
     }
 
     if (Kind.Scope in kinds && annotationClass.isAnnotatedWithAny(session, ids.scopeAnnotations)) {
-      scope = expectNullAndSet("scope", scope, MetroFirAnnotation(annotation, session))
+      scopes += MetroFirAnnotation(annotation, session)
       continue
     } else if (
       Kind.Qualifier in kinds &&
         annotationClass.isAnnotatedWithAny(session, ids.qualifierAnnotations)
     ) {
-      qualifier = expectNullAndSet("qualifier", qualifier, MetroFirAnnotation(annotation, session))
+      qualifiers += MetroFirAnnotation(annotation, session)
       continue
     } else if (
       Kind.MapKey in kinds && annotationClass.isAnnotatedWithAny(session, ids.mapKeyAnnotations)
@@ -635,8 +639,11 @@ private fun FirBasedSymbol<*>.metroAnnotations(
       isOptionalBinding = isOptionalBinding,
       multibinds = multibinds,
       assisted = assisted,
-      scope = scope,
-      qualifier = qualifier,
+      scope = scopes.firstOrNull(),
+      scopes = scopes,
+      qualifier = qualifiers.firstOrNull(),
+      qualifiers = qualifiers,
+      mapKey = mapKeys.firstOrNull(),
       mapKeys = mapKeys,
       symbol = null,
     )
@@ -706,6 +713,6 @@ internal fun MetroAnnotations<IrAnnotation>.mirrorIrConstructorCalls(
     scope?.let { add(it.ir.deepCopyWithSymbols()) }
     qualifier?.let { add(it.ir.deepCopyWithSymbols()) }
     multibinds?.let { add(it.ir.deepCopyWithSymbols()) }
-    addAll(mapKeys.map { it.ir.deepCopyWithSymbols() })
+    mapKey?.let { add(it.ir.deepCopyWithSymbols()) }
   }
 }

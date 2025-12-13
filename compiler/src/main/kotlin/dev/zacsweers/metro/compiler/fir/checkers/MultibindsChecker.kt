@@ -51,9 +51,9 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
     val isIntoSet = annotations.isIntoSet
 
     // Must check this early
-    if (!annotations.isIntoMap && annotations.mapKeys.isNotEmpty()) {
+    if (!annotations.isIntoMap && annotations.mapKey != null) {
       reporter.reportOn(
-        annotations.mapKeys.first().fir.source ?: source,
+        annotations.mapKey.fir.source ?: source,
         MetroDiagnostics.MULTIBINDS_ERROR,
         "`@MapKey` annotations are only allowed on `@IntoMap` declarations.",
       )
@@ -228,25 +228,6 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
           return
         }
       }
-    }
-
-    // Check for 1:1 `@IntoMap`+`@MapKey`
-    if (annotations.mapKeys.size > 1) {
-      for (key in annotations.mapKeys) {
-        reporter.reportOn(
-          key.fir.source,
-          MetroDiagnostics.MULTIBINDS_ERROR,
-          "Only one @MapKey should be be used on a given @IntoMap declaration.",
-        )
-      }
-      return
-    } else if (annotations.isIntoMap && annotations.mapKeys.isEmpty()) {
-      reporter.reportOn(
-        source,
-        MetroDiagnostics.MULTIBINDS_ERROR,
-        "`@IntoMap` declarations must define a @MapKey annotation.",
-      )
-      return
     }
   }
 
