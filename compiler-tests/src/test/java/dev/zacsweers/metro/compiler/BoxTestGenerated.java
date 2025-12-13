@@ -32,6 +32,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("AnyIsAValidSupertype.kt")
+    public void testAnyIsAValidSupertype() {
+      runTest("compiler-tests/src/test/data/box/aggregation/AnyIsAValidSupertype.kt");
+    }
+
+    @Test
     @TestMetadata("ComputedPropertiesIntoSet.kt")
     public void testComputedPropertiesIntoSet() {
       runTest("compiler-tests/src/test/data/box/aggregation/ComputedPropertiesIntoSet.kt");

@@ -17,6 +17,7 @@ This release significantly improves the runtime performance of Metro-generated g
 - **Enhancement**: Don't generate provider fields for graph self instances unless necessary.
 - **Enhancement**: Improve accuracy of diagnostic location when reporting graph validation issues from binding callable declarations.
 - **Fix**: Fix `newInstance()` args not stripping `Lazy` in top-level function inject classes.
+- **Fix**: Allow `Any` to be a `binding<...>()` type if no explicit supertypes are declared.
 
 0.8.2
 -----

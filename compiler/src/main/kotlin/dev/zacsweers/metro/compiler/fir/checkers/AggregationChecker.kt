@@ -37,6 +37,7 @@ import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.isAny
 import org.jetbrains.kotlin.fir.types.isNothing
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.StandardClassIds
 
 internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
   enum class ContributionKind(val readableName: String) {
@@ -227,12 +228,16 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
         }
 
         if (!hasSupertypes) {
-          reporter.reportOn(
-            annotation.source,
-            MetroDiagnostics.AGGREGATION_ERROR,
-            "`@$kind`-annotated class ${declaration.symbol.classId.asSingleFqName()} has no supertypes to bind to.",
-          )
-          return false
+          if (refClassId == StandardClassIds.Any) {
+            // If they are binding explicitly to Any, then it's ok
+          } else {
+            reporter.reportOn(
+              annotation.source,
+              MetroDiagnostics.AGGREGATION_ERROR,
+              "`@$kind`-annotated class ${declaration.symbol.classId.asSingleFqName()} has no supertypes to bind to.",
+            )
+            return false
+          }
         }
 
         val implementsBindingType = declaration.isOrImplements(refClassId, session)
