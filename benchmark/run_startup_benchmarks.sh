@@ -10,12 +10,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# Source common utilities
+source "$SCRIPT_DIR/benchmark-utils.sh"
 
 # Output directory
 RESULTS_DIR="startup-benchmark-results"
@@ -39,27 +35,7 @@ INCLUDE_MACROBENCHMARK=false
 # Whether to only collect binary metrics without running benchmarks (for testing)
 BINARY_METRICS_ONLY=false
 
-# Check if a string is a semantic version (Metro version) rather than a git ref
-# Returns 0 (true) if it matches semver pattern, 1 (false) otherwise
-# Matches: 1.0.0, 1.2.3, 0.1.0, 2.0.0-alpha01, 1.0.0-RC1, 1.0.0-SNAPSHOT, etc.
-is_metro_version() {
-    local ref="$1"
-    if [[ "$ref" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9._-]+)?$ ]]; then
-        return 0
-    fi
-    return 1
-}
-
-# Get ref type description for display
-get_ref_type_description() {
-    local ref="$1"
-    if is_metro_version "$ref"; then
-        echo "Metro version"
-    else
-        echo "git ref"
-    fi
-}
-
+# Script-specific print functions (styles differ from run_benchmarks.sh)
 print_header() {
     echo ""
     echo -e "${GREEN}═══════════════════════════════════════════════════════════════${NC}"
@@ -84,18 +60,6 @@ print_info() {
     echo -e "${BLUE}ℹ $1${NC}"
 }
 
-# Format duration in human-readable format
-format_duration() {
-    local seconds=$1
-    local minutes=$((seconds / 60))
-    local remaining_seconds=$((seconds % 60))
-    if [ $minutes -gt 0 ]; then
-        echo "${minutes}m ${remaining_seconds}s"
-    else
-        echo "${seconds}s"
-    fi
-}
-
 # Print final results with duration
 print_final_results() {
     local results_dir="$1"
@@ -108,79 +72,6 @@ print_final_results() {
     echo "Results saved to: $full_path"
     echo "Total duration: $formatted_duration"
     echo ""
-}
-
-# Save current git state (branch or commit)
-save_git_state() {
-    # Check if we're on a branch or in detached HEAD state
-    local current_branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
-    if [ -n "$current_branch" ]; then
-        ORIGINAL_GIT_REF="$current_branch"
-        ORIGINAL_GIT_IS_BRANCH=true
-        print_info "Saved current branch: $ORIGINAL_GIT_REF"
-    else
-        # Detached HEAD - save the commit hash
-        ORIGINAL_GIT_REF=$(git rev-parse HEAD)
-        ORIGINAL_GIT_IS_BRANCH=false
-        print_info "Saved current commit: ${ORIGINAL_GIT_REF:0:12}"
-    fi
-}
-
-# Restore to original git state
-restore_git_state() {
-    if [ -z "$ORIGINAL_GIT_REF" ]; then
-        print_error "No git state saved to restore"
-        return 1
-    fi
-
-    print_step "Restoring to original git state..."
-    if [ "$ORIGINAL_GIT_IS_BRANCH" = true ]; then
-        git checkout "$ORIGINAL_GIT_REF" 2>/dev/null || {
-            print_error "Failed to restore to branch: $ORIGINAL_GIT_REF"
-            return 1
-        }
-        print_success "Restored to branch: $ORIGINAL_GIT_REF"
-    else
-        git checkout "$ORIGINAL_GIT_REF" 2>/dev/null || {
-            print_error "Failed to restore to commit: ${ORIGINAL_GIT_REF:0:12}"
-            return 1
-        }
-        print_success "Restored to commit: ${ORIGINAL_GIT_REF:0:12}"
-    fi
-}
-
-# Checkout a git ref (branch or commit)
-checkout_ref() {
-    local ref="$1"
-    print_step "Checking out: $ref"
-    git checkout "$ref" 2>/dev/null || {
-        print_error "Failed to checkout: $ref"
-        return 1
-    }
-    local short_ref=$(git rev-parse --short HEAD)
-    print_success "Checked out: $ref ($short_ref)"
-}
-
-# Get a short display name for a git ref
-get_ref_display_name() {
-    local ref="$1"
-    # Try to resolve to a short commit hash
-    local short_hash=$(git rev-parse --short "$ref" 2>/dev/null || echo "$ref")
-    # If it's a branch name, use that; otherwise use the short hash
-    if git show-ref --verify --quiet "refs/heads/$ref" 2>/dev/null; then
-        echo "$ref"
-    elif git show-ref --verify --quiet "refs/remotes/origin/$ref" 2>/dev/null; then
-        echo "$ref"
-    else
-        echo "$short_hash"
-    fi
-}
-
-# Get a filesystem-safe name for a git ref
-get_ref_safe_name() {
-    local ref="$1"
-    # Replace slashes and other special chars with underscores
-    echo "$ref" | sed 's/[^a-zA-Z0-9._-]/_/g'
 }
 
 # Clean build artifacts more thoroughly (including KSP caches)

@@ -94,14 +94,8 @@ jobs:
       - name: Detect ref types (git ref vs Metro version)
         id: detect_ref_types
         run: |
-          # Function to check if a string is a semantic version (Metro version)
-          is_metro_version() {
-            local ref="$1"
-            if [[ "$ref" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9._-]+)?$ ]]; then
-              return 0
-            fi
-            return 1
-          }
+          # Source common utilities
+          source benchmark/benchmark-utils.sh
 
           # Check ref1
           if is_metro_version "${{ inputs.ref1 }}"; then
@@ -152,14 +146,8 @@ jobs:
 
       - name: Validate git refs
         run: |
-          # Function to check if a string is a semantic version (Metro version)
-          is_metro_version() {
-            local ref="$1"
-            if [[ "$ref" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9._-]+)?$ ]]; then
-              return 0
-            fi
-            return 1
-          }
+          # Source common utilities
+          source benchmark/benchmark-utils.sh
 
           # Fetch all remote branches to ensure we can resolve branch names
           git fetch --all
@@ -219,14 +207,8 @@ jobs:
 
       - name: Fetch and checkout refs
         run: |
-          # Function to check if a string is a semantic version (Metro version)
-          is_metro_version() {
-            local ref="$1"
-            if [[ "$ref" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9._-]+)?$ ]]; then
-              return 0
-            fi
-            return 1
-          }
+          # Source common utilities
+          source benchmark/benchmark-utils.sh
 
           git fetch --all
 
@@ -350,14 +332,8 @@ jobs:
 
       - name: Fetch and checkout refs
         run: |
-          # Function to check if a string is a semantic version (Metro version)
-          is_metro_version() {
-            local ref="$1"
-            if [[ "$ref" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9._-]+)?$ ]]; then
-              return 0
-            fi
-            return 1
-          }
+          # Source common utilities
+          source benchmark/benchmark-utils.sh
 
           git fetch --all
 
@@ -493,14 +469,8 @@ jobs:
 
       - name: Fetch and checkout refs
         run: |
-          # Function to check if a string is a semantic version (Metro version)
-          is_metro_version() {
-            local ref="$1"
-            if [[ "$ref" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9._-]+)?$ ]]; then
-              return 0
-            fi
-            return 1
-          }
+          # Source common utilities
+          source benchmark/benchmark-utils.sh
 
           git fetch --all
 

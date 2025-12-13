@@ -9,6 +9,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Source common utilities
+source "$SCRIPT_DIR/benchmark-utils.sh"
+
 # Configuration
 DEFAULT_MODULE_COUNT=500
 RESULTS_DIR="benchmark-results"
@@ -24,35 +27,7 @@ ORIGINAL_GIT_IS_BRANCH=false
 # Whether to re-run non-metro modes in ref2 (default: false to save time)
 RERUN_NON_METRO=false
 
-# Check if a string is a semantic version (Metro version) rather than a git ref
-# Returns 0 (true) if it matches semver pattern, 1 (false) otherwise
-# Matches: 1.0.0, 1.2.3, 0.1.0, 2.0.0-alpha01, 1.0.0-RC1, 1.0.0-SNAPSHOT, etc.
-is_metro_version() {
-    local ref="$1"
-    if [[ "$ref" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9._-]+)?$ ]]; then
-        return 0
-    fi
-    return 1
-}
-
-# Get ref type description for display
-get_ref_type_description() {
-    local ref="$1"
-    if is_metro_version "$ref"; then
-        echo "Metro version"
-    else
-        echo "git ref"
-    fi
-}
-
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-# Function to print colored output
+# Script-specific print functions (styles differ from run_startup_benchmarks.sh)
 print_status() {
     echo -e "${BLUE}[INFO]${NC} $1"
 }
@@ -73,64 +48,6 @@ print_header() {
     echo -e "\n${BLUE}========================================${NC}"
     echo -e "${BLUE} $1${NC}"
     echo -e "${BLUE}========================================${NC}\n"
-}
-
-# Save current git state (branch or commit)
-save_git_state() {
-    # Check if we're on a branch or in detached HEAD state
-    local current_branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
-    if [ -n "$current_branch" ]; then
-        ORIGINAL_GIT_REF="$current_branch"
-        ORIGINAL_GIT_IS_BRANCH=true
-        print_status "Saved current branch: $ORIGINAL_GIT_REF"
-    else
-        # Detached HEAD - save the commit hash
-        ORIGINAL_GIT_REF=$(git rev-parse HEAD)
-        ORIGINAL_GIT_IS_BRANCH=false
-        print_status "Saved current commit: ${ORIGINAL_GIT_REF:0:12}"
-    fi
-}
-
-# Restore to original git state
-restore_git_state() {
-    if [ -z "$ORIGINAL_GIT_REF" ]; then
-        print_error "No git state saved to restore"
-        return 1
-    fi
-
-    print_status "Restoring to original git state..."
-    if [ "$ORIGINAL_GIT_IS_BRANCH" = true ]; then
-        git checkout "$ORIGINAL_GIT_REF" 2>/dev/null || {
-            print_error "Failed to restore to branch: $ORIGINAL_GIT_REF"
-            return 1
-        }
-        print_success "Restored to branch: $ORIGINAL_GIT_REF"
-    else
-        git checkout "$ORIGINAL_GIT_REF" 2>/dev/null || {
-            print_error "Failed to restore to commit: ${ORIGINAL_GIT_REF:0:12}"
-            return 1
-        }
-        print_success "Restored to commit: ${ORIGINAL_GIT_REF:0:12}"
-    fi
-}
-
-# Checkout a git ref (branch or commit)
-checkout_ref() {
-    local ref="$1"
-    print_status "Checking out: $ref"
-    git checkout "$ref" 2>/dev/null || {
-        print_error "Failed to checkout: $ref"
-        return 1
-    }
-    local short_ref=$(git rev-parse --short HEAD)
-    print_success "Checked out: $ref ($short_ref)"
-}
-
-# Get a filesystem-safe name for a git ref
-get_ref_safe_name() {
-    local ref="$1"
-    # Replace slashes and other special chars with underscores
-    echo "$ref" | sed 's/[^a-zA-Z0-9._-]/_/g'
 }
 
 # Source the gradle-profiler installer script
