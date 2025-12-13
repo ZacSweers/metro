@@ -16,7 +16,7 @@ plugins {
   alias(libs.plugins.android.test) apply false
   alias(libs.plugins.jmh) apply false
   alias(libs.plugins.benchmark) apply false
-  id("dev.zacsweers.metro") apply false
+  alias(libs.plugins.metro) apply false
   alias(libs.plugins.spotless)
   alias(libs.plugins.anvil) apply false
   alias(libs.plugins.mavenPublish) apply false // wat

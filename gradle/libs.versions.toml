@@ -31,6 +31,7 @@ jvmTarget = "11"
 kct = "0.11.1"
 kotlin = "2.2.20"
 kotlinInject = "0.8.0"
+metro = "0.8.2"
 kotlinInject-anvil = "0.1.6"
 kotlinx-coroutines = "1.10.2"
 kotlinx-serialization = "1.9.0"
@@ -61,6 +62,7 @@ buildConfig = { id = "com.github.gmazzo.buildconfig", version = "6.0.6" }
 dokka = { id = "org.jetbrains.dokka", version = "2.1.0" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.35.0" }
+metro = { id = "dev.zacsweers.metro", version.ref = "metro" }
 poko = { id = "dev.drewhamilton.poko", version.ref = "poko" }
 shadow = { id = "com.gradleup.shadow", version = "9.2.2" }
 spotless = { id = "com.diffplug.spotless", version = "8.1.0" }
