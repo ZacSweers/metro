@@ -510,7 +510,7 @@ jobs:
       - name: Cache gradle-profiler
         id: gradle-profiler-cache
         if: ${{ inputs.force-refresh-gradle-profiler-cache != true }}
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: tmp/gradle-profiler-source/build/install/gradle-profiler
           key: gradle-profiler-${{ runner.os }}-${{ steps.gradle-profiler-cache-key.outputs.week }}
