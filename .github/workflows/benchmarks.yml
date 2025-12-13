@@ -63,6 +63,11 @@ on:
         required: false
         type: boolean
         default: false
+      force-refresh-gradle-profiler-cache:
+        description: 'Force rebuild gradle-profiler (ignore cache)'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   # Shared job to validate inputs and build modes string
@@ -494,6 +499,23 @@ jobs:
           if ! is_metro_version "${{ inputs.ref1 }}"; then
             git checkout "${{ inputs.ref1 }}"
           fi
+
+      - name: Get cache key for gradle-profiler
+        id: gradle-profiler-cache-key
+        run: |
+          # Use week number for ~weekly cache expiration
+          WEEK=$(date +%Y-W%V)
+          echo "week=$WEEK" >> $GITHUB_OUTPUT
+
+      - name: Cache gradle-profiler
+        id: gradle-profiler-cache
+        if: ${{ inputs.force-refresh-gradle-profiler-cache != true }}
+        uses: actions/cache@v4
+        with:
+          path: tmp/gradle-profiler-source/build/install/gradle-profiler
+          key: gradle-profiler-${{ runner.os }}-${{ steps.gradle-profiler-cache-key.outputs.week }}
+          restore-keys: |
+            gradle-profiler-${{ runner.os }}-
 
       - name: Install gradle-profiler
         run: ./benchmark/install-gradle-profiler.sh
