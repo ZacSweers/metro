@@ -14,7 +14,9 @@ class RenderingTest : MetroCompilerTest() {
     val reportsDir = temporaryFolder.newFolder("reports").toPath()
     compile(
       source(
-        """
+        $$"""
+        const val THREE = "3"
+
         @DependencyGraph(AppScope::class)
         interface ExampleGraph {
           @Provides val string: String get() = "Hello World!"
@@ -48,6 +50,7 @@ class RenderingTest : MetroCompilerTest() {
             anotherAnnotationArray = [ForScope(AppScope::class), ForScope(Unit::class)],
           )
           val complexQualifier: String get() = "Hello World!"
+          @Provides @Named("${THREE}four") val interpolatedAnnotation: String get() = "Hello World!"
         }
 
         const val const = "Hello World!"
@@ -78,6 +81,7 @@ class RenderingTest : MetroCompilerTest() {
           @dev.zacsweers.metro.ForScope(dev.zacsweers.metro.AppScope::class) kotlin.collections.List<kotlin.Int>
           @dev.zacsweers.metro.ForScope(dev.zacsweers.metro.AppScope::class) kotlin.collections.Map<kotlin.String, kotlin.CharSequence>
           @dev.zacsweers.metro.ForScope(dev.zacsweers.metro.AppScope::class) kotlin.collections.Set<kotlin.CharSequence>
+          @dev.zacsweers.metro.Named("3four") kotlin.String
           @dev.zacsweers.metro.Named("qualified") kotlin.String
           @dev.zacsweers.metro.Named("star") kotlin.collections.List<*>
           @dev.zacsweers.metro.Named("suppressed") java.util.concurrent.Callable<out kotlin.CharSequence>

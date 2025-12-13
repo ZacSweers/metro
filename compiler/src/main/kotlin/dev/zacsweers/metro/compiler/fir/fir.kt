@@ -56,7 +56,6 @@ import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.deserialization.toQualifiedPropertyAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
-import org.jetbrains.kotlin.fir.expressions.FirArrayLiteral
 import org.jetbrains.kotlin.fir.expressions.FirCall
 import org.jetbrains.kotlin.fir.expressions.FirClassReferenceExpression
 import org.jetbrains.kotlin.fir.expressions.FirExpression
@@ -396,7 +395,9 @@ private fun renderAnnotationArgument(
       arg.evaluateAs<FirLiteralExpression>(session)?.value
     }
 
-    is FirArrayLiteral -> {
+    is FirCall -> {
+      // Could be FirArrayLiteral on <2.3.20
+      // Could be FirCollectionLiteral on 2.3.20+
       // This is an array of some type
       arg.arguments.map { renderAnnotationArgument(session, it, typeResolver) }
     }
