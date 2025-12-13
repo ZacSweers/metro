@@ -39,6 +39,27 @@ INCLUDE_MACROBENCHMARK=false
 # Whether to only collect binary metrics without running benchmarks (for testing)
 BINARY_METRICS_ONLY=false
 
+# Check if a string is a semantic version (Metro version) rather than a git ref
+# Returns 0 (true) if it matches semver pattern, 1 (false) otherwise
+# Matches: 1.0.0, 1.2.3, 0.1.0, 2.0.0-alpha01, 1.0.0-RC1, 1.0.0-SNAPSHOT, etc.
+is_metro_version() {
+    local ref="$1"
+    if [[ "$ref" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9._-]+)?$ ]]; then
+        return 0
+    fi
+    return 1
+}
+
+# Get ref type description for display
+get_ref_type_description() {
+    local ref="$1"
+    if is_metro_version "$ref"; then
+        echo "Metro version"
+    else
+        echo "git ref"
+    fi
+}
+
 print_header() {
     echo ""
     echo -e "${GREEN}═══════════════════════════════════════════════════════════════${NC}"
@@ -183,8 +204,8 @@ show_usage() {
     echo "  jvm-r8    Run JVM startup benchmarks with R8-minified classes"
     echo "  android   Run Android benchmarks (requires device)"
     echo "  all       Run all benchmarks (default)"
-    echo "  single    Run benchmarks on a single git ref"
-    echo "  compare   Compare benchmarks across two git refs (branches or commits)"
+    echo "  single    Run benchmarks on a single git ref or Metro version"
+    echo "  compare   Compare benchmarks across two refs (git refs or Metro versions)"
     echo "  summary   Regenerate summary from existing results (use with --timestamp)"
     echo "  help      Show this help message"
     echo ""
@@ -200,15 +221,24 @@ show_usage() {
     echo "                          Useful for testing binary metrics collection quickly"
     echo ""
     echo "Single Options:"
-    echo "  --ref <ref>         Git ref to benchmark - branch name or commit hash"
+    echo "  --ref <ref>         Git ref (branch name/commit) or Metro version (e.g., 1.0.0)"
     echo "  --benchmark <type>  Benchmark type: jvm, jvm-r8, android, or all (default: jvm)"
     echo ""
     echo "Compare Options:"
-    echo "  --ref1 <ref>        First git ref (baseline) - branch name or commit hash"
-    echo "  --ref2 <ref>        Second git ref to compare against baseline"
+    echo "  --ref1 <ref>        First ref (baseline) - git ref or Metro version"
+    echo "  --ref2 <ref>        Second ref to compare - git ref or Metro version"
     echo "  --benchmark <type>  Benchmark type for compare: jvm, jvm-r8, android, or all (default: jvm)"
     echo "  --rerun-non-metro   Re-run non-metro modes on ref2 (default: only run metro on ref2)"
     echo "                      When disabled (default), ref2 uses ref1's non-metro results for comparison"
+    echo ""
+    echo "Ref Types:"
+    echo "  Refs can be either git refs or Metro versions. The script automatically detects"
+    echo "  the type based on the format:"
+    echo "  - Git refs: branch names (main, feature-branch), commit hashes (abc123), tags"
+    echo "  - Metro versions: semantic versions like 1.0.0, 2.0.0-alpha01, 1.5.0-RC1"
+    echo ""
+    echo "  When using a Metro version, benchmarks run on the current branch with the"
+    echo "  specified Metro version from Maven Central (instead of the included build)."
     echo ""
     echo "Examples:"
     echo "  $0 jvm                              # Run JVM benchmarks for all modes"
@@ -223,11 +253,19 @@ show_usage() {
     echo "  $0 single --ref feature-branch --modes metro,dagger-ksp --benchmark jvm"
     echo "  $0 single --ref main --benchmark jvm-r8  # Run R8-minified benchmark for all modes"
     echo ""
+    echo "  # Run benchmarks with a specific Metro version:"
+    echo "  $0 single --ref 1.0.0                # Benchmark Metro 1.0.0"
+    echo "  $0 single --ref 2.0.0-alpha01        # Benchmark a pre-release version"
+    echo ""
     echo "  # Compare benchmarks across git refs:"
     echo "  $0 compare --ref1 main --ref2 feature-branch"
     echo "  $0 compare --ref1 abc123 --ref2 def456 --benchmark all"
     echo "  $0 compare --ref1 v1.0.0 --ref2 HEAD --modes metro"
     echo "  $0 compare --ref1 main --ref2 feature --rerun-non-metro  # Re-run all modes on both refs"
+    echo ""
+    echo "  # Compare Metro versions:"
+    echo "  $0 compare --ref1 1.0.0 --ref2 1.1.0  # Compare two released versions"
+    echo "  $0 compare --ref1 1.0.0 --ref2 main   # Compare release to git branch"
     echo ""
     echo "Results will be saved to: $RESULTS_DIR/"
 }
@@ -1779,8 +1817,8 @@ run_all_benchmarks() {
     done
 }
 
-# Run benchmarks for a specific git ref
-# Arguments: ref, benchmark_type (jvm|android|all), ref_label, is_second_ref
+# Run benchmarks for a specific git ref or Metro version
+# Arguments: ref, benchmark_type (jvm|android|all), ref_label, is_second_ref, skip_checkout
 run_benchmarks_for_ref() {
     local ref="$1"
     local benchmark_type="$2"
@@ -1790,20 +1828,34 @@ run_benchmarks_for_ref() {
 
     print_header "Running benchmarks for: $ref_label"
 
-    # Checkout the ref (unless skip_checkout is true for current working state)
-    if [ "$skip_checkout" = true ]; then
+    # Check if ref is a Metro version or git ref
+    if is_metro_version "$ref"; then
+        print_info "Using Metro version: $ref (staying on current branch)"
+        export METRO_VERSION="$ref"
+    elif [ "$skip_checkout" = true ]; then
         print_info "Using current working state (no checkout)"
+        # Unset METRO_VERSION to use included build
+        unset METRO_VERSION
     else
+        # It's a git ref - checkout
         checkout_ref "$ref" || return 1
+        # Unset METRO_VERSION to use included build
+        unset METRO_VERSION
     fi
 
     # Create ref-specific results directory
     local ref_dir="$RESULTS_DIR/${TIMESTAMP}/${ref_label}"
     mkdir -p "$ref_dir"
 
-    # Save the commit hash for reference
-    git rev-parse HEAD > "$ref_dir/commit.txt"
-    git log -1 --format='%h %s' > "$ref_dir/commit-info.txt"
+    # Save version/commit info for reference
+    if is_metro_version "$ref"; then
+        echo "Metro version: $ref" > "$ref_dir/version-info.txt"
+        git rev-parse HEAD > "$ref_dir/commit.txt"
+        git log -1 --format='%h %s (Metro $ref)' | sed "s/\$ref/$ref/" > "$ref_dir/commit-info.txt"
+    else
+        git rev-parse HEAD > "$ref_dir/commit.txt"
+        git log -1 --format='%h %s' > "$ref_dir/commit-info.txt"
+    fi
 
     IFS=',' read -ra MODE_ARRAY <<< "$MODES"
     for mode in "${MODE_ARRAY[@]}"; do
@@ -4101,6 +4153,12 @@ run_single() {
         exit 1
     fi
 
+    # Check if ref is a Metro version
+    local is_metro_ver=false
+    if is_metro_version "$SINGLE_REF"; then
+        is_metro_ver=true
+    fi
+
     # Check if using current working state (HEAD with possible uncommitted changes)
     local use_current_state=false
     if [ "$SINGLE_REF" = "HEAD" ] || [ "$SINGLE_REF" = "head" ] || [ "$SINGLE_REF" = "current" ]; then
@@ -4108,8 +4166,8 @@ run_single() {
         SINGLE_REF="HEAD"
     fi
 
-    # Validate ref exists (HEAD always exists)
-    if [ "$use_current_state" = false ]; then
+    # Validate ref exists (skip for Metro versions and HEAD)
+    if [ "$is_metro_ver" = false ] && [ "$use_current_state" = false ]; then
         if ! git rev-parse --verify "$SINGLE_REF" > /dev/null 2>&1; then
             print_error "Invalid git ref: $SINGLE_REF"
             exit 1
@@ -4123,11 +4181,16 @@ run_single() {
         fi
     fi
 
-    print_header "Running Benchmarks on Single Git Ref"
-    if [ "$use_current_state" = true ]; then
-        print_info "Ref: HEAD (current working state)"
+    if [ "$is_metro_ver" = true ]; then
+        print_header "Running Benchmarks with Metro Version"
+        print_info "Metro version: $SINGLE_REF"
     else
-        print_info "Ref: $SINGLE_REF"
+        print_header "Running Benchmarks on Single Git Ref"
+        if [ "$use_current_state" = true ]; then
+            print_info "Ref: HEAD (current working state)"
+        else
+            print_info "Ref: $SINGLE_REF"
+        fi
     fi
     print_info "Benchmark type: $benchmark_type"
     print_info "Modes: $MODES"
@@ -4135,7 +4198,9 @@ run_single() {
 
     # Create safe label for directory name
     local ref_label
-    if [ "$use_current_state" = true ]; then
+    if [ "$is_metro_ver" = true ]; then
+        ref_label=$(get_ref_safe_name "$SINGLE_REF")
+    elif [ "$use_current_state" = true ]; then
         # Use current branch name or "HEAD" if detached
         ref_label=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "HEAD")
         if [ "$ref_label" = "HEAD" ]; then
@@ -4145,7 +4210,8 @@ run_single() {
         ref_label=$(get_ref_safe_name "$SINGLE_REF")
     fi
 
-    if [ "$use_current_state" = false ]; then
+    # For git refs (not Metro versions), save current git state and set up restore trap
+    if [ "$is_metro_ver" = false ] && [ "$use_current_state" = false ]; then
         # Save current git state and set up restore trap
         save_git_state
         trap 'restore_git_state' EXIT
@@ -4174,25 +4240,43 @@ run_compare() {
         exit 1
     fi
 
-    # Validate refs exist
-    if ! git rev-parse --verify "$COMPARE_REF1" > /dev/null 2>&1; then
-        print_error "Invalid git ref: $COMPARE_REF1"
-        exit 1
+    # Check if refs are Metro versions or git refs
+    local ref1_is_metro=false
+    local ref2_is_metro=false
+    if is_metro_version "$COMPARE_REF1"; then
+        ref1_is_metro=true
     fi
-    if ! git rev-parse --verify "$COMPARE_REF2" > /dev/null 2>&1; then
-        print_error "Invalid git ref: $COMPARE_REF2"
-        exit 1
-    fi
-
-    # Check for uncommitted changes
-    if ! git diff-index --quiet HEAD -- 2>/dev/null; then
-        print_error "You have uncommitted changes. Please commit or stash them before comparing."
-        exit 1
+    if is_metro_version "$COMPARE_REF2"; then
+        ref2_is_metro=true
     fi
 
-    print_header "Comparing Benchmarks Across Git Refs"
-    print_info "Baseline (ref1): $COMPARE_REF1"
-    print_info "Compare (ref2):  $COMPARE_REF2"
+    # Validate git refs exist (skip for Metro versions)
+    if [ "$ref1_is_metro" = false ]; then
+        if ! git rev-parse --verify "$COMPARE_REF1" > /dev/null 2>&1; then
+            print_error "Invalid git ref: $COMPARE_REF1"
+            exit 1
+        fi
+    fi
+    if [ "$ref2_is_metro" = false ]; then
+        if ! git rev-parse --verify "$COMPARE_REF2" > /dev/null 2>&1; then
+            print_error "Invalid git ref: $COMPARE_REF2"
+            exit 1
+        fi
+    fi
+
+    # Check for uncommitted changes only if we need to checkout git refs
+    local needs_git_checkout=false
+    if [ "$ref1_is_metro" = false ] || [ "$ref2_is_metro" = false ]; then
+        needs_git_checkout=true
+        if ! git diff-index --quiet HEAD -- 2>/dev/null; then
+            print_error "You have uncommitted changes. Please commit or stash them before comparing."
+            exit 1
+        fi
+    fi
+
+    print_header "Comparing Benchmarks"
+    print_info "Baseline (ref1): $COMPARE_REF1 ($(get_ref_type_description "$COMPARE_REF1"))"
+    print_info "Compare (ref2):  $COMPARE_REF2 ($(get_ref_type_description "$COMPARE_REF2"))"
     print_info "Benchmark type:  $benchmark_type"
     print_info "Modes:           $MODES"
     if [ "$RERUN_NON_METRO" = true ]; then
@@ -4202,8 +4286,12 @@ run_compare() {
     fi
     echo ""
 
-    # Save current git state
-    save_git_state
+    # Save current git state only if we need to checkout git refs
+    if [ "$needs_git_checkout" = true ]; then
+        save_git_state
+        # Set up trap to restore git state on exit
+        trap 'restore_git_state' EXIT
+    fi
 
     # Create safe labels for directory names
     local ref1_label=$(get_ref_safe_name "$COMPARE_REF1")
@@ -4214,9 +4302,6 @@ run_compare() {
         ref1_label="${ref1_label}_base"
         ref2_label="${ref2_label}_compare"
     fi
-
-    # Set up trap to restore git state on exit
-    trap 'restore_git_state' EXIT
 
     # Run benchmarks for ref1 (baseline) - run all modes
     run_benchmarks_for_ref "$COMPARE_REF1" "$benchmark_type" "$ref1_label" false || {
@@ -4235,7 +4320,7 @@ run_compare() {
 
     print_final_results "$RESULTS_DIR/${TIMESTAMP}"
 
-    # Restore will happen via trap
+    # Restore will happen via trap (if set)
 }
 
 # Default benchmark type for single/compare commands

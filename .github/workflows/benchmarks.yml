@@ -4,12 +4,12 @@ on:
   workflow_dispatch:
     inputs:
       ref1:
-        description: 'Baseline git ref (branch name or commit SHA)'
+        description: 'Baseline ref: git ref (branch/commit) or Metro version (e.g., 1.0.0)'
         required: false
         type: string
         default: 'main'
       ref2:
-        description: 'Comparison git ref (branch name or commit SHA). Leave empty for single-ref benchmark.'
+        description: 'Comparison ref: git ref or Metro version. Leave empty for single-ref benchmark.'
         required: false
         type: string
         default: ''
@@ -72,6 +72,8 @@ jobs:
     outputs:
       modes: ${{ steps.modes.outputs.modes }}
       is_single_ref: ${{ steps.check_mode.outputs.is_single_ref }}
+      ref1_is_metro_version: ${{ steps.detect_ref_types.outputs.ref1_is_metro_version }}
+      ref2_is_metro_version: ${{ steps.detect_ref_types.outputs.ref2_is_metro_version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -87,6 +89,40 @@ jobs:
           else
             echo "is_single_ref=false" >> $GITHUB_OUTPUT
             echo "Running in comparison mode (ref1 vs ref2)"
+          fi
+
+      - name: Detect ref types (git ref vs Metro version)
+        id: detect_ref_types
+        run: |
+          # Function to check if a string is a semantic version (Metro version)
+          is_metro_version() {
+            local ref="$1"
+            if [[ "$ref" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9._-]+)?$ ]]; then
+              return 0
+            fi
+            return 1
+          }
+
+          # Check ref1
+          if is_metro_version "${{ inputs.ref1 }}"; then
+            echo "ref1_is_metro_version=true" >> $GITHUB_OUTPUT
+            echo "ref1 (${{ inputs.ref1 }}) is a Metro version"
+          else
+            echo "ref1_is_metro_version=false" >> $GITHUB_OUTPUT
+            echo "ref1 (${{ inputs.ref1 }}) is a git ref"
+          fi
+
+          # Check ref2 (if provided)
+          if [ -n "${{ inputs.ref2 }}" ]; then
+            if is_metro_version "${{ inputs.ref2 }}"; then
+              echo "ref2_is_metro_version=true" >> $GITHUB_OUTPUT
+              echo "ref2 (${{ inputs.ref2 }}) is a Metro version"
+            else
+              echo "ref2_is_metro_version=false" >> $GITHUB_OUTPUT
+              echo "ref2 (${{ inputs.ref2 }}) is a git ref"
+            fi
+          else
+            echo "ref2_is_metro_version=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Build modes string
@@ -116,22 +152,43 @@ jobs:
 
       - name: Validate git refs
         run: |
+          # Function to check if a string is a semantic version (Metro version)
+          is_metro_version() {
+            local ref="$1"
+            if [[ "$ref" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9._-]+)?$ ]]; then
+              return 0
+            fi
+            return 1
+          }
+
           # Fetch all remote branches to ensure we can resolve branch names
           git fetch --all
-          echo "Validating ref1: ${{ inputs.ref1 }}"
-          git rev-parse --verify "${{ inputs.ref1 }}" || git rev-parse --verify "origin/${{ inputs.ref1 }}" || {
-            echo "Error: Invalid git ref: ${{ inputs.ref1 }}"
-            exit 1
-          }
-          if [ -n "${{ inputs.ref2 }}" ]; then
-            echo "Validating ref2: ${{ inputs.ref2 }}"
-            git rev-parse --verify "${{ inputs.ref2 }}" || git rev-parse --verify "origin/${{ inputs.ref2 }}" || {
-              echo "Error: Invalid git ref: ${{ inputs.ref2 }}"
+
+          # Validate ref1 (skip if Metro version)
+          if is_metro_version "${{ inputs.ref1 }}"; then
+            echo "ref1 (${{ inputs.ref1 }}) is a Metro version, skipping git validation"
+          else
+            echo "Validating ref1: ${{ inputs.ref1 }}"
+            git rev-parse --verify "${{ inputs.ref1 }}" || git rev-parse --verify "origin/${{ inputs.ref1 }}" || {
+              echo "Error: Invalid git ref: ${{ inputs.ref1 }}"
               exit 1
             }
-            echo "Both refs are valid"
+          fi
+
+          # Validate ref2 (skip if Metro version or empty)
+          if [ -n "${{ inputs.ref2 }}" ]; then
+            if is_metro_version "${{ inputs.ref2 }}"; then
+              echo "ref2 (${{ inputs.ref2 }}) is a Metro version, skipping git validation"
+            else
+              echo "Validating ref2: ${{ inputs.ref2 }}"
+              git rev-parse --verify "${{ inputs.ref2 }}" || git rev-parse --verify "origin/${{ inputs.ref2 }}" || {
+                echo "Error: Invalid git ref: ${{ inputs.ref2 }}"
+                exit 1
+              }
+            fi
+            echo "All refs validated"
           else
-            echo "Single ref mode - ref1 is valid"
+            echo "Single ref mode - ref1 validated"
           fi
 
   # Startup benchmarks using JMH
@@ -162,15 +219,37 @@ jobs:
 
       - name: Fetch and checkout refs
         run: |
+          # Function to check if a string is a semantic version (Metro version)
+          is_metro_version() {
+            local ref="$1"
+            if [[ "$ref" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9._-]+)?$ ]]; then
+              return 0
+            fi
+            return 1
+          }
+
           git fetch --all
-          # Checkout ref1
-          git checkout "${{ inputs.ref1 }}" || git checkout -b "${{ inputs.ref1 }}" "origin/${{ inputs.ref1 }}"
-          # Checkout ref2 if in comparison mode
-          if [ -n "${{ inputs.ref2 }}" ]; then
-            git checkout "${{ inputs.ref2 }}" || git checkout -b "${{ inputs.ref2 }}" "origin/${{ inputs.ref2 }}"
+
+          # Checkout ref1 (skip if Metro version - script will handle METRO_VERSION)
+          if is_metro_version "${{ inputs.ref1 }}"; then
+            echo "ref1 is a Metro version (${{ inputs.ref1 }}), staying on current branch"
+          else
+            git checkout "${{ inputs.ref1 }}" || git checkout -b "${{ inputs.ref1 }}" "origin/${{ inputs.ref1 }}"
           fi
-          # Return to ref1 as the starting point
-          git checkout "${{ inputs.ref1 }}"
+
+          # Checkout ref2 if in comparison mode and it's a git ref
+          if [ -n "${{ inputs.ref2 }}" ]; then
+            if is_metro_version "${{ inputs.ref2 }}"; then
+              echo "ref2 is a Metro version (${{ inputs.ref2 }}), will be handled by script"
+            else
+              git checkout "${{ inputs.ref2 }}" || git checkout -b "${{ inputs.ref2 }}" "origin/${{ inputs.ref2 }}"
+            fi
+          fi
+
+          # Return to ref1 as the starting point (if it's a git ref)
+          if ! is_metro_version "${{ inputs.ref1 }}"; then
+            git checkout "${{ inputs.ref1 }}"
+          fi
 
       - name: Run startup benchmarks
         run: |
@@ -271,15 +350,37 @@ jobs:
 
       - name: Fetch and checkout refs
         run: |
+          # Function to check if a string is a semantic version (Metro version)
+          is_metro_version() {
+            local ref="$1"
+            if [[ "$ref" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9._-]+)?$ ]]; then
+              return 0
+            fi
+            return 1
+          }
+
           git fetch --all
-          # Checkout ref1
-          git checkout "${{ inputs.ref1 }}" || git checkout -b "${{ inputs.ref1 }}" "origin/${{ inputs.ref1 }}"
-          # Checkout ref2 if in comparison mode
-          if [ -n "${{ inputs.ref2 }}" ]; then
-            git checkout "${{ inputs.ref2 }}" || git checkout -b "${{ inputs.ref2 }}" "origin/${{ inputs.ref2 }}"
+
+          # Checkout ref1 (skip if Metro version - script will handle METRO_VERSION)
+          if is_metro_version "${{ inputs.ref1 }}"; then
+            echo "ref1 is a Metro version (${{ inputs.ref1 }}), staying on current branch"
+          else
+            git checkout "${{ inputs.ref1 }}" || git checkout -b "${{ inputs.ref1 }}" "origin/${{ inputs.ref1 }}"
           fi
-          # Return to ref1 as the starting point
-          git checkout "${{ inputs.ref1 }}"
+
+          # Checkout ref2 if in comparison mode and it's a git ref
+          if [ -n "${{ inputs.ref2 }}" ]; then
+            if is_metro_version "${{ inputs.ref2 }}"; then
+              echo "ref2 is a Metro version (${{ inputs.ref2 }}), will be handled by script"
+            else
+              git checkout "${{ inputs.ref2 }}" || git checkout -b "${{ inputs.ref2 }}" "origin/${{ inputs.ref2 }}"
+            fi
+          fi
+
+          # Return to ref1 as the starting point (if it's a git ref)
+          if ! is_metro_version "${{ inputs.ref1 }}"; then
+            git checkout "${{ inputs.ref1 }}"
+          fi
 
       - name: Install diffuse
         run: ./benchmark/install-diffuse.sh
@@ -392,15 +493,37 @@ jobs:
 
       - name: Fetch and checkout refs
         run: |
+          # Function to check if a string is a semantic version (Metro version)
+          is_metro_version() {
+            local ref="$1"
+            if [[ "$ref" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9._-]+)?$ ]]; then
+              return 0
+            fi
+            return 1
+          }
+
           git fetch --all
-          # Checkout ref1
-          git checkout "${{ inputs.ref1 }}" || git checkout -b "${{ inputs.ref1 }}" "origin/${{ inputs.ref1 }}"
-          # Checkout ref2 if in comparison mode
-          if [ -n "${{ inputs.ref2 }}" ]; then
-            git checkout "${{ inputs.ref2 }}" || git checkout -b "${{ inputs.ref2 }}" "origin/${{ inputs.ref2 }}"
+
+          # Checkout ref1 (skip if Metro version - script will handle METRO_VERSION)
+          if is_metro_version "${{ inputs.ref1 }}"; then
+            echo "ref1 is a Metro version (${{ inputs.ref1 }}), staying on current branch"
+          else
+            git checkout "${{ inputs.ref1 }}" || git checkout -b "${{ inputs.ref1 }}" "origin/${{ inputs.ref1 }}"
           fi
-          # Return to ref1 as the starting point
-          git checkout "${{ inputs.ref1 }}"
+
+          # Checkout ref2 if in comparison mode and it's a git ref
+          if [ -n "${{ inputs.ref2 }}" ]; then
+            if is_metro_version "${{ inputs.ref2 }}"; then
+              echo "ref2 is a Metro version (${{ inputs.ref2 }}), will be handled by script"
+            else
+              git checkout "${{ inputs.ref2 }}" || git checkout -b "${{ inputs.ref2 }}" "origin/${{ inputs.ref2 }}"
+            fi
+          fi
+
+          # Return to ref1 as the starting point (if it's a git ref)
+          if ! is_metro_version "${{ inputs.ref1 }}"; then
+            git checkout "${{ inputs.ref1 }}"
+          fi
 
       - name: Install gradle-profiler
         run: ./benchmark/install-gradle-profiler.sh
