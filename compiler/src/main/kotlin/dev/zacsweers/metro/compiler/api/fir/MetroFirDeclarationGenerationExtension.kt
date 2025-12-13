@@ -56,8 +56,8 @@ import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
  *
  * External extensions (loaded via ServiceLoader) are processed BEFORE Metro's native generators.
  * This means:
- * - For functions returning sets (like [getNestedClassifiersNames]), results from all extensions are
- *   accumulated
+ * - For functions returning sets (like [getNestedClassifiersNames]), results from all extensions
+ *   are accumulated
  * - For functions returning single values (like [generateNestedClassLikeDeclaration]), external
  *   extensions get first chance to return a non-null value
  */

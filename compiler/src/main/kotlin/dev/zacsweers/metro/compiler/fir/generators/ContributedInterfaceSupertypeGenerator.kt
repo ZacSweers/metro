@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.generators
 
-import dev.zacsweers.metro.compiler.MetroOption
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.api.fir.MetroContributionExtension
 import dev.zacsweers.metro.compiler.compat.CompatContext
@@ -32,7 +31,6 @@ import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.singleOrError
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Optional
-import java.util.ServiceLoader
 import java.util.TreeMap
 import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.descriptors.Visibilities
@@ -75,9 +73,9 @@ import org.jetbrains.kotlin.name.StandardClassIds
 
 internal class ContributedInterfaceSupertypeGenerator(
   session: FirSession,
-  private val loadExternalContributionExtensions: (FirSession, MetroOptions) -> List<MetroContributionExtension>
-) :
-  FirSupertypeGenerationExtension(session), CompatContext by session.compatContext {
+  private val loadExternalContributionExtensions:
+    (FirSession, MetroOptions) -> List<MetroContributionExtension>,
+) : FirSupertypeGenerationExtension(session), CompatContext by session.compatContext {
 
   /** External contribution extensions loaded via ServiceLoader. */
   private val externalContributionExtensions: List<MetroContributionExtension> by lazy {

@@ -36,8 +36,12 @@ public class MetroFirExtensionRegistrar(
   private val classIds: ClassIds,
   private val options: MetroOptions,
   private val compatContext: CompatContext,
-  private val loadExternalDeclarationExtensions: (FirSession, MetroOptions) -> List<MetroFirDeclarationGenerationExtension> = ::loadExternalDeclarationExtensions,
-  private val loadExternalContributionExtensions: (FirSession, MetroOptions) -> List<MetroContributionExtension> = ::loadExternalContributionExtensions,
+  private val loadExternalDeclarationExtensions:
+    (FirSession, MetroOptions) -> List<MetroFirDeclarationGenerationExtension> =
+    ::loadExternalDeclarationExtensions,
+  private val loadExternalContributionExtensions:
+    (FirSession, MetroOptions) -> List<MetroContributionExtension> =
+    ::loadExternalContributionExtensions,
 ) : FirExtensionRegistrar() {
   override fun ExtensionRegistrarContext.configurePlugin() {
     +MetroFirBuiltIns.getFactory(classIds, options)
@@ -213,9 +217,9 @@ private fun loadExternalDeclarationExtensions(
   options: MetroOptions,
 ): List<MetroFirDeclarationGenerationExtension> {
   return ServiceLoader.load(
-    MetroFirDeclarationGenerationExtension.Factory::class.java,
-    MetroFirDeclarationGenerationExtension.Factory::class.java.classLoader,
-  )
+      MetroFirDeclarationGenerationExtension.Factory::class.java,
+      MetroFirDeclarationGenerationExtension.Factory::class.java.classLoader,
+    )
     .mapNotNull { factory ->
       try {
         factory.create(session, options)
@@ -231,16 +235,14 @@ private fun loadExternalDeclarationExtensions(
     }
 }
 
-
-
 private fun loadExternalContributionExtensions(
   session: FirSession,
-  options: MetroOptions
+  options: MetroOptions,
 ): List<MetroContributionExtension> {
   return ServiceLoader.load(
-    MetroContributionExtension.Factory::class.java,
-    MetroContributionExtension.Factory::class.java.classLoader,
-  )
+      MetroContributionExtension.Factory::class.java,
+      MetroContributionExtension.Factory::class.java.classLoader,
+    )
     .mapNotNull { factory ->
       try {
         factory.create(session, options)
