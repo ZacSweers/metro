@@ -152,6 +152,7 @@ constructor(
     objects.property(Int::class.javaObjectType).convention(25)
 
   /** Enable/disable graph sharding of binding graphs. Disabled by default. */
+  @DelicateMetroGradleApi("Sharding is not yet finished")
   public val enableGraphSharding: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(false)
 
@@ -159,6 +160,7 @@ constructor(
    * Maximum number of binding keys per graph shard when sharding is enabled. Default is 2000, must
    * be > 0.
    */
+  @DelicateMetroGradleApi("Sharding is not yet finished")
   public val keysPerGraphShard: Property<Int> =
     objects.property(Int::class.javaObjectType).convention(2000)
 
