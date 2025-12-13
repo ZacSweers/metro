@@ -21,7 +21,6 @@ This release significantly improves the runtime performance of Metro-generated g
 - **Enhancement**: [graph analysis] Title graph edges with semantically meaningful descriptions of the edge type. They should read a bit more like plain English.
 - **Enhancement**: [graph analysis] Better handle visualizing bound instance inputs.
 - **Enhancement**: [graph analysis] Better handle visualizing bound instance inputs.
-- **Enhancement**: [metrox-viewmodel] Allow viewmodel map keys on callable and type targets.
 - **Fix**: Ensure IC lookups are recorded for all merged contributions.
 - **Fix**: Fix `newInstance()` args not stripping `Lazy` in top-level function inject classes.
 - **Fix**: Allow `Any` to be a `binding<...>()` type if no explicit supertypes are declared.
