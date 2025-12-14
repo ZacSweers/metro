@@ -302,6 +302,119 @@ The scripts detect Metro versions using a semantic version pattern (e.g., `1.0.0
 
 This allows comparing performance across Metro releases or testing a published version against local changes.
 
+## Git Bisect for Performance Regressions
+
+The benchmark suite includes a git bisect tool for automatically finding commits that introduced performance regressions.
+
+### Quick Start
+
+```bash
+# Find a build time regression between v0.8.2 and HEAD
+./metrow bisect --good v0.8.2 --bad HEAD
+
+# Interactive mode - manually judge each commit
+./metrow bisect --good v0.8.2 --bad HEAD --interactive
+
+# Dry run to preview the command
+./metrow bisect --good v0.8.2 --bad HEAD --dry-run
+```
+
+### How It Works
+
+1. **Baseline**: The good ref is published to mavenLocal and benchmarked (cached for subsequent runs)
+2. **Bisect**: For each commit git bisect tests, the script:
+   - Publishes that commit's Metro to mavenLocal with version `1.0.0-bisect-<sha>`
+   - Runs the benchmark against that version
+   - Compares against the baseline and returns good/bad/skip
+3. **Result**: Git bisect identifies the first bad commit
+
+### Benchmark Types
+
+| Type              | Description                         |
+|-------------------|-------------------------------------|
+| `build` (default) | Incremental compilation time        |
+| `startup-jvm`     | JVM cold start time (JMH)           |
+| `startup-jvm-r8`  | JVM cold start with R8 minification |
+
+### Build Scenarios (for `--type build`)
+
+| Scenario        | Description          | File Changed              |
+|-----------------|----------------------|---------------------------|
+| `abi` (default) | ABI change           | `CommonInterfaces.kt`     |
+| `non-abi`       | Non-ABI change       | `AuthFeature10.kt`        |
+| `raw`           | Raw compilation      | None (`--rerun-tasks`)    |
+| `plain-abi`     | Plain Kotlin ABI     | `PlainKotlinFile.kt`      |
+| `plain-non-abi` | Plain Kotlin non-ABI | `PlainKotlinFile.kt`      |
+| `clean`         | Clean build          | None (runs `clean` first) |
+
+### Options
+
+```
+--good <ref>              Git ref where performance was good (required)
+--bad <ref>               Git ref where performance is bad (required)
+--type <type>             Benchmark type: build, startup-jvm, startup-jvm-r8
+--scenario <scenario>     Build scenario (see table above)
+--threshold <percent>     Regression threshold percentage (default: 10)
+--module-count <count>    Number of modules to generate (default: 500)
+--interactive, -i         Interactive mode: manually judge each commit
+--dry-run                 Show the git bisect command without running it
+```
+
+### Examples
+
+```bash
+# Build time regression with 15% threshold
+./metrow bisect --good v0.8.2 --bad HEAD --threshold 15
+
+# Non-ABI change scenario
+./metrow bisect --good v0.8.2 --bad HEAD --scenario non-abi
+
+# JVM startup time regression
+./metrow bisect --good v0.8.2 --bad HEAD --type startup-jvm --threshold 20
+
+# Interactive mode for manual judgment
+./metrow bisect --good v0.8.2 --bad HEAD --interactive
+
+# Smaller module count for faster iteration
+./metrow bisect --good v0.8.2 --bad HEAD --module-count 100
+```
+
+### Interactive Mode
+
+In interactive mode (`--interactive` or `-i`), after each benchmark run you'll be prompted to judge the commit:
+
+```
+============================================
+INTERACTIVE MODE - Manual Judgment Required
+============================================
+
+Commit: abc1234
+Baseline: 5000ms
+Test:     5800ms
+Diff:     800ms (16%)
+
+Is this commit:
+  [g] Good (no regression)
+  [b] Bad (has regression)
+  [s] Skip (can't determine)
+
+Enter judgment [g/b/s]:
+```
+
+This is useful when:
+- Benchmark results are noisy and need human interpretation
+- You want to consider factors beyond raw timing numbers
+- The automatic threshold doesn't capture the regression pattern
+
+### Results
+
+Results for each tested commit are saved to `benchmark/bisect-results/`:
+- `<sha>-build-abi-result.txt` - Build benchmark results
+- `<sha>-startup-jvm-result.txt` - JVM startup results
+- `baseline-build-abi-cache.txt` - Cached baseline time (per scenario)
+
+After bisect completes, run `git bisect reset` to return to your original branch.
+
 ### Android App Configuration
 
 The Android benchmark app (`startup-android/app`) is configured with:

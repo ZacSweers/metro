@@ -136,8 +136,148 @@ case "$1" in
        ./compiler-compat/generate-compat-module.sh "$2"
        ;;
 
+   "bisect")
+       # Git bisect helper for finding benchmark regressions
+       good_ref=""
+       bad_ref=""
+       benchmark_type="build"
+       build_scenario="abi"
+       threshold=10
+       module_count=""
+       interactive=false
+       dry_run=false
+
+       shift  # Remove 'bisect' from args
+
+       while [[ $# -gt 0 ]]; do
+           case "$1" in
+               --good)
+                   good_ref="$2"
+                   shift 2
+                   ;;
+               --bad)
+                   bad_ref="$2"
+                   shift 2
+                   ;;
+               --type)
+                   benchmark_type="$2"
+                   shift 2
+                   ;;
+               --scenario)
+                   build_scenario="$2"
+                   shift 2
+                   ;;
+               --threshold)
+                   threshold="$2"
+                   shift 2
+                   ;;
+               --module-count)
+                   module_count="$2"
+                   shift 2
+                   ;;
+               --interactive|-i)
+                   interactive=true
+                   shift
+                   ;;
+               --dry-run)
+                   dry_run=true
+                   shift
+                   ;;
+               *)
+                   echo "Unknown bisect argument: $1"
+                   exit 1
+                   ;;
+           esac
+       done
+
+       if [[ -z "$good_ref" ]] || [[ -z "$bad_ref" ]]; then
+           echo "Usage: metrow bisect --good <good-ref> --bad <bad-ref> [options]"
+           echo ""
+           echo "Required:"
+           echo "  --good <ref>              Git ref where performance was good (e.g., v0.8.2)"
+           echo "  --bad <ref>               Git ref where performance is bad (e.g., HEAD)"
+           echo ""
+           echo "Options:"
+           echo "  --type <type>             Benchmark type (default: build)"
+           echo "                              build          - Incremental build time"
+           echo "                              startup-jvm    - JVM cold start time (JMH)"
+           echo "                              startup-jvm-r8 - JVM cold start with R8"
+           echo "  --scenario <scenario>     Build scenario (default: abi, only for --type build)"
+           echo "                              abi, non-abi, raw, plain-abi, plain-non-abi, clean"
+           echo "  --threshold <percent>     Regression threshold percentage (default: 10)"
+           echo "  --module-count <count>    Number of modules to generate (default: 500)"
+           echo "  --interactive, -i         Interactive mode: manually judge each commit"
+           echo "  --dry-run                 Show the git bisect command without running it"
+           echo ""
+           echo "Examples:"
+           echo "  metrow bisect --good v0.8.2 --bad HEAD --threshold 15"
+           echo "  metrow bisect --good v0.8.2 --bad HEAD --scenario non-abi"
+           echo "  metrow bisect --good v0.8.2 --bad HEAD --interactive"
+           echo "  metrow bisect --good v0.8.2 --bad HEAD --type startup-jvm --threshold 20"
+           exit 1
+       fi
+
+       # Build the bisect command
+       bisect_opts="--good-ref $good_ref --type $benchmark_type --threshold $threshold"
+       if [[ "$benchmark_type" == "build" ]]; then
+           bisect_opts="$bisect_opts --scenario $build_scenario"
+       fi
+       if [[ -n "$module_count" ]]; then
+           bisect_opts="$bisect_opts --module-count $module_count"
+       fi
+       if [[ "$interactive" == "true" ]]; then
+           bisect_opts="$bisect_opts --interactive"
+       fi
+
+       # Create a stable location for the bisect script that won't disappear when checking out old commits
+       # Use benchmark/tmp which is covered by /benchmark/ in .gitignore
+       bisect_script_dir="$(pwd)/benchmark/tmp/bisect"
+       bisect_script="$bisect_script_dir/bisect-benchmark.sh"
+       bisect_utils="$bisect_script_dir/benchmark-utils.sh"
+
+       if [[ "$dry_run" = true ]]; then
+           echo "Would:"
+           echo "  1. Copy benchmark/bisect-benchmark.sh to $bisect_script"
+           echo "  2. Copy benchmark/benchmark-utils.sh to $bisect_utils"
+           echo "  3. Run: git bisect start $bad_ref $good_ref"
+           echo "  4. Run: git bisect run $bisect_script $bisect_opts"
+           echo ""
+           echo "To reset after bisect completes: git bisect reset"
+       else
+           echo "Starting git bisect..."
+           echo "Good ref: $good_ref"
+           echo "Bad ref:  $bad_ref"
+           echo "Benchmark type: $benchmark_type"
+           if [[ "$benchmark_type" == "build" ]]; then
+               echo "Build scenario: $build_scenario"
+           fi
+           echo "Threshold: ${threshold}%"
+           if [[ -n "$module_count" ]]; then
+               echo "Module count: $module_count"
+           fi
+           if [[ "$interactive" == "true" ]]; then
+               echo "Mode: interactive (manual judgment)"
+           fi
+           echo ""
+
+           # Copy scripts to stable location
+           echo "Copying bisect scripts to $bisect_script_dir..."
+           mkdir -p "$bisect_script_dir"
+           cp benchmark/bisect-benchmark.sh "$bisect_script"
+           cp benchmark/benchmark-utils.sh "$bisect_utils"
+           chmod +x "$bisect_script"
+
+           echo "Running git bisect..."
+           echo ""
+           git bisect start "$bad_ref" "$good_ref" && git bisect run "$bisect_script" $bisect_opts
+           echo ""
+           echo "Bisect complete! Run 'git bisect reset' to return to your original branch."
+           echo "You can clean up the temp scripts with: rm -rf $bisect_script_dir"
+       fi
+       ;;
+
    *)
-       echo "Usage: metrow (publish|check|clean|format|regen|gen-compat)"
+       echo "Usage: metrow (publish|check|clean|format|regen|gen-compat|bisect)"
        echo ""
        echo "publish options:"
        echo "  --version <version>  Specify version for publishing"
@@ -146,6 +286,16 @@ case "$1" in
        echo "check options:"
        echo "  --all                Test against all available compiler versions"
        echo "  --version <version>  Test against specific compiler version"
+       echo ""
+       echo "bisect options:"
+       echo "  --good <ref>              Git ref where performance was good"
+       echo "  --bad <ref>               Git ref where performance is bad"
+       echo "  --type <type>             Benchmark type: build, startup-jvm, startup-jvm-r8"
+       echo "  --scenario <scenario>     Build scenario: abi, non-abi, raw, plain-abi, plain-non-abi, clean"
+       echo "  --threshold <percent>     Regression threshold percentage"
+       echo "  --module-count <count>    Number of modules to generate"
+       echo "  --interactive, -i         Interactive mode: manually judge each commit"
+       echo "  --dry-run                 Show command without running"
        exit 1
        ;;
 esac
