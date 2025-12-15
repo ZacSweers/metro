@@ -221,6 +221,16 @@ constructor(
     objects.property(Boolean::class.javaObjectType).convention(false)
 
   /**
+   * Enable/disable Metro-native Circuit code generation. When enabled, Metro will generate
+   * `Ui.Factory` and `Presenter.Factory` implementations for `@CircuitInject`-annotated classes and
+   * functions.
+   *
+   * Disabled by default.
+   */
+  public val enableCircuitCodegen: Property<Boolean> =
+    objects.property(Boolean::class.javaObjectType).convention(false)
+
+  /**
    * If set, the Metro compiler will dump verbose report diagnostics about resolved dependency
    * graphs to the given destination. Outputs are per-compilation granularity (i.e.
    * `build/metro/main/...`).

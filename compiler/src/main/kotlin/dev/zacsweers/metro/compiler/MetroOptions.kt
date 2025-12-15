@@ -695,6 +695,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
       valueMapper = { it },
     )
+  ),
+  ENABLE_CIRCUIT_CODEGEN(
+    RawMetroOption.boolean(
+      name = "enable-circuit-codegen",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "Enable/disable Metro-native Circuit code generation for @CircuitInject-annotated classes and functions.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
   );
 
   companion object {
@@ -823,6 +834,7 @@ public data class MetroOptions(
       .expectAs<String>()
       .takeUnless(String::isBlank)
       ?.toBooleanStrict(),
+  val enableCircuitCodegen: Boolean = MetroOption.ENABLE_CIRCUIT_CODEGEN.raw.defaultValue.expectAs(),
 ) {
   public fun toBuilder(): Builder = Builder(this)
 
@@ -902,6 +914,7 @@ public data class MetroOptions(
       base.customOptionalBindingAnnotations.toMutableSet()
     public var contributesAsInject: Boolean = base.contributesAsInject
     public var pluginOrderSet: Boolean? = base.pluginOrderSet
+    public var enableCircuitCodegen: Boolean = base.enableCircuitCodegen
 
     private fun FqName.classId(name: String): ClassId {
       return ClassId(this, Name.identifier(name))
@@ -1069,6 +1082,7 @@ public data class MetroOptions(
         customOptionalBindingAnnotations = customOptionalBindingAnnotations,
         contributesAsInject = contributesAsInject,
         pluginOrderSet = pluginOrderSet,
+        enableCircuitCodegen = enableCircuitCodegen,
       )
     }
 
@@ -1253,6 +1267,8 @@ public data class MetroOptions(
             pluginOrderSet =
               configuration.getAsString(entry).takeUnless(String::isBlank)?.toBooleanStrict()
           }
+          MetroOption.ENABLE_CIRCUIT_CODEGEN ->
+            enableCircuitCodegen = configuration.getAsBoolean(entry)
         }
       }
     }

@@ -327,6 +327,7 @@ public class MetroGradleSubplugin @Inject constructor(private val problems: Prob
             )
           )
           add(lazyOption("contributes-as-inject", extension.contributesAsInject))
+          add(lazyOption("enable-circuit-codegen", extension.enableCircuitCodegen))
           // Track whether we ordered the plugin before compose-compiler
           add(SubpluginOption("plugin-order-set", orderComposePlugin.toString()))
           reportsDir.orNull
