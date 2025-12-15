@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.appendLineWithUnderlinedContent
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
@@ -18,24 +19,74 @@ import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.isUnit
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
+import org.jetbrains.kotlin.ir.util.getAnnotation
+import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isPropertyField
 import org.jetbrains.kotlin.ir.util.kotlinFqName
+import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.Name
 
-internal fun IrDeclaration.humanReadableDiagnosticLocation(): String {
-  return when (val declaration = this) {
-    is IrDeclarationParent -> {
-      kotlinFqName.asString()
+internal data class DiagnosticMetadata(val fullPath: String, val metadata: List<String>)
+
+internal fun IrDeclaration.humanReadableDiagnosticMetadata(): DiagnosticMetadata {
+  val fullPath =
+    when (val declaration = this) {
+      is IrDeclarationParent -> {
+        kotlinFqName.asString()
+      }
+      is IrDeclarationWithName -> {
+        fqNameWhenAvailable?.asString() ?: reportCompilerBug("No fqName for property")
+      }
+      else -> {
+        reportCompilerBug("Unsupported declaration type: ${declaration.dumpKotlinLike()}")
+      }
     }
-    is IrDeclarationWithName -> {
-      fqNameWhenAvailable?.asString() ?: reportCompilerBug("No fqName for property")
-    }
-    else -> {
-      reportCompilerBug("Unsupported declaration type: ${declaration.dumpKotlinLike()}")
-    }
+  val metadata = mutableListOf<String>()
+
+  fun addCallableMetadata(declaration: IrDeclaration, originalContainer: IrClass) {
+    val callableMetadata = declaration.getAnnotation(Symbols.FqNames.CallableMetadataClass)!!
+    val propertyName = callableMetadata.constArgumentOfTypeAt<String>(1)!!
+    val callableName = propertyName.ifBlank { callableMetadata.constArgumentOfTypeAt<String>(0)!! }
+    val functionSuffix = if (propertyName.isBlank()) "(...)" else ""
+    metadata +=
+      "This is Metro-generated code for '${originalContainer.kotlinFqName}.${callableName}$functionSuffix' (where the problem is)."
   }
+
+  // Want to avoid just
+  // "Encountered while processing declaration
+  // 'TestClass.MetroContributionToAppScope.BindsMirror.bindIntoMapAsCloseable37607844843760784484_intomap' (no source location available)"
+  // Instead we want
+  // - BindsMirror.bindIntoMapAsCloseable37607844843760784484_intomap is a generated mirror function
+  // for MetroContributionToAppScope.bindIntoMapAsCloseable3760784484
+  val parentClass = parentAsClass
+  if (hasAnnotation(Symbols.ClassIds.CallableMetadata)) {
+    // It's a Binds callable. ParentClass is a BindsMirror
+
+    // Get the original binding container, which may be a generated metro contribution
+    val originalContainer = parentClass.parentAsClass
+    if (originalContainer.hasAnnotation(Symbols.ClassIds.metroContribution)) {
+      // If it's a `@MetroContribution`, get the original contributing class
+      val origin = originalContainer.parentAsClass
+      metadata +=
+        "This is Metro-generated code that contributes '${origin.kotlinFqName}' (where the problem is) to ${originalContainer.getAnnotation(Symbols.ClassIds.metroContribution.asSingleFqName())!!.scopeOrNull()!!.shortClassName}."
+    } else {
+      // If it's not a `@MetroContribution`, just mention it's binding code from the original
+      // binding container
+      addCallableMetadata(this, originalContainer)
+    }
+  } else if (parentClass.hasAnnotation(Symbols.ClassIds.metroContribution)) {
+    // If this is just a generic contribution (i.e. `@ContributesTo`)
+    val origin = parentClass.parentAsClass
+    metadata +=
+      "This is Metro-generated code that contributes '${origin.kotlinFqName}' (where the problem is) to ${parentClass.getAnnotation(Symbols.ClassIds.metroContribution.asSingleFqName())!!.scopeOrNull()!!.shortClassName}."
+  } else if (parentClass.hasAnnotation(Symbols.ClassIds.CallableMetadata)) {
+    // It's a provider factory. ParentClass is a provider mirror
+    addCallableMetadata(parentClass, parentClass.parentAsClass)
+  }
+
+  return DiagnosticMetadata(fullPath, metadata)
 }
 
 context(builder: StringBuilder)

@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler
 
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.MetroAnnotations.Kind
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
@@ -15,6 +16,7 @@ import dev.zacsweers.metro.compiler.ir.asIrAnnotation
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.EnumSet
@@ -215,6 +217,7 @@ private fun kindSetOf(vararg kinds: Kind): Set<Kind> {
   }
 }
 
+context(context: IrMetroContext)
 internal fun IrAnnotationContainer.metroAnnotations(
   ids: ClassIds,
   vararg kinds: Kind,
@@ -222,11 +225,13 @@ internal fun IrAnnotationContainer.metroAnnotations(
   return metroAnnotations(ids, kindSetOf(*kinds))
 }
 
+context(context: IrMetroContext)
 internal fun IrAnnotationContainer.metroAnnotations(
   ids: ClassIds,
   kinds: Set<Kind> = MetroAnnotations.ALL_KINDS,
 ): MetroAnnotations<IrAnnotation> = metroAnnotations(ids, null, kinds)
 
+context(context: IrMetroContext)
 private fun IrAnnotationContainer.metroAnnotations(
   ids: ClassIds,
   callingContainer: IrAnnotationContainer?,
@@ -250,7 +255,7 @@ private fun IrAnnotationContainer.metroAnnotations(
   var assisted: IrAnnotation? = null
   var scope: IrAnnotation? = null
   var qualifier: IrAnnotation? = null
-  var mapKey: IrAnnotation? = null
+  val mapKeys = mutableSetOf<IrAnnotation>()
 
   for (annotation in annotations) {
     val annotationClass = annotation.type.classOrNull?.owner ?: continue
@@ -358,9 +363,25 @@ private fun IrAnnotationContainer.metroAnnotations(
       qualifier = expectNullAndSet("qualifier", qualifier, annotation.asIrAnnotation())
       continue
     } else if (Kind.MapKey in kinds && annotationClass.isAnnotatedWithAny(ids.mapKeyAnnotations)) {
-      mapKey = annotation.asIrAnnotation()
+      mapKeys += annotation.asIrAnnotation()
       continue
     }
+  }
+
+  // There are weird scenarios where external declarations may have
+  // annotations that are not visible to this compilation, so we
+  // do extra validation here
+  if (isIntoMap && mapKeys.isEmpty()) {
+    context.reportCompat(
+      // TODO unfortunate but we do kinda know it's safe here
+      this as IrDeclaration,
+      MetroDiagnostics.METRO_ERROR,
+      "Found an @IntoMap annotation without any @MapKey annotations. " +
+        "This may happen if this is an external declaration that has a map " +
+        "key annotation that is not visible to this compilation. " +
+        "Please check the original source.",
+    )
+    exitProcessing()
   }
 
   val annotations =
@@ -383,7 +404,8 @@ private fun IrAnnotationContainer.metroAnnotations(
       assisted = assisted,
       scope = scope,
       qualifier = qualifier,
-      mapKey = mapKey,
+      mapKey = mapKeys.firstOrNull(),
+      mapKeys = mapKeys,
       symbol = (this as? IrDeclaration)?.symbol,
     )
 

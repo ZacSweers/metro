@@ -85,9 +85,15 @@ internal fun <A : Any> IrMetroContext.reportCompat(
           appendLine()
           appendLine("(context)")
           append("Encountered while processing declaration '")
-          append(irDeclaration.humanReadableDiagnosticLocation())
+          val (fullPath, metadata) = irDeclaration.humanReadableDiagnosticMetadata()
+          append(fullPath)
           append("'")
           appendLine(" (no source location available)")
+          if (metadata.isNotEmpty()) {
+            for (line in metadata) {
+              appendLine("- $line")
+            }
+          }
           extraContext()
         }
       } else {
