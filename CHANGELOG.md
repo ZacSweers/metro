@@ -28,6 +28,7 @@ This release significantly improves the runtime performance of Metro-generated g
 - **Fix**: Mark `MembersInjected` bindings as deferrable in graph metadata reporting.
 - **Fix**: Use eager graphs for dominator tree analysis.
 - **Fix**: Don't apply `replaces` effect from excluded contributions (regular and binding containers).
+- **Fix**: Improve error messaging and hints when invisible map keys are detected.
 
 0.8.2
 -----
