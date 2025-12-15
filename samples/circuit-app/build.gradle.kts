@@ -10,10 +10,14 @@ plugins {
   alias(libs.plugins.compose)
   alias(libs.plugins.kotlin.plugin.compose)
   id("dev.zacsweers.metro")
-  alias(libs.plugins.ksp)
+//  alias(libs.plugins.ksp)
 }
 
-ksp { arg("circuit.codegen.mode", "metro") }
+metro {
+  enableCircuitCodegen.set(true)
+}
+
+//ksp { arg("circuit.codegen.mode", "metro") }
 
 // TODO broken for now until
 //  https://youtrack.jetbrains.com/issue/KT-76715
@@ -59,14 +63,14 @@ kotlin {
   }
 }
 
-dependencies { add("kspCommonMainMetadata", libs.circuit.codegen) }
+//dependencies { add("kspCommonMainMetadata", libs.circuit.codegen) }
 
-tasks.withType<KotlinCompilationTask<*>>().configureEach {
-  if (this is AbstractKotlinCompile<*>) {
-    // Disable incremental in this project because we're generating top-level declarations
-    // TODO remove after Soon™️ (2.2?)
-    incremental = false
-  }
-
-  dependsOn("kspCommonMainKotlinMetadata")
-}
+//tasks.withType<KotlinCompilationTask<*>>().configureEach {
+//  if (this is AbstractKotlinCompile<*>) {
+//    // Disable incremental in this project because we're generating top-level declarations
+//    // TODO remove after Soon™️ (2.2?)
+//    incremental = false
+//  }
+//
+//  dependsOn("kspCommonMainKotlinMetadata")
+//}
