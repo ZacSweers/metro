@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
+import dev.zacsweers.metro.compiler.circuit.CircuitIrExtension
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroFirExtensionRegistrar
 import dev.zacsweers.metro.compiler.ir.MetroIrGenerationExtension
@@ -78,6 +79,11 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
         compatContext = compatContext,
       )
     )
+
+    // Register Circuit IR extension if enabled
+    if (options.enableCircuitCodegen) {
+      IrGenerationExtension.registerExtension(CircuitIrExtension())
+    }
   }
 }
 

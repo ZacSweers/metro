@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.api.fir.MetroContributionExtension
 import dev.zacsweers.metro.compiler.api.fir.MetroFirDeclarationGenerationExtension
+import dev.zacsweers.metro.compiler.circuit.CircuitFactorySupertypeGenerator
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.generators.AssistedFactoryFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.BindingMirrorClassFirGenerator
@@ -57,6 +58,13 @@ public class MetroFirExtensionRegistrar(
       ::ProvidesFactorySupertypeGenerator,
       false,
     )
+    if (options.enableCircuitCodegen) {
+      +supertypeGenerator(
+        "Supertypes - circuit factories",
+        ::CircuitFactorySupertypeGenerator,
+        false,
+      )
+    }
     if (options.transformProvidersToPrivate) {
       +::FirProvidesStatusTransformer
     }
