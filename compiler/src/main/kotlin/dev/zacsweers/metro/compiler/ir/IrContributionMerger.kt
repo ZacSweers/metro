@@ -153,31 +153,39 @@ internal class IrContributionMerger(
       }
     }
 
-    // Process replacements from both regular contributions and binding containers
+    // Process replacements from both regular contributions and binding containers.
+    // Iterate over the mutable collections (post-exclusion) to avoid processing
+    // excluded items.
+    val classesToReplace = mutableSetOf<ClassId>()
 
-    // Read the original copies as we are modifying the mutable copy after this
-    scopedContributions.allContributions.values
-      .asSequence()
-      // Add parent classes of regular contributions (e.g., @Contributes* classes)
-      .mapNotNull { contributions -> contributions.firstOrNull()?.rawTypeOrNull()?.parentAsClass }
-      // binding containers
-      .plus(scopedContributions.bindingContainers.values)
-      .flatMap { contributingClass ->
-        contributingClass
-          .annotationsIn(metroSymbols.classIds.allContributesAnnotations)
-          .flatMap { annotation -> annotation.replacedClasses() }
-          .mapNotNull { replacedClass -> replacedClass.classType.rawType().classId }
-      }
-      .forEach { replacedClassId ->
-        mutableAllContributions.remove(replacedClassId)
-        mutableContributedBindingContainers.remove(replacedClassId)
-
-        // Remove contributions that have @Origin annotation pointing to the replaced class
-        originToContributions[replacedClassId]?.forEach { contributionId ->
-          mutableAllContributions.remove(contributionId)
-          mutableContributedBindingContainers.remove(contributionId)
+    fun collectReplacements(irClass: IrClass) {
+      for (annotation in irClass.annotationsIn(metroSymbols.classIds.allContributesAnnotations)) {
+        for (replacedClass in annotation.replacedClasses()) {
+          replacedClass.classType.rawType().classId?.let { classesToReplace.add(it) }
         }
       }
+    }
+
+    // Scan parent classes of regular contributions (e.g., @Contributes* classes)
+    for (contributions in mutableAllContributions.values) {
+      contributions.firstOrNull()?.rawTypeOrNull()?.parentAsClass?.let { collectReplacements(it) }
+    }
+
+    // Scan binding containers
+    for (containerClass in mutableContributedBindingContainers.values) {
+      collectReplacements(containerClass)
+    }
+
+    for (replacedClassId in classesToReplace) {
+      mutableAllContributions.remove(replacedClassId)
+      mutableContributedBindingContainers.remove(replacedClassId)
+
+      // Remove contributions that have @Origin annotation pointing to the replaced class
+      originToContributions[replacedClassId]?.forEach { contributionId ->
+        mutableAllContributions.remove(contributionId)
+        mutableContributedBindingContainers.remove(contributionId)
+      }
+    }
 
     // Process rank-based replacements if Dagger-Anvil interop is enabled
     if (options.enableDaggerAnvilInterop) {
