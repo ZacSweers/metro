@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.fir
 
 import com.google.common.truth.Truth.assertThat
 import com.tschuchort.compiletesting.KotlinCompilation
+import com.tschuchort.compiletesting.addPreviousResultToClasspath
 import dev.zacsweers.metro.compiler.ExampleGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
 import dev.zacsweers.metro.compiler.allSupertypes
@@ -3242,6 +3243,273 @@ class AggregationTest : MetroCompilerTest() {
         provider.callFunction<Set<Any>>("invoke").first().callProperty<Any>("singleton")
       assertThat(singleton0).isSameInstanceAs(singleton1)
       assertThat(singleton0).isSameInstanceAs(singleton2)
+    }
+  }
+
+  /**
+   * This test verifies that when an `@IntoMap` binding has a `@MapKey` annotation that is not
+   * visible to the consuming graph's compilation (because the annotation class is in a transitive
+   * dependency that isn't on the direct classpath), we report a useful error message.
+   *
+   * Structure:
+   * - Module "common": Defines `@MapKey annotation class ServiceKey` (internal visibility)
+   * - Module "feature": Depends on common, defines `TestClass` with `@ServiceKey` and
+   *   `@ContributesIntoMap`
+   * - Module "main": Depends only on "feature" (not common directly), defines `AppGraph`
+   *
+   * When "main" compiles, it can see `TestClass` (from feature), but not the `@MapKey` annotation
+   * on `ServiceKey` (from common), causing the error.
+   *
+   * https://github.com/ZacSweers/metro/issues/1509
+   */
+  @Test
+  fun `ContributesIntoMap with transitive invisible map key has a useful error`() {
+    // Module "common" - defines the MapKey annotation
+    val commonCompilation =
+      compile(
+        source(
+          fileNameWithoutExtension = "ServiceKey",
+          source =
+            """
+            import dev.zacsweers.metro.MapKey
+            import java.io.Closeable
+
+            @MapKey
+            annotation class ServiceKey(val value: KClass<out Closeable>)
+            """
+              .trimIndent(),
+          packageName = "common",
+        )
+      )
+
+    // Module "feature" - depends on common, defines TestClass with the ServiceKey
+    val featureCompilation =
+      compile(
+        source(
+          fileNameWithoutExtension = "TestClass",
+          source =
+            """
+            import common.ServiceKey
+            import dev.zacsweers.metro.ContributesIntoMap
+            import dev.zacsweers.metro.Inject
+            import java.io.Closeable
+
+            @Inject
+            @ContributesIntoMap(AppScope::class)
+            @ServiceKey(TestClass::class)
+            class TestClass : Closeable {
+              override fun close() {}
+            }
+            """
+              .trimIndent(),
+          packageName = "feature",
+        ),
+        compilationBlock = { addPreviousResultToClasspath(commonCompilation) },
+      )
+
+    // Module "main" - depends only on feature (not common), defines the graph
+    // This should fail because ServiceKey is not visible to this compilation
+    compile(
+      source(
+        """
+        import feature.TestClass
+        import java.io.Closeable
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          @Multibinds
+          fun services(): Map<KClass<out Closeable>, Closeable>
+        }
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
+      compilationBlock = {
+        // Only add feature, not common - this simulates the transitive dependency scenario
+        addPreviousResultToClasspath(featureCompilation)
+      },
+    ) {
+      assertDiagnostics(
+        """
+        e: Found an @IntoMap annotation without any @MapKey annotations. This may happen if this is an external declaration that has a map key annotation that is not visible to this compilation. Please check the original source.
+
+        (context)
+        Encountered while processing declaration 'feature.TestClass.MetroContributionToAppScope.BindsMirror.bindIntoMapAsCloseable18543831191854383119_intomap' (no source location available)
+        - This is Metro-generated code that contributes 'feature.TestClass' (where the problem is) to AppScope.
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `ContributesIntoMap explicit binds with transitive invisible map key has a useful error`() {
+    val commonCompilation =
+      compile(
+        source(
+          fileNameWithoutExtension = "ServiceKey",
+          source =
+            """
+            import dev.zacsweers.metro.MapKey
+            import java.io.Closeable
+
+            @MapKey
+            annotation class ServiceKey(val value: KClass<out Closeable>)
+            """
+              .trimIndent(),
+          packageName = "common",
+        )
+      )
+
+    // Module "feature" - depends on common, defines TestClass with the ServiceKey
+    val featureCompilation =
+      compile(
+        source(
+          fileNameWithoutExtension = "TestClass",
+          source =
+            """
+            import common.ServiceKey
+            import dev.zacsweers.metro.ContributesIntoMap
+            import dev.zacsweers.metro.Inject
+            import dev.zacsweers.metro.IntoMap
+            import java.io.Closeable
+
+            @Inject
+            class TestClass : Closeable {
+              override fun close() {}
+            }
+
+            @ContributesTo(AppScope::class)
+            interface Bindings {
+              @Binds
+              @IntoMap
+              @ServiceKey(TestClass::class)
+              val TestClass.bind: Closeable
+            }
+            """
+              .trimIndent(),
+          packageName = "feature",
+        ),
+        compilationBlock = { addPreviousResultToClasspath(commonCompilation) },
+      )
+
+    // Module "main" - depends only on feature (not common), defines the graph
+    // This should fail because ServiceKey is not visible to this compilation
+    compile(
+      source(
+        """
+        import feature.TestClass
+        import java.io.Closeable
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          @Multibinds
+          fun services(): Map<KClass<out Closeable>, Closeable>
+        }
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
+      compilationBlock = {
+        // Only add feature, not common - this simulates the transitive dependency scenario
+        addPreviousResultToClasspath(featureCompilation)
+      },
+    ) {
+      assertDiagnostics(
+        """
+        e: Found an @IntoMap annotation without any @MapKey annotations. This may happen if this is an external declaration that has a map key annotation that is not visible to this compilation. Please check the original source.
+
+        (context)
+        Encountered while processing declaration 'feature.Bindings.BindsMirror.bind1854383119_intomap' (no source location available)
+        - This is Metro-generated code for 'feature.Bindings.bind' (where the problem is).
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `ContributesIntoMap explicit provides with transitive invisible map key has a useful error`() {
+    val commonCompilation =
+      compile(
+        source(
+          fileNameWithoutExtension = "ServiceKey",
+          source =
+            """
+            import dev.zacsweers.metro.MapKey
+            import java.io.Closeable
+
+            @MapKey
+            annotation class ServiceKey(val value: KClass<out Closeable>)
+            """
+              .trimIndent(),
+          packageName = "common",
+        )
+      )
+
+    // Module "feature" - depends on common, defines TestClass with the ServiceKey
+    val featureCompilation =
+      compile(
+        source(
+          fileNameWithoutExtension = "TestClass",
+          source =
+            """
+            import common.ServiceKey
+            import dev.zacsweers.metro.ContributesIntoMap
+            import dev.zacsweers.metro.Provides
+            import dev.zacsweers.metro.IntoMap
+            import java.io.Closeable
+
+            class TestClass : Closeable {
+              override fun close() {}
+            }
+
+            @ContributesTo(AppScope::class)
+            interface Bindings {
+              @Provides
+              @IntoMap
+              @ServiceKey(TestClass::class)
+              fun provideCloseable(): Closeable = TestClass()
+            }
+            """
+              .trimIndent(),
+          packageName = "feature",
+        ),
+        compilationBlock = { addPreviousResultToClasspath(commonCompilation) },
+      )
+
+    // Module "main" - depends only on feature (not common), defines the graph
+    // This should fail because ServiceKey is not visible to this compilation
+    compile(
+      source(
+        """
+        import feature.TestClass
+        import java.io.Closeable
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          @Multibinds
+          fun services(): Map<KClass<out Closeable>, Closeable>
+        }
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
+      compilationBlock = {
+        // Only add feature, not common - this simulates the transitive dependency scenario
+        addPreviousResultToClasspath(featureCompilation)
+      },
+    ) {
+      assertDiagnostics(
+        """
+        e: Found an @IntoMap annotation without any @MapKey annotations. This may happen if this is an external declaration that has a map key annotation that is not visible to this compilation. Please check the original source.
+
+        (context)
+        Encountered while processing declaration 'feature.Bindings.ProvideCloseableMetroFactory.mirrorFunction' (no source location available)
+        - This is Metro-generated code for 'feature.Bindings.provideCloseable(...)' (where the problem is).
+        """
+          .trimIndent()
+      )
     }
   }
 }
