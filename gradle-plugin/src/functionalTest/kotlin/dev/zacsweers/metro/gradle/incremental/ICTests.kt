@@ -17,6 +17,7 @@ import dev.zacsweers.metro.gradle.classLoader
 import dev.zacsweers.metro.gradle.cleanOutputLine
 import dev.zacsweers.metro.gradle.source
 import java.io.File
+import java.net.URLClassLoader
 import org.gradle.testkit.runner.TaskOutcome
 import org.junit.Assume.assumeTrue
 import org.junit.Ignore
@@ -685,6 +686,89 @@ class ICTests : BaseIncrementalCompilationTest() {
     val exampleGraph = classLoader.loadClass("test.ExampleGraph")
     assertThat(exampleGraph.interfaces.map { it.name })
       .contains("test.ContributedInterface2\$MetroContributionToUnit")
+  }
+
+  @Test
+  fun contributesToAddedInApiDependencyIsDetected() {
+    val fixture = object : MetroProject() {
+      override fun sources() = throw IllegalStateException()
+
+      override val gradleProject: GradleProject
+        get() =
+          newGradleProjectBuilder(DslKind.KOTLIN)
+            .withRootProject { withMetroSettings() }
+            .withSubproject("app") {
+              sources.add(appGraph)
+              withBuildScript {
+                applyMetroDefault()
+                dependencies(Dependency.implementation(":lib:impl"))
+              }
+            }
+            .withSubproject("lib") {
+              sources.add(dummy)
+              withBuildScript { applyMetroDefault() }
+            }
+            .withSubproject("lib:impl") {
+              sources.add(source("class LibImpl"))
+              withBuildScript {
+                applyMetroDefault()
+                dependencies(Dependency.api(":lib"))
+              }
+            }
+            .write()
+
+      private val appGraph = source(
+        """
+          @DependencyGraph(AppScope::class)
+          interface AppGraph
+          """
+      )
+
+      val dummy = source(
+        """
+          @Inject
+          class Dummy
+          """
+      )
+
+      val dummyWithContributionSource = """
+          @Inject
+          class Dummy
+
+          @ContributesTo(AppScope::class)
+          internal interface DummyBindings {
+            val dummy: Dummy
+          }
+        """
+    }
+
+    val project = fixture.gradleProject
+    val libProject = project.subprojects.first { it.name.removePrefix(":") == "lib" }
+
+    fun appClassLoader(): ClassLoader {
+      val urls =
+        project.subprojects.mapNotNull { subproject ->
+          val projectPath = subproject.name.removePrefix(":").replace(":", "/")
+          val classesDir = project.rootDir.resolve("$projectPath/build/classes/kotlin/main")
+          if (classesDir.exists()) classesDir.toURI().toURL() else null
+        }
+      return URLClassLoader(urls.toTypedArray(), this::class.java.classLoader)
+    }
+
+    val firstBuildResult = build(project.rootDir, ":app:compileKotlin")
+    assertThat(firstBuildResult.task(":app:compileKotlin")?.outcome)
+      .isEqualTo(TaskOutcome.SUCCESS)
+
+    libProject.modify(project.rootDir, fixture.dummy, fixture.dummyWithContributionSource)
+
+    val secondBuildResult = build(project.rootDir, ":app:compileKotlin")
+    assertThat(secondBuildResult.task(":app:compileKotlin")?.outcome)
+      .isEqualTo(TaskOutcome.SUCCESS)
+
+    val secondClassLoader = appClassLoader()
+    val secondAppGraph = secondClassLoader.loadClass("test.AppGraph")
+    assertThat(secondAppGraph.interfaces.map { it.name })
+      .contains("test.DummyBindings\$MetroContributionToAppScope")
   }
 
   @Test
@@ -2255,7 +2339,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val numRuns = 3
 
     repeat(numRuns) { i ->
-      println("Running build ${i+1}/$numRuns...")
+      println("Running build ${i + 1}/$numRuns...")
       build(project.rootDir, "assemble", "--no-configuration-cache", "--rerun-tasks")
     }
   }
