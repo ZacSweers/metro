@@ -2725,6 +2725,7 @@
 <li>🤏 Reduces generated graph code size by <strong>60–70%</strong> (even higher if you heavily use multibindings)</li>
 <li>[docs] Add runtime benchmarks to performance docs: <a href="https://zacsweers.github.io/metro/latest/performance#runtime-performance">https://zacsweers.github.io/metro/latest/performance#runtime-performance</a></li>
 <li>[docs] Refresh build performance docs: <a href="https://zacsweers.github.io/metro/latest/performance#build-performance">https://zacsweers.github.io/metro/latest/performance#build-performance</a></li>
+<li>[docs] Add a new quick start doc: Last bit: Metro now has a quick start doc! <a href="https://zacsweers.github.io/metro/latest/quickstart/">https://zacsweers.github.io/metro/latest/quickstart/</a></li>
 <li><strong>Behavior change</strong>: When using top-level function injection, the generated class now has the same name as the function. Previously it was suffixed with <code>Class</code>.</li>
 <li><strong>New</strong>: Experimental support for sharding large graphs. For extremely large dependency graphs on the JVM, their generated implementations could exceed the JVM class size limit. To avoid this, Metro now supports sharding within graphs (as needed) to distribute initialization code across multiple inner <em>shard</em> classes. This is currently disabled by default but can be enabled via the <code>enableGraphSharding</code> Gradle DSL property.</li>
 <li><strong>New</strong>: Support <code>@Provides</code> properties with <code>@JvmField</code> annotations.</li>
@@ -2760,6 +2761,7 @@
 <li><a href="https://github.com/mateherber-jt">@mateherber-jt</a></li>
 <li><a href="https://github.com/neworld">@neworld</a></li>
 <li><a href="https://github.com/ritesh-singh">@ritesh-singh</a></li>
+<li><a href="https://github.com/zsmb13">@zsmb13</a></li>
 </ul>
 <h2 id="082">0.8.2<a class="headerlink" href="#082" title="Permanent link">&para;</a></h2>
 <p><em>2025-12-04</em></p>
