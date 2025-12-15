@@ -54,36 +54,31 @@ internal fun IrDeclaration.humanReadableDiagnosticMetadata(): DiagnosticMetadata
       "This is Metro-generated code for '${originalContainer.kotlinFqName}.${callableName}$functionSuffix' (where the problem is)."
   }
 
-  // Want to avoid just
-  // "Encountered while processing declaration
-  // 'TestClass.MetroContributionToAppScope.BindsMirror.bindIntoMapAsCloseable37607844843760784484_intomap' (no source location available)"
-  // Instead we want
-  // - BindsMirror.bindIntoMapAsCloseable37607844843760784484_intomap is a generated mirror function
-  // for MetroContributionToAppScope.bindIntoMapAsCloseable3760784484
-  val parentClass = parentAsClass
-  if (hasAnnotation(Symbols.ClassIds.CallableMetadata)) {
-    // It's a Binds callable. ParentClass is a BindsMirror
-
-    // Get the original binding container, which may be a generated metro contribution
-    val originalContainer = parentClass.parentAsClass
-    if (originalContainer.hasAnnotation(Symbols.ClassIds.metroContribution)) {
-      // If it's a `@MetroContribution`, get the original contributing class
-      val origin = originalContainer.parentAsClass
+  // Add more metadata to the error if it's generated metro code
+  parentClassOrNull?.let { parentClass ->
+    if (hasAnnotation(Symbols.ClassIds.CallableMetadata)) {
+      // It's a Binds callable. ParentClass is a BindsMirror
+      // Get the original binding container, which may be a generated metro contribution
+      val originalContainer = parentClass.parentAsClass
+      if (originalContainer.hasAnnotation(Symbols.ClassIds.metroContribution)) {
+        // If it's a `@MetroContribution`, get the original contributing class
+        val origin = originalContainer.parentAsClass
+        metadata +=
+          "This is Metro-generated code that contributes '${origin.kotlinFqName}' (where the problem is) to ${originalContainer.getAnnotation(Symbols.ClassIds.metroContribution.asSingleFqName())!!.scopeOrNull()!!.shortClassName}."
+      } else {
+        // If it's not a `@MetroContribution`, just mention it's binding code from the original
+        // binding container
+        addCallableMetadata(this, originalContainer)
+      }
+    } else if (parentClass.hasAnnotation(Symbols.ClassIds.metroContribution)) {
+      // If this is just a generic contribution (i.e. `@ContributesTo`)
+      val origin = parentClass.parentAsClass
       metadata +=
-        "This is Metro-generated code that contributes '${origin.kotlinFqName}' (where the problem is) to ${originalContainer.getAnnotation(Symbols.ClassIds.metroContribution.asSingleFqName())!!.scopeOrNull()!!.shortClassName}."
-    } else {
-      // If it's not a `@MetroContribution`, just mention it's binding code from the original
-      // binding container
-      addCallableMetadata(this, originalContainer)
+        "This is Metro-generated code that contributes '${origin.kotlinFqName}' (where the problem is) to ${parentClass.getAnnotation(Symbols.ClassIds.metroContribution.asSingleFqName())!!.scopeOrNull()!!.shortClassName}."
+    } else if (parentClass.hasAnnotation(Symbols.ClassIds.CallableMetadata)) {
+      // It's a provider factory. ParentClass is a provider mirror
+      addCallableMetadata(parentClass, parentClass.parentAsClass)
     }
-  } else if (parentClass.hasAnnotation(Symbols.ClassIds.metroContribution)) {
-    // If this is just a generic contribution (i.e. `@ContributesTo`)
-    val origin = parentClass.parentAsClass
-    metadata +=
-      "This is Metro-generated code that contributes '${origin.kotlinFqName}' (where the problem is) to ${parentClass.getAnnotation(Symbols.ClassIds.metroContribution.asSingleFqName())!!.scopeOrNull()!!.shortClassName}."
-  } else if (parentClass.hasAnnotation(Symbols.ClassIds.CallableMetadata)) {
-    // It's a provider factory. ParentClass is a provider mirror
-    addCallableMetadata(parentClass, parentClass.parentAsClass)
   }
 
   return DiagnosticMetadata(fullPath, metadata)
