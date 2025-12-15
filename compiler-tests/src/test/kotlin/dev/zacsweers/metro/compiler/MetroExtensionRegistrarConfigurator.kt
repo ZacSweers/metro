@@ -5,6 +5,10 @@ package dev.zacsweers.metro.compiler
 import dev.zacsweers.metro.compiler.api.GenerateImplContributionExtension
 import dev.zacsweers.metro.compiler.api.GenerateImplExtension
 import dev.zacsweers.metro.compiler.api.GenerateImplIrExtension
+import dev.zacsweers.metro.compiler.circuit.CircuitContributionExtension
+import dev.zacsweers.metro.compiler.circuit.CircuitFirExtension
+import dev.zacsweers.metro.compiler.circuit.CircuitIrExtension
+import dev.zacsweers.metro.compiler.circuit.configureCircuit
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroFirExtensionRegistrar
 import dev.zacsweers.metro.compiler.interop.Ksp2AdditionalSourceProvider
@@ -41,6 +45,7 @@ fun TestConfigurationBuilder.configurePlugin() {
   configureDaggerAnnotations()
   configureDaggerInterop()
   configureGuiceInterop()
+  configureCircuit()
   useAdditionalSourceProviders(::Ksp2AdditionalSourceProvider)
 }
 
@@ -136,6 +141,10 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         if (MetroDirectives.enableGuiceInterop(module.directives)) {
           enableGuiceRuntimeInterop = true
         }
+
+        if (MetroDirectives.ENABLE_CIRCUIT in module.directives) {
+          enableCircuitCodegen = true
+        }
       }
 
     if (!options.enabled) return
@@ -147,9 +156,23 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         classIds,
         options,
         compatContext,
-        { session, options -> listOf(GenerateImplExtension.Factory().create(session, options)) },
+        { session, options ->
+          buildList {
+              add(GenerateImplExtension.Factory().create(session, options))
+              if (options.enableCircuitCodegen) {
+                add(CircuitFirExtension.Factory().create(session, options))
+              }
+            }
+            .filterNotNull()
+        },
       ) { session, options ->
-        listOf(GenerateImplContributionExtension.Factory().create(session, options))
+        buildList {
+            add(GenerateImplContributionExtension.Factory().create(session, options))
+            if (options.enableCircuitCodegen) {
+              add(CircuitContributionExtension.Factory().create(session, options))
+            }
+          }
+          .filterNotNull()
       }
     )
     IrGenerationExtension.registerExtension(
@@ -164,5 +187,8 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
       )
     )
     IrGenerationExtension.registerExtension(GenerateImplIrExtension())
+    if (options.enableCircuitCodegen) {
+      IrGenerationExtension.registerExtension(CircuitIrExtension())
+    }
   }
 }

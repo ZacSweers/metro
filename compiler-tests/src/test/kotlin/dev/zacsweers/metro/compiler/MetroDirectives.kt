@@ -115,6 +115,10 @@ object MetroDirectives : SimpleDirectivesContainer() {
     stringDirective(
       "Relative path to a directory to dump Metro reports information. Example: 'metro/reports'."
     )
+  val ENABLE_CIRCUIT by
+  directive(
+    "Enables Circuit code gen."
+  )
 
   fun enableDaggerRuntime(directives: RegisteredDirectives): Boolean {
     return WITH_DAGGER in directives ||
