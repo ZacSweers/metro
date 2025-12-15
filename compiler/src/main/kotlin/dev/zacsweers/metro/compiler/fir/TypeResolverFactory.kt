@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir
 
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirFile
@@ -12,6 +13,7 @@ import org.jetbrains.kotlin.fir.resolve.providers.firProvider
 import org.jetbrains.kotlin.fir.resolve.typeResolver
 import org.jetbrains.kotlin.fir.scopes.createImportingScopes
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.FirUserTypeRef
@@ -45,6 +47,26 @@ internal sealed interface MetroFirTypeResolver {
         allSessions.firstNotNullOfOrNull {
           it.firProvider.getFirClassifierContainerFileIfAny(classSymbol)
         } ?: return null
+      return create(file)
+    }
+
+    context(compatContext: CompatContext)
+    fun create(functionSymbol: FirFunctionSymbol<*>): MetroFirTypeResolver? {
+      if (functionSymbol.origin !is FirDeclarationOrigin.Source) return ExternalMetroFirTypeResolver
+
+      // if it's not top-level, create in the class instead
+      val enclosingClass = with(compatContext) { functionSymbol.getContainingClassSymbol() }
+      if (enclosingClass != null) return create(enclosingClass)
+
+      // Look up through all firProviders as we may be a KMP compilation
+      val file: FirFile =
+        allSessions.firstNotNullOfOrNull {
+          it.firProvider.getFirCallableContainerFile(functionSymbol)
+        } ?: return null
+      return create(file)
+    }
+
+    private fun create(file: FirFile): MetroFirTypeResolver? {
       return resolversByFile.getOrPut(file) {
         val scopes = createImportingScopes(file, session, scopeSession)
         val configuration = TypeResolutionConfiguration(scopes, emptyList(), useSiteFile = file)
