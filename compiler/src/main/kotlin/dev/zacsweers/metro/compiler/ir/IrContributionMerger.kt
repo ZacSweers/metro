@@ -2,10 +2,17 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.expectAsOrNull
+import dev.zacsweers.metro.compiler.fir.annotationsIn
+import dev.zacsweers.metro.compiler.fir.coneTypeIfResolved
+import dev.zacsweers.metro.compiler.fir.replacesArgument
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.SortedMap
 import java.util.SortedSet
+import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
+import org.jetbrains.kotlin.fir.lazy.Fir2IrLazyClass
+import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
@@ -159,11 +166,29 @@ internal class IrContributionMerger(
     val classesToReplace = mutableSetOf<ClassId>()
 
     fun collectReplacements(irClass: IrClass) {
-      for (annotation in irClass.annotationsIn(metroSymbols.classIds.allContributesAnnotations)) {
-        for (replacedClass in annotation.replacedClasses()) {
-          replacedClass.classType.rawType().classId?.let { classesToReplace.add(it) }
+      // IrClass#annotations does not expose generated .Container annotations which house repeated
+      // annotations. So e.g. if you have one @ContributesBinding, it will show up in
+      // IrClass#annotations, but if you have two @ContributesBinding, then neither will be
+      // included, nor will their associated .Container annotation.
+      val replacedClasses =
+        if (irClass.isExternalParent) {
+          (irClass as? Fir2IrLazyClass)
+            ?.fir
+            ?.symbol
+            ?.annotationsIn(
+              irClass.session,
+              metroSymbols.classIds.allContributesAnnotationsWithContainers,
+            )
+            ?.flatMap { it.replacesArgument()?.argumentList?.arguments.orEmpty() }
+            ?.mapNotNull { it.expectAsOrNull<FirGetClassCall>()?.coneTypeIfResolved()?.classId }
+            .orEmpty()
+        } else {
+          irClass
+            .annotationsIn(metroSymbols.classIds.allContributesAnnotationsWithContainers)
+            .flatMap { annotation -> annotation.replacedClasses() }
+            .mapNotNull { replacedClass -> replacedClass.classType.rawType().classId }
         }
-      }
+      classesToReplace.addAll(replacedClasses)
     }
 
     // Scan parent classes of regular contributions (e.g., @Contributes* classes)

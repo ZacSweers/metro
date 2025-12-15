@@ -38,6 +38,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("BindingReplacementFromClassWithMultipleBindingsInGraphExtension.kt")
+    public void testBindingReplacementFromClassWithMultipleBindingsInGraphExtension() {
+      runTest("compiler-tests/src/test/data/box/aggregation/BindingReplacementFromClassWithMultipleBindingsInGraphExtension.kt");
+    }
+
+    @Test
     @TestMetadata("ComputedPropertiesIntoSet.kt")
     public void testComputedPropertiesIntoSet() {
       runTest("compiler-tests/src/test/data/box/aggregation/ComputedPropertiesIntoSet.kt");

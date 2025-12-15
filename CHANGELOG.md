@@ -5,6 +5,7 @@ Changelog
 --------------
 
 - **Fix**: Don't apply `replaces` effect from excluded contributions in cross-module scenarios.
+- **Fix**: Fix binding replacements getting dropped in classes with multiple contributions in graph extensions.
 
 0.9.1
 -----
