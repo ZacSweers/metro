@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
+import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.ir.BindsCallable
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
@@ -903,6 +904,7 @@ internal class DependencyGraphNodeCache(
             primaryScope = aggregationScopes.first(),
             allScopes = aggregationScopes,
             excluded = excludes,
+            callingDeclaration = graphDeclaration,
           )
           ?.bindingContainers
           ?.values
@@ -981,7 +983,7 @@ internal class DependencyGraphNodeCache(
             }
           }
           for (callable in bindsMirror.optionalKeys) {
-            optionalKeys.getOrPut(callable.typeKey, ::mutableSetOf) += callable
+            optionalKeys.getAndAdd(callable.typeKey, callable)
             if (isDynamicContainer) {
               dynamicTypeKeys[callable.typeKey] = callable
             }
@@ -1116,7 +1118,7 @@ internal class DependencyGraphNodeCache(
               bindsCallables.putAll(bindsMirror.bindsCallables.associateBy { it.typeKey })
               multibindsCallables += bindsMirror.multibindsCallables
               for (callable in bindsMirror.optionalKeys) {
-                optionalKeys.getOrPut(callable.typeKey) { mutableSetOf() } += callable
+                optionalKeys.getAndAdd(callable.typeKey, callable)
               }
             }
           }

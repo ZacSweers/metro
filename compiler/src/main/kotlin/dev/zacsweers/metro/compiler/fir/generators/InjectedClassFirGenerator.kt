@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.fir.generators
 
 import dev.zacsweers.metro.compiler.NameAllocator
-import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.Keys
@@ -103,10 +102,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
         .filterIsInstance<FirNamedFunctionSymbol>()
         .filter { it.callableId.classId == null }
         .associateBy {
-          ClassId(
-            it.callableId.packageName,
-            "${it.callableId.callableName.capitalizeUS()}Class".asName(),
-          )
+          ClassId(it.callableId.packageName, it.callableId.callableName.capitalizeUS())
         }
     }
 
@@ -123,9 +119,9 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
    * Will generate
    *
    * ```
-   * class AppClass @Inject constructor(private val message: String) {
+   * class AppClass @Inject constructor(private val message: Provider<String>) {
    *   operator fun invoke() {
-   *     App(message)
+   *     App(message())
    *   }
    * }
    * ```

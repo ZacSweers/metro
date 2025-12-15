@@ -59,15 +59,18 @@ public class GraphAnalyzer(private val bindingGraph: BindingGraph) {
    * Computes dominator relationships in the graph. A node X dominates node Y if every path from a
    * root to Y must pass through X. Nodes that dominate many others are critical bottlenecks.
    *
+   * Uses the eager graph (construction-time dependencies only) since dominator analysis requires a
+   * DAG and is most meaningful for understanding construction order bottlenecks.
+   *
    * @see <a href="http://www.hipersoft.rice.edu/grads/publications/dom14.pdf">A Simple, Fast
    *   Dominance Algorithm.</a>
    */
   public fun computeDominators(): DominatorResult {
-    if (fullGraph.nodes().isEmpty()) {
+    if (eagerGraph.nodes().isEmpty()) {
       return DominatorResult(emptyList())
     }
 
-    val dominators = Dominators(fullGraph)
+    val dominators = Dominators(eagerGraph)
     val result =
       dominators
         .nodes()
@@ -111,18 +114,21 @@ public class GraphAnalyzer(private val bindingGraph: BindingGraph) {
   /**
    * Computes shortest paths from all nodes to the graph root using Dijkstra's algorithm.
    *
+   * Uses the eager graph (construction-time dependencies only) for consistent analysis with other
+   * DAG-based algorithms and to avoid potential issues with cycles from deferred dependencies.
+   *
    * Paths are stored as lists from each node to the root (inclusive).
    */
   public fun computePathsToRoot(): PathsToRootResult {
     val graphRoot = bindingGraph.graphRoot
-    if (graphRoot == null || fullGraph.nodes().isEmpty()) {
+    if (graphRoot == null || eagerGraph.nodes().isEmpty()) {
       return PathsToRootResult("", emptyMap())
     }
 
-    val shortestPath = ShortestPath(fullGraph, graphRoot)
+    val shortestPath = ShortestPath(eagerGraph, graphRoot)
     val paths = mutableMapOf<String, List<String>>()
 
-    for (node in fullGraph.nodes()) {
+    for (node in eagerGraph.nodes()) {
       if (shortestPath.hasPathTo(node)) {
         // pathTo returns path from root to node, we want node to root so reverse it
         paths[node] = shortestPath.pathTo(node).toList().reversed()

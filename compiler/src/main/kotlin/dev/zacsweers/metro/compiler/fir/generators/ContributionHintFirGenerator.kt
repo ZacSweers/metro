@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.fir.memoizedAllSessionsSequence
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.resolvedArgumentTypeRef
 import dev.zacsweers.metro.compiler.fir.scopeArgument
+import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.ir.transformers.HintGenerator
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.scopeHintFunctionName
@@ -80,9 +81,10 @@ internal class ContributionHintFirGenerator(session: FirSession, compatContext: 
           }
         for (contributionScope in contributionScopes) {
           val hintName = contributionScope.scopeHintFunctionName()
-          callableIds
-            .getOrPut(CallableId(Symbols.FqNames.metroHintsPackage, hintName), ::mutableSetOf)
-            .add(contributingClass)
+          callableIds.getAndAdd(
+            CallableId(Symbols.FqNames.metroHintsPackage, hintName),
+            contributingClass,
+          )
         }
       }
 

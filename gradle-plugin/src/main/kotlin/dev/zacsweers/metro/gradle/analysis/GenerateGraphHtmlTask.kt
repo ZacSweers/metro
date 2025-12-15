@@ -483,6 +483,14 @@ ${metadata.graphs.joinToString("\n") { graph ->
       background: #009952;
       height: 3px;
     }
+    .edge-legend-item .edge-line.boundinstance {
+      background: #008EB7;
+      height: 3px;
+    }
+    .edge-legend-item .edge-line.injects {
+      background: #799534;
+      height: 3px;
+    }
     .edge-legend-item .edge-line.inherited {
       background: #EB6800;
       border-style: dashed;
@@ -723,6 +731,8 @@ ${packages.mapIndexed { i, pkg ->
             <div class="edge-legend">
               <div class="edge-legend-item"><span class="edge-line normal"></span> Normal dependency</div>
               <div class="edge-legend-item"><span class="edge-line accessor"></span> Accessor (graph entry point)</div>
+              <div class="edge-legend-item"><span class="edge-line boundinstance"></span> Bound instance (graph input)</div>
+              <div class="edge-legend-item"><span class="edge-line injects"></span> Injects (member injection)</div>
               <div class="edge-legend-item"><span class="edge-line inherited"></span> Inherited binding (from parent)</div>
               <div class="edge-legend-item"><span class="edge-line deferrable"></span> Deferrable (Provider/Lazy)</div>
               <div class="edge-legend-item"><span class="edge-line assisted"></span> Assisted injection</div>
@@ -843,20 +853,28 @@ ${packages.mapIndexed { i, pkg ->
               const d = params.data;
               // For deferrable edges, show the specific type (Provider or Lazy)
               if (d.edgeType === 'deferrable' && d.wrapperType) {
-                return 'Deferrable (' + d.wrapperType + ')';
+                return 'depends on (' + d.wrapperType + ')';
+              }
+              // For injects edges, distinguish between graph->target and target->dependency
+              if (d.edgeType === 'injects') {
+                if (d.wrapperType === 'MembersInjected') {
+                  return 'is member-injected into';
+                }
+                return 'member injects';
               }
               const edgeLabels = {
-                'accessor': 'Accessor (graph entry point)',
-                'inherited': 'Inherited binding (from parent graph)',
-                'deferrable': 'Deferrable (Provider/Lazy)',
-                'assisted': 'Assisted injection',
-                'multibinding': 'Multibinding source',
-                'alias': 'Alias (type binding)',
-                'default': 'Default value (fallback available)',
-                'default-resolves': 'Default resolves to binding',
-                'normal': 'Normal dependency'
+                'accessor': 'accessor (graph entry point)',
+                'boundinstance': 'bound instance (graph @Provides input)',
+                'inherited': 'inherited binding (from parent graph)',
+                'deferrable': 'depends on (Provider/Lazy)',
+                'assisted': 'assisted injects',
+                'multibinding': 'multibinding source',
+                'alias': 'is an alias to',
+                'default': 'default value (fallback available)',
+                'default-resolves': 'default resolves to binding',
+                'normal': 'depends on'
               };
-              return edgeLabels[d.edgeType] || 'Dependency';
+              return edgeLabels[d.edgeType] || 'dependency';
             }
             return '';
           }
@@ -1181,6 +1199,7 @@ ${packages.mapIndexed { i, pkg ->
       const visibleNodeKeys = new Set();
 
       // First pass: determine which nodes to include (not filtered out entirely)
+      // Use n.id for filtering since links use id for source/target
       originalNodes.forEach(n => {
         // Default value nodes are completely removed when filter is off
         const passesDefaults = showDefaults || !n.isDefaultValue;
@@ -1188,12 +1207,12 @@ ${packages.mapIndexed { i, pkg ->
         const isContribution = n.fullKey.includes('MetroContribution');
         const passesContributions = showContributions || !isContribution;
         if (passesDefaults && passesContributions) {
-          includedNodeKeys.add(n.fullKey);
+          includedNodeKeys.add(n.id);
         }
       });
 
       // Filter nodes - remove default value/contribution nodes if filter is off, fade others
-      const newNodes = originalNodes.filter(n => includedNodeKeys.has(n.fullKey)).map(n => {
+      const newNodes = originalNodes.filter(n => includedNodeKeys.has(n.id)).map(n => {
         // Check visibility filters (fade but don't remove)
         const passesPackage = enabledPackages.has(n.pkg);
         const passesSynthetic = showSynthetic || !n.synthetic;
@@ -1202,7 +1221,7 @@ ${packages.mapIndexed { i, pkg ->
 
         const visible = passesPackage && passesSynthetic && passesScoped && passesSearch;
         if (visible) {
-          visibleNodeKeys.add(n.fullKey);
+          visibleNodeKeys.add(n.id);
         }
 
         // Apply visibility styling and glow toggle
@@ -1454,8 +1473,21 @@ ${packages.mapIndexed { i, pkg ->
       }
     }
 
+    // Collect MembersInjected root bindings (those with injector declarations) to exclude from
+    // nodes
+    // These are skipped in the visualization - instead we show direct "injects" edges to their
+    // dependencies
+    val membersInjectedRoots =
+      metadata.bindings
+        .filter { it.bindingKind == "MembersInjected" && it.declaration != null }
+        .associateBy { it.key }
+
     val nodes = buildJsonArray {
       for (binding in metadata.bindings) {
+        // Skip MembersInjected root bindings only (not other binding kinds with the same key like
+        // BoundInstance)
+        if (binding.bindingKind == "MembersInjected" && binding.key in membersInjectedRoots)
+          continue
         // Determine if synthetic (infer if not explicitly set)
         val isSynthetic =
           binding.isSynthetic ||
@@ -1596,9 +1628,12 @@ ${packages.mapIndexed { i, pkg ->
       }
     }
 
-    // Build set of valid node keys for validation (including synthetic default value nodes)
-    val nodeKeys =
-      metadata.bindings.map { it.key }.toSet() + defaultValueNodes.map { it.syntheticKey }.toSet()
+    // For target lookup, we need to map type keys to their provider node IDs (not MembersInjected
+    // roots)
+    val keyToProviderNodeId =
+      metadata.bindings
+        .filterNot { it.bindingKind == "MembersInjected" && it.key in membersInjectedRoots }
+        .associate { it.key to it.key }
 
     // Build map from (consumerKey, targetType) -> syntheticKey for default value edge routing
     val defaultValueNodeMap =
@@ -1609,6 +1644,11 @@ ${packages.mapIndexed { i, pkg ->
 
     val links = buildJsonArray {
       for (binding in metadata.bindings) {
+        // Skip MembersInjected root bindings - they don't have nodes, we add "member injects" edges
+        // instead
+        if (binding.bindingKind == "MembersInjected" && binding.key in membersInjectedRoots)
+          continue
+
         // Check if this is a multibinding (edges to sources)
         val isMultibinding = binding.multibinding != null
         val multibindingSourceKeys = binding.multibinding?.sources?.toSet() ?: emptySet()
@@ -1658,7 +1698,7 @@ ${packages.mapIndexed { i, pkg ->
             )
 
             // Edge from default value node to actual binding (if it exists)
-            if (targetKey in metadata.bindings.map { it.key }.toSet()) {
+            if (targetKey in keyToProviderNodeId) {
               add(
                 buildJsonObject {
                   put("source", JsonPrimitive(defaultValueNodeKey))
@@ -1677,7 +1717,8 @@ ${packages.mapIndexed { i, pkg ->
             }
           } else {
             // Normal edge - only create link if target exists in graph
-            if (targetKey !in nodeKeys) continue
+            // For targets, use the provider node ID (not MembersInjected)
+            if (targetKey !in keyToProviderNodeId) continue
 
             // Determine edge type for coloring
             val edgeType =
@@ -1730,7 +1771,7 @@ ${packages.mapIndexed { i, pkg ->
                         put("color", JsonPrimitive(Colors.EDGE_ALIAS))
                         put("type", JsonPrimitive("dotted"))
                         put("width", JsonPrimitive(2))
-                        put("curveness", JsonPrimitive(0.05))
+                        put("curveness", JsonPrimitive(0.35))
                       }
                       "deferrable" -> {
                         put("color", JsonPrimitive(sourceColor))
@@ -1760,7 +1801,7 @@ ${packages.mapIndexed { i, pkg ->
       // Add accessor edges from the graph node to each accessor (from roots)
       metadata.roots?.accessors?.forEach { accessor ->
         val targetKey = unwrapTypeKey(accessor.key)
-        if (targetKey in nodeKeys) {
+        if (targetKey in keyToProviderNodeId) {
           add(
             buildJsonObject {
               put("source", JsonPrimitive(metadata.graph))
@@ -1776,6 +1817,82 @@ ${packages.mapIndexed { i, pkg ->
               )
             }
           )
+        }
+      }
+
+      // Add "boundinstance" edges from BoundInstance bindings INTO the graph (graph inputs)
+      // Arrow points from the bound instance to the graph to show it's an input
+      // Skip the graph's own BoundInstance binding (metadata.graph)
+      metadata.bindings
+        .filter { it.bindingKind == "BoundInstance" && it.key != metadata.graph }
+        .forEach { binding ->
+          add(
+            buildJsonObject {
+              put("source", JsonPrimitive(binding.key))
+              put("target", JsonPrimitive(metadata.graph))
+              put("edgeType", JsonPrimitive("boundinstance"))
+              put("value", JsonPrimitive(1.0))
+              put(
+                "lineStyle",
+                buildJsonObject {
+                  put("color", JsonPrimitive(Colors.BOUND_INSTANCE))
+                  put("width", JsonPrimitive(3))
+                  put("curveness", JsonPrimitive(-0.4))
+                },
+              )
+            }
+          )
+        }
+
+      // Add "member injects" edges from the graph to MembersInjected targets
+      // Also add edges from the target to show what dependencies get injected into it
+      metadata.roots?.injectors?.forEach { injector ->
+        val targetKey = unwrapTypeKey(injector.key)
+        // Find the MembersInjected binding for this injector target
+        val membersInjectedBinding = membersInjectedRoots[targetKey]
+        if (membersInjectedBinding != null) {
+          // Create "member injects" edge from graph to the target type
+          if (targetKey in keyToProviderNodeId) {
+            add(
+              buildJsonObject {
+                put("source", JsonPrimitive(metadata.graph))
+                put("target", JsonPrimitive(targetKey))
+                put("edgeType", JsonPrimitive("injects"))
+                put("value", JsonPrimitive(1.0))
+                put(
+                  "lineStyle",
+                  buildJsonObject {
+                    put("color", JsonPrimitive(Colors.MEMBERS_INJECTED))
+                    put("width", JsonPrimitive(2))
+                  },
+                )
+              }
+            )
+          }
+
+          // Create edges from the target to each dependency that gets injected into it
+          for (dep in membersInjectedBinding.dependencies) {
+            val depTargetKey = unwrapTypeKey(dep.key.substringBefore(" = "))
+            if (depTargetKey in keyToProviderNodeId && targetKey in keyToProviderNodeId) {
+              add(
+                buildJsonObject {
+                  put("source", JsonPrimitive(targetKey))
+                  put("target", JsonPrimitive(depTargetKey))
+                  put("edgeType", JsonPrimitive("injects"))
+                  put("wrapperType", JsonPrimitive("MembersInjected"))
+                  put("value", JsonPrimitive(1.0))
+                  put(
+                    "lineStyle",
+                    buildJsonObject {
+                      put("color", JsonPrimitive(Colors.MEMBERS_INJECTED))
+                      put("type", JsonPrimitive("dashed"))
+                      put("width", JsonPrimitive(2))
+                    },
+                  )
+                }
+              )
+            }
+          }
         }
       }
     }

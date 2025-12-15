@@ -5,9 +5,12 @@ package dev.zacsweers.metro.compiler.fir
 import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.api.fir.MetroContributionExtension
+import dev.zacsweers.metro.compiler.api.fir.MetroFirDeclarationGenerationExtension
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.generators.AssistedFactoryFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.BindingMirrorClassFirGenerator
+import dev.zacsweers.metro.compiler.fir.generators.CompositeMetroFirDeclarationGenerationExtension
 import dev.zacsweers.metro.compiler.fir.generators.ContributedInterfaceSupertypeGenerator
 import dev.zacsweers.metro.compiler.fir.generators.ContributionHintFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.ContributionsFirGenerator
@@ -19,6 +22,7 @@ import dev.zacsweers.metro.compiler.fir.generators.LoggingFirSupertypeGeneration
 import dev.zacsweers.metro.compiler.fir.generators.ProvidesFactoryFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.ProvidesFactorySupertypeGenerator
 import dev.zacsweers.metro.compiler.fir.generators.kotlinOnly
+import java.util.ServiceLoader
 import kotlin.io.path.appendText
 import kotlin.io.path.createFile
 import kotlin.io.path.createParentDirectories
@@ -32,6 +36,12 @@ public class MetroFirExtensionRegistrar(
   private val classIds: ClassIds,
   private val options: MetroOptions,
   private val compatContext: CompatContext,
+  private val loadExternalDeclarationExtensions:
+    (FirSession, MetroOptions) -> List<MetroFirDeclarationGenerationExtension> =
+    ::loadExternalDeclarationExtensions,
+  private val loadExternalContributionExtensions:
+    (FirSession, MetroOptions) -> List<MetroContributionExtension> =
+    ::loadExternalContributionExtensions,
 ) : FirExtensionRegistrar() {
   override fun ExtensionRegistrarContext.configurePlugin() {
     +MetroFirBuiltIns.getFactory(classIds, options)
@@ -39,7 +49,7 @@ public class MetroFirExtensionRegistrar(
     +supertypeGenerator("Supertypes - graph factory", ::GraphFactoryFirSupertypeGenerator, false)
     +supertypeGenerator(
       "Supertypes - contributed interfaces",
-      ::ContributedInterfaceSupertypeGenerator,
+      { ContributedInterfaceSupertypeGenerator(it, loadExternalContributionExtensions) },
       true,
     )
     +supertypeGenerator(
@@ -51,19 +61,102 @@ public class MetroFirExtensionRegistrar(
       +::FirProvidesStatusTransformer
     }
     +::FirAccessorOverrideStatusTransformer
-    +declarationGenerator("FirGen - InjectedClass", ::InjectedClassFirGenerator, true)
-    if (options.generateAssistedFactories) {
-      +declarationGenerator("FirGen - AssistedFactory", ::AssistedFactoryFirGenerator, true)
-    }
-    +declarationGenerator("FirGen - ProvidesFactory", ::ProvidesFactoryFirGenerator, true)
-    +declarationGenerator("FirGen - BindingMirrorClass", ::BindingMirrorClassFirGenerator, true)
-    +declarationGenerator("FirGen - ContributionsGenerator", ::ContributionsFirGenerator, true)
-    if (options.generateContributionHints && options.generateContributionHintsInFir) {
-      +declarationGenerator("FirGen - ContributionHints", ::ContributionHintFirGenerator, true)
-    }
-    +declarationGenerator("FirGen - DependencyGraph", ::DependencyGraphFirGenerator, true)
+
+    // Register the composite declaration generator that includes external extensions
+    +compositeDeclarationGenerator()
 
     registerDiagnosticContainers(MetroDiagnostics)
+  }
+
+  /**
+   * Creates a composite declaration generator that combines:
+   * 1. External extensions loaded via ServiceLoader (processed first)
+   * 2. Metro's native declaration generators (processed after)
+   *
+   * This allows external extensions to generate code that Metro's native generators can consume.
+   */
+  private fun compositeDeclarationGenerator(): FirDeclarationGenerationExtension.Factory {
+    return FirDeclarationGenerationExtension.Factory { session ->
+      // Load external extensions via ServiceLoader
+      val externalExtensions = loadExternalDeclarationExtensions(session, options)
+
+      // Build list of native Metro generators
+      val nativeExtensions = buildList {
+        add(
+          wrapNativeGenerator("FirGen - InjectedClass", true) { session ->
+            InjectedClassFirGenerator(session, compatContext)
+          }(session)
+        )
+
+        if (options.generateAssistedFactories) {
+          add(
+            wrapNativeGenerator("FirGen - AssistedFactory", true) { session ->
+              AssistedFactoryFirGenerator(session, compatContext)
+            }(session)
+          )
+        }
+
+        add(
+          wrapNativeGenerator("FirGen - ProvidesFactory", true) { session ->
+            ProvidesFactoryFirGenerator(session, compatContext)
+          }(session)
+        )
+
+        add(
+          wrapNativeGenerator("FirGen - BindingMirrorClass", true) { session ->
+            BindingMirrorClassFirGenerator(session, compatContext)
+          }(session)
+        )
+
+        add(
+          wrapNativeGenerator("FirGen - ContributionsGenerator", true) { session ->
+            ContributionsFirGenerator(session, compatContext)
+          }(session)
+        )
+
+        if (options.generateContributionHints && options.generateContributionHintsInFir) {
+          add(
+            wrapNativeGenerator("FirGen - ContributionHints", true) { session ->
+              ContributionHintFirGenerator(session, compatContext)
+            }(session)
+          )
+        }
+
+        add(
+          wrapNativeGenerator("FirGen - DependencyGraph", true) { session ->
+            DependencyGraphFirGenerator(session, compatContext)
+          }(session)
+        )
+      }
+
+      CompositeMetroFirDeclarationGenerationExtension(
+          session = session,
+          externalExtensions = externalExtensions,
+          nativeExtensions = nativeExtensions,
+        )
+        .kotlinOnly()
+    }
+  }
+
+  /** Wraps a native generator with optional logging support. */
+  private fun wrapNativeGenerator(
+    tag: String,
+    enableLogging: Boolean,
+    factory: (FirSession) -> FirDeclarationGenerationExtension,
+  ): (FirSession) -> FirDeclarationGenerationExtension {
+    return { session ->
+      val logger =
+        if (enableLogging) {
+          loggerFor(MetroLogger.Type.FirDeclarationGeneration, tag)
+        } else {
+          MetroLogger.NONE
+        }
+      if (logger == MetroLogger.NONE) {
+        factory(session)
+      } else {
+        LoggingFirDeclarationGenerationExtension(session, logger, factory(session))
+      }
+    }
   }
 
   private fun loggerFor(type: MetroLogger.Type, tag: String): MetroLogger {
@@ -95,32 +188,6 @@ public class MetroFirExtensionRegistrar(
     }
   }
 
-  private fun declarationGenerator(
-    tag: String,
-    delegate: ((FirSession, CompatContext) -> FirDeclarationGenerationExtension),
-    enableLogging: Boolean = false,
-  ): FirDeclarationGenerationExtension.Factory {
-    return FirDeclarationGenerationExtension.Factory { session ->
-      val logger =
-        if (enableLogging) {
-          loggerFor(MetroLogger.Type.FirDeclarationGeneration, tag)
-        } else {
-          MetroLogger.NONE
-        }
-      val extension =
-        if (logger == MetroLogger.NONE) {
-          delegate(session, compatContext)
-        } else {
-          LoggingFirDeclarationGenerationExtension(
-            session,
-            logger,
-            delegate(session, compatContext),
-          )
-        }
-      extension.kotlinOnly()
-    }
-  }
-
   private fun supertypeGenerator(
     tag: String,
     delegate: ((FirSession) -> FirSupertypeGenerationExtension),
@@ -142,4 +209,50 @@ public class MetroFirExtensionRegistrar(
       extension.kotlinOnly()
     }
   }
+}
+
+/** Loads external [MetroFirDeclarationGenerationExtension] implementations via ServiceLoader. */
+private fun loadExternalDeclarationExtensions(
+  session: FirSession,
+  options: MetroOptions,
+): List<MetroFirDeclarationGenerationExtension> {
+  return ServiceLoader.load(
+      MetroFirDeclarationGenerationExtension.Factory::class.java,
+      MetroFirDeclarationGenerationExtension.Factory::class.java.classLoader,
+    )
+    .mapNotNull { factory ->
+      try {
+        factory.create(session, options)
+      } catch (e: Exception) {
+        // Log but don't fail compilation
+        if (options.debug) {
+          System.err.println(
+            "[Metro] Failed to load external FIR extension from ${factory::class}: ${e.message}"
+          )
+        }
+        null
+      }
+    }
+}
+
+private fun loadExternalContributionExtensions(
+  session: FirSession,
+  options: MetroOptions,
+): List<MetroContributionExtension> {
+  return ServiceLoader.load(
+      MetroContributionExtension.Factory::class.java,
+      MetroContributionExtension.Factory::class.java.classLoader,
+    )
+    .mapNotNull { factory ->
+      try {
+        factory.create(session, options)
+      } catch (e: Exception) {
+        if (options.debug) {
+          System.err.println(
+            "[Metro] Failed to load external contribution extension from ${factory::class}: ${e.message}"
+          )
+        }
+        null
+      }
+    }
 }

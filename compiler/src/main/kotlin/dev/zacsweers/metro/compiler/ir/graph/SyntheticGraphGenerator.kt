@@ -71,7 +71,8 @@ internal class SyntheticGraphGenerator(
   private val containerToAddTo: IrDeclarationContainer,
 ) : IrMetroContext by metroContext {
 
-  val contributions = sourceAnnotation?.let(contributionMerger::computeContributions)
+  val contributions =
+    sourceAnnotation?.let { contributionMerger.computeContributions(it, originDeclaration) }
 
   /** Generates a factory implementation class that implements a factory interface. */
   private fun generateFactoryImpl(

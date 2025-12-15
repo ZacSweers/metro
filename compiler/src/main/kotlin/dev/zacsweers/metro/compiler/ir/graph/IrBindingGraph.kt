@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
+import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.graph.MissingBindingHints
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
 import dev.zacsweers.metro.compiler.graph.partitionBySCCs
@@ -561,7 +562,7 @@ internal class IrBindingGraph(
     val reverse = mutableMapOf<IrTypeKey, MutableSet<IrTypeKey>>()
     for ((from, tos) in adjacency) {
       for (to in tos) {
-        reverse.getOrPut(to) { mutableSetOf() }.add(from)
+        reverse.getAndAdd(to, from)
       }
     }
     return reverse
@@ -713,7 +714,7 @@ internal class IrBindingGraph(
     val dependents = mutableMapOf<IrTypeKey, MutableSet<IrTypeKey>>()
     for ((key, deps) in adjacency) {
       for (dep in deps) {
-        dependents.getOrPut(dep) { mutableSetOf() }.add(key)
+        dependents.getAndAdd(dep, key)
       }
     }
 

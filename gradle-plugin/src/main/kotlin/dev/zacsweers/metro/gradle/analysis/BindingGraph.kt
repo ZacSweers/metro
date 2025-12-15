@@ -76,7 +76,7 @@ private constructor(
           val to = unwrapTypeKey(dep.key)
           if (to in bindingKeys) {
             fullGraphBuilder.putEdge(from, to)
-            // Skip deferrable (Provider/Lazy) edges from the eager graph -
+            // Skip deferrable (Provider/Lazy/MembersInjected) edges from the eager graph -
             // they don't represent construction-time dependencies
             if (!dep.isDeferrable) {
               eagerGraphBuilder.putEdge(from, to)

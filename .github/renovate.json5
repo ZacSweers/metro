@@ -36,6 +36,16 @@
       groupName: 'JDK version',
       matchDepNames: ['java'],
       matchDatasources: ['java-version'],
+    },
+    {
+      groupName: 'AGP',
+      matchDepNames: [
+        'com.android.application',
+        'com.android.library',
+        'com.android.lint',
+        'com.android.settings',
+        'com.android.test',
+      ],
     }
   ]
 }

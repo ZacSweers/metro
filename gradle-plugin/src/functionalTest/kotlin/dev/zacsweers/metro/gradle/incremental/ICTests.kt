@@ -325,6 +325,125 @@ class ICTests : BaseIncrementalCompilationTest() {
       )
   }
 
+  /**
+   * Tests that external contribution changes are detected even when multiple graphs depend on the
+   * same scope. This verifies the fix where we track lookups before checking the cache, ensuring
+   * all callers register their dependency on scope hints (not just the first one that populates the
+   * cache).
+   *
+   * https://github.com/ZacSweers/metro/issues/1512
+   */
+  @Test
+  fun contributedProviderExternalChangeInGraphExtensionDetected() {
+    val fixture =
+      object : MetroProject() {
+        override fun sources() = throw IllegalStateException()
+
+        override val gradleProject: GradleProject
+          get() =
+            newGradleProjectBuilder(DslKind.KOTLIN)
+              .withRootProject {
+                withBuildScript {
+                  sources = listOf(appGraph, appGraph2)
+                  applyMetroDefault()
+                  dependencies(Dependency.implementation(":lib"))
+                }
+
+                withMetroSettings()
+              }
+              .withSubproject("lib") {
+                sources.add(dependency)
+                sources.add(dependencyProvider)
+                withBuildScript { applyMetroDefault() }
+              }
+              .write()
+
+        // First graph with a StringGraph extension
+        val appGraph =
+          source(
+            """
+            @DependencyGraph
+            interface AppGraph {
+              val stringGraph: StringGraph
+            }
+
+            @GraphExtension(String::class)
+            interface StringGraph
+            """
+              .trimIndent()
+          )
+
+        // Second graph also using String::class scope - tests that cache hits still record lookups
+        val appGraph2 =
+          source(
+            """
+            @DependencyGraph
+            interface AppGraph2 {
+              val stringGraph2: StringGraph2
+            }
+
+            @GraphExtension(String::class)
+            interface StringGraph2
+            """
+              .trimIndent()
+          )
+
+        private val dependency =
+          source(
+            """
+            interface Dependency
+            """
+              .trimIndent()
+          )
+
+        val dependencyProviderSource =
+          """
+          @ContributesTo(String::class)
+          interface DependencyProvider {
+            val dependency: Dependency
+          }
+          """
+            .trimIndent()
+        val dependencyProvider = source(dependencyProviderSource)
+      }
+
+    val project = fixture.gradleProject
+    val libProject = project.subprojects.first { it.name == "lib" }
+    val failureMessage =
+      """
+      [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Dependency
+      """
+        .trimIndent()
+
+    // First build should fail for both graphs due to missing binding
+    // Both graphs use String::class scope, so both should see the contributed DependencyProvider
+    val firstBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    println(firstBuildResult.output)
+    assertThat(firstBuildResult.output).contains(failureMessage)
+
+    // Both graphs should report the error (StringGraph and StringGraph2)
+    assertThat(firstBuildResult.output).contains("StringGraph")
+    assertThat(firstBuildResult.output).contains("StringGraph2")
+
+    // Remove dependencyProvider to fix the build
+    libProject.modify(project.rootDir, fixture.dependencyProvider, "")
+
+    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    // Restore dependencyProvider to break the build - both graphs should detect this change
+    // This is the key assertion: even though the second graph's lookup hits the internal cache
+    // within a single compilation, it should still register its IC dependency and be recompiled
+    libProject.modify(project.rootDir, fixture.dependencyProvider, fixture.dependencyProviderSource)
+
+    val thirdBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    assertThat(thirdBuildResult.output).contains(failureMessage)
+
+    // Both graphs should still report the error after incremental recompilation
+    assertThat(thirdBuildResult.output).contains("StringGraph")
+    assertThat(thirdBuildResult.output).contains("StringGraph2")
+  }
+
   @Test
   fun supertypeProviderCompanionChangesDetected() {
     val fixture =

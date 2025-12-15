@@ -9,6 +9,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Source common utilities
+source "$SCRIPT_DIR/benchmark-utils.sh"
+
 # Configuration
 DEFAULT_MODULE_COUNT=500
 RESULTS_DIR="benchmark-results"
@@ -24,14 +27,7 @@ ORIGINAL_GIT_IS_BRANCH=false
 # Whether to re-run non-metro modes in ref2 (default: false to save time)
 RERUN_NON_METRO=false
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-# Function to print colored output
+# Script-specific print functions (styles differ from run_startup_benchmarks.sh)
 print_status() {
     echo -e "${BLUE}[INFO]${NC} $1"
 }
@@ -52,64 +48,6 @@ print_header() {
     echo -e "\n${BLUE}========================================${NC}"
     echo -e "${BLUE} $1${NC}"
     echo -e "${BLUE}========================================${NC}\n"
-}
-
-# Save current git state (branch or commit)
-save_git_state() {
-    # Check if we're on a branch or in detached HEAD state
-    local current_branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
-    if [ -n "$current_branch" ]; then
-        ORIGINAL_GIT_REF="$current_branch"
-        ORIGINAL_GIT_IS_BRANCH=true
-        print_status "Saved current branch: $ORIGINAL_GIT_REF"
-    else
-        # Detached HEAD - save the commit hash
-        ORIGINAL_GIT_REF=$(git rev-parse HEAD)
-        ORIGINAL_GIT_IS_BRANCH=false
-        print_status "Saved current commit: ${ORIGINAL_GIT_REF:0:12}"
-    fi
-}
-
-# Restore to original git state
-restore_git_state() {
-    if [ -z "$ORIGINAL_GIT_REF" ]; then
-        print_error "No git state saved to restore"
-        return 1
-    fi
-
-    print_status "Restoring to original git state..."
-    if [ "$ORIGINAL_GIT_IS_BRANCH" = true ]; then
-        git checkout "$ORIGINAL_GIT_REF" 2>/dev/null || {
-            print_error "Failed to restore to branch: $ORIGINAL_GIT_REF"
-            return 1
-        }
-        print_success "Restored to branch: $ORIGINAL_GIT_REF"
-    else
-        git checkout "$ORIGINAL_GIT_REF" 2>/dev/null || {
-            print_error "Failed to restore to commit: ${ORIGINAL_GIT_REF:0:12}"
-            return 1
-        }
-        print_success "Restored to commit: ${ORIGINAL_GIT_REF:0:12}"
-    fi
-}
-
-# Checkout a git ref (branch or commit)
-checkout_ref() {
-    local ref="$1"
-    print_status "Checking out: $ref"
-    git checkout "$ref" 2>/dev/null || {
-        print_error "Failed to checkout: $ref"
-        return 1
-    }
-    local short_ref=$(git rev-parse --short HEAD)
-    print_success "Checked out: $ref ($short_ref)"
-}
-
-# Get a filesystem-safe name for a git ref
-get_ref_safe_name() {
-    local ref="$1"
-    # Replace slashes and other special chars with underscores
-    echo "$ref" | sed 's/[^a-zA-Z0-9._-]/_/g'
 }
 
 # Source the gradle-profiler installer script
@@ -547,8 +485,8 @@ show_usage() {
     echo "  dagger-ksp [COUNT]           Run only Dagger (KSP) mode benchmarks"
     echo "  dagger-kapt [COUNT]          Run only Dagger (KAPT) mode benchmarks"
     echo "  kotlin-inject-anvil [COUNT]  Run only Kotlin-inject + Anvil mode benchmarks"
-    echo "  single                        Run benchmarks on a single git ref"
-    echo "  compare                       Compare benchmarks across two git refs"
+    echo "  single                        Run benchmarks on a single git ref or Metro version"
+    echo "  compare                       Compare benchmarks across two refs (git refs or Metro versions)"
     echo "  help                         Show this help message"
     echo ""
     echo "Options:"
@@ -557,19 +495,28 @@ show_usage() {
     echo "  --include-clean-builds       Include clean build scenarios in benchmarks"
     echo ""
     echo "Single Options:"
-    echo "  --ref <ref>                  Git ref to benchmark - branch name or commit hash"
+    echo "  --ref <ref>                  Git ref (branch name/commit) or Metro version (e.g., 1.0.0)"
     echo "  --modes <list>               Comma-separated list of modes to benchmark"
     echo "                               Available: metro, dagger-ksp, dagger-kapt, kotlin-inject-anvil"
     echo "                               Default: metro,dagger-ksp,kotlin-inject-anvil"
     echo ""
     echo "Compare Options:"
-    echo "  --ref1 <ref>                 First git ref (baseline) - branch name or commit hash"
-    echo "  --ref2 <ref>                 Second git ref to compare against baseline"
+    echo "  --ref1 <ref>                 First ref (baseline) - git ref or Metro version"
+    echo "  --ref2 <ref>                 Second ref to compare - git ref or Metro version"
     echo "  --modes <list>               Comma-separated list of modes to benchmark"
     echo "                               Available: metro, dagger-ksp, dagger-kapt, kotlin-inject-anvil"
     echo "                               Default: metro,dagger-ksp,kotlin-inject-anvil"
     echo "  --rerun-non-metro            Re-run non-metro modes on ref2 (default: only run metro on ref2)"
     echo "                               When disabled (default), ref2 uses ref1's non-metro results for comparison"
+    echo ""
+    echo "Ref Types:"
+    echo "  Refs can be either git refs or Metro versions. The script automatically detects"
+    echo "  the type based on the format:"
+    echo "  - Git refs: branch names (main, feature-branch), commit hashes (abc123), tags"
+    echo "  - Metro versions: semantic versions like 1.0.0, 2.0.0-alpha01, 1.5.0-RC1"
+    echo ""
+    echo "  When using a Metro version, benchmarks run on the current branch with the"
+    echo "  specified Metro version from Maven Central (instead of the included build)."
     echo ""
     echo "Prerequisites:"
     echo "  Run benchmark/install-gradle-profiler.sh to install gradle-profiler from source"
@@ -591,10 +538,18 @@ show_usage() {
     echo "  $0 single --ref main"
     echo "  $0 single --ref feature-branch --modes metro,dagger-ksp"
     echo ""
+    echo "  # Run benchmarks with a specific Metro version:"
+    echo "  $0 single --ref 1.0.0                # Benchmark Metro 1.0.0"
+    echo "  $0 single --ref 2.0.0-alpha01        # Benchmark a pre-release version"
+    echo ""
     echo "  # Compare benchmarks across git refs:"
     echo "  $0 compare --ref1 main --ref2 feature-branch"
     echo "  $0 compare --ref1 abc123 --ref2 def456 --modes metro,dagger-ksp"
     echo "  $0 compare --ref1 main --ref2 feature --rerun-non-metro  # Re-run all modes on both refs"
+    echo ""
+    echo "  # Compare Metro versions:"
+    echo "  $0 compare --ref1 1.0.0 --ref2 1.1.0  # Compare two released versions"
+    echo "  $0 compare --ref1 1.0.0 --ref2 main   # Compare release to git branch"
     echo ""
     echo "Results will be saved to the '$RESULTS_DIR' directory with timestamps."
 }
@@ -612,7 +567,7 @@ validate_count() {
 # Default modes for comparison
 COMPARE_MODES="metro,anvil-ksp,kotlin-inject-anvil"
 
-# Run benchmarks for a specific git ref
+# Run benchmarks for a specific git ref or Metro version
 # Arguments: ref, ref_label, count, include_clean_builds, modes, is_second_ref
 run_benchmarks_for_ref() {
     local ref="$1"
@@ -624,16 +579,30 @@ run_benchmarks_for_ref() {
 
     print_header "Running benchmarks for: $ref_label"
 
-    # Checkout the ref
-    checkout_ref "$ref" || return 1
+    # Check if ref is a Metro version or git ref
+    if is_metro_version "$ref"; then
+        print_status "Using Metro version: $ref (staying on current branch)"
+        export METRO_VERSION="$ref"
+    else
+        # It's a git ref - checkout
+        checkout_ref "$ref" || return 1
+        # Unset METRO_VERSION to use included build
+        unset METRO_VERSION
+    fi
 
     # Create ref-specific results directory
     local ref_dir="$RESULTS_DIR/${TIMESTAMP}/${ref_label}"
     mkdir -p "$ref_dir"
 
-    # Save the commit hash for reference
-    git rev-parse HEAD > "$ref_dir/commit.txt"
-    git log -1 --format='%h %s' > "$ref_dir/commit-info.txt"
+    # Save version/commit info for reference
+    if is_metro_version "$ref"; then
+        echo "Metro version: $ref" > "$ref_dir/version-info.txt"
+        git rev-parse HEAD > "$ref_dir/commit.txt"
+        git log -1 --format='%h %s (Metro $ref)' | sed "s/\$ref/$ref/" > "$ref_dir/commit-info.txt"
+    else
+        git rev-parse HEAD > "$ref_dir/commit.txt"
+        git log -1 --format='%h %s' > "$ref_dir/commit-info.txt"
+    fi
 
     # Run benchmarks for each mode
     IFS=',' read -ra MODE_ARRAY <<< "$modes"
@@ -867,8 +836,9 @@ EOF
                 if [ "$mode" = "metro" ]; then
                     vs_metro1="baseline"
                 elif [ -n "$metro_score1" ] && [ "$metro_score1" != "0" ]; then
-                    local pct1=$(echo "scale=1; (($score1 - $metro_score1) / $metro_score1) * 100" | bc 2>/dev/null | sed 's/\.0$//' || echo "")
-                    local mult1=$(echo "scale=1; $score1 / $metro_score1" | bc 2>/dev/null || echo "")
+                    local pct1_raw=$(echo "scale=6; (($score1 - $metro_score1) / $metro_score1) * 100" | bc 2>/dev/null || echo "")
+                    local pct1=$(printf "%.1f" "$pct1_raw" 2>/dev/null | sed 's/\.0$//' || echo "$pct1_raw")
+                    local mult1=$(echo "scale=2; $score1 / $metro_score1" | bc 2>/dev/null || echo "")
                     if [ -n "$pct1" ] && [ -n "$mult1" ]; then
                         vs_metro1="+${pct1}% (${mult1}x)"
                     fi
@@ -885,8 +855,9 @@ EOF
                     if [ "$mode" = "metro" ]; then
                         vs_metro2="baseline"
                     elif [ -n "$metro_score2" ] && [ "$metro_score2" != "0" ]; then
-                        local pct2=$(echo "scale=1; (($score2 - $metro_score2) / $metro_score2) * 100" | bc 2>/dev/null | sed 's/\.0$//' || echo "")
-                        local mult2=$(echo "scale=1; $score2 / $metro_score2" | bc 2>/dev/null || echo "")
+                        local pct2_raw=$(echo "scale=6; (($score2 - $metro_score2) / $metro_score2) * 100" | bc 2>/dev/null || echo "")
+                        local pct2=$(printf "%.1f" "$pct2_raw" 2>/dev/null | sed 's/\.0$//' || echo "$pct2_raw")
+                        local mult2=$(echo "scale=2; $score2 / $metro_score2" | bc 2>/dev/null || echo "")
                         if [ -n "$pct2" ] && [ -n "$mult2" ]; then
                             vs_metro2="+${pct2}% (${mult2}x)"
                         fi
@@ -894,12 +865,14 @@ EOF
                 fi
 
                 if [ -n "$score1" ] && [ -n "$score2" ] && [ "$score1" != "0" ]; then
-                    local pct=$(echo "scale=2; (($score2 - $score1) / $score1) * 100" | bc 2>/dev/null || echo "")
+                    # Use scale=6 for intermediate precision, then format to 2 decimal places
+                    local pct_raw=$(echo "scale=6; (($score2 - $score1) / $score1) * 100" | bc 2>/dev/null || echo "")
+                    local pct=$(printf "%.2f" "$pct_raw" 2>/dev/null || echo "$pct_raw")
                     if [ -n "$pct" ]; then
                         # Check if negative (faster)
                         if [[ "$pct" == -* ]]; then
                             diff="${pct}%"
-                        elif [[ "$pct" == "0" ]] || [[ "$pct" == "0.00" ]] || [[ "$pct" == ".00" ]]; then
+                        elif [[ "$pct" == "0.00" ]] || [[ "$pct" == "0" ]] || [[ "$pct" == ".00" ]]; then
                             diff="+0.00% (no change)"
                         else
                             diff="+${pct}%"
@@ -1044,8 +1017,8 @@ function formatTime(ms) {
 function calculateVsBaseline(value, baselineValue) {
     if (!value || !baselineValue) return { text: '—', class: '' };
     if (value === baselineValue) return { text: 'baseline', class: 'baseline' };
-    const pct = ((value - baselineValue) / baselineValue * 100).toFixed(0);
-    const mult = (value / baselineValue).toFixed(1);
+    const pct = ((value - baselineValue) / baselineValue * 100).toFixed(1);
+    const mult = (value / baselineValue).toFixed(2);
     if (pct < 0) {
         return { text: `${pct}% (${mult}x)`, class: 'faster' };
     }
@@ -1440,8 +1413,9 @@ EOF
                 if [ "$mode" = "metro" ]; then
                     vs_metro="baseline"
                 elif [ -n "$metro_score" ] && [ "$metro_score" != "0" ]; then
-                    local pct=$(echo "scale=1; (($score - $metro_score) / $metro_score) * 100" | bc 2>/dev/null | sed 's/\.0$//' || echo "")
-                    local mult=$(echo "scale=1; $score / $metro_score" | bc 2>/dev/null || echo "")
+                    local pct_raw=$(echo "scale=6; (($score - $metro_score) / $metro_score) * 100" | bc 2>/dev/null || echo "")
+                    local pct=$(printf "%.1f" "$pct_raw" 2>/dev/null | sed 's/\.0$//' || echo "$pct_raw")
+                    local mult=$(echo "scale=2; $score / $metro_score" | bc 2>/dev/null || echo "")
                     if [ -n "$pct" ] && [ -n "$mult" ]; then
                         vs_metro="+${pct}% (${mult}x)"
                     fi
@@ -1481,26 +1455,36 @@ run_single() {
         exit 1
     fi
 
-    # Validate ref exists
-    if ! git rev-parse --verify "$SINGLE_REF" > /dev/null 2>&1; then
-        print_error "Invalid git ref: $SINGLE_REF"
-        exit 1
+    # Check if ref is a Metro version
+    local is_metro_ver=false
+    if is_metro_version "$SINGLE_REF"; then
+        is_metro_ver=true
     fi
 
-    # Check for uncommitted changes
-    if ! git diff-index --quiet HEAD -- 2>/dev/null; then
-        print_error "You have uncommitted changes. Please commit or stash them before running benchmarks."
-        exit 1
+    # Validate git ref exists (skip for Metro versions)
+    if [ "$is_metro_ver" = false ]; then
+        if ! git rev-parse --verify "$SINGLE_REF" > /dev/null 2>&1; then
+            print_error "Invalid git ref: $SINGLE_REF"
+            exit 1
+        fi
+
+        # Check for uncommitted changes only when checking out a different ref
+        if ! git diff-index --quiet HEAD -- 2>/dev/null; then
+            print_error "You have uncommitted changes. Please commit or stash them before running benchmarks."
+            exit 1
+        fi
     fi
 
-    print_header "Running Benchmarks on Single Git Ref"
-    print_status "Ref: $SINGLE_REF"
+    if [ "$is_metro_ver" = true ]; then
+        print_header "Running Benchmarks with Metro Version"
+        print_status "Metro version: $SINGLE_REF"
+    else
+        print_header "Running Benchmarks on Single Git Ref"
+        print_status "Ref: $SINGLE_REF"
+    fi
     print_status "Modes: $COMPARE_MODES"
     print_status "Module count: $count"
     echo ""
-
-    # Save current git state
-    save_git_state
 
     # Create safe label for directory name
     local ref_label=$(get_ref_safe_name "$SINGLE_REF")
@@ -1508,8 +1492,11 @@ run_single() {
     # Create results directory
     mkdir -p "$RESULTS_DIR/${TIMESTAMP}"
 
-    # Set up trap to restore git state on exit
-    trap 'restore_git_state' EXIT
+    # For git refs (not Metro versions), save current git state and set up restore trap
+    if [ "$is_metro_ver" = false ]; then
+        save_git_state
+        trap 'restore_git_state' EXIT
+    fi
 
     # Run benchmarks for the ref (all modes, not second ref)
     run_benchmarks_for_ref "$SINGLE_REF" "$ref_label" "$count" "$include_clean_builds" "$COMPARE_MODES" false || {
@@ -1536,25 +1523,43 @@ run_compare() {
         exit 1
     fi
 
-    # Validate refs exist
-    if ! git rev-parse --verify "$COMPARE_REF1" > /dev/null 2>&1; then
-        print_error "Invalid git ref: $COMPARE_REF1"
-        exit 1
+    # Check if refs are Metro versions or git refs
+    local ref1_is_metro=false
+    local ref2_is_metro=false
+    if is_metro_version "$COMPARE_REF1"; then
+        ref1_is_metro=true
     fi
-    if ! git rev-parse --verify "$COMPARE_REF2" > /dev/null 2>&1; then
-        print_error "Invalid git ref: $COMPARE_REF2"
-        exit 1
-    fi
-
-    # Check for uncommitted changes
-    if ! git diff-index --quiet HEAD -- 2>/dev/null; then
-        print_error "You have uncommitted changes. Please commit or stash them before comparing."
-        exit 1
+    if is_metro_version "$COMPARE_REF2"; then
+        ref2_is_metro=true
     fi
 
-    print_header "Comparing Benchmarks Across Git Refs"
-    print_status "Baseline (ref1): $COMPARE_REF1"
-    print_status "Compare (ref2):  $COMPARE_REF2"
+    # Validate git refs exist (skip for Metro versions)
+    if [ "$ref1_is_metro" = false ]; then
+        if ! git rev-parse --verify "$COMPARE_REF1" > /dev/null 2>&1; then
+            print_error "Invalid git ref: $COMPARE_REF1"
+            exit 1
+        fi
+    fi
+    if [ "$ref2_is_metro" = false ]; then
+        if ! git rev-parse --verify "$COMPARE_REF2" > /dev/null 2>&1; then
+            print_error "Invalid git ref: $COMPARE_REF2"
+            exit 1
+        fi
+    fi
+
+    # Check for uncommitted changes only if we need to checkout git refs
+    local needs_git_checkout=false
+    if [ "$ref1_is_metro" = false ] || [ "$ref2_is_metro" = false ]; then
+        needs_git_checkout=true
+        if ! git diff-index --quiet HEAD -- 2>/dev/null; then
+            print_error "You have uncommitted changes. Please commit or stash them before comparing."
+            exit 1
+        fi
+    fi
+
+    print_header "Comparing Benchmarks"
+    print_status "Baseline (ref1): $COMPARE_REF1 ($(get_ref_type_description "$COMPARE_REF1"))"
+    print_status "Compare (ref2):  $COMPARE_REF2 ($(get_ref_type_description "$COMPARE_REF2"))"
     print_status "Modes:           $COMPARE_MODES"
     print_status "Module count:    $count"
     if [ "$RERUN_NON_METRO" = true ]; then
@@ -1563,9 +1568,6 @@ run_compare() {
         print_status "Re-run non-metro on ref2: no (using ref1 results)"
     fi
     echo ""
-
-    # Save current git state
-    save_git_state
 
     # Create safe labels for directory names
     local ref1_label=$(get_ref_safe_name "$COMPARE_REF1")
@@ -1580,8 +1582,12 @@ run_compare() {
     # Create results directory
     mkdir -p "$RESULTS_DIR/${TIMESTAMP}"
 
-    # Set up trap to restore git state on exit
-    trap 'restore_git_state' EXIT
+    # Save current git state only if we need to checkout git refs
+    if [ "$needs_git_checkout" = true ]; then
+        save_git_state
+        # Set up trap to restore git state on exit
+        trap 'restore_git_state' EXIT
+    fi
 
     # Run benchmarks for ref1 (baseline) - run all modes
     run_benchmarks_for_ref "$COMPARE_REF1" "$ref1_label" "$count" "$include_clean_builds" "$COMPARE_MODES" false || {

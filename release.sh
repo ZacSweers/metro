@@ -71,6 +71,17 @@ update_quickstart_version() {
     fi
 }
 
+# Updates the metro version in gradle/libs.versions.toml
+# usage: update_libs_versions_metro $new_version
+update_libs_versions_metro() {
+    local new_version=$1
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        sed -i '' "s/^metro = \"[^\"]*\"/metro = \"${new_version}\"/" gradle/libs.versions.toml
+    else
+        sed -i "s/^metro = \"[^\"]*\"/metro = \"${new_version}\"/" gradle/libs.versions.toml
+    fi
+}
+
 # default to patch if no second argument is given
 version_type=${1:---patch}
 LATEST_VERSION=$(get_latest_version CHANGELOG.md)
@@ -82,6 +93,7 @@ echo "Publishing $NEW_VERSION"
 # Prepare release
 update_gradle_properties "$NEW_VERSION"
 update_quickstart_version "$NEW_VERSION"
+update_libs_versions_metro "$NEW_VERSION"
 
 ./metrow regen
 

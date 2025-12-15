@@ -2,10 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.SortedMap
 import java.util.SortedSet
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.classId
@@ -37,7 +39,10 @@ internal class IrContributionMerger(
     val excluded: Set<ClassId>,
   )
 
-  fun computeContributions(graphLikeAnnotation: IrConstructorCall): IrContributions? {
+  fun computeContributions(
+    graphLikeAnnotation: IrConstructorCall,
+    callingDeclaration: IrDeclaration? = null,
+  ): IrContributions? {
     val sourceScope = graphLikeAnnotation.scopeClassOrNull()
     val scope = sourceScope?.classId
 
@@ -55,7 +60,7 @@ internal class IrContributionMerger(
         }
 
       val excluded = graphLikeAnnotation.excludedClasses().mapToClassIds()
-      return computeContributions(scope, allScopes, excluded)
+      return computeContributions(scope, allScopes, excluded, callingDeclaration)
     } else {
       return null
     }
@@ -65,8 +70,15 @@ internal class IrContributionMerger(
     primaryScope: ClassId,
     allScopes: Set<ClassId>,
     excluded: Set<ClassId>,
+    callingDeclaration: IrDeclaration? = null,
   ): IrContributions? {
     if (allScopes.isEmpty()) return null
+
+    // Track scope hint lookups before checking caches to ensure all callers
+    // register their IC dependency, even when hitting a cached result
+    for (scope in allScopes) {
+      contributionData.trackScopeHintLookup(scope, callingDeclaration)
+    }
 
     // Layer 2: Check if we have a fully processed result cached
     val cacheKey = ContributionsCacheKey(primaryScope, allScopes, excluded)
@@ -80,7 +92,7 @@ internal class IrContributionMerger(
         // Get all contributions and binding containers
         val allContributions =
           allScopes
-            .flatMap { contributionData.getContributions(it) }
+            .flatMap { contributionData.getContributions(it, callingDeclaration) }
             .groupByTo(mutableMapOf()) {
               // For Metro contributions, we need to check the parent class ID
               // This is always the `MetroContribution`, the contribution's parent is the actual
@@ -90,7 +102,7 @@ internal class IrContributionMerger(
 
         val bindingContainers =
           allScopes
-            .flatMap { contributionData.getBindingContainerContributions(it) }
+            .flatMap { contributionData.getBindingContainerContributions(it, callingDeclaration) }
             .associateByTo(mutableMapOf()) { it.classIdOrFail }
 
         // Build a cache of origin class -> contribution classes mappings upfront
@@ -103,9 +115,7 @@ internal class IrContributionMerger(
           val contributionClass = contributions.firstOrNull()?.rawTypeOrNull()
           if (contributionClass != null) {
             contributionClass.originClassId()?.let { originClassId ->
-              originToContributions
-                .getOrPut(originClassId) { mutableSetOf() }
-                .add(contributionClassId)
+              originToContributions.getAndAdd(originClassId, contributionClassId)
             }
           }
         }
@@ -113,7 +123,7 @@ internal class IrContributionMerger(
         // Also check binding containers (e.g., @ContributesTo classes)
         for ((containerClassId, containerClass) in bindingContainers) {
           containerClass.originClassId()?.let { originClassId ->
-            originToContributions.getOrPut(originClassId) { mutableSetOf() }.add(containerClassId)
+            originToContributions.getAndAdd(originClassId, containerClassId)
           }
         }
 
@@ -143,31 +153,39 @@ internal class IrContributionMerger(
       }
     }
 
-    // Process replacements from both regular contributions and binding containers
+    // Process replacements from both regular contributions and binding containers.
+    // Iterate over the mutable collections (post-exclusion) to avoid processing
+    // excluded items.
+    val classesToReplace = mutableSetOf<ClassId>()
 
-    // Read the original copies as we are modifying the mutable copy after this
-    scopedContributions.allContributions.values
-      .asSequence()
-      // Add parent classes of regular contributions (e.g., @Contributes* classes)
-      .mapNotNull { contributions -> contributions.firstOrNull()?.rawTypeOrNull()?.parentAsClass }
-      // binding containers
-      .plus(scopedContributions.bindingContainers.values)
-      .flatMap { contributingClass ->
-        contributingClass
-          .annotationsIn(metroSymbols.classIds.allContributesAnnotations)
-          .flatMap { annotation -> annotation.replacedClasses() }
-          .mapNotNull { replacedClass -> replacedClass.classType.rawType().classId }
-      }
-      .forEach { replacedClassId ->
-        mutableAllContributions.remove(replacedClassId)
-        mutableContributedBindingContainers.remove(replacedClassId)
-
-        // Remove contributions that have @Origin annotation pointing to the replaced class
-        originToContributions[replacedClassId]?.forEach { contributionId ->
-          mutableAllContributions.remove(contributionId)
-          mutableContributedBindingContainers.remove(contributionId)
+    fun collectReplacements(irClass: IrClass) {
+      for (annotation in irClass.annotationsIn(metroSymbols.classIds.allContributesAnnotations)) {
+        for (replacedClass in annotation.replacedClasses()) {
+          replacedClass.classType.rawType().classId?.let { classesToReplace.add(it) }
         }
       }
+    }
+
+    // Scan parent classes of regular contributions (e.g., @Contributes* classes)
+    for (contributions in mutableAllContributions.values) {
+      contributions.firstOrNull()?.rawTypeOrNull()?.parentAsClass?.let { collectReplacements(it) }
+    }
+
+    // Scan binding containers
+    for (containerClass in mutableContributedBindingContainers.values) {
+      collectReplacements(containerClass)
+    }
+
+    for (replacedClassId in classesToReplace) {
+      mutableAllContributions.remove(replacedClassId)
+      mutableContributedBindingContainers.remove(replacedClassId)
+
+      // Remove contributions that have @Origin annotation pointing to the replaced class
+      originToContributions[replacedClassId]?.forEach { contributionId ->
+        mutableAllContributions.remove(contributionId)
+        mutableContributedBindingContainers.remove(contributionId)
+      }
+    }
 
     // Process rank-based replacements if Dagger-Anvil interop is enabled
     if (options.enableDaggerAnvilInterop) {

@@ -126,7 +126,7 @@ private fun generateMirrorFunction(
     buildString {
         append(targetFunction.ir.propertyIfAccessor.expectAs<IrDeclarationWithName>().name)
         annotations.qualifier?.hashCode()?.toUInt()?.let(::append)
-        annotations.mapKeys.firstOrNull()?.hashCode()?.toUInt()?.let(::append)
+        annotations.mapKey?.hashCode()?.toUInt()?.let(::append)
         annotations.multibinds?.hashCode()?.toUInt()?.let(::append)
 
         if (annotations.isBindsOptionalOf) {

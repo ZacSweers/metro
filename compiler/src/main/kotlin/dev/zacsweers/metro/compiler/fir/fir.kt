@@ -360,45 +360,52 @@ internal fun FirAnnotationCall.computeAnnotationHash(
   return Objects.hash(
     toAnnotationClassIdSafe(session),
     arguments
-      .map { arg ->
-        when (arg) {
-          is FirLiteralExpression -> arg.value
-          is FirGetClassCall -> {
-            typeResolver?.let { arg.resolvedArgumentConeKotlinType(it)?.classId }
-              ?: run {
-                val argument = arg.argument
-                if (argument is FirResolvedQualifier) {
-                  argument.classId
-                } else {
-                  argument.resolvedType.classId
-                }
-              }
-          }
-          // Enum entry reference
-          is FirPropertyAccessExpression -> {
-            arg.calleeReference
-              .toResolvedPropertySymbol()
-              ?.resolvedReceiverTypeRef
-              ?.coneType
-              ?.classId
-          }
-
-          is FirFunctionCall -> {
-            // This is some constant-able expression like "foo" + "bar" in an annotation arg, which
-            // is legal
-            arg.evaluateAs<FirLiteralExpression>(session)?.value
-          }
-
-          else -> {
-            reportCompilerBug(
-              "Unexpected annotation argument type: ${arg::class.java} - ${arg.render()}"
-            )
-          }
-        }
-      }
+      .map { arg -> renderAnnotationArgument(session, arg, typeResolver) }
       .toTypedArray()
       .contentDeepHashCode(),
   )
+}
+
+private fun renderAnnotationArgument(
+  session: FirSession,
+  arg: FirExpression,
+  typeResolver: TypeResolveService?,
+): Any? {
+  return when (arg) {
+    is FirLiteralExpression -> arg.value
+    is FirGetClassCall -> {
+      typeResolver?.let { arg.resolvedArgumentConeKotlinType(it)?.classId }
+        ?: run {
+          val argument = arg.argument
+          if (argument is FirResolvedQualifier) {
+            argument.classId
+          } else {
+            argument.resolvedType.classId
+          }
+        }
+    }
+    // Enum entry reference
+    is FirPropertyAccessExpression -> {
+      arg.calleeReference.toResolvedPropertySymbol()?.resolvedReceiverTypeRef?.coneType?.classId
+    }
+
+    is FirFunctionCall -> {
+      // This is some constant-able expression like "foo" + "bar" in an annotation arg, which
+      // is legal
+      arg.evaluateAs<FirLiteralExpression>(session)?.value
+    }
+
+    is FirCall -> {
+      // Could be FirArrayLiteral on <2.3.20
+      // Could be FirCollectionLiteral on 2.3.20+
+      // This is an array of some type
+      arg.arguments.map { renderAnnotationArgument(session, it, typeResolver) }
+    }
+
+    else -> {
+      reportCompilerBug("Unexpected annotation argument type: ${arg::class.java} - ${arg.render()}")
+    }
+  }
 }
 
 context(context: CheckerContext, reporter: DiagnosticReporter)

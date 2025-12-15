@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.generators
 
+import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.compat.CompatContext
@@ -21,6 +22,7 @@ import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import java.util.EnumSet
 import org.jetbrains.kotlin.builtins.functions.FunctionTypeKind
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.isObject
@@ -400,7 +402,8 @@ internal class ProvidesFactorySupertypeGenerator(session: FirSession) :
         if (nameMatches) {
           // Secondary check to ensure it's a @Provides-annotated callable. Otherwise we may
           // match against overloaded non-Provides declarations
-          val metroAnnotations = it.metroAnnotations(session)
+          val metroAnnotations =
+            it.metroAnnotations(session, kinds = EnumSet.of(MetroAnnotations.Kind.Provides))
           metroAnnotations.isProvides
         } else {
           false

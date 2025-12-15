@@ -16,6 +16,7 @@ import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
+import dev.zacsweers.metro.compiler.fir.validateBindingSource
 import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.metroAnnotations
@@ -112,6 +113,8 @@ internal object BindingContainerCallableChecker :
     }
 
     val annotations = declaration.symbol.metroAnnotations(session)
+
+    declaration.symbol.validateBindingSource(annotations)
 
     if (
       session.metroFirBuiltIns.options.enableDaggerRuntimeInterop && annotations.isBindsOptionalOf

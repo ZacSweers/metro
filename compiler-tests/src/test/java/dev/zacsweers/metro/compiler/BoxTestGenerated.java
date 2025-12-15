@@ -98,6 +98,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ExcludedBindingContainerReplacesEffectIgnored.kt")
+    public void testExcludedBindingContainerReplacesEffectIgnored() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ExcludedBindingContainerReplacesEffectIgnored.kt");
+    }
+
+    @Test
     @TestMetadata("ExcludesWithOrigin.kt")
     public void testExcludesWithOrigin() {
       runTest("compiler-tests/src/test/data/box/aggregation/ExcludesWithOrigin.kt");
@@ -219,6 +225,22 @@ public class BoxTestGenerated extends AbstractBoxTest {
       public void testRepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier() {
         runTest("compiler-tests/src/test/data/box/aggregation/interop/RepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier.kt");
       }
+    }
+  }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/box/api")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Api {
+    @Test
+    public void testAllFilesPresentInApi() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/api"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    }
+
+    @Test
+    @TestMetadata("MetroFirExtensionSample.kt")
+    public void testMetroFirExtensionSample() {
+      runTest("compiler-tests/src/test/data/box/api/MetroFirExtensionSample.kt");
     }
   }
 

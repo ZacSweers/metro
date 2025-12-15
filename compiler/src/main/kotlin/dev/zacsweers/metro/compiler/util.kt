@@ -221,7 +221,7 @@ internal fun StringBuilder.appendLineWithUnderlinedContent(
 /**
  * Copied from [kotlin.collections.joinTo] with the support for dynamically choosing a [separator].
  */
-public fun <T, A : Appendable> Iterable<T>.joinWithDynamicSeparatorTo(
+internal fun <T, A : Appendable> Iterable<T>.joinWithDynamicSeparatorTo(
   buffer: A,
   separator: (prev: T, next: T) -> CharSequence,
   prefix: CharSequence = "",
@@ -278,7 +278,7 @@ internal fun computeMetroDefault(
  * [singleOrNull] but if there are multiple elements it will throw an error instead of returning
  * null
  */
-public fun <T> Sequence<T>.singleOrNullUnlessMultiple(
+internal fun <T> Sequence<T>.singleOrNullUnlessMultiple(
   onError: (T) -> Nothing,
   predicate: (T) -> Boolean = { true },
 ): T? {
@@ -293,4 +293,12 @@ public fun <T> Sequence<T>.singleOrNullUnlessMultiple(
     }
   }
   return found
+}
+
+internal fun <K, V> MutableMap<K, MutableSet<V>>.getAndAdd(key: K, value: V): MutableSet<V> {
+  return getOrInit(key).also { it.add(value) }
+}
+
+internal fun <K, V> MutableMap<K, MutableSet<V>>.getOrInit(key: K): MutableSet<V> {
+  return getOrPut(key, ::mutableSetOf)
 }

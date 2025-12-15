@@ -206,6 +206,10 @@ internal class GraphMetadataReporter(
     deps: List<IrContextualTypeKey>,
     binding: IrBinding? = null,
   ): JsonArray {
+    // MembersInjected bindings are treated as deferrable - they inject into an
+    // existing instance rather than providing the type, so their dependencies
+    // don't represent construction-time dependencies.
+    val isMembersInjected = binding is IrBinding.MembersInjected
     return buildJsonArray {
       for (dependency in deps) {
         add(
@@ -213,7 +217,10 @@ internal class GraphMetadataReporter(
             put("key", JsonPrimitive(dependency.render(short = false, includeQualifier = true)))
             put("hasDefault", JsonPrimitive(dependency.hasDefault))
             // Get the wrapper type name if wrapped (Provider, Lazy, etc.)
-            val wrapperType = dependency.wrappedType.wrapperTypeName()
+            // MembersInjected dependencies are treated as deferrable
+            val wrapperType =
+              dependency.wrappedType.wrapperTypeName()
+                ?: if (isMembersInjected) "MembersInjected" else null
             if (wrapperType != null) {
               put("wrapperType", JsonPrimitive(wrapperType))
             }

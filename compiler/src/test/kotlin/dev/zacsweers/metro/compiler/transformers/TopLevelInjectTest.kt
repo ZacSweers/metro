@@ -41,7 +41,7 @@ class TopLevelInjectTest : MetroCompilerTest() {
 
           @DependencyGraph
           interface ExampleGraph {
-            val app: AppClass
+            val app: App
           }
           """
             .trimIndent()
@@ -68,7 +68,7 @@ class TopLevelInjectTest : MetroCompilerTest() {
 
           @DependencyGraph
           interface ExampleGraph {
-            val app: AppClass
+            val app: App
           }
           """
             .trimIndent()
@@ -95,7 +95,7 @@ class TopLevelInjectTest : MetroCompilerTest() {
 
           @DependencyGraph
           interface ExampleGraph {
-            val app: AppClass
+            val app: App
 
             @DependencyGraph.Factory
             fun interface Factory {
@@ -127,7 +127,7 @@ class TopLevelInjectTest : MetroCompilerTest() {
 
           @DependencyGraph
           interface ExampleGraph {
-            val app: AppClass
+            val app: App
 
             @DependencyGraph.Factory
             fun interface Factory {
@@ -159,7 +159,7 @@ class TopLevelInjectTest : MetroCompilerTest() {
 
           @DependencyGraph
           abstract class ExampleGraph {
-            abstract val app: AppClass
+            abstract val app: App
 
             private var count: Int = 0
 
@@ -194,7 +194,7 @@ class TopLevelInjectTest : MetroCompilerTest() {
 
           @DependencyGraph
           abstract class ExampleGraph {
-            abstract val app: AppClass
+            abstract val app: App
 
             private var count: Int = 0
 
@@ -233,7 +233,7 @@ class TopLevelInjectTest : MetroCompilerTest() {
 
           @DependencyGraph
           abstract class ExampleGraph {
-            abstract val app: AppClass
+            abstract val app: App
 
             private var count: Int = 0
 
@@ -271,7 +271,7 @@ class TopLevelInjectTest : MetroCompilerTest() {
 
           @DependencyGraph
           interface ExampleGraph {
-            val app: AppClass
+            val app: App
 
             @Named("int") @Provides private fun provideInt(): Int {
               return 0
@@ -303,7 +303,7 @@ class TopLevelInjectTest : MetroCompilerTest() {
 
           @DependencyGraph
           interface ExampleGraph {
-            @Named("app") val app: AppClass
+            @Named("app") val app: App
 
             @Provides private fun provideInt(): Int {
               return 0
@@ -334,7 +334,7 @@ class TopLevelInjectTest : MetroCompilerTest() {
 
           @DependencyGraph
           interface ExampleGraph {
-            val app: AppClass
+            val app: App
 
             @Provides val provideInt: Int get() = 2
             @Provides val provideLong: Long get() = 3
@@ -370,7 +370,7 @@ class TopLevelInjectTest : MetroCompilerTest() {
 
               @DependencyGraph
               interface ExampleGraph {
-                val app: AppClass
+                val app: App
               }
               """
                 .trimIndent()
@@ -418,7 +418,7 @@ class TopLevelInjectTest : MetroCompilerTest() {
 
               @DependencyGraph
               interface ExampleGraph {
-                val app: AppClass
+                val app: App
 
                 @Provides fun provideClock(): Clock = object : Clock {}
                 @Provides fun provideUiComponent(): MyUiComponentClass = object : MyUiComponentClass {}
@@ -472,7 +472,7 @@ class TopLevelInjectTest : MetroCompilerTest() {
 
               @DependencyGraph
               interface ExampleGraph {
-                val app: AppClass
+                val app: App
 
                 @Provides fun provideClock(): Clock = object : Clock {}
                 @Provides fun provideUiComponent(): MyUiComponentClass = object : MyUiComponentClass {}
@@ -528,7 +528,7 @@ class TopLevelInjectTest : MetroCompilerTest() {
 
               @DependencyGraph
               interface ExampleGraph {
-                val app: AppClass
+                val app: App
 
                 @Provides fun provideClock(): Clock = object : Clock {}
                 @Provides fun provideUiComponent(): MyUiComponentClass = object : MyUiComponentClass {}
@@ -576,7 +576,7 @@ class TopLevelInjectTest : MetroCompilerTest() {
 
           @DependencyGraph
           interface ExampleGraph {
-            val app: AppClass
+            val app: App
 
             @Provides private fun provideDeferred(): Deferred<String> {
               return CompletableDeferred("Hello, world!")

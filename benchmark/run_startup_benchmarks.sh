@@ -10,12 +10,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# Source common utilities
+source "$SCRIPT_DIR/benchmark-utils.sh"
 
 # Output directory
 RESULTS_DIR="startup-benchmark-results"
@@ -39,6 +35,7 @@ INCLUDE_MACROBENCHMARK=false
 # Whether to only collect binary metrics without running benchmarks (for testing)
 BINARY_METRICS_ONLY=false
 
+# Script-specific print functions (styles differ from run_benchmarks.sh)
 print_header() {
     echo ""
     echo -e "${GREEN}═══════════════════════════════════════════════════════════════${NC}"
@@ -63,18 +60,6 @@ print_info() {
     echo -e "${BLUE}ℹ $1${NC}"
 }
 
-# Format duration in human-readable format
-format_duration() {
-    local seconds=$1
-    local minutes=$((seconds / 60))
-    local remaining_seconds=$((seconds % 60))
-    if [ $minutes -gt 0 ]; then
-        echo "${minutes}m ${remaining_seconds}s"
-    else
-        echo "${seconds}s"
-    fi
-}
-
 # Print final results with duration
 print_final_results() {
     local results_dir="$1"
@@ -87,79 +72,6 @@ print_final_results() {
     echo "Results saved to: $full_path"
     echo "Total duration: $formatted_duration"
     echo ""
-}
-
-# Save current git state (branch or commit)
-save_git_state() {
-    # Check if we're on a branch or in detached HEAD state
-    local current_branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
-    if [ -n "$current_branch" ]; then
-        ORIGINAL_GIT_REF="$current_branch"
-        ORIGINAL_GIT_IS_BRANCH=true
-        print_info "Saved current branch: $ORIGINAL_GIT_REF"
-    else
-        # Detached HEAD - save the commit hash
-        ORIGINAL_GIT_REF=$(git rev-parse HEAD)
-        ORIGINAL_GIT_IS_BRANCH=false
-        print_info "Saved current commit: ${ORIGINAL_GIT_REF:0:12}"
-    fi
-}
-
-# Restore to original git state
-restore_git_state() {
-    if [ -z "$ORIGINAL_GIT_REF" ]; then
-        print_error "No git state saved to restore"
-        return 1
-    fi
-
-    print_step "Restoring to original git state..."
-    if [ "$ORIGINAL_GIT_IS_BRANCH" = true ]; then
-        git checkout "$ORIGINAL_GIT_REF" 2>/dev/null || {
-            print_error "Failed to restore to branch: $ORIGINAL_GIT_REF"
-            return 1
-        }
-        print_success "Restored to branch: $ORIGINAL_GIT_REF"
-    else
-        git checkout "$ORIGINAL_GIT_REF" 2>/dev/null || {
-            print_error "Failed to restore to commit: ${ORIGINAL_GIT_REF:0:12}"
-            return 1
-        }
-        print_success "Restored to commit: ${ORIGINAL_GIT_REF:0:12}"
-    fi
-}
-
-# Checkout a git ref (branch or commit)
-checkout_ref() {
-    local ref="$1"
-    print_step "Checking out: $ref"
-    git checkout "$ref" 2>/dev/null || {
-        print_error "Failed to checkout: $ref"
-        return 1
-    }
-    local short_ref=$(git rev-parse --short HEAD)
-    print_success "Checked out: $ref ($short_ref)"
-}
-
-# Get a short display name for a git ref
-get_ref_display_name() {
-    local ref="$1"
-    # Try to resolve to a short commit hash
-    local short_hash=$(git rev-parse --short "$ref" 2>/dev/null || echo "$ref")
-    # If it's a branch name, use that; otherwise use the short hash
-    if git show-ref --verify --quiet "refs/heads/$ref" 2>/dev/null; then
-        echo "$ref"
-    elif git show-ref --verify --quiet "refs/remotes/origin/$ref" 2>/dev/null; then
-        echo "$ref"
-    else
-        echo "$short_hash"
-    fi
-}
-
-# Get a filesystem-safe name for a git ref
-get_ref_safe_name() {
-    local ref="$1"
-    # Replace slashes and other special chars with underscores
-    echo "$ref" | sed 's/[^a-zA-Z0-9._-]/_/g'
 }
 
 # Clean build artifacts more thoroughly (including KSP caches)
@@ -183,8 +95,8 @@ show_usage() {
     echo "  jvm-r8    Run JVM startup benchmarks with R8-minified classes"
     echo "  android   Run Android benchmarks (requires device)"
     echo "  all       Run all benchmarks (default)"
-    echo "  single    Run benchmarks on a single git ref"
-    echo "  compare   Compare benchmarks across two git refs (branches or commits)"
+    echo "  single    Run benchmarks on a single git ref or Metro version"
+    echo "  compare   Compare benchmarks across two refs (git refs or Metro versions)"
     echo "  summary   Regenerate summary from existing results (use with --timestamp)"
     echo "  help      Show this help message"
     echo ""
@@ -200,15 +112,24 @@ show_usage() {
     echo "                          Useful for testing binary metrics collection quickly"
     echo ""
     echo "Single Options:"
-    echo "  --ref <ref>         Git ref to benchmark - branch name or commit hash"
+    echo "  --ref <ref>         Git ref (branch name/commit) or Metro version (e.g., 1.0.0)"
     echo "  --benchmark <type>  Benchmark type: jvm, jvm-r8, android, or all (default: jvm)"
     echo ""
     echo "Compare Options:"
-    echo "  --ref1 <ref>        First git ref (baseline) - branch name or commit hash"
-    echo "  --ref2 <ref>        Second git ref to compare against baseline"
+    echo "  --ref1 <ref>        First ref (baseline) - git ref or Metro version"
+    echo "  --ref2 <ref>        Second ref to compare - git ref or Metro version"
     echo "  --benchmark <type>  Benchmark type for compare: jvm, jvm-r8, android, or all (default: jvm)"
     echo "  --rerun-non-metro   Re-run non-metro modes on ref2 (default: only run metro on ref2)"
     echo "                      When disabled (default), ref2 uses ref1's non-metro results for comparison"
+    echo ""
+    echo "Ref Types:"
+    echo "  Refs can be either git refs or Metro versions. The script automatically detects"
+    echo "  the type based on the format:"
+    echo "  - Git refs: branch names (main, feature-branch), commit hashes (abc123), tags"
+    echo "  - Metro versions: semantic versions like 1.0.0, 2.0.0-alpha01, 1.5.0-RC1"
+    echo ""
+    echo "  When using a Metro version, benchmarks run on the current branch with the"
+    echo "  specified Metro version from Maven Central (instead of the included build)."
     echo ""
     echo "Examples:"
     echo "  $0 jvm                              # Run JVM benchmarks for all modes"
@@ -223,11 +144,19 @@ show_usage() {
     echo "  $0 single --ref feature-branch --modes metro,dagger-ksp --benchmark jvm"
     echo "  $0 single --ref main --benchmark jvm-r8  # Run R8-minified benchmark for all modes"
     echo ""
+    echo "  # Run benchmarks with a specific Metro version:"
+    echo "  $0 single --ref 1.0.0                # Benchmark Metro 1.0.0"
+    echo "  $0 single --ref 2.0.0-alpha01        # Benchmark a pre-release version"
+    echo ""
     echo "  # Compare benchmarks across git refs:"
     echo "  $0 compare --ref1 main --ref2 feature-branch"
     echo "  $0 compare --ref1 abc123 --ref2 def456 --benchmark all"
     echo "  $0 compare --ref1 v1.0.0 --ref2 HEAD --modes metro"
     echo "  $0 compare --ref1 main --ref2 feature --rerun-non-metro  # Re-run all modes on both refs"
+    echo ""
+    echo "  # Compare Metro versions:"
+    echo "  $0 compare --ref1 1.0.0 --ref2 1.1.0  # Compare two released versions"
+    echo "  $0 compare --ref1 1.0.0 --ref2 main   # Compare release to git branch"
     echo ""
     echo "Results will be saved to: $RESULTS_DIR/"
 }
@@ -1779,8 +1708,8 @@ run_all_benchmarks() {
     done
 }
 
-# Run benchmarks for a specific git ref
-# Arguments: ref, benchmark_type (jvm|android|all), ref_label, is_second_ref
+# Run benchmarks for a specific git ref or Metro version
+# Arguments: ref, benchmark_type (jvm|android|all), ref_label, is_second_ref, skip_checkout
 run_benchmarks_for_ref() {
     local ref="$1"
     local benchmark_type="$2"
@@ -1790,20 +1719,34 @@ run_benchmarks_for_ref() {
 
     print_header "Running benchmarks for: $ref_label"
 
-    # Checkout the ref (unless skip_checkout is true for current working state)
-    if [ "$skip_checkout" = true ]; then
+    # Check if ref is a Metro version or git ref
+    if is_metro_version "$ref"; then
+        print_info "Using Metro version: $ref (staying on current branch)"
+        export METRO_VERSION="$ref"
+    elif [ "$skip_checkout" = true ]; then
         print_info "Using current working state (no checkout)"
+        # Unset METRO_VERSION to use included build
+        unset METRO_VERSION
     else
+        # It's a git ref - checkout
         checkout_ref "$ref" || return 1
+        # Unset METRO_VERSION to use included build
+        unset METRO_VERSION
     fi
 
     # Create ref-specific results directory
     local ref_dir="$RESULTS_DIR/${TIMESTAMP}/${ref_label}"
     mkdir -p "$ref_dir"
 
-    # Save the commit hash for reference
-    git rev-parse HEAD > "$ref_dir/commit.txt"
-    git log -1 --format='%h %s' > "$ref_dir/commit-info.txt"
+    # Save version/commit info for reference
+    if is_metro_version "$ref"; then
+        echo "Metro version: $ref" > "$ref_dir/version-info.txt"
+        git rev-parse HEAD > "$ref_dir/commit.txt"
+        git log -1 --format='%h %s (Metro $ref)' | sed "s/\$ref/$ref/" > "$ref_dir/commit-info.txt"
+    else
+        git rev-parse HEAD > "$ref_dir/commit.txt"
+        git log -1 --format='%h %s' > "$ref_dir/commit-info.txt"
+    fi
 
     IFS=',' read -ra MODE_ARRAY <<< "$MODES"
     for mode in "${MODE_ARRAY[@]}"; do
@@ -2057,8 +2000,8 @@ EOF
                 if [ "$mode" = "metro" ]; then
                     vs_metro1="baseline"
                 elif [ -n "$metro_jvm_score1" ] && [ "$metro_jvm_score1" != "0" ]; then
-                    local pct1=$(printf "%.0f" "$(echo "scale=4; ($score1 / $metro_jvm_score1) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                    local mult1=$(printf "%.1f" "$(echo "scale=4; $score1 / $metro_jvm_score1" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                    local pct1=$(printf "%.1f" "$(echo "scale=4; ($score1 / $metro_jvm_score1) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                    local mult1=$(printf "%.2f" "$(echo "scale=4; $score1 / $metro_jvm_score1" | bc 2>/dev/null)" 2>/dev/null || echo "")
                     if [ -n "$pct1" ] && [ -n "$mult1" ]; then
                         vs_metro1="+${pct1}% (${mult1}x)"
                     fi
@@ -2070,8 +2013,8 @@ EOF
                 if [ "$mode" = "metro" ]; then
                     vs_metro2="baseline"
                 elif [ -n "$metro_jvm_score2" ] && [ "$metro_jvm_score2" != "0" ]; then
-                    local pct2=$(printf "%.0f" "$(echo "scale=4; ($score2 / $metro_jvm_score2) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                    local mult2=$(printf "%.1f" "$(echo "scale=4; $score2 / $metro_jvm_score2" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                    local pct2=$(printf "%.1f" "$(echo "scale=4; ($score2 / $metro_jvm_score2) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                    local mult2=$(printf "%.2f" "$(echo "scale=4; $score2 / $metro_jvm_score2" | bc 2>/dev/null)" 2>/dev/null || echo "")
                     if [ -n "$pct2" ] && [ -n "$mult2" ]; then
                         vs_metro2="+${pct2}% (${mult2}x)"
                     fi
@@ -2161,8 +2104,8 @@ EOF
                     if [ "$mode" = "metro" ]; then
                         vs_metro1="baseline"
                     elif [ -n "$metro_jvm_r8_score1" ] && [ "$metro_jvm_r8_score1" != "0" ]; then
-                        local pct1=$(printf "%.0f" "$(echo "scale=4; ($score1 / $metro_jvm_r8_score1) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                        local mult1=$(printf "%.1f" "$(echo "scale=4; $score1 / $metro_jvm_r8_score1" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                        local pct1=$(printf "%.1f" "$(echo "scale=4; ($score1 / $metro_jvm_r8_score1) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                        local mult1=$(printf "%.2f" "$(echo "scale=4; $score1 / $metro_jvm_r8_score1" | bc 2>/dev/null)" 2>/dev/null || echo "")
                         if [ -n "$pct1" ] && [ -n "$mult1" ]; then
                             vs_metro1="+${pct1}% (${mult1}x)"
                         fi
@@ -2173,8 +2116,8 @@ EOF
                     if [ "$mode" = "metro" ]; then
                         vs_metro2="baseline"
                     elif [ -n "$metro_jvm_r8_score2" ] && [ "$metro_jvm_r8_score2" != "0" ]; then
-                        local pct2=$(printf "%.0f" "$(echo "scale=4; ($score2 / $metro_jvm_r8_score2) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                        local mult2=$(printf "%.1f" "$(echo "scale=4; $score2 / $metro_jvm_r8_score2" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                        local pct2=$(printf "%.1f" "$(echo "scale=4; ($score2 / $metro_jvm_r8_score2) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                        local mult2=$(printf "%.2f" "$(echo "scale=4; $score2 / $metro_jvm_r8_score2" | bc 2>/dev/null)" 2>/dev/null || echo "")
                         if [ -n "$pct2" ] && [ -n "$mult2" ]; then
                             vs_metro2="+${pct2}% (${mult2}x)"
                         fi
@@ -2264,8 +2207,8 @@ EOF
                     if [ "$mode" = "metro" ]; then
                         vs_metro1="baseline"
                     elif [ -n "$metro_macro_score1" ] && [ "$metro_macro_score1" != "0" ]; then
-                        local pct1=$(printf "%.0f" "$(echo "scale=4; ($score1 / $metro_macro_score1) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                        local mult1=$(printf "%.1f" "$(echo "scale=4; $score1 / $metro_macro_score1" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                        local pct1=$(printf "%.1f" "$(echo "scale=4; ($score1 / $metro_macro_score1) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                        local mult1=$(printf "%.2f" "$(echo "scale=4; $score1 / $metro_macro_score1" | bc 2>/dev/null)" 2>/dev/null || echo "")
                         if [ -n "$pct1" ] && [ -n "$mult1" ]; then
                             vs_metro1="+${pct1}% (${mult1}x)"
                         fi
@@ -2277,8 +2220,8 @@ EOF
                     if [ "$mode" = "metro" ]; then
                         vs_metro2="baseline"
                     elif [ -n "$metro_macro_score2" ] && [ "$metro_macro_score2" != "0" ]; then
-                        local pct2=$(printf "%.0f" "$(echo "scale=4; ($score2 / $metro_macro_score2) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                        local mult2=$(printf "%.1f" "$(echo "scale=4; $score2 / $metro_macro_score2" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                        local pct2=$(printf "%.1f" "$(echo "scale=4; ($score2 / $metro_macro_score2) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                        local mult2=$(printf "%.2f" "$(echo "scale=4; $score2 / $metro_macro_score2" | bc 2>/dev/null)" 2>/dev/null || echo "")
                         if [ -n "$pct2" ] && [ -n "$mult2" ]; then
                             vs_metro2="+${pct2}% (${mult2}x)"
                         fi
@@ -2355,8 +2298,8 @@ EOF
                 if [ "$mode" = "metro" ]; then
                     vs_metro1="baseline"
                 elif [ -n "$metro_micro_score1" ] && [ "$metro_micro_score1" != "0" ]; then
-                    local pct1=$(printf "%.0f" "$(echo "scale=4; ($score1 / $metro_micro_score1) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                    local mult1=$(printf "%.1f" "$(echo "scale=4; $score1 / $metro_micro_score1" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                    local pct1=$(printf "%.1f" "$(echo "scale=4; ($score1 / $metro_micro_score1) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                    local mult1=$(printf "%.2f" "$(echo "scale=4; $score1 / $metro_micro_score1" | bc 2>/dev/null)" 2>/dev/null || echo "")
                     if [ -n "$pct1" ] && [ -n "$mult1" ]; then
                         vs_metro1="+${pct1}% (${mult1}x)"
                     fi
@@ -2368,8 +2311,8 @@ EOF
                 if [ "$mode" = "metro" ]; then
                     vs_metro2="baseline"
                 elif [ -n "$metro_micro_score2" ] && [ "$metro_micro_score2" != "0" ]; then
-                    local pct2=$(printf "%.0f" "$(echo "scale=4; ($score2 / $metro_micro_score2) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                    local mult2=$(printf "%.1f" "$(echo "scale=4; $score2 / $metro_micro_score2" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                    local pct2=$(printf "%.1f" "$(echo "scale=4; ($score2 / $metro_micro_score2) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                    local mult2=$(printf "%.2f" "$(echo "scale=4; $score2 / $metro_micro_score2" | bc 2>/dev/null)" 2>/dev/null || echo "")
                     if [ -n "$pct2" ] && [ -n "$mult2" ]; then
                         vs_metro2="+${pct2}% (${mult2}x)"
                     fi
@@ -2788,8 +2731,8 @@ EOF
                 if [ "$mode" = "metro" ]; then
                     vs_metro="baseline"
                 elif [ -n "$metro_jvm_score" ] && [ "$metro_jvm_score" != "0" ]; then
-                    local pct=$(printf "%.0f" "$(echo "scale=4; ($score / $metro_jvm_score) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                    local mult=$(printf "%.1f" "$(echo "scale=4; $score / $metro_jvm_score" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                    local pct=$(printf "%.1f" "$(echo "scale=4; ($score / $metro_jvm_score) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                    local mult=$(printf "%.2f" "$(echo "scale=4; $score / $metro_jvm_score" | bc 2>/dev/null)" 2>/dev/null || echo "")
                     if [ -n "$pct" ] && [ -n "$mult" ]; then
                         vs_metro="+${pct}% (${mult}x)"
                     fi
@@ -2839,8 +2782,8 @@ EOF
                 if [ "$mode" = "metro" ]; then
                     vs_metro="baseline"
                 elif [ -n "$metro_jvm_r8_score" ] && [ "$metro_jvm_r8_score" != "0" ]; then
-                    local pct=$(printf "%.0f" "$(echo "scale=4; ($score / $metro_jvm_r8_score) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                    local mult=$(printf "%.1f" "$(echo "scale=4; $score / $metro_jvm_r8_score" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                    local pct=$(printf "%.1f" "$(echo "scale=4; ($score / $metro_jvm_r8_score) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                    local mult=$(printf "%.2f" "$(echo "scale=4; $score / $metro_jvm_r8_score" | bc 2>/dev/null)" 2>/dev/null || echo "")
                     if [ -n "$pct" ] && [ -n "$mult" ]; then
                         vs_metro="+${pct}% (${mult}x)"
                     fi
@@ -2886,8 +2829,8 @@ EOF
                     if [ "$mode" = "metro" ]; then
                         vs_metro="baseline"
                     elif [ -n "$metro_macro_score" ] && [ "$metro_macro_score" != "0" ]; then
-                        local pct=$(printf "%.0f" "$(echo "scale=4; ($score / $metro_macro_score) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                        local mult=$(printf "%.1f" "$(echo "scale=4; $score / $metro_macro_score" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                        local pct=$(printf "%.1f" "$(echo "scale=4; ($score / $metro_macro_score) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                        local mult=$(printf "%.2f" "$(echo "scale=4; $score / $metro_macro_score" | bc 2>/dev/null)" 2>/dev/null || echo "")
                         if [ -n "$pct" ] && [ -n "$mult" ]; then
                             vs_metro="+${pct}% (${mult}x)"
                         fi
@@ -2921,8 +2864,8 @@ EOF
                 if [ "$mode" = "metro" ]; then
                     vs_metro="baseline"
                 elif [ -n "$metro_micro_score" ] && [ "$metro_micro_score" != "0" ]; then
-                    local pct=$(printf "%.0f" "$(echo "scale=4; ($score / $metro_micro_score) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
-                    local mult=$(printf "%.1f" "$(echo "scale=4; $score / $metro_micro_score" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                    local pct=$(printf "%.1f" "$(echo "scale=4; ($score / $metro_micro_score) * 100" | bc 2>/dev/null)" 2>/dev/null || echo "")
+                    local mult=$(printf "%.2f" "$(echo "scale=4; $score / $metro_micro_score" | bc 2>/dev/null)" 2>/dev/null || echo "")
                     if [ -n "$pct" ] && [ -n "$mult" ]; then
                         vs_metro="+${pct}% (${mult}x)"
                     fi
@@ -4101,6 +4044,12 @@ run_single() {
         exit 1
     fi
 
+    # Check if ref is a Metro version
+    local is_metro_ver=false
+    if is_metro_version "$SINGLE_REF"; then
+        is_metro_ver=true
+    fi
+
     # Check if using current working state (HEAD with possible uncommitted changes)
     local use_current_state=false
     if [ "$SINGLE_REF" = "HEAD" ] || [ "$SINGLE_REF" = "head" ] || [ "$SINGLE_REF" = "current" ]; then
@@ -4108,8 +4057,8 @@ run_single() {
         SINGLE_REF="HEAD"
     fi
 
-    # Validate ref exists (HEAD always exists)
-    if [ "$use_current_state" = false ]; then
+    # Validate ref exists (skip for Metro versions and HEAD)
+    if [ "$is_metro_ver" = false ] && [ "$use_current_state" = false ]; then
         if ! git rev-parse --verify "$SINGLE_REF" > /dev/null 2>&1; then
             print_error "Invalid git ref: $SINGLE_REF"
             exit 1
@@ -4123,11 +4072,16 @@ run_single() {
         fi
     fi
 
-    print_header "Running Benchmarks on Single Git Ref"
-    if [ "$use_current_state" = true ]; then
-        print_info "Ref: HEAD (current working state)"
+    if [ "$is_metro_ver" = true ]; then
+        print_header "Running Benchmarks with Metro Version"
+        print_info "Metro version: $SINGLE_REF"
     else
-        print_info "Ref: $SINGLE_REF"
+        print_header "Running Benchmarks on Single Git Ref"
+        if [ "$use_current_state" = true ]; then
+            print_info "Ref: HEAD (current working state)"
+        else
+            print_info "Ref: $SINGLE_REF"
+        fi
     fi
     print_info "Benchmark type: $benchmark_type"
     print_info "Modes: $MODES"
@@ -4135,7 +4089,9 @@ run_single() {
 
     # Create safe label for directory name
     local ref_label
-    if [ "$use_current_state" = true ]; then
+    if [ "$is_metro_ver" = true ]; then
+        ref_label=$(get_ref_safe_name "$SINGLE_REF")
+    elif [ "$use_current_state" = true ]; then
         # Use current branch name or "HEAD" if detached
         ref_label=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "HEAD")
         if [ "$ref_label" = "HEAD" ]; then
@@ -4145,7 +4101,8 @@ run_single() {
         ref_label=$(get_ref_safe_name "$SINGLE_REF")
     fi
 
-    if [ "$use_current_state" = false ]; then
+    # For git refs (not Metro versions), save current git state and set up restore trap
+    if [ "$is_metro_ver" = false ] && [ "$use_current_state" = false ]; then
         # Save current git state and set up restore trap
         save_git_state
         trap 'restore_git_state' EXIT
@@ -4174,25 +4131,43 @@ run_compare() {
         exit 1
     fi
 
-    # Validate refs exist
-    if ! git rev-parse --verify "$COMPARE_REF1" > /dev/null 2>&1; then
-        print_error "Invalid git ref: $COMPARE_REF1"
-        exit 1
+    # Check if refs are Metro versions or git refs
+    local ref1_is_metro=false
+    local ref2_is_metro=false
+    if is_metro_version "$COMPARE_REF1"; then
+        ref1_is_metro=true
     fi
-    if ! git rev-parse --verify "$COMPARE_REF2" > /dev/null 2>&1; then
-        print_error "Invalid git ref: $COMPARE_REF2"
-        exit 1
-    fi
-
-    # Check for uncommitted changes
-    if ! git diff-index --quiet HEAD -- 2>/dev/null; then
-        print_error "You have uncommitted changes. Please commit or stash them before comparing."
-        exit 1
+    if is_metro_version "$COMPARE_REF2"; then
+        ref2_is_metro=true
     fi
 
-    print_header "Comparing Benchmarks Across Git Refs"
-    print_info "Baseline (ref1): $COMPARE_REF1"
-    print_info "Compare (ref2):  $COMPARE_REF2"
+    # Validate git refs exist (skip for Metro versions)
+    if [ "$ref1_is_metro" = false ]; then
+        if ! git rev-parse --verify "$COMPARE_REF1" > /dev/null 2>&1; then
+            print_error "Invalid git ref: $COMPARE_REF1"
+            exit 1
+        fi
+    fi
+    if [ "$ref2_is_metro" = false ]; then
+        if ! git rev-parse --verify "$COMPARE_REF2" > /dev/null 2>&1; then
+            print_error "Invalid git ref: $COMPARE_REF2"
+            exit 1
+        fi
+    fi
+
+    # Check for uncommitted changes only if we need to checkout git refs
+    local needs_git_checkout=false
+    if [ "$ref1_is_metro" = false ] || [ "$ref2_is_metro" = false ]; then
+        needs_git_checkout=true
+        if ! git diff-index --quiet HEAD -- 2>/dev/null; then
+            print_error "You have uncommitted changes. Please commit or stash them before comparing."
+            exit 1
+        fi
+    fi
+
+    print_header "Comparing Benchmarks"
+    print_info "Baseline (ref1): $COMPARE_REF1 ($(get_ref_type_description "$COMPARE_REF1"))"
+    print_info "Compare (ref2):  $COMPARE_REF2 ($(get_ref_type_description "$COMPARE_REF2"))"
     print_info "Benchmark type:  $benchmark_type"
     print_info "Modes:           $MODES"
     if [ "$RERUN_NON_METRO" = true ]; then
@@ -4202,8 +4177,12 @@ run_compare() {
     fi
     echo ""
 
-    # Save current git state
-    save_git_state
+    # Save current git state only if we need to checkout git refs
+    if [ "$needs_git_checkout" = true ]; then
+        save_git_state
+        # Set up trap to restore git state on exit
+        trap 'restore_git_state' EXIT
+    fi
 
     # Create safe labels for directory names
     local ref1_label=$(get_ref_safe_name "$COMPARE_REF1")
@@ -4214,9 +4193,6 @@ run_compare() {
         ref1_label="${ref1_label}_base"
         ref2_label="${ref2_label}_compare"
     fi
-
-    # Set up trap to restore git state on exit
-    trap 'restore_git_state' EXIT
 
     # Run benchmarks for ref1 (baseline) - run all modes
     run_benchmarks_for_ref "$COMPARE_REF1" "$benchmark_type" "$ref1_label" false || {
@@ -4235,7 +4211,7 @@ run_compare() {
 
     print_final_results "$RESULTS_DIR/${TIMESTAMP}"
 
-    # Restore will happen via trap
+    # Restore will happen via trap (if set)
 }
 
 # Default benchmark type for single/compare commands

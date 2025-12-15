@@ -17,6 +17,7 @@
 package dev.zacsweers.metro.compiler.graph
 
 import dev.zacsweers.metro.compiler.filterToSet
+import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import java.util.PriorityQueue
@@ -447,8 +448,8 @@ private fun <V : Comparable<V>> sortVerticesInSCC(
         // ignore only these edges when ordering
         continue
       }
-      hardDeps.getOrPut(v, ::mutableSetOf).add(dep)
-      revHard.getOrPut(dep, ::mutableSetOf).add(v)
+      hardDeps.getAndAdd(v, dep)
+      revHard.getAndAdd(dep, v)
     }
   }
 
@@ -615,7 +616,7 @@ private fun <V> buildComponentDag(
       val dependentComp = componentOf.getValue(toVertex)
       if (prereqComp != dependentComp) {
         // Reverse the arrow so Kahn sees "prereq → dependent"
-        dag.getOrPut(dependentComp, ::mutableSetOf) += prereqComp
+        dag.getAndAdd(dependentComp, prereqComp)
       }
     }
   }

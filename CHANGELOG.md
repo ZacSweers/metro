@@ -8,6 +8,7 @@ This release significantly improves the runtime performance of Metro-generated g
 
 - 🚀 Improves graph init runtime performance by **30–40%**
 - 🤏 Reduces generated graph code size by **60–70%** (even higher if you heavily use multibindings)
+- **Behavior change**: When using top-level function injection, the generated class now has the same name as the function. Previously it was suffixed with `Class`.
 - **New**: Experimental support for sharding large graphs. For extremely large dependency graphs on the JVM, their generated implementations could exceed the JVM class size limit. To avoid this, Metro now supports sharding within graphs (as needed) to distribute initialization code across multiple inner _shard_ classes. This is currently disabled by default but can be enabled via the `enableGraphSharding` Gradle DSL property.
 - **New**: Support `@Provides` properties with `@JvmField` annotations.
 - **Enhancement**: Avoid unnecessary intermediate `Provider` instance allocations during graph expression gen. This means that when a direct type is requested in code gen, Metro will skip instantiating the intermediate `MetroFactory` instance if possible, avoiding unnecessary allocations.
@@ -17,8 +18,16 @@ This release significantly improves the runtime performance of Metro-generated g
 - **Enhancement**: Don't generate provider fields for graph self instances unless necessary.
 - **Enhancement**: Improve accuracy of diagnostic location when reporting graph validation issues from binding callable declarations.
 - **Enhancement**: Validate bindings from interop with Dagger `@BindsOptionalOf` lazily.
+- **Enhancement**: [graph analysis] Title graph edges with semantically meaningful descriptions of the edge type. They should read a bit more like plain English.
+- **Enhancement**: [graph analysis] Better handle visualizing bound instance inputs.
+- **Enhancement**: [graph analysis] Better visualize member injection from graph injectors.
+- **Enhancement**: [metrox-viewmodel] Allow viewmodel map keys on callable and type targets.
+- **Fix**: Ensure IC lookups are recorded for all merged contributions.
 - **Fix**: Fix `newInstance()` args not stripping `Lazy` in top-level function inject classes.
 - **Fix**: Allow `Any` to be a `binding<...>()` type if no explicit supertypes are declared.
+- **Fix**: Mark `MembersInjected` bindings as deferrable in graph metadata reporting.
+- **Fix**: Use eager graphs for dominator tree analysis.
+- **Fix**: Don't apply `replaces` effect from excluded contributions (regular and binding containers).
 
 0.8.2
 -----
