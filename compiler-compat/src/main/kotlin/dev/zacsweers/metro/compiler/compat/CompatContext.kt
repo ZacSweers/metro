@@ -54,10 +54,11 @@ public interface CompatContext {
     /**
      * Load [factories][Factory] and pick the highest compatible version (by [Factory.minVersion])
      */
-    private fun resolveFactory(
+    internal fun resolveFactory(
       factories: Sequence<Factory> = loadFactories(),
-      testVersion: String? = null,
+      testVersionString: String? = null,
     ): Factory {
+      val testVersion = testVersionString?.let { KotlinToolingVersion(it) }
       val targetFactory =
         factories
           .mapNotNull { factory ->
@@ -69,8 +70,10 @@ public interface CompatContext {
               null
             }
           }
-          .filter { (version, factory) -> (testVersion ?: version) >= factory.minVersion }
-          .maxByOrNull { (_, factory) -> factory.minVersion }
+          .filter { (version, factory) ->
+            (testVersion ?: version) >= KotlinToolingVersion(factory.minVersion)
+          }
+          .maxByOrNull { (_, factory) -> KotlinToolingVersion(factory.minVersion) }
           ?.factory
           ?: error(
             """
@@ -338,7 +341,15 @@ public interface CompatContext {
   public fun IrProperty.addBackingFieldCompat(builder: IrFieldBuilder.() -> Unit = {}): IrField
 }
 
-private data class FactoryData(val version: String, val factory: CompatContext.Factory)
+private data class FactoryData(
+  val version: KotlinToolingVersion,
+  val factory: CompatContext.Factory,
+) {
+  companion object {
+    operator fun invoke(version: String, factory: CompatContext.Factory): FactoryData =
+      FactoryData(KotlinToolingVersion(version), factory)
+  }
+}
 
 internal annotation class CompatApi(
   val since: String,

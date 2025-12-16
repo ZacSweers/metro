@@ -15,4 +15,8 @@ kotlin {
 dependencies {
   compileOnly(libs.kotlin.compiler)
   compileOnly(libs.kotlin.stdlib)
+
+  testImplementation(libs.junit)
+  testImplementation(libs.kotlin.test)
+  testImplementation(libs.truth)
 }
