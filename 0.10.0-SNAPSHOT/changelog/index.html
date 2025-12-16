@@ -1336,6 +1336,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#091" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.9.1
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#090" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2059,6 +2070,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#091" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.9.1
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#090" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2717,6 +2739,10 @@
 
 <h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
 <h2 id="unreleased"><strong>Unreleased</strong><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
+<h2 id="091">0.9.1<a class="headerlink" href="#091" title="Permanent link">&para;</a></h2>
+<p><em>2025-12-16</em></p>
+<p>This is a bufix release to fix compatibility with kotlinc <code>2.3.0</code>. There was a bug in Metro&rsquo;s compatibility layer that caused it to not realize it could use the <code>2.3.0-x</code> compatibility code with Kotlin <code>2.3.0</code> final. This release is otherwise identical to <code>0.9.0</code>.</p>
+<p>This release also remains backward-compatible all the way to Kotlin <code>2.2.20</code> (including all the 2.3.0 preview releases) and forward compatible to <code>2.3.20</code> dev builds. See the <a href="https://zacsweers.github.io/metro/latest/compatibility/">compatibility docs</a> for a full table of compatible versions.</p>
 <h2 id="090">0.9.0<a class="headerlink" href="#090" title="Permanent link">&para;</a></h2>
 <p><em>2025-12-15</em></p>
 <p>This release significantly improves the runtime performance of Metro-generated graphs, bringing them to parity with Dagger components&rsquo; typical runtime performance (without fastInit enabled).</p>
