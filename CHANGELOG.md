@@ -4,11 +4,6 @@ Changelog
 **Unreleased**
 --------------
 
-0.9.1
------
-
-_2025-12-16_
-
 - **Fix**: Fix kotlinc 2.3.0 support. There was a bug in Metro's compatibility layer that caused it to not realize it could use the `2.3.0-x` compatibility versions with `2.3.0` final.
 
 0.9.0
