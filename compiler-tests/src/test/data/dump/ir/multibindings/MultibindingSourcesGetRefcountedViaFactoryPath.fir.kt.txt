@@ -239,7 +239,12 @@ interface TestGraph {
 
     private val setOfInt: Provider<Set<Int>>
       private get(): Provider<Set<Int>> {
-        return Companion.builder<Int>(individualProviderSize = 2, collectionProviderSize = 0).addProvider(individualProvider = Companion.create(instance = <this>.#thisGraphInstance, base = <this>.#provideBaseProvider)).addProvider(individualProvider = Companion.create(instance = <this>.#thisGraphInstance, base = <this>.#provideBaseProvider)).build()
+        return { // BLOCK
+          val tmp_0: Builder<Int> = Companion.builder<Int>(individualProviderSize = 2, collectionProviderSize = 0)
+          tmp_0.addProvider(individualProvider = Companion.create(instance = <this>.#thisGraphInstance, base = <this>.#provideBaseProvider))
+          tmp_0.addProvider(individualProvider = Companion.create(instance = <this>.#thisGraphInstance, base = <this>.#provideBaseProvider))
+          tmp_0.build()
+        }
       }
 
   }

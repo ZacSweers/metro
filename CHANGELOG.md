@@ -5,6 +5,7 @@ Changelog
 --------------
 
 - **Fix**: Don't apply `replaces` effect from excluded contributions in cross-module scenarios.
+- **Fix**: Avoid deeply nested IR calls for generated Set and Map multibindings causing `StackoverflowErrors` in large graphs.
 
 0.9.1
 -----

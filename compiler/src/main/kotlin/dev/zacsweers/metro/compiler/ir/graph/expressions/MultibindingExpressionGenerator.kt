@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irGetProperty
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.irLambda
+import dev.zacsweers.metro.compiler.ir.irTemporary
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.regularParameters
@@ -28,6 +29,7 @@ import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.FrameworkSymbols
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
+import org.jetbrains.kotlin.ir.builders.irBlock
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irInt
@@ -314,10 +316,10 @@ internal class MultibindingExpressionGenerator(
   ): IrExpression =
     with(scope) {
       /*
-        SetFactory.<String>builder(1, 1)
-          .addProvider(FileSystemModule_Companion_ProvideString1Factory.create())
-          .addCollectionProvider(provideString2Provider)
-          .build()
+        val builder = SetFactory.<String>builder(1, 1)
+        builder.addProvider(FileSystemModule_Companion_ProvideString1Factory.create())
+        builder.addCollectionProvider(provideString2Provider)
+        return builder.build()
       */
 
       // Used to unpack the right provider type
@@ -328,19 +330,26 @@ internal class MultibindingExpressionGenerator(
           .classOrFail
           .owner
 
-      // SetFactory.<String>builder(1, 1)
-      val builder: IrExpression =
-        irInvoke(
-          callee = valueProviderSymbols.setFactoryBuilderFunction,
-          typeHint = valueProviderSymbols.setFactoryBuilder.typeWith(elementType),
-          typeArgs = listOf(elementType),
-          args = listOf(irInt(individualProviders.size), irInt(collectionProviders.size)),
-        )
+      val resultType =
+        irBuiltIns.setClass.typeWith(elementType).wrapInProvider(metroSymbols.metroProvider)
 
-      val withProviders =
-        individualProviders.fold(builder) { receiver, provider ->
-          irInvoke(
-            dispatchReceiver = receiver,
+      return irBlock(resultType = resultType) {
+        // val builder = SetFactory.<String>builder(1, 1)
+        val builder =
+          irTemporary(
+            irInvoke(
+              callee = valueProviderSymbols.setFactoryBuilderFunction,
+              typeHint = valueProviderSymbols.setFactoryBuilder.typeWith(elementType),
+              typeArgs = listOf(elementType),
+              args = listOf(irInt(individualProviders.size), irInt(collectionProviders.size)),
+            ),
+            nameHint = "builder",
+          )
+
+        // builder.addProvider(...)
+        for (provider in individualProviders) {
+          +irInvoke(
+            dispatchReceiver = irGet(builder),
             callee = valueProviderSymbols.setFactoryBuilderAddProviderFunction,
             typeHint = builder.type,
             args =
@@ -355,11 +364,10 @@ internal class MultibindingExpressionGenerator(
           )
         }
 
-      // .addProvider(FileSystemModule_Companion_ProvideString1Factory.create())
-      val withCollectionProviders =
-        collectionProviders.fold(withProviders) { receiver, provider ->
-          irInvoke(
-            dispatchReceiver = receiver,
+        // builder.addCollectionProvider(...)
+        for (provider in collectionProviders) {
+          +irInvoke(
+            dispatchReceiver = irGet(builder),
             callee = valueProviderSymbols.setFactoryBuilderAddCollectionProviderFunction,
             typeHint = builder.type,
             args =
@@ -374,18 +382,19 @@ internal class MultibindingExpressionGenerator(
           )
         }
 
-      // .build()
-      val instance =
-        irInvoke(
-          dispatchReceiver = withCollectionProviders,
-          callee = valueProviderSymbols.setFactoryBuilderBuildFunction,
-          typeHint =
-            irBuiltIns.setClass.typeWith(elementType).wrapInProvider(metroSymbols.metroProvider),
-        )
-      return with(metroSymbols.providerTypeConverter) {
-        instance.convertTo(
-          IrContextualTypeKey(IrTypeKey(irBuiltIns.setClass.typeWith(elementType))).wrapInProvider()
-        )
+        // builder.build()
+        val instance =
+          irInvoke(
+            dispatchReceiver = irGet(builder),
+            callee = valueProviderSymbols.setFactoryBuilderBuildFunction,
+            typeHint = resultType,
+          )
+        +with(metroSymbols.providerTypeConverter) {
+          instance.convertTo(
+            IrContextualTypeKey(IrTypeKey(irBuiltIns.setClass.typeWith(elementType)))
+              .wrapInProvider()
+          )
+        }
       }
     }
 

@@ -187,7 +187,12 @@ interface TestGraph {
 
     private val setOfAny: Provider<Set<Any>>
       private get(): Provider<Set<Any>> {
-        return Companion.builder<Any>(individualProviderSize = 2, collectionProviderSize = 0).addProvider(individualProvider = <this>.#provideService1Provider).addProvider(individualProvider = <this>.#provideService2Provider).build()
+        return { // BLOCK
+          val tmp_0: Builder<Any> = Companion.builder<Any>(individualProviderSize = 2, collectionProviderSize = 0)
+          tmp_0.addProvider(individualProvider = <this>.#provideService1Provider)
+          tmp_0.addProvider(individualProvider = <this>.#provideService2Provider)
+          tmp_0.build()
+        }
       }
 
   }

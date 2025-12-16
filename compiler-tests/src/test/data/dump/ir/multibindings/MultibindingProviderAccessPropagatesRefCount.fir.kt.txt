@@ -434,7 +434,11 @@ interface TestGraph {
 
     private val setOfA: Provider<Set<A>>
       private get(): Provider<Set<A>> {
-        return Companion.builder<A>(individualProviderSize = 1, collectionProviderSize = 0).addProvider(individualProvider = Companion.create(x = <this>.#xImplProvider)).build()
+        return { // BLOCK
+          val tmp_0: Builder<A> = Companion.builder<A>(individualProviderSize = 1, collectionProviderSize = 0)
+          tmp_0.addProvider(individualProvider = Companion.create(x = <this>.#xImplProvider))
+          tmp_0.build()
+        }
       }
 
   }
