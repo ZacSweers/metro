@@ -104,6 +104,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ExcludedBindingContainerReplacesEffectIgnoredMultiModule.kt")
+    public void testExcludedBindingContainerReplacesEffectIgnoredMultiModule() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ExcludedBindingContainerReplacesEffectIgnoredMultiModule.kt");
+    }
+
+    @Test
     @TestMetadata("ExcludesWithOrigin.kt")
     public void testExcludesWithOrigin() {
       runTest("compiler-tests/src/test/data/box/aggregation/ExcludesWithOrigin.kt");

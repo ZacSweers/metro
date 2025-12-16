@@ -4,6 +4,8 @@ Changelog
 **Unreleased**
 --------------
 
+- **Fix**: Don't apply `replaces` effect from excluded contributions in cross-module scenarios.
+
 0.9.1
 -----
 
