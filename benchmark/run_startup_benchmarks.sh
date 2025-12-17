@@ -34,6 +34,8 @@ RERUN_NON_METRO=false
 INCLUDE_MACROBENCHMARK=false
 # Whether to only collect binary metrics without running benchmarks (for testing)
 BINARY_METRICS_ONLY=false
+# Target for multiplatform benchmarks (jvm, js, wasmJs, native, all)
+MULTIPLATFORM_TARGET="all"
 
 # Script-specific print functions (styles differ from run_benchmarks.sh)
 print_header() {
@@ -91,14 +93,15 @@ show_usage() {
     echo "Usage: $0 [command] [options]"
     echo ""
     echo "Commands:"
-    echo "  jvm       Run JVM startup benchmarks using JMH"
-    echo "  jvm-r8    Run JVM startup benchmarks with R8-minified classes"
-    echo "  android   Run Android benchmarks (requires device)"
-    echo "  all       Run all benchmarks (default)"
-    echo "  single    Run benchmarks on a single git ref or Metro version"
-    echo "  compare   Compare benchmarks across two refs (git refs or Metro versions)"
-    echo "  summary   Regenerate summary from existing results (use with --timestamp)"
-    echo "  help      Show this help message"
+    echo "  jvm           Run JVM startup benchmarks using JMH"
+    echo "  jvm-r8        Run JVM startup benchmarks with R8-minified classes"
+    echo "  multiplatform Run multiplatform benchmarks using kotlinx-benchmark (Metro only)"
+    echo "  android       Run Android benchmarks (requires device)"
+    echo "  all           Run all benchmarks (default)"
+    echo "  single        Run benchmarks on a single git ref or Metro version"
+    echo "  compare       Compare benchmarks across two refs (git refs or Metro versions)"
+    echo "  summary       Regenerate summary from existing results (use with --timestamp)"
+    echo "  help          Show this help message"
     echo ""
     echo "Options:"
     echo "  --modes <list>          Comma-separated list of modes to benchmark"
@@ -131,9 +134,14 @@ show_usage() {
     echo "  When using a Metro version, benchmarks run on the current branch with the"
     echo "  specified Metro version from Maven Central (instead of the included build)."
     echo ""
+    echo "Multiplatform Options:"
+    echo "  --target <target>   Target platform: jvm, js, wasmJs, native, or all (default: all)"
+    echo ""
     echo "Examples:"
     echo "  $0 jvm                              # Run JVM benchmarks for all modes"
     echo "  $0 jvm-r8                           # Run JVM benchmarks with R8-minified classes for all modes"
+    echo "  $0 multiplatform                    # Run kotlinx-benchmark for all targets (Metro only)"
+    echo "  $0 multiplatform --target jvm       # Run kotlinx-benchmark for JVM only"
     echo "  $0 jvm --modes metro,dagger-ksp     # Run JVM benchmarks for specific modes"
     echo "  $0 all --count 250                  # Run all benchmarks with 250 modules"
     echo "  $0 android --include-macrobenchmark # Run Android benchmarks including macrobenchmarks"
@@ -580,6 +588,88 @@ run_jvm_r8_benchmark() {
     local mode="${1:-metro}"
     setup_for_mode "$mode"
     run_jvm_r8_benchmark_only "$mode"
+}
+
+# Run kotlinx-benchmark multiplatform benchmark only (no clean/generate)
+# Only supports metro mode since it requires multiplatform project generation
+run_multiplatform_benchmark_only() {
+    local target="${1:-all}"
+    local output_dir="$RESULTS_DIR/${TIMESTAMP}/multiplatform-${target}_metro"
+    mkdir -p "$output_dir"
+
+    # Determine Gradle task based on target
+    local task=""
+    local gradle_args=""
+    case "$target" in
+        all)
+            task=":startup-multiplatform:benchmark"
+            ;;
+        jvm)
+            task=":startup-multiplatform:jvmBenchmark"
+            ;;
+        js)
+            task=":startup-multiplatform:jsBenchmark"
+            ;;
+        wasmJs)
+            task=":startup-multiplatform:wasmJsBenchmark"
+            ;;
+        native)
+            # Detect host platform for native target
+            if [[ "$(uname)" == "Darwin" ]]; then
+                if [[ "$(uname -m)" == "arm64" ]]; then
+                    task=":startup-multiplatform:macosArm64Benchmark"
+                else
+                    task=":startup-multiplatform:macosX64Benchmark"
+                fi
+            elif [[ "$(uname)" == "Linux" ]]; then
+                task=":startup-multiplatform:linuxX64Benchmark"
+                gradle_args="-Pbenchmark.native.linux=true"
+            else
+                task=":startup-multiplatform:mingwX64Benchmark"
+                gradle_args="-Pbenchmark.native.windows=true"
+            fi
+            ;;
+        *)
+            print_error "Unknown multiplatform target: $target"
+            return 1
+            ;;
+    esac
+
+    # Enable platform-specific native targets when running all
+    if [[ "$target" == "all" ]]; then
+        if [[ "$(uname)" == "Linux" ]]; then
+            gradle_args="-Pbenchmark.native.linux=true"
+        elif [[ "$(uname)" == MINGW* ]] || [[ "$(uname)" == CYGWIN* ]]; then
+            gradle_args="-Pbenchmark.native.windows=true"
+        fi
+    fi
+
+    print_step "Running kotlinx-benchmark ($target) for metro..."
+
+    if ./gradlew --quiet $gradle_args $task 2>&1 | tee "$output_dir/benchmark-output.txt"; then
+        # Copy JSON results
+        local results_dir="startup-multiplatform/build/reports/benchmarks"
+        if [ -d "$results_dir" ]; then
+            cp -r "$results_dir"/* "$output_dir/" 2>/dev/null || true
+        fi
+        print_success "kotlinx-benchmark ($target) complete for metro"
+    else
+        print_error "kotlinx-benchmark ($target) failed for metro"
+        return 1
+    fi
+}
+
+# Run kotlinx-benchmark multiplatform benchmark (with clean/generate)
+run_multiplatform_benchmark() {
+    local target="${1:-all}"
+
+    # Multiplatform only supports metro mode
+    clean_build_artifacts
+
+    print_step "Generating multiplatform project for metro..."
+    kotlin generate-projects.main.kts --mode metro --multiplatform --count "$MODULE_COUNT" > /dev/null
+
+    run_multiplatform_benchmark_only "$target"
 }
 
 # Run Android benchmark only (no clean/generate)
@@ -4264,6 +4354,10 @@ main() {
                 BINARY_METRICS_ONLY=true
                 shift
                 ;;
+            --target)
+                MULTIPLATFORM_TARGET="$2"
+                shift 2
+                ;;
             *)
                 print_error "Unknown option: $1"
                 show_usage
@@ -4282,6 +4376,12 @@ main() {
         jvm-r8)
             run_jvm_r8_benchmarks
             generate_summary
+            ;;
+        multiplatform)
+            print_header "Running Multiplatform Benchmarks"
+            print_info "Target: $MULTIPLATFORM_TARGET"
+            run_multiplatform_benchmark "$MULTIPLATFORM_TARGET"
+            print_success "Multiplatform benchmarks complete!"
             ;;
         android)
             run_android_benchmarks

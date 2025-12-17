@@ -199,6 +199,54 @@ The `:startup-jvm-minified` module then depends on this minified jar and runs st
 
 This provides insight into how Metro performs in production Android apps where R8 is typically enabled.
 
+### Multiplatform Startup Benchmarks (kotlinx-benchmark)
+
+Uses [kotlinx-benchmark](https://github.com/Kotlin/kotlinx-benchmark) to measure graph creation
+performance across multiple Kotlin targets (JVM, JS, WasmJS, Native).
+
+```bash
+# First, generate the multiplatform benchmark project
+kotlin generate-projects.main.kts --mode metro --multiplatform
+
+# Run kotlinx-benchmark for all targets
+./gradlew :startup-multiplatform:benchmark
+
+# Run for specific targets
+./gradlew :startup-multiplatform:jvmBenchmark
+./gradlew :startup-multiplatform:jsBenchmark
+./gradlew :startup-multiplatform:wasmJsBenchmark
+./gradlew :startup-multiplatform:macosArm64Benchmark  # or macosX64Benchmark, linuxX64Benchmark
+
+# Results are saved to startup-multiplatform/build/reports/benchmarks/
+```
+
+Or use the runner script:
+
+```bash
+# Run all targets
+./run_startup_benchmarks.sh multiplatform
+
+# Run specific target
+./run_startup_benchmarks.sh multiplatform --target jvm
+./run_startup_benchmarks.sh multiplatform --target js
+./run_startup_benchmarks.sh multiplatform --target wasmJs
+./run_startup_benchmarks.sh multiplatform --target native
+
+# Results are saved to startup-benchmark-results/{timestamp}/multiplatform-{target}_metro/
+```
+
+#### Analyzing Results with Kotlin Notebooks
+
+kotlinx-benchmark outputs JSON results that can be analyzed in [Kotlin Notebooks](https://plugins.jetbrains.com/plugin/16340-kotlin-notebook)
+for statistical analysis and visualization.
+
+1. Install the Kotlin Notebook plugin in IntelliJ IDEA
+2. Open `notebooks/analyze-benchmark-results.ipynb`
+3. Update the results path and run cells
+
+See [JetBrains Blog: Exploring kotlinx-benchmark Results](https://blog.jetbrains.com/kotlin/2025/12/a-better-way-to-explore-kotlinx-benchmark-results-with-kotlin-notebooks/)
+for more details on analysis techniques.
+
 ### Android Startup Benchmarks
 
 Uses [AndroidX Macrobenchmark](https://developer.android.com/topic/performance/benchmarking/macrobenchmark-overview)
@@ -229,6 +277,10 @@ Use the `run_startup_benchmarks.sh` script to run all startup benchmarks and agg
 
 # Run only JVM R8-minified benchmarks (Metro only)
 ./run_startup_benchmarks.sh jvm-r8
+
+# Run multiplatform benchmarks (Metro only, kotlinx-benchmark)
+./run_startup_benchmarks.sh multiplatform
+./run_startup_benchmarks.sh multiplatform --target jvm  # specific target
 
 # Run only Android benchmarks (requires device)
 ./run_startup_benchmarks.sh android
