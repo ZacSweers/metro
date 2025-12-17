@@ -32,8 +32,18 @@ class GenerateProjectsCommand : CliktCommand() {
       .enum<ProcessorMode>(ignoreCase = true)
       .default(ProcessorMode.KSP)
 
+  private val multiplatform by
+    option("--multiplatform", help = "Generate multiplatform project (Metro mode only)")
+      .flag(default = false)
+
   override fun run() {
-    println("Generating benchmark project for mode: $mode with $totalModules modules")
+    if (multiplatform && mode != BuildMode.METRO) {
+      echo("Error: --multiplatform flag is only supported with Metro mode", err = true)
+      return
+    }
+
+    val modeDesc = if (multiplatform) "$mode (multiplatform)" else mode.toString()
+    echo("Generating benchmark project for mode: $modeDesc with $totalModules modules")
 
     // Calculate layer sizes based on total modules
     val coreCount = (totalModules * 0.16).toInt().coerceAtLeast(5)
@@ -216,54 +226,54 @@ class GenerateProjectsCommand : CliktCommand() {
     val allModules = coreModules + featureModules + appModules
 
     // Clean up previous generation
-    println("Cleaning previous generated files...")
+    echo("Cleaning previous generated files...")
 
     listOf("core", "features", "app").forEach { layer ->
       File(layer).takeIf { it.exists() }?.deleteRecursively()
     }
 
     // Generate foundation module first
-    println("Generating foundation module...")
-    generateFoundationModule()
+    echo("Generating foundation module...")
+    generateFoundationModule(multiplatform)
 
     // Generate all modules
-    println("Generating ${allModules.size} modules...")
+    echo("Generating ${allModules.size} modules...")
 
-    allModules.forEach { generateModule(it, mode, processor) }
+    allModules.forEach { generateModule(it, mode, processor, multiplatform) }
 
     // Generate app component
-    println("Generating app component...")
+    echo("Generating app component...")
 
-    generateAppComponent(allModules, mode, processor)
+    generateAppComponent(allModules, mode, processor, multiplatform)
 
     // Update settings.gradle.kts
-    println("Updating settings.gradle.kts...")
+    echo("Updating settings.gradle.kts...")
 
     writeSettingsFile(allModules)
 
-    println("Generated benchmark project with ${allModules.size} modules!")
-    println("Build mode: $mode")
+    echo("Generated benchmark project with ${allModules.size} modules!")
+    echo("Build mode: $mode")
     if (mode == BuildMode.DAGGER) {
-      println("Processor: $processor")
+      echo("Processor: $processor")
     }
 
-    println("Modules by layer:")
+    echo("Modules by layer:")
 
-    println(
+    echo(
       "- Core: ${coreModules.size} (${String.format("%.1f", coreModules.size.toDouble() / allModules.size * 100)}%)"
     )
 
-    println(
+    echo(
       "- Features: ${featureModules.size} (${String.format("%.1f", featureModules.size.toDouble() / allModules.size * 100)}%)"
     )
 
-    println(
+    echo(
       "- App: ${appModules.size} (${String.format("%.1f", appModules.size.toDouble() / allModules.size * 100)}%)"
     )
 
-    println("Total contributions: ${allModules.sumOf { it.contributionsCount }}")
+    echo("Total contributions: ${allModules.sumOf { it.contributionsCount }}")
 
-    println("Subcomponents: ${allModules.count { it.hasSubcomponent }}")
+    echo("Subcomponents: ${allModules.count { it.hasSubcomponent }}")
   }
 
   enum class BuildMode {
@@ -304,19 +314,27 @@ class GenerateProjectsCommand : CliktCommand() {
     }
   }
 
-  fun generateModule(module: ModuleSpec, buildMode: BuildMode, processor: ProcessorMode) {
+  fun generateModule(
+    module: ModuleSpec,
+    buildMode: BuildMode,
+    processor: ProcessorMode,
+    multiplatform: Boolean,
+  ) {
     val moduleDir = File("${module.layer.path}/${module.name}")
     moduleDir.mkdirs()
 
     // Generate build.gradle.kts
     val buildFile = File(moduleDir, "build.gradle.kts")
-    buildFile.writeText(generateBuildScript(module, buildMode, processor))
+    buildFile.writeText(generateBuildScript(module, buildMode, processor, multiplatform))
 
     // Generate source code
+    val srcPath =
+      if (multiplatform && buildMode == BuildMode.METRO) "src/commonMain/kotlin"
+      else "src/main/kotlin"
     val srcDir =
       File(
         moduleDir,
-        "src/main/kotlin/dev/zacsweers/metro/benchmark/${module.layer.path}/${module.name.replace("-", "")}",
+        "$srcPath/dev/zacsweers/metro/benchmark/${module.layer.path}/${module.name.replace("-", "")}",
       )
     srcDir.mkdirs()
 
@@ -328,35 +346,64 @@ class GenerateProjectsCommand : CliktCommand() {
     module: ModuleSpec,
     buildMode: BuildMode,
     processor: ProcessorMode,
+    multiplatform: Boolean,
   ): String {
     val dependencies =
+      module.dependencies.joinToString("\n") { dep -> "    implementation(project(\":$dep\"))" }
+    val jvmDependencies =
       module.dependencies.joinToString("\n") { dep -> "  implementation(project(\":$dep\"))" }
 
     return when (buildMode) {
       BuildMode.METRO ->
-        """
+        if (multiplatform) {
+          """
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
+
+plugins {
+  id("org.jetbrains.kotlin.multiplatform")
+  id("dev.zacsweers.metro")
+}
+
+val enableLinux = findProperty("benchmark.native.linux")?.toString()?.toBoolean() ?: false
+val enableWindows = findProperty("benchmark.native.windows")?.toString()?.toBoolean() ?: false
+
+kotlin {
+  jvm()
+  js(IR) { nodejs() }
+  @OptIn(ExperimentalWasmDsl::class)
+  wasmJs { nodejs() }
+  macosArm64()
+  macosX64()
+  if (enableLinux) linuxX64()
+  if (enableWindows) mingwX64()
+
+  sourceSets {
+    commonMain {
+      dependencies {
+        implementation("dev.zacsweers.metro:runtime:+")
+        implementation(project(":core:foundation"))
+$dependencies
+      }
+    }
+  }
+}
+"""
+            .trimIndent()
+        } else {
+          """
 plugins {
   id("org.jetbrains.kotlin.jvm")
   id("dev.zacsweers.metro")
 }
 
 dependencies {
-  implementation("javax.inject:javax.inject:1")
-  implementation("dev.zacsweers.anvil:annotations:0.4.1")
+  implementation("dev.zacsweers.metro:runtime:+")
   implementation(project(":core:foundation"))
-$dependencies
-}
-
-metro {
-  // TODO re-enable when we can target Metro 0.8.3+
-  // enableGraphSharding.set($enableSharding)
-  interop {
-    includeJavax()
-    includeAnvilForDagger()
-  }
+$jvmDependencies
 }
 """
-          .trimIndent()
+            .trimIndent()
+        }
 
       BuildMode.NOOP ->
         """
@@ -488,7 +535,21 @@ anvil {
 
     val imports =
       when (buildMode) {
-        BuildMode.METRO,
+        BuildMode.METRO ->
+          """
+import dev.zacsweers.metro.AppScope
+import dev.zacsweers.metro.ContributesBinding
+import dev.zacsweers.metro.ContributesIntoSet
+import dev.zacsweers.metro.ContributesTo
+import dev.zacsweers.metro.GraphExtension
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.Scope
+import dev.zacsweers.metro.SingleIn
+import dev.zacsweers.metro.binding
+$dependencyImports
+"""
+            .trimIndent()
+
         BuildMode.NOOP ->
           """
 import com.squareup.anvil.annotations.ContributesBinding
@@ -621,6 +682,7 @@ class ${className}ServiceImpl$index @Inject constructor() : ${className}Service$
 
     val multibindingAnnotation =
       when (buildMode) {
+        BuildMode.METRO -> "@ContributesIntoSet($scopeParam, binding = binding<Plugin>())"
         BuildMode.KOTLIN_INJECT_ANVIL ->
           "@ContributesBinding($scopeParam, boundType = Plugin::class, multibinding = true)"
         else -> "@ContributesMultibinding($scopeParam, boundType = Plugin::class)"
@@ -654,6 +716,7 @@ class ${className}PluginImpl$index @Inject constructor() : ${className}Plugin$in
 
     val multibindingAnnotation =
       when (buildMode) {
+        BuildMode.METRO -> "@ContributesIntoSet($scopeParam, binding = binding<Initializer>())"
         BuildMode.KOTLIN_INJECT_ANVIL ->
           "@ContributesBinding($scopeParam, boundType = Initializer::class, multibinding = true)"
         else -> "@ContributesMultibinding($scopeParam, boundType = Initializer::class)"
@@ -695,7 +758,39 @@ class ${className}InitializerImpl$index @Inject constructor() : ${className}Init
       }
 
     return when (buildMode) {
-      BuildMode.METRO,
+      BuildMode.METRO ->
+        """
+// Subcomponent-scoped services that depend on parent scope
+${(1..3).joinToString("\n") { i ->
+          val dependencyParams = if (availableDependencies.isNotEmpty()) {
+            availableDependencies.joinToString(",\n  ") { "private val $it: $it" }
+          } else {
+            "// No parent dependencies available"
+          }
+
+          """interface ${className}LocalService$i
+
+@SingleIn(${className}Scope::class)
+@ContributesBinding(${className}Scope::class)
+class ${className}LocalServiceImpl$i @Inject constructor(${if (availableDependencies.isNotEmpty()) "\n  $dependencyParams\n" else ""}) : ${className}LocalService$i"""
+        }}
+
+@SingleIn(${className}Scope::class)
+@GraphExtension(${className}Scope::class)
+interface ${className}Subcomponent {
+  ${if (availableDependencies.isNotEmpty()) "// Access parent scope bindings\n$parentAccessors\n  \n" else ""}// Access subcomponent scope bindings
+$subcomponentAccessors
+
+  @ContributesTo(AppScope::class)
+  @GraphExtension.Factory
+  interface Factory {
+    fun create${className}Subcomponent(): ${className}Subcomponent
+  }
+}
+
+object ${className}Scope
+"""
+
       BuildMode.NOOP ->
         """
 // Subcomponent-scoped services that depend on parent scope
@@ -834,27 +929,47 @@ $accessors
       .joinToString("\n\n")
   }
 
-  fun generateFoundationModule() {
+  fun generateFoundationModule(multiplatform: Boolean) {
     val foundationDir = File("core/foundation")
     foundationDir.mkdirs()
 
     // Create build.gradle.kts
     val buildFile = File(foundationDir, "build.gradle.kts")
     val buildScript =
-      """
+      if (multiplatform) {
+        """
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
+
+plugins {
+  id("org.jetbrains.kotlin.multiplatform")
+}
+
+val enableLinux = findProperty("benchmark.native.linux")?.toString()?.toBoolean() ?: false
+val enableWindows = findProperty("benchmark.native.windows")?.toString()?.toBoolean() ?: false
+
+kotlin {
+  jvm()
+  js(IR) { nodejs() }
+  @OptIn(ExperimentalWasmDsl::class)
+  wasmJs { nodejs() }
+  macosArm64()
+  macosX64()
+  if (enableLinux) linuxX64()
+  if (enableWindows) mingwX64()
+}
+"""
+      } else {
+        """
 plugins {
   id("org.jetbrains.kotlin.jvm")
 }
-
-dependencies {
-  implementation("javax.inject:javax.inject:1")
-}
 """
+      }
     buildFile.writeText(buildScript.trimIndent())
 
     // Create source directory
-    val srcDir =
-      File(foundationDir, "src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation")
+    val srcPath = if (multiplatform) "src/commonMain/kotlin" else "src/main/kotlin"
+    val srcDir = File(foundationDir, "$srcPath/dev/zacsweers/metro/benchmark/core/foundation")
     srcDir.mkdirs()
 
     // Create common interfaces
@@ -904,15 +1019,67 @@ class PlainDataProcessor {
     allModules: List<ModuleSpec>,
     buildMode: BuildMode,
     processor: ProcessorMode,
+    multiplatform: Boolean,
   ) {
     val appDir = File("app/component")
     appDir.mkdirs()
 
     val buildFile = File(appDir, "build.gradle.kts")
+    val moduleDepsCommon =
+      allModules.joinToString("\n") {
+        "        implementation(project(\":${it.layer.path}:${it.name}\"))"
+      }
+    val moduleDepsJvm =
+      allModules.joinToString("\n") {
+        "  implementation(project(\":${it.layer.path}:${it.name}\"))"
+      }
+
     val buildScript =
       when (buildMode) {
         BuildMode.METRO ->
-          """
+          if (multiplatform) {
+            """
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
+
+plugins {
+  id("org.jetbrains.kotlin.multiplatform")
+  id("dev.zacsweers.metro")
+}
+
+val enableLinux = findProperty("benchmark.native.linux")?.toString()?.toBoolean() ?: false
+val enableWindows = findProperty("benchmark.native.windows")?.toString()?.toBoolean() ?: false
+
+kotlin {
+  jvm()
+  js(IR) {
+    nodejs()
+    binaries.executable()
+  }
+  @OptIn(ExperimentalWasmDsl::class)
+  wasmJs {
+    nodejs()
+    binaries.executable()
+  }
+  macosArm64 { binaries.executable() }
+  macosX64 { binaries.executable() }
+  if (enableLinux) linuxX64 { binaries.executable() }
+  if (enableWindows) mingwX64 { binaries.executable() }
+
+  sourceSets {
+    commonMain {
+      dependencies {
+        implementation("dev.zacsweers.metro:runtime:+")
+        implementation(project(":core:foundation"))
+
+        // Depend on all generated modules to aggregate everything
+$moduleDepsCommon
+      }
+    }
+  }
+}
+"""
+          } else {
+            """
 plugins {
   id("org.jetbrains.kotlin.jvm")
   id("dev.zacsweers.metro")
@@ -920,29 +1087,18 @@ plugins {
 }
 
 dependencies {
-  implementation("javax.inject:javax.inject:1")
-  implementation("dev.zacsweers.anvil:annotations:0.4.1")
   implementation("dev.zacsweers.metro:runtime:+")
   implementation(project(":core:foundation"))
 
   // Depend on all generated modules to aggregate everything
-${allModules.joinToString("\n") { "  implementation(project(\":${it.layer.path}:${it.name}\"))" }}
+$moduleDepsJvm
 }
 
 application {
   mainClass = "dev.zacsweers.metro.benchmark.app.component.AppComponentKt"
 }
-
-metro {
-  // reportsDestination.set(layout.buildDirectory.dir("metro"))
-  // TODO re-enable when we can target Metro 0.8.3+
-  // enableGraphSharding.set($enableSharding)
-  interop {
-    includeJavax()
-    includeAnvilForDagger()
-  }
-}
 """
+          }
 
         BuildMode.NOOP ->
           """
@@ -1063,7 +1219,10 @@ application {
 
     buildFile.writeText(buildScript.trimIndent())
 
-    val srcDir = File(appDir, "src/main/kotlin/dev/zacsweers/metro/benchmark/app/component")
+    val srcPath =
+      if (multiplatform && buildMode == BuildMode.METRO) "src/commonMain/kotlin"
+      else "src/main/kotlin"
+    val srcDir = File(appDir, "$srcPath/dev/zacsweers/metro/benchmark/app/component")
     srcDir.mkdirs()
 
     val sourceFile = File(srcDir, "AppComponent.kt")
@@ -1085,6 +1244,43 @@ application {
           }
         }
         .joinToString("\n")
+
+    val metroMainFunction =
+      if (multiplatform) {
+        // Multiplatform-compatible main (no javaClass)
+        """
+fun main() {
+  val graph = createAndInitialize()
+  val plugins = graph.getAllPlugins()
+  val initializers = graph.getAllInitializers()
+
+  println("Metro benchmark graph successfully created!")
+  println("  - Plugins: ${'$'}{plugins.size}")
+  println("  - Initializers: ${'$'}{initializers.size}")
+  println("  - Total modules: ${allModules.size}")
+  println("  - Total contributions: ${allModules.sumOf { it.contributionsCount }}")
+}
+"""
+      } else {
+        // JVM-only main with reflection
+        """
+fun main() {
+  val graph = createAndInitialize()
+  val fields = graph.javaClass.declaredFields.size
+  val methods = graph.javaClass.declaredMethods.size
+  val plugins = graph.getAllPlugins()
+  val initializers = graph.getAllInitializers()
+
+  println("Metro benchmark graph successfully created!")
+  println("  - Fields: ${'$'}fields")
+  println("  - Methods: ${'$'}methods")
+  println("  - Plugins: ${'$'}{plugins.size}")
+  println("  - Initializers: ${'$'}{initializers.size}")
+  println("  - Total modules: ${allModules.size}")
+  println("  - Total contributions: ${allModules.sumOf { it.contributionsCount }}")
+}
+"""
+      }
 
     val sourceCode =
       when (buildMode) {
@@ -1129,22 +1325,7 @@ fun createAndInitialize(): AppComponent {
   graph.getAllInitializers()
   return graph
 }
-
-fun main() {
-  val graph = createAndInitialize()
-  val fields = graph.javaClass.declaredFields.size
-  val methods = graph.javaClass.declaredMethods.size
-  val plugins = graph.getAllPlugins()
-  val initializers = graph.getAllInitializers()
-
-  println("Metro benchmark graph successfully created!")
-  println("  - Fields: ${'$'}fields")
-  println("  - Methods: ${'$'}methods")
-  println("  - Plugins: ${'$'}{plugins.size}")
-  println("  - Initializers: ${'$'}{initializers.size}")
-  println("  - Total modules: ${allModules.size}")
-  println("  - Total contributions: ${allModules.sumOf { it.contributionsCount }}")
-}
+$metroMainFunction
 """
 
         BuildMode.NOOP ->
