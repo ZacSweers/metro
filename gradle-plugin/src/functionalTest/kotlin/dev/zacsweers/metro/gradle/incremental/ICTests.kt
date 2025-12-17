@@ -731,9 +731,9 @@ class ICTests : BaseIncrementalCompilationTest() {
         private val main =
           source(
             """
-            fun main(): Example {
+            fun main(): SomeRepository {
               val graph = createGraph<ExampleGraph>()
-              return (graph.loggedInGraphFactory.create() as ExampleProvider).example
+              return (graph.loggedInGraphFactory.create() as SomeRepositoryProvider).someRepository
             }
           """
           )
@@ -756,15 +756,6 @@ class ICTests : BaseIncrementalCompilationTest() {
             @ContributesBinding(LoggedInScope::class)
             @Inject
             internal class SomeRepositoryImpl : SomeRepository
-
-            @Inject
-            @SingleIn(LoggedInScope::class)
-            class Example internal constructor(private val repository: SomeRepository)
-
-            @ContributesTo(LoggedInScope::class)
-            interface ExampleProvider {
-              val example: Example
-            }
           """
           )
       }
