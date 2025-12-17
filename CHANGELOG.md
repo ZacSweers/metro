@@ -7,6 +7,7 @@ Changelog
 - **Fix**: Don't apply `replaces` effect from excluded contributions in cross-module scenarios.
 - **Fix**: Fix binding replacements getting dropped in classes with multiple contributions in graph extensions.
 - **Fix**: Avoid deeply nested IR calls for generated Set and Map multibindings causing compiler `StackOverflowError`s in large graphs at compile-time.
+- **Fix**: Fix dynamic graph bindings not being propagated to graph extensions.
 
 0.9.1
 -----
