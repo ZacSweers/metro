@@ -4,6 +4,19 @@ Changelog
 **Unreleased**
 --------------
 
+- **Fix**: Don't apply `replaces` effect from excluded contributions in cross-module scenarios.
+- **Fix**: Fix binding replacements getting dropped in classes with multiple contributions in graph extensions.
+- **Fix**: Avoid deeply nested IR calls for generated Set and Map multibindings causing compiler `StackOverflowError`s in large graphs at compile-time.
+
+0.9.1
+-----
+
+_2025-12-16_
+
+This is a bufix release to fix compatibility with kotlinc `2.3.0`. There was a bug in Metro's compatibility layer that caused it to not realize it could use the `2.3.0-x` compatibility code with Kotlin `2.3.0` final. This release is otherwise identical to `0.9.0`.
+
+This release also remains backward-compatible all the way to Kotlin `2.2.20` (including all the 2.3.0 preview releases) and forward compatible to `2.3.20` dev builds. See the [compatibility docs](https://zacsweers.github.io/metro/latest/compatibility/) for a full table of compatible versions.
+
 0.9.0
 -----
 

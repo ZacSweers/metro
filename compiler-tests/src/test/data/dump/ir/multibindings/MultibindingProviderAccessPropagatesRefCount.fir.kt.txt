@@ -411,7 +411,11 @@ interface TestGraph {
 
     private val mapOfIntToB: Provider<Map<Int, B>>
       private get(): Provider<Map<Int, B>> {
-        return Companion.builder<Int, B>(size = 1).put(key = 1, providerOfValue = Companion.create(x = <this>.#xImplProvider)).build()
+        return { // BLOCK
+          val tmp_0: Builder<Int, B> = Companion.builder<Int, B>(size = 1)
+          tmp_0.put(key = 1, providerOfValue = Companion.create(x = <this>.#xImplProvider))
+          tmp_0.build()
+        }
       }
 
     private val mapOfIntToC: Map<Int, Provider<C>>
@@ -434,7 +438,11 @@ interface TestGraph {
 
     private val setOfA: Provider<Set<A>>
       private get(): Provider<Set<A>> {
-        return Companion.builder<A>(individualProviderSize = 1, collectionProviderSize = 0).addProvider(individualProvider = Companion.create(x = <this>.#xImplProvider)).build()
+        return { // BLOCK
+          val tmp_1: Builder<A> = Companion.builder<A>(individualProviderSize = 1, collectionProviderSize = 0)
+          tmp_1.addProvider(individualProvider = Companion.create(x = <this>.#xImplProvider))
+          tmp_1.build()
+        }
       }
 
   }

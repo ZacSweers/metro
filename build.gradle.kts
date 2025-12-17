@@ -144,6 +144,7 @@ allprojects {
         "**/IntKey.kt",
         "**/IntoMap.kt",
         "**/IntoSet.kt",
+        "**/KotlinToolingVersion.kt",
         "**/LongKey.kt",
         "**/MapFactory.kt",
         "**/MapKey.kt",
