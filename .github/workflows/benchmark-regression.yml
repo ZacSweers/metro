@@ -13,8 +13,8 @@ on:
 jobs:
   benchmark:
     name: "Multiplatform Startup Benchmark"
-    # Run on push to main, or on PRs with 'benchmark' label
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.label.name == 'benchmark')
+    # Run on push to main, or on PRs with 'run-benchmarks' label
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.label.name == 'run-benchmarks')
     runs-on: ubuntu-latest
 
     steps:
@@ -236,8 +236,8 @@ jobs:
 
   build-benchmark:
     name: "Build Time Benchmark"
-    # Run on push to main, or on PRs with 'benchmark' label
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.label.name == 'benchmark')
+    # Run on push to main, or on PRs with 'run-benchmarks' label
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.label.name == 'run-benchmarks')
     runs-on: ubuntu-latest
 
     steps:
