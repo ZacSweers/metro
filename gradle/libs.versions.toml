@@ -73,7 +73,7 @@ android-test = { id = "com.android.test", version.ref = "agp" }
 benchmark = { id = "androidx.benchmark", version = "1.4.1" }
 
 [libraries]
-androidx-activity = "androidx.activity:activity-compose:1.12.1"
+androidx-activity = "androidx.activity:activity-compose:1.12.2"
 androidx-annotation = { module = "androidx.annotation:annotation", version.ref = "annotation" }
 androidx-appcompat = "androidx.appcompat:appcompat:1.7.1"
 androidx-core = "androidx.core:core-ktx:1.17.0"
