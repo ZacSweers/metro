@@ -8,7 +8,7 @@ import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
-import org.jetbrains.kotlin.descriptors.Visibilities
+import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.types.IrType
@@ -86,7 +86,7 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
     val contributingClasses =
       functionsInPackage
         .filter {
-          if (it.owner.visibility == Visibilities.Internal) {
+          if (it.owner.visibility == DescriptorVisibilities.INTERNAL) {
             includeNonFriendInternals ||
               it.owner.fileOrNull?.let { file -> it.owner.isVisibleAsInternal(file) } ?: false
           } else {
