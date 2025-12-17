@@ -146,12 +146,20 @@ interface CycleMapGraph {
 
     private val mapOfStringToX: Provider<Map<String, Provider<X>>>
       private get(): Provider<Map<String, Provider<X>>> {
-        return Companion.builder<String, X>(size = 1).put(key = "X", providerOfValue = Companion.create(y = <this>.#yProvider)).build()
+        return { // BLOCK
+          val tmp_0: Builder<String, X> = Companion.builder<String, X>(size = 1)
+          tmp_0.put(key = "X", providerOfValue = Companion.create(y = <this>.#yProvider))
+          tmp_0.build()
+        }
       }
 
     private val mapOfStringToY: Provider<Map<String, Provider<Y>>>
       private get(): Provider<Map<String, Provider<Y>>> {
-        return Companion.builder<String, Y>(size = 1).put(key = "Y", providerOfValue = <this>.#yProvider).build()
+        return { // BLOCK
+          val tmp_1: Builder<String, Y> = Companion.builder<String, Y>(size = 1)
+          tmp_1.put(key = "Y", providerOfValue = <this>.#yProvider)
+          tmp_1.build()
+        }
       }
 
     @Binds

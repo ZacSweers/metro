@@ -439,14 +439,15 @@ internal class MultibindingExpressionGenerator(
   ): IrExpression =
     with(scope) {
       /*
-        MapFactory.<Integer, Integer>builder(2)
-          .put(1, FileSystemModule_Companion_ProvideMapInt1Factory.create())
-          .put(2, provideMapInt2Provider)
-          .build()
-        MapProviderFactory.<Integer, Integer>builder(2)
-          .put(1, FileSystemModule_Companion_ProvideMapInt1Factory.create())
-          .put(2, provideMapInt2Provider)
-          .build()
+        val builder = MapFactory.<Integer, Integer>builder(2)
+        builder.put(1, FileSystemModule_Companion_ProvideMapInt1Factory.create())
+        builder.put(2, provideMapInt2Provider)
+        builder.build()
+
+        val builder = MapProviderFactory.<Integer, Integer>builder(2)
+        builder.put(1, FileSystemModule_Companion_ProvideMapInt1Factory.create())
+        builder.put(2, provideMapInt2Provider)
+        builder.build()
       */
 
       val valueWrappedType = contextualTypeKey.wrappedType.findMapValueType()!!
@@ -582,16 +583,6 @@ internal class MultibindingExpressionGenerator(
               valueProviderSymbols.mapFactoryBuilder
             }
 
-          // MapFactory.<Integer, Integer>builder(2)
-          // MapProviderFactory.<Integer, Integer>builder(2)
-          val builder: IrExpression =
-            irInvoke(
-              callee = builderFunction,
-              typeArgs = listOf(keyType, valueType),
-              typeHint = builderType.typeWith(keyType, valueType),
-              args = listOf(irInt(size)),
-            )
-
           val putFunction =
             if (valueIsWrappedInProvider) {
               valueProviderSymbols.mapProviderFactoryBuilderPutFunction
@@ -605,45 +596,6 @@ internal class MultibindingExpressionGenerator(
               valueProviderSymbols.mapFactoryBuilderPutAllFunction
             }
 
-          val withProviders =
-            binding.sourceBindings
-              .map { bindingGraph.requireBinding(it) }
-              .fold(builder) { receiver, sourceBinding ->
-                val providerTypeMetadata = sourceBinding.contextualTypeKey
-
-                val isMap =
-                  providerTypeMetadata.typeKey.type.rawType().symbol == irBuiltIns.mapClass
-
-                val putter =
-                  if (isMap) {
-                    // use putAllFunction
-                    // .putAll(1, FileSystemModule_Companion_ProvideMapInt1Factory.create())
-                    // TODO is this only for inheriting in GraphExtensions?
-                    TODO("putAll isn't yet supported")
-                  } else {
-                    // .put(1, FileSystemModule_Companion_ProvideMapInt1Factory.create())
-                    putFunction
-                  }
-
-                // Ensure we match the expected parameter type of the put() function we're calling
-                val providerType = putter.owner.nonDispatchParameters[1].type.rawType()
-                irInvoke(
-                  dispatchReceiver = receiver,
-                  callee = putter,
-                  typeHint = builder.type,
-                  args =
-                    listOf(
-                      generateMapKeyLiteral(sourceBinding),
-                      generateMultibindingArgument(
-                        sourceBinding,
-                        originalValueContextKey.wrapInProvider(providerType),
-                        fieldInitKey,
-                        accessType = AccessType.PROVIDER,
-                      ),
-                    ),
-                )
-              }
-
           // .build()
           val buildFunction =
             if (valueIsWrappedInProvider) {
@@ -652,15 +604,68 @@ internal class MultibindingExpressionGenerator(
               valueProviderSymbols.mapFactoryBuilderBuildFunction
             }
 
-          irInvoke(
-            dispatchReceiver = withProviders,
-            callee = buildFunction,
-            // Wrap in the appropriate Provider type for the symbols we're using
-            typeHint =
-              valueProviderSymbols.canonicalProviderType.typeWithArguments(
-                mapProviderType.requireSimpleType().arguments
-              ),
-          )
+          val resultType =
+            valueProviderSymbols.canonicalProviderType.typeWithArguments(
+              mapProviderType.requireSimpleType().arguments
+            )
+
+          irBlock(resultType = resultType) {
+            // MapFactory.<Integer, Integer>builder(2)
+            // MapProviderFactory.<Integer, Integer>builder(2)
+            val builder =
+              createAndAddTemporaryVariable(
+                irInvoke(
+                  callee = builderFunction,
+                  typeArgs = listOf(keyType, valueType),
+                  typeHint = builderType.typeWith(keyType, valueType),
+                  args = listOf(irInt(size)),
+                ),
+                nameHint = "builder",
+              )
+
+            // .put(key, provider) for each binding
+            for (sourceBinding in binding.sourceBindings.map { bindingGraph.requireBinding(it) }) {
+              val providerTypeMetadata = sourceBinding.contextualTypeKey
+
+              val isMap = providerTypeMetadata.typeKey.type.rawType().symbol == irBuiltIns.mapClass
+
+              val putter =
+                if (isMap) {
+                  // use putAllFunction
+                  // .putAll(1, FileSystemModule_Companion_ProvideMapInt1Factory.create())
+                  // TODO is this only for inheriting in GraphExtensions?
+                  TODO("putAll isn't yet supported")
+                } else {
+                  // .put(1, FileSystemModule_Companion_ProvideMapInt1Factory.create())
+                  putFunction
+                }
+
+              // Ensure we match the expected parameter type of the put() function we're calling
+              val providerType = putter.owner.nonDispatchParameters[1].type.rawType()
+              +irInvoke(
+                dispatchReceiver = irGet(builder),
+                callee = putter,
+                typeHint = builder.type,
+                args =
+                  listOf(
+                    generateMapKeyLiteral(sourceBinding),
+                    generateMultibindingArgument(
+                      sourceBinding,
+                      originalValueContextKey.wrapInProvider(providerType),
+                      fieldInitKey,
+                      accessType = AccessType.PROVIDER,
+                    ),
+                  ),
+              )
+            }
+
+            // .build()
+            +irInvoke(
+              dispatchReceiver = irGet(builder),
+              callee = buildFunction,
+              typeHint = resultType,
+            )
+          }
         }
 
       // Always a provider instance in this branch, no need to transform access type
