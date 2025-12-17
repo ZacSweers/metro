@@ -22,7 +22,6 @@ import org.gradle.testkit.runner.TaskOutcome
 import org.junit.Assume.assumeTrue
 import org.junit.Ignore
 import org.junit.Test
-import kotlin.test.fail
 
 class ICTests : BaseIncrementalCompilationTest() {
 
@@ -640,21 +639,14 @@ class ICTests : BaseIncrementalCompilationTest() {
   fun internalBindings() {
     val fixture =
       object : MetroProject() {
-        override fun sources() = listOf(
-          scopes,
-          graphs,
-          repo,
-          repoImpl,
-          exampleGraph,
-          main,
-        )
+        override fun sources() = listOf(scopes, graphs, repo, repoImpl, exampleGraph)
 
         override val gradleProject: GradleProject
           get() =
             newGradleProjectBuilder(DslKind.KOTLIN)
               .withRootProject {
                 withBuildScript {
-                  sources = listOf(main, exampleGraph)
+                  sources = listOf(exampleGraph)
                   applyMetroDefault()
                   dependencies(
                     Dependency.implementation(":lib:impl"),
@@ -673,40 +665,35 @@ class ICTests : BaseIncrementalCompilationTest() {
                 sources.add(graphs)
                 withBuildScript {
                   applyMetroDefault()
-                  dependencies(
-                    Dependency.implementation(":scopes"),
-                  )
+                  dependencies(Dependency.implementation(":scopes"))
                 }
               }
               .withSubproject("lib") {
                 sources.add(repo)
                 withBuildScript {
                   applyMetroDefault()
-                  dependencies(
-                    Dependency.implementation(":scopes"),
-                  )
+                  dependencies(Dependency.implementation(":scopes"))
                 }
               }
               .withSubproject("lib:impl") {
                 sources.add(repoImpl)
                 withBuildScript {
                   applyMetroDefault()
-                  dependencies(
-                    Dependency.implementation(":scopes"),
-                    Dependency.api(":lib"),
-                  )
+                  dependencies(Dependency.implementation(":scopes"), Dependency.api(":lib"))
                 }
               }
               .write()
 
-        private val scopes = source(
-          """
+        private val scopes =
+          source(
+            """
           abstract class LoggedInScope private constructor()
         """
-        )
+          )
 
-        private val graphs = source(
-          """
+        private val graphs =
+          source(
+            """
           @GraphExtension(LoggedInScope::class)
           interface LoggedInGraph {
             @ContributesTo(AppScope::class)
@@ -716,7 +703,7 @@ class ICTests : BaseIncrementalCompilationTest() {
             }
           }
         """
-        )
+          )
 
         private val exampleGraph =
           source(
@@ -724,16 +711,6 @@ class ICTests : BaseIncrementalCompilationTest() {
             @DependencyGraph(AppScope::class)
             interface ExampleGraph {
               val loggedInGraphFactory: LoggedInGraph.Factory
-            }
-          """
-          )
-
-        private val main =
-          source(
-            """
-            fun main(): SomeRepository {
-              val graph = createGraph<ExampleGraph>()
-              return (graph.loggedInGraphFactory.create() as SomeRepositoryProvider).someRepository
             }
           """
           )
@@ -761,59 +738,71 @@ class ICTests : BaseIncrementalCompilationTest() {
       }
     val project = fixture.gradleProject
 
-    val firstBuildResult = build(project.rootDir, "compileKotlin")
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    val firstBuildResult = buildAndFail(project.rootDir, "compileKotlin")
 
-    with(project.classLoader()) {
-      val mainClass = loadClass("test.MainKt")
-      println(mainClass.declaredMethods.first { it.name == "main" }.invoke(null))
-    }
+    assertThat(firstBuildResult.output.cleanOutputLine())
+      .contains(
+        """
+        e: ExampleGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.SomeRepository
+
+            test.SomeRepository is requested at
+                [test.ExampleGraph.Impl.LoggedInGraphImpl] test.SomeRepositoryProvider.MetroContributionToLoggedInScope.someRepository
+
+        Similar bindings:
+          - SomeRepository (Contributed by 'test.SomeRepositoryImpl' but that class is internal to its module and its module is not a friend module to this one.)
+        """
+          .trimIndent()
+      )
   }
 
   @Test
-  fun contributesToAddedInApiDependencyIsDetected() {
-    val fixture = object : MetroProject() {
-      override fun sources() = throw IllegalStateException()
+  fun contributesToAddedInApiDependencyIsDetectedButNotAddedAsSupertype() {
+    val fixture =
+      object : MetroProject() {
+        override fun sources() = throw IllegalStateException()
 
-      override val gradleProject: GradleProject
-        get() =
-          newGradleProjectBuilder(DslKind.KOTLIN)
-            .withRootProject { withMetroSettings() }
-            .withSubproject("app") {
-              sources.add(appGraph)
-              withBuildScript {
-                applyMetroDefault()
-                dependencies(Dependency.implementation(":lib:impl"))
+        override val gradleProject: GradleProject
+          get() =
+            newGradleProjectBuilder(DslKind.KOTLIN)
+              .withRootProject { withMetroSettings() }
+              .withSubproject("app") {
+                sources.add(appGraph)
+                withBuildScript {
+                  applyMetroDefault()
+                  dependencies(Dependency.implementation(":lib:impl"))
+                }
               }
-            }
-            .withSubproject("lib") {
-              sources.add(dummy)
-              withBuildScript { applyMetroDefault() }
-            }
-            .withSubproject("lib:impl") {
-              sources.add(source("class LibImpl"))
-              withBuildScript {
-                applyMetroDefault()
-                dependencies(Dependency.api(":lib"))
+              .withSubproject("lib") {
+                sources.add(dummy)
+                withBuildScript { applyMetroDefault() }
               }
-            }
-            .write()
+              .withSubproject("lib:impl") {
+                sources.add(source("class LibImpl"))
+                withBuildScript {
+                  applyMetroDefault()
+                  dependencies(Dependency.api(":lib"))
+                }
+              }
+              .write()
 
-      private val appGraph = source(
-        """
+        private val appGraph =
+          source(
+            """
           @DependencyGraph(AppScope::class)
           interface AppGraph
           """
-      )
+          )
 
-      val dummy = source(
-        """
+        val dummy =
+          source(
+            """
           @Inject
           class Dummy
           """
-      )
+          )
 
-      val dummyWithContributionSource = """
+        val dummyWithContributionSource =
+          """
           @Inject
           class Dummy
 
@@ -822,7 +811,7 @@ class ICTests : BaseIncrementalCompilationTest() {
             val dummy: Dummy
           }
         """
-    }
+      }
 
     val project = fixture.gradleProject
     val libProject = project.subprojects.first { it.name.removePrefix(":") == "lib" }
@@ -838,19 +827,17 @@ class ICTests : BaseIncrementalCompilationTest() {
     }
 
     val firstBuildResult = build(project.rootDir, ":app:compileKotlin")
-    assertThat(firstBuildResult.task(":app:compileKotlin")?.outcome)
-      .isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(":app:compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     libProject.modify(project.rootDir, fixture.dummy, fixture.dummyWithContributionSource)
 
     val secondBuildResult = build(project.rootDir, ":app:compileKotlin")
-    assertThat(secondBuildResult.task(":app:compileKotlin")?.outcome)
-      .isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(secondBuildResult.task(":app:compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     val secondClassLoader = appClassLoader()
     val secondAppGraph = secondClassLoader.loadClass("test.AppGraph")
     assertThat(secondAppGraph.interfaces.map { it.name })
-      .contains("test.DummyBindings\$MetroContributionToAppScope")
+      .doesNotContain("test.DummyBindings\$MetroContributionToAppScope")
   }
 
   @Test
