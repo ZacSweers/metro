@@ -358,3 +358,81 @@ This allows comparing performance across Metro releases or testing a published v
 
 The Android benchmark app (`startup-android/app`) is configured with:
 - **R8 optimization**: Minification and shrinking enabled for release/benchmark builds
+
+## Continuous Regression Testing
+
+Automated benchmark regression testing runs via GitHub Actions to catch performance regressions early.
+
+### How It Works
+
+The `benchmark-regression.yml` workflow uses a **paired comparison** approach:
+- On every push to `main`, it benchmarks both `HEAD~1` (baseline) and `HEAD` (current)
+- Both benchmarks run on the **same machine** in the same job
+- This eliminates hardware variance - only the delta between runs matters
+
+```
+─── baseline (main~1)    ─── current (main)
+
+     │
+0.20 │    ●────●              ← Both jump (different machine)
+     │   /      \
+0.15 │  ●        ●────●       ← Both drop (different machine)
+     │ ╱          ╲   ╲
+0.10 │●            ●───●
+     └─────────────────────
+       run1  run2  run3  run4
+
+The gap between lines = real performance change
+Both lines moving together = hardware variance (ignore)
+```
+
+### What Gets Benchmarked
+
+Two benchmarks run in parallel:
+
+| Benchmark | What it measures | Tool |
+|-----------|------------------|------|
+| **Startup** | Time to create and initialize Metro graph | kotlinx-benchmark |
+| **Build** | Time to compile the benchmark project | Gradle Profiler |
+
+### Triggering Benchmarks
+
+**Automatic (on push to main):**
+- Runs when `compiler/`, `runtime/`, or `benchmark/` paths change
+- Results are stored for historical tracking
+
+**Manual (on PRs):**
+1. Add the `benchmark` label to your PR
+2. Workflow compares your PR against `main`
+3. Comments on the PR if >5% regression detected
+
+### Viewing Results
+
+**Historical Charts:**
+- Visit [zacsweers.github.io/metro/dev/bench/](https://zacsweers.github.io/metro/dev/bench/) for startup benchmarks
+- Visit [zacsweers.github.io/metro/dev/bench/build/](https://zacsweers.github.io/metro/dev/bench/build/) for build time benchmarks
+
+**Per-Run Results:**
+- Check the workflow run's **Summary** tab for a comparison table
+- Download artifacts for raw JSON/CSV data
+
+### Regression Threshold
+
+A **5% slowdown** triggers a regression warning. This threshold balances:
+- Catching meaningful regressions
+- Avoiding false positives from measurement noise
+
+### Manual Benchmarks
+
+For more comprehensive benchmarking (multiple modes, Android, etc.), use the manual `benchmarks.yml` workflow:
+
+```bash
+# Via GitHub CLI
+gh workflow run benchmarks.yml \
+  -f ref1=main \
+  -f ref2=feature-branch \
+  -f metro=true \
+  -f run-multiplatform-benchmarks=true
+```
+
+Or trigger from the Actions tab in GitHub with the desired options.
