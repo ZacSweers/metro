@@ -23,6 +23,7 @@ Metro is a compile-time dependency injection framework that combines the best of
 - 🌐 **Multiplatform** – Supports JVM, JS, WASM, and Native targets
 - 💡 **Helpful diagnostics** – Detailed error messages with actionable suggestions
 - 🔗 **Advanced interop** – Migrate incrementally from Dagger, kotlin-inject, or Guice
+- ⚡️ **Fast** - At build time, at runtime
 
 ---
 
