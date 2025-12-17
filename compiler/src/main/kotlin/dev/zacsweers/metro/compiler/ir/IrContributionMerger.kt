@@ -170,24 +170,35 @@ internal class IrContributionMerger(
       // annotations. So e.g. if you have one @ContributesBinding, it will show up in
       // IrClass#annotations, but if you have two @ContributesBinding, then neither will be
       // included, nor will their associated .Container annotation.
-      val replacedClasses =
+      // TODO: Go back to pure IR handling once https://youtrack.jetbrains.com/issue/KT-83185 is
+      // resolved.
+      val firUnpackedReplacedClasses =
         if (irClass.isExternalParent) {
-          (irClass as? Fir2IrLazyClass)
-            ?.fir
-            ?.symbol
-            ?.annotationsIn(
-              irClass.session,
-              metroSymbols.classIds.allContributesAnnotationsWithContainers,
-            )
-            ?.flatMap { it.replacesArgument()?.argumentList?.arguments.orEmpty() }
-            ?.mapNotNull { it.expectAsOrNull<FirGetClassCall>()?.coneTypeIfResolved()?.classId }
-            .orEmpty()
+          // We catch any type of exception here to be safe since utilizing the FIR APIs is an
+          // unexpected but temporary necessity. Allows us to easily fall back to the IR path
+          try {
+            (irClass as? Fir2IrLazyClass)
+              ?.fir
+              ?.symbol
+              ?.annotationsIn(
+                irClass.session,
+                metroSymbols.classIds.allContributesAnnotationsWithContainers,
+              )
+              ?.flatMap { it.replacesArgument()?.argumentList?.arguments.orEmpty() }
+              ?.mapNotNull { it.expectAsOrNull<FirGetClassCall>()?.coneTypeIfResolved()?.classId }
+          } catch (_: Exception) {
+            null
+          }
         } else {
-          irClass
+          null
+        }
+      val replacedClasses =
+        firUnpackedReplacedClasses
+          ?: irClass
             .annotationsIn(metroSymbols.classIds.allContributesAnnotationsWithContainers)
             .flatMap { annotation -> annotation.replacedClasses() }
             .mapNotNull { replacedClass -> replacedClass.classType.rawType().classId }
-        }
+
       classesToReplace.addAll(replacedClasses)
     }
 
