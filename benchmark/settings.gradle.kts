@@ -47,6 +47,7 @@ if (generatedProjects.exists()) {
   include(":startup-jvm")
   include(":startup-jvm:minified-jar")
   include(":startup-jvm-minified")
+  include(":startup-multiplatform")
   include(":startup-android:app")
   include(":startup-android:benchmark")
   include(":startup-android:microbenchmark")
