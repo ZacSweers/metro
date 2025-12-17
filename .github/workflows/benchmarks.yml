@@ -53,6 +53,22 @@ on:
         required: false
         type: boolean
         default: true
+      run-multiplatform-benchmarks:
+        description: 'Run multiplatform benchmarks using kotlinx-benchmark (Metro only)'
+        required: false
+        type: boolean
+        default: false
+      multiplatform-target:
+        description: 'Target for multiplatform benchmarks'
+        required: false
+        type: choice
+        options:
+          - jvm
+          - js
+          - wasmJs
+          - native
+          - all
+        default: 'jvm'
       rerun-non-metro:
         description: 'Re-run non-metro modes on ref2 (default: only metro, uses ref1 results for others)'
         required: false
@@ -582,3 +598,96 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "No summary found. Check the uploaded artifacts for raw results." >> $GITHUB_STEP_SUMMARY
           fi
+
+  # Multiplatform benchmarks using kotlinx-benchmark (Metro only)
+  multiplatform-benchmarks:
+    name: "${{ !inputs.run-multiplatform-benchmarks && 'Multiplatform (kotlinx-benchmark) (skipped)' || format('Multiplatform (kotlinx-benchmark): {0}', inputs.multiplatform-target) }}"
+    runs-on: ${{ inputs.multiplatform-target == 'native' && 'macos-latest' || 'ubuntu-latest' }}
+    needs: validate
+    if: inputs.run-multiplatform-benchmarks
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Configure JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version-file: .github/workflows/.java-version
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-read-only: true
+          gradle-home-cache-strict-match: true
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+
+      - name: Setup Node.js (for JS/WasmJS targets)
+        if: inputs.multiplatform-target == 'js' || inputs.multiplatform-target == 'wasmJs' || inputs.multiplatform-target == 'all'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Fetch and checkout ref
+        run: |
+          # Source common utilities
+          source benchmark/benchmark-utils.sh
+
+          git fetch --all
+
+          # For multiplatform, we only benchmark Metro, so just use ref1
+          if is_metro_version "${{ inputs.ref1 }}"; then
+            echo "ref1 is a Metro version (${{ inputs.ref1 }}), staying on current branch"
+          else
+            git checkout "${{ inputs.ref1 }}" || git checkout -b "${{ inputs.ref1 }}" "origin/${{ inputs.ref1 }}"
+          fi
+
+      - name: Run multiplatform benchmarks
+        run: |
+          cd benchmark
+          ./run_startup_benchmarks.sh multiplatform \
+            --target "${{ inputs.multiplatform-target }}" \
+            --count "${{ inputs.module_count }}"
+
+      - name: Find results directory
+        id: results
+        run: |
+          results_dir=$(ls -td benchmark/startup-benchmark-results/*/ 2>/dev/null | head -1)
+          if [ -z "$results_dir" ]; then
+            echo "Error: No results directory found"
+            exit 1
+          fi
+          echo "results_dir=$results_dir" >> $GITHUB_OUTPUT
+          echo "Results directory: $results_dir"
+
+      - name: Upload multiplatform benchmark results
+        uses: actions/upload-artifact@v6
+        with:
+          name: multiplatform-benchmark-results
+          path: ${{ steps.results.outputs.results_dir }}
+          retention-days: 30
+
+      - name: Add multiplatform summary to workflow
+        run: |
+          results_dir="${{ steps.results.outputs.results_dir }}"
+          echo "## Multiplatform Benchmark Results (kotlinx-benchmark)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Target: ${{ inputs.multiplatform-target }}" >> $GITHUB_STEP_SUMMARY
+          echo "Module count: ${{ inputs.module_count }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Find and display JSON results
+          for json_file in "$results_dir"/*/*.json; do
+            if [ -f "$json_file" ]; then
+              platform=$(basename "$(dirname "$json_file")")
+              echo "### $platform" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo '```json' >> $GITHUB_STEP_SUMMARY
+              cat "$json_file" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
