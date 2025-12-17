@@ -133,27 +133,15 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
     }
   }
 
+  // Replacement processing is intentionally NOT done here. It's handled in
+  // IrContributionMerger.computeContributions() after exclusions are applied, so that
+  // excluded classes don't have their `replaces` effect applied.
   private fun getScopedContributions(
     contributingClasses: Collection<IrClass>,
     scope: Scope,
     bindingContainersOnly: Boolean,
   ): Set<IrType> {
-    val filteredContributions = contributingClasses.toMutableList()
-
-    // Remove replaced contributions
-    contributingClasses
-      .flatMap { contributingType ->
-        contributingType
-          .annotationsIn(metroContext.metroSymbols.classIds.allContributesAnnotations)
-          .filter { it.scopeOrNull() == scope }
-          .flatMap { annotation -> annotation.replacedClasses() }
-      }
-      .distinct()
-      .forEach { replacedClass ->
-        filteredContributions.removeIf { it.symbol == replacedClass.symbol }
-      }
-
-    return filteredContributions
+    return contributingClasses
       .let { contributions ->
         if (bindingContainersOnly) {
           contributions.filter { irClass -> with(metroContext) { irClass.isBindingContainer() } }

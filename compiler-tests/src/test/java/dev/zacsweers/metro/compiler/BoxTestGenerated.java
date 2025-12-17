@@ -38,6 +38,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("BindingReplacementFromClassWithMultipleBindingsInGraphExtension.kt")
+    public void testBindingReplacementFromClassWithMultipleBindingsInGraphExtension() {
+      runTest("compiler-tests/src/test/data/box/aggregation/BindingReplacementFromClassWithMultipleBindingsInGraphExtension.kt");
+    }
+
+    @Test
     @TestMetadata("ComputedPropertiesIntoSet.kt")
     public void testComputedPropertiesIntoSet() {
       runTest("compiler-tests/src/test/data/box/aggregation/ComputedPropertiesIntoSet.kt");
@@ -101,6 +107,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("ExcludedBindingContainerReplacesEffectIgnored.kt")
     public void testExcludedBindingContainerReplacesEffectIgnored() {
       runTest("compiler-tests/src/test/data/box/aggregation/ExcludedBindingContainerReplacesEffectIgnored.kt");
+    }
+
+    @Test
+    @TestMetadata("ExcludedBindingContainerReplacesEffectIgnoredMultiModule.kt")
+    public void testExcludedBindingContainerReplacesEffectIgnoredMultiModule() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ExcludedBindingContainerReplacesEffectIgnoredMultiModule.kt");
     }
 
     @Test
@@ -708,6 +720,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("DynamicGraphWithFactory.kt")
       public void testDynamicGraphWithFactory() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/dynamic/DynamicGraphWithFactory.kt");
+      }
+
+      @Test
+      @TestMetadata("DynamicGraphWithGraphExtension.kt")
+      public void testDynamicGraphWithGraphExtension() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/dynamic/DynamicGraphWithGraphExtension.kt");
       }
 
       @Test

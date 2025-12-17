@@ -346,7 +346,28 @@ internal fun IrBuilderWithScope.irInvoke(
 }
 
 context(context: CompatContext)
-internal fun IrStatementsBuilder<*>.irTemporary(
+internal fun IrStatementsBuilder<*>.createAndAddTemporaryVariable(
+  value: IrExpression? = null,
+  nameHint: String? = null,
+  irType: IrType = value?.type!!, // either value or irType should be supplied at callsite
+  isMutable: Boolean = false,
+  origin: IrDeclarationOrigin = Origins.FirstParty.IR_TEMPORARY_VARIABLE,
+): IrVariable =
+  with(context) {
+    val temporary =
+      irTemporaryVariable(
+        value = value,
+        nameHint = nameHint,
+        irType = irType,
+        isMutable = isMutable,
+        origin = origin,
+      )
+    +temporary
+    return temporary
+  }
+
+context(context: CompatContext)
+internal fun IrBuilderWithScope.irTemporaryVariable(
   value: IrExpression? = null,
   nameHint: String? = null,
   irType: IrType = value?.type!!, // either value or irType should be supplied at callsite
@@ -364,7 +385,6 @@ internal fun IrStatementsBuilder<*>.irTemporary(
         origin = origin,
       )
     value?.let { temporary.initializer = it }
-    +temporary
     return temporary
   }
 
@@ -377,7 +397,7 @@ internal fun IrConstructorCall.computeAnnotationHash(): Int {
     type.rawType().classIdOrFail,
     arguments
       .filterNotNull()
-      .mapIndexed { i, arg ->
+      .map { arg ->
         arg.computeHashSource()
           ?: reportCompilerBug(
             "Unknown annotation argument type: ${arg::class.java}. Annotation: ${dumpKotlinLike()}"

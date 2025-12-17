@@ -11,13 +11,13 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.contextParameters
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
+import dev.zacsweers.metro.compiler.ir.createAndAddTemporaryVariable
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.dispatchReceiverFor
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
-import dev.zacsweers.metro.compiler.ir.irTemporary
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
 import dev.zacsweers.metro.compiler.ir.metroMetadata
@@ -357,7 +357,7 @@ internal class InjectConstructorTransformer(
           )
 
         if (injectors.isNotEmpty()) {
-          val instance = irTemporary(newInstance)
+          val instance = createAndAddTemporaryVariable(newInstance)
           for (injector in injectors) {
             val injectorClass = injector.injectorClass ?: continue
             val typeArgs = injectorClass.parentAsClass.typeParameters.map { it.defaultType }
