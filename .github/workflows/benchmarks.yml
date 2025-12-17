@@ -600,8 +600,9 @@ jobs:
           fi
 
   # Multiplatform benchmarks using kotlinx-benchmark (Metro only)
+  # For automated regression tracking, see benchmark-regression.yml
   multiplatform-benchmarks:
-    name: "${{ !inputs.run-multiplatform-benchmarks && 'Multiplatform (kotlinx-benchmark) (skipped)' || format('Multiplatform (kotlinx-benchmark): {0}', inputs.multiplatform-target) }}"
+    name: "${{ !inputs.run-multiplatform-benchmarks && 'Multiplatform (kotlinx-benchmark) (skipped)' || format('Multiplatform: {0}', inputs.multiplatform-target) }}"
     runs-on: ${{ inputs.multiplatform-target == 'native' && 'macos-latest' || 'ubuntu-latest' }}
     needs: validate
     if: inputs.run-multiplatform-benchmarks
@@ -611,6 +612,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          ref: ${{ inputs.ref1 }}
 
       - name: Configure JDK
         uses: actions/setup-java@v5
@@ -631,21 +633,7 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Fetch and checkout ref
-        run: |
-          # Source common utilities
-          source benchmark/benchmark-utils.sh
-
-          git fetch --all
-
-          # For multiplatform, we only benchmark Metro, so just use ref1
-          if is_metro_version "${{ inputs.ref1 }}"; then
-            echo "ref1 is a Metro version (${{ inputs.ref1 }}), staying on current branch"
-          else
-            git checkout "${{ inputs.ref1 }}" || git checkout -b "${{ inputs.ref1 }}" "origin/${{ inputs.ref1 }}"
-          fi
-
-      - name: Run multiplatform benchmarks
+      - name: Run multiplatform benchmark
         run: |
           cd benchmark
           ./run_startup_benchmarks.sh multiplatform \
@@ -661,33 +649,29 @@ jobs:
             exit 1
           fi
           echo "results_dir=$results_dir" >> $GITHUB_OUTPUT
-          echo "Results directory: $results_dir"
 
-      - name: Upload multiplatform benchmark results
-        uses: actions/upload-artifact@v6
-        with:
-          name: multiplatform-benchmark-results
-          path: ${{ steps.results.outputs.results_dir }}
-          retention-days: 30
-
-      - name: Add multiplatform summary to workflow
+      - name: Generate summary
         run: |
           results_dir="${{ steps.results.outputs.results_dir }}"
           echo "## Multiplatform Benchmark Results (kotlinx-benchmark)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Target: ${{ inputs.multiplatform-target }}" >> $GITHUB_STEP_SUMMARY
-          echo "Module count: ${{ inputs.module_count }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Ref:** ${{ inputs.ref1 }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target:** ${{ inputs.multiplatform-target }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Module count:** ${{ inputs.module_count }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          # Find and display JSON results
-          for json_file in "$results_dir"/*/*.json; do
+          # Display results for each platform
+          for json_file in "$results_dir"*/main/*/*.json; do
             if [ -f "$json_file" ]; then
-              platform=$(basename "$(dirname "$json_file")")
-              echo "### $platform" >> $GITHUB_STEP_SUMMARY
-              echo "" >> $GITHUB_STEP_SUMMARY
-              echo '```json' >> $GITHUB_STEP_SUMMARY
-              cat "$json_file" >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              echo "" >> $GITHUB_STEP_SUMMARY
+              platform=$(basename "$json_file" .json)
+              score=$(python3 -c "import json; d=json.load(open('$json_file')); print(f\"{d[0]['primaryMetric']['score']:.4f}\")" 2>/dev/null || echo "N/A")
+              echo "| $platform | ${score} ms/op |" >> $GITHUB_STEP_SUMMARY
             fi
           done
+
+      - name: Upload results
+        uses: actions/upload-artifact@v6
+        with:
+          name: multiplatform-benchmark-results
+          path: ${{ steps.results.outputs.results_dir }}
+          retention-days: 7
