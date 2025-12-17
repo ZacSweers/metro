@@ -653,13 +653,15 @@ class ICTests : BaseIncrementalCompilationTest() {
             newGradleProjectBuilder(DslKind.KOTLIN)
               .withRootProject {
                 withBuildScript {
-                  sources = sources()
+                  sources = listOf(main, exampleGraph)
                   applyMetroDefault()
-                  dependencies(Dependency.implementation(":lib:impl"))
-                  dependencies(Dependency.implementation(":scopes"))
-                  dependencies(Dependency.implementation(":graphs"))
+                  dependencies(
+                    Dependency.implementation(":lib"),
+                    Dependency.implementation(":lib:impl"),
+                    Dependency.implementation(":scopes"),
+                    Dependency.implementation(":graphs"),
+                  )
                 }
-                this.sources = sources()
 
                 withMetroSettings()
               }
@@ -693,11 +695,14 @@ class ICTests : BaseIncrementalCompilationTest() {
               }
               .write()
 
-        private val scopes = source("""
+        private val scopes = source(
+          """
           abstract class LoggedInScope private constructor()
-        """)
+        """
+        )
 
-        private val graphs = source("""
+        private val graphs = source(
+          """
           @GraphExtension(LoggedInScope::class)
           interface LoggedInGraph {
             val someRepository: SomeRepository
@@ -707,31 +712,39 @@ class ICTests : BaseIncrementalCompilationTest() {
               fun create(): LoggedInGraph
             }
           }
-        """)
+        """
+        )
 
         private val exampleGraph =
-          source("""
+          source(
+            """
             @DependencyGraph(AppScope::class)
             interface ExampleGraph {
               val loggedInGraphFactory: LoggedInGraph.Factory
             }
-          """)
+          """
+          )
 
         private val main =
-          source("""
+          source(
+            """
             fun main(): SomeRepository {
               val graph = createGraph<ExampleGraph>()
               return graph.loggedInGraphFactory.create().someRepository
             }
-          """)
+          """
+          )
 
         val repo =
-          source("""
+          source(
+            """
             interface SomeRepository        
-          """)
+          """
+          )
 
         val repoImpl =
-          source("""      
+          source(
+            """      
             @ContributesBinding(LoggedInScope::class)
             @Inject
             internal class SomeRepositoryImpl : SomeRepository
@@ -739,7 +752,8 @@ class ICTests : BaseIncrementalCompilationTest() {
             @Inject
             @SingleIn(LoggedInScope::class)
             internal class Example(private val repository: SomeRepository)
-          """)
+          """
+          )
       }
     val project = fixture.gradleProject
 
