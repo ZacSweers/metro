@@ -22,6 +22,7 @@ import org.gradle.testkit.runner.TaskOutcome
 import org.junit.Assume.assumeTrue
 import org.junit.Ignore
 import org.junit.Test
+import kotlin.test.fail
 
 class ICTests : BaseIncrementalCompilationTest() {
 
@@ -656,7 +657,6 @@ class ICTests : BaseIncrementalCompilationTest() {
                   sources = listOf(main, exampleGraph)
                   applyMetroDefault()
                   dependencies(
-                    Dependency.implementation(":lib"),
                     Dependency.implementation(":lib:impl"),
                     Dependency.implementation(":scopes"),
                     Dependency.implementation(":graphs"),
@@ -675,13 +675,17 @@ class ICTests : BaseIncrementalCompilationTest() {
                   applyMetroDefault()
                   dependencies(
                     Dependency.implementation(":scopes"),
-                    Dependency.implementation(":lib")
                   )
                 }
               }
               .withSubproject("lib") {
                 sources.add(repo)
-                withBuildScript { applyMetroDefault() }
+                withBuildScript {
+                  applyMetroDefault()
+                  dependencies(
+                    Dependency.implementation(":scopes"),
+                  )
+                }
               }
               .withSubproject("lib:impl") {
                 sources.add(repoImpl)
@@ -705,7 +709,6 @@ class ICTests : BaseIncrementalCompilationTest() {
           """
           @GraphExtension(LoggedInScope::class)
           interface LoggedInGraph {
-            val someRepository: SomeRepository
             @ContributesTo(AppScope::class)
             @GraphExtension.Factory
             interface Factory {
@@ -728,9 +731,9 @@ class ICTests : BaseIncrementalCompilationTest() {
         private val main =
           source(
             """
-            fun main(): SomeRepository {
+            fun main(): Example {
               val graph = createGraph<ExampleGraph>()
-              return graph.loggedInGraphFactory.create().someRepository
+              return (graph.loggedInGraphFactory.create() as ExampleProvider).example
             }
           """
           )
@@ -738,7 +741,12 @@ class ICTests : BaseIncrementalCompilationTest() {
         val repo =
           source(
             """
-            interface SomeRepository        
+            interface SomeRepository
+
+            @ContributesTo(LoggedInScope::class)
+            interface SomeRepositoryProvider {
+              val someRepository: SomeRepository
+            }
           """
           )
 
@@ -751,7 +759,12 @@ class ICTests : BaseIncrementalCompilationTest() {
 
             @Inject
             @SingleIn(LoggedInScope::class)
-            internal class Example(private val repository: SomeRepository)
+            class Example internal constructor(private val repository: SomeRepository)
+
+            @ContributesTo(LoggedInScope::class)
+            interface ExampleProvider {
+              val example: Example
+            }
           """
           )
       }
