@@ -1,3 +1,8 @@
+// RUN_PIPELINE_TILL: FIR2IR
+// RENDER_IR_DIAGNOSTICS_FULL_TEXT
+
+// https://github.com/ZacSweers/metro/pull/1554
+
 // MODULE: scopes
 abstract class LoggedInScope private constructor()
 
@@ -23,12 +28,6 @@ interface LoggedInGraph {
 
 // MODULE: main(graphs, feature, feature-impl, scopes)
 @DependencyGraph(AppScope::class)
-interface AppGraph {
+interface <!METRO_ERROR!>AppGraph<!> {
   val loggedInGraphFactory: LoggedInGraph.Factory
-}
-
-fun box(): String {
-  val graph = createGraph<AppGraph>()
-  graph.loggedInGraphFactory.create().someRepository as SomeRepository
-  return "OK"
 }

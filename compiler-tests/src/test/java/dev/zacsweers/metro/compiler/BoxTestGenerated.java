@@ -116,12 +116,6 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
-    @TestMetadata("InternalBindings.kt")
-    public void testInternalBindings() {
-      runTest("compiler-tests/src/test/data/box/aggregation/InternalBindings.kt");
-    }
-
-    @Test
     @TestMetadata("InternalHintsInContributedGraph.kt")
     public void testInternalHintsInContributedGraph() {
       runTest("compiler-tests/src/test/data/box/aggregation/InternalHintsInContributedGraph.kt");

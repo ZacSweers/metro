@@ -222,6 +222,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("InternalBindings.kt")
+    public void testInternalBindings() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/InternalBindings.kt");
+    }
+
+    @Test
     @TestMetadata("MissingBindingHintsShouldReportInternalOnlyIfInternal.kt")
     public void testMissingBindingHintsShouldReportInternalOnlyIfInternal() {
       runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/MissingBindingHintsShouldReportInternalOnlyIfInternal.kt");
