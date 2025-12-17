@@ -729,7 +729,7 @@ class ICTests : BaseIncrementalCompilationTest() {
 
         val repoImpl =
           source(
-            """      
+            """
             @ContributesBinding(LoggedInScope::class)
             @Inject
             internal class SomeRepositoryImpl : SomeRepository

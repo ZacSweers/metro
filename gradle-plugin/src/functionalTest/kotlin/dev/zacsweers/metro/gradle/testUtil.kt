@@ -45,7 +45,11 @@ fun GradleProject.classLoader(): ClassLoader {
 
   val subprojectClassesDirs =
     subprojects.map { subproject ->
-      val dir = rootDir.toPath().resolve("${subproject.name.replace(':', '/')}/build/classes/kotlin/main").absolute()
+      val dir =
+        rootDir
+          .toPath()
+          .resolve("${subproject.name.replace(':', '/')}/build/classes/kotlin/main")
+          .absolute()
       check(rootClassesDir.exists()) {
         "Subproject ${subproject.name} classes dir not found: ${dir.toAbsolutePath()}"
       }
