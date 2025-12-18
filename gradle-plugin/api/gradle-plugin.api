@@ -44,6 +44,7 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension {
 	public final fun getInteropAnnotationsNamedArgSeverity ()Lorg/gradle/api/provider/Property;
 	public final fun getKeysPerGraphShard ()Lorg/gradle/api/provider/Property;
 	public final fun getMaxIrErrors ()Lorg/gradle/api/provider/Property;
+	public final fun getNonPublicContributionSeverity ()Lorg/gradle/api/provider/Property;
 	public final fun getOptionalBindingBehavior ()Lorg/gradle/api/provider/Property;
 	public final fun getPublicProviderSeverity ()Lorg/gradle/api/provider/Property;
 	public final fun getReportsDestination ()Lorg/gradle/api/file/DirectoryProperty;
