@@ -5,7 +5,9 @@
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.core.main
-import com.github.ajalt.clikt.parameters.options.*
+import com.github.ajalt.clikt.parameters.options.default
+import com.github.ajalt.clikt.parameters.options.flag
+import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.enum
 import com.github.ajalt.clikt.parameters.types.int
 import java.io.File
@@ -16,7 +18,7 @@ class GenerateProjectsCommand : CliktCommand() {
     return "Generate Metro benchmark project with configurable modules and compilation modes"
   }
 
-  private val mode by
+  private val buildMode by
     option("--mode", "-m", help = "Build mode: metro, dagger, or kotlin_inject_anvil")
       .enum<BuildMode>(ignoreCase = true)
       .default(BuildMode.METRO)
@@ -36,13 +38,20 @@ class GenerateProjectsCommand : CliktCommand() {
     option("--multiplatform", help = "Generate multiplatform project (Metro mode only)")
       .flag(default = false)
 
+  private val providerMultibindings by
+    option(
+        "--provider-multibindings",
+        help = "Wrap multibinding accessors in Provider (e.g., Provider<Set<E>> instead of Set<E>)",
+      )
+      .flag(default = false)
+
   override fun run() {
-    if (multiplatform && mode != BuildMode.METRO) {
+    if (multiplatform && buildMode != BuildMode.METRO) {
       echo("Error: --multiplatform flag is only supported with Metro mode", err = true)
       return
     }
 
-    val modeDesc = if (multiplatform) "$mode (multiplatform)" else mode.toString()
+    val modeDesc = if (multiplatform) "$buildMode (multiplatform)" else buildMode.toString()
     echo("Generating benchmark project for mode: $modeDesc with $totalModules modules")
 
     // Calculate layer sizes based on total modules
@@ -210,11 +219,13 @@ class GenerateProjectsCommand : CliktCommand() {
               else ->
                 if (
                   integrationRange.first <= integrationRange.last &&
-                    commonRange.first <= commonRange.last
+                    commonRange.first <= commonRange.last &&
+                    socialRange.first <= socialRange.last
                 ) {
                   listOf(
                     "app:integration-${integrationRange.random()}",
                     "core:common-${commonRange.random()}",
+                    "features:social-feature-${socialRange.random()}",
                   )
                 } else emptyList()
             },
@@ -239,12 +250,12 @@ class GenerateProjectsCommand : CliktCommand() {
     // Generate all modules
     echo("Generating ${allModules.size} modules...")
 
-    allModules.forEach { generateModule(it, mode, processor, multiplatform) }
+    allModules.forEach { generateModule(it, processor) }
 
     // Generate app component
     echo("Generating app component...")
 
-    generateAppComponent(allModules, mode, processor, multiplatform)
+    generateAppComponent(allModules, processor)
 
     // Update settings.gradle.kts
     echo("Updating settings.gradle.kts...")
@@ -252,9 +263,12 @@ class GenerateProjectsCommand : CliktCommand() {
     writeSettingsFile(allModules)
 
     echo("Generated benchmark project with ${allModules.size} modules!")
-    echo("Build mode: $mode")
-    if (mode == BuildMode.DAGGER) {
+    echo("Build mode: $buildMode")
+    if (buildMode == BuildMode.DAGGER) {
       echo("Processor: $processor")
+    }
+    if (providerMultibindings) {
+      println("Provider multibindings: enabled (using Provider<Set<E>> instead of Set<E>)")
     }
 
     echo("Modules by layer:")
@@ -316,16 +330,14 @@ class GenerateProjectsCommand : CliktCommand() {
 
   fun generateModule(
     module: ModuleSpec,
-    buildMode: BuildMode,
     processor: ProcessorMode,
-    multiplatform: Boolean,
   ) {
     val moduleDir = File("${module.layer.path}/${module.name}")
     moduleDir.mkdirs()
 
     // Generate build.gradle.kts
     val buildFile = File(moduleDir, "build.gradle.kts")
-    buildFile.writeText(generateBuildScript(module, buildMode, processor, multiplatform))
+    buildFile.writeText(generateBuildScript(module, processor))
 
     // Generate source code
     val srcPath =
@@ -339,15 +351,10 @@ class GenerateProjectsCommand : CliktCommand() {
     srcDir.mkdirs()
 
     val sourceFile = File(srcDir, "${module.name.toCamelCase()}.kt")
-    sourceFile.writeText(generateSourceCode(module, buildMode))
+    sourceFile.writeText(generateSourceCode(module))
   }
 
-  fun generateBuildScript(
-    module: ModuleSpec,
-    buildMode: BuildMode,
-    processor: ProcessorMode,
-    multiplatform: Boolean,
-  ): String {
+  fun generateBuildScript(module: ModuleSpec, processor: ProcessorMode): String {
     val dependencies =
       module.dependencies.joinToString("\n") { dep -> "    implementation(project(\":$dep\"))" }
     val jvmDependencies =
@@ -500,7 +507,7 @@ anvil {
     }
   }
 
-  fun generateSourceCode(module: ModuleSpec, buildMode: BuildMode): String {
+  fun generateSourceCode(module: ModuleSpec): String {
     val packageName =
       "dev.zacsweers.metro.benchmark.${module.layer.path}.${module.name.replace("-", "")}"
     val className = module.name.toCamelCase()
@@ -992,7 +999,7 @@ interface Initializer {
     // Create plain Kotlin file without any DI annotations
     val plainFile = File(srcDir, "PlainKotlinFile.kt")
     val plainSourceCode =
-      """
+      $$"""
 package dev.zacsweers.metro.benchmark.core.foundation
 
 /**
@@ -1004,7 +1011,7 @@ class PlainDataProcessor {
 
   fun processData(input: String): String {
     counter++
-    return "Processed: ${'$'}input (#${'$'}counter)"
+    return "Processed: $input (#$counter)"
   }
 
   fun getProcessedCount(): Int {
@@ -1015,12 +1022,7 @@ class PlainDataProcessor {
     plainFile.writeText(plainSourceCode.trimIndent())
   }
 
-  fun generateAppComponent(
-    allModules: List<ModuleSpec>,
-    buildMode: BuildMode,
-    processor: ProcessorMode,
-    multiplatform: Boolean,
-  ) {
+  fun generateAppComponent(allModules: List<ModuleSpec>, processor: ProcessorMode) {
     val appDir = File("app/component")
     appDir.mkdirs()
 
@@ -1245,39 +1247,64 @@ application {
         }
         .joinToString("\n")
 
+    // Provider import for modes that support it (Metro uses its own Provider, Dagger uses javax.inject.Provider)
+    val providerImport = when {
+      !providerMultibindings -> ""
+      buildMode == BuildMode.METRO -> "import dev.zacsweers.metro.Provider"
+      buildMode == BuildMode.DAGGER -> "import javax.inject.Provider"
+      else -> "import javax.inject.Provider" // NOOP uses javax style for consistency
+    }
+
+    // Multibinding types based on providerMultibindings flag
+    val pluginsType = if (providerMultibindings) "Provider<Set<Plugin>>" else "Set<Plugin>"
+    val initializersType =
+      if (providerMultibindings) "Provider<Set<Initializer>>" else "Set<Initializer>"
+
+    // Access pattern for multibindings - Metro uses invoke(), Dagger uses .get()
+    val pluginsAccess = when {
+      !providerMultibindings -> "graph.getAllPlugins()"
+      buildMode == BuildMode.METRO -> "graph.getAllPlugins()()" // Metro Provider uses operator invoke
+      else -> "graph.getAllPlugins().get()" // Dagger/javax Provider uses .get()
+    }
+    val initializersAccess = when {
+      !providerMultibindings -> "graph.getAllInitializers()"
+      buildMode == BuildMode.METRO -> "graph.getAllInitializers()()" // Metro Provider uses operator invoke
+      else -> "graph.getAllInitializers().get()" // Dagger/javax Provider uses .get()
+    }
+
     val metroMainFunction =
       if (multiplatform) {
         // Multiplatform-compatible main (no javaClass)
-        """
+        $$"""
 fun main() {
   val graph = createAndInitialize()
-  val plugins = graph.getAllPlugins()
-  val initializers = graph.getAllInitializers()
+  val plugins = $$pluginsAccess
+  val initializers = $$initializersAccess
 
   println("Metro benchmark graph successfully created!")
-  println("  - Plugins: ${'$'}{plugins.size}")
-  println("  - Initializers: ${'$'}{initializers.size}")
-  println("  - Total modules: ${allModules.size}")
-  println("  - Total contributions: ${allModules.sumOf { it.contributionsCount }}")
+  println("  - Plugins: ${plugins.size}")
+  println("  - Initializers: ${initializers.size}")
+  println("  - Total modules: $${allModules.size}")
+  println("  - Total contributions: $${allModules.sumOf { it.contributionsCount }}")
 }
 """
       } else {
         // JVM-only main with reflection
-        """
+        $$"""
 fun main() {
   val graph = createAndInitialize()
   val fields = graph.javaClass.declaredFields.size
   val methods = graph.javaClass.declaredMethods.size
-  val plugins = graph.getAllPlugins()
-  val initializers = graph.getAllInitializers()
+  val plugins = $$pluginsAccess
+  val initializers = $$initializersAccess
 
   println("Metro benchmark graph successfully created!")
-  println("  - Fields: ${'$'}fields")
-  println("  - Methods: ${'$'}methods")
-  println("  - Plugins: ${'$'}{plugins.size}")
-  println("  - Initializers: ${'$'}{initializers.size}")
-  println("  - Total modules: ${allModules.size}")
-  println("  - Total contributions: ${allModules.sumOf { it.contributionsCount }}")
+  println("  - Fields: $fields")
+  println("  - Methods: $methods")
+  println("  - Plugins: ${plugins.size}")
+  println("  - Initializers: ${initializers.size}")
+  println("  - Total modules: $${allModules.size}")
+  println("  - Total contributions: $${allModules.sumOf { it.contributionsCount }}")
 }
 """
       }
@@ -1285,7 +1312,7 @@ fun main() {
     val sourceCode =
       when (buildMode) {
         BuildMode.METRO ->
-          """
+          $$"""
 package dev.zacsweers.metro.benchmark.app.component
 
 import dev.zacsweers.metro.DependencyGraph
@@ -1295,16 +1322,16 @@ import dev.zacsweers.metro.Multibinds
 import dev.zacsweers.metro.createGraph
 import dev.zacsweers.metro.benchmark.core.foundation.Plugin
 import dev.zacsweers.metro.benchmark.core.foundation.Initializer
-$serviceImports
+$${if (providerImport.isNotEmpty()) "$providerImport\n" else ""}$$serviceImports
 
-${generateAccessors(allModules)}
+$${generateAccessors(allModules)}
 
 @SingleIn(AppScope::class)
 @DependencyGraph(AppScope::class)
-interface AppComponent : ${(0 until (allModules.size / 50 + 1)).joinToString(", ") { "AccessorInterface$it" }} {
+interface AppComponent : $${(0 until (allModules.size / 50 + 1)).joinToString(", ") { "AccessorInterface$it" }} {
   // Multibinding accessors
-  fun getAllPlugins(): Set<Plugin>
-  fun getAllInitializers(): Set<Initializer>
+  fun getAllPlugins(): $$pluginsType
+  fun getAllInitializers(): $$initializersType
 
   // Multibind declarations
   @Multibinds
@@ -1321,11 +1348,11 @@ interface AppComponent : ${(0 until (allModules.size / 50 + 1)).joinToString(", 
 fun createAndInitialize(): AppComponent {
   val graph = createGraph<AppComponent>()
   // Force full initialization by accessing all multibindings
-  graph.getAllPlugins()
-  graph.getAllInitializers()
+  $$pluginsAccess
+  $$initializersAccess
   return graph
 }
-$metroMainFunction
+$$metroMainFunction
 """
 
         BuildMode.NOOP ->
@@ -1338,7 +1365,7 @@ import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.Multibinds
 import dev.zacsweers.metro.benchmark.core.foundation.Plugin
 import dev.zacsweers.metro.benchmark.core.foundation.Initializer
-$serviceImports
+${if (providerImport.isNotEmpty()) "$providerImport\n" else ""}$serviceImports
 
 ${generateAccessors(allModules)}
 
@@ -1351,8 +1378,8 @@ ${generateAccessors(allModules)}
 @DependencyGraph(AppScope::class)
 interface AppComponent : ${(0 until (allModules.size / 50 + 1)).joinToString(", ") { "AccessorInterface$it" }} {
   // Multibinding accessors
-  fun getAllPlugins(): Set<Plugin>
-  fun getAllInitializers(): Set<Initializer>
+  fun getAllPlugins(): $pluginsType
+  fun getAllInitializers(): $initializersType
 
   // Multibind declarations
   @Multibinds
@@ -1374,7 +1401,7 @@ fun main() {
 """
 
         BuildMode.KOTLIN_INJECT_ANVIL ->
-          """
+          $$"""
 package dev.zacsweers.metro.benchmark.app.component
 
 import me.tatarka.inject.annotations.Component
@@ -1384,7 +1411,7 @@ import software.amazon.lastmile.kotlin.inject.anvil.AppScope
 import software.amazon.lastmile.kotlin.inject.anvil.MergeComponent
 import dev.zacsweers.metro.benchmark.core.foundation.Plugin
 import dev.zacsweers.metro.benchmark.core.foundation.Initializer
-$serviceImports
+$$serviceImports
 
 @SingleIn(AppScope::class)
 @MergeComponent(AppScope::class)
@@ -1414,34 +1441,41 @@ fun main() {
   val initializers = appComponent.allInitializers
 
   println("Pure Kotlin-inject-anvil benchmark graph successfully created!")
-  println("  - Fields: ${'$'}fields")
-  println("  - Methods: ${'$'}methods")
-  println("  - Plugins: ${'$'}{plugins.size}")
-  println("  - Initializers: ${'$'}{initializers.size}")
-  println("  - Total modules: ${allModules.size}")
-  println("  - Total contributions: ${allModules.sumOf { it.contributionsCount }}")
+  println("  - Fields: $fields")
+  println("  - Methods: $methods")
+  println("  - Plugins: ${plugins.size}")
+  println("  - Initializers: ${initializers.size}")
+  println("  - Total modules: $${allModules.size}")
+  println("  - Total contributions: $${allModules.sumOf { it.contributionsCount }}")
 }
 """
 
-        BuildMode.DAGGER ->
-          """
+        BuildMode.DAGGER -> {
+          // Dagger uses component variable name instead of graph
+          val daggerPluginsAccess =
+            if (providerMultibindings) "component.getAllPlugins().get()"
+            else "component.getAllPlugins()"
+          val daggerInitializersAccess =
+            if (providerMultibindings) "component.getAllInitializers().get()"
+            else "component.getAllInitializers()"
+          $$"""
 package dev.zacsweers.metro.benchmark.app.component
 
 import com.squareup.anvil.annotations.MergeComponent
 import javax.inject.Singleton
-import dagger.multibindings.Multibinds
+$${if (providerImport.isNotEmpty()) "$providerImport\n" else ""}import dagger.multibindings.Multibinds
 import dev.zacsweers.metro.benchmark.core.foundation.Plugin
 import dev.zacsweers.metro.benchmark.core.foundation.Initializer
-$serviceImports
+$$serviceImports
 
-${generateAccessors(allModules)}
+$${generateAccessors(allModules)}
 
 @Singleton
 @MergeComponent(Unit::class)
-interface AppComponent : ${(0 until (allModules.size / 50 + 1)).joinToString(", ") { "AccessorInterface$it" }} {
+interface AppComponent : $${(0 until (allModules.size / 50 + 1)).joinToString(", ") { "AccessorInterface$it" }} {
   // Multibinding accessors
-  fun getAllPlugins(): Set<Plugin>
-  fun getAllInitializers(): Set<Initializer>
+  fun getAllPlugins(): $$pluginsType
+  fun getAllInitializers(): $$initializersType
 
   @MergeComponent.Factory
   interface Factory {
@@ -1464,29 +1498,30 @@ interface AppComponentMultibinds {
  * This is the primary entry point for benchmarking graph creation and initialization.
  */
 fun createAndInitialize(): AppComponent {
-  val graph = DaggerAppComponent.factory().create()
+  val component = DaggerAppComponent.factory().create()
   // Force full initialization by accessing all multibindings
-  graph.getAllPlugins()
-  graph.getAllInitializers()
-  return graph
+  $$daggerPluginsAccess
+  $$daggerInitializersAccess
+  return component
 }
 
 fun main() {
   val component = createAndInitialize()
   val fields = component.javaClass.declaredFields.size
   val methods = component.javaClass.declaredMethods.size
-  val plugins = component.getAllPlugins()
-  val initializers = component.getAllInitializers()
+  val plugins = $$daggerPluginsAccess
+  val initializers = $$daggerInitializersAccess
 
   println("Anvil benchmark graph successfully created!")
-  println("  - Fields: ${'$'}fields")
-  println("  - Methods: ${'$'}methods")
-  println("  - Plugins: ${'$'}{plugins.size}")
-  println("  - Initializers: ${'$'}{initializers.size}")
-  println("  - Total modules: ${allModules.size}")
-  println("  - Total contributions: ${allModules.sumOf { it.contributionsCount }}")
+  println("  - Fields: $fields")
+  println("  - Methods: $methods")
+  println("  - Plugins: ${plugins.size}")
+  println("  - Initializers: ${initializers.size}")
+  println("  - Total modules: $${allModules.size}")
+  println("  - Total contributions: $${allModules.sumOf { it.contributionsCount }}")
 }
 """
+        }
       }
 
     sourceFile.writeText(sourceCode.trimIndent())

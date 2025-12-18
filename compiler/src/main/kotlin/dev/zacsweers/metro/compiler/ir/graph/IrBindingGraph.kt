@@ -460,6 +460,7 @@ internal class IrBindingGraph(
             contributionData.findVisibleContributionClassesForScopeInHints(
               scope,
               includeNonFriendInternals = true,
+              callingDeclaration = node.sourceGraph,
             )
           }
           .find { contribution ->

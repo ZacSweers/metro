@@ -235,6 +235,18 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       valueMapper = { it },
     )
   ),
+  NON_PUBLIC_CONTRIBUTION_SEVERITY(
+    RawMetroOption(
+      name = "non-public-contribution-severity",
+      defaultValue = MetroOptions.DiagnosticSeverity.NONE.name,
+      valueDescription = "NONE|WARN|ERROR",
+      description =
+        "Control diagnostic severity reporting of @Contributes*-annotated declarations that are non-public.",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it },
+    )
+  ),
   WARN_ON_INJECT_ANNOTATION_PLACEMENT(
     RawMetroOption.boolean(
       name = "warn-on-inject-annotation-placement",
@@ -734,6 +746,10 @@ public data class MetroOptions(
         DiagnosticSeverity.valueOf(it)
       }
     },
+  val nonPublicContributionSeverity: DiagnosticSeverity =
+    MetroOption.NON_PUBLIC_CONTRIBUTION_SEVERITY.raw.defaultValue.expectAs<String>().let {
+      DiagnosticSeverity.valueOf(it)
+    },
   val optionalBindingBehavior: OptionalBindingBehavior =
     MetroOption.OPTIONAL_BINDING_BEHAVIOR.raw.defaultValue.expectAs<String>().let { rawValue ->
       val adjusted =
@@ -841,6 +857,8 @@ public data class MetroOptions(
     public var enableGraphSharding: Boolean = base.enableGraphSharding
     public var keysPerGraphShard: Int = base.keysPerGraphShard
     public var publicProviderSeverity: DiagnosticSeverity = base.publicProviderSeverity
+    public var nonPublicContributionSeverity: DiagnosticSeverity =
+      base.nonPublicContributionSeverity
     public var optionalBindingBehavior: OptionalBindingBehavior = base.optionalBindingBehavior
     public var warnOnInjectAnnotationPlacement: Boolean = base.warnOnInjectAnnotationPlacement
     public var interopAnnotationsNamedArgSeverity: DiagnosticSeverity =
@@ -1032,6 +1050,7 @@ public data class MetroOptions(
         enableGraphSharding = enableGraphSharding,
         keysPerGraphShard = keysPerGraphShard,
         publicProviderSeverity = publicProviderSeverity,
+        nonPublicContributionSeverity = nonPublicContributionSeverity,
         optionalBindingBehavior = optionalBindingBehavior,
         warnOnInjectAnnotationPlacement = warnOnInjectAnnotationPlacement,
         interopAnnotationsNamedArgSeverity = interopAnnotationsNamedArgSeverity,
@@ -1136,6 +1155,12 @@ public data class MetroOptions(
 
           MetroOption.PUBLIC_PROVIDER_SEVERITY ->
             publicProviderSeverity =
+              configuration.getAsString(entry).let {
+                DiagnosticSeverity.valueOf(it.uppercase(Locale.US))
+              }
+
+          MetroOption.NON_PUBLIC_CONTRIBUTION_SEVERITY ->
+            nonPublicContributionSeverity =
               configuration.getAsString(entry).let {
                 DiagnosticSeverity.valueOf(it.uppercase(Locale.US))
               }

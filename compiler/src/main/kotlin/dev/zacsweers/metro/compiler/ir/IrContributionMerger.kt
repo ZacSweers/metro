@@ -48,7 +48,7 @@ internal class IrContributionMerger(
 
   fun computeContributions(
     graphLikeAnnotation: IrConstructorCall,
-    callingDeclaration: IrDeclaration? = null,
+    callingDeclaration: IrDeclaration,
   ): IrContributions? {
     val sourceScope = graphLikeAnnotation.scopeClassOrNull()
     val scope = sourceScope?.classId
@@ -77,7 +77,7 @@ internal class IrContributionMerger(
     primaryScope: ClassId,
     allScopes: Set<ClassId>,
     excluded: Set<ClassId>,
-    callingDeclaration: IrDeclaration? = null,
+    callingDeclaration: IrDeclaration,
   ): IrContributions? {
     if (allScopes.isEmpty()) return null
 

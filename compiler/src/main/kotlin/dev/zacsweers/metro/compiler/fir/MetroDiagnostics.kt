@@ -43,6 +43,8 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.METRO_TYPE_PARAMETERS_E
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.METRO_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MULTIBINDS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MULTIBINDS_OVERRIDE_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.NON_PUBLIC_CONTRIBUTION_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.NON_PUBLIC_CONTRIBUTION_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ONLY_CLASSES_CAN_BE_INJECTED
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ONLY_FINAL_AND_OPEN_CLASSES_CAN_BE_INJECTED
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.OPTIONAL_BINDING_ERROR
@@ -128,6 +130,8 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val BINDS_OPTIONAL_OF_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val BINDS_OPTIONAL_OF_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
   val AGGREGATION_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val NON_PUBLIC_CONTRIBUTION_ERROR by error1<KtElement, String>(VISIBILITY_MODIFIER)
+  val NON_PUBLIC_CONTRIBUTION_WARNING by warning1<KtElement, String>(VISIBILITY_MODIFIER)
   val CREATE_GRAPH_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val CREATE_DYNAMIC_GRAPH_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val AS_CONTRIBUTION_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
@@ -233,6 +237,8 @@ private object FirMetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(REDUNDANT_PROVIDES, "{0}", STRING)
         put(CONFLICTING_PROVIDES_SCOPE, "{0}", STRING)
         put(AGGREGATION_ERROR, "{0}", STRING)
+        put(NON_PUBLIC_CONTRIBUTION_ERROR, "{0}", STRING)
+        put(NON_PUBLIC_CONTRIBUTION_WARNING, "{0}", STRING)
         put(CREATE_GRAPH_ERROR, "{0}", STRING)
         put(CREATE_DYNAMIC_GRAPH_ERROR, "{0}", STRING)
         put(AS_CONTRIBUTION_ERROR, "{0}", STRING)

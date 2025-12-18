@@ -107,6 +107,7 @@ import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrScriptSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.symbols.IrTypeParameterSymbol
+import org.jetbrains.kotlin.ir.symbols.impl.DescriptorlessExternalPackageFragmentSymbol
 import org.jetbrains.kotlin.ir.types.IrDynamicType
 import org.jetbrains.kotlin.ir.types.IrErrorType
 import org.jetbrains.kotlin.ir.types.IrSimpleType
@@ -147,6 +148,7 @@ import org.jetbrains.kotlin.ir.util.hasShape
 import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isStatic
+import org.jetbrains.kotlin.ir.util.isTopLevelDeclaration
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
@@ -155,6 +157,7 @@ import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.ir.util.remapTypes
 import org.jetbrains.kotlin.ir.util.superClass
+import org.jetbrains.kotlin.library.KOTLIN_JS_STDLIB_NAME
 import org.jetbrains.kotlin.load.java.JavaDescriptorVisibilities
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
@@ -1621,6 +1624,14 @@ public fun IrConstructor.generateDefaultConstructorBody(
 internal fun IrDeclarationWithVisibility.isVisibleAsInternal(file: IrFile): Boolean {
   val referencedDeclarationPackageFragment = getPackageFragment()
   val module = file.module
+  if (referencedDeclarationPackageFragment.symbol is DescriptorlessExternalPackageFragmentSymbol) {
+    // When compiling JS stdlib, intrinsic declarations are moved to a special module that doesn't
+    // have a descriptor.
+    // This happens after deserialization but before executing any lowerings, including IR
+    // validating lowering
+    // See MoveBodilessDeclarationsToSeparatePlaceLowering
+    return module.name.asString() == "<$KOTLIN_JS_STDLIB_NAME>"
+  }
   return module.descriptor.shouldSeeInternalsOf(
     referencedDeclarationPackageFragment.moduleDescriptor
   )
@@ -1812,3 +1823,25 @@ internal fun IrClass.staticIshDeclarationContainerOrNull(): IrClass? {
  */
 internal val IrFunction.isStaticIsh: Boolean
   get() = parent is IrClass && (dispatchReceiverParameter == null || parentAsClass.isObject)
+
+// TODO reconcile this with isVisibleTo()?
+internal fun IrDeclarationWithVisibility.effectiveVisibility(): DescriptorVisibility {
+  if (isTopLevelDeclaration) return visibility
+  return generateSequence(this) {
+      if (it.isTopLevelDeclaration) null else it.parent as? IrDeclarationWithVisibility?
+    }
+    .minByOrNull {
+      when (it.visibility) {
+        DescriptorVisibilities.PRIVATE,
+        DescriptorVisibilities.PRIVATE_TO_THIS,
+        DescriptorVisibilities.LOCAL -> 0
+        DescriptorVisibilities.INTERNAL -> 1
+        DescriptorVisibilities.PROTECTED,
+        JavaDescriptorVisibilities.PROTECTED_AND_PACKAGE,
+        JavaDescriptorVisibilities.PROTECTED_STATIC_VISIBILITY -> 2
+        DescriptorVisibilities.PUBLIC -> 3
+        else -> 4 // Unknown visibilities are least restrictive
+      }
+    }
+    ?.visibility ?: visibility
+}

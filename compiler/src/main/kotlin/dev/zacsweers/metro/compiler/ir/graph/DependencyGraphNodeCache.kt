@@ -868,6 +868,10 @@ internal class DependencyGraphNodeCache(
             nodeCache.getOrComputeDependencyGraphNode(parentGraph, bindingStack, parentTracer)
           }
         extendedGraphNodes[node.typeKey] = node
+
+        // Propagate dynamic type keys from parent graph to this graph extension
+        // This ensures dynamic bindings from createDynamicGraph are available to child extensions
+        dynamicTypeKeys.putAll(node.dynamicTypeKeys)
       }
 
       // First, add explicitly declared binding containers from the annotation

@@ -185,6 +185,20 @@ constructor(
     objects.property(DiagnosticSeverity::class.javaObjectType).convention(DiagnosticSeverity.NONE)
 
   /**
+   * Configures the Metro compiler plugin to warn, error, or do nothing when it encounters
+   * `@Contributes*`-annotated declarations that are non-public (`internal`, `private`, `protected`,
+   * nested in non-public classes, etc.)
+   *
+   * Note that if the scope argument to the annotation is itself a non-public class, the check will
+   * not report, regardless of severity, since the contribution is assumed to be intentionally
+   * internal.
+   *
+   * Disabled by default.
+   */
+  public val nonPublicContributionSeverity: Property<DiagnosticSeverity> =
+    objects.property(DiagnosticSeverity::class.javaObjectType).convention(DiagnosticSeverity.NONE)
+
+  /**
    * Enable/disable Kotlin version compatibility checks. Defaults to true or the value of the
    * `metro.version.check` gradle property.
    */
