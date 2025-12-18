@@ -4,6 +4,7 @@ Changelog
 **Unreleased**
 --------------
 
+- **New**: Configurable `nonPublicContributionSeverity` DSL that allows for configuring non-public contributions to warn or error. See its kdoc for full details.
 - **Fix**: Don't apply `replaces` effect from excluded contributions in cross-module scenarios.
 - **Fix**: Fix binding replacements getting dropped in classes with multiple contributions in graph extensions.
 - **Fix**: Avoid deeply nested IR calls for generated Set and Map multibindings causing compiler `StackOverflowError`s in large graphs at compile-time.
