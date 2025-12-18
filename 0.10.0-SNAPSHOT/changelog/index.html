@@ -2744,6 +2744,8 @@
 <li><strong>Fix</strong>: Fix binding replacements getting dropped in classes with multiple contributions in graph extensions.</li>
 <li><strong>Fix</strong>: Avoid deeply nested IR calls for generated Set and Map multibindings causing compiler <code>StackOverflowError</code>s in large graphs at compile-time.</li>
 <li><strong>Fix</strong>: Fix dynamic graph bindings not being propagated to graph extensions.</li>
+<li><strong>Fix</strong>: Fix detection of <code>internal</code> contributions from non-friend compilations in IR contribution merging.</li>
+<li><strong>Fix</strong>: Fix detection of <code>internal</code> contributions from friend compilations in IR contribution merging. Not a typo, turns out both scenarios were misbehaving in different ways.</li>
 </ul>
 <h2 id="091">0.9.1<a class="headerlink" href="#091" title="Permanent link">&para;</a></h2>
 <p><em>2025-12-16</em></p>
