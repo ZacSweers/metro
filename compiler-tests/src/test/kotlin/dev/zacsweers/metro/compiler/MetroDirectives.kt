@@ -62,6 +62,10 @@ object MetroDirectives : SimpleDirectivesContainer() {
     enumDirective<MetroOptions.DiagnosticSeverity>(
       "Control diagnostic severity reporting of interop annotations using positional arguments instead of named arguments."
     )
+  val NON_PUBLIC_CONTRIBUTION_SEVERITY by
+    enumDirective<MetroOptions.DiagnosticSeverity>(
+      "Control diagnostic severity reporting of @Contributes*-annotated declarations that are non-public."
+    )
   val CONTRIBUTES_AS_INJECT by
     directive(
       "If enabled, treats `@Contributes*` annotations (except ContributesTo) as implicit `@Inject` annotations."

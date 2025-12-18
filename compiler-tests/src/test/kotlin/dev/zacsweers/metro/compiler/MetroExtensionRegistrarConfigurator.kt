@@ -96,6 +96,9 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         module.directives
           .singleOrZeroValue(MetroDirectives.INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY)
           ?.let { interopAnnotationsNamedArgSeverity = it }
+        module.directives
+          .singleOrZeroValue(MetroDirectives.NON_PUBLIC_CONTRIBUTION_SEVERITY)
+          ?.let { nonPublicContributionSeverity = it }
         module.directives.singleOrZeroValue(MetroDirectives.MAX_IR_ERRORS_COUNT)?.let {
           maxIrErrorsCount = it
         }
