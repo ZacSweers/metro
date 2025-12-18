@@ -576,60 +576,70 @@ internal class IrBindingGraph(
     adjacency: Map<IrTypeKey, Set<IrTypeKey>>,
   ) {
     val bindingScope = binding.scope
-    if (bindingScope != null) {
-      if (node.scopes.isEmpty() || bindingScope !in node.scopes) {
-        val isUnscoped = node.scopes.isEmpty()
-        // Error if there are mismatched scopes
-        val declarationToReport = node.sourceGraph.sourceGraphIfMetroGraph
-        val backTrace = buildRouteToRoot(binding.typeKey, roots, adjacency)
-        for (entry in backTrace) {
-          stack.push(entry)
-        }
-        stack.push(
-          IrBindingStack.Entry.simpleTypeRef(
-            binding.contextualTypeKey,
-            usage = "(scoped to '$bindingScope')",
-          )
+    // Our binding doesn't have a scope... so we don't care about scopes
+    if (bindingScope == null) return
+    // Our binding does have a scope... and it's compatible with our node yay
+    if (bindingScope in node.scopes) return
+
+    // Error if there are mismatched scopes
+
+    // Does bindingScope have the same toString? Annoying! Let's disambiguate
+    val bindingScopeStr =
+      "$bindingScope".takeIf { it !in node.scopes.map { "$it" } }
+        ?: bindingScope.render(short = false)
+
+    val nodeScopesStrs =
+      node.scopes.map { "$it".takeIf { it != "$bindingScope" } ?: it.render(short = false) }
+
+    val isUnscoped = node.scopes.isEmpty()
+    val declarationToReport = node.sourceGraph.sourceGraphIfMetroGraph
+    val backTrace = buildRouteToRoot(binding.typeKey, roots, adjacency)
+    for (entry in backTrace) {
+      stack.push(entry)
+    }
+    stack.push(
+      IrBindingStack.Entry.simpleTypeRef(
+        binding.contextualTypeKey,
+        usage = "(scoped to '$bindingScopeStr')",
+      )
+    )
+    val message = buildString {
+      append("[Metro/IncompatiblyScopedBindings] ")
+      append(node.sourceGraph.kotlinFqName)
+      if (isUnscoped) {
+        // Unscoped graph but scoped binding
+        append(" (unscoped) may not reference scoped bindings:")
+      } else {
+        // Scope mismatch
+        append(
+          " (scopes ${nodeScopesStrs.joinToString { "'$it'" }}) may not reference bindings from different scopes:"
         )
-        val message = buildString {
-          append("[Metro/IncompatiblyScopedBindings] ")
-          append(node.sourceGraph.kotlinFqName)
-          if (isUnscoped) {
-            // Unscoped graph but scoped binding
-            append(" (unscoped) may not reference scoped bindings:")
-          } else {
-            // Scope mismatch
-            append(
-              " (scopes ${node.scopes.joinToString { "'$it'" }}) may not reference bindings from different scopes:"
-            )
-          }
+      }
+      appendLine()
+      appendBindingStack(stack, short = false)
+
+      if (node.sourceGraph.origin == Origins.GeneratedGraphExtension) {
+        val sourceGraphFqName = node.sourceGraph.sourceGraphIfMetroGraph.kotlinFqName
+        val receivingGraphFqName =
+          // Find the actual parent/receiving graph - it should be in extendedGraphNodes
+          node.extendedGraphNodes.values
+            .firstOrNull()
+            ?.sourceGraph
+            ?.sourceGraphIfMetroGraph
+            ?.kotlinFqName ?: declarationToReport.sourceGraphIfMetroGraph.kotlinFqName
+
+        // Only show the hint if the source and receiving graphs are actually different
+        if (sourceGraphFqName != receivingGraphFqName) {
           appendLine()
-          appendBindingStack(stack, short = false)
-
-          if (node.sourceGraph.origin == Origins.GeneratedGraphExtension) {
-            val sourceGraphFqName = node.sourceGraph.sourceGraphIfMetroGraph.kotlinFqName
-            val receivingGraphFqName =
-              // Find the actual parent/receiving graph - it should be in extendedGraphNodes
-              node.extendedGraphNodes.values
-                .firstOrNull()
-                ?.sourceGraph
-                ?.sourceGraphIfMetroGraph
-                ?.kotlinFqName ?: declarationToReport.sourceGraphIfMetroGraph.kotlinFqName
-
-            // Only show the hint if the source and receiving graphs are actually different
-            if (sourceGraphFqName != receivingGraphFqName) {
-              appendLine()
-              appendLine()
-              appendLine("(Hint)")
-              append(
-                "${node.sourceGraph.name} is contributed by '${sourceGraphFqName}' to '${receivingGraphFqName}'."
-              )
-            }
-          }
+          appendLine()
+          appendLine("(Hint)")
+          append(
+            "${node.sourceGraph.name} is contributed by '${sourceGraphFqName}' to '${receivingGraphFqName}'."
+          )
         }
-        metroContext.reportCompat(declarationToReport, MetroDiagnostics.METRO_ERROR, message)
       }
     }
+    metroContext.reportCompat(declarationToReport, MetroDiagnostics.METRO_ERROR, message)
   }
 
   // TODO can this check move to FIR injection sites?

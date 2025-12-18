@@ -334,6 +334,49 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
   }
 
   @Test
+  fun `mismatched SingleIn scopes are given full qualifiers when ambiguous`() {
+    // Ensure scoped bindings match the graph that is trying to use them
+    val result =
+      compile(
+        source(
+          source =
+            """
+            abstract class AppScope private constructor()
+
+            @SingleIn(AppScope::class)
+            @DependencyGraph(AppScope::class)
+            interface ExampleGraph {
+              val myClass: MyClass
+            }
+
+            """
+              .trimIndent(),
+          packageName = "test.graph",
+          extraImports = arrayOf("test.MyClass"),
+        ),
+        source(
+          """
+          @SingleIn(AppScope::class)
+          @Inject
+          class MyClass()
+          """
+            .trimIndent()
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+
+    result.assertDiagnostics(
+      """
+      e: AppScope.kt:11:11 [Metro/IncompatiblyScopedBindings] test.graph.ExampleGraph (scopes '@dev.zacsweers.metro.SingleIn(test.graph.AppScope::class)') may not reference bindings from different scopes:
+          test.MyClass (scoped to '@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)')
+          test.MyClass is requested at
+              [test.graph.ExampleGraph] test.graph.ExampleGraph.myClass
+      """
+        .trimIndent()
+    )
+  }
+
+  @Test
   fun `scoped graphs cannot depend on scoped bindings with mismatched scopes`() {
     // Ensure scoped bindings match the graph that is trying to use them
     val result =
