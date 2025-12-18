@@ -48,6 +48,18 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     public void testInternalHintsAreNotVisibleWithoutFriends() {
       runTest("compiler-tests/src/test/data/diagnostic/aggregation/InternalHintsAreNotVisibleWithoutFriends.kt");
     }
+
+    @Test
+    @TestMetadata("NonPublicContributionError.kt")
+    public void testNonPublicContributionError() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/NonPublicContributionError.kt");
+    }
+
+    @Test
+    @TestMetadata("NonPublicContributionWarning.kt")
+    public void testNonPublicContributionWarning() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/NonPublicContributionWarning.kt");
+    }
   }
 
   @Nested
@@ -219,6 +231,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("GraphsCannotDirectlyExtendOtherGraphs.kt")
     public void testGraphsCannotDirectlyExtendOtherGraphs() {
       runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/GraphsCannotDirectlyExtendOtherGraphs.kt");
+    }
+
+    @Test
+    @TestMetadata("InternalBindings.kt")
+    public void testInternalBindings() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/InternalBindings.kt");
     }
 
     @Test

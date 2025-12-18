@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.effectiveVisibility
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
@@ -16,6 +17,7 @@ import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.name
 import org.jetbrains.kotlin.backend.common.extensions.IrGeneratedDeclarationsRegistrar
+import org.jetbrains.kotlin.descriptors.effectiveVisibility
 import org.jetbrains.kotlin.descriptors.impl.EmptyPackageFragmentDescriptor
 import org.jetbrains.kotlin.fir.backend.FirMetadataSource
 import org.jetbrains.kotlin.fir.builder.buildPackageDirective
@@ -69,7 +71,7 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
           name = hintName
           origin = Origins.Default
           returnType = pluginContext.irBuiltIns.unitType
-          visibility = sourceClass.visibility
+          visibility = sourceClass.effectiveVisibility()
         }
         .apply {
           parameters +=

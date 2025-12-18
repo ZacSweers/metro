@@ -309,6 +309,9 @@ public class MetroGradleSubplugin @Inject constructor(private val problems: Prob
           add(lazyOption("optional-binding-behavior", extension.optionalBindingBehavior))
           add(lazyOption("public-provider-severity", extension.publicProviderSeverity))
           add(
+            lazyOption("non-public-contribution-severity", extension.nonPublicContributionSeverity)
+          )
+          add(
             lazyOption(
               "warn-on-inject-annotation-placement",
               extension.warnOnInjectAnnotationPlacement,

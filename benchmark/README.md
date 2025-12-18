@@ -32,6 +32,7 @@ The script supports multiple modes and configurable module counts:
 - **Kotlin-inject + Anvil mode** (`--mode kotlin-inject-anvil`): Uses Metro with kotlin-inject + anvil interop
 - **Module count** (`--count <number>`): Total number of modules to generate (default: 500)
 - **Processor** (`--processor ksp|kapt`): Annotation processor for Anvil mode (default: ksp)
+- **Provider multibindings** (`--provider-multibindings`): Wrap multibinding accessors in `Provider<Set<E>>` instead of `Set<E>` to benchmark `SetFactory`/`MapFactory` optimizations
 
 ## Usage
 
@@ -53,6 +54,9 @@ kotlin generate-projects.main.kts --mode anvil --processor kapt
 
 # Generate kotlin-inject + anvil mode project (uses Amazon kotlin-inject-anvil)
 kotlin generate-projects.main.kts --mode kotlin-inject-anvil
+
+# Generate with Provider-wrapped multibindings (for SetFactory/MapFactory benchmarking)
+kotlin generate-projects.main.kts --mode metro --provider-multibindings
 
 # Build the entire benchmark
 ./gradlew build

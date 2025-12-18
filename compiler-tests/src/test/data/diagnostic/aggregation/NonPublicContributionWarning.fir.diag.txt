@@ -1,0 +1,7 @@
+/NonPublicContributionWarning.kt:(186,194): warning: `@ContributesBinding`-annotated class InternalContribution is internal but contributes to a public scope `AppScope`. Consider making the class public or using a non-public scope.
+
+/NonPublicContributionWarning.kt:(271,278): warning: `@ContributesTo`-annotated class PrivateContribution is private-in-file but contributes to a public scope `AppScope`. Consider making the class public or using a non-public scope.
+
+/NonPublicContributionWarning.kt:(416,442): warning: `@ContributesBinding`-annotated class InternalObject.PublicContributionInObject is internal but contributes to a public scope `AppScope`. Consider making the class public or using a non-public scope.
+
+/NonPublicContributionWarning.kt:(529,538): warning: `@ContributesTo`-annotated class AbstractClass.ProtectedContribution is protected but contributes to a public scope `AppScope`. Consider making the class public or using a non-public scope.

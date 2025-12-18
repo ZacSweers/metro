@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.drewhamilton.poko.Poko
+import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
@@ -13,11 +14,13 @@ import dev.zacsweers.metro.compiler.fir.isBindingContainer
 import dev.zacsweers.metro.compiler.fir.isOrImplements
 import dev.zacsweers.metro.compiler.fir.isResolved
 import dev.zacsweers.metro.compiler.fir.mapKeyAnnotation
+import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.resolvedBindingArgument
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.descriptors.ClassKind
+import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.isObject
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
@@ -29,8 +32,10 @@ import org.jetbrains.kotlin.fir.analysis.checkers.fullyExpandedClassId
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.utils.classId
+import org.jetbrains.kotlin.fir.declarations.utils.effectiveVisibility
 import org.jetbrains.kotlin.fir.declarations.utils.nameOrSpecialName
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
+import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.types.UnexpandedTypeCheck
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
@@ -344,6 +349,8 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
 
       onError()
     }
+    // Check for non-public contributions
+    checkNonPublicContribution(session, contribution.declaration, annotation, kind, scope)
   }
 
   context(context: CheckerContext, reporter: DiagnosticReporter)
@@ -374,6 +381,58 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
       )
       onError()
     }
+  }
+
+  /**
+   * Checks if a contributed class (or any containing class) has non-public effective visibility. If
+   * it does, and the scope is not also non-public, reports a diagnostic based on the configured
+   * severity.
+   *
+   * Note: We treat `protected` as non-public for contributions, even though it's technically part
+   * of the public API from an inheritance perspective. A protected class can't be accessed from
+   * outside its class hierarchy, making it unsuitable for contributions to public scopes.
+   */
+  context(context: CheckerContext, reporter: DiagnosticReporter)
+  private fun checkNonPublicContribution(
+    session: FirSession,
+    declaration: FirClass,
+    annotation: FirAnnotation,
+    kind: ContributionKind,
+    scope: ClassId,
+  ) {
+    val options = session.metroFirBuiltIns.options
+    val severity = options.nonPublicContributionSeverity
+    if (severity == MetroOptions.DiagnosticSeverity.NONE) return
+
+    val effectiveVisibility = declaration.effectiveVisibility
+    // Treat protected as non-public for contributions - a protected class can't be accessed
+    // from outside its class hierarchy, making it unsuitable for contributions to public scopes
+    val isProtected = effectiveVisibility.toVisibility() == Visibilities.Protected
+    if (effectiveVisibility.publicApi && !isProtected) return
+
+    // Check if the scope class is also non-public - if so, don't report since it's intentionally
+    // non-public. Note: protected scopes are treated as public here since hint functions only use
+    // the scope for naming, not by directly referencing it.
+    val scopeSymbol = session.symbolProvider.getClassLikeSymbolByClassId(scope)
+    if (scopeSymbol != null) {
+      if (!scopeSymbol.effectiveVisibility.publicApi) {
+        return
+      }
+    }
+
+    val visibilityName = effectiveVisibility.name
+
+    val message =
+      "`@${annotation.toAnnotationClassId(session)?.shortClassName ?: kind.readableName}`-annotated class ${declaration.classId.asSingleFqName()} is $visibilityName but contributes to a public scope `${scope.shortClassName}`. " +
+        "Consider making the class public or using a non-public scope."
+
+    val diagnosticFactory =
+      when (severity) {
+        MetroOptions.DiagnosticSeverity.ERROR -> MetroDiagnostics.NON_PUBLIC_CONTRIBUTION_ERROR
+        MetroOptions.DiagnosticSeverity.WARN -> MetroDiagnostics.NON_PUBLIC_CONTRIBUTION_WARNING
+        MetroOptions.DiagnosticSeverity.NONE -> return
+      }
+    reporter.reportOn(declaration.source, diagnosticFactory, message)
   }
 
   sealed interface Contribution {
