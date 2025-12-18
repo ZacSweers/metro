@@ -222,6 +222,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("MismatchedSingleInScopesDisambiguateSameNameScopes.kt")
+    public void testMismatchedSingleInScopesDisambiguateSameNameScopes() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/MismatchedSingleInScopesDisambiguateSameNameScopes.kt");
+    }
+
+    @Test
     @TestMetadata("MissingBindingHintsShouldReportInternalOnlyIfInternal.kt")
     public void testMissingBindingHintsShouldReportInternalOnlyIfInternal() {
       runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/MissingBindingHintsShouldReportInternalOnlyIfInternal.kt");
