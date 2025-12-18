@@ -157,8 +157,9 @@ class GenerateProjectsCommand : CliktCommand() {
         val authRange = 1..(featureCategory.coerceAtLeast(1))
         val userRange = (featureCategory + 1)..(featureCategory * 2).coerceAtLeast(2)
         val contentRange = (featureCategory * 2 + 1)..(featureCategory * 3).coerceAtLeast(3)
-        val commerceRange = (featureCategory * 3 + 1)..(featureCategory * 5).coerceAtLeast(5)
-        val analyticsRange = (featureCategory * 4 + 1)..featuresCount
+        val socialRange = (featureCategory * 3 + 1)..(featureCategory * 4).coerceAtLeast(4)
+        val commerceRange = (featureCategory * 4 + 1)..(featureCategory * 5).coerceAtLeast(5)
+        val analyticsRange = (featureCategory * 5 + 1)..featuresCount
 
         // Calculate actual ranges for core
         val commonRange = 1..(coreCategory.coerceAtLeast(1))
