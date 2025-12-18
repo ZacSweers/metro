@@ -142,7 +142,9 @@ internal class DependencyGraphTransformer(
   override fun visitCall(expression: IrCall): IrExpression {
     return createGraphTransformer.visitCall(expression)
       ?: AsContributionTransformer.visitCall(expression, metroContext)
-      ?: super.visitCall(expression)
+      // Optimization: skip intermediate visit methods (visitFunctionAccessExpression, etc.)
+      // since we don't override them. Call visitExpression directly to save stack frames.
+      ?: super.visitExpression(expression)
   }
 
   override fun visitSimpleFunction(declaration: IrSimpleFunction): IrStatement {

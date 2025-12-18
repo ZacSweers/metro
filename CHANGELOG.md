@@ -4,13 +4,21 @@ Changelog
 **Unreleased**
 --------------
 
-- **New**: Configurable `nonPublicContributionSeverity` DSL that allows for configuring non-public contributions to warn or error. See its kdoc for full details.
-- **Fix**: Don't apply `replaces` effect from excluded contributions in cross-module scenarios.
-- **Fix**: Fix binding replacements getting dropped in classes with multiple contributions in graph extensions.
-- **Fix**: Avoid deeply nested IR calls for generated Set and Map multibindings causing compiler `StackOverflowError`s in large graphs at compile-time.
-- **Fix**: Fix dynamic graph bindings not being propagated to graph extensions.
-- **Fix**: Fix detection of `internal` contributions from non-friend compilations in IR contribution merging.
-- **Fix**: Fix detection of `internal` contributions from friend compilations in IR contribution merging. Not a typo, turns out both scenarios were misbehaving in different ways.
+### New
+
+- [Gradle DSL + FIR] Configurable `nonPublicContributionSeverity` diagnostic that allows for configuring non-public contributions to warn or error. See its kdoc for full details.
+
+### Enhancements
+
+- [IR] Avoid deeply nested IR call chains for generated SetFactory/MapFactory multibindings that can cause `StackOverflowError`s in large graphs at compile-time.
+- [IR] Short-circuit `visitCall` expressions in Metro IR transformation.
+
+### Fixes
+- [IR] Don't apply `replaces` effect from excluded contributions in cross-module scenarios.
+- [IR] Fix binding replacements getting dropped in classes with multiple contributions in graph extensions.
+- [IR] Fix dynamic graph bindings not being propagated to graph extensions.
+- [IR] Fix detection of `internal` contributions from non-friend compilations in IR contribution merging.
+- [IR] Fix detection of `internal` contributions from friend compilations in IR contribution merging. Not a typo, turns out both scenarios were misbehaving in different ways.
 
 0.9.1
 -----
