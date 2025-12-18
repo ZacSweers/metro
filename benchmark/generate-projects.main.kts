@@ -209,11 +209,13 @@ class GenerateProjectsCommand : CliktCommand() {
               else ->
                 if (
                   integrationRange.first <= integrationRange.last &&
-                    commonRange.first <= commonRange.last
+                    commonRange.first <= commonRange.last &&
+                    socialRange.first <= socialRange.last
                 ) {
                   listOf(
                     "app:integration-${integrationRange.random()}",
                     "core:common-${commonRange.random()}",
+                    "features:social-feature-${socialRange.random()}",
                   )
                 } else emptyList()
             },
