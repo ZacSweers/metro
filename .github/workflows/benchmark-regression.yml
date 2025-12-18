@@ -309,13 +309,13 @@ jobs:
             exit 1
           fi
 
-          # Extract mean build time (skip header, get mean column)
-          # Gradle profiler CSV format: scenario,iteration,value
+          # Extract mean build time from measured builds
+          # Gradle profiler CSV format: scenario,value (e.g., "measured build 1,1234")
           mean_ms=$(python3 -c "
           import csv
           with open('$csv_file') as f:
-              reader = csv.DictReader(f)
-              values = [float(row['execution']) for row in reader if row.get('execution')]
+              reader = csv.reader(f)
+              values = [float(row[1]) for row in reader if row[0].startswith('measured build')]
               print(sum(values) / len(values) if values else 0)
           ")
           echo "score=$mean_ms" >> $GITHUB_OUTPUT
@@ -356,11 +356,12 @@ jobs:
             exit 1
           fi
 
+          # Gradle profiler CSV format: scenario,value (e.g., "measured build 1,1234")
           mean_ms=$(python3 -c "
           import csv
           with open('$csv_file') as f:
-              reader = csv.DictReader(f)
-              values = [float(row['execution']) for row in reader if row.get('execution')]
+              reader = csv.reader(f)
+              values = [float(row[1]) for row in reader if row[0].startswith('measured build')]
               print(sum(values) / len(values) if values else 0)
           ")
           echo "score=$mean_ms" >> $GITHUB_OUTPUT
