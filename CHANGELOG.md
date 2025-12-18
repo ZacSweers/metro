@@ -9,6 +9,7 @@ Changelog
 - **Fix**: Avoid deeply nested IR calls for generated Set and Map multibindings causing compiler `StackOverflowError`s in large graphs at compile-time.
 - **Fix**: Fix dynamic graph bindings not being propagated to graph extensions.
 - **Fix**: Fix detection of `internal` contributions from non-friend compilations in IR contribution merging.
+- **Fix**: Fix detection of `internal` contributions from friend compilations in IR contribution merging. Not a typo, turns out both scenarios were misbehaving in different ways.
 
 0.9.1
 -----
