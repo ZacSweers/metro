@@ -1333,6 +1333,45 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Unreleased">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#new" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        New
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#enhancements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enhancements
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2067,6 +2106,45 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Unreleased">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#new" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        New
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#enhancements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enhancements
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2739,14 +2817,22 @@
 
 <h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
 <h2 id="unreleased"><strong>Unreleased</strong><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
+<h3 id="new">New<a class="headerlink" href="#new" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>New</strong>: Configurable <code>nonPublicContributionSeverity</code> DSL that allows for configuring non-public contributions to warn or error. See its kdoc for full details.</li>
-<li><strong>Fix</strong>: Don&rsquo;t apply <code>replaces</code> effect from excluded contributions in cross-module scenarios.</li>
-<li><strong>Fix</strong>: Fix binding replacements getting dropped in classes with multiple contributions in graph extensions.</li>
-<li><strong>Fix</strong>: Avoid deeply nested IR calls for generated Set and Map multibindings causing compiler <code>StackOverflowError</code>s in large graphs at compile-time.</li>
-<li><strong>Fix</strong>: Fix dynamic graph bindings not being propagated to graph extensions.</li>
-<li><strong>Fix</strong>: Fix detection of <code>internal</code> contributions from non-friend compilations in IR contribution merging.</li>
-<li><strong>Fix</strong>: Fix detection of <code>internal</code> contributions from friend compilations in IR contribution merging. Not a typo, turns out both scenarios were misbehaving in different ways.</li>
+<li>[Gradle DSL + FIR] Configurable <code>nonPublicContributionSeverity</code> diagnostic that allows for configuring non-public contributions to warn or error. See its kdoc for full details.</li>
+</ul>
+<h3 id="enhancements">Enhancements<a class="headerlink" href="#enhancements" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[IR] Avoid deeply nested IR call chains for generated SetFactory/MapFactory multibindings that can cause <code>StackOverflowError</code>s in large graphs at compile-time.</li>
+<li>[IR] Short-circuit <code>visitCall</code> expressions in Metro IR transformation.</li>
+</ul>
+<h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[IR] Don&rsquo;t apply <code>replaces</code> effect from excluded contributions in cross-module scenarios.</li>
+<li>[IR] Fix binding replacements getting dropped in classes with multiple contributions in graph extensions.</li>
+<li>[IR] Fix dynamic graph bindings not being propagated to graph extensions.</li>
+<li>[IR] Fix detection of <code>internal</code> contributions from non-friend compilations in IR contribution merging.</li>
+<li>[IR] Fix detection of <code>internal</code> contributions from friend compilations in IR contribution merging. Not a typo, turns out both scenarios were misbehaving in different ways.</li>
 </ul>
 <h2 id="091">0.9.1<a class="headerlink" href="#091" title="Permanent link">&para;</a></h2>
 <p><em>2025-12-16</em></p>
