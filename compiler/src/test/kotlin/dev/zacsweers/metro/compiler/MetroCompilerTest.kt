@@ -122,6 +122,8 @@ abstract class MetroCompilerTest {
                 processor.option(entry.raw.cliOption, keysPerGraphShard)
               MetroOption.PUBLIC_PROVIDER_SEVERITY ->
                 processor.option(entry.raw.cliOption, publicProviderSeverity)
+              MetroOption.NON_PUBLIC_CONTRIBUTION_SEVERITY ->
+                processor.option(entry.raw.cliOption, nonPublicContributionSeverity)
               MetroOption.WARN_ON_INJECT_ANNOTATION_PLACEMENT ->
                 processor.option(entry.raw.cliOption, warnOnInjectAnnotationPlacement)
               MetroOption.INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY ->
