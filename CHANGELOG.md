@@ -12,6 +12,7 @@ Changelog
 
 - [IR] Avoid deeply nested IR call chains for generated SetFactory/MapFactory multibindings that can cause `StackOverflowError`s in large graphs at compile-time.
 - [IR] Short-circuit `visitCall` expressions in Metro IR transformation.
+- [IR] Include fully qualified names of scopes when reporting incompatible scope binding errors.
 
 ### Fixes
 - [IR] Don't apply `replaces` effect from excluded contributions in cross-module scenarios.
