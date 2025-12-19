@@ -442,13 +442,13 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Download startup benchmark results
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: startup-benchmark-results
           path: /tmp/startup-results
 
       - name: Download build benchmark results
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: build-benchmark-results
           path: /tmp/build-results
