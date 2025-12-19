@@ -312,7 +312,7 @@ class GenerateProjectsCommand : CliktCommand() {
     val name: String,
     val layer: Layer,
     val dependencies: List<String> = emptyList(),
-    val contributionsCount: Int = Random.nextInt(1, 11), // 1-10 contributions per module
+    val contributionsCount: Int = Random(name.hashCode()).nextInt(1, 11), // 1-10 contributions per module, seeded by name
     val hasSubcomponent: Boolean = false,
   )
 
@@ -1327,6 +1327,7 @@ import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.Multibinds
+import dev.zacsweers.metro.ContributesTo
 import dev.zacsweers.metro.createGraph
 import dev.zacsweers.metro.benchmark.core.foundation.Plugin
 import dev.zacsweers.metro.benchmark.core.foundation.Initializer
@@ -1371,6 +1372,7 @@ import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.Multibinds
+import dev.zacsweers.metro.ContributesTo
 import dev.zacsweers.metro.benchmark.core.foundation.Plugin
 import dev.zacsweers.metro.benchmark.core.foundation.Initializer
 ${if (providerImport.isNotEmpty()) "$providerImport\n" else ""}$serviceImports
@@ -1417,9 +1419,12 @@ import me.tatarka.inject.annotations.Provides
 import software.amazon.lastmile.kotlin.inject.anvil.SingleIn
 import software.amazon.lastmile.kotlin.inject.anvil.AppScope
 import software.amazon.lastmile.kotlin.inject.anvil.MergeComponent
+import software.amazon.lastmile.kotlin.inject.anvil.ContributesTo
 import dev.zacsweers.metro.benchmark.core.foundation.Plugin
 import dev.zacsweers.metro.benchmark.core.foundation.Initializer
 $$serviceImports
+
+$${generateAccessors(allModules)}
 
 @SingleIn(AppScope::class)
 @MergeComponent(AppScope::class)
@@ -1470,6 +1475,7 @@ fun main() {
 package dev.zacsweers.metro.benchmark.app.component
 
 import com.squareup.anvil.annotations.MergeComponent
+import com.squareup.anvil.annotations.ContributesTo
 import javax.inject.Singleton
 $${if (providerImport.isNotEmpty()) "$providerImport\n" else ""}import dagger.multibindings.Multibinds
 import dev.zacsweers.metro.benchmark.core.foundation.Plugin
