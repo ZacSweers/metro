@@ -154,36 +154,6 @@ jobs:
           is_regression=$(python3 -c "print('true' if $delta_pct > 5 else 'false')")
           echo "is_regression=$is_regression" >> $GITHUB_OUTPUT
 
-      # Store both results for charting - each as a separate series (only on push to main)
-      - name: Store baseline result
-        if: github.event_name == 'push'
-        uses: benchmark-action/github-action-benchmark@v1
-        with:
-          name: Startup (baseline)
-          tool: 'jmh'
-          output-file-path: ${{ steps.baseline.outputs.json_path }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          auto-push: false
-          gh-pages-branch: gh-pages
-          benchmark-data-dir-path: dev/bench
-
-      - name: Store current result
-        if: github.event_name == 'push'
-        uses: benchmark-action/github-action-benchmark@v1
-        with:
-          name: Startup (current)
-          tool: 'jmh'
-          output-file-path: ${{ steps.current.outputs.json_path }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          # Only auto-push on main, and push both results together
-          auto-push: ${{ github.event_name == 'push' }}
-          gh-pages-branch: gh-pages
-          benchmark-data-dir-path: dev/bench
-          # Alert on PRs if regression detected
-          alert-threshold: '105%'
-          comment-on-alert: ${{ github.event_name == 'pull_request' }}
-          fail-on-alert: false
-
       - name: Add summary
         run: |
           baseline_score=${{ steps.baseline.outputs.score }}
@@ -400,30 +370,6 @@ jobs:
           is_regression=$(python3 -c "print('true' if float('$delta_pct') > 5 else 'false')")
           echo "is_regression=$is_regression" >> $GITHUB_OUTPUT
 
-      - name: Store baseline result
-        if: github.event_name == 'push'
-        uses: benchmark-action/github-action-benchmark@v1
-        with:
-          name: Build Time (baseline)
-          tool: 'customSmallerIsBetter'
-          output-file-path: ${{ steps.baseline.outputs.json_path }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          auto-push: false
-          gh-pages-branch: gh-pages
-          benchmark-data-dir-path: dev/bench/build
-
-      - name: Store current result
-        if: github.event_name == 'push'
-        uses: benchmark-action/github-action-benchmark@v1
-        with:
-          name: Build Time (current)
-          tool: 'customSmallerIsBetter'
-          output-file-path: ${{ steps.current.outputs.json_path }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          auto-push: true
-          gh-pages-branch: gh-pages
-          benchmark-data-dir-path: dev/bench/build
-
       - name: Add summary
         run: |
           baseline_score=${{ steps.baseline.outputs.score }}
@@ -483,3 +429,71 @@ jobs:
             /tmp/build-benchmark-baseline/
             /tmp/build-benchmark-current/
           retention-days: 7
+
+  publish-benchmarks:
+    name: "Publish Benchmark Results"
+    # Only run on push to main, after both benchmark jobs complete
+    if: github.event_name == 'push'
+    needs: [benchmark, build-benchmark]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download startup benchmark results
+        uses: actions/download-artifact@v4
+        with:
+          name: startup-benchmark-results
+          path: /tmp/startup-results
+
+      - name: Download build benchmark results
+        uses: actions/download-artifact@v4
+        with:
+          name: build-benchmark-results
+          path: /tmp/build-results
+
+      # Store all results sequentially, only pushing on the final one
+      - name: Store startup baseline result
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: Startup (baseline)
+          tool: 'jmh'
+          output-file-path: /tmp/startup-results/benchmark-baseline/baseline.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: false
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: dev/bench
+
+      - name: Store startup current result
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: Startup (current)
+          tool: 'jmh'
+          output-file-path: /tmp/startup-results/benchmark-current/current.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: false
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: dev/bench
+
+      - name: Store build baseline result
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: Build Time (baseline)
+          tool: 'customSmallerIsBetter'
+          output-file-path: /tmp/build-results/build-benchmark-baseline/baseline.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: false
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: dev/bench/build
+
+      - name: Store build current result
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: Build Time (current)
+          tool: 'customSmallerIsBetter'
+          output-file-path: /tmp/build-results/build-benchmark-current/current.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: dev/bench/build
