@@ -88,6 +88,7 @@ abstract class R8Task : BaseR8Task() {
 
   override fun computeArgs(): Iterable<String> {
     return buildList {
+      add("--release") // Enable more aggressive optimizations
       add("--classfile")
       add("--output")
       add(r8Jar.get().asFile.absolutePath)
