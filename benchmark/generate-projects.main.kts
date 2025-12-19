@@ -312,7 +312,8 @@ class GenerateProjectsCommand : CliktCommand() {
     val name: String,
     val layer: Layer,
     val dependencies: List<String> = emptyList(),
-    val contributionsCount: Int = Random(name.hashCode()).nextInt(1, 11), // 1-10 contributions per module, seeded by name
+    val contributionsCount: Int =
+      Random(name.hashCode()).nextInt(1, 11), // 1-10 contributions per module, seeded by name
     val hasSubcomponent: Boolean = false,
   )
 
@@ -328,10 +329,7 @@ class GenerateProjectsCommand : CliktCommand() {
     }
   }
 
-  fun generateModule(
-    module: ModuleSpec,
-    processor: ProcessorMode,
-  ) {
+  fun generateModule(module: ModuleSpec, processor: ProcessorMode) {
     val moduleDir = File("${module.layer.path}/${module.name}")
     moduleDir.mkdirs()
 
@@ -924,7 +922,8 @@ annotation class ${className}Scope
 
     val scopeParam =
       when (buildMode) {
-        BuildMode.METRO, BuildMode.NOOP -> "AppScope::class"
+        BuildMode.METRO,
+        BuildMode.NOOP -> "AppScope::class"
         BuildMode.KOTLIN_INJECT_ANVIL -> "AppScope::class"
         BuildMode.DAGGER -> "Unit::class"
       }
@@ -1255,13 +1254,15 @@ application {
         }
         .joinToString("\n")
 
-    // Provider import for modes that support it (Metro uses its own Provider, Dagger uses javax.inject.Provider)
-    val providerImport = when {
-      !providerMultibindings -> ""
-      buildMode == BuildMode.METRO -> "import dev.zacsweers.metro.Provider"
-      buildMode == BuildMode.DAGGER -> "import javax.inject.Provider"
-      else -> "import javax.inject.Provider" // NOOP uses javax style for consistency
-    }
+    // Provider import for modes that support it (Metro uses its own Provider, Dagger uses
+    // javax.inject.Provider)
+    val providerImport =
+      when {
+        !providerMultibindings -> ""
+        buildMode == BuildMode.METRO -> "import dev.zacsweers.metro.Provider"
+        buildMode == BuildMode.DAGGER -> "import javax.inject.Provider"
+        else -> "import javax.inject.Provider" // NOOP uses javax style for consistency
+      }
 
     // Multibinding types based on providerMultibindings flag
     val pluginsType = if (providerMultibindings) "Provider<Set<Plugin>>" else "Set<Plugin>"
@@ -1269,16 +1270,20 @@ application {
       if (providerMultibindings) "Provider<Set<Initializer>>" else "Set<Initializer>"
 
     // Access pattern for multibindings - Metro uses invoke(), Dagger uses .get()
-    val pluginsAccess = when {
-      !providerMultibindings -> "graph.getAllPlugins()"
-      buildMode == BuildMode.METRO -> "graph.getAllPlugins()()" // Metro Provider uses operator invoke
-      else -> "graph.getAllPlugins().get()" // Dagger/javax Provider uses .get()
-    }
-    val initializersAccess = when {
-      !providerMultibindings -> "graph.getAllInitializers()"
-      buildMode == BuildMode.METRO -> "graph.getAllInitializers()()" // Metro Provider uses operator invoke
-      else -> "graph.getAllInitializers().get()" // Dagger/javax Provider uses .get()
-    }
+    val pluginsAccess =
+      when {
+        !providerMultibindings -> "graph.getAllPlugins()"
+        buildMode == BuildMode.METRO ->
+          "graph.getAllPlugins()()" // Metro Provider uses operator invoke
+        else -> "graph.getAllPlugins().get()" // Dagger/javax Provider uses .get()
+      }
+    val initializersAccess =
+      when {
+        !providerMultibindings -> "graph.getAllInitializers()"
+        buildMode == BuildMode.METRO ->
+          "graph.getAllInitializers()()" // Metro Provider uses operator invoke
+        else -> "graph.getAllInitializers().get()" // Dagger/javax Provider uses .get()
+      }
 
     val metroMainFunction =
       if (multiplatform) {
