@@ -65,9 +65,10 @@ jobs:
       - name: Save baseline results
         id: baseline
         run: |
-          json_path=$(find benchmark/startup-benchmark-results -name "jvm.json" 2>/dev/null | head -1)
+          # JMH produces results.json
+          json_path=$(find benchmark/startup-benchmark-results -name "results.json" 2>/dev/null | head -1)
           if [ -z "$json_path" ]; then
-            echo "No baseline jvm.json found"
+            echo "No baseline results.json found"
             exit 1
           fi
 
@@ -77,7 +78,7 @@ jobs:
 
           # Copy to temp location
           mkdir -p /tmp/benchmark-baseline
-          cp "$json_path" /tmp/benchmark-baseline/jvm.json
+          cp "$json_path" /tmp/benchmark-baseline/results.json
 
           # Create modified JSON with renamed benchmark for charting
           python3 -c "
@@ -104,9 +105,10 @@ jobs:
       - name: Save current results
         id: current
         run: |
-          json_path=$(find benchmark/startup-benchmark-results -name "jvm.json" 2>/dev/null | head -1)
+          # JMH produces results.json
+          json_path=$(find benchmark/startup-benchmark-results -name "results.json" 2>/dev/null | head -1)
           if [ -z "$json_path" ]; then
-            echo "No current jvm.json found"
+            echo "No current results.json found"
             exit 1
           fi
 
@@ -116,7 +118,7 @@ jobs:
 
           # Copy to temp location
           mkdir -p /tmp/benchmark-current
-          cp "$json_path" /tmp/benchmark-current/jvm.json
+          cp "$json_path" /tmp/benchmark-current/results.json
 
           # Create modified JSON with renamed benchmark for charting
           python3 -c "
