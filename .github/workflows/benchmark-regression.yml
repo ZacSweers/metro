@@ -60,9 +60,7 @@ jobs:
       - name: Run baseline benchmark
         run: |
           cd benchmark
-          ./run_startup_benchmarks.sh multiplatform \
-            --target jvm \
-            --count 500
+          ./run_startup_benchmarks.sh jvm --modes metro --count 500
 
       - name: Save baseline results
         id: baseline
@@ -101,9 +99,7 @@ jobs:
           cd benchmark
           # Clean previous results
           rm -rf startup-benchmark-results
-          ./run_startup_benchmarks.sh multiplatform \
-            --target jvm \
-            --count 500
+          ./run_startup_benchmarks.sh jvm --modes metro --count 500
 
       - name: Save current results
         id: current
