@@ -922,6 +922,13 @@ annotation class ${className}Scope
         }
       }
 
+    val scopeParam =
+      when (buildMode) {
+        BuildMode.METRO, BuildMode.NOOP -> "AppScope::class"
+        BuildMode.KOTLIN_INJECT_ANVIL -> "AppScope::class"
+        BuildMode.DAGGER -> "Unit::class"
+      }
+
     // Group into chunks to avoid extremely long interfaces
     return scopedBindings
       .chunked(50)
@@ -929,6 +936,7 @@ annotation class ${className}Scope
         val accessors = chunk.joinToString("\n") { "  fun get$it(): $it" }
         """
 // Accessor interface $chunkIndex to force generation of scoped bindings
+@ContributesTo($scopeParam)
 interface AccessorInterface$chunkIndex {
 $accessors
 }"""
@@ -1328,7 +1336,7 @@ $${generateAccessors(allModules)}
 
 @SingleIn(AppScope::class)
 @DependencyGraph(AppScope::class)
-interface AppComponent : $${(0 until (allModules.size / 50 + 1)).joinToString(", ") { "AccessorInterface$it" }} {
+interface AppComponent {
   // Multibinding accessors
   fun getAllPlugins(): $$pluginsType
   fun getAllInitializers(): $$initializersType
@@ -1376,7 +1384,7 @@ ${generateAccessors(allModules)}
  */
 @SingleIn(AppScope::class)
 @DependencyGraph(AppScope::class)
-interface AppComponent : ${(0 until (allModules.size / 50 + 1)).joinToString(", ") { "AccessorInterface$it" }} {
+interface AppComponent {
   // Multibinding accessors
   fun getAllPlugins(): $pluginsType
   fun getAllInitializers(): $initializersType
@@ -1472,7 +1480,7 @@ $${generateAccessors(allModules)}
 
 @Singleton
 @MergeComponent(Unit::class)
-interface AppComponent : $${(0 until (allModules.size / 50 + 1)).joinToString(", ") { "AccessorInterface$it" }} {
+interface AppComponent {
   // Multibinding accessors
   fun getAllPlugins(): $$pluginsType
   fun getAllInitializers(): $$initializersType
