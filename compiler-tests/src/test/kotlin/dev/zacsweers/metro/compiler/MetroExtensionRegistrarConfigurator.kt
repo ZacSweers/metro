@@ -111,7 +111,8 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         // Configure interop annotations using builder helper methods
         if (MetroDirectives.WITH_KI_ANVIL in module.directives) {
           includeKotlinInjectAnvilAnnotations()
-        } else if (
+        }
+        if (
           MetroDirectives.WITH_ANVIL in module.directives ||
             MetroDirectives.ENABLE_ANVIL_KSP in module.directives
         ) {

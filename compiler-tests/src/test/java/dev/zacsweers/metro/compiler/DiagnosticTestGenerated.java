@@ -258,6 +258,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("MultipleGraphAnnotationsAreAnError.kt")
+    public void testMultipleGraphAnnotationsAreAnError() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/MultipleGraphAnnotationsAreAnError.kt");
+    }
+
+    @Test
     @TestMetadata("MultipleMissingDeps.kt")
     public void testMultipleMissingDeps() {
       runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/MultipleMissingDeps.kt");

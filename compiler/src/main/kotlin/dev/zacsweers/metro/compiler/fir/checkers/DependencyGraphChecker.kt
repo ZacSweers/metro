@@ -69,9 +69,23 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
     val session = context.session
     val classIds = session.classIds
 
-    val dependencyGraphAnno =
-      declaration.annotationsIn(session, classIds.graphLikeAnnotations).firstOrNull() ?: return
+    val dependencyGraphAnnos =
+      declaration.annotationsIn(session, classIds.graphLikeAnnotations).toList().ifEmpty {
+        return
+      }
 
+    if (dependencyGraphAnnos.size > 1) {
+      for (anno in dependencyGraphAnnos) {
+        reporter.reportOn(
+          anno.source,
+          MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+          "Only one @DependencyGraph-like annotation is allowed per class but found ${dependencyGraphAnnos.size}. Remove all but one of these annotations.",
+        )
+      }
+      return
+    }
+
+    val dependencyGraphAnno = dependencyGraphAnnos.first()
     val graphAnnotationClassId = dependencyGraphAnno.toAnnotationClassIdSafe(session) ?: return
 
     // Ensure scope is defined if any additionalScopes are defined

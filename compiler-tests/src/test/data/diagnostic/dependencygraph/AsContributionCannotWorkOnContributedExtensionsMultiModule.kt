@@ -24,10 +24,3 @@ class Foo
 interface FooProvider {
   val foo: Foo
 }
-
-fun box(): String {
-  val appGraph = createGraph<AppGraph>()
-  val childGraph = appGraph.asContribution<ChildGraph.Factory>().create()
-  val foo = <!AS_CONTRIBUTION_ERROR!>childGraph<!>.asContribution<FooProvider>().foo
-  return "OK"
-}

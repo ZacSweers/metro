@@ -4,6 +4,14 @@ Changelog
 **Unreleased**
 --------------
 
+### New
+
+### Enhancements
+
+- [FIR] Add diagnostic for multiple graph-like annotations on a single declaration.
+
+### Fixes
+
 0.9.2
 -----
 
