@@ -1,57 +1,25 @@
-# Metro vs Anvil Benchmark Scenarios
-# 
-# This file defines comprehensive benchmarking scenarios for comparing Metro and Anvil
-# performance across different configurations and change types.
+# Metro Benchmark Scenarios
 #
-# Scenarios include:
-# 1. Metro mode
-# 2. Anvil + KSP mode  
-# 3. Anvil + KAPT mode
-# 4. Kotlin-inject + Anvil mode
+# This file defines benchmark scenarios for comparing Metro and other DI frameworks.
+# Scenarios are generic - the script generates different projects for each mode
+# and runs the same scenarios against them.
 #
-# Each with ABI and non-ABI change permutations, plus raw app component compilation scenarios.
+# Modes (handled by run_benchmarks.sh):
+# - metro: Metro compiler plugin
+# - vanilla: Pure Kotlin baseline (no DI)
+# - metro_noop: Metro plugin applied but no annotations (measures plugin overhead)
+# - dagger_ksp: Dagger with KSP
+# - dagger_kapt: Dagger with KAPT
+# - kotlin_inject_anvil: kotlin-inject with Anvil
 
 # ====================================
-# METRO MODE SCENARIOS
+# INCREMENTAL BUILD SCENARIOS
 # ====================================
+# These scenarios measure incremental compilation performance when files change.
+# All modes use the same scenarios - only the underlying project differs.
 
-metro_abi_change {
-    title = "Metro - ABI"
-    warm-ups = 3
-    iterations = 5
-    
-    tasks = [":app:component:compileKotlin"]
-    
-    apply-abi-change-to = "core/foundation/src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation/CommonInterfaces.kt"
-}
-
-metro_non_abi_change {
-    title = "Metro - Non-ABI"
-    warm-ups = 3
-    iterations = 5
-    
-    tasks = [":app:component:compileKotlin"]
-    
-    apply-non-abi-change-to = "features/auth-feature-10/src/main/kotlin/dev/zacsweers/metro/benchmark/features/authfeature10/AuthFeature10.kt"
-}
-
-metro_raw_compilation {
-    title = "Metro - Raw Compilation Performance"
-    warm-ups = 3
-    iterations = 5
-    
-    tasks = [":app:component:compileKotlin"]
-    gradle-args = ["--rerun-tasks", "-a"]
-}
-
-# ====================================
-# NOOP MODE SCENARIOS (BASELINE)
-# ====================================
-# NOOP mode: Metro runtime is present but the compiler plugin is NOT applied.
-# This provides a baseline for measuring build times without any DI compiler overhead.
-
-noop_abi_change {
-    title = "NOOP (Baseline) - ABI"
+abi_change {
+    title = "ABI Change"
     warm-ups = 3
     iterations = 5
 
@@ -60,210 +28,24 @@ noop_abi_change {
     apply-abi-change-to = "core/foundation/src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation/CommonInterfaces.kt"
 }
 
-noop_non_abi_change {
-    title = "NOOP (Baseline) - Non-ABI"
+non_abi_change {
+    title = "Non-ABI Change"
     warm-ups = 3
     iterations = 5
 
     tasks = [":app:component:compileKotlin"]
 
     apply-non-abi-change-to = "features/auth-feature-10/src/main/kotlin/dev/zacsweers/metro/benchmark/features/authfeature10/AuthFeature10.kt"
-}
-
-noop_raw_compilation {
-    title = "NOOP (Baseline) - Raw Compilation Performance"
-    warm-ups = 3
-    iterations = 5
-
-    tasks = [":app:component:compileKotlin"]
-    gradle-args = ["--rerun-tasks", "-a"]
-}
-
-# ====================================
-# ANVIL + KSP MODE SCENARIOS
-# ====================================
-
-anvil_ksp_abi_change {
-    title = "Anvil KSP - ABI"
-    warm-ups = 3
-    iterations = 5
-    
-    tasks = [":app:component:compileKotlin"]
-    
-    apply-abi-change-to = "core/foundation/src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation/CommonInterfaces.kt"
-}
-
-anvil_ksp_non_abi_change {
-    title = "Anvil KSP - Non-ABI"
-    warm-ups = 3
-    iterations = 5
-    
-    tasks = [":app:component:compileKotlin"]
-    
-    apply-non-abi-change-to = "features/auth-feature-10/src/main/kotlin/dev/zacsweers/metro/benchmark/features/authfeature10/AuthFeature10.kt"
-}
-
-anvil_ksp_raw_compilation {
-    title = "Anvil KSP - Raw Compilation Performance"
-    warm-ups = 3
-    iterations = 5
-    
-    tasks = [":app:component:compileKotlin"]
-    gradle-args = ["--rerun-tasks", "-a"]
-}
-
-# ====================================
-# ANVIL + KAPT MODE SCENARIOS
-# ====================================
-
-anvil_kapt_abi_change {
-    title = "Anvil KAPT - ABI"
-    warm-ups = 3
-    iterations = 5
-    
-    tasks = [":app:component:compileKotlin"]
-    
-    apply-abi-change-to = "core/foundation/src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation/CommonInterfaces.kt"
-}
-
-anvil_kapt_non_abi_change {
-    title = "Anvil KAPT - Non-ABI"
-    warm-ups = 3
-    iterations = 5
-    
-    tasks = [":app:component:compileKotlin"]
-    
-    apply-non-abi-change-to = "features/auth-feature-10/src/main/kotlin/dev/zacsweers/metro/benchmark/features/authfeature10/AuthFeature10.kt"
-}
-
-anvil_kapt_raw_compilation {
-    title = "Anvil KAPT - Raw Compilation Performance"
-    warm-ups = 3
-    iterations = 5
-    
-    tasks = [":app:component:compileKotlin"]
-    gradle-args = ["--rerun-tasks", "-a"]
-}
-
-# ====================================
-# KOTLIN-INJECT + ANVIL MODE SCENARIOS
-# ====================================
-
-kotlin_inject_anvil_abi_change {
-    title = "Kotlin-inject + Anvil - ABI"
-    warm-ups = 3
-    iterations = 5
-    
-    tasks = [":app:component:compileKotlin"]
-    
-    apply-abi-change-to = "core/foundation/src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation/CommonInterfaces.kt"
-}
-
-kotlin_inject_anvil_non_abi_change {
-    title = "Kotlin-inject + Anvil - Non-ABI"
-    warm-ups = 3
-    iterations = 5
-    
-    tasks = [":app:component:compileKotlin"]
-    
-    apply-non-abi-change-to = "features/auth-feature-10/src/main/kotlin/dev/zacsweers/metro/benchmark/features/authfeature10/AuthFeature10.kt"
-}
-
-kotlin_inject_anvil_raw_compilation {
-    title = "Kotlin-inject + Anvil - Raw Compilation Performance"
-    warm-ups = 3
-    iterations = 5
-    
-    tasks = [":app:component:compileKotlin"]
-    gradle-args = ["--rerun-tasks", "-a"]
 }
 
 # ====================================
 # PLAIN KOTLIN FILE SCENARIOS (NO DI)
 # ====================================
+# These measure compilation when changing files that have no DI annotations.
+# Helps isolate the overhead of the DI framework vs pure Kotlin compilation.
 
-metro_plain_abi_change {
-    title = "Metro - Plain Kotlin ABI"
-    warm-ups = 3
-    iterations = 5
-    
-    tasks = [":app:component:compileKotlin"]
-    
-    apply-abi-change-to = "core/foundation/src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation/PlainKotlinFile.kt"
-}
-
-metro_plain_non_abi_change {
-    title = "Metro - Plain Kotlin Non-ABI"
-    warm-ups = 3
-    iterations = 5
-    
-    tasks = [":app:component:compileKotlin"]
-    
-    apply-non-abi-change-to = "core/foundation/src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation/PlainKotlinFile.kt"
-}
-
-anvil_ksp_plain_abi_change {
-    title = "Anvil KSP - Plain Kotlin ABI"
-    warm-ups = 3
-    iterations = 5
-    
-    tasks = [":app:component:compileKotlin"]
-    
-    apply-abi-change-to = "core/foundation/src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation/PlainKotlinFile.kt"
-}
-
-anvil_ksp_plain_non_abi_change {
-    title = "Anvil KSP - Plain Kotlin Non-ABI"
-    warm-ups = 3
-    iterations = 5
-    
-    tasks = [":app:component:compileKotlin"]
-    
-    apply-non-abi-change-to = "core/foundation/src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation/PlainKotlinFile.kt"
-}
-
-anvil_kapt_plain_abi_change {
-    title = "Anvil KAPT - Plain Kotlin ABI"
-    warm-ups = 3
-    iterations = 5
-    
-    tasks = [":app:component:compileKotlin"]
-    
-    apply-abi-change-to = "core/foundation/src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation/PlainKotlinFile.kt"
-}
-
-anvil_kapt_plain_non_abi_change {
-    title = "Anvil KAPT - Plain Kotlin Non-ABI"
-    warm-ups = 3
-    iterations = 5
-    
-    tasks = [":app:component:compileKotlin"]
-    
-    apply-non-abi-change-to = "core/foundation/src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation/PlainKotlinFile.kt"
-}
-
-kotlin_inject_anvil_plain_abi_change {
-    title = "Kotlin-inject + Anvil - Plain Kotlin ABI"
-    warm-ups = 3
-    iterations = 5
-    
-    tasks = [":app:component:compileKotlin"]
-    
-    apply-abi-change-to = "core/foundation/src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation/PlainKotlinFile.kt"
-}
-
-kotlin_inject_anvil_plain_non_abi_change {
-    title = "Kotlin-inject + Anvil - Plain Kotlin Non-ABI"
-    warm-ups = 3
-    iterations = 5
-
-    tasks = [":app:component:compileKotlin"]
-
-    apply-non-abi-change-to = "core/foundation/src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation/PlainKotlinFile.kt"
-}
-
-noop_plain_abi_change {
-    title = "NOOP (Baseline) - Plain Kotlin ABI"
+plain_abi_change {
+    title = "Plain Kotlin ABI Change"
     warm-ups = 3
     iterations = 5
 
@@ -272,62 +54,62 @@ noop_plain_abi_change {
     apply-abi-change-to = "core/foundation/src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation/PlainKotlinFile.kt"
 }
 
-noop_plain_non_abi_change {
-    title = "NOOP (Baseline) - Plain Kotlin Non-ABI"
+plain_non_abi_change {
+    title = "Plain Kotlin Non-ABI Change"
     warm-ups = 3
     iterations = 5
 
     tasks = [":app:component:compileKotlin"]
 
     apply-non-abi-change-to = "core/foundation/src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation/PlainKotlinFile.kt"
+}
+
+# ====================================
+# RAW COMPILATION SCENARIOS
+# ====================================
+# These measure full compilation performance without incremental compilation.
+# Different variants for different mode types based on their compilation needs:
+#
+# - raw_compilation: For Metro/Vanilla/Metro-NOOP (pure compiler plugin, no annotation processing)
+# - raw_compilation_ksp: For kotlin-inject-anvil (needs KSP to run)
+# - raw_compilation_java: For Dagger KSP/KAPT (generates Java code, needs classes task)
+
+raw_compilation {
+    title = "Raw Compilation"
+    warm-ups = 3
+    iterations = 5
+
+    # Metro/Vanilla/Metro-NOOP: Pure compiler plugin, rerun only app:component tasks (not all modules)
+    tasks = [":app:component:compileKotlin"]
+    gradle-args = ["--rerun-tasks", "-a"]
+}
+
+raw_compilation_ksp {
+    title = "Raw Compilation"
+    warm-ups = 3
+    iterations = 5
+
+    # kotlin-inject-anvil: KSP generates Kotlin, rerun only app:component tasks (not all modules)
+    tasks = [":app:component:compileKotlin"]
+    gradle-args = ["--rerun-tasks", "-a"]
+}
+
+raw_compilation_java {
+    title = "Raw Compilation"
+    warm-ups = 3
+    iterations = 5
+
+    # Dagger KSP/KAPT: Generates Java code, rerun only app:component tasks (not all modules)
+    tasks = [":app:component:classes"]
+    gradle-args = ["--rerun-tasks", "-a"]
 }
 
 # ====================================
 # CLEAN BUILD SCENARIOS
 # ====================================
 
-metro_clean_build {
-    title = "Metro - Clean Build"
-    warm-ups = 2
-    iterations = 3
-    
-    tasks = ["assemble"]
-    cleanup-tasks = ["clean"]
-    clear-build-cache-before = BUILD
-}
-
-anvil_ksp_clean_build {
-    title = "Anvil KSP - Clean Build"
-    warm-ups = 2
-    iterations = 3
-    
-    tasks = ["assemble"]
-    cleanup-tasks = ["clean"]
-    clear-build-cache-before = BUILD
-}
-
-anvil_kapt_clean_build {
-    title = "Anvil KAPT - Clean Build"
-    warm-ups = 2
-    iterations = 3
-    
-    tasks = ["assemble"]
-    cleanup-tasks = ["clean"]
-    clear-build-cache-before = BUILD
-}
-
-kotlin_inject_anvil_clean_build {
-    title = "Kotlin-inject + Anvil - Clean Build"
-    warm-ups = 2
-    iterations = 3
-
-    tasks = ["assemble"]
-    cleanup-tasks = ["clean"]
-    clear-build-cache-before = BUILD
-}
-
-noop_clean_build {
-    title = "NOOP (Baseline) - Clean Build"
+clean_build {
+    title = "Clean Build"
     warm-ups = 2
     iterations = 3
 
@@ -340,15 +122,22 @@ noop_clean_build {
 # USAGE INSTRUCTIONS
 # ====================================
 
-# To run all scenarios:
-#   gradle-profiler --benchmark --scenario-file benchmark.scenarios
+# To run benchmarks, use the run_benchmarks.sh script which handles:
+# 1. Generating projects for each mode
+# 2. Selecting appropriate scenarios for each mode
+# 3. Running gradle-profiler with proper output directories
+# 4. Generating HTML reports
 #
-# To run specific scenarios:
-#   gradle-profiler --benchmark --scenario-file benchmark.scenarios metro_abi_change anvil_ksp_abi_change
+# Examples:
+#   ./run_benchmarks.sh all                    # Run all modes
+#   ./run_benchmarks.sh all --include-noop     # Include baseline modes
+#   ./run_benchmarks.sh metro                  # Run only Metro mode
+#   ./run_benchmarks.sh single --ref main      # Run on specific git ref
 #
-# To generate different project configurations, use the generation script:
+# To generate different project configurations manually:
 #   kotlin generate-projects.main.kts --mode metro --count 500
-#   kotlin generate-projects.main.kts --mode noop --count 500
-#   kotlin generate-projects.main.kts --mode anvil --processor ksp --count 500
-#   kotlin generate-projects.main.kts --mode anvil --processor kapt --count 500
+#   kotlin generate-projects.main.kts --mode vanilla --count 500
+#   kotlin generate-projects.main.kts --mode metro_noop --count 500
+#   kotlin generate-projects.main.kts --mode dagger --processor ksp --count 500
+#   kotlin generate-projects.main.kts --mode dagger --processor kapt --count 500
 #   kotlin generate-projects.main.kts --mode kotlin-inject-anvil --count 500
