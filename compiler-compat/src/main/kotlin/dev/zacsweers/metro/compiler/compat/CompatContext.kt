@@ -344,7 +344,7 @@ public interface CompatContext {
     since = "2.3.20-Beta2",
     reason = CompatApi.Reason.COMPAT,
     message =
-      "Repeatable annotations are not readable in IR until 2.3.20-Beta2. https://youtrack.jetbrains.com/issue/KT-83185",
+      "External repeatable annotations are not readable in IR until 2.3.20-Beta2. https://youtrack.jetbrains.com/issue/KT-83185",
   )
   // TODO enable in 2.3.20-dev-7429 dev build
   public val supportsExternalRepeatableAnnotations: Boolean
