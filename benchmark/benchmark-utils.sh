@@ -134,6 +134,96 @@ get_ref_display_name() {
 }
 
 # ============================================================================
+# Percentage Calculations
+# ============================================================================
+
+# Calculate percentage difference: ((value - baseline) / baseline) * 100
+# Args: value baseline [precision]
+# Returns: percentage as a number (e.g., "3.7" or "-2.5")
+# Returns empty string if calculation fails
+calc_pct_diff() {
+    local value="$1"
+    local baseline="$2"
+    local precision="${3:-1}"
+
+    if [ -z "$value" ] || [ -z "$baseline" ] || [ "$baseline" = "0" ]; then
+        echo ""
+        return
+    fi
+
+    local pct_raw=$(echo "scale=6; (($value - $baseline) / $baseline) * 100" | bc 2>/dev/null || echo "")
+    if [ -z "$pct_raw" ]; then
+        echo ""
+        return
+    fi
+
+    printf "%.${precision}f" "$pct_raw" 2>/dev/null | sed 's/\.0$//' || echo "$pct_raw"
+}
+
+# Calculate multiplier: value / baseline
+# Args: value baseline [precision]
+# Returns: multiplier as a number (e.g., "1.04" or "0.95")
+# Returns empty string if calculation fails
+calc_multiplier() {
+    local value="$1"
+    local baseline="$2"
+    local precision="${3:-2}"
+
+    if [ -z "$value" ] || [ -z "$baseline" ] || [ "$baseline" = "0" ]; then
+        echo ""
+        return
+    fi
+
+    printf "%.${precision}f" "$(echo "scale=6; $value / $baseline" | bc 2>/dev/null)" 2>/dev/null || echo ""
+}
+
+# Format percentage difference with sign and multiplier for display
+# Args: value baseline
+# Returns: formatted string like "+3.7% (1.04x)" or "-2.5% (0.97x)" or "—" if invalid
+format_vs_baseline() {
+    local value="$1"
+    local baseline="$2"
+
+    local pct=$(calc_pct_diff "$value" "$baseline" 1)
+    local mult=$(calc_multiplier "$value" "$baseline" 2)
+
+    if [ -z "$pct" ] || [ -z "$mult" ]; then
+        echo "—"
+        return
+    fi
+
+    # Add + sign for positive percentages
+    if [[ "$pct" != -* ]]; then
+        echo "+${pct}% (${mult}x)"
+    else
+        echo "${pct}% (${mult}x)"
+    fi
+}
+
+# Format percentage difference with sign only (no multiplier)
+# Args: value baseline [precision]
+# Returns: formatted string like "+3.7%" or "-2.5%" or "—" if invalid
+format_pct_diff() {
+    local value="$1"
+    local baseline="$2"
+    local precision="${3:-1}"
+
+    local pct=$(calc_pct_diff "$value" "$baseline" "$precision")
+
+    if [ -z "$pct" ]; then
+        echo "—"
+        return
+    fi
+
+    # Add + sign for positive percentages
+    if [[ "$pct" != -* ]] && [[ "$pct" != "0" ]] && [[ "$pct" != "0.0" ]] && [[ "$pct" != "0.00" ]]; then
+        echo "+${pct}%"
+    else
+        echo "${pct}%"
+    fi
+}
+
+# ============================================================================
 # Duration Formatting
 # ============================================================================
 
