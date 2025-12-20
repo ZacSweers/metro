@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.computeMetroDefault
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
+import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.ifNotEmpty
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
@@ -40,6 +41,8 @@ import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.DescriptorVisibility
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.isObject
+import org.jetbrains.kotlin.fir.expressions.FirAnnotation
+import org.jetbrains.kotlin.fir.lazy.AbstractFir2IrLazyDeclaration
 import org.jetbrains.kotlin.fir.lazy.Fir2IrLazyClass
 import org.jetbrains.kotlin.ir.IrBuiltIns
 import org.jetbrains.kotlin.ir.IrElement
@@ -244,6 +247,28 @@ internal fun IrAnnotationContainer.isAnnotatedWithAny(names: Collection<ClassId>
 
 internal fun IrAnnotationContainer.annotationsIn(names: Set<ClassId>): Sequence<IrConstructorCall> {
   return annotations.asSequence().filter { it.symbol.owner.parentAsClass.classId in names }
+}
+
+/**
+ * IrClass#annotations does not expose generated .Container annotations which house repeated
+ * annotations. So e.g. if you have one @ContributesBinding, it will show up in IrClass#annotations,
+ * but if you have two @ContributesBinding, then neither will be included, nor will their associated
+ * .Container annotation.
+ *
+ * TODO: Go back to pure IR handling once https://youtrack.jetbrains.com/issue/KT-83185 is resolved.
+ */
+context(context: CompatContext)
+internal fun <Container, T> Container.repeatableAnnotationsIn(
+  names: Set<ClassId>,
+  irBody: (Sequence<IrConstructorCall>) -> Sequence<T>,
+  firBody: (Sequence<FirAnnotation>) -> Sequence<T>,
+): Sequence<T> where Container : IrAnnotationContainer, Container : IrDeclarationParent {
+  val useFir = !context.supportsExternalRepeatableAnnotations
+  return if (useFir && isExternalParent && this is AbstractFir2IrLazyDeclaration<*>) {
+    fir.symbol.annotationsIn(session, names).let(firBody)
+  } else {
+    annotationsIn(names).let(irBody)
+  }
 }
 
 internal fun IrAnnotationContainer.findAnnotations(classId: ClassId): Sequence<IrConstructorCall> {

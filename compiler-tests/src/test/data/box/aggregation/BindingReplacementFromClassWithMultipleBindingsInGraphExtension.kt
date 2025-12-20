@@ -1,7 +1,8 @@
 // https://github.com/ZacSweers/metro/issues/1549
 // The important conditions in this test case:
 // - There is a class RealImpl with one or more bindings
-// - There is another class FakeImpl with the same binding as RealImpl, at least one other binding, and one of the bindings replaces RealImpl
+// - There is another class FakeImpl with the same binding as RealImpl, at least one other binding,
+// and one of the bindings replaces RealImpl
 // - The bindings are contributed to a graph extension, not the root graph
 // MODULE: lib
 interface Foo
@@ -10,9 +11,7 @@ interface Bar
 
 abstract class LoggedInScope private constructor()
 
-@Inject
-@ContributesBinding(LoggedInScope::class, binding = binding<Bar>())
-class RealImpl : Bar
+@Inject @ContributesBinding(LoggedInScope::class, binding = binding<Bar>()) class RealImpl : Bar
 
 @Inject
 @ContributesBinding(LoggedInScope::class, binding = binding<Foo>())
@@ -20,9 +19,7 @@ class RealImpl : Bar
 class FakeImpl : Bar, Foo
 
 // MODULE: main(lib)
-@DependencyGraph(AppScope::class)
-interface AppGraph {
-}
+@DependencyGraph(AppScope::class) interface AppGraph {}
 
 @GraphExtension(LoggedInScope::class)
 interface LoggedInGraph {

@@ -339,6 +339,16 @@ public interface CompatContext {
       "usages of IrDeclarationOrigin constants are getting inlined and causing runtime failures, so we have a non-inline version to defeat this inlining",
   )
   public fun IrProperty.addBackingFieldCompat(builder: IrFieldBuilder.() -> Unit = {}): IrField
+
+  @CompatApi(
+    since = "2.3.20-Beta2",
+    reason = CompatApi.Reason.COMPAT,
+    message =
+      "Repeatable annotations are not readable in IR until 2.3.20-Beta2. https://youtrack.jetbrains.com/issue/KT-83185",
+  )
+  // TODO enable in 2.3.20-dev-7429 dev build
+  public val supportsExternalRepeatableAnnotations: Boolean
+    get() = false
 }
 
 private data class FactoryData(
