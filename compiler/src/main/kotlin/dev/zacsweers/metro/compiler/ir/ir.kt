@@ -165,6 +165,7 @@ import org.jetbrains.kotlin.load.java.JavaDescriptorVisibilities
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.StandardClassIds
+import org.jetbrains.kotlin.platform.jvm.isJvm
 import org.jetbrains.kotlin.types.Variance
 
 /** Finds the line and column of [this] within its file. */
@@ -250,20 +251,20 @@ internal fun IrAnnotationContainer.annotationsIn(names: Set<ClassId>): Sequence<
 }
 
 /**
- * IrClass#annotations does not expose generated .Container annotations which house repeated
- * annotations. So e.g. if you have one @ContributesBinding, it will show up in IrClass#annotations,
- * but if you have two @ContributesBinding, then neither will be included, nor will their associated
- * .Container annotation.
+ * [IrAnnotationContainer.annotations] does not expose generated .Container annotations (which house
+ * repeated annotations on the JVM). So e.g. if you have one @ContributesBinding, it will show up in
+ * [IrAnnotationContainer.annotations], but if you have two @ContributesBinding, then neither will
+ * be included, nor will their associated .Container annotation. This is only for JVM platforms.
  *
  * TODO: Go back to pure IR handling once https://youtrack.jetbrains.com/issue/KT-83185 is resolved.
  */
-context(context: CompatContext)
+context(context: IrMetroContext)
 internal fun <Container, T> Container.repeatableAnnotationsIn(
   names: Set<ClassId>,
   irBody: (Sequence<IrConstructorCall>) -> Sequence<T>,
   firBody: (Sequence<FirAnnotation>) -> Sequence<T>,
 ): Sequence<T> where Container : IrAnnotationContainer, Container : IrDeclarationParent {
-  val useFir = !context.supportsExternalRepeatableAnnotations
+  val useFir = !context.supportsExternalRepeatableAnnotations && context.platform.isJvm()
   return if (useFir && isExternalParent && this is AbstractFir2IrLazyDeclaration<*>) {
     fir.symbol.annotationsIn(session, names).let(firBody)
   } else {
