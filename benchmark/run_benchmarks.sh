@@ -17,15 +17,25 @@ DEFAULT_MODULE_COUNT=500
 RESULTS_DIR="benchmark-results"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
+# Mode lists
+# Standard modes (without baselines)
+STANDARD_MODES="metro,dagger-ksp,dagger-kapt,kotlin-inject-anvil"
+# Baseline modes (pure Kotlin and Metro plugin overhead)
+BASELINE_MODES="vanilla,metro-noop"
+# All modes including baselines
+ALL_MODES_WITH_BASELINES="metro,vanilla,metro-noop,dagger-ksp,dagger-kapt,kotlin-inject-anvil"
+
 # Git refs
 SINGLE_REF=""
 COMPARE_REF1=""
 COMPARE_REF2=""
-COMPARE_BENCHMARK_TYPE="all"
+COMPARE_MODES="$STANDARD_MODES"
 ORIGINAL_GIT_REF=""
 ORIGINAL_GIT_IS_BRANCH=false
 # Whether to re-run non-metro modes in ref2 (default: false to save time)
 RERUN_NON_METRO=false
+# Whether to include baseline modes (vanilla, metro-noop)
+INCLUDE_BASELINES=false
 
 # Script-specific print functions (styles differ from run_startup_benchmarks.sh)
 print_status() {
@@ -202,8 +212,10 @@ generate_projects() {
         kotlin generate-projects.main.kts --mode "DAGGER" --processor "$(echo $processor | tr '[:lower:]' '[:upper:]')" --count "$count"
     elif [ "$mode" = "kotlin-inject-anvil" ]; then
         kotlin generate-projects.main.kts --mode "KOTLIN_INJECT_ANVIL" --count "$count"
-    elif [ "$mode" = "noop" ]; then
-        kotlin generate-projects.main.kts --mode "NOOP" --count "$count"
+    elif [ "$mode" = "vanilla" ]; then
+        kotlin generate-projects.main.kts --mode "VANILLA" --count "$count"
+    elif [ "$mode" = "metro-noop" ]; then
+        kotlin generate-projects.main.kts --mode "METRO_NOOP" --count "$count"
     else
         kotlin generate-projects.main.kts --mode "$(echo $mode | tr '[:lower:]' '[:upper:]')" --count "$count"
     fi
@@ -221,54 +233,70 @@ run_scenarios() {
     local mode=$1
     local processor=${2:-""}
     local include_clean_builds=${3:-false}
-    
-    local scenario_prefix
+
+    # Determine mode name for output directory
     local mode_name
     if [ "$mode" = "metro" ]; then
-        scenario_prefix="metro"
         mode_name="metro"
-    elif [ "$mode" = "noop" ]; then
-        scenario_prefix="noop"
-        mode_name="noop"
+    elif [ "$mode" = "vanilla" ]; then
+        mode_name="vanilla"
+    elif [ "$mode" = "metro-noop" ]; then
+        mode_name="metro_noop"
     elif [ "$mode" = "dagger" ] && [ "$processor" = "ksp" ]; then
-        scenario_prefix="dagger_ksp"
         mode_name="dagger_ksp"
     elif [ "$mode" = "dagger" ] && [ "$processor" = "kapt" ]; then
-        scenario_prefix="dagger_kapt"
         mode_name="dagger_kapt"
     elif [ "$mode" = "kotlin-inject-anvil" ]; then
-        scenario_prefix="kotlin_inject_anvil"
         mode_name="kotlin_inject_anvil"
     else
         print_error "Invalid mode/processor combination: $mode/$processor"
         exit 1
     fi
-    
-    local scenarios=(
-        "${scenario_prefix}_abi_change"
-        "${scenario_prefix}_non_abi_change" 
-        "${scenario_prefix}_plain_abi_change"
-        "${scenario_prefix}_plain_non_abi_change"
-        "${scenario_prefix}_raw_compilation"
+
+    # Build scenario list based on mode
+    # All modes use the same ABI change scenario - only the underlying project differs
+    local scenarios=("abi_change")
+
+    # Common scenarios for all modes
+    scenarios+=(
+        "non_abi_change"
+        "plain_abi_change"
+        "plain_non_abi_change"
     )
-    
+
+    # Select appropriate raw compilation scenario based on mode
+    # - Metro/Vanilla/Metro-NOOP: Pure compiler plugin, just --rerun-tasks
+    # - kotlin-inject-anvil: KSP generates Kotlin, needs --rerun-tasks -a
+    # - Dagger: Generates Java, needs classes task with --rerun-tasks -a
+    case "$mode_name" in
+        metro|vanilla|metro_noop)
+            scenarios+=("raw_compilation")
+            ;;
+        kotlin_inject_anvil)
+            scenarios+=("raw_compilation_ksp")
+            ;;
+        dagger_ksp|dagger_kapt)
+            scenarios+=("raw_compilation_java")
+            ;;
+    esac
+
     # Add clean build scenario if requested
     if [ "$include_clean_builds" = true ]; then
-        scenarios+=("${scenario_prefix}_clean_build")
+        scenarios+=("clean_build")
     fi
-    
+
     # Create mode-specific results directory to avoid overwrites
     local mode_results_dir="$RESULTS_DIR/${mode_name}_${TIMESTAMP}"
     mkdir -p "$mode_results_dir"
-    
+
     print_status "Running scenarios for $mode${processor:+ with $processor}: ${scenarios[*]}"
     print_status "Results will be saved to: $mode_results_dir"
-    
+
     # Run each scenario individually to avoid overwriting results
     for scenario in "${scenarios[@]}"; do
         local scenario_output_dir="$mode_results_dir/$scenario"
         mkdir -p "$scenario_output_dir"
-        
+
         print_status "Running scenario: $scenario"
 
         # Use gradle-profiler from tmp/ if available, otherwise use system one
@@ -287,10 +315,10 @@ run_scenarios() {
                 print_error "Benchmark failed for scenario $scenario in $mode mode"
                 return 1
             }
-        
+
         print_success "Completed scenario: $scenario"
     done
-    
+
     print_success "All scenarios completed for $mode mode"
 }
 
@@ -298,26 +326,28 @@ run_scenarios() {
 merge_benchmark_results() {
     local timestamp=$1
     local include_clean_builds=${2:-false}
-    
+
     print_header "Merging Benchmark Results"
-    
-    # Define test types
+
+    # Define test types (scenario names without mode prefix)
+    # Note: raw_compilation and raw_compilation_java are both treated as "raw_compilation" for merging
     local test_types=("abi_change" "non_abi_change" "plain_abi_change" "plain_non_abi_change" "raw_compilation")
-    
+
     # Add clean build test type if requested
     if [ "$include_clean_builds" = true ]; then
         test_types+=("clean_build")
     fi
-    
+
     for test_type in "${test_types[@]}"; do
         print_status "Checking for $test_type results to merge"
-        
+
         # Check if we have multiple mode directories for this timestamp
         local mode_count=0
         for mode_dir in "$RESULTS_DIR"/*"$timestamp"; do
             # Look for scenario subdirectories with the test type
+            # Handle both raw_compilation and raw_compilation_java variants
             if [ -d "$mode_dir" ]; then
-                for scenario_dir in "$mode_dir"/*"$test_type"; do
+                for scenario_dir in "$mode_dir"/${test_type}* "$mode_dir"/${test_type}; do
                     if [ -d "$scenario_dir" ] && [ -f "$scenario_dir/benchmark.html" ]; then
                         ((mode_count++))
                         break  # Only count each mode once per test type
@@ -325,10 +355,10 @@ merge_benchmark_results() {
                 done
             fi
         done
-        
+
         if [ $mode_count -gt 1 ]; then
             print_status "Merging $test_type results from $mode_count modes"
-            
+
             if ./merge_benchmarks.sh "$test_type" "$timestamp" "$RESULTS_DIR"; then
                 print_success "Successfully merged $test_type results"
             else
@@ -340,138 +370,6 @@ merge_benchmark_results() {
     done
 }
 
-# Function to run all benchmarks
-run_all_benchmarks() {
-    local count=${1:-$DEFAULT_MODULE_COUNT}
-    local build_only=${2:-false}
-    local include_clean_builds=${3:-false}
-    
-    print_header "Metro vs Anvil Benchmark Suite"
-    print_status "Module count: $count"
-    if [ "$include_clean_builds" = true ]; then
-        print_status "Including clean build scenarios"
-    fi
-    if [ "$build_only" = true ]; then
-        print_status "Build-only mode: will run ./gradlew :app:component:run --quiet for each mode"
-    else
-        print_status "Results directory: $RESULTS_DIR"
-        print_status "Timestamp: $TIMESTAMP"
-        
-        # Wipe existing results directory if present
-        if [ -d "$RESULTS_DIR" ]; then
-            print_status "Wiping existing results directory"
-            rm -rf "$RESULTS_DIR"
-        fi
-        
-        # Create results directory
-        mkdir -p "$RESULTS_DIR"
-    fi
-    
-    # 1. Metro Mode
-    if [ "$build_only" = true ]; then
-        print_header "Running Metro Mode Build"
-    else
-        print_header "Running Metro Mode Benchmarks"
-    fi
-    generate_projects "metro" "" "$count"
-    if [ "$build_only" = true ]; then
-        print_status "Build-only mode: running ./gradlew :app:component:run --quiet"
-        ./gradlew :app:component:run --quiet
-        print_success "Metro build completed!"
-    else
-        run_scenarios "metro" "" "$include_clean_builds"
-    fi
-    
-    # 2. Dagger (KSP) Mode
-    if [ "$build_only" = true ]; then
-        print_header "Running Dagger (KSP) Mode Build"
-    else
-        print_header "Running Dagger (KSP) Mode Benchmarks"
-    fi
-    generate_projects "dagger" "ksp" "$count"
-    if [ "$build_only" = true ]; then
-        print_status "Build-only mode: running ./gradlew :app:component:run --quiet"
-        ./gradlew :app:component:run --quiet
-        print_success "Dagger (KSP) build completed!"
-    else
-        run_scenarios "dagger" "ksp" "$include_clean_builds"
-    fi
-
-    # 3. Dagger (KAPT) Mode
-    if [ "$build_only" = true ]; then
-        print_header "Running Dagger (KAPT) Mode Build"
-    else
-        print_header "Running Dagger (KAPT) Mode Benchmarks"
-    fi
-    generate_projects "dagger" "kapt" "$count"
-    if [ "$build_only" = true ]; then
-        print_status "Build-only mode: running ./gradlew :app:component:run --quiet"
-        ./gradlew :app:component:run --quiet
-        print_success "Dagger (KAPT) build completed!"
-    else
-        run_scenarios "dagger" "kapt" "$include_clean_builds"
-    fi
-    
-    # 4. Kotlin-inject + Anvil Mode
-    if [ "$build_only" = true ]; then
-        print_header "Running Kotlin-inject + Anvil Mode Build"
-    else
-        print_header "Running Kotlin-inject + Anvil Mode Benchmarks"
-    fi
-    generate_projects "kotlin-inject-anvil" "" "$count"
-    if [ "$build_only" = true ]; then
-        print_status "Build-only mode: running ./gradlew :app:component:run --quiet"
-        ./gradlew :app:component:run --quiet
-        print_success "Kotlin-inject + Anvil build completed!"
-    else
-        run_scenarios "kotlin-inject-anvil" "" "$include_clean_builds"
-    fi
-    
-    if [ "$build_only" = true ]; then
-        print_header "All Builds Complete"
-        print_success "All builds completed successfully!"
-    else
-        print_header "Benchmark Suite Complete"
-        print_success "All benchmarks completed successfully!"
-        print_status "Results are available in: $RESULTS_DIR"
-        
-        # List generated result files
-        if ls "$RESULTS_DIR"/*"$TIMESTAMP"* 1> /dev/null 2>&1; then
-            print_status "Generated result files:"
-            ls -la "$RESULTS_DIR"/*"$TIMESTAMP"* | sed 's/^/  /'
-        fi
-        
-        # Merge results across modes
-        merge_benchmark_results "$TIMESTAMP" "$include_clean_builds"
-    fi
-}
-
-# Function to run specific mode benchmarks
-run_mode_benchmark() {
-    local mode=$1
-    local processor=${2:-""}
-    local count=${3:-$DEFAULT_MODULE_COUNT}
-    local build_only=${4:-false}
-    local include_clean_builds=${5:-false}
-    
-    print_header "Running $mode${processor:+ + $processor} Mode Benchmark"
-    
-    # Create results directory
-    mkdir -p "$RESULTS_DIR"
-    
-    generate_projects "$mode" "$processor" "$count"
-    
-    if [ "$build_only" = true ]; then
-        print_status "Build-only mode: running ./gradlew :app:component:run --quiet"
-        ./gradlew :app:component:run --quiet
-        print_success "$mode${processor:+ + $processor} build completed!"
-    else
-        run_scenarios "$mode" "$processor" "$include_clean_builds"
-        print_success "$mode${processor:+ + $processor} benchmark completed!"
-        ./generate_performance_summary.sh "${TIMESTAMP}" "$RESULTS_DIR"
-    fi
-}
-
 # Function to show usage information
 show_usage() {
     echo "Metro vs Anvil Benchmark Runner"
@@ -479,33 +377,33 @@ show_usage() {
     echo "Usage: $0 [COMMAND] [OPTIONS]"
     echo ""
     echo "Commands:"
-    echo "  all                           Run all benchmark modes (default)"
-    echo "  metro [COUNT]                 Run only Metro mode benchmarks"
-    echo "  noop [COUNT]                  Run only NOOP mode benchmarks (baseline, no compiler plugin)"
-    echo "  dagger-ksp [COUNT]           Run only Dagger (KSP) mode benchmarks"
-    echo "  dagger-kapt [COUNT]          Run only Dagger (KAPT) mode benchmarks"
-    echo "  kotlin-inject-anvil [COUNT]  Run only Kotlin-inject + Anvil mode benchmarks"
-    echo "  single                        Run benchmarks on a single git ref or Metro version"
+    echo "  all                           Run all benchmark modes on current branch"
+    echo "  metro [COUNT]                 Run only Metro mode on current branch"
+    echo "  vanilla [COUNT]               Run only Vanilla mode (pure Kotlin baseline)"
+    echo "  metro-noop [COUNT]            Run only Metro-NOOP mode (Metro plugin, no annotations)"
+    echo "  dagger-ksp [COUNT]            Run only Dagger (KSP) mode"
+    echo "  dagger-kapt [COUNT]           Run only Dagger (KAPT) mode"
+    echo "  kotlin-inject-anvil [COUNT]   Run only Kotlin-inject + Anvil mode"
+    echo "  single                        Run benchmarks on a git ref, Metro version, or HEAD (current branch)"
     echo "  compare                       Compare benchmarks across two refs (git refs or Metro versions)"
-    echo "  help                         Show this help message"
+    echo "  help                          Show this help message"
     echo ""
     echo "Options:"
     echo "  COUNT                        Number of modules to generate (default: $DEFAULT_MODULE_COUNT)"
     echo "  --build-only                 Only run ./gradlew :app:component:run --quiet, skip gradle-profiler"
     echo "  --include-clean-builds       Include clean build scenarios in benchmarks"
+    echo "  --include-baselines          Include baseline modes (vanilla + metro-noop) when using --modes all"
     echo ""
-    echo "Single Options:"
+    echo "Single/Compare Options:"
     echo "  --ref <ref>                  Git ref (branch name/commit) or Metro version (e.g., 1.0.0)"
-    echo "  --modes <list>               Comma-separated list of modes to benchmark"
-    echo "                               Available: metro, dagger-ksp, dagger-kapt, kotlin-inject-anvil"
-    echo "                               Default: metro,dagger-ksp,kotlin-inject-anvil"
+    echo "  --modes <list>               Comma-separated list of modes to benchmark, or 'all'"
+    echo "                               Available: metro, vanilla, metro-noop, dagger-ksp, dagger-kapt, kotlin-inject-anvil, all"
+    echo "                               Default: metro,dagger-ksp,dagger-kapt,kotlin-inject-anvil"
+    echo "                               Use 'all' to run all standard modes (add --include-baselines for vanilla/metro-noop)"
     echo ""
-    echo "Compare Options:"
+    echo "Compare-specific Options:"
     echo "  --ref1 <ref>                 First ref (baseline) - git ref or Metro version"
     echo "  --ref2 <ref>                 Second ref to compare - git ref or Metro version"
-    echo "  --modes <list>               Comma-separated list of modes to benchmark"
-    echo "                               Available: metro, dagger-ksp, dagger-kapt, kotlin-inject-anvil"
-    echo "                               Default: metro,dagger-ksp,kotlin-inject-anvil"
     echo "  --rerun-non-metro            Re-run non-metro modes on ref2 (default: only run metro on ref2)"
     echo "                               When disabled (default), ref2 uses ref1's non-metro results for comparison"
     echo ""
@@ -525,27 +423,24 @@ show_usage() {
     echo "Examples:"
     echo "  $0                           # Run all benchmarks with default settings"
     echo "  $0 all 1000                  # Run all benchmarks with 1000 modules"
+    echo "  $0 all --include-baselines   # Run all benchmarks including vanilla + metro-noop"
     echo "  $0 metro 250                 # Run only Metro benchmarks with 250 modules"
-    echo "  $0 noop 500                  # Run NOOP baseline benchmarks (no compiler plugin)"
     echo "  $0 dagger-ksp                # Run only Dagger (KSP) benchmarks with default count"
-    echo "  $0 metro --build-only        # Generate Metro project and run build only"
-    echo "  $0 dagger-ksp 100 --build-only # Generate Dagger (KSP) project with 100 modules and run build only"
-    echo "  $0 all --build-only          # Generate and build all projects, skip benchmarks"
     echo "  $0 all --include-clean-builds # Run all benchmarks including clean build scenarios"
-    echo "  $0 metro 250 --include-clean-builds # Run Metro benchmarks with 250 modules including clean builds"
     echo ""
-    echo "  # Run benchmarks on a single git ref:"
-    echo "  $0 single --ref main"
-    echo "  $0 single --ref feature-branch --modes metro,dagger-ksp"
+    echo "  # Using single command explicitly:"
+    echo "  $0 single --ref main --modes metro,dagger-ksp"
+    echo "  $0 single --ref main --modes all --include-baselines"
+    echo "  $0 single --ref feature-branch --modes metro"
     echo ""
     echo "  # Run benchmarks with a specific Metro version:"
-    echo "  $0 single --ref 1.0.0                # Benchmark Metro 1.0.0"
-    echo "  $0 single --ref 2.0.0-alpha01        # Benchmark a pre-release version"
+    echo "  $0 single --ref 1.0.0 --modes metro   # Benchmark Metro 1.0.0"
+    echo "  $0 single --ref 2.0.0-alpha01         # Benchmark a pre-release version"
     echo ""
     echo "  # Compare benchmarks across git refs:"
     echo "  $0 compare --ref1 main --ref2 feature-branch"
-    echo "  $0 compare --ref1 abc123 --ref2 def456 --modes metro,dagger-ksp"
-    echo "  $0 compare --ref1 main --ref2 feature --rerun-non-metro  # Re-run all modes on both refs"
+    echo "  $0 compare --ref1 main --ref2 feature-branch --modes all"
+    echo "  $0 compare --ref1 main --ref2 feature --rerun-non-metro"
     echo ""
     echo "  # Compare Metro versions:"
     echo "  $0 compare --ref1 1.0.0 --ref2 1.1.0  # Compare two released versions"
@@ -564,8 +459,29 @@ validate_count() {
     fi
 }
 
-# Default modes for comparison
-COMPARE_MODES="metro,anvil-ksp,kotlin-inject-anvil"
+# expand_modes: Expands "all" mode to actual mode list based on INCLUDE_BASELINES
+expand_modes() {
+    local modes="$1"
+    if [ "$modes" = "all" ]; then
+        if [ "$INCLUDE_BASELINES" = true ]; then
+            echo "$ALL_MODES_WITH_BASELINES"
+        else
+            echo "$STANDARD_MODES"
+        fi
+    else
+        # If include_baselines is set and modes doesn't already include baselines, add them
+        if [ "$INCLUDE_BASELINES" = true ]; then
+            # Check if vanilla is already in the modes
+            if [[ "$modes" != *"vanilla"* ]]; then
+                echo "${modes},${BASELINE_MODES}"
+            else
+                echo "$modes"
+            fi
+        else
+            echo "$modes"
+        fi
+    fi
+}
 
 # Run benchmarks for a specific git ref or Metro version
 # Arguments: ref, ref_label, count, include_clean_builds, modes, is_second_ref
@@ -579,10 +495,14 @@ run_benchmarks_for_ref() {
 
     print_header "Running benchmarks for: $ref_label"
 
-    # Check if ref is a Metro version or git ref
+    # Check if ref is a Metro version, HEAD/current, or git ref
     if is_metro_version "$ref"; then
         print_status "Using Metro version: $ref (staying on current branch)"
         export METRO_VERSION="$ref"
+    elif [[ "$ref" =~ ^(HEAD|head|current)$ ]]; then
+        # HEAD/current means stay on current branch, no checkout needed
+        print_status "Using current branch (no checkout)"
+        unset METRO_VERSION
     else
         # It's a git ref - checkout
         checkout_ref "$ref" || return 1
@@ -626,10 +546,19 @@ run_benchmarks_for_ref() {
                     fi
                 done
                 ;;
-            "noop")
-                generate_projects "noop" "" "$count"
-                run_scenarios "noop" "" "$include_clean_builds"
-                for scenario_dir in "$RESULTS_DIR"/noop_*"$TIMESTAMP"*; do
+            "vanilla")
+                generate_projects "vanilla" "" "$count"
+                run_scenarios "vanilla" "" "$include_clean_builds"
+                for scenario_dir in "$RESULTS_DIR"/vanilla_*"$TIMESTAMP"*; do
+                    if [ -d "$scenario_dir" ]; then
+                        mv "$scenario_dir" "$ref_dir/" 2>/dev/null || true
+                    fi
+                done
+                ;;
+            "metro-noop")
+                generate_projects "metro-noop" "" "$count"
+                run_scenarios "metro-noop" "" "$include_clean_builds"
+                for scenario_dir in "$RESULTS_DIR"/metro_noop_*"$TIMESTAMP"*; do
                     if [ -d "$scenario_dir" ]; then
                         mv "$scenario_dir" "$ref_dir/" 2>/dev/null || true
                     fi
@@ -677,7 +606,26 @@ extract_median_for_ref() {
     local mode_prefix="$2"
     local test_type="$3"
 
-    local csv_file="$RESULTS_DIR/${TIMESTAMP}/${ref_label}/${mode_prefix}_${TIMESTAMP}/${mode_prefix}_${test_type}/benchmark.csv"
+    # Determine the scenario directory name
+    # Different modes use different scenario variants for fair comparison
+    local scenario_name="$test_type"
+    case "$test_type" in
+        raw_compilation)
+            case "$mode_prefix" in
+                metro|vanilla|metro_noop)
+                    scenario_name="raw_compilation"
+                    ;;
+                kotlin_inject_anvil)
+                    scenario_name="raw_compilation_ksp"
+                    ;;
+                dagger_ksp|dagger_kapt)
+                    scenario_name="raw_compilation_java"
+                    ;;
+            esac
+            ;;
+    esac
+
+    local csv_file="$RESULTS_DIR/${TIMESTAMP}/${ref_label}/${mode_prefix}_${TIMESTAMP}/${scenario_name}/benchmark.csv"
 
     if [ -f "$csv_file" ]; then
         # Extract measured build times (skip header and warm-up builds)
@@ -744,7 +692,8 @@ generate_comparison_summary() {
         local mode_prefix
         case "$mode" in
             "metro") mode_prefix="metro" ;;
-            "noop") mode_prefix="noop" ;;
+            "vanilla") mode_prefix="vanilla" ;;
+            "metro-noop") mode_prefix="metro_noop" ;;
             "dagger-ksp") mode_prefix="dagger_ksp" ;;
             "dagger-kapt") mode_prefix="dagger_kapt" ;;
             "kotlin-inject-anvil") mode_prefix="kotlin_inject_anvil" ;;
@@ -801,7 +750,8 @@ EOF
             local mode_prefix
             case "$mode" in
                 "metro") mode_prefix="metro" ;;
-                "noop") mode_prefix="noop" ;;
+                "vanilla") mode_prefix="vanilla" ;;
+            "metro-noop") mode_prefix="metro_noop" ;;
                 "dagger-ksp") mode_prefix="dagger_ksp" ;;
                 "dagger-kapt") mode_prefix="dagger_kapt" ;;
                 "kotlin-inject-anvil") mode_prefix="kotlin_inject_anvil" ;;
@@ -836,12 +786,7 @@ EOF
                 if [ "$mode" = "metro" ]; then
                     vs_metro1="baseline"
                 elif [ -n "$metro_score1" ] && [ "$metro_score1" != "0" ]; then
-                    local pct1_raw=$(echo "scale=6; (($score1 - $metro_score1) / $metro_score1) * 100" | bc 2>/dev/null || echo "")
-                    local pct1=$(printf "%.1f" "$pct1_raw" 2>/dev/null | sed 's/\.0$//' || echo "$pct1_raw")
-                    local mult1=$(echo "scale=2; $score1 / $metro_score1" | bc 2>/dev/null || echo "")
-                    if [ -n "$pct1" ] && [ -n "$mult1" ]; then
-                        vs_metro1="+${pct1}% (${mult1}x)"
-                    fi
+                    vs_metro1=$(format_vs_baseline "$score1" "$metro_score1")
                 fi
             fi
 
@@ -855,28 +800,16 @@ EOF
                     if [ "$mode" = "metro" ]; then
                         vs_metro2="baseline"
                     elif [ -n "$metro_score2" ] && [ "$metro_score2" != "0" ]; then
-                        local pct2_raw=$(echo "scale=6; (($score2 - $metro_score2) / $metro_score2) * 100" | bc 2>/dev/null || echo "")
-                        local pct2=$(printf "%.1f" "$pct2_raw" 2>/dev/null | sed 's/\.0$//' || echo "$pct2_raw")
-                        local mult2=$(echo "scale=2; $score2 / $metro_score2" | bc 2>/dev/null || echo "")
-                        if [ -n "$pct2" ] && [ -n "$mult2" ]; then
-                            vs_metro2="+${pct2}% (${mult2}x)"
-                        fi
+                        vs_metro2=$(format_vs_baseline "$score2" "$metro_score2")
                     fi
                 fi
 
                 if [ -n "$score1" ] && [ -n "$score2" ] && [ "$score1" != "0" ]; then
-                    # Use scale=6 for intermediate precision, then format to 2 decimal places
-                    local pct_raw=$(echo "scale=6; (($score2 - $score1) / $score1) * 100" | bc 2>/dev/null || echo "")
-                    local pct=$(printf "%.2f" "$pct_raw" 2>/dev/null || echo "$pct_raw")
-                    if [ -n "$pct" ]; then
-                        # Check if negative (faster)
-                        if [[ "$pct" == -* ]]; then
-                            diff="${pct}%"
-                        elif [[ "$pct" == "0.00" ]] || [[ "$pct" == "0" ]] || [[ "$pct" == ".00" ]]; then
-                            diff="+0.00% (no change)"
-                        else
-                            diff="+${pct}%"
-                        fi
+                    local pct_diff=$(format_pct_diff "$score2" "$score1" 2)
+                    if [ "$pct_diff" = "0%" ] || [ "$pct_diff" = "0.00%" ]; then
+                        diff="+0.00% (no change)"
+                    else
+                        diff="$pct_diff"
                     fi
                 fi
             else
@@ -931,7 +864,7 @@ generate_html_report() {
     <title>Metro Benchmark Results</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --metro-color: #4CAF50; --noop-color: #607D8B; --dagger-ksp-color: #2196F3; --dagger-kapt-color: #FF9800; --kotlin-inject-color: #9C27B0; }
+        :root { --metro-color: #4CAF50; --vanilla-color: #607D8B; --metro-noop-color: #795548; --dagger-ksp-color: #2196F3; --dagger-kapt-color: #FF9800; --kotlin-inject-color: #9C27B0; }
         * { box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background: #f5f5f5; color: #333; }
         .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 2rem; text-align: center; }
@@ -1001,8 +934,8 @@ HTMLHEAD
 
     cat >> "$html_file" << 'HTMLTAIL'
 ;
-const colors = { 'metro': '#4CAF50', 'noop': '#607D8B', 'dagger_ksp': '#2196F3', 'dagger_kapt': '#FF9800', 'kotlin_inject_anvil': '#9C27B0' };
-const displayNames = { 'metro': 'Metro', 'noop': 'NOOP (Baseline)', 'dagger_ksp': 'Dagger (KSP)', 'dagger_kapt': 'Dagger (KAPT)', 'kotlin_inject_anvil': 'kotlin-inject' };
+const colors = { 'metro': '#4CAF50', 'vanilla': '#607D8B', 'metro_noop': '#795548', 'dagger_ksp': '#2196F3', 'dagger_kapt': '#FF9800', 'kotlin_inject_anvil': '#9C27B0' };
+const displayNames = { 'metro': 'Metro', 'vanilla': 'Vanilla (Baseline)', 'metro_noop': 'Metro-NOOP', 'dagger_ksp': 'Dagger (KSP)', 'dagger_kapt': 'Dagger (KAPT)', 'kotlin_inject_anvil': 'kotlin-inject' };
 
 // State for selectable baseline
 let selectedBaseline = 'metro';
@@ -1306,7 +1239,8 @@ build_benchmark_json() {
             local mode_name
             case "$mode" in
                 "metro") mode_prefix="metro"; mode_name="Metro" ;;
-                "noop") mode_prefix="noop"; mode_name="NOOP (Baseline)" ;;
+                "vanilla") mode_prefix="vanilla"; mode_name="Vanilla (Baseline)" ;;
+                "metro-noop") mode_prefix="metro_noop"; mode_name="Metro-NOOP" ;;
                 "dagger-ksp") mode_prefix="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                 "dagger-kapt") mode_prefix="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
                 "kotlin-inject-anvil") mode_prefix="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
@@ -1392,7 +1326,8 @@ EOF
             local mode_prefix
             case "$mode" in
                 "metro") mode_prefix="metro" ;;
-                "noop") mode_prefix="noop" ;;
+                "vanilla") mode_prefix="vanilla" ;;
+            "metro-noop") mode_prefix="metro_noop" ;;
                 "dagger-ksp") mode_prefix="dagger_ksp" ;;
                 "dagger-kapt") mode_prefix="dagger_kapt" ;;
                 "kotlin-inject-anvil") mode_prefix="kotlin_inject_anvil" ;;
@@ -1413,12 +1348,7 @@ EOF
                 if [ "$mode" = "metro" ]; then
                     vs_metro="baseline"
                 elif [ -n "$metro_score" ] && [ "$metro_score" != "0" ]; then
-                    local pct_raw=$(echo "scale=6; (($score - $metro_score) / $metro_score) * 100" | bc 2>/dev/null || echo "")
-                    local pct=$(printf "%.1f" "$pct_raw" 2>/dev/null | sed 's/\.0$//' || echo "$pct_raw")
-                    local mult=$(echo "scale=2; $score / $metro_score" | bc 2>/dev/null || echo "")
-                    if [ -n "$pct" ] && [ -n "$mult" ]; then
-                        vs_metro="+${pct}% (${mult}x)"
-                    fi
+                    vs_metro=$(format_vs_baseline "$score" "$metro_score")
                 fi
             fi
 
@@ -1455,14 +1385,20 @@ run_single() {
         exit 1
     fi
 
-    # Check if ref is a Metro version
+    # Expand "all" mode to actual mode list
+    local modes=$(expand_modes "$COMPARE_MODES")
+
+    # Check if ref is a Metro version or HEAD/current (no checkout needed)
     local is_metro_ver=false
+    local is_current_branch=false
     if is_metro_version "$SINGLE_REF"; then
         is_metro_ver=true
+    elif [[ "$SINGLE_REF" =~ ^(HEAD|head|current)$ ]]; then
+        is_current_branch=true
     fi
 
-    # Validate git ref exists (skip for Metro versions)
-    if [ "$is_metro_ver" = false ]; then
+    # Validate git ref exists (skip for Metro versions and HEAD/current)
+    if [ "$is_metro_ver" = false ] && [ "$is_current_branch" = false ]; then
         if ! git rev-parse --verify "$SINGLE_REF" > /dev/null 2>&1; then
             print_error "Invalid git ref: $SINGLE_REF"
             exit 1
@@ -1478,11 +1414,13 @@ run_single() {
     if [ "$is_metro_ver" = true ]; then
         print_header "Running Benchmarks with Metro Version"
         print_status "Metro version: $SINGLE_REF"
+    elif [ "$is_current_branch" = true ]; then
+        print_header "Running Benchmarks on Current Branch"
     else
-        print_header "Running Benchmarks on Single Git Ref"
+        print_header "Running Benchmarks on Git Ref"
         print_status "Ref: $SINGLE_REF"
     fi
-    print_status "Modes: $COMPARE_MODES"
+    print_status "Modes: $modes"
     print_status "Module count: $count"
     echo ""
 
@@ -1492,20 +1430,20 @@ run_single() {
     # Create results directory
     mkdir -p "$RESULTS_DIR/${TIMESTAMP}"
 
-    # For git refs (not Metro versions), save current git state and set up restore trap
-    if [ "$is_metro_ver" = false ]; then
+    # For git refs that require checkout, save current git state and set up restore trap
+    if [ "$is_metro_ver" = false ] && [ "$is_current_branch" = false ]; then
         save_git_state
         trap 'restore_git_state' EXIT
     fi
 
     # Run benchmarks for the ref (all modes, not second ref)
-    run_benchmarks_for_ref "$SINGLE_REF" "$ref_label" "$count" "$include_clean_builds" "$COMPARE_MODES" false || {
+    run_benchmarks_for_ref "$SINGLE_REF" "$ref_label" "$count" "$include_clean_builds" "$modes" false || {
         print_error "Failed to run benchmarks for $SINGLE_REF"
         exit 1
     }
 
     # Generate summary
-    generate_single_summary "$ref_label" "$COMPARE_MODES"
+    generate_single_summary "$ref_label" "$modes"
 
     print_header "Benchmarks Complete"
     echo "Results saved to: $RESULTS_DIR/${TIMESTAMP}/"
@@ -1522,6 +1460,9 @@ run_compare() {
         show_usage
         exit 1
     fi
+
+    # Expand "all" mode to actual mode list
+    local modes=$(expand_modes "$COMPARE_MODES")
 
     # Check if refs are Metro versions or git refs
     local ref1_is_metro=false
@@ -1560,7 +1501,7 @@ run_compare() {
     print_header "Comparing Benchmarks"
     print_status "Baseline (ref1): $COMPARE_REF1 ($(get_ref_type_description "$COMPARE_REF1"))"
     print_status "Compare (ref2):  $COMPARE_REF2 ($(get_ref_type_description "$COMPARE_REF2"))"
-    print_status "Modes:           $COMPARE_MODES"
+    print_status "Modes:           $modes"
     print_status "Module count:    $count"
     if [ "$RERUN_NON_METRO" = true ]; then
         print_status "Re-run non-metro on ref2: yes"
@@ -1590,19 +1531,19 @@ run_compare() {
     fi
 
     # Run benchmarks for ref1 (baseline) - run all modes
-    run_benchmarks_for_ref "$COMPARE_REF1" "$ref1_label" "$count" "$include_clean_builds" "$COMPARE_MODES" false || {
+    run_benchmarks_for_ref "$COMPARE_REF1" "$ref1_label" "$count" "$include_clean_builds" "$modes" false || {
         print_error "Failed to run benchmarks for $COMPARE_REF1"
         exit 1
     }
 
     # Run benchmarks for ref2 - only metro by default (is_second_ref=true)
-    run_benchmarks_for_ref "$COMPARE_REF2" "$ref2_label" "$count" "$include_clean_builds" "$COMPARE_MODES" true || {
+    run_benchmarks_for_ref "$COMPARE_REF2" "$ref2_label" "$count" "$include_clean_builds" "$modes" true || {
         print_error "Failed to run benchmarks for $COMPARE_REF2"
         exit 1
     }
 
     # Generate comparison summary
-    generate_comparison_summary "$ref1_label" "$ref2_label" "$COMPARE_MODES"
+    generate_comparison_summary "$ref1_label" "$ref2_label" "$modes"
 
     print_header "Comparison Complete"
     echo "Results saved to: $RESULTS_DIR/${TIMESTAMP}/"
@@ -1631,6 +1572,10 @@ main() {
                 ;;
             --include-clean-builds)
                 include_clean_builds=true
+                shift
+                ;;
+            --include-baselines)
+                INCLUDE_BASELINES=true
                 shift
                 ;;
             --install-gradle-profiler)
@@ -1707,22 +1652,16 @@ main() {
 
     case "$command" in
         all)
-            run_all_benchmarks "$count" "$build_only" "$include_clean_builds"
+            # 'all' is shorthand for 'single --ref HEAD --modes all' (current branch)
+            SINGLE_REF="HEAD"
+            COMPARE_MODES="all"
+            run_single "$count" "$include_clean_builds"
             ;;
-        metro)
-            run_mode_benchmark "metro" "" "$count" "$build_only" "$include_clean_builds"
-            ;;
-        noop)
-            run_mode_benchmark "noop" "" "$count" "$build_only" "$include_clean_builds"
-            ;;
-        dagger-ksp)
-            run_mode_benchmark "dagger" "ksp" "$count" "$build_only" "$include_clean_builds"
-            ;;
-        dagger-kapt)
-            run_mode_benchmark "dagger" "kapt" "$count" "$build_only" "$include_clean_builds"
-            ;;
-        kotlin-inject-anvil)
-            run_mode_benchmark "kotlin-inject-anvil" "" "$count" "$build_only" "$include_clean_builds"
+        metro|vanilla|metro-noop|dagger-ksp|dagger-kapt|kotlin-inject-anvil)
+            # Single mode is shorthand for 'single --ref HEAD --modes <mode>' (current branch)
+            SINGLE_REF="HEAD"
+            COMPARE_MODES="$command"
+            run_single "$count" "$include_clean_builds"
             ;;
         single)
             run_single "$count" "$include_clean_builds"

@@ -28,10 +28,12 @@ with different parameters. This makes it easy to experiment with different scale
 
 The script supports multiple modes and configurable module counts:
 - **Metro mode** (`--mode metro`): Uses Metro for dependency injection with metro interop
-- **Anvil mode** (`--mode anvil`): Uses pure Anvil-KSP for dependency injection
+- **Vanilla mode** (`--mode vanilla`): Pure Kotlin with no DI framework (true baseline)
+- **Metro-NOOP mode** (`--mode metro_noop`): Metro compiler plugin applied but no Metro annotations (measures plugin overhead)
+- **Dagger mode** (`--mode dagger`): Uses Dagger with Anvil for dependency injection
 - **Kotlin-inject + Anvil mode** (`--mode kotlin-inject-anvil`): Uses Metro with kotlin-inject + anvil interop
 - **Module count** (`--count <number>`): Total number of modules to generate (default: 500)
-- **Processor** (`--processor ksp|kapt`): Annotation processor for Anvil mode (default: ksp)
+- **Processor** (`--processor ksp|kapt`): Annotation processor for Dagger mode (default: ksp)
 - **Provider multibindings** (`--provider-multibindings`): Wrap multibinding accessors in `Provider<Set<E>>` instead of `Set<E>` to benchmark `SetFactory`/`MapFactory` optimizations
 
 ## Usage
@@ -40,17 +42,23 @@ The script supports multiple modes and configurable module counts:
 # Generate the project for Metro mode with default 500 modules
 kotlin generate-projects.main.kts --mode metro
 
-# Generate the project for Anvil mode with default 500 modules
-kotlin generate-projects.main.kts --mode anvil
+# Generate the project for Dagger mode with default 500 modules
+kotlin generate-projects.main.kts --mode dagger
+
+# Generate Vanilla baseline project (pure Kotlin, no DI)
+kotlin generate-projects.main.kts --mode vanilla
+
+# Generate Metro-NOOP project (Metro plugin applied but no annotations)
+kotlin generate-projects.main.kts --mode metro_noop
 
 # Generate a larger project with 1000 modules
 kotlin generate-projects.main.kts --mode metro --count 1000
 
 # Generate a smaller project for quick testing
-kotlin generate-projects.main.kts --mode anvil --count 100
+kotlin generate-projects.main.kts --mode dagger --count 100
 
-# Generate a project using kapt for dagger-compiler (Anvil mode)
-kotlin generate-projects.main.kts --mode anvil --processor kapt
+# Generate a project using kapt for dagger-compiler (Dagger mode)
+kotlin generate-projects.main.kts --mode dagger --processor kapt
 
 # Generate kotlin-inject + anvil mode project (uses Amazon kotlin-inject-anvil)
 kotlin generate-projects.main.kts --mode kotlin-inject-anvil
@@ -70,35 +78,43 @@ kotlin generate-projects.main.kts --mode metro --provider-multibindings
 Use the `run_benchmarks.sh` script for comprehensive performance testing:
 
 ```bash
-# Run all benchmark modes (metro, dagger-ksp, dagger-kapt, kotlin-inject)
+# Run all benchmark modes on current branch (metro, dagger-ksp, dagger-kapt, kotlin-inject-anvil)
 ./run_benchmarks.sh all
 
-# Run specific modes
+# Run all modes including baseline benchmarks (vanilla + metro-noop)
+./run_benchmarks.sh all --include-baselines
+
+# Run specific modes on current branch
 ./run_benchmarks.sh metro 500
 ./run_benchmarks.sh dagger-ksp 250
-./run_benchmarks.sh dagger-kapt 750
 ./run_benchmarks.sh kotlin-inject-anvil 500
 
 # Include clean build scenarios (opt-in)
 ./run_benchmarks.sh all --include-clean-builds
-./run_benchmarks.sh metro 250 --include-clean-builds
 
-# Build-only mode (skip gradle-profiler benchmarks)
-./run_benchmarks.sh all --build-only
+# Using single/compare commands for more control
+./run_benchmarks.sh single --ref HEAD --modes metro,dagger-ksp   # Current branch
+./run_benchmarks.sh single --ref main --modes all                 # Specific branch
+./run_benchmarks.sh single --ref feature-branch --modes metro     # Feature branch
+./run_benchmarks.sh compare --ref1 main --ref2 feature-branch --modes all
 
 # Results are saved to timestamped directories in benchmark-results/
-# Merged comparison HTMLs are generated for each test type (ABI, non-ABI, raw compilation, clean build)
-# Uses bash + jq for fast HTML result merging
+# HTML reports are generated with comparison charts
 ```
 
 ### Benchmark Scenarios
 
-The benchmark suite includes several types of performance tests for each mode:
+The benchmark suite uses generic scenarios that are shared across all modes. The script automatically
+generates the appropriate project for each mode and runs the same scenarios against it.
 
 **Standard Scenarios (always included):**
-- **ABI Change**: Measures incremental compilation when public API changes
-- **Non-ABI Change**: Measures incremental compilation when implementation changes
-- **Raw Compilation**: Measures compilation performance of the (`:app:component`) module specifically with `--rerun-tasks`. This benchmarks raw contribution merging + graph/component generation + validation.
+- **ABI Change**: Measures incremental compilation when public API changes (DI-annotated files)
+- **Non-ABI Change**: Measures incremental compilation when implementation changes (DI-annotated files)
+- **Plain Kotlin ABI/Non-ABI Change**: Same as above but for plain Kotlin files without DI annotations
+- **Raw Compilation**: Measures full compilation performance of `:app:component`
+  - **Metro/Vanilla/Metro-NOOP**: Pure compiler plugin, uses `--rerun-tasks` on `compileKotlin`
+  - **kotlin-inject-anvil**: KSP generates Kotlin, uses `--rerun-tasks -a` on `compileKotlin`
+  - **Dagger (KSP/KAPT)**: Generates Java code, uses `--rerun-tasks -a` on `classes` task
 
 **Clean Build Scenarios (opt-in with `--include-clean-builds`):**
 - **Clean Build**: Measures full compilation from scratch with no caches
@@ -111,6 +127,22 @@ Clean build scenarios are useful for:
 - Testing CI/ephemeral build scenarios
 - Comparing full compilation times across different DI frameworks
 
+**Scenario Implementation:**
+
+The `benchmark.scenarios` file contains generic scenarios that are selected based on mode:
+- `abi_change` / `abi_change_ksp` - ABI change scenarios (KSP variant uses `--rerun-tasks` for fair comparison)
+- `non_abi_change`, `plain_abi_change`, `plain_non_abi_change` - Incremental scenarios
+- `raw_compilation` (Metro/Vanilla/Metro-NOOP), `raw_compilation_ksp` (kotlin-inject-anvil), `raw_compilation_java` (Dagger)
+- `clean_build`
+
+**Note on KSP incremental behavior:** KSP's incremental model may skip work when only the classpath changes
+(e.g., modifying an interface in a dependency). For kotlin-inject-anvil, we use `--rerun-tasks` for ABI
+change scenarios to ensure KSP regenerates the merged component, providing a fair comparison to Metro's
+compiler plugin which always runs during `compileKotlin`.
+
+The `run_benchmarks.sh` script handles mode-specific logic by regenerating the project for each mode
+and selecting the appropriate scenario variant based on the mode's compilation requirements.
+
 ## Modes
 
 ### Metro Mode
@@ -118,6 +150,19 @@ Clean build scenarios are useful for:
 - Uses `dev.zacsweers.anvil:annotations` with Metro interop
 - Supports `AppScope` and `@SingleIn` scoping
 - Generates `createGraph<AppComponent>()` for runtime execution
+
+### Vanilla Mode (Baseline)
+- Pure Kotlin with no DI framework at all
+- No compiler plugins applied
+- Generates the same class structure as other modes but without DI annotations
+- Provides a true baseline for measuring Kotlin compilation overhead
+- Useful for determining how much overhead DI frameworks add
+
+### Metro-NOOP Mode (Plugin Overhead)
+- Metro compiler plugin is applied but no Metro annotations are used
+- Generates the same class structure as Vanilla mode (no DI annotations)
+- Measures the overhead of having the Metro plugin present with nothing to process
+- Useful for understanding Metro's plugin baseline cost
 
 ### Dagger + Anvil Mode
 - Uses `dagger-compiler` with KSP or KAPT for component/factory generation

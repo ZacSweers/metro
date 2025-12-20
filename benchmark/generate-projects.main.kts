@@ -292,7 +292,10 @@ class GenerateProjectsCommand : CliktCommand() {
 
   enum class BuildMode {
     METRO,
-    NOOP,
+    /** Metro compiler plugin applied but no Metro annotations - measures plugin overhead */
+    METRO_NOOP,
+    /** Pure Kotlin with no DI framework at all - true baseline */
+    VANILLA,
     DAGGER,
     KOTLIN_INJECT_ANVIL,
   }
@@ -410,18 +413,29 @@ $jvmDependencies
             .trimIndent()
         }
 
-      BuildMode.NOOP ->
+      BuildMode.METRO_NOOP ->
+        """
+plugins {
+  id("org.jetbrains.kotlin.jvm")
+  id("dev.zacsweers.metro")
+}
+
+dependencies {
+  implementation(project(":core:foundation"))
+$jvmDependencies
+}
+"""
+          .trimIndent()
+
+      BuildMode.VANILLA ->
         """
 plugins {
   id("org.jetbrains.kotlin.jvm")
 }
 
 dependencies {
-  implementation("javax.inject:javax.inject:1")
-  implementation("dev.zacsweers.anvil:annotations:0.4.1")
-  implementation("dev.zacsweers.metro:runtime:+")
   implementation(project(":core:foundation"))
-$dependencies
+$jvmDependencies
 }
 """
           .trimIndent()
@@ -555,16 +569,10 @@ $dependencyImports
 """
             .trimIndent()
 
-        BuildMode.NOOP ->
+        BuildMode.METRO_NOOP,
+        BuildMode.VANILLA ->
           """
-import com.squareup.anvil.annotations.ContributesBinding
-import com.squareup.anvil.annotations.ContributesMultibinding
-import com.squareup.anvil.annotations.ContributesSubcomponent
-import dev.zacsweers.metro.AppScope
-import dev.zacsweers.metro.ContributesTo
-import dev.zacsweers.metro.GraphExtension
-import dev.zacsweers.metro.SingleIn
-import javax.inject.Inject
+// Pure Kotlin - no DI annotations
 $dependencyImports
 """
             .trimIndent()
@@ -597,19 +605,93 @@ $dependencyImports
 
     val scopeAnnotation =
       when (buildMode) {
-        BuildMode.METRO,
-        BuildMode.NOOP -> "@SingleIn(AppScope::class)"
+        BuildMode.METRO -> "@SingleIn(AppScope::class)"
+        BuildMode.METRO_NOOP,
+        BuildMode.VANILLA -> "" // No DI annotations
         BuildMode.KOTLIN_INJECT_ANVIL -> "@SingleIn(AppScope::class)"
         BuildMode.DAGGER -> "@Singleton"
       }
 
     val scopeParam =
       when (buildMode) {
-        BuildMode.METRO,
-        BuildMode.NOOP -> "AppScope::class"
+        BuildMode.METRO -> "AppScope::class"
+        BuildMode.METRO_NOOP,
+        BuildMode.VANILLA -> "" // No DI annotations
         BuildMode.KOTLIN_INJECT_ANVIL -> "AppScope::class"
         BuildMode.DAGGER -> "Unit::class"
       }
+
+    // For METRO_NOOP and VANILLA, generate plain Kotlin without annotations
+    if (buildMode == BuildMode.METRO_NOOP || buildMode == BuildMode.VANILLA) {
+      // Generate the same class structure as other modes, just without DI annotations
+      val contributions = (1..module.contributionsCount).map { i ->
+        // Use deterministic random for consistency with other modes
+        val moduleRandom = Random(module.name.hashCode() + i)
+        when (moduleRandom.nextInt(3)) {
+          0 -> """// Binding contribution $i
+interface ${className}Service$i
+
+class ${className}ServiceImpl$i : ${className}Service$i"""
+          1 -> """// Plugin contribution $i
+interface ${className}Plugin$i : Plugin {
+  override fun execute(): String
+}
+
+class ${className}PluginImpl$i : ${className}Plugin$i {
+  override fun execute() = "${className.lowercase()}-plugin-$i"
+}"""
+          else -> """// Initializer contribution $i
+interface ${className}Initializer$i : Initializer {
+  override fun initialize()
+}
+
+class ${className}InitializerImpl$i : ${className}Initializer$i {
+  override fun initialize() = println("Initializing ${className.lowercase()} $i")
+}"""
+        }
+      }.joinToString("\n\n")
+
+      // Generate subcomponent equivalent for vanilla/metro-noop (plain classes)
+      val subcomponentCode = if (module.hasSubcomponent) {
+        """
+// Subcomponent-equivalent local services (no DI)
+${(1..3).joinToString("\n\n") { i ->
+          """interface ${className}LocalService$i
+
+class ${className}LocalServiceImpl$i : ${className}LocalService$i"""
+        }}
+
+// Subcomponent-equivalent interface (no DI)
+interface ${className}Subcomponent {
+${(1..3).joinToString("\n") { i -> "  fun get${className}LocalService$i(): ${className}LocalService$i" }}
+
+  interface Factory {
+    fun create${className}Subcomponent(): ${className}Subcomponent
+  }
+}
+
+object ${className}Scope"""
+      } else ""
+
+      return """
+package $packageName
+
+// Plain Kotlin without DI annotations
+import dev.zacsweers.metro.benchmark.core.foundation.Plugin
+import dev.zacsweers.metro.benchmark.core.foundation.Initializer
+
+// Main module interface
+interface ${className}Api
+
+// Implementation (no DI - just a plain class)
+class ${className}Impl : ${className}Api
+
+$contributions
+
+$subcomponentCode
+"""
+        .trimIndent()
+    }
 
     return """
 package $packageName
@@ -646,18 +728,21 @@ $subcomponent
   }
 
   fun generateBindingContribution(className: String, index: Int, buildMode: BuildMode): String {
+    // METRO_NOOP and VANILLA don't generate DI contributions - handled in generateSourceCode
     val scopeAnnotation =
       when (buildMode) {
-        BuildMode.METRO,
-        BuildMode.NOOP -> "@SingleIn(AppScope::class)"
+        BuildMode.METRO -> "@SingleIn(AppScope::class)"
+        BuildMode.METRO_NOOP,
+        BuildMode.VANILLA -> "" // No DI annotations
         BuildMode.KOTLIN_INJECT_ANVIL -> "@SingleIn(AppScope::class)"
         BuildMode.DAGGER -> "@Singleton"
       }
 
     val scopeParam =
       when (buildMode) {
-        BuildMode.METRO,
-        BuildMode.NOOP -> "AppScope::class"
+        BuildMode.METRO -> "AppScope::class"
+        BuildMode.METRO_NOOP,
+        BuildMode.VANILLA -> "" // No DI annotations
         BuildMode.KOTLIN_INJECT_ANVIL -> "AppScope::class"
         BuildMode.DAGGER -> "Unit::class"
       }
@@ -677,10 +762,12 @@ class ${className}ServiceImpl$index @Inject constructor() : ${className}Service$
     index: Int,
     buildMode: BuildMode,
   ): String {
+    // METRO_NOOP and VANILLA don't generate multibindings - handled in generateSourceCode
     val scopeParam =
       when (buildMode) {
-        BuildMode.METRO,
-        BuildMode.NOOP -> "AppScope::class"
+        BuildMode.METRO -> "AppScope::class"
+        BuildMode.METRO_NOOP,
+        BuildMode.VANILLA -> "" // No DI annotations
         BuildMode.KOTLIN_INJECT_ANVIL -> "AppScope::class"
         BuildMode.DAGGER -> "Unit::class"
       }
@@ -711,10 +798,12 @@ class ${className}PluginImpl$index @Inject constructor() : ${className}Plugin$in
     index: Int,
     buildMode: BuildMode,
   ): String {
+    // METRO_NOOP and VANILLA don't generate set multibindings - handled in generateSourceCode
     val scopeParam =
       when (buildMode) {
-        BuildMode.METRO,
-        BuildMode.NOOP -> "AppScope::class"
+        BuildMode.METRO -> "AppScope::class"
+        BuildMode.METRO_NOOP,
+        BuildMode.VANILLA -> "" // No DI annotations
         BuildMode.KOTLIN_INJECT_ANVIL -> "AppScope::class"
         BuildMode.DAGGER -> "Unit::class"
       }
@@ -741,6 +830,11 @@ class ${className}InitializerImpl$index @Inject constructor() : ${className}Init
   }
 
   fun generateSubcomponent(module: ModuleSpec, buildMode: BuildMode): String {
+    // METRO_NOOP and VANILLA don't generate subcomponents (no DI)
+    if (buildMode == BuildMode.METRO_NOOP || buildMode == BuildMode.VANILLA) {
+      return ""
+    }
+
     val className = module.name.toCamelCase()
 
     // Only use dependencies that this module actually depends on
@@ -796,41 +890,9 @@ $subcomponentAccessors
 object ${className}Scope
 """
 
-      BuildMode.NOOP ->
-        """
-// Subcomponent-scoped services that depend on parent scope
-${(1..3).joinToString("\n") { i ->
-          val dependencyParams = if (availableDependencies.isNotEmpty()) {
-            availableDependencies.joinToString(",\n  ") { "private val $it: $it" }
-          } else {
-            "// No parent dependencies available"
-          }
+      BuildMode.METRO_NOOP,
+      BuildMode.VANILLA -> "" // Already handled by early return above
 
-          """interface ${className}LocalService$i
-
-@SingleIn(${className}Scope::class)
-@ContributesBinding(${className}Scope::class)
-class ${className}LocalServiceImpl$i @Inject constructor(${if (availableDependencies.isNotEmpty()) "\n  $dependencyParams\n" else ""}) : ${className}LocalService$i"""
-        }}
-
-@SingleIn(${className}Scope::class)
-@ContributesSubcomponent(
-  scope = ${className}Scope::class,
-  parentScope = AppScope::class
-)
-interface ${className}Subcomponent {
-  ${if (availableDependencies.isNotEmpty()) "// Access parent scope bindings\n$parentAccessors\n  \n" else ""}// Access subcomponent scope bindings
-$subcomponentAccessors
-
-  @ContributesTo(AppScope::class)
-  @GraphExtension.Factory
-  interface Factory {
-    fun create${className}Subcomponent(): ${className}Subcomponent
-  }
-}
-
-object ${className}Scope
-"""
       BuildMode.KOTLIN_INJECT_ANVIL ->
         """
 // Subcomponent-scoped services that depend on parent scope
@@ -907,6 +969,11 @@ annotation class ${className}Scope
   }
 
   fun generateAccessors(allModules: List<ModuleSpec>): String {
+    // METRO_NOOP and VANILLA don't need accessor interfaces (no DI)
+    if (buildMode == BuildMode.METRO_NOOP || buildMode == BuildMode.VANILLA) {
+      return ""
+    }
+
     // Generate accessors for services that actually exist in each module
     val scopedBindings =
       allModules.flatMap { module ->
@@ -922,8 +989,9 @@ annotation class ${className}Scope
 
     val scopeParam =
       when (buildMode) {
-        BuildMode.METRO,
-        BuildMode.NOOP -> "AppScope::class"
+        BuildMode.METRO -> "AppScope::class"
+        BuildMode.METRO_NOOP,
+        BuildMode.VANILLA -> "" // No DI annotations
         BuildMode.KOTLIN_INJECT_ANVIL -> "AppScope::class"
         BuildMode.DAGGER -> "Unit::class"
       }
@@ -1109,7 +1177,27 @@ application {
 """
           }
 
-        BuildMode.NOOP ->
+        BuildMode.METRO_NOOP ->
+          """
+plugins {
+  id("org.jetbrains.kotlin.jvm")
+  id("dev.zacsweers.metro")
+  application
+}
+
+dependencies {
+  implementation(project(":core:foundation"))
+
+  // Depend on all generated modules to aggregate everything
+${allModules.joinToString("\n") { "  implementation(project(\":${it.layer.path}:${it.name}\"))" }}
+}
+
+application {
+  mainClass = "dev.zacsweers.metro.benchmark.app.component.AppComponentKt"
+}
+"""
+
+        BuildMode.VANILLA ->
           """
 plugins {
   id("org.jetbrains.kotlin.jvm")
@@ -1117,9 +1205,6 @@ plugins {
 }
 
 dependencies {
-  implementation("javax.inject:javax.inject:1")
-  implementation("dev.zacsweers.anvil:annotations:0.4.1")
-  implementation("dev.zacsweers.metro:runtime:+")
   implementation(project(":core:foundation"))
 
   // Depend on all generated modules to aggregate everything
@@ -1369,51 +1454,32 @@ fun createAndInitialize(): AppComponent {
 $$metroMainFunction
 """
 
-        BuildMode.NOOP ->
+        BuildMode.METRO_NOOP,
+        BuildMode.VANILLA -> {
+          val modeDescription = if (buildMode == BuildMode.METRO_NOOP)
+            "METRO_NOOP mode - Metro compiler plugin is applied but no Metro annotations are used."
+          else
+            "VANILLA mode - Pure Kotlin with no DI framework."
           """
 package dev.zacsweers.metro.benchmark.app.component
 
-import dev.zacsweers.metro.DependencyGraph
-import dev.zacsweers.metro.AppScope
-import dev.zacsweers.metro.SingleIn
-import dev.zacsweers.metro.Multibinds
-import dev.zacsweers.metro.ContributesTo
 import dev.zacsweers.metro.benchmark.core.foundation.Plugin
 import dev.zacsweers.metro.benchmark.core.foundation.Initializer
-${if (providerImport.isNotEmpty()) "$providerImport\n" else ""}$serviceImports
-
-${generateAccessors(allModules)}
 
 /**
- * NOOP mode - Metro runtime is present but compiler plugin is not applied.
- * This interface has the same structure as Metro mode but no code generation occurs.
- * Used as a baseline to measure build times without any DI compiler plugin overhead.
+ * $modeDescription
+ * This is a baseline to measure compilation overhead.
  */
-@SingleIn(AppScope::class)
-@DependencyGraph(AppScope::class)
-interface AppComponent {
-  // Multibinding accessors
-  fun getAllPlugins(): $pluginsType
-  fun getAllInitializers(): $initializersType
-
-  // Multibind declarations
-  @Multibinds
-  fun bindPlugins(): Set<Plugin>
-
-  @Multibinds
-  fun bindInitializers(): Set<Initializer>
-}
+interface AppComponent
 
 fun main() {
-  // NOOP mode - no DI graph is created since the compiler plugin is not applied.
-  // This serves as a baseline for measuring pure Kotlin compilation overhead.
-  println("NOOP benchmark completed!")
-  println("  - Metro runtime present but compiler plugin NOT applied")
+  println("${buildMode.name} benchmark completed!")
   println("  - Total modules: ${allModules.size}")
   println("  - Total contributions: ${allModules.sumOf { it.contributionsCount }}")
-  println("  - This is a baseline measurement for build times without DI compiler overhead")
+  println("  - This is a baseline measurement for Kotlin compilation")
 }
 """
+        }
 
         BuildMode.KOTLIN_INJECT_ANVIL ->
           $$"""
