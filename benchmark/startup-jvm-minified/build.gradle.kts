@@ -13,6 +13,8 @@ dependencies {
   // Runtime dependencies not included in the minified jar (library classpath)
   jmhRuntimeOnly("dev.zacsweers.metro:runtime:+")
   jmhRuntimeOnly("javax.inject:javax.inject:1")
+  jmhRuntimeOnly(libs.dagger.runtime)
+  jmhRuntimeOnly(libs.kotlinInject.runtime)
 }
 
 jmh {
