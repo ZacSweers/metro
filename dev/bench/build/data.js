@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1766209177657,
+  "lastUpdate": 1766212946996,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time (baseline)": [
@@ -28,6 +28,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "Build Time (baseline)",
             "value": 17333.696,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "pandanomic@gmail.com",
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dd3cdf9fc73d5bea12d38406ff7f3c3cb1a2599d",
+          "message": "Simplify scenarios, add noop/vanilla, cleanups (#1576)",
+          "timestamp": "2025-12-20T05:56:08Z",
+          "tree_id": "fe0ec9b5427f8853a16d6f6cacaf36544af4f01b",
+          "url": "https://github.com/ZacSweers/metro/commit/dd3cdf9fc73d5bea12d38406ff7f3c3cb1a2599d"
+        },
+        "date": 1766212946529,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time (baseline)",
+            "value": 17154.59,
             "unit": "ms"
           }
         ]
