@@ -375,24 +375,6 @@ class GenerateProjectsCommand : CliktCommand() {
 
     return when (buildMode) {
       BuildMode.METRO -> {
-        val metroDsl = run {
-          val options =
-            mutableListOf<String>().apply {
-              if (!transformProvidersToPrivate) add("  transformProvidersToPrivate.set(false)")
-              if (enableSharding) add("  enableGraphSharding.set(true)")
-              if (enableReports)
-                add("  reportsDestination.set(layout.buildDirectory.dir(\"metro-reports\"))")
-            }
-          if (options.isEmpty()) {
-            ""
-          } else {
-            options.add(0, "metro {")
-            options.add(0, "@OptIn(dev.zacsweers.metro.gradle.DelicateMetroGradleApi::class)")
-            options.add("}")
-            options.joinToString("\n")
-          }
-        }
-
         if (multiplatform) {
           """
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
@@ -404,7 +386,7 @@ plugins {
 
 val enableLinux = findProperty("benchmark.native.linux")?.toString()?.toBoolean() ?: false
 val enableWindows = findProperty("benchmark.native.windows")?.toString()?.toBoolean() ?: false
-$metroDsl
+${metroDsl()}
 kotlin {
   jvm()
   js(IR) { nodejs() }
@@ -433,7 +415,7 @@ plugins {
   alias(libs.plugins.kotlin.jvm)
   id("dev.zacsweers.metro")
 }
-$metroDsl
+${metroDsl()}
 dependencies {
   implementation("dev.zacsweers.metro:runtime:+")
   implementation(project(":core:foundation"))
@@ -744,7 +726,7 @@ interface ${className}Api
 // Implementation
 $scopeAnnotation
 @ContributesBinding($scopeParam)
-class ${className}Impl @Inject constructor() : ${className}Api
+${if (buildMode == BuildMode.DAGGER) "" else "@Inject\n"}class ${className}Impl${if (buildMode == BuildMode.DAGGER) " @Inject constructor()" else ""} : ${className}Api
 
 $contributions
 
@@ -785,12 +767,13 @@ $subcomponent
         BuildMode.DAGGER -> "Unit::class"
       }
 
+    val injectOnClass = buildMode != BuildMode.DAGGER
     return """
 interface ${className}Service$index
 
 $scopeAnnotation
 @ContributesBinding($scopeParam)
-class ${className}ServiceImpl$index @Inject constructor() : ${className}Service$index
+${if (injectOnClass) "@Inject\n" else ""}class ${className}ServiceImpl$index${if (injectOnClass) "" else " @Inject constructor()"} : ${className}Service$index
 """
       .trimIndent()
   }
@@ -818,13 +801,14 @@ class ${className}ServiceImpl$index @Inject constructor() : ${className}Service$
         else -> "@ContributesMultibinding($scopeParam, boundType = Plugin::class)"
       }
 
+    val injectOnClass = buildMode != BuildMode.DAGGER
     return """
 interface ${className}Plugin$index : Plugin {
   override fun execute(): String
 }
 
 $multibindingAnnotation
-class ${className}PluginImpl$index @Inject constructor() : ${className}Plugin$index {
+${if (injectOnClass) "@Inject\n" else ""}class ${className}PluginImpl$index${if (injectOnClass) "" else " @Inject constructor()"} : ${className}Plugin$index {
   override fun execute() = "${className.lowercase()}-plugin-$index"
 }
 """
@@ -854,13 +838,14 @@ class ${className}PluginImpl$index @Inject constructor() : ${className}Plugin$in
         else -> "@ContributesMultibinding($scopeParam, boundType = Initializer::class)"
       }
 
+    val injectOnClass = buildMode != BuildMode.DAGGER
     return """
 interface ${className}Initializer$index : Initializer {
   override fun initialize()
 }
 
 $multibindingAnnotation
-class ${className}InitializerImpl$index @Inject constructor() : ${className}Initializer$index {
+${if (injectOnClass) "@Inject\n" else ""}class ${className}InitializerImpl$index${if (injectOnClass) "" else " @Inject constructor()"} : ${className}Initializer$index {
   override fun initialize() = println("Initializing ${className.lowercase()} $index")
 }
 """
@@ -909,7 +894,8 @@ ${(1..3).joinToString("\n") { i ->
 
 @SingleIn(${className}Scope::class)
 @ContributesBinding(${className}Scope::class)
-class ${className}LocalServiceImpl$i @Inject constructor(${if (availableDependencies.isNotEmpty()) "\n  $dependencyParams\n" else ""}) : ${className}LocalService$i"""
+@Inject
+class ${className}LocalServiceImpl$i(${if (availableDependencies.isNotEmpty()) "\n  $dependencyParams\n" else ""}) : ${className}LocalService$i"""
         }}
 
 @SingleIn(${className}Scope::class)
@@ -942,7 +928,8 @@ ${(1..3).joinToString("\n") { i ->
 
 @${className}Scope
 @ContributesBinding(${className}Scope::class)
-class ${className}LocalServiceImpl$i @Inject constructor(${if (availableDependencies.isNotEmpty()) "\n  $dependencyParams\n" else ""}) : ${className}LocalService$i"""
+@Inject
+class ${className}LocalServiceImpl$i(${if (availableDependencies.isNotEmpty()) "\n  $dependencyParams\n" else ""}) : ${className}LocalService$i"""
         }}
 
 @${className}Scope
@@ -1137,6 +1124,24 @@ class PlainDataProcessor {
     plainFile.writeText(plainSourceCode.trimIndent())
   }
 
+  fun metroDsl(): String {
+    val options =
+      mutableListOf<String>().apply {
+        if (!transformProvidersToPrivate) add("  transformProvidersToPrivate.set(false)")
+        if (enableSharding) add("  enableGraphSharding.set(true)")
+        if (enableReports)
+          add("  reportsDestination.set(layout.buildDirectory.dir(\"metro-reports\"))")
+      }
+    return if (options.isEmpty()) {
+      ""
+    } else {
+      options.add(0, "metro {")
+      options.add(0, "@OptIn(dev.zacsweers.metro.gradle.DelicateMetroGradleApi::class)")
+      options.add("}")
+      options.joinToString("\n")
+    }
+  }
+
   fun generateAppComponent(allModules: List<ModuleSpec>, processor: ProcessorMode) {
     val appDir = File("app/component")
     appDir.mkdirs()
@@ -1150,15 +1155,6 @@ class PlainDataProcessor {
       allModules.joinToString("\n") {
         "  implementation(project(\":${it.layer.path}:${it.name}\"))"
       }
-
-    val metroDsl = run {
-      val options = buildList {
-        if (!transformProvidersToPrivate) add("  transformProvidersToPrivate.set(false)")
-        if (enableReports)
-          add("  reportsDestination.set(layout.buildDirectory.dir(\"metro-reports\"))")
-      }
-      if (options.isEmpty()) "" else "\nmetro {\n${options.joinToString("\n")}\n}\n"
-    }
 
     val buildScript =
       when (buildMode) {
@@ -1175,7 +1171,7 @@ plugins {
 val enableMacos = providers.gradleProperty("benchmark.native.macos").orNull.toBoolean()
 val enableLinux = providers.gradleProperty("benchmark.native.linux").orNull.toBoolean()
 val enableWindows = providers.gradleProperty("benchmark.native.windows").orNull.toBoolean()
-$metroDsl
+${metroDsl()}
 kotlin {
   jvm()
   js(IR) {
@@ -1216,7 +1212,7 @@ plugins {
   id("dev.zacsweers.metro")
   application
 }
-$metroDsl
+${metroDsl()}
 dependencies {
   implementation("dev.zacsweers.metro:runtime:+")
   implementation(project(":core:foundation"))
