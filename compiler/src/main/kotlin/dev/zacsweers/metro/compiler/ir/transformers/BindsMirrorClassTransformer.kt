@@ -15,6 +15,7 @@ import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
 import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
+import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.mirrorIrConstructorCalls
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Optional
@@ -33,6 +34,7 @@ import org.jetbrains.kotlin.ir.util.copyParametersFrom
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.platform.jvm.isJvm
 
 /**
  * Transforms binding mirror classes generated in FIR by adding mirror functions for `@Binds` and
@@ -81,6 +83,19 @@ private fun transformBindingMirrorClass(parentClass: IrClass, mirrorClass: IrCla
   val isExternal = mirrorClass.isExternalParent
   val collector = BindsMirrorCollector(isInterop = false)
 
+  // On JVM, annotate with @ComptimeOnly so R8 can remove these
+  val comptimeOnlyConstructor =
+    if (!isExternal && context.pluginContext.platform.isJvm()) {
+      context.metroSymbols.comptimeOnlyAnnotationConstructor
+    } else {
+      null
+    }
+
+  // Annotate the mirror class with @ComptimeOnly
+  comptimeOnlyConstructor?.let { ctor ->
+    mirrorClass.annotations += buildAnnotation(mirrorClass.symbol, ctor)
+  }
+
   fun processFunction(declaration: IrSimpleFunction) {
     if (!declaration.isFakeOverride) {
       val metroFunction = metroFunctionOf(declaration)
@@ -89,6 +104,18 @@ private fun transformBindingMirrorClass(parentClass: IrClass, mirrorClass: IrCla
           metroFunction.annotations.isMultibinds ||
           metroFunction.annotations.isBindsOptionalOf
       ) {
+        // Add stub body and @ComptimeOnly annotation to the original binds declaration
+        // This provides a default implementation so graph impl classes don't need to
+        // implement fake overrides
+        if (!isExternal) {
+          declaration.apply {
+            body = stubExpressionBody()
+            comptimeOnlyConstructor?.let { ctor ->
+              annotations += buildAnnotation(symbol, ctor)
+            }
+          }
+        }
+
         // TODO we round-trip generating -> reading back. Should we optimize that path?
         val function =
           if (isExternal) metroFunction else generateMirrorFunction(mirrorClass, metroFunction)
