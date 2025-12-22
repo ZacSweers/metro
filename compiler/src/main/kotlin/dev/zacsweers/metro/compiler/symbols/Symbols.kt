@@ -141,6 +141,8 @@ internal class Symbols(
       ClassId(FqNames.composeRuntime, StringNames.NON_RESTARTABLE_COMPOSABLE.asName())
     val CallableMetadata =
       ClassId(FqNames.metroRuntimeInternalPackage, StringNames.CALLABLE_METADATA.asName())
+    val ComptimeOnly =
+      ClassId(FqNames.metroRuntimeInternalPackage, "ComptimeOnly".asName())
     val Stable = ClassId(FqNames.composeRuntime, StringNames.STABLE.asName())
     val graphExtension = ClassId(FqNames.metroRuntimePackage, "GraphExtension".asName())
     val graphExtensionFactory = graphExtension.createNestedClassId(Names.FactoryClass)
@@ -380,6 +382,10 @@ internal class Symbols(
 
   val callableMetadataAnnotationConstructor: IrConstructorSymbol by lazy {
     pluginContext.referenceClass(ClassIds.CallableMetadata)!!.constructors.first()
+  }
+
+  val comptimeOnlyAnnotationConstructor: IrConstructorSymbol by lazy {
+    pluginContext.referenceClass(ClassIds.ComptimeOnly)?.constructors?.first()!!
   }
 
   val metroProvider: IrClassSymbol by lazy {
