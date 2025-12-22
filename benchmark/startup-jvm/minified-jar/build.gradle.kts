@@ -12,7 +12,7 @@ val r8Configuration: Configuration by configurations.creating
 dependencies {
   // Only used for R8 processing, not exposed transitively
   compileOnly(project(":app:component"))
-  r8Configuration("com.android.tools:r8:8.13.17")
+  r8Configuration(libs.r8)
 }
 
 abstract class BaseR8Task : JavaExec() {
