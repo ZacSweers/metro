@@ -5,6 +5,7 @@ pluginManagement {
     mavenCentral()
     google()
     gradlePluginPortal()
+    mavenLocal()
   }
   plugins {
     id("com.gradle.develocity") version "4.3"
@@ -17,6 +18,7 @@ dependencyResolutionManagement {
   repositories {
     mavenCentral()
     google()
+    mavenLocal()
   }
 }
 
