@@ -54,7 +54,7 @@ anvil = { id = "dev.zacsweers.anvil", version.ref = "anvil" }
 atomicfu = { id = "org.jetbrains.kotlinx.atomicfu", version.ref = "atomicfu" }
 benchmark = { id = "androidx.benchmark", version = "1.4.1" }
 binaryCompatibilityValidator = { id = "org.jetbrains.kotlinx.binary-compatibility-validator", version = "0.18.1" }
-buildConfig = { id = "com.github.gmazzo.buildconfig", version = "6.0.6" }
+buildConfig = { id = "com.github.gmazzo.buildconfig", version = "6.0.7" }
 compose = { id = "org.jetbrains.compose", version.ref = "compose-jb" }
 dokka = { id = "org.jetbrains.dokka", version = "2.1.0" }
 jmh = { id = "me.champeau.jmh", version = "0.7.3" }

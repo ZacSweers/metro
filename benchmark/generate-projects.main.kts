@@ -431,6 +431,7 @@ $jvmDependencies
 plugins {
   alias(libs.plugins.kotlin.jvm)
   id("dev.zacsweers.metro")
+  id("dev.zacsweers.metro")
 }
 
 dependencies {
@@ -1231,6 +1232,7 @@ application {
           """
 plugins {
   alias(libs.plugins.kotlin.jvm)
+  id("dev.zacsweers.metro")
   id("dev.zacsweers.metro")
   application
 }
