@@ -9,6 +9,7 @@ Changelog
 ### Enhancements
 
 - [FIR] Add diagnostic for multiple graph-like annotations on a single declaration.
+- [IR] Stub `@Binds` expressions in origin points rather than graphs. This reduces unnecessary extra generated functions.
 
 ### Fixes
 
