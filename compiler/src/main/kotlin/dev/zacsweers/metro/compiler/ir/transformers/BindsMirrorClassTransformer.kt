@@ -107,7 +107,7 @@ private fun transformBindingMirrorClass(parentClass: IrClass, mirrorClass: IrCla
         // Add stub body and @ComptimeOnly annotation to the original binds declaration
         // This provides a default implementation so graph impl classes don't need to
         // implement fake overrides
-        if (!isExternal) {
+        if (!isExternal && !metroFunction.annotations.isMultibinds) {
           declaration.apply {
             body = stubExpressionBody()
             comptimeOnlyConstructor?.let { ctor ->
