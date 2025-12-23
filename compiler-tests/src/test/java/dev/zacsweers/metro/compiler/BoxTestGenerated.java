@@ -233,6 +233,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("RankBasedReplacementFromClassWithMultipleBindingsInGraphExtension.kt")
+      public void testRankBasedReplacementFromClassWithMultipleBindingsInGraphExtension() {
+        runTest("compiler-tests/src/test/data/box/aggregation/interop/RankBasedReplacementFromClassWithMultipleBindingsInGraphExtension.kt");
+      }
+
+      @Test
       @TestMetadata("RankBasedReplacementFromClassWithMultipleBindingsInRootGraph.kt")
       public void testRankBasedReplacementFromClassWithMultipleBindingsInRootGraph() {
         runTest("compiler-tests/src/test/data/box/aggregation/interop/RankBasedReplacementFromClassWithMultipleBindingsInRootGraph.kt");

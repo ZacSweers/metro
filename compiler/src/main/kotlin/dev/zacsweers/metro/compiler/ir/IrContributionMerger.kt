@@ -237,6 +237,10 @@ internal class IrContributionMerger(
     allScopes: Set<ClassId>,
     contributions: Map<ClassId, List<IrType>>,
   ): Set<ClassId> {
+    Fir2IrInterop.processRankBasedReplacements(allScopes, contributions)?.let {
+      return it
+    }
+
     val pendingRankReplacements = mutableSetOf<ClassId>()
 
     val rankedBindings =
@@ -246,7 +250,7 @@ internal class IrContributionMerger(
         .distinctBy { it.classIdOrFail }
         .flatMap { contributingType ->
           contributingType
-            .annotationsIn(metroSymbols.classIds.contributesBindingAnnotations)
+            .annotationsIn(metroSymbols.classIds.contributesBindingAnnotationsWithContainers)
             .mapNotNull { annotation ->
               val scope = annotation.scopeOrNull() ?: return@mapNotNull null
               if (scope !in allScopes) return@mapNotNull null
