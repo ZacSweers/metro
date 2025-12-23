@@ -176,10 +176,17 @@ public class ClassIds(
    * sure and is just a general catch-all.
    */
   internal val allRepeatableContributesAnnotationsContainers =
-    allContributesAnnotations.mapToSet { it.createNestedClassId(Symbols.Names.Container) }
+    allContributesAnnotations.toContainerAnnotations()
 
   internal val allContributesAnnotationsWithContainers =
     allContributesAnnotations + allRepeatableContributesAnnotationsContainers
+
+  internal val contributesBindingAnnotationsWithContainers =
+    contributesBindingAnnotations + contributesBindingAnnotations.toContainerAnnotations()
+
+  private fun Set<ClassId>.toContainerAnnotations() = mapToSet {
+    it.createNestedClassId(Symbols.Names.Container)
+  }
 
   internal val graphLikeAnnotations = dependencyGraphAnnotations + graphExtensionAnnotations
   internal val graphFactoryLikeAnnotations =

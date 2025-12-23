@@ -6,3 +6,6 @@
     @dev.zacsweers.metro.internal.ComptimeOnly <methods>;
 }
 -checkdiscard @dev.zacsweers.metro.internal.ComptimeOnly class *
+
+# Allow more aggressive optimizations
+-allowaccessmodification

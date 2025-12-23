@@ -45,6 +45,18 @@ class GenerateProjectsCommand : CliktCommand() {
       )
       .flag(default = false)
 
+  private val transformProvidersToPrivate by
+    option(
+        "--transform-providers-to-private",
+        help =
+          "Transform @Provides functions to private (Metro mode only). Disabled by default for better R8 optimization.",
+      )
+      .flag("--no-transform-providers-to-private", default = false)
+
+  private val enableReports by
+    option("--enable-reports", help = "Enable Metro graph reports for debugging (Metro mode only).")
+      .flag(default = false)
+
   override fun run() {
     if (multiplatform && buildMode != BuildMode.METRO) {
       echo("Error: --multiplatform flag is only supported with Metro mode", err = true)
@@ -362,19 +374,19 @@ class GenerateProjectsCommand : CliktCommand() {
       module.dependencies.joinToString("\n") { dep -> "  implementation(project(\":$dep\"))" }
 
     return when (buildMode) {
-      BuildMode.METRO ->
+      BuildMode.METRO -> {
         if (multiplatform) {
           """
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 
 plugins {
-  id("org.jetbrains.kotlin.multiplatform")
+  alias(libs.plugins.kotlin.multiplatform)
   id("dev.zacsweers.metro")
 }
 
 val enableLinux = findProperty("benchmark.native.linux")?.toString()?.toBoolean() ?: false
 val enableWindows = findProperty("benchmark.native.windows")?.toString()?.toBoolean() ?: false
-
+${metroDsl()}
 kotlin {
   jvm()
   js(IR) { nodejs() }
@@ -400,10 +412,10 @@ $dependencies
         } else {
           """
 plugins {
-  id("org.jetbrains.kotlin.jvm")
+  alias(libs.plugins.kotlin.jvm)
   id("dev.zacsweers.metro")
 }
-
+${metroDsl()}
 dependencies {
   implementation("dev.zacsweers.metro:runtime:+")
   implementation(project(":core:foundation"))
@@ -412,11 +424,13 @@ $jvmDependencies
 """
             .trimIndent()
         }
+      }
 
       BuildMode.METRO_NOOP ->
         """
 plugins {
-  id("org.jetbrains.kotlin.jvm")
+  alias(libs.plugins.kotlin.jvm)
+  id("dev.zacsweers.metro")
   id("dev.zacsweers.metro")
 }
 
@@ -430,7 +444,7 @@ $jvmDependencies
       BuildMode.VANILLA ->
         """
 plugins {
-  id("org.jetbrains.kotlin.jvm")
+  alias(libs.plugins.kotlin.jvm)
 }
 
 dependencies {
@@ -443,17 +457,17 @@ $jvmDependencies
       BuildMode.KOTLIN_INJECT_ANVIL ->
         """
 plugins {
-  id("org.jetbrains.kotlin.jvm")
+  alias(libs.plugins.kotlin.jvm)
   alias(libs.plugins.ksp)
 }
 
 dependencies {
-  implementation("me.tatarka.inject:kotlin-inject-runtime:0.8.0")
-  implementation("software.amazon.lastmile.kotlin.inject.anvil:runtime:0.1.6")
-  implementation("software.amazon.lastmile.kotlin.inject.anvil:runtime-optional:0.1.6")
+  implementation(libs.kotlinInject.runtime)
+  implementation(libs.kotlinInject.anvil.runtime)
+  implementation(libs.kotlinInject.anvil.runtime.optional)
   implementation(project(":core:foundation"))
-  ksp("me.tatarka.inject:kotlin-inject-compiler-ksp:0.8.0")
-  ksp("software.amazon.lastmile.kotlin.inject.anvil:compiler:0.1.6")
+  ksp(libs.kotlinInject.compiler)
+  ksp(libs.kotlinInject.anvil.compiler)
 $dependencies
 }
 """
@@ -470,11 +484,11 @@ plugins {
 }
 
 dependencies {
-  implementation("javax.inject:javax.inject:1")
-  implementation("dev.zacsweers.anvil:annotations:0.4.1")
+  implementation(libs.javaxInject)
+  implementation(libs.anvil.annotations)
   implementation(libs.dagger.runtime)
   implementation(project(":core:foundation"))
-  ksp("dev.zacsweers.anvil:compiler:0.4.1")
+  ksp(libs.anvil.kspCompiler)
   ksp(libs.dagger.compiler)
 $dependencies
 }
@@ -498,11 +512,11 @@ plugins {
 }
 
 dependencies {
-  implementation("javax.inject:javax.inject:1")
-  implementation("dev.zacsweers.anvil:annotations:0.4.1")
+  implementation(libs.javaxInject)
+  implementation(libs.anvil.annotations)
   implementation(libs.dagger.runtime)
   implementation(project(":core:foundation"))
-  ksp("dev.zacsweers.anvil:compiler:0.4.1")
+  ksp(libs.anvil.kspCompiler)
   kapt(libs.dagger.compiler)
 $dependencies
 }
@@ -624,15 +638,19 @@ $dependencyImports
     // For METRO_NOOP and VANILLA, generate plain Kotlin without annotations
     if (buildMode == BuildMode.METRO_NOOP || buildMode == BuildMode.VANILLA) {
       // Generate the same class structure as other modes, just without DI annotations
-      val contributions = (1..module.contributionsCount).map { i ->
-        // Use deterministic random for consistency with other modes
-        val moduleRandom = Random(module.name.hashCode() + i)
-        when (moduleRandom.nextInt(3)) {
-          0 -> """// Binding contribution $i
+      val contributions =
+        (1..module.contributionsCount)
+          .map { i ->
+            // Use deterministic random for consistency with other modes
+            val moduleRandom = Random(module.name.hashCode() + i)
+            when (moduleRandom.nextInt(3)) {
+              0 ->
+                """// Binding contribution $i
 interface ${className}Service$i
 
 class ${className}ServiceImpl$i : ${className}Service$i"""
-          1 -> """// Plugin contribution $i
+              1 ->
+                """// Plugin contribution $i
 interface ${className}Plugin$i : Plugin {
   override fun execute(): String
 }
@@ -640,7 +658,8 @@ interface ${className}Plugin$i : Plugin {
 class ${className}PluginImpl$i : ${className}Plugin$i {
   override fun execute() = "${className.lowercase()}-plugin-$i"
 }"""
-          else -> """// Initializer contribution $i
+              else ->
+                """// Initializer contribution $i
 interface ${className}Initializer$i : Initializer {
   override fun initialize()
 }
@@ -648,12 +667,14 @@ interface ${className}Initializer$i : Initializer {
 class ${className}InitializerImpl$i : ${className}Initializer$i {
   override fun initialize() = println("Initializing ${className.lowercase()} $i")
 }"""
-        }
-      }.joinToString("\n\n")
+            }
+          }
+          .joinToString("\n\n")
 
       // Generate subcomponent equivalent for vanilla/metro-noop (plain classes)
-      val subcomponentCode = if (module.hasSubcomponent) {
-        """
+      val subcomponentCode =
+        if (module.hasSubcomponent) {
+          """
 // Subcomponent-equivalent local services (no DI)
 ${(1..3).joinToString("\n\n") { i ->
           """interface ${className}LocalService$i
@@ -671,7 +692,7 @@ ${(1..3).joinToString("\n") { i -> "  fun get${className}LocalService$i(): ${cla
 }
 
 object ${className}Scope"""
-      } else ""
+        } else ""
 
       return """
 package $packageName
@@ -706,7 +727,7 @@ interface ${className}Api
 // Implementation
 $scopeAnnotation
 @ContributesBinding($scopeParam)
-class ${className}Impl @Inject constructor() : ${className}Api
+${if (buildMode == BuildMode.DAGGER) "" else "@Inject\n"}class ${className}Impl${if (buildMode == BuildMode.DAGGER) " @Inject constructor()" else ""} : ${className}Api
 
 $contributions
 
@@ -747,12 +768,13 @@ $subcomponent
         BuildMode.DAGGER -> "Unit::class"
       }
 
+    val injectOnClass = buildMode != BuildMode.DAGGER
     return """
 interface ${className}Service$index
 
 $scopeAnnotation
 @ContributesBinding($scopeParam)
-class ${className}ServiceImpl$index @Inject constructor() : ${className}Service$index
+${if (injectOnClass) "@Inject\n" else ""}class ${className}ServiceImpl$index${if (injectOnClass) "" else " @Inject constructor()"} : ${className}Service$index
 """
       .trimIndent()
   }
@@ -780,13 +802,14 @@ class ${className}ServiceImpl$index @Inject constructor() : ${className}Service$
         else -> "@ContributesMultibinding($scopeParam, boundType = Plugin::class)"
       }
 
+    val injectOnClass = buildMode != BuildMode.DAGGER
     return """
 interface ${className}Plugin$index : Plugin {
   override fun execute(): String
 }
 
 $multibindingAnnotation
-class ${className}PluginImpl$index @Inject constructor() : ${className}Plugin$index {
+${if (injectOnClass) "@Inject\n" else ""}class ${className}PluginImpl$index${if (injectOnClass) "" else " @Inject constructor()"} : ${className}Plugin$index {
   override fun execute() = "${className.lowercase()}-plugin-$index"
 }
 """
@@ -816,13 +839,14 @@ class ${className}PluginImpl$index @Inject constructor() : ${className}Plugin$in
         else -> "@ContributesMultibinding($scopeParam, boundType = Initializer::class)"
       }
 
+    val injectOnClass = buildMode != BuildMode.DAGGER
     return """
 interface ${className}Initializer$index : Initializer {
   override fun initialize()
 }
 
 $multibindingAnnotation
-class ${className}InitializerImpl$index @Inject constructor() : ${className}Initializer$index {
+${if (injectOnClass) "@Inject\n" else ""}class ${className}InitializerImpl$index${if (injectOnClass) "" else " @Inject constructor()"} : ${className}Initializer$index {
   override fun initialize() = println("Initializing ${className.lowercase()} $index")
 }
 """
@@ -871,7 +895,8 @@ ${(1..3).joinToString("\n") { i ->
 
 @SingleIn(${className}Scope::class)
 @ContributesBinding(${className}Scope::class)
-class ${className}LocalServiceImpl$i @Inject constructor(${if (availableDependencies.isNotEmpty()) "\n  $dependencyParams\n" else ""}) : ${className}LocalService$i"""
+@Inject
+class ${className}LocalServiceImpl$i(${if (availableDependencies.isNotEmpty()) "\n  $dependencyParams\n" else ""}) : ${className}LocalService$i"""
         }}
 
 @SingleIn(${className}Scope::class)
@@ -890,9 +915,6 @@ $subcomponentAccessors
 object ${className}Scope
 """
 
-      BuildMode.METRO_NOOP,
-      BuildMode.VANILLA -> "" // Already handled by early return above
-
       BuildMode.KOTLIN_INJECT_ANVIL ->
         """
 // Subcomponent-scoped services that depend on parent scope
@@ -907,7 +929,8 @@ ${(1..3).joinToString("\n") { i ->
 
 @${className}Scope
 @ContributesBinding(${className}Scope::class)
-class ${className}LocalServiceImpl$i @Inject constructor(${if (availableDependencies.isNotEmpty()) "\n  $dependencyParams\n" else ""}) : ${className}LocalService$i"""
+@Inject
+class ${className}LocalServiceImpl$i(${if (availableDependencies.isNotEmpty()) "\n  $dependencyParams\n" else ""}) : ${className}LocalService$i"""
         }}
 
 @${className}Scope
@@ -965,6 +988,9 @@ $subcomponentAccessors
 @Retention(AnnotationRetention.RUNTIME)
 annotation class ${className}Scope
 """
+
+      BuildMode.METRO_NOOP,
+      BuildMode.VANILLA -> error("Should have returned early for $buildMode")
     }.trimIndent()
   }
 
@@ -1023,27 +1049,32 @@ $accessors
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 
 plugins {
-  id("org.jetbrains.kotlin.multiplatform")
+  alias(libs.plugins.kotlin.multiplatform)
 }
 
-val enableLinux = findProperty("benchmark.native.linux")?.toString()?.toBoolean() ?: false
-val enableWindows = findProperty("benchmark.native.windows")?.toString()?.toBoolean() ?: false
+val enableMacos = providers.gradleProperty("benchmark.native.macos").orNull.toBoolean()
+val enableLinux = providers.gradleProperty("benchmark.native.linux").orNull.toBoolean()
+val enableWindows = providers.gradleProperty("benchmark.native.windows").orNull.toBoolean()
 
 kotlin {
   jvm()
   js(IR) { nodejs() }
   @OptIn(ExperimentalWasmDsl::class)
   wasmJs { nodejs() }
-  macosArm64()
-  macosX64()
-  if (enableLinux) linuxX64()
-  if (enableWindows) mingwX64()
+  if (enableMacos) {
+    macosArm64()
+    macosX64()
+  } else if (enableLinux) {
+    linuxX64()
+  } else if (enableWindows) {
+    mingwX64()
+  }
 }
 """
       } else {
         """
 plugins {
-  id("org.jetbrains.kotlin.jvm")
+  alias(libs.plugins.kotlin.jvm)
 }
 """
       }
@@ -1097,6 +1128,24 @@ class PlainDataProcessor {
     plainFile.writeText(plainSourceCode.trimIndent())
   }
 
+  fun metroDsl(): String {
+    val options =
+      mutableListOf<String>().apply {
+        if (!transformProvidersToPrivate) add("  transformProvidersToPrivate.set(false)")
+        if (enableSharding) add("  enableGraphSharding.set(true)")
+        if (enableReports)
+          add("  reportsDestination.set(layout.buildDirectory.dir(\"metro-reports\"))")
+      }
+    return if (options.isEmpty()) {
+      ""
+    } else {
+      options.add(0, "metro {")
+      options.add(0, "@OptIn(dev.zacsweers.metro.gradle.DelicateMetroGradleApi::class)")
+      options.add("}")
+      options.joinToString("\n")
+    }
+  }
+
   fun generateAppComponent(allModules: List<ModuleSpec>, processor: ProcessorMode) {
     val appDir = File("app/component")
     appDir.mkdirs()
@@ -1119,13 +1168,14 @@ class PlainDataProcessor {
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 
 plugins {
-  id("org.jetbrains.kotlin.multiplatform")
+  alias(libs.plugins.kotlin.multiplatform)
   id("dev.zacsweers.metro")
 }
 
-val enableLinux = findProperty("benchmark.native.linux")?.toString()?.toBoolean() ?: false
-val enableWindows = findProperty("benchmark.native.windows")?.toString()?.toBoolean() ?: false
-
+val enableMacos = providers.gradleProperty("benchmark.native.macos").orNull.toBoolean()
+val enableLinux = providers.gradleProperty("benchmark.native.linux").orNull.toBoolean()
+val enableWindows = providers.gradleProperty("benchmark.native.windows").orNull.toBoolean()
+${metroDsl()}
 kotlin {
   jvm()
   js(IR) {
@@ -1137,10 +1187,14 @@ kotlin {
     nodejs()
     binaries.executable()
   }
-  macosArm64 { binaries.executable() }
-  macosX64 { binaries.executable() }
-  if (enableLinux) linuxX64 { binaries.executable() }
-  if (enableWindows) mingwX64 { binaries.executable() }
+  if (enableMacos) {
+    macosArm64 { binaries.executable() }
+    macosX64 { binaries.executable() }
+  } else if (enableLinux) {
+    linuxX64 { binaries.executable() }
+  } else if (enableWindows) {
+    mingwX64 { binaries.executable() }
+  }
 
   sourceSets {
     commonMain {
@@ -1158,11 +1212,11 @@ $moduleDepsCommon
           } else {
             """
 plugins {
-  id("org.jetbrains.kotlin.jvm")
+  alias(libs.plugins.kotlin.jvm)
   id("dev.zacsweers.metro")
   application
 }
-
+${metroDsl()}
 dependencies {
   implementation("dev.zacsweers.metro:runtime:+")
   implementation(project(":core:foundation"))
@@ -1180,7 +1234,8 @@ application {
         BuildMode.METRO_NOOP ->
           """
 plugins {
-  id("org.jetbrains.kotlin.jvm")
+  alias(libs.plugins.kotlin.jvm)
+  id("dev.zacsweers.metro")
   id("dev.zacsweers.metro")
   application
 }
@@ -1200,7 +1255,7 @@ application {
         BuildMode.VANILLA ->
           """
 plugins {
-  id("org.jetbrains.kotlin.jvm")
+  alias(libs.plugins.kotlin.jvm)
   application
 }
 
@@ -1219,18 +1274,18 @@ application {
         BuildMode.KOTLIN_INJECT_ANVIL ->
           """
 plugins {
-  id("org.jetbrains.kotlin.jvm")
+  alias(libs.plugins.kotlin.jvm)
   alias(libs.plugins.ksp)
   application
 }
 
 dependencies {
-  implementation("me.tatarka.inject:kotlin-inject-runtime:0.8.0")
-  implementation("software.amazon.lastmile.kotlin.inject.anvil:runtime:0.1.6")
-  implementation("software.amazon.lastmile.kotlin.inject.anvil:runtime-optional:0.1.6")
+  implementation(libs.kotlinInject.runtime)
+  implementation(libs.kotlinInject.anvil.runtime)
+  implementation(libs.kotlinInject.anvil.runtime.optional)
   implementation(project(":core:foundation"))
-  ksp("me.tatarka.inject:kotlin-inject-compiler-ksp:0.8.0")
-  ksp("software.amazon.lastmile.kotlin.inject.anvil:compiler:0.1.6")
+  ksp(libs.kotlinInject.compiler)
+  ksp(libs.kotlinInject.anvil.compiler)
 
   // Depend on all generated modules to aggregate everything
 ${allModules.joinToString("\n") { "  implementation(project(\":${it.layer.path}:${it.name}\"))" }}
@@ -1253,11 +1308,11 @@ plugins {
 }
 
 dependencies {
-  implementation("javax.inject:javax.inject:1")
-  implementation("dev.zacsweers.anvil:annotations:0.4.1")
+  implementation(libs.javaxInject)
+  implementation(libs.anvil.annotations)
   implementation(libs.dagger.runtime)
   implementation(project(":core:foundation"))
-  ksp("dev.zacsweers.anvil:compiler:0.4.1")
+  ksp(libs.anvil.kspCompiler)
   ksp(libs.dagger.compiler)
 
   // Depend on all generated modules to aggregate everything
@@ -1286,11 +1341,11 @@ plugins {
 }
 
 dependencies {
-  implementation("javax.inject:javax.inject:1")
-  implementation("dev.zacsweers.anvil:annotations:0.4.1")
+  implementation(libs.javaxInject)
+  implementation(libs.anvil.annotations)
   implementation(libs.dagger.runtime)
   implementation(project(":core:foundation"))
-  ksp("dev.zacsweers.anvil:compiler:0.4.1")
+  ksp(libs.anvil.kspCompiler)
   kapt(libs.dagger.compiler)
 
   // Depend on all generated modules to aggregate everything
@@ -1456,10 +1511,10 @@ $$metroMainFunction
 
         BuildMode.METRO_NOOP,
         BuildMode.VANILLA -> {
-          val modeDescription = if (buildMode == BuildMode.METRO_NOOP)
-            "METRO_NOOP mode - Metro compiler plugin is applied but no Metro annotations are used."
-          else
-            "VANILLA mode - Pure Kotlin with no DI framework."
+          val modeDescription =
+            if (buildMode == BuildMode.METRO_NOOP)
+              "METRO_NOOP mode - Metro compiler plugin is applied but no Metro annotations are used."
+            else "VANILLA mode - Pure Kotlin with no DI framework."
           """
 package dev.zacsweers.metro.benchmark.app.component
 
@@ -1614,10 +1669,12 @@ fun main() {
 
   fun writeSettingsFile(allModules: List<ModuleSpec>) {
     val settingsFile = File("generated-projects.txt")
-    val includes =
-      listOf(":core:foundation") +
-        allModules.map { ":${it.layer.path}:${it.name}" } +
-        ":app:component"
+    val includes = buildList {
+      add("# multiplatform: $multiplatform")
+      add(":core:foundation")
+      addAll(allModules.map { ":${it.layer.path}:${it.name}" })
+      add(":app:component")
+    }
     val content = includes.joinToString("\n")
     settingsFile.writeText(content)
   }

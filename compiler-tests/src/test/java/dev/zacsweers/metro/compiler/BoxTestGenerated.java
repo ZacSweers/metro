@@ -233,6 +233,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("RankBasedReplacementFromClassWithMultipleBindingsInRootGraph.kt")
+      public void testRankBasedReplacementFromClassWithMultipleBindingsInRootGraph() {
+        runTest("compiler-tests/src/test/data/box/aggregation/interop/RankBasedReplacementFromClassWithMultipleBindingsInRootGraph.kt");
+      }
+
+      @Test
       @TestMetadata("RepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier.kt")
       public void testRepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier() {
         runTest("compiler-tests/src/test/data/box/aggregation/interop/RepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier.kt");

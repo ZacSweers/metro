@@ -25,6 +25,13 @@ plugins {
   alias(libs.plugins.mavenPublish) apply false // wat
 }
 
+buildscript {
+  dependencies {
+    // Force the latest R8 to match what we use the minified JMH tests
+    classpath(libs.r8)
+  }
+}
+
 spotless {
   setLineEndings(LineEnding.GIT_ATTRIBUTES_FAST_ALLSAME)
   format("misc") {

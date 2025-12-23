@@ -13,6 +13,8 @@ Changelog
 
 ### Fixes
 
+- [FIR, Anvil Interop] Fix rank-based binding replacements getting dropped for multi-contribution classes in root graphs.
+
 0.9.2
 -----
 
