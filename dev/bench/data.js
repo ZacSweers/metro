@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1766472897735,
+  "lastUpdate": 1766529515397,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup (baseline)": [
@@ -178,6 +178,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "baseline",
             "value": 0.2158608035602235,
+            "unit": "ms/op",
+            "extra": "iterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "japplin@squareup.com",
+            "name": "japplin",
+            "username": "japplin"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "38572829243ad79bff20c8a29edb4c5540b3c854",
+          "message": "Fix bug preventing scope argument from being used in position other than first (#1589)\n\nCo-authored-by: Zac Sweers <pandanomic@gmail.com>",
+          "timestamp": "2025-12-23T22:08:07Z",
+          "tree_id": "9b3da57189627739c937640a030252006e71de0d",
+          "url": "https://github.com/ZacSweers/metro/commit/38572829243ad79bff20c8a29edb4c5540b3c854"
+        },
+        "date": 1766529513988,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "baseline",
+            "value": 0.22133318762355456,
             "unit": "ms/op",
             "extra": "iterations: 10\nforks: 2\nthreads: 1"
           }
