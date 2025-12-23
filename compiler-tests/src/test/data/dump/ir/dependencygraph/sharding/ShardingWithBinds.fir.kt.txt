@@ -94,6 +94,7 @@ class Service {
 @ContributesTo(scope = AppScope::class)
 interface AppModule {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @ComptimeOnly
   abstract class BindsMirror {
     private constructor() /* primary */ {
       super/*Any*/()
@@ -108,7 +109,10 @@ interface AppModule {
   }
 
   @Binds
-  abstract fun bindRepository(impl: RepositoryImpl): Repository
+  @ComptimeOnly
+  abstract fun bindRepository(impl: RepositoryImpl): Repository {
+    return error(message = "Never called")
+  }
 
 }
 

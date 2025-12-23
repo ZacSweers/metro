@@ -131,6 +131,7 @@ class BazImpl : BazMiddle {
   @MetroContribution(scope = AppScope::class)
   interface MetroContributionToAppScope {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @ComptimeOnly
     abstract class BindsMirror {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -145,7 +146,10 @@ class BazImpl : BazMiddle {
     }
 
     @Binds
-    abstract fun bindsAsBazMiddle(instance: BazImpl): BazMiddle
+    @ComptimeOnly
+    abstract fun bindsAsBazMiddle(instance: BazImpl): BazMiddle {
+      return error(message = "Never called")
+    }
 
   }
 
@@ -190,6 +194,7 @@ class FooImpl : Foo {
   @MetroContribution(scope = AppScope::class)
   interface MetroContributionToAppScope {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @ComptimeOnly
     abstract class BindsMirror {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -204,7 +209,10 @@ class FooImpl : Foo {
     }
 
     @Binds
-    abstract fun bindsAsFoo(instance: FooImpl): Foo
+    @ComptimeOnly
+    abstract fun bindsAsFoo(instance: FooImpl): Foo {
+      return error(message = "Never called")
+    }
 
   }
 
@@ -386,6 +394,7 @@ class QuxB {
 @DependencyGraph(scope = AppScope::class)
 interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @ComptimeOnly
   abstract class BindsMirror {
     private constructor() /* primary */ {
       super/*Any*/()
@@ -417,21 +426,6 @@ interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope {
 
     }
 
-    @Binds
-    override fun bindBaz(impl: BazMiddle): Baz {
-      return error(message = "Never called")
-    }
-
-    @Binds
-    override fun bindsAsBazMiddle(instance: BazImpl): BazMiddle {
-      return error(message = "Never called")
-    }
-
-    @Binds
-    override fun bindsAsFoo(instance: FooImpl): Foo {
-      return error(message = "Never called")
-    }
-
     override val main: Main
       override get(): Main {
         return <this>.#mainProvider.invoke()
@@ -454,7 +448,10 @@ interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope {
   }
 
   @Binds
-  abstract fun bindBaz(impl: BazMiddle): Baz
+  @ComptimeOnly
+  abstract fun bindBaz(impl: BazMiddle): Baz {
+    return error(message = "Never called")
+  }
 
   abstract val main: Main
     abstract get
