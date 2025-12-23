@@ -183,7 +183,10 @@ subprojects {
 
   pluginManager.withPlugin("java") {
     configure<JavaPluginExtension> {
-      toolchain { languageVersion.set(libs.versions.jdk.map(JavaLanguageVersion::of)) }
+      toolchain {
+        languageVersion.set(libs.versions.jdk.map(JavaLanguageVersion::of))
+        vendor.set(JvmVendorSpec.ADOPTIUM)
+      }
     }
     tasks.withType<JavaCompile>().configureEach {
       options.release.set(libs.versions.jvmTarget.map(String::toInt))
