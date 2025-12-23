@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1766471799989,
+  "lastUpdate": 1766471800935,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup (baseline)": [
@@ -270,6 +270,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "current",
             "value": 0.21719329423978614,
+            "unit": "ms/op",
+            "extra": "iterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "pandanomic@gmail.com",
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8711758ca2b90225adc67a9e4a69f7233406bdb6",
+          "message": "Introduce `@ComptimeOnly` + stub binds in origin (#1582)",
+          "timestamp": "2025-12-23T00:49:13-05:00",
+          "tree_id": "58d3288d0a85a46fca25500d2943e213c5498f63",
+          "url": "https://github.com/ZacSweers/metro/commit/8711758ca2b90225adc67a9e4a69f7233406bdb6"
+        },
+        "date": 1766471800536,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "current",
+            "value": 0.24110175399997608,
             "unit": "ms/op",
             "extra": "iterations: 10\nforks: 2\nthreads: 1"
           }
