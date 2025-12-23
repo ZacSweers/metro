@@ -95,6 +95,24 @@ jobs:
           "
           echo "json_path=/tmp/benchmark-baseline/baseline.json" >> $GITHUB_OUTPUT
 
+          # Extract binary metrics from class-metrics.json
+          class_metrics=$(find benchmark/startup-benchmark-results -name "class-metrics.json" 2>/dev/null | head -1)
+          if [ -n "$class_metrics" ] && [ -f "$class_metrics" ]; then
+            cp "$class_metrics" /tmp/benchmark-baseline/class-metrics.json
+            fields=$(python3 -c "import json; data=json.load(open('$class_metrics')); print(data.get('fields', 0))")
+            methods=$(python3 -c "import json; data=json.load(open('$class_metrics')); print(data.get('methods', 0))")
+            size_bytes=$(python3 -c "import json; data=json.load(open('$class_metrics')); print(data.get('total_size_bytes', 0))")
+            size_kb=$(python3 -c "print(f'{$size_bytes / 1024:.1f}')")
+            echo "fields=$fields" >> $GITHUB_OUTPUT
+            echo "methods=$methods" >> $GITHUB_OUTPUT
+            echo "size_kb=$size_kb" >> $GITHUB_OUTPUT
+          else
+            echo "No class-metrics.json found, skipping binary metrics"
+            echo "fields=0" >> $GITHUB_OUTPUT
+            echo "methods=0" >> $GITHUB_OUTPUT
+            echo "size_kb=0" >> $GITHUB_OUTPUT
+          fi
+
       # Run current benchmark
       - name: Checkout current (${{ steps.refs.outputs.current_name }})
         run: git checkout ${{ steps.refs.outputs.current_ref }}
@@ -135,6 +153,24 @@ jobs:
           "
           echo "json_path=/tmp/benchmark-current/current.json" >> $GITHUB_OUTPUT
 
+          # Extract binary metrics from class-metrics.json
+          class_metrics=$(find benchmark/startup-benchmark-results -name "class-metrics.json" 2>/dev/null | head -1)
+          if [ -n "$class_metrics" ] && [ -f "$class_metrics" ]; then
+            cp "$class_metrics" /tmp/benchmark-current/class-metrics.json
+            fields=$(python3 -c "import json; data=json.load(open('$class_metrics')); print(data.get('fields', 0))")
+            methods=$(python3 -c "import json; data=json.load(open('$class_metrics')); print(data.get('methods', 0))")
+            size_bytes=$(python3 -c "import json; data=json.load(open('$class_metrics')); print(data.get('total_size_bytes', 0))")
+            size_kb=$(python3 -c "print(f'{$size_bytes / 1024:.1f}')")
+            echo "fields=$fields" >> $GITHUB_OUTPUT
+            echo "methods=$methods" >> $GITHUB_OUTPUT
+            echo "size_kb=$size_kb" >> $GITHUB_OUTPUT
+          else
+            echo "No class-metrics.json found, skipping binary metrics"
+            echo "fields=0" >> $GITHUB_OUTPUT
+            echo "methods=0" >> $GITHUB_OUTPUT
+            echo "size_kb=0" >> $GITHUB_OUTPUT
+          fi
+
       - name: Calculate delta and check regression
         id: compare
         run: |
@@ -161,6 +197,14 @@ jobs:
           delta_pct=${{ steps.compare.outputs.delta_pct }}
           is_regression=${{ steps.compare.outputs.is_regression }}
 
+          # Binary metrics
+          baseline_fields=${{ steps.baseline.outputs.fields }}
+          baseline_methods=${{ steps.baseline.outputs.methods }}
+          baseline_size_kb=${{ steps.baseline.outputs.size_kb }}
+          current_fields=${{ steps.current.outputs.fields }}
+          current_methods=${{ steps.current.outputs.methods }}
+          current_size_kb=${{ steps.current.outputs.size_kb }}
+
           echo "## Multiplatform Startup Benchmark" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
@@ -175,6 +219,32 @@ jobs:
           echo "| ${{ steps.refs.outputs.current_name }} (current) | ${current_score} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Delta** | **${delta_pct}%** |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Add binary metrics table if we have data
+          if [[ "$baseline_fields" != "0" ]] || [[ "$current_fields" != "0" ]]; then
+            # Calculate deltas for binary metrics
+            fields_delta=$((current_fields - baseline_fields))
+            methods_delta=$((current_methods - baseline_methods))
+            size_delta=$(python3 -c "print(f'{$current_size_kb - $baseline_size_kb:.1f}')")
+
+            # Format with sign
+            fields_sign=""
+            if [ "$fields_delta" -gt 0 ]; then fields_sign="+"; fi
+            methods_sign=""
+            if [ "$methods_delta" -gt 0 ]; then methods_sign="+"; fi
+            size_sign=""
+            if (( $(echo "$current_size_kb > $baseline_size_kb" | bc -l) )); then size_sign="+"; fi
+
+            echo "### Binary Metrics (Pre-Minification)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "| Metric | Baseline | Current | Delta |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|----------|---------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| Fields | ${baseline_fields} | ${current_fields} | ${fields_sign}${fields_delta} |" >> $GITHUB_STEP_SUMMARY
+            echo "| Methods | ${baseline_methods} | ${current_methods} | ${methods_sign}${methods_delta} |" >> $GITHUB_STEP_SUMMARY
+            echo "| Size (KB) | ${baseline_size_kb} | ${current_size_kb} | ${size_sign}${size_delta} |" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+
           echo "_Both benchmarks run on the same machine. The delta accounts for hardware variance._" >> $GITHUB_STEP_SUMMARY
 
       - name: Comment on PR if regression
@@ -182,6 +252,31 @@ jobs:
         uses: actions/github-script@v8
         with:
           script: |
+            const baselineFields = '${{ steps.baseline.outputs.fields }}';
+            const currentFields = '${{ steps.current.outputs.fields }}';
+            const baselineMethods = '${{ steps.baseline.outputs.methods }}';
+            const currentMethods = '${{ steps.current.outputs.methods }}';
+            const baselineSize = '${{ steps.baseline.outputs.size_kb }}';
+            const currentSize = '${{ steps.current.outputs.size_kb }}';
+
+            let binaryMetrics = '';
+            if (baselineFields !== '0' || currentFields !== '0') {
+              const fieldsDelta = parseInt(currentFields) - parseInt(baselineFields);
+              const methodsDelta = parseInt(currentMethods) - parseInt(baselineMethods);
+              const sizeDelta = (parseFloat(currentSize) - parseFloat(baselineSize)).toFixed(1);
+              const formatDelta = (d) => d > 0 ? `+${d}` : `${d}`;
+
+              binaryMetrics = `
+            ### Binary Metrics (Pre-Minification)
+
+            | Metric | Baseline | Current | Delta |
+            |--------|----------|---------|-------|
+            | Fields | ${baselineFields} | ${currentFields} | ${formatDelta(fieldsDelta)} |
+            | Methods | ${baselineMethods} | ${currentMethods} | ${formatDelta(methodsDelta)} |
+            | Size (KB) | ${baselineSize} | ${currentSize} | ${formatDelta(sizeDelta)} |
+            `;
+            }
+
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
@@ -193,7 +288,7 @@ jobs:
             | main (baseline) | ${{ steps.baseline.outputs.score }} |
             | This PR (current) | ${{ steps.current.outputs.score }} |
             | **Delta** | **${{ steps.compare.outputs.delta_pct }}%** |
-
+            ${binaryMetrics}
             The startup benchmark shows a >5% regression. Please investigate.
 
             _Both benchmarks were run on the same machine to ensure a fair comparison._`
@@ -269,7 +364,7 @@ jobs:
       - name: Run baseline build benchmark
         run: |
           cd benchmark
-          ./run_benchmarks.sh single --ref HEAD --modes metro 500
+          ./run_benchmarks.sh single --ref HEAD --modes metro --scenarios abi_change,raw_compilation 500
 
       - name: Save baseline results
         id: baseline
@@ -317,7 +412,7 @@ jobs:
         run: |
           cd benchmark
           rm -rf benchmark-results
-          ./run_benchmarks.sh single --ref HEAD --modes metro 500
+          ./run_benchmarks.sh single --ref HEAD --modes metro --scenarios abi_change,raw_compilation 500
 
       - name: Save current results
         id: current
