@@ -51,6 +51,7 @@ class Bar : Foo {
 @DependencyGraph
 interface BindsCycleGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @ComptimeOnly
   abstract class BindsMirror {
     private constructor() /* primary */ {
       super/*Any*/()
@@ -81,11 +82,6 @@ interface BindsCycleGraph {
       return <this>.#barProvider.invoke()
     }
 
-    @Binds
-    override fun foo(bar: Bar): Foo {
-      return error(message = "Never called")
-    }
-
   }
 
   companion object Companion {
@@ -105,7 +101,10 @@ interface BindsCycleGraph {
   abstract fun bar(): Bar
 
   @Binds
-  abstract fun foo(bar: Bar): Foo
+  @ComptimeOnly
+  abstract fun foo(bar: Bar): Foo {
+    return error(message = "Never called")
+  }
 
 }
 

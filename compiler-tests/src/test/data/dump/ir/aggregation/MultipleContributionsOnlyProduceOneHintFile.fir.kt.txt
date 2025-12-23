@@ -48,6 +48,7 @@ class Base1Impl : Base1, Base2, Base3 {
   @MetroContribution(scope = AppScope::class)
   interface MetroContributionToAppScope {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @ComptimeOnly
     abstract class BindsMirror {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -73,14 +74,23 @@ class Base1Impl : Base1, Base2, Base3 {
 
     @IntoSet
     @Binds
-    abstract fun bindIntoSetAsBase2(instance: Base1Impl): Base2
+    @ComptimeOnly
+    abstract fun bindIntoSetAsBase2(instance: Base1Impl): Base2 {
+      return error(message = "Never called")
+    }
 
     @IntoSet
     @Binds
-    abstract fun bindIntoSetAsBase3(instance: Base1Impl): Base3
+    @ComptimeOnly
+    abstract fun bindIntoSetAsBase3(instance: Base1Impl): Base3 {
+      return error(message = "Never called")
+    }
 
     @Binds
-    abstract fun bindsAsBase1(instance: Base1Impl): Base1
+    @ComptimeOnly
+    abstract fun bindsAsBase1(instance: Base1Impl): Base1 {
+      return error(message = "Never called")
+    }
 
   }
 
@@ -106,23 +116,6 @@ interface ExampleGraph : MetroContributionToAppScope {
       super/*Any*/()
       /* <init>() */
 
-    }
-
-    @IntoSet
-    @Binds
-    override fun bindIntoSetAsBase2(instance: Base1Impl): Base2 {
-      return error(message = "Never called")
-    }
-
-    @IntoSet
-    @Binds
-    override fun bindIntoSetAsBase3(instance: Base1Impl): Base3 {
-      return error(message = "Never called")
-    }
-
-    @Binds
-    override fun bindsAsBase1(instance: Base1Impl): Base1 {
-      return error(message = "Never called")
     }
 
     override val cacheHolders: Set<Base2>

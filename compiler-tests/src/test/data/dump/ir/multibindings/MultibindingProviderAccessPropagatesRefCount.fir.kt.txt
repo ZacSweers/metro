@@ -337,6 +337,7 @@ class XImpl : X {
 @DependencyGraph
 interface TestGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @ComptimeOnly
   abstract class BindsMirror {
     private constructor() /* primary */ {
       super/*Any*/()
@@ -377,31 +378,6 @@ interface TestGraph {
       super/*Any*/()
       /* <init>() */
 
-    }
-
-    @Binds
-    @IntoSet
-    override fun A.bindA(): A {
-      return error(message = "Never called")
-    }
-
-    @Binds
-    @IntoMap
-    @IntKey(value = 1)
-    override fun B.bindB(): B {
-      return error(message = "Never called")
-    }
-
-    @Binds
-    @IntoMap
-    @IntKey(value = 1)
-    override fun C.bindC(): C {
-      return error(message = "Never called")
-    }
-
-    @Binds
-    override fun XImpl.bindX(): X {
-      return error(message = "Never called")
     }
 
     override val mapConsumer: MapConsumer
@@ -463,20 +439,32 @@ interface TestGraph {
 
   @Binds
   @IntoSet
-  abstract fun A.bindA(): A
+  @ComptimeOnly
+  abstract fun A.bindA(): A {
+    return error(message = "Never called")
+  }
 
   @Binds
   @IntoMap
   @IntKey(value = 1)
-  abstract fun B.bindB(): B
+  @ComptimeOnly
+  abstract fun B.bindB(): B {
+    return error(message = "Never called")
+  }
 
   @Binds
   @IntoMap
   @IntKey(value = 1)
-  abstract fun C.bindC(): C
+  @ComptimeOnly
+  abstract fun C.bindC(): C {
+    return error(message = "Never called")
+  }
 
   @Binds
-  abstract fun XImpl.bindX(): X
+  @ComptimeOnly
+  abstract fun XImpl.bindX(): X {
+    return error(message = "Never called")
+  }
 
   abstract val mapConsumer: MapConsumer
     abstract get

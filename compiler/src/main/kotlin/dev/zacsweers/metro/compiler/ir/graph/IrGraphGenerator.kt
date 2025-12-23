@@ -33,7 +33,6 @@ import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
-import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toProto
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
@@ -867,23 +866,12 @@ internal class IrGraphGenerator(
       }
     }
 
-    // Implement no-op bodies for Binds providers
-    // Note we can't source this from the node.bindsCallables as those are pointed at their original
-    // declarations and we need to implement their fake overrides here
-    bindsFunctions.forEach { function ->
-      val irFunction = function.ir
-      irFunction.apply {
-        val declarationToFinalize = propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
-        if (declarationToFinalize.isFakeOverride) {
-          declarationToFinalize.finalizeFakeOverride(graphClass.thisReceiverOrFail)
-        }
-        body = stubExpressionBody()
-      }
-    }
+    // Binds stub bodies are implemented in BindsMirrorClassTransformer on the original
+    // declarations,
+    // so we don't need to implement fake overrides here
 
     // Implement bodies for contributed graphs
     // Sort by keys when generating so they have deterministic ordering
-    // TODO make the value types something more strongly typed
     for ((typeKey, functions) in graphExtensions) {
       for (extensionAccessor in functions) {
         val function = extensionAccessor.accessor
