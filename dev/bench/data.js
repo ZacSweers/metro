@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1766457706806,
+  "lastUpdate": 1766457707748,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup (baseline)": [
@@ -150,6 +150,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "current",
             "value": 0.22516799708731344,
+            "unit": "ms/op",
+            "extra": "iterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "6785522+JoelWilcox@users.noreply.github.com",
+            "name": "Joel Wilcox",
+            "username": "JoelWilcox"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f7facf8a2a2cc119333ebefb548728736c5a9472",
+          "message": "Fix rank-based binding replacements getting dropped for multi-contribution classes in root graphs (#1583)",
+          "timestamp": "2025-12-22T20:40:51-05:00",
+          "tree_id": "d71d835af62a9fbc6fe7efa301b99a18c6bda77e",
+          "url": "https://github.com/ZacSweers/metro/commit/f7facf8a2a2cc119333ebefb548728736c5a9472"
+        },
+        "date": 1766457707347,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "current",
+            "value": 0.21884228058965824,
             "unit": "ms/op",
             "extra": "iterations: 10\nforks: 2\nthreads: 1"
           }
