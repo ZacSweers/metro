@@ -14,6 +14,7 @@ Changelog
 ### Fixes
 
 - [FIR, Anvil Interop] Fix rank-based binding replacements getting dropped for multi-contribution classes in root graphs.
+- [FIR] Named annotation arguments in different order from declared parameters getting silently skipped.
 
 0.9.2
 -----
