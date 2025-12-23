@@ -988,6 +988,9 @@ $subcomponentAccessors
 @Retention(AnnotationRetention.RUNTIME)
 annotation class ${className}Scope
 """
+
+      BuildMode.METRO_NOOP,
+      BuildMode.VANILLA -> error("Should have returned early for $buildMode")
     }.trimIndent()
   }
 
