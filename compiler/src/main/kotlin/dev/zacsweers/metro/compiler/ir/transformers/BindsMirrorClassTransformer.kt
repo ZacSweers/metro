@@ -110,9 +110,7 @@ private fun transformBindingMirrorClass(parentClass: IrClass, mirrorClass: IrCla
         if (!isExternal && !metroFunction.annotations.isMultibinds) {
           declaration.apply {
             body = stubExpressionBody()
-            comptimeOnlyConstructor?.let { ctor ->
-              annotations += buildAnnotation(symbol, ctor)
-            }
+            comptimeOnlyConstructor?.let { ctor -> annotations += buildAnnotation(symbol, ctor) }
           }
         }
 

@@ -866,7 +866,8 @@ internal class IrGraphGenerator(
       }
     }
 
-    // Binds stub bodies are implemented in BindsMirrorClassTransformer on the original declarations,
+    // Binds stub bodies are implemented in BindsMirrorClassTransformer on the original
+    // declarations,
     // so we don't need to implement fake overrides here
 
     // Implement bodies for contributed graphs
