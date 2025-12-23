@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1766472896624,
+  "lastUpdate": 1766472897735,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup (baseline)": [
@@ -330,6 +330,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "current",
             "value": 0.24110175399997608,
+            "unit": "ms/op",
+            "extra": "iterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "pandanomic@gmail.com",
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c2dccf402b371ef049b0f82423b24b1dd0c3d12c",
+          "message": "Move accesors to be contributed (#1585)",
+          "timestamp": "2025-12-23T06:06:25Z",
+          "tree_id": "d3d71babb2bee60100e3117d7ce094ee136db2f6",
+          "url": "https://github.com/ZacSweers/metro/commit/c2dccf402b371ef049b0f82423b24b1dd0c3d12c"
+        },
+        "date": 1766472897324,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "current",
+            "value": 0.21373754082798674,
             "unit": "ms/op",
             "extra": "iterations: 10\nforks: 2\nthreads: 1"
           }
