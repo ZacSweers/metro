@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1766457707748,
+  "lastUpdate": 1766468794816,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup (baseline)": [
@@ -88,6 +88,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "baseline",
             "value": 0.2123365498716701,
+            "unit": "ms/op",
+            "extra": "iterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "pandanomic@gmail.com",
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "535463d0bf8fae52826f81c8c34b5bbb3b43b2f8",
+          "message": "More benchmark work (#1581)",
+          "timestamp": "2025-12-22T23:59:38-05:00",
+          "tree_id": "9b9a9e58afad23d3be528a522e6743ed3d7d3af1",
+          "url": "https://github.com/ZacSweers/metro/commit/535463d0bf8fae52826f81c8c34b5bbb3b43b2f8"
+        },
+        "date": 1766468792662,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "baseline",
+            "value": 0.21225396033386904,
             "unit": "ms/op",
             "extra": "iterations: 10\nforks: 2\nthreads: 1"
           }
