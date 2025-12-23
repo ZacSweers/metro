@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.castAll
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.argumentAsOrNull
@@ -30,8 +31,6 @@ import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.platform.jvm.isJvm
-import org.jetbrains.kotlin.utils.addToStdlib.UnsafeCastFunction
-import org.jetbrains.kotlin.utils.addToStdlib.castAll
 
 /**
  * IrClass#annotations does not expose generated .Container annotations which house repeated
@@ -74,7 +73,6 @@ internal object Fir2IrInterop {
         .map { it.rawType().parentAsClass }
         .distinctBy { it.classIdOrFail }
 
-    @OptIn(UnsafeCastFunction::class)
     val firContributions =
       irContributions
         .filter { it.isExternalParent && it is Fir2IrLazyClass }

@@ -302,3 +302,9 @@ internal fun <K, V> MutableMap<K, MutableSet<V>>.getAndAdd(key: K, value: V): Mu
 internal fun <K, V> MutableMap<K, MutableSet<V>>.getOrInit(key: K): MutableSet<V> {
   return getOrPut(key, ::mutableSetOf)
 }
+
+internal inline fun <reified T> List<*>.castAll(): List<T> {
+  for (element in this) element as T
+  @Suppress("UNCHECKED_CAST")
+  return this as List<T>
+}
