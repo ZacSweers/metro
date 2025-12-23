@@ -187,6 +187,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       runTest("compiler-tests/src/test/data/box/aggregation/ScopedContributedBindingCanBeAccessedFromChildWithClassHintsEnabled.kt");
     }
 
+  @Test
+  @TestMetadata("ContributesBindingScopeArgumentOrder.kt")
+  public void testContributesBindingScopeArgumentOrder() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ContributesBindingScopeArgumentOrder.kt");
+  }
+
     @Nested
     @TestMetadata("compiler-tests/src/test/data/box/aggregation/interop")
     @TestDataPath("$PROJECT_ROOT")

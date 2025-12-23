@@ -89,6 +89,7 @@ interface AppGraph {
 @Module
 interface Bindings {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @ComptimeOnly
   abstract class BindsMirror {
     private constructor() /* primary */ {
       super/*Any*/()
@@ -103,7 +104,10 @@ interface Bindings {
   }
 
   @BindsOptionalOf
-  abstract fun string(): String
+  @ComptimeOnly
+  abstract fun string(): String {
+    return error(message = "Never called")
+  }
 
 }
 

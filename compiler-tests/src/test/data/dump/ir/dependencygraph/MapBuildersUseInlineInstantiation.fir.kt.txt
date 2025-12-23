@@ -34,6 +34,7 @@ class IntHolderImpl : IntHolder {
   @MetroContribution(scope = AppScope::class)
   interface MetroContributionToAppScope {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @ComptimeOnly
     abstract class BindsMirror {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -52,7 +53,10 @@ class IntHolderImpl : IntHolder {
     @IntoMap
     @Binds
     @IntKey(value = 3)
-    abstract fun bindIntoMapAsIntHolder4013004651(instance: IntHolderImpl): IntHolder
+    @ComptimeOnly
+    abstract fun bindIntoMapAsIntHolder4013004651(instance: IntHolderImpl): IntHolder {
+      return error(message = "Never called")
+    }
 
   }
 
@@ -76,13 +80,6 @@ interface AppGraph : MetroContributionToAppScope {
       super/*Any*/()
       /* <init>() */
 
-    }
-
-    @IntoMap
-    @Binds
-    @IntKey(value = 3)
-    override fun bindIntoMapAsIntHolder4013004651(instance: IntHolderImpl): IntHolder {
-      return error(message = "Never called")
     }
 
     override val intHolder: Map<Int, IntHolder>

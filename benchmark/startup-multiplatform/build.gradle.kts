@@ -11,7 +11,8 @@ plugins {
 // Required for JMH on JVM - make benchmark classes open
 allOpen { annotation("org.openjdk.jmh.annotations.State") }
 
-// Configurable native targets (default to macOS for local dev)
+// Configurable native targets
+val enableMacos = providers.gradleProperty("benchmark.native.macos").orNull.toBoolean()
 val enableLinux = providers.gradleProperty("benchmark.native.linux").orNull.toBoolean()
 val enableWindows = providers.gradleProperty("benchmark.native.windows").orNull.toBoolean()
 
@@ -22,13 +23,14 @@ kotlin {
 
   @OptIn(ExperimentalWasmDsl::class) wasmJs { nodejs() }
 
-  // macOS (default for local dev)
-  macosArm64()
-  macosX64()
-
-  // Linux/Windows (CI)
-  if (enableLinux) linuxX64()
-  if (enableWindows) mingwX64()
+  if (enableMacos) {
+    macosArm64()
+    macosX64()
+  } else if (enableLinux) {
+    linuxX64()
+  } else if (enableWindows) {
+    mingwX64()
+  }
 
   sourceSets {
     commonMain {

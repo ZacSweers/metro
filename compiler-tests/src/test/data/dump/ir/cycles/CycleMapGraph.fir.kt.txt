@@ -106,6 +106,7 @@ class Y {
 @DependencyGraph
 interface CycleMapGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @ComptimeOnly
   abstract class BindsMirror {
     private constructor() /* primary */ {
       super/*Any*/()
@@ -162,22 +163,6 @@ interface CycleMapGraph {
         }
       }
 
-    @Binds
-    @IntoMap
-    @StringKey(value = "X")
-    override val X.x: X
-      override get(): X {
-        return error(message = "Never called")
-      }
-
-    @Binds
-    @IntoMap
-    @StringKey(value = "Y")
-    override val Y.y: Y
-      override get(): Y {
-        return error(message = "Never called")
-      }
-
   }
 
   companion object Companion {
@@ -200,12 +185,14 @@ interface CycleMapGraph {
   @IntoMap
   @StringKey(value = "X")
   abstract val X.x: X
+    @ComptimeOnly
     abstract get
 
   @Binds
   @IntoMap
   @StringKey(value = "Y")
   abstract val Y.y: Y
+    @ComptimeOnly
     abstract get
 
 }

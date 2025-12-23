@@ -30,6 +30,8 @@ SINGLE_REF=""
 COMPARE_REF1=""
 COMPARE_REF2=""
 COMPARE_MODES="$STANDARD_MODES"
+# Scenarios filter (empty = all default scenarios for the mode)
+SCENARIOS_FILTER=""
 ORIGINAL_GIT_REF=""
 ORIGINAL_GIT_IS_BRANCH=false
 # Whether to re-run non-metro modes in ref2 (default: false to save time)
@@ -254,35 +256,52 @@ run_scenarios() {
     fi
 
     # Build scenario list based on mode
-    # All modes use the same ABI change scenario - only the underlying project differs
-    local scenarios=("abi_change")
+    local scenarios=()
 
-    # Common scenarios for all modes
-    scenarios+=(
-        "non_abi_change"
-        "plain_abi_change"
-        "plain_non_abi_change"
-    )
-
-    # Select appropriate raw compilation scenario based on mode
-    # - Metro/Vanilla/Metro-NOOP: Pure compiler plugin, just --rerun-tasks
-    # - kotlin-inject-anvil: KSP generates Kotlin, needs --rerun-tasks -a
-    # - Dagger: Generates Java, needs classes task with --rerun-tasks -a
+    # Determine the raw compilation variant for this mode
+    local raw_compilation_variant
     case "$mode_name" in
         metro|vanilla|metro_noop)
-            scenarios+=("raw_compilation")
+            raw_compilation_variant="raw_compilation"
             ;;
         kotlin_inject_anvil)
-            scenarios+=("raw_compilation_ksp")
+            raw_compilation_variant="raw_compilation_ksp"
             ;;
         dagger_ksp|dagger_kapt)
-            scenarios+=("raw_compilation_java")
+            raw_compilation_variant="raw_compilation_java"
             ;;
     esac
 
-    # Add clean build scenario if requested
-    if [ "$include_clean_builds" = true ]; then
-        scenarios+=("clean_build")
+    # If SCENARIOS_FILTER is set, only run those scenarios
+    if [ -n "$SCENARIOS_FILTER" ]; then
+        IFS=',' read -ra REQUESTED_SCENARIOS <<< "$SCENARIOS_FILTER"
+        for scenario in "${REQUESTED_SCENARIOS[@]}"; do
+            # Map "raw_compilation" to the mode-appropriate variant
+            if [ "$scenario" = "raw_compilation" ]; then
+                scenarios+=("$raw_compilation_variant")
+            else
+                scenarios+=("$scenario")
+            fi
+        done
+    else
+        # Default: all scenarios
+        # All modes use the same ABI change scenario - only the underlying project differs
+        scenarios=("abi_change")
+
+        # Common scenarios for all modes
+        scenarios+=(
+            "non_abi_change"
+            "plain_abi_change"
+            "plain_non_abi_change"
+        )
+
+        # Add the appropriate raw compilation scenario
+        scenarios+=("$raw_compilation_variant")
+
+        # Add clean build scenario if requested
+        if [ "$include_clean_builds" = true ]; then
+            scenarios+=("clean_build")
+        fi
     fi
 
     # Create mode-specific results directory to avoid overwrites
@@ -400,6 +419,10 @@ show_usage() {
     echo "                               Available: metro, vanilla, metro-noop, dagger-ksp, dagger-kapt, kotlin-inject-anvil, all"
     echo "                               Default: metro,dagger-ksp,dagger-kapt,kotlin-inject-anvil"
     echo "                               Use 'all' to run all standard modes (add --include-baselines for vanilla/metro-noop)"
+    echo "  --scenarios <list>           Comma-separated list of scenarios to run"
+    echo "                               Available: abi_change, non_abi_change, plain_abi_change, plain_non_abi_change, raw_compilation, clean_build"
+    echo "                               Default: all scenarios (except clean_build unless --include-clean-builds)"
+    echo "                               Use 'raw_compilation' to auto-select the right variant for each mode"
     echo ""
     echo "Compare-specific Options:"
     echo "  --ref1 <ref>                 First ref (baseline) - git ref or Metro version"
@@ -1596,6 +1619,10 @@ main() {
                 ;;
             --modes)
                 COMPARE_MODES="$2"
+                shift 2
+                ;;
+            --scenarios)
+                SCENARIOS_FILTER="$2"
                 shift 2
                 ;;
             --rerun-non-metro)

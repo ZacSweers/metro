@@ -129,7 +129,9 @@ jetbrains-lifecycle-viewmodel-compose = "org.jetbrains.androidx.lifecycle:lifecy
 jetbrains-lifecycle-viewmodel-navigation3 = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-navigation3", version.ref = "jetbrains-lifecycle-navigation3" }
 jetbrains-navigation3-ui = { module = "org.jetbrains.androidx.navigation3:navigation3-ui", version.ref = "jetbrains-navigation3" }
 
+kotlinInject-anvil-compiler = { module = "software.amazon.lastmile.kotlin.inject.anvil:compiler", version.ref = "kotlinInject-anvil" }
 kotlinInject-anvil-runtime = { module = "software.amazon.lastmile.kotlin.inject.anvil:runtime", version.ref = "kotlinInject-anvil" }
+kotlinInject-anvil-runtime-optional = { module = "software.amazon.lastmile.kotlin.inject.anvil:runtime-optional", version.ref = "kotlinInject-anvil" }
 kotlinInject-compiler = { module = "me.tatarka.inject:kotlin-inject-compiler-ksp", version.ref = "kotlinInject" }
 kotlinInject-runtime = { module = "me.tatarka.inject:kotlin-inject-runtime", version.ref = "kotlinInject" }
 
@@ -170,6 +172,8 @@ okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
 picnic = "com.jakewharton.picnic:picnic:0.7.0"
 
 poko-annotations = { module = "dev.drewhamilton.poko:poko-annotations", version.ref = "poko" }
+
+r8 = "com.android.tools:r8:8.13.17"
 
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 

@@ -13,8 +13,8 @@ android {
     minSdk = 28
     testInstrumentationRunner = "androidx.benchmark.junit4.AndroidBenchmarkRunner"
 
-    // Suppress emulator warning for local development
-    testInstrumentationRunnerArguments["androidx.benchmark.suppressErrors"] = "EMULATOR"
+    // Suppress emulator warning for quick testing but not actual benchmark measurements
+    testInstrumentationRunnerArguments["androidx.benchmark.suppressErrors"] = "SIMPLEPERF,EMULATOR"
   }
 
   buildTypes {

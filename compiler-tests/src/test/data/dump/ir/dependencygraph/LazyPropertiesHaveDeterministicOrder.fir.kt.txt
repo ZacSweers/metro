@@ -1,6 +1,7 @@
 @DependencyGraph
 interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @ComptimeOnly
   abstract class BindsMirror {
     private constructor() /* primary */ {
       super/*Any*/()
@@ -25,12 +26,6 @@ interface AppGraph {
       super/*Any*/()
       /* <init>() */
 
-    }
-
-    @Binds
-    @IntoSet
-    override fun Int.bindInt(): Int {
-      return error(message = "Never called")
     }
 
     override val doubleSet: Set<Double>
@@ -202,7 +197,10 @@ interface AppGraph {
 
   @Binds
   @IntoSet
-  abstract fun Int.bindInt(): Int
+  @ComptimeOnly
+  abstract fun Int.bindInt(): Int {
+    return error(message = "Never called")
+  }
 
   @Provides
   @IntoSet

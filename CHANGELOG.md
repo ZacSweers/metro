@@ -9,11 +9,13 @@ Changelog
 ### Enhancements
 
 - [FIR] Add diagnostic for multiple graph-like annotations on a single declaration.
+- [IR] Stub `@Binds` expressions in origin points rather than graphs. This reduces unnecessary extra generated functions.
 
 ### Fixes
 
 - [FIR, Anvil Interop] Fix rank-based binding replacements getting dropped for multi-contribution classes in root graphs.
 - [IR, Anvil Interop] Fix rank-based binding replacements getting dropped for multi-contribution classes in graph extensions.
+- [FIR] Named annotation arguments in different order from declared parameters getting silently skipped.
 
 0.9.2
 -----

@@ -43,18 +43,27 @@ if (metroVersion.isNullOrEmpty()) {
 val generatedProjects = file("generated-projects.txt")
 
 if (generatedProjects.exists()) {
+  var isMultiplatform = false
+  for (line in generatedProjects.readLines()) {
+    // Skip blank lines and comments
+    if (line.startsWith('#')) {
+      if (line.startsWith("# multiplatform: ")) {
+        isMultiplatform = line.removePrefix("# multiplatform: ").toBoolean()
+      }
+      continue
+    }
+    if (line.isBlank()) continue
+    include(line)
+  }
   // Static startup benchmark modules
   include(":startup-jvm")
   include(":startup-jvm:minified-jar")
   include(":startup-jvm-minified")
-  include(":startup-multiplatform")
   include(":startup-android:app")
   include(":startup-android:benchmark")
   include(":startup-android:microbenchmark")
-
-  for (p in generatedProjects.readLines()) {
-    if (p.isBlank()) continue
-    include(p)
+  if (isMultiplatform) {
+    include(":startup-multiplatform")
   }
 }
 

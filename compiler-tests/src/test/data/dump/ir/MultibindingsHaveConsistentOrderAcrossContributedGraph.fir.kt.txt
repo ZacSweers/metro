@@ -93,6 +93,7 @@ class TaskImpl4 : Task {
 @DependencyGraph(scope = AppScope::class)
 interface ExampleGraph : MetroContributionToAppScope {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @ComptimeOnly
   abstract class BindsMirror {
     private constructor() /* primary */ {
       super/*Any*/()
@@ -156,20 +157,6 @@ interface ExampleGraph : MetroContributionToAppScope {
     override fun createLoggedInGraph(): LoggedInGraph {
       return <this>.LoggedInGraphImpl()
     }
-
-    @IntoSet
-    @Binds
-    override val TaskImpl2.bind: Task
-      override get(): Task {
-        return error(message = "Never called")
-      }
-
-    @IntoSet
-    @Binds
-    override val TaskImpl1.bind: Task
-      override get(): Task {
-        return error(message = "Never called")
-      }
 
     private val setOfTask: Set<Task>
       private get(): Set<Task> {
@@ -294,11 +281,13 @@ interface ExampleGraph : MetroContributionToAppScope {
   @IntoSet
   @Binds
   abstract val TaskImpl2.bind: Task
+    @ComptimeOnly
     abstract get
 
   @IntoSet
   @Binds
   abstract val TaskImpl1.bind: Task
+    @ComptimeOnly
     abstract get
 
   abstract val tasks: Set<Task>
