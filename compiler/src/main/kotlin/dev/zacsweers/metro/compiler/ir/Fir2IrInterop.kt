@@ -1,3 +1,5 @@
+// Copyright (C) 2025 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
@@ -66,14 +68,22 @@ internal object Fir2IrInterop {
 
     val pendingRankReplacements = mutableSetOf<ClassId>()
 
-    @OptIn(UnsafeCastFunction::class)
-    val firContributions =
+    val irContributions =
       contributions.values
         .flatten()
         .map { it.rawType().parentAsClass }
         .distinctBy { it.classIdOrFail }
+
+    @OptIn(UnsafeCastFunction::class)
+    val firContributions =
+      irContributions
         .filter { it.isExternalParent && it is Fir2IrLazyClass }
         .castAll<Fir2IrLazyClass>()
+
+    // If any contributions already got filtered out, we should fall back to the IR handling to
+    // ensure no new regressions or missed bindings. E.g. bindings included in the merging module.
+    // See [ContributedGraphsSupportRankings] for a related test case to this
+    if (firContributions.size != irContributions.size) return null
 
     val rankedBindings =
       firContributions.flatMap { contributingType ->
