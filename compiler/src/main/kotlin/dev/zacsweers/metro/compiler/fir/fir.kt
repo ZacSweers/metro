@@ -1147,16 +1147,6 @@ internal fun <T : Any> FirAnnotation.argumentAsOrNull(klass: Class<T>, name: Nam
 
   val argByIndex = arguments.getOrNull(index)
 
-  // Check if the index is present but under a different name
-  if (argByIndex != null && argumentMapping.mapping.isNotEmpty()) {
-    for ((argName, arg) in argumentMapping.mapping) {
-      if (arg == argByIndex && argName != name) {
-        // Different name than expected, bounce out
-        return null
-      }
-    }
-  }
-
   val thoroughMapping =
     argumentMapping.mapping.ifEmpty {
       // These may not be present but are present in arguments
@@ -1170,9 +1160,6 @@ internal fun <T : Any> FirAnnotation.argumentAsOrNull(klass: Class<T>, name: Nam
             } else {
               null
             }
-          } else if (arg == argByIndex) {
-            // Different name than expected, bounce out
-            return null
           }
           put(arg.name, arg)
         }
