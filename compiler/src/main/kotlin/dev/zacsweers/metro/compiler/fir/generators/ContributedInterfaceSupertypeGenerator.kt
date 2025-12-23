@@ -514,7 +514,7 @@ internal class ContributedInterfaceSupertypeGenerator(
         .mapNotNull { it.toClassSymbol(session)?.getContainingClassSymbol() }
         .flatMap { contributingType ->
           contributingType
-            .annotationsIn(session, session.classIds.contributesBindingAnnotations)
+            .annotationsIn(session, session.classIds.contributesBindingAnnotationsWithContainers)
             .mapNotNull { annotation ->
               val scope = annotation.resolvedScopeClassId(typeResolver) ?: return@mapNotNull null
               if (scope !in allScopes) return@mapNotNull null
