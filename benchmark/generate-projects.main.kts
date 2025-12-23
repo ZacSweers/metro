@@ -714,6 +714,27 @@ $subcomponentCode
         .trimIndent()
     }
 
+    // Generate accessor interface for this module's scoped bindings
+    val accessorBindings =
+      (1..module.contributionsCount).mapNotNull { index ->
+        val moduleRandom = Random(module.name.hashCode() + index)
+        when (moduleRandom.nextInt(3)) {
+          0 -> "${className}Service$index"
+          else -> null
+        }
+      }
+
+    val accessorInterface =
+      if (accessorBindings.isNotEmpty()) {
+        val accessors = accessorBindings.joinToString("\n") { "  fun get$it(): $it" }
+        """
+// Accessor interface to force generation of scoped bindings
+@ContributesTo($scopeParam)
+interface ${className}AccessorInterface {
+$accessors
+}"""
+      } else ""
+
     return """
 package $packageName
 
@@ -730,7 +751,7 @@ $scopeAnnotation
 ${if (buildMode == BuildMode.DAGGER) "" else "@Inject\n"}class ${className}Impl${if (buildMode == BuildMode.DAGGER) " @Inject constructor()" else ""} : ${className}Api
 
 $contributions
-
+$accessorInterface
 $subcomponent
 """
       .trimIndent()
@@ -992,49 +1013,6 @@ annotation class ${className}Scope
       BuildMode.METRO_NOOP,
       BuildMode.VANILLA -> error("Should have returned early for $buildMode")
     }.trimIndent()
-  }
-
-  fun generateAccessors(allModules: List<ModuleSpec>): String {
-    // METRO_NOOP and VANILLA don't need accessor interfaces (no DI)
-    if (buildMode == BuildMode.METRO_NOOP || buildMode == BuildMode.VANILLA) {
-      return ""
-    }
-
-    // Generate accessors for services that actually exist in each module
-    val scopedBindings =
-      allModules.flatMap { module ->
-        (1..module.contributionsCount).mapNotNull { index ->
-          // Use the same deterministic random logic as generateContribution
-          val moduleRandom = Random(module.name.hashCode() + index)
-          when (moduleRandom.nextInt(3)) {
-            0 -> "${module.name.toCamelCase()}Service$index" // binding contribution
-            else -> null // multibindings and other types don't need individual accessors
-          }
-        }
-      }
-
-    val scopeParam =
-      when (buildMode) {
-        BuildMode.METRO -> "AppScope::class"
-        BuildMode.METRO_NOOP,
-        BuildMode.VANILLA -> "" // No DI annotations
-        BuildMode.KOTLIN_INJECT_ANVIL -> "AppScope::class"
-        BuildMode.DAGGER -> "Unit::class"
-      }
-
-    // Group into chunks to avoid extremely long interfaces
-    return scopedBindings
-      .chunked(50)
-      .mapIndexed { chunkIndex, chunk ->
-        val accessors = chunk.joinToString("\n") { "  fun get$it(): $it" }
-        """
-// Accessor interface $chunkIndex to force generation of scoped bindings
-@ContributesTo($scopeParam)
-interface AccessorInterface$chunkIndex {
-$accessors
-}"""
-      }
-      .joinToString("\n\n")
   }
 
   fun generateFoundationModule(multiplatform: Boolean) {
@@ -1375,24 +1353,6 @@ application {
     srcDir.mkdirs()
 
     val sourceFile = File(srcDir, "AppComponent.kt")
-    // Generate imports for all the service classes that will have accessors
-    val serviceImports =
-      allModules
-        .flatMap { module ->
-          (1..module.contributionsCount).mapNotNull { index ->
-            val moduleRandom = Random(module.name.hashCode() + index)
-            when (moduleRandom.nextInt(3)) {
-              0 -> {
-                val packageName =
-                  "dev.zacsweers.metro.benchmark.${module.layer.path}.${module.name.replace("-", "")}"
-                val serviceName = "${module.name.toCamelCase()}Service$index"
-                "import $packageName.$serviceName"
-              }
-              else -> null
-            }
-          }
-        }
-        .joinToString("\n")
 
     // Provider import for modes that support it (Metro uses its own Provider, Dagger uses
     // javax.inject.Provider)
@@ -1476,10 +1436,7 @@ import dev.zacsweers.metro.ContributesTo
 import dev.zacsweers.metro.createGraph
 import dev.zacsweers.metro.benchmark.core.foundation.Plugin
 import dev.zacsweers.metro.benchmark.core.foundation.Initializer
-$${if (providerImport.isNotEmpty()) "$providerImport\n" else ""}$$serviceImports
-
-$${generateAccessors(allModules)}
-
+$${if (providerImport.isNotEmpty()) "$providerImport\n" else ""}
 @SingleIn(AppScope::class)
 @DependencyGraph(AppScope::class)
 interface AppComponent {
@@ -1548,9 +1505,6 @@ import software.amazon.lastmile.kotlin.inject.anvil.MergeComponent
 import software.amazon.lastmile.kotlin.inject.anvil.ContributesTo
 import dev.zacsweers.metro.benchmark.core.foundation.Plugin
 import dev.zacsweers.metro.benchmark.core.foundation.Initializer
-$$serviceImports
-
-$${generateAccessors(allModules)}
 
 @SingleIn(AppScope::class)
 @MergeComponent(AppScope::class)
@@ -1606,9 +1560,6 @@ import javax.inject.Singleton
 $${if (providerImport.isNotEmpty()) "$providerImport\n" else ""}import dagger.multibindings.Multibinds
 import dev.zacsweers.metro.benchmark.core.foundation.Plugin
 import dev.zacsweers.metro.benchmark.core.foundation.Initializer
-$$serviceImports
-
-$${generateAccessors(allModules)}
 
 @Singleton
 @MergeComponent(Unit::class)
