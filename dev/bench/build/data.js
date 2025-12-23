@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1766468797809,
+  "lastUpdate": 1766471801864,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time (baseline)": [
@@ -115,6 +115,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "Build Time (baseline)",
             "value": 17987.057999999997,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "pandanomic@gmail.com",
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8711758ca2b90225adc67a9e4a69f7233406bdb6",
+          "message": "Introduce `@ComptimeOnly` + stub binds in origin (#1582)",
+          "timestamp": "2025-12-23T00:49:13-05:00",
+          "tree_id": "58d3288d0a85a46fca25500d2943e213c5498f63",
+          "url": "https://github.com/ZacSweers/metro/commit/8711758ca2b90225adc67a9e4a69f7233406bdb6"
+        },
+        "date": 1766471801467,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time (baseline)",
+            "value": 16728.334,
             "unit": "ms"
           }
         ]
