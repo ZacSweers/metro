@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1766614669951,
+  "lastUpdate": 1766614670886,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup (baseline)": [
@@ -570,6 +570,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "current",
             "value": 0.2182053050133132,
+            "unit": "ms/op",
+            "extra": "iterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "pandanomic@gmail.com",
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "89537586f35d508ecae85320bdf5923ece0e77a0",
+          "message": "Clarify error (#1593)",
+          "timestamp": "2025-12-24T21:48:34Z",
+          "tree_id": "02bb2bab13d8a653d7891be83532e5e5d920cb6d",
+          "url": "https://github.com/ZacSweers/metro/commit/89537586f35d508ecae85320bdf5923ece0e77a0"
+        },
+        "date": 1766614670489,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "current",
+            "value": 0.21878684238503684,
             "unit": "ms/op",
             "extra": "iterations: 10\nforks: 2\nthreads: 1"
           }
