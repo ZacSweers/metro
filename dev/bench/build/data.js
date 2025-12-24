@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1766552804900,
+  "lastUpdate": 1766552805847,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time (baseline)": [
@@ -436,6 +436,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "Build Time (current)",
             "value": 17206.566,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "6785522+JoelWilcox@users.noreply.github.com",
+            "name": "Joel Wilcox",
+            "username": "JoelWilcox"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "73cda28d857b4d38c98f6b26c8d461c88ebf8be6",
+          "message": "Fix rank-based binding replacements getting dropped for multi-contribution classes in graph extensions (#1584)\n\nCo-authored-by: Zac Sweers <pandanomic@gmail.com>",
+          "timestamp": "2025-12-24T04:36:39Z",
+          "tree_id": "ff6c1d1d9327f622d4d3d72a3284d81c0622083f",
+          "url": "https://github.com/ZacSweers/metro/commit/73cda28d857b4d38c98f6b26c8d461c88ebf8be6"
+        },
+        "date": 1766552805440,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time (current)",
+            "value": 18086.546000000002,
             "unit": "ms"
           }
         ]
