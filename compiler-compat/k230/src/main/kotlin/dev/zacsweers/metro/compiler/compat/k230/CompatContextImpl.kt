@@ -1,6 +1,6 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-package dev.zacsweers.metro.compiler.compat.k230_beta1
+package dev.zacsweers.metro.compiler.compat.k230
 
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import org.jetbrains.kotlin.GeneratedDeclarationKey
@@ -248,7 +248,7 @@ public class CompatContextImpl : CompatContext {
   }
 
   public class Factory : CompatContext.Factory {
-    override val minVersion: String = "2.3.0-Beta1"
+    override val minVersion: String = "2.3.0"
 
     override fun create(): CompatContext = CompatContextImpl()
   }
