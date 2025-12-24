@@ -4,15 +4,17 @@ The Kotlin compiler plugin API is not a stable API, so not every version of Metr
 
 Starting with Metro `0.6.9`, Metro tries to support forward compatibility on a best-effort basis. Usually, it's `N+.2` (so a Metro version built against Kotlin `2.3.0` will try to support up to `2.3.20`.
 
+Pre-release versions are normally only tested during their development cycle. After their stable release, Metro should continue to work with them but they will no longer be tested against. Their last tested release is indicated by putting the version in brackets like `[0.9.1]`.
+
 | Kotlin version  | Metro versions (inclusive) | Notes                                |
 |-----------------|----------------------------|--------------------------------------|
 | 2.3.20-dev-5437 | 0.8.1 -                    |                                      |
 | 2.3.0           | 0.9.1 -                    | [1]                                  |
-| 2.3.0-RC3       | 0.6.9, 0.6.11 -            |                                      |
-| 2.3.0-RC2       | 0.6.9, 0.6.11 -            |                                      |
-| 2.3.0-RC        | 0.6.9, 0.6.11 -            | Reporting doesn't work until `0.7.3` |
-| 2.3.0-Beta2     | 0.6.9, 0.6.11 -            | Reporting doesn't work until `0.7.3` |
-| 2.3.0-Beta1     | 0.6.9, 0.6.11 -            |                                      |
+| 2.3.0-RC3       | 0.6.9, 0.6.11 - [0.9.2]    |                                      |
+| 2.3.0-RC2       | 0.6.9, 0.6.11 - [0.9.2]    |                                      |
+| 2.3.0-RC        | 0.6.9, 0.6.11 - [0.9.2]    | Reporting doesn't work until `0.7.3` |
+| 2.3.0-Beta2     | 0.6.9, 0.6.11 - [0.9.2]    | Reporting doesn't work until `0.7.3` |
+| 2.3.0-Beta1     | 0.6.9, 0.6.11 - [0.9.2]    |                                      |
 | 2.2.21          | 0.6.6 -                    |                                      |
 | 2.2.20          | 0.6.6 -                    |                                      |
 | 2.2.10          | 0.4.0 - 0.6.5              |                                      |

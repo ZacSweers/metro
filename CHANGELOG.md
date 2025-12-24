@@ -18,6 +18,10 @@ Changelog
 - [FIR] Named annotation arguments in different order from declared parameters getting silently skipped.
 - [IR] Prohibit duplicate map keys.
 
+### Changes
+
+- Remove testing of 2.3.0 prereleases. IntelliJ stable currently builds off Kotlin `2.3.2x` and Android Studio stable currently points to Kotlin `2.2.2x`.
+
 0.9.2
 -----
 
