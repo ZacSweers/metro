@@ -73,11 +73,15 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
    */
   fun isScoped(): Boolean = scope != null
 
-  override fun renderLocationDiagnostic(short: Boolean): LocationDiagnostic {
+  override fun renderLocationDiagnostic(
+    short: Boolean,
+    shortLocation: Boolean,
+    underlineTypeKey: Boolean,
+  ): LocationDiagnostic {
     // First check if we have the contributing file and line number
     val binding = this
     val locationString =
-      reportableDeclaration?.locationOrNull()?.render(short)
+      reportableDeclaration?.locationOrNull()?.render(shortLocation)
         // Or the fully-qualified contributing class name
         // TODO is this right
         ?: parameters.allParameters.firstOrNull()?.typeKey?.render(short = short)
@@ -92,7 +96,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
         }
     return LocationDiagnostic(
       locationString,
-      renderDescriptionDiagnostic(short = short, underlineTypeKey = true),
+      renderDescriptionDiagnostic(short = short, underlineTypeKey = underlineTypeKey),
     )
   }
 
@@ -308,11 +312,15 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val reportableDeclaration: IrDeclarationWithName?
       get() = bindsCallable?.resolveSourceDeclaration()?.first
 
-    override fun renderLocationDiagnostic(short: Boolean): LocationDiagnostic {
+    override fun renderLocationDiagnostic(
+      short: Boolean,
+      shortLocation: Boolean,
+      underlineTypeKey: Boolean,
+    ): LocationDiagnostic {
       return if ((annotations.isIntoMultibinding || annotations.isBinds) && bindsCallable != null) {
         bindsCallable.renderLocationDiagnostic(short, parameters)
       } else {
-        super.renderLocationDiagnostic(short)
+        super.renderLocationDiagnostic(short, shortLocation, underlineTypeKey)
       }
     }
 

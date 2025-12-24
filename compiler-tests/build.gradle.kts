@@ -189,6 +189,8 @@ tasks.withType<Test> {
     systemProperty("metro.singleTestName", "testLargeGraphStressTest")
   }
 
+  systemProperty("metro.shortLocations", "true")
+
   systemProperty("metroRuntime.classpath", metroRuntimeClasspath.asPath)
   systemProperty("anvilRuntime.classpath", anvilRuntimeClasspath.asPath)
   systemProperty("kiAnvilRuntime.classpath", kiAnvilRuntimeClasspath.asPath)

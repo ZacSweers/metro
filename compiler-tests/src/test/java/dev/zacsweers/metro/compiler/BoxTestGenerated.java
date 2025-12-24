@@ -86,6 +86,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ContributesBindingScopeArgumentOrder.kt")
+    public void testContributesBindingScopeArgumentOrder() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ContributesBindingScopeArgumentOrder.kt");
+    }
+
+    @Test
     @TestMetadata("ContributingMultibileNullableBindings.kt")
     public void testContributingMultibileNullableBindings() {
       runTest("compiler-tests/src/test/data/box/aggregation/ContributingMultibileNullableBindings.kt");
@@ -186,12 +192,6 @@ public class BoxTestGenerated extends AbstractBoxTest {
     public void testScopedContributedBindingCanBeAccessedFromChildWithClassHintsEnabled() {
       runTest("compiler-tests/src/test/data/box/aggregation/ScopedContributedBindingCanBeAccessedFromChildWithClassHintsEnabled.kt");
     }
-
-  @Test
-  @TestMetadata("ContributesBindingScopeArgumentOrder.kt")
-  public void testContributesBindingScopeArgumentOrder() {
-      runTest("compiler-tests/src/test/data/box/aggregation/ContributesBindingScopeArgumentOrder.kt");
-  }
 
     @Nested
     @TestMetadata("compiler-tests/src/test/data/box/aggregation/interop")

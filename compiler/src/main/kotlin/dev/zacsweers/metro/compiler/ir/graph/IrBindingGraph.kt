@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
+import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
@@ -31,6 +32,7 @@ import dev.zacsweers.metro.compiler.ir.requireSetElementType
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.memoize
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
@@ -55,7 +57,7 @@ import org.jetbrains.kotlin.ir.util.nestedClasses
 internal class IrBindingGraph(
   metroContext: IrMetroContext,
   private val node: DependencyGraphNode,
-  newBindingStack: () -> IrBindingStack,
+  private val newBindingStack: () -> IrBindingStack,
   private val bindingLookup: BindingLookup,
   private val contributionData: IrContributionData,
 ) : IrMetroContext by metroContext {
@@ -536,10 +538,14 @@ internal class IrBindingGraph(
   }
 
   private fun onError(message: String, stack: IrBindingStack) {
-    hasErrors = true
     val declaration =
       stack.lastEntryOrGraph?.originalDeclarationIfOverride()
         ?: node.reportableSourceGraphDeclaration
+    onError(message, declaration)
+  }
+
+  private fun onError(message: String, declaration: IrDeclaration) {
+    hasErrors = true
     metroContext.reportCompat(declaration, MetroDiagnostics.METRO_ERROR, message)
   }
 
@@ -553,6 +559,7 @@ internal class IrBindingGraph(
     val rootsByTypeKey = roots.mapKeys { it.key.typeKey }
     for (binding in bindings.values) {
       checkScope(binding, stack, roots, adjacency)
+      validateMultibindings(binding, bindings, roots, adjacency)
       validateAssistedInjection(binding, bindings, rootsByTypeKey, reverseAdjacency)
     }
   }
@@ -594,10 +601,7 @@ internal class IrBindingGraph(
 
     val isUnscoped = node.scopes.isEmpty()
     val declarationToReport = node.sourceGraph.sourceGraphIfMetroGraph
-    val backTrace = buildRouteToRoot(binding.typeKey, roots, adjacency)
-    for (entry in backTrace) {
-      stack.push(entry)
-    }
+    val stack = buildStackToRoot(binding.typeKey, roots, adjacency, stack)
     stack.push(
       IrBindingStack.Entry.simpleTypeRef(
         binding.contextualTypeKey,
@@ -643,6 +647,66 @@ internal class IrBindingGraph(
     metroContext.reportCompat(declarationToReport, MetroDiagnostics.METRO_ERROR, message)
   }
 
+  private fun buildStackToRoot(
+    typeKey: IrTypeKey,
+    roots: Map<IrContextualTypeKey, IrBindingStack.Entry>,
+    adjacency: Map<IrTypeKey, Set<IrTypeKey>>,
+    stack: IrBindingStack = newBindingStack(),
+  ): IrBindingStack {
+    val backTrace = buildRouteToRoot(typeKey, roots, adjacency)
+    for (entry in backTrace) {
+      stack.push(entry)
+    }
+    return stack
+  }
+
+  private fun validateMultibindings(
+    binding: IrBinding,
+    bindings: Map<IrTypeKey, IrBinding>,
+    roots: Map<IrContextualTypeKey, IrBindingStack.Entry>,
+    adjacency: Map<IrTypeKey, Set<IrTypeKey>>,
+  ) {
+    if (binding !is IrBinding.Multibinding) return
+    if (!binding.isMap) return
+    val keysWithDupes =
+      binding.sourceBindings
+        .mapNotNull { bindings[it] }
+        .filterIsInstance<IrBinding.BindingWithAnnotations>()
+        .groupBy { it.annotations.mapKey }
+        .filterValues { it.size > 1 }
+
+    for ((mapKey, dupes) in keysWithDupes) {
+      if (mapKey == null) {
+        reportCompilerBug("Map key should not be null for map multibindings")
+      }
+
+      val stack = buildStackToRoot(binding.typeKey, roots, adjacency)
+
+      val message = buildString {
+        appendLine(
+          """
+            [Metro/DuplicateMapKeys] Duplicate map keys found for multibinding '${binding.typeKey.render(short = false)}'.
+            The following bindings contribute the same map key '${mapKey.render(short = false)}':
+          """
+            .trimIndent()
+        )
+        appendLine()
+        for (dupe in dupes) {
+          val locationDiagnostic =
+            dupe.renderLocationDiagnostic(
+              shortLocation = MetroOptions.SystemProperties.SHORTEN_LOCATIONS,
+              underlineTypeKey = false,
+            )
+          appendLine("    ${locationDiagnostic.location}")
+          locationDiagnostic.description?.let { appendLine(it.prependIndent("        ")) }
+        }
+        appendLine()
+        appendBindingStack(stack)
+      }
+      onError(message, stack)
+    }
+  }
+
   // TODO can this check move to FIR injection sites?
   private fun validateAssistedInjection(
     binding: IrBinding,
@@ -683,11 +747,7 @@ internal class IrBindingGraph(
           )
         }
       }
-      metroContext.reportCompat(
-        declaration ?: node.sourceGraph,
-        MetroDiagnostics.METRO_ERROR,
-        message,
-      )
+      onError(message, declaration ?: node.sourceGraph)
     }
 
     reverseAdjacency[binding.typeKey]?.let { dependents ->

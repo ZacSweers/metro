@@ -1,0 +1,16 @@
+/DuplicateMapKeys.kt:(206,219): error: [Metro/DuplicateMapKeys] Duplicate map keys found for multibinding 'kotlin.collections.Map<kotlin.String, kotlin.String>'.
+The following bindings contribute the same map key '@dev.zacsweers.metro.StringKey("key")':
+
+    DuplicateMapKeys.kt:23:3
+        @Provides
+        @IntoMap
+        @dev.zacsweers.metro.StringKey("key")
+        fun provideSecond(): kotlin.String
+    DuplicateMapKeys.kt:18:3
+        @Provides
+        @IntoMap
+        @dev.zacsweers.metro.StringKey("key")
+        fun provideFirst(): kotlin.String
+
+    Map<String, String> is requested at
+        [AppGraph] AppGraph.multibindings

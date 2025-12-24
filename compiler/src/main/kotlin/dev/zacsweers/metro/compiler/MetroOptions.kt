@@ -1108,6 +1108,11 @@ public data class MetroOptions(
     }
   }
 
+  public object SystemProperties {
+    public val SHORTEN_LOCATIONS: Boolean =
+      System.getProperty("metro.shortLocations", "false").toBoolean()
+  }
+
   public companion object {
     public fun buildOptions(body: Builder.() -> Unit): MetroOptions {
       return Builder().apply(body).build()
