@@ -548,7 +548,9 @@ internal class DependencyGraphTransformer(
                 )
                 body =
                   if (returnType != pluginContext.irBuiltIns.unitType) {
-                    stubExpressionBody("Graph transform failed")
+                    stubExpressionBody(
+                      "Graph transform failed. If you're seeing this at runtime, it means that the Metro compiler plugin reported a compiler error but kotlinc for some reason didn't fail the build!"
+                    )
                   } else {
                     pluginContext.createIrBuilder(symbol).run {
                       irBlockBody { +irReturn(irGetObject(pluginContext.irBuiltIns.unitClass)) }
