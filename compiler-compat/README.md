@@ -16,6 +16,16 @@ IDE plugins can be downloaded from https://plugins.jetbrains.com/plugin/6954-kot
 
 Note this version may not have published artifacts anywhere, so it may require picking the nearest one and specifying the appropriate `minVersion` in its factory.
 
+### Extracting Compiler Version from IDE
+
+Use the provided script to extract the bundled Kotlin compiler version from an Android Studio or IntelliJ installation:
+
+```bash
+./extract-kotlin-compiler-txt.sh "/path/to/Android Studio.app"
+```
+
+This prints the compiler version (e.g., `2.2.255-dev-255`) to stdout.
+
 ## Architecture
 
 ### Core Interface
