@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1766611581338,
+  "lastUpdate": 1766611582669,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time (baseline)": [
@@ -494,6 +494,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "Build Time (current)",
             "value": 18086.546000000002,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "pandanomic@gmail.com",
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2979c1d113c64240640a9cb7d42f69ee2442262e",
+          "message": "Fix duplicate map key checking (#1591)",
+          "timestamp": "2025-12-24T20:55:14Z",
+          "tree_id": "70ec9afa558cb55198f4e72d7778214b3446d067",
+          "url": "https://github.com/ZacSweers/metro/commit/2979c1d113c64240640a9cb7d42f69ee2442262e"
+        },
+        "date": 1766611582270,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time (current)",
+            "value": 18411.989999999998,
             "unit": "ms"
           }
         ]
