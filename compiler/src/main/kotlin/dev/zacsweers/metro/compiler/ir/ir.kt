@@ -41,6 +41,7 @@ import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.DescriptorVisibility
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.isObject
+import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.lazy.AbstractFir2IrLazyDeclaration
 import org.jetbrains.kotlin.fir.lazy.Fir2IrLazyClass
@@ -262,11 +263,11 @@ context(context: IrMetroContext)
 internal fun <Container, T> Container.repeatableAnnotationsIn(
   names: Set<ClassId>,
   irBody: (Sequence<IrConstructorCall>) -> Sequence<T>,
-  firBody: (Sequence<FirAnnotation>) -> Sequence<T>,
+  firBody: (FirSession, Sequence<FirAnnotation>) -> Sequence<T>,
 ): Sequence<T> where Container : IrAnnotationContainer, Container : IrDeclarationParent {
   val useFir = !context.supportsExternalRepeatableAnnotations && context.platform.isJvm()
   return if (useFir && isExternalParent && this is AbstractFir2IrLazyDeclaration<*>) {
-    fir.symbol.annotationsIn(session, names).let(firBody)
+    fir.symbol.annotationsIn(session, names).let { firBody(session, it) }
   } else {
     annotationsIn(names).let(irBody)
   }

@@ -78,4 +78,9 @@ internal sealed interface MetroFirTypeResolver {
         .type
     }
   }
+
+  companion object {
+    // For cases where we use this in IR, just use the external resolver
+    fun forIrUse(): MetroFirTypeResolver = ExternalMetroFirTypeResolver
+  }
 }

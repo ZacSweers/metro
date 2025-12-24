@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.fir.generators
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.api.fir.MetroContributionExtension
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.computeOutrankedBindings
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
@@ -28,6 +29,7 @@ import dev.zacsweers.metro.compiler.fir.resolvedReplacedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
 import dev.zacsweers.metro.compiler.getAndAdd
+import dev.zacsweers.metro.compiler.ir.IrRankedBindingProcessing
 import dev.zacsweers.metro.compiler.singleOrError
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Optional
@@ -506,8 +508,6 @@ internal class ContributedInterfaceSupertypeGenerator(
     contributions: Map<ClassId, ConeKotlinType>,
     typeResolver: TypeResolveService,
   ): Set<ClassId> {
-    val pendingRankReplacements = mutableSetOf<ClassId>()
-
     val rankedBindings =
       contributions.values
         .filterIsInstance<ConeClassLikeType>()
@@ -539,7 +539,7 @@ internal class ContributedInterfaceSupertypeGenerator(
                       .coneType
                   } ?: contributingType.implicitBoundType(typeResolver)
 
-                ContributedBinding(
+                IrRankedBindingProcessing.ContributedBinding(
                   contributingType = contributingType,
                   typeKey =
                     FirTypeKey(
@@ -552,25 +552,12 @@ internal class ContributedInterfaceSupertypeGenerator(
             }
         }
 
-    val bindingGroups =
-      rankedBindings
-        .groupBy { binding -> binding.typeKey }
-        .filter { bindingGroup -> bindingGroup.value.size > 1 }
-
-    for (bindingGroup in bindingGroups.values) {
-      val topBindings =
-        bindingGroup
-          .groupBy { binding -> binding.rank }
-          .toSortedMap()
-          .let { it.getValue(it.lastKey()) }
-
-      // These are the bindings that were outranked and should not be processed further
-      bindingGroup.minus(topBindings).forEach {
-        pendingRankReplacements += it.contributingType.classId
-      }
-    }
-
-    return pendingRankReplacements
+    return computeOutrankedBindings(
+      rankedBindings,
+      typeKeySelector = { it.typeKey },
+      rankSelector = { it.rank },
+      classId = { it.contributingType.classId },
+    )
   }
 
   @OptIn(ResolveStateAccess::class, SymbolInternals::class)
@@ -596,10 +583,4 @@ internal class ContributedInterfaceSupertypeGenerator(
         "${classId.asSingleFqName()} has a ranked binding with no explicit bound type and $size supertypes ($superTypeFqNames). There must be exactly one supertype or an explicit bound type."
       }
   }
-
-  private data class ContributedBinding(
-    val contributingType: FirClassLikeSymbol<*>,
-    val typeKey: FirTypeKey,
-    val rank: Long,
-  )
 }

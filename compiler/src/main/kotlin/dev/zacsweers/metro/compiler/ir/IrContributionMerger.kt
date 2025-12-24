@@ -3,11 +3,9 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.expectAsOrNull
-import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.coneTypeIfResolved
 import dev.zacsweers.metro.compiler.fir.replacesArgument
 import dev.zacsweers.metro.compiler.getAndAdd
-import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.SortedMap
 import java.util.SortedSet
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
@@ -18,7 +16,6 @@ import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
-import org.jetbrains.kotlin.ir.util.getValueArgument
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.name.ClassId
 
@@ -173,7 +170,7 @@ internal class IrContributionMerger(
               .flatMap { annotation -> annotation.replacedClasses() }
               .mapNotNull { replacedClass -> replacedClass.classType.rawType().classId }
           },
-          firBody = { annotations ->
+          firBody = { _, annotations ->
             annotations
               .flatMap { it.replacesArgument()?.argumentList?.arguments.orEmpty() }
               .mapNotNull { it.expectAsOrNull<FirGetClassCall>()?.coneTypeIfResolved()?.classId }
@@ -236,79 +233,8 @@ internal class IrContributionMerger(
   private fun processRankBasedReplacements(
     allScopes: Set<ClassId>,
     contributions: Map<ClassId, List<IrType>>,
-  ): Set<ClassId> {
-    Fir2IrInterop.processRankBasedReplacements(allScopes, contributions)?.let {
-      return it
-    }
-
-    val pendingRankReplacements = mutableSetOf<ClassId>()
-
-    val rankedBindings =
-      contributions.values
-        .flatten()
-        .map { it.rawType().parentAsClass }
-        .distinctBy { it.classIdOrFail }
-        .flatMap { contributingType ->
-          contributingType
-            .annotationsIn(metroSymbols.classIds.contributesBindingAnnotationsWithContainers)
-            .mapNotNull { annotation ->
-              val scope = annotation.scopeOrNull() ?: return@mapNotNull null
-              if (scope !in allScopes) return@mapNotNull null
-
-              val explicitBindingMissingMetadata =
-                annotation.getValueArgument(Symbols.Names.binding)
-
-              if (explicitBindingMissingMetadata != null) {
-                // This is a case where an explicit binding is specified but we receive the argument
-                // as FirAnnotationImpl without the metadata containing the type arguments so we
-                // short-circuit since we lack the info to compare it against other bindings.
-                null
-              } else {
-                val (explicitBindingType, ignoreQualifier) = annotation.bindingTypeOrNull()
-                val boundType =
-                  explicitBindingType
-                    ?: contributingType.implicitBoundTypeOrNull()!! // Checked in FIR
-
-                ContributedIrBinding(
-                  contributingType = contributingType,
-                  typeKey =
-                    IrTypeKey(
-                      boundType,
-                      if (ignoreQualifier) null else contributingType.qualifierAnnotation(),
-                    ),
-                  rank = annotation.rankValue(),
-                )
-              }
-            }
-        }
-
-    val bindingGroups =
-      rankedBindings
-        .groupBy { binding -> binding.typeKey }
-        .filter { bindingGroup -> bindingGroup.value.size > 1 }
-
-    for (bindingGroup in bindingGroups.values) {
-      val topBindings =
-        bindingGroup
-          .groupBy { binding -> binding.rank }
-          .toSortedMap()
-          .let { it.getValue(it.lastKey()) }
-
-      // These are the bindings that were outranked and should not be processed further
-      bindingGroup.minus(topBindings).forEach {
-        pendingRankReplacements += it.contributingType.classIdOrFail
-      }
-    }
-
-    return pendingRankReplacements
-  }
+  ): Set<ClassId> = IrRankedBindingProcessing.processRankBasedReplacements(allScopes, contributions)
 }
-
-private data class ContributedIrBinding(
-  val contributingType: IrClass,
-  val typeKey: IrTypeKey,
-  val rank: Long,
-)
 
 internal data class IrContributions(
   val primaryScope: ClassId?,
