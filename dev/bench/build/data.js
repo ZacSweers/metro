@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1766614671847,
+  "lastUpdate": 1766614672776,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time (baseline)": [
@@ -552,6 +552,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "Build Time (current)",
             "value": 18411.989999999998,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "pandanomic@gmail.com",
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "89537586f35d508ecae85320bdf5923ece0e77a0",
+          "message": "Clarify error (#1593)",
+          "timestamp": "2025-12-24T21:48:34Z",
+          "tree_id": "02bb2bab13d8a653d7891be83532e5e5d920cb6d",
+          "url": "https://github.com/ZacSweers/metro/commit/89537586f35d508ecae85320bdf5923ece0e77a0"
+        },
+        "date": 1766614672375,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time (current)",
+            "value": 17139.4,
             "unit": "ms"
           }
         ]
