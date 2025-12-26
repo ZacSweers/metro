@@ -7,6 +7,7 @@ import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jetbrains.kotlin.tooling.core.KotlinToolingVersion
 
 plugins {
   alias(libs.plugins.kotlin.jvm)
@@ -32,15 +33,17 @@ buildConfig {
   buildConfigField("String", "BASE_KOTLIN_VERSION", libs.versions.kotlin.map { "\"$it\"" })
 
   // Collect all supported Kotlin versions from compiler-compat modules
-  val compilerCompatDir = rootProject.isolated.projectDirectory.dir("compiler-compat").asFile
+  val versionAliasesFile =
+    rootProject.isolated.projectDirectory.dir("compiler-compat").file("version-aliases.txt")
   val supportedVersions =
-    fileTree(compilerCompatDir) { include("k*/version.txt") }
-      .elements
-      .map { files -> files.map { it.asFile.readText().trim() }.sorted() }
+    versionAliasesFile.asFile.readLines().filterNot { it.isBlank() || it.startsWith('#') }
+      .map { KotlinToolingVersion(it) }
+      .sorted()
+
   buildConfigField(
     "List<String>",
     "SUPPORTED_KOTLIN_VERSIONS",
-    supportedVersions.map { versions -> "listOf(${versions.joinToString { "\"$it\"" }})" },
+    "listOf(${supportedVersions.joinToString { "\"$it\"" }})",
   )
 }
 
