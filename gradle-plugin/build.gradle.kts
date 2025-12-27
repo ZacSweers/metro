@@ -36,7 +36,9 @@ buildConfig {
   val versionAliasesFile =
     rootProject.isolated.projectDirectory.dir("compiler-compat").file("version-aliases.txt")
   val supportedVersions =
-    versionAliasesFile.asFile.readLines().filterNot { it.isBlank() || it.startsWith('#') }
+    versionAliasesFile.asFile
+      .readLines()
+      .filterNot { it.isBlank() || it.startsWith('#') }
       .map { KotlinToolingVersion(it) }
       .sorted()
 
