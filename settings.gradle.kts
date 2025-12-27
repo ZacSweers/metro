@@ -12,7 +12,10 @@ pluginManagement {
     // https://kotlinlang.slack.com/archives/C7L3JB43G/p1757001642402909
     maven("https://packages.jetbrains.team/maven/p/ij/intellij-dependencies/")
   }
-  plugins { id("com.gradle.develocity") version "4.3" }
+  plugins {
+    id("com.gradle.develocity") version "4.3"
+    id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
+  }
 }
 
 dependencyResolutionManagement {
@@ -28,7 +31,10 @@ dependencyResolutionManagement {
   }
 }
 
-plugins { id("com.gradle.develocity") }
+plugins {
+  id("com.gradle.develocity")
+  id("org.gradle.toolchains.foojay-resolver-convention")
+}
 
 rootProject.name = "metro"
 
