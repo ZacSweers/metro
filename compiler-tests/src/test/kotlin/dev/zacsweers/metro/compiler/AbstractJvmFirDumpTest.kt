@@ -8,7 +8,7 @@ import org.jetbrains.kotlin.test.directives.FirDiagnosticsDirectives.FIR_DUMP
 import org.jetbrains.kotlin.test.directives.TestPhaseDirectives.RUN_PIPELINE_TILL
 import org.jetbrains.kotlin.test.services.TestPhase
 
-open class AbstractFirDumpTest : AbstractDiagnosticTest() {
+open class AbstractJvmFirDumpTest : AbstractJvmDiagnosticTest() {
   override fun configure(builder: TestConfigurationBuilder) {
     super.configure(builder)
 

@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
 @SuppressWarnings("all")
 @TestMetadata("compiler-tests/src/test/data/diagnostic")
 @TestDataPath("$PROJECT_ROOT")
-public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
+public class JvmDiagnosticTestGenerated extends AbstractJvmDiagnosticTest {
   @Test
   public void testAllFilesPresentInDiagnostic() {
     KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);

@@ -35,7 +35,7 @@ private val NoIrCompilationErrorsHandler =
     .kotlin as KClass<BackendInputHandler<IrBackendInput>>?
     ?: error("Could not find NoIrCompilationErrorsHandler for the current kotlin version")
 
-open class AbstractBoxTest : AbstractFirLightTreeBlackBoxCodegenTest() {
+open class AbstractJvmBoxTest : AbstractFirLightTreeBlackBoxCodegenTest() {
   override fun createKotlinStandardLibrariesPathProvider(): KotlinStandardLibrariesPathProvider {
     return ClasspathBasedStandardLibrariesPathProvider
   }

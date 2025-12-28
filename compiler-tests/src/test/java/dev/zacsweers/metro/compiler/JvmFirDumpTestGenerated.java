@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
 @SuppressWarnings("all")
 @TestMetadata("compiler-tests/src/test/data/dump/fir")
 @TestDataPath("$PROJECT_ROOT")
-public class FirDumpTestGenerated extends AbstractFirDumpTest {
+public class JvmFirDumpTestGenerated extends AbstractJvmFirDumpTest {
   @Test
   public void testAllFilesPresentInFir() {
     KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/fir"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
