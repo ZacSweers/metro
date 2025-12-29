@@ -871,6 +871,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("MultibindingContributorsAcrossExtensions.kt")
+      public void testMultibindingContributorsAcrossExtensions() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/MultibindingContributorsAcrossExtensions.kt");
+      }
+
+      @Test
       @TestMetadata("MultibindingsFromDifferentScopes.kt")
       public void testMultibindingsFromDifferentScopes() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/MultibindingsFromDifferentScopes.kt");
