@@ -225,6 +225,11 @@ jobs:
           cache-read-only: true
           gradle-home-cache-strict-match: true
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          # Limit the size of the cache entry.
+          # These directories contain instrumented/transformed dependency jars which can be reconstructed relatively quickly.
+          gradle-home-cache-excludes: |
+            caches/jars-9
+            caches/transforms-3
 
       - name: Fetch and checkout refs
         run: |
@@ -350,6 +355,11 @@ jobs:
           cache-read-only: true
           gradle-home-cache-strict-match: true
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          # Limit the size of the cache entry.
+          # These directories contain instrumented/transformed dependency jars which can be reconstructed relatively quickly.
+          gradle-home-cache-excludes: |
+            caches/jars-9
+            caches/transforms-3
 
       - name: Fetch and checkout refs
         run: |
@@ -487,6 +497,11 @@ jobs:
           cache-read-only: true
           gradle-home-cache-strict-match: true
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          # Limit the size of the cache entry.
+          # These directories contain instrumented/transformed dependency jars which can be reconstructed relatively quickly.
+          gradle-home-cache-excludes: |
+            caches/jars-9
+            caches/transforms-3
 
       - name: Fetch and checkout refs
         run: |
@@ -626,6 +641,11 @@ jobs:
           cache-read-only: true
           gradle-home-cache-strict-match: true
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          # Limit the size of the cache entry.
+          # These directories contain instrumented/transformed dependency jars which can be reconstructed relatively quickly.
+          gradle-home-cache-excludes: |
+            caches/jars-9
+            caches/transforms-3
 
       - name: Setup Node.js (for JS/WasmJS targets)
         if: inputs.multiplatform-target == 'js' || inputs.multiplatform-target == 'wasmJs' || inputs.multiplatform-target == 'all'
