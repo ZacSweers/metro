@@ -73,7 +73,7 @@ class Y {
         return MetroFactory(mapOfProvidersOfX = mapOfProvidersOfX, mapOfProvidersOfY = mapOfProvidersOfY)
       }
 
-      fun newInstance(mapOfProvidersOfX: Map<String, X>, mapOfProvidersOfY: Map<String, Y>): Y {
+      fun newInstance(mapOfProvidersOfX: Map<String, Provider<X>>, mapOfProvidersOfY: Map<String, Provider<Y>>): Y {
         return Y(mapOfProvidersOfX = mapOfProvidersOfX, mapOfProvidersOfY = mapOfProvidersOfY)
       }
 

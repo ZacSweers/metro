@@ -218,7 +218,7 @@ class ProviderMapConsumer {
         return MetroFactory(map = map)
       }
 
-      fun newInstance(map: Map<Int, C>): ProviderMapConsumer {
+      fun newInstance(map: Map<Int, Provider<C>>): ProviderMapConsumer {
         return ProviderMapConsumer(map = map)
       }
 
