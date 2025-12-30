@@ -221,7 +221,21 @@ internal class BindingLookup(
   context(context: IrMetroContext)
   fun registerMultibindingContributionByBindingId(sourceBindingKey: IrTypeKey) {
     val bindingId = sourceBindingKey.multibindingBindingId ?: return
-    val multibindingTypeKey = sourceBindingKey.multibindingKeyData?.multibindingTypeKey ?: return
+    val multibindingKeyData = sourceBindingKey.multibindingKeyData ?: return
+    val originalElementTypeKey = multibindingKeyData.multibindingTypeKey ?: return
+
+    val multibindingTypeKey = if (multibindingKeyData.mapKey == null) {
+      // It's a Set<>
+      if (multibindingKeyData.isElementsIntoSet) {
+        // It's a collection type Collection<AuthInterceptor>
+        originalElementTypeKey.copy(context.symbols.set.typeWith(originalElementTypeKey.type.requireSimpleType().arguments[0].typeOrFail))
+      } else {
+        originalElementTypeKey.copy(context.symbols.set.typeWith(originalElementTypeKey.type))
+      }
+    } else {
+      val keyType = mapKeyType(multibindingKeyData.mapKey)
+      originalElementTypeKey.copy(context.symbols.map.typeWith(keyType, originalElementTypeKey.type))
+    }
 
     // Get or create the multibinding using the type key from the source binding
     val multibinding =
