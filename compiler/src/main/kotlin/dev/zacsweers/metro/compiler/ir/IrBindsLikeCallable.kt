@@ -106,7 +106,7 @@ context(context: IrMetroContext)
 internal fun MetroSimpleFunction.toBindsCallable(isInterop: Boolean): BindsCallable {
   val callableMetadata = ir.irCallableMetadata(annotations, isInterop)
   val rawTarget = IrContextualTypeKey.from(ir).typeKey
-  val typeKey = rawTarget.transformMultiboundQualifier(callableMetadata.annotations)
+  val typeKey = rawTarget.transformIfIntoMultibinding(callableMetadata.annotations)
   return BindsCallable(
     callableMetadata = callableMetadata,
     source = IrContextualTypeKey.from(ir.nonDispatchParameters.single()).typeKey,

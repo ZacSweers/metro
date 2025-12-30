@@ -19,7 +19,7 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 
 context(context: IrMetroContext)
-internal fun IrTypeKey.transformMultiboundQualifier(
+internal fun IrTypeKey.transformIfIntoMultibinding(
   annotations: MetroAnnotations<IrAnnotation>
 ): IrTypeKey {
   if (!annotations.isIntoMultibinding) {
@@ -35,17 +35,22 @@ internal fun IrTypeKey.transformMultiboundQualifier(
       )
 
   val elementId = declaration.multibindingElementId
+
+  // Compute bindingId and multibindingTypeKey based on the annotation type
   val bindingId =
     if (annotations.mapKey != null) {
       val mapKey = annotations.mapKey
-      val mapKeyType = mapKeyType(mapKey)
-      createMapBindingId(mapKeyType, this)
-    } else if (annotations.isElementsIntoSet) {
-      val elementType = type.requireSimpleType().arguments.first().typeOrFail
-      val elementTypeKey = copy(type = elementType)
-      elementTypeKey.multibindingId
+      val mapKeyTypeIr = mapKeyType(mapKey)
+      createMapBindingId(mapKeyTypeIr, this)
     } else {
-      multibindingId
+      val elementTypeKey =
+        if (annotations.isElementsIntoSet) {
+          val elementType = type.requireSimpleType().arguments.first().typeOrFail
+          copy(type = elementType)
+        } else {
+          this
+        }
+      elementTypeKey.computeMultibindingId()
     }
 
   val newQualifier =
@@ -54,7 +59,11 @@ internal fun IrTypeKey.transformMultiboundQualifier(
       it.arguments[1] = irString(elementId)
     }
 
-  return copy(qualifier = IrAnnotation(newQualifier))
+  return copy(
+    qualifier = IrAnnotation(newQualifier),
+    multibindingKeyData =
+      IrTypeKey.MultibindingKeyData(this, annotations.mapKey, annotations.isElementsIntoSet),
+  )
 }
 
 /** Returns a unique ID for this specific binding */
@@ -86,11 +95,11 @@ internal val IrOverridableDeclaration<*>.multibindingElementId: String
  * - `okhttp3.Interceptor`
  * - `@NetworkInterceptor okhttp3.Interceptor`
  */
-internal val IrTypeKey.multibindingId: String
-  get() = render(short = false, includeQualifier = true)
+internal fun IrTypeKey.computeMultibindingId(): String =
+  render(short = false, includeQualifier = true)
 
 internal fun createMapBindingId(mapKey: IrType, elementTypeKey: IrTypeKey): String {
-  return "${mapKey.render(short = false)}_${elementTypeKey.multibindingId}"
+  return "${mapKey.render(short = false)}_${elementTypeKey.computeMultibindingId()}"
 }
 
 context(context: IrMetroContext)

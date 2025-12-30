@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
-import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
 import dev.zacsweers.metro.compiler.ir.ClassFactory
@@ -33,18 +32,16 @@ import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
-import java.util.TreeSet
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.IrSimpleType
-import org.jetbrains.kotlin.ir.types.removeAnnotations
+import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
-import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.isObject
 
@@ -69,12 +66,11 @@ internal class BindingLookup(
   // Lazy parent key bindings - only created when actually accessed
   private val lazyParentKeys = mutableMapOf<IrTypeKey, Lazy<IrBinding>>()
 
-  // Multibinding tracking
-  // Key: multibinding type (Set<T> or Map<K, V>), Value: set of source binding keys
-  private val multibindingContributions = mutableMapOf<IrTypeKey, MutableSet<IrTypeKey>>()
-
-  // Cache for created multibindings
+  // Cache for created multibindings, keyed by type key (Set<T> or Map<K, V>)
   private val multibindingsCache = mutableMapOf<IrTypeKey, IrBinding.Multibinding>()
+
+  // Index from bindingId to multibinding for lookup when registering contributions
+  private val multibindingsByBindingId = mutableMapOf<String, IrBinding.Multibinding>()
 
   /** Information about an explicit @Multibinds declaration */
   private data class MultibindsDeclaration(
@@ -115,14 +111,13 @@ internal class BindingLookup(
 
     // If this is a multibinding contributor, register it
     if (binding.annotations.isIntoMultibinding) {
-      val multibindingKey =
-        computeMultibindingKey(
+      val multibindingTypeKey =
+        computeMultibindingTypeKey(
           annotations = binding.annotations,
-          contextKey = binding.contextualTypeKey,
-          declaration = binding.providerFactory.function,
-          originalQualifier = binding.providerFactory.rawTypeKey.qualifier,
+          valueType = binding.contextualTypeKey.typeKey.type,
+          qualifier = binding.providerFactory.rawTypeKey.qualifier,
         )
-      registerMultibindingContribution(multibindingKey, binding.typeKey)
+      registerMultibindingContribution(multibindingTypeKey, binding.typeKey)
     }
   }
 
@@ -133,14 +128,13 @@ internal class BindingLookup(
     // If this is a multibinding contributor, register it
     val bindsCallable = binding.bindsCallable
     if (bindsCallable != null && bindsCallable.callableMetadata.annotations.isIntoMultibinding) {
-      val multibindingKey =
-        computeMultibindingKey(
+      val multibindingTypeKey =
+        computeMultibindingTypeKey(
           annotations = bindsCallable.callableMetadata.annotations,
-          contextKey = binding.contextualTypeKey,
-          declaration = bindsCallable.function,
-          originalQualifier = bindsCallable.callableMetadata.annotations.qualifier,
+          valueType = binding.contextualTypeKey.typeKey.type,
+          qualifier = bindsCallable.callableMetadata.annotations.qualifier,
         )
-      registerMultibindingContribution(multibindingKey, binding.typeKey)
+      registerMultibindingContribution(multibindingTypeKey, binding.typeKey)
     }
   }
 
@@ -161,17 +155,83 @@ internal class BindingLookup(
   }
 
   /**
-   * Registers a contribution to a multibinding. The contribution will be added to the multibinding
-   * when it is looked up.
-   *
-   * @param multibindingKey The multibinding type key (Set<T> or Map<K, V>)
-   * @param sourceBindingKey The source binding key that contributes to the multibinding
+   * Computes the multibinding type key (Set<T> or Map<K, V>) from the annotations of a contributor.
    */
+  context(context: IrMetroContext)
+  private fun computeMultibindingTypeKey(
+    annotations: dev.zacsweers.metro.compiler.MetroAnnotations<IrAnnotation>,
+    valueType: IrType,
+    qualifier: IrAnnotation?,
+  ): IrTypeKey {
+    return when {
+      annotations.isIntoSet -> {
+        val setType = metroContext.irBuiltIns.setClass.typeWith(valueType)
+        IrTypeKey(setType, qualifier)
+      }
+      annotations.isElementsIntoSet -> {
+        val elementType = (valueType as IrSimpleType).arguments.single().typeOrFail
+        val setType = metroContext.irBuiltIns.setClass.typeWith(elementType)
+        IrTypeKey(setType, qualifier)
+      }
+      annotations.isIntoMap -> {
+        val mapKey = annotations.mapKey ?: reportCompilerBug("Missing @MapKey for @IntoMap binding")
+        val keyType = mapKeyType(mapKey)
+        val mapType = metroContext.irBuiltIns.mapClass.typeWith(keyType, valueType)
+        IrTypeKey(mapType, qualifier)
+      }
+      else -> reportCompilerBug("Unknown multibinding type")
+    }
+  }
+
+  /**
+   * Registers a contribution to a multibinding. Eagerly creates the multibinding if it doesn't
+   * exist yet.
+   *
+   * @param multibindingTypeKey The multibinding type key (Set<T> or Map<K, V>)
+   * @param sourceBindingKey The source binding key that contributes to the multibinding (must have
+   *     @MultibindingElement qualifier)
+   */
+  context(context: IrMetroContext)
   private fun registerMultibindingContribution(
-    multibindingKey: IrTypeKey,
+    multibindingTypeKey: IrTypeKey,
     sourceBindingKey: IrTypeKey,
   ) {
-    multibindingContributions.getOrPut(multibindingKey, ::TreeSet).add(sourceBindingKey)
+    val bindingId = sourceBindingKey.multibindingBindingId ?: return
+
+    // Get or create the multibinding
+    val multibinding =
+      multibindingsByBindingId.getOrPut(bindingId) {
+        val newMultibinding = IrBinding.Multibinding.fromContributor(multibindingTypeKey)
+        multibindingsCache[multibindingTypeKey] = newMultibinding
+        newMultibinding
+      }
+
+    multibinding.addSourceBinding(sourceBindingKey)
+  }
+
+  /**
+   * Registers a contribution to a multibinding by its bindingId. This is used for contributions
+   * from parent graphs that come with @MultibindingElement qualifier. If a multibinding with this
+   * bindingId already exists, the contribution is added directly to it. Otherwise, the multibinding
+   * is created using the multibindingTypeKey from the source binding.
+   *
+   * @param sourceBindingKey The source binding key that contributes to the multibinding (must have
+   *     @MultibindingElement qualifier and multibindingTypeKey)
+   */
+  context(context: IrMetroContext)
+  fun registerMultibindingContributionByBindingId(sourceBindingKey: IrTypeKey) {
+    val bindingId = sourceBindingKey.multibindingBindingId ?: return
+    val multibindingTypeKey = sourceBindingKey.multibindingKeyData?.multibindingTypeKey ?: return
+
+    // Get or create the multibinding using the type key from the source binding
+    val multibinding =
+      multibindingsByBindingId.getOrPut(bindingId) {
+        val newMultibinding = IrBinding.Multibinding.fromContributor(multibindingTypeKey)
+        multibindingsCache[multibindingTypeKey] = newMultibinding
+        newMultibinding
+      }
+
+    multibinding.addSourceBinding(sourceBindingKey)
   }
 
   /**
@@ -212,77 +272,23 @@ internal class BindingLookup(
 
   /**
    * Returns all registered multibindings for similarity checking. This includes both cached
-   * multibindings and those that have been registered but not yet created.
+   * multibindings (eagerly created when contributions are registered) and those from explicit
+   *
+   * @Multibinds declarations.
    */
   context(context: IrMetroContext)
   fun getAvailableMultibindings(): Map<IrTypeKey, IrBinding.Multibinding> {
-    // Ensure all registered multibindings are created
-    val allKeys = multibindingContributions.keys + multibindsDeclarations.keys
-    for (key in allKeys) {
+    // Ensure all @Multibinds declarations have their multibindings created
+    for (key in multibindsDeclarations.keys) {
       getOrCreateMultibindingIfNeeded(key)
     }
-    return multibindingsCache.toMap()
+    return multibindingsCache
   }
 
   /**
-   * Computes the multibinding type key (Set<T> or Map<K, V>) from the annotations of a contributor.
-   *
-   * @param annotations The annotations from the contributing binding (@IntoSet, @IntoMap, etc.)
-   * @param contextKey The context key of the contributing binding
-   * @param declaration The function that contributes to the multibinding
-   * @param originalQualifier The original qualifier annotation (if any)
-   * @return The multibinding type key
-   */
-  context(context: IrMetroContext)
-  private fun computeMultibindingKey(
-    annotations: MetroAnnotations<IrAnnotation>,
-    contextKey: IrContextualTypeKey,
-    declaration: IrSimpleFunction,
-    originalQualifier: IrAnnotation?,
-  ): IrTypeKey {
-    return when {
-      annotations.isIntoSet -> {
-        val setType = metroContext.irBuiltIns.setClass.typeWith(contextKey.typeKey.type)
-        contextKey.typeKey.copy(type = setType, qualifier = originalQualifier)
-      }
-
-      annotations.isElementsIntoSet -> {
-        val elementType =
-          contextKey.typeKey.type.requireSimpleType(declaration).arguments.single().typeOrFail
-        val setType = metroContext.irBuiltIns.setClass.typeWith(elementType)
-        contextKey.typeKey.copy(type = setType, qualifier = originalQualifier)
-      }
-
-      annotations.isIntoMap -> {
-        val mapKey =
-          annotations.mapKey
-            ?: run {
-              // Hard error because the FIR checker should catch these, so this implies broken
-              // FIR code gen
-              reportCompilerBug(
-                "Missing @MapKey for @IntoMap function: ${declaration.symbol.owner}"
-              )
-            }
-        val keyType = mapKeyType(mapKey)
-        val mapType =
-          metroContext.irBuiltIns.mapClass.typeWith(
-            // MapKey is the key type
-            keyType,
-            // Return type is the value type
-            contextKey.typeKey.type.removeAnnotations(),
-          )
-        contextKey.typeKey.copy(type = mapType, qualifier = originalQualifier)
-      }
-
-      else -> {
-        reportCompilerBug("Unrecognized provider: ${declaration.symbol.owner.dumpKotlinLike()}")
-      }
-    }
-  }
-
-  /**
-   * Lazily creates a multibinding for the given type key if it has contributions or declarations.
-   * Returns null if there are no contributions or declarations for this type key.
+   * Gets or creates a multibinding for the given type key. For @Multibinds declarations, creates
+   * from the declaration. Otherwise, checks if one was already created from contributions. Returns
+   * null if there are no contributions or declarations for this type key.
    */
   context(context: IrMetroContext)
   private fun getOrCreateMultibindingIfNeeded(typeKey: IrTypeKey): IrBinding.Multibinding? {
@@ -291,31 +297,29 @@ internal class BindingLookup(
       return it
     }
 
-    // Check if we have contributions or declarations
-    val contributions = multibindingContributions[typeKey]
-    val declaration = multibindsDeclarations[typeKey]
+    // Check if we have a @Multibinds declaration
+    val declaration = multibindsDeclarations[typeKey] ?: return null
 
-    if (contributions == null && declaration == null) {
-      return null
+    // Create multibinding from the declaration
+    val multibinding =
+      IrBinding.Multibinding.fromMultibindsDeclaration(
+        getter = declaration.declaration,
+        multibinds = declaration.annotation,
+        contextualTypeKey = IrContextualTypeKey(typeKey),
+      )
+
+    // Check if a multibinding was already created from contributions with the same bindingId
+    val existingFromContributions = multibindingsByBindingId[multibinding.bindingId]
+    if (existingFromContributions != null) {
+      // Use the existing one but update declaration info if needed
+      // The source bindings are already registered on it
+      multibindingsCache[typeKey] = existingFromContributions
+      return existingFromContributions
     }
 
-    // Create the multibinding
-    val multibinding =
-      if (declaration != null) {
-        IrBinding.Multibinding.fromMultibindsDeclaration(
-          getter = declaration.declaration,
-          multibinds = declaration.annotation,
-          contextualTypeKey = IrContextualTypeKey(typeKey),
-        )
-      } else {
-        IrBinding.Multibinding.fromContributor(typeKey)
-      }
-
-    // Add all source bindings
-    contributions?.forEach { sourceKey -> multibinding.addSourceBinding(sourceKey) }
-
-    // Cache and return
+    // Cache the new multibinding
     multibindingsCache[typeKey] = multibinding
+    multibindingsByBindingId[multibinding.bindingId] = multibinding
 
     // If it's a map, also cache under Map<K, Provider<V>> type key
     if (multibinding.isMap) {

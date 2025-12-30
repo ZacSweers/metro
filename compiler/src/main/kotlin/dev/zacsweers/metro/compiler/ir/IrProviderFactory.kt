@@ -140,7 +140,7 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
       realDeclaration: IrDeclaration? = null,
     ): Metro {
       val rawTypeKey = contextKey.typeKey.copy(qualifier = callableMetadata.annotations.qualifier)
-      val typeKey = rawTypeKey.transformMultiboundQualifier(callableMetadata.annotations)
+      val typeKey = rawTypeKey.transformIfIntoMultibinding(callableMetadata.annotations)
 
       return Metro(
         factoryClass = clazz,

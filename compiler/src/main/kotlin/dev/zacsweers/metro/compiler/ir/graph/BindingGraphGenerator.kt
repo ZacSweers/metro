@@ -646,6 +646,12 @@ internal class BindingGraphGenerator(
           continue
         }
 
+        // If this key is a multibinding contribution (has @MultibindingElement qualifier),
+        // register it so the child's multibinding will include this parent contribution
+        if (key.multibindingKeyData != null) {
+          bindingLookup.registerMultibindingContributionByBindingId(key)
+        }
+
         // Register a lazy parent key that will only call mark() when actually used
         bindingLookup.addLazyParentKey(key) {
           val propertyAccess =

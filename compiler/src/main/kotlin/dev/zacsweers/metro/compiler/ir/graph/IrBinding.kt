@@ -22,7 +22,7 @@ import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.createMapBindingId
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.locationOrNull
-import dev.zacsweers.metro.compiler.ir.multibindingId
+import dev.zacsweers.metro.compiler.ir.computeMultibindingId
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.rawType
@@ -632,10 +632,13 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
 
         val bindingId: String =
           if (isMap) {
-            val keyType = typeKey.type.requireSimpleType(declaration).arguments[0].typeOrFail
-            createMapBindingId(keyType, typeKey)
+            val mapType = typeKey.type.requireSimpleType(declaration)
+            val keyType = mapType.arguments[0].typeOrFail
+            val valueType = mapType.arguments[1].typeOrFail
+            val elementTypeKey = typeKey.copy(type = valueType)
+            createMapBindingId(keyType, elementTypeKey)
           } else {
-            typeKey.multibindingId
+            typeKey.computeMultibindingId()
           }
 
         return Multibinding(
