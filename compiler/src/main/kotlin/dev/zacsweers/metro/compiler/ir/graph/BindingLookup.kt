@@ -189,7 +189,7 @@ internal class BindingLookup(
    *
    * @param multibindingTypeKey The multibinding type key (Set<T> or Map<K, V>)
    * @param sourceBindingKey The source binding key that contributes to the multibinding (must have
-   *     @MultibindingElement qualifier)
+   *   `@MultibindingElement` qualifier)
    */
   context(context: IrMetroContext)
   private fun registerMultibindingContribution(
@@ -211,12 +211,12 @@ internal class BindingLookup(
 
   /**
    * Registers a contribution to a multibinding by its bindingId. This is used for contributions
-   * from parent graphs that come with @MultibindingElement qualifier. If a multibinding with this
+   * from parent graphs that come with `@MultibindingElement` qualifier. If a multibinding with this
    * bindingId already exists, the contribution is added directly to it. Otherwise, the multibinding
    * is created using the multibindingTypeKey from the source binding.
    *
    * @param sourceBindingKey The source binding key that contributes to the multibinding (must have
-   *     @MultibindingElement qualifier and multibindingTypeKey)
+   *   `@MultibindingElement` qualifier and multibindingTypeKey)
    */
   context(context: IrMetroContext)
   fun registerMultibindingContributionByBindingId(sourceBindingKey: IrTypeKey) {
@@ -224,18 +224,24 @@ internal class BindingLookup(
     val multibindingKeyData = sourceBindingKey.multibindingKeyData ?: return
     val originalElementTypeKey = multibindingKeyData.multibindingTypeKey ?: return
 
-    val multibindingTypeKey = if (multibindingKeyData.mapKey == null) {
-      // It's a Set<>
-      if (multibindingKeyData.isElementsIntoSet) {
-        // It's a collection type Collection<AuthInterceptor>
-        originalElementTypeKey.copy(context.symbols.set.typeWith(originalElementTypeKey.type.requireSimpleType().arguments[0].typeOrFail))
+    val multibindingTypeKey =
+      if (multibindingKeyData.mapKey == null) {
+        // It's a Set
+        val elementType =
+          if (multibindingKeyData.isElementsIntoSet) {
+            // It's a collection type Collection<AuthInterceptor>, pull out the element type
+            originalElementTypeKey.type.requireSimpleType().arguments[0].typeOrFail
+          } else {
+            originalElementTypeKey.type
+          }
+        originalElementTypeKey.copy(context.symbols.set.typeWith(elementType))
       } else {
-        originalElementTypeKey.copy(context.symbols.set.typeWith(originalElementTypeKey.type))
+        // It's a map
+        val keyType = mapKeyType(multibindingKeyData.mapKey)
+        originalElementTypeKey.copy(
+          context.symbols.map.typeWith(keyType, originalElementTypeKey.type)
+        )
       }
-    } else {
-      val keyType = mapKeyType(multibindingKeyData.mapKey)
-      originalElementTypeKey.copy(context.symbols.map.typeWith(keyType, originalElementTypeKey.type))
-    }
 
     // Get or create the multibinding using the type key from the source binding
     val multibinding =
