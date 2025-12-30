@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1767072091097,
+  "lastUpdate": 1767076834921,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup (baseline)": [
@@ -328,6 +328,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "baseline",
             "value": 0.21468856307072676,
+            "unit": "ms/op",
+            "extra": "iterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "pandanomic@gmail.com",
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f28172fb580468318cc945df4fefe8c01d6a3065",
+          "message": "Fix map providers in provides params (#1601)",
+          "timestamp": "2025-12-30T06:11:56Z",
+          "tree_id": "f20c7f0e5b6291f7c5d877657358763ca6d433d0",
+          "url": "https://github.com/ZacSweers/metro/commit/f28172fb580468318cc945df4fefe8c01d6a3065"
+        },
+        "date": 1767076833515,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "baseline",
+            "value": 0.2166225395400898,
             "unit": "ms/op",
             "extra": "iterations: 10\nforks: 2\nthreads: 1"
           }
