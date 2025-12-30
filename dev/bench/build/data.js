@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1767076836776,
+  "lastUpdate": 1767076838080,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time (baseline)": [
@@ -668,6 +668,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "Build Time (current)",
             "value": 19744.066,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "pandanomic@gmail.com",
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f28172fb580468318cc945df4fefe8c01d6a3065",
+          "message": "Fix map providers in provides params (#1601)",
+          "timestamp": "2025-12-30T06:11:56Z",
+          "tree_id": "f20c7f0e5b6291f7c5d877657358763ca6d433d0",
+          "url": "https://github.com/ZacSweers/metro/commit/f28172fb580468318cc945df4fefe8c01d6a3065"
+        },
+        "date": 1767076837633,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time (current)",
+            "value": 16887.084,
             "unit": "ms"
           }
         ]
