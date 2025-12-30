@@ -14,9 +14,10 @@ Changelog
 ### Fixes
 
 - [FIR, Anvil Interop] Fix rank-based binding replacements getting dropped for multi-contribution classes in root graphs when contributions are from external modules.
-- [IR, Anvil Interop] Fix rank-based binding replacements getting dropped for multi-contribution classes in graph extensions when contributions are from external modules.
 - [FIR] Named annotation arguments in different order from declared parameters getting silently skipped.
+- [IR, Anvil Interop] Fix rank-based binding replacements getting dropped for multi-contribution classes in graph extensions when contributions are from external modules.
 - [IR] Prohibit duplicate map keys.
+- [IR] Fix propagation of scoped multibinding sources to graph extensions.
 - [Gradle] Report all tested Kotlin versions when emitting compatibility warnings.
 
 ### Changes
