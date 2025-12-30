@@ -33,13 +33,31 @@ internal class BindingPropertyCollector(
    * Tracks factory reference counts for bindings. [factoryRefCount] is incremented when a binding
    * is accessed in a factory path context (explicit Provider/Lazy or as a dependency of something
    * in a factory path). If factoryRefCount > 1, the binding needs a property to cache its factory.
+   *
+   * [scalarRefCount] works the same, just for scalar references. These bindings would then need a
+   * property getter for sharing.
    */
-  private data class Node(val binding: IrBinding, var factoryRefCount: Int = 0)
+  private data class Node(
+    val binding: IrBinding,
+    var factoryRefCount: Int = 0,
+    var scalarRefCount: Int = 0,
+  )
 
   private val nodes = HashMap<IrTypeKey, Node>(INITIAL_VALUE)
 
   /** Cache of alias type keys to their resolved non-alias target type keys. */
   private val resolvedAliasTargets = HashMap<IrTypeKey, IrTypeKey>()
+
+  // Create getters for multi-use refcounts _unless_ they have no dependencies
+  private fun IrBinding.isSimpleBinding(): Boolean {
+    return when (dependencies.size) {
+      0 -> true
+      // If it's a single parameter but the parameter is just the dispatch receiver, it's simple.
+      // This is cases like a simple graph dependency or provides declaration.
+      1 -> parameters.dispatchReceiverParameter != null
+      else -> false
+    }
+  }
 
   fun collect(): Map<IrTypeKey, CollectedProperty> {
     val keysWithBackingProperties = mutableMapOf<IrTypeKey, CollectedProperty>()
@@ -48,9 +66,7 @@ internal class BindingPropertyCollector(
     // factory refcounts when they require provider instances so we mark them here.
     // This includes both direct Provider/Lazy wrapping and map types with Provider values.
     for (root in roots) {
-      if (root.requiresProviderInstance) {
-        markFactoryAccess(root)
-      }
+      markAccess(root, isFactory = root.requiresProviderInstance)
       maybeMarkMultibindingSourcesAsFactoryAccess(
         root,
         inFactoryPath = root.requiresProviderInstance,
@@ -81,13 +97,17 @@ internal class BindingPropertyCollector(
       if (binding is IrBinding.Multibinding) continue
 
       // factoryRefCount is finalized - check if we need a property to cache the factory
-      if (key !in keysWithBackingProperties && node.factoryRefCount > 1) {
-        keysWithBackingProperties[key] = CollectedProperty(binding, PropertyType.FIELD)
+      if (key !in keysWithBackingProperties) {
+        if (node.factoryRefCount > 1) {
+          keysWithBackingProperties[key] = CollectedProperty(binding, PropertyType.FIELD)
+        } else if (node.scalarRefCount > 1 && !node.binding.isSimpleBinding()) {
+          keysWithBackingProperties[key] = CollectedProperty(binding, PropertyType.GETTER)
+        }
       }
 
       // A binding is in a factory path if:
       // - It has a property (factory created at graph init)
-      // - t's accessed via Provider (factoryRefCount > 0, factory created inline)
+      // - It's accessed via Provider (factoryRefCount > 0, factory created inline)
       //
       // In both cases, its dependencies are accessed via Provider params in the factory.
       val inFactoryPath = key in keysWithBackingProperties || node.factoryRefCount > 0
@@ -96,9 +116,7 @@ internal class BindingPropertyCollector(
       // - Explicitly Provider<T> or Lazy<T>
       // - This binding is in a factory path (factory.create() takes Provider params)
       for (dependency in binding.dependencies) {
-        if (dependency.requiresProviderInstance || inFactoryPath) {
-          markFactoryAccess(dependency)
-        }
+        markAccess(dependency, isFactory = dependency.requiresProviderInstance || inFactoryPath)
         maybeMarkMultibindingSourcesAsFactoryAccess(dependency, inFactoryPath = inFactoryPath)
       }
     }
@@ -135,10 +153,10 @@ internal class BindingPropertyCollector(
   }
 
   /**
-   * Marks a dependency as a factory access, resolving through alias chains to mark the final
-   * non-alias target. Increments the target's factoryRefCount.
+   * Marks a dependency access, resolving through alias chains to mark the final non-alias target.
+   * Increments the target's factoryRefCount if isFactory is true, or scalarRefCount if false.
    */
-  private fun markFactoryAccess(contextualTypeKey: IrContextualTypeKey) {
+  private fun markAccess(contextualTypeKey: IrContextualTypeKey, isFactory: Boolean) {
     val binding = graph.requireBinding(contextualTypeKey)
 
     // For aliases, resolve to the final target and mark that instead.
@@ -151,7 +169,15 @@ internal class BindingPropertyCollector(
 
     // Create node lazily if needed (the target may not have been processed yet in reverse order)
     val targetBinding = graph.findBinding(targetKey) ?: return
-    nodes.getOrPut(targetKey) { Node(targetBinding) }.factoryRefCount++
+    nodes
+      .getOrPut(targetKey) { Node(targetBinding) }
+      .apply {
+        if (isFactory) {
+          factoryRefCount++
+        } else {
+          scalarRefCount++
+        }
+      }
   }
 
   /**
@@ -177,10 +203,8 @@ internal class BindingPropertyCollector(
         inFactoryPath ||
         contextKey.wrappedType.hasProviderMapValues()
 
-    if (usesProviderElements) {
-      for (sourceKey in binding.sourceBindings) {
-        markFactoryAccess(IrContextualTypeKey(sourceKey))
-      }
+    for (sourceKey in binding.sourceBindings) {
+      markAccess(IrContextualTypeKey(sourceKey), isFactory = usesProviderElements)
     }
   }
 

@@ -482,8 +482,7 @@ internal class IrGraphGenerator(
           // Don't generate deferred types here, we'll generate them last
           binding.typeKey in deferredProperties ||
             // Don't generate properties for anything already provided in provider/instance
-            // properties (i.e.
-            // bound instance types)
+            // properties (i.e. bound instance types)
             binding.typeKey in bindingPropertyContext ||
             // We don't generate properties for these even though we do track them in dependencies
             // above, it's just for propagating their aliased type in sorting
@@ -515,8 +514,8 @@ internal class IrGraphGenerator(
               isProviderType = false
               suffix = "Factory"
               binding.classFactory.factoryClass.typeWith() // TODO generic factories?
-            } else if (propertyType == PropertyType.GETTER && binding is IrBinding.Multibinding) {
-              // Getters don't need to be providers for multibindings
+            } else if (propertyType == PropertyType.GETTER) {
+              // Getters don't need to be providers (multibindings, multi-use scalars)
               isProviderType = false
               suffix = ""
               binding.typeKey.type
@@ -556,7 +555,8 @@ internal class IrGraphGenerator(
               .create(thisReceiver)
               .generateBindingCode(
                 binding,
-                contextualTypeKey = binding.contextualTypeKey.wrapInProvider(),
+                contextualTypeKey =
+                  binding.contextualTypeKey.letIf(isProviderType) { it.wrapInProvider() },
                 accessType = accessType,
                 fieldInitKey = typeKey,
               )

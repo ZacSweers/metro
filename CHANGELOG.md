@@ -10,6 +10,7 @@ Changelog
 
 - [FIR] Add diagnostic for multiple graph-like annotations on a single declaration.
 - [IR] Stub `@Binds` expressions in origin points rather than graphs. This reduces unnecessary extra generated functions.
+- [IR] Generate reusable getters for scalar-only dependencies that are used multiple times. This helps avoid `MethodTooLargeException` errors in the JVM.
 
 ### Fixes
 
