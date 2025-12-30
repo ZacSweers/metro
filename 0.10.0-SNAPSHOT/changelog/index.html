@@ -2966,6 +2966,7 @@
 <ul>
 <li>[FIR] Add diagnostic for multiple graph-like annotations on a single declaration.</li>
 <li>[IR] Stub <code>@Binds</code> expressions in origin points rather than graphs. This reduces unnecessary extra generated functions.</li>
+<li>[IR] Generate reusable getters for scalar-only dependencies that are used multiple times. This helps avoid <code>MethodTooLargeException</code> errors in the JVM.</li>
 </ul>
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
 <ul>
