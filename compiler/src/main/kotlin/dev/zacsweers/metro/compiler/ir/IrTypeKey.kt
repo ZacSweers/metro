@@ -22,15 +22,19 @@ private constructor(
   override val type: IrType,
   override val qualifier: IrAnnotation?,
   // TODO these extra properties are awkward. Should we make this a sealed class?
-  /** The original @MapKey annotation for multibinding map contributions. */
-  @Poko.Skip val mapKey: IrAnnotation? = null,
-  /**
-   * For multibinding contributions, this is the original multibinding type key (Set<T> or Map<K,
-   * V>) that this contribution belongs to. Used to implicitly create the multibinding when
-   * processing parent graph contributions.
-   */
-  @Poko.Skip val multibindingTypeKey: IrTypeKey? = null,
+  @Poko.Skip val multibindingKeyData: MultibindingKeyData? = null,
 ) : BaseTypeKey<IrType, IrAnnotation, IrTypeKey> {
+  data class MultibindingKeyData(
+    /**
+     * For multibinding contributions, this is the original multibinding type key (Set<T> or Map<K,
+     * V>) that this contribution belongs to. Used to implicitly create the multibinding when
+     * processing parent graph contributions.
+     */
+    val multibindingTypeKey: IrTypeKey? = null,
+    /** The original @MapKey annotation for multibinding map contributions. */
+    val mapKey: IrAnnotation? = null,
+    val isElementsIntoSet: Boolean = false,
+  )
 
   private val cachedRender by memoize { render(short = false, includeQualifier = true) }
 
@@ -64,16 +68,15 @@ private constructor(
   }
 
   override fun copy(type: IrType, qualifier: IrAnnotation?): IrTypeKey {
-    return IrTypeKey(type, qualifier, mapKey, multibindingTypeKey)
+    return IrTypeKey(type, qualifier, multibindingKeyData)
   }
 
   fun copy(
     type: IrType = this.type,
     qualifier: IrAnnotation? = this.qualifier,
-    mapKey: IrAnnotation? = this.mapKey,
-    multibindingTypeKey: IrTypeKey? = this.multibindingTypeKey,
+    multibindingKeyData: MultibindingKeyData? = this.multibindingKeyData,
   ): IrTypeKey {
-    return IrTypeKey(type, qualifier, mapKey, multibindingTypeKey)
+    return IrTypeKey(type, qualifier, multibindingKeyData)
   }
 
   override fun toString(): String = cachedRender
@@ -102,15 +105,13 @@ private constructor(
     operator fun invoke(
       type: IrType,
       qualifier: IrAnnotation? = null,
-      mapKey: IrAnnotation? = null,
-      multibindingTypeKey: IrTypeKey? = null,
+      multibindingKeyData: MultibindingKeyData? = null,
     ): IrTypeKey {
       // Canonicalize on the way through
       return IrTypeKey(
         type.canonicalize(patchMutableCollections = false, context = null),
         qualifier,
-        mapKey,
-        multibindingTypeKey,
+        multibindingKeyData
       )
     }
   }
@@ -130,5 +131,5 @@ internal fun IrTypeKey.requireMapValueType(): IrType {
 
 internal fun IrTypeKey.remapTypes(typeRemapper: TypeRemapper): IrTypeKey {
   if (type !is IrSimpleType) return this
-  return IrTypeKey(typeRemapper.remapType(type), qualifier, mapKey, multibindingTypeKey)
+  return IrTypeKey(typeRemapper.remapType(type), qualifier, multibindingKeyData)
 }
