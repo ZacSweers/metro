@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph.expressions
 
-import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
@@ -129,8 +128,8 @@ internal class MultibindingExpressionGenerator(
     val elementType = (binding.typeKey.type as IrSimpleType).arguments.single().typeOrFail
     val (collectionProviders, individualProviders) =
       binding.sourceBindings
-        .map { bindingGraph.requireBinding(it).expectAs<IrBinding.BindingWithAnnotations>() }
-        .partition { it.annotations.isElementsIntoSet }
+        .map { bindingGraph.requireBinding(it) }
+        .partition { it.typeKey.multibindingKeyData?.isElementsIntoSet ?: false }
 
     val actualAccessType: AccessType
     // If we have any @ElementsIntoSet, we need to use SetFactory
@@ -233,11 +232,8 @@ internal class MultibindingExpressionGenerator(
 
   private fun generateMapKeyLiteral(binding: IrBinding): IrExpression {
     val mapKey =
-      when (binding) {
-        is IrBinding.BindingWithAnnotations -> binding.annotations.mapKey!!.ir
-        else -> reportCompilerBug("Unsupported multibinding source: $binding")
-      }
-
+      binding.typeKey.multibindingKeyData?.mapKey?.ir
+        ?: reportCompilerBug("Unsupported multibinding source: $binding")
     val unwrapValue = shouldUnwrapMapKeyValues(mapKey)
     val expression =
       if (!unwrapValue) {
