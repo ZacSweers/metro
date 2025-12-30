@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1767076838080,
+  "lastUpdate": 1767118994936,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time (baseline)": [
@@ -347,6 +347,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "Build Time (baseline)",
             "value": 16809.198,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "pandanomic@gmail.com",
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "03a7c39109299c1978798e94994be49e0987fb2d",
+          "message": "Generate reusable getters for reused non-simple scalar bindings (#1602)",
+          "timestamp": "2025-12-30T12:53:45-05:00",
+          "tree_id": "05f0e70653c5a39a0fb0ef9448c926d82bae02e5",
+          "url": "https://github.com/ZacSweers/metro/commit/03a7c39109299c1978798e94994be49e0987fb2d"
+        },
+        "date": 1767118994533,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time (baseline)",
+            "value": 16728.544,
             "unit": "ms"
           }
         ]
