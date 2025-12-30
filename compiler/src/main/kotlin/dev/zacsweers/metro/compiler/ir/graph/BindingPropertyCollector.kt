@@ -54,7 +54,10 @@ internal class BindingPropertyCollector(
       0 -> true
       // If it's a single parameter but the parameter is just the dispatch receiver, it's simple.
       // This is cases like a simple graph dependency or provides declaration.
-      1 -> parameters.dispatchReceiverParameter != null
+      1 -> {
+        if (this !is IrBinding.Provided) return false
+        parameters.dispatchReceiverParameter != null
+      }
       else -> false
     }
   }
@@ -106,11 +109,13 @@ internal class BindingPropertyCollector(
       }
 
       // A binding is in a factory path if:
-      // - It has a property (factory created at graph init)
+      // - It has a FIELD property (factory created at graph init for scoped/assisted/etc)
       // - It's accessed via Provider (factoryRefCount > 0, factory created inline)
       //
       // In both cases, its dependencies are accessed via Provider params in the factory.
-      val inFactoryPath = key in keysWithBackingProperties || node.factoryRefCount > 0
+      // Note: GETTER properties are for sharing scalar access, not factory access.
+      val hasFieldProperty = keysWithBackingProperties[key]?.propertyType == PropertyType.FIELD
+      val inFactoryPath = hasFieldProperty || node.factoryRefCount > 0
 
       // Mark dependencies as factory accesses if:
       // - Explicitly Provider<T> or Lazy<T>
