@@ -26,7 +26,6 @@ import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
-import org.jetbrains.kotlin.ir.util.remapTypes
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.CallableId.Companion.PACKAGE_FQ_NAME_FOR_LOCAL
 import org.jetbrains.kotlin.name.Name
