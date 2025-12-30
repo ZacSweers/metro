@@ -19,10 +19,10 @@ import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.allowEmpty
 import dev.zacsweers.metro.compiler.ir.annotationClass
+import dev.zacsweers.metro.compiler.ir.computeMultibindingId
 import dev.zacsweers.metro.compiler.ir.createMapBindingId
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.locationOrNull
-import dev.zacsweers.metro.compiler.ir.computeMultibindingId
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.rawType

@@ -111,7 +111,7 @@ private constructor(
       return IrTypeKey(
         type.canonicalize(patchMutableCollections = false, context = null),
         qualifier,
-        multibindingKeyData
+        multibindingKeyData,
       )
     }
   }

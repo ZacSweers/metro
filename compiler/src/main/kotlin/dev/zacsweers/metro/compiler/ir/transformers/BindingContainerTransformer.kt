@@ -893,8 +893,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
                   )
                   return null
                 }
-                val transformedTypeKey =
-                  contextKey.typeKey.transformIfIntoMultibinding(annotations)
+                val transformedTypeKey = contextKey.typeKey.transformIfIntoMultibinding(annotations)
 
                 providerFactories[callableId] =
                   ProviderFactory.Dagger(
