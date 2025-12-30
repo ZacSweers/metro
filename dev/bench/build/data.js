@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1767072092079,
+  "lastUpdate": 1767072093018,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time (baseline)": [
@@ -610,6 +610,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "Build Time (current)",
             "value": 17139.4,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "pandanomic@gmail.com",
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0c49c566ee563800f8ce509d5da077b504d8aefa",
+          "message": "Fix propagation of parent scoped multibindings to extensions (#1600)",
+          "timestamp": "2025-12-30T04:46:16Z",
+          "tree_id": "257d037f44edfaaab2004107157b94fa1e1b42c1",
+          "url": "https://github.com/ZacSweers/metro/commit/0c49c566ee563800f8ce509d5da077b504d8aefa"
+        },
+        "date": 1767072092617,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time (current)",
+            "value": 19744.066,
             "unit": "ms"
           }
         ]
