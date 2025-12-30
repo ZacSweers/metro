@@ -174,9 +174,7 @@ private fun ConeKotlinType.asWrappedType(session: FirSession): WrappedType<ConeK
     val valueWrappedType = valueType.asWrappedType(session)
 
     return WrappedType.Map(keyType, valueWrappedType) {
-      session.metroFirBuiltIns.mapClassSymbol.constructType(
-        arrayOf(keyType, valueWrappedType.canonicalType())
-      )
+      session.metroFirBuiltIns.mapClassSymbol.constructType(arrayOf(keyType, valueType))
     }
   }
 

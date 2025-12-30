@@ -1730,6 +1730,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("MapProviderAccessor.kt")
+    public void testMapProviderAccessor() {
+      runTest("compiler-tests/src/test/data/box/multibindings/MapProviderAccessor.kt");
+    }
+
+    @Test
     @TestMetadata("MultibindingGraphWithWithScopedMapProviderDeps.kt")
     public void testMultibindingGraphWithWithScopedMapProviderDeps() {
       runTest("compiler-tests/src/test/data/box/multibindings/MultibindingGraphWithWithScopedMapProviderDeps.kt");
