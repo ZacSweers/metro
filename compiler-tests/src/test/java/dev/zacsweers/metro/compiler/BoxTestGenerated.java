@@ -941,6 +941,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("UnusedBindingsAvoidDuplicateBindingsError.kt")
+      public void testUnusedBindingsAvoidDuplicateBindingsError() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/leniency/UnusedBindingsAvoidDuplicateBindingsError.kt");
+      }
+
+      @Test
       @TestMetadata("UnusedProvidersAreNotValidated.kt")
       public void testUnusedProvidersAreNotValidated() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/leniency/UnusedProvidersAreNotValidated.kt");
