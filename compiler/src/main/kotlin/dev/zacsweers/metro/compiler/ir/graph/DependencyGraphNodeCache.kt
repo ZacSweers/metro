@@ -27,13 +27,13 @@ import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.bindingContainerClasses
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.excludedClasses
+import dev.zacsweers.metro.compiler.ir.graph.DependencyGraphNode.TrackedDuplicateBinding
 import dev.zacsweers.metro.compiler.ir.isAccessorCandidate
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isBindingContainer
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.isInheritedFromAny
 import dev.zacsweers.metro.compiler.ir.linkDeclarationsInCompilation
-import dev.zacsweers.metro.compiler.ir.locationOrNull
 import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
@@ -46,8 +46,6 @@ import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
-import dev.zacsweers.metro.compiler.ir.render
-import dev.zacsweers.metro.compiler.ir.renderForDiagnostic
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.scopeAnnotations
 import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
@@ -356,82 +354,26 @@ internal class DependencyGraphNodeCache(
       }
     }
 
-    private var hasDuplicateBindingErrors = false
+    // Track duplicate bindings instead of reporting immediately - they'll be reported later
+    // only if the binding is actually used
+    private val trackedDuplicateBindings = mutableListOf<TrackedDuplicateBinding>()
 
-    private fun reportDuplicateProviderFactory(
+    private fun trackDuplicateProviderFactory(
       typeKey: IrTypeKey,
       existing: ProviderFactory,
       duplicate: ProviderFactory,
     ) {
-      hasDuplicateBindingErrors = true
-
-      fun StringBuilder.appendFactory(factory: ProviderFactory) {
-        append("  ")
-        appendLine(
-          factory.function.locationOrNull()?.render(short = true) ?: factory.callableId.toString()
-        )
-        append("    ")
-        renderForDiagnostic(
-          declaration = factory.function,
-          short = false,
-          typeKey = factory.rawTypeKey,
-          annotations = factory.annotations,
-          parameters = factory.parameters,
-          isProperty = factory.isPropertyAccessor,
-          underlineTypeKey = true,
-        )
-      }
-
-      val message = buildString {
-        appendLine(
-          "[Metro/DuplicateBinding] Multiple bindings found for ${typeKey.render(short = false, includeQualifier = true)}"
-        )
-        appendLine()
-        // Render each location with its signature (indented with 4 spaces)
-        appendFactory(existing)
-        appendLine()
-        appendFactory(duplicate)
-        appendBindingStack(bindingStack, short = false)
-      }
-      reportCompat(graphDeclaration.sourceGraphIfMetroGraph, MetroDiagnostics.METRO_ERROR, message)
+      trackedDuplicateBindings +=
+        TrackedDuplicateBinding.ProviderFactoryDuplicate(typeKey, existing, duplicate)
     }
 
-    private fun reportDuplicateBindsCallable(
+    private fun trackDuplicateBindsCallable(
       typeKey: IrTypeKey,
       existing: BindsCallable,
       duplicate: BindsCallable,
     ) {
-      hasDuplicateBindingErrors = true
-      val existingDiagnostic =
-        existing.renderLocationDiagnostic(short = false, existing.function.parameters())
-      val duplicateDiagnostic =
-        duplicate.renderLocationDiagnostic(short = false, duplicate.function.parameters())
-      val message = buildString {
-        appendLine(
-          "[Metro/DuplicateBinding] Multiple bindings found for ${typeKey.render(short = false, includeQualifier = true)}"
-        )
-        appendLine()
-        append("  ")
-        appendLine(existingDiagnostic.location)
-        // Indent each line of the description (content line + underline line)
-        existingDiagnostic.description?.lines()?.forEach { line ->
-          append("    ")
-          appendLine(line)
-        }
-        append("  ")
-        appendLine(duplicateDiagnostic.location)
-        // Indent each line of the description (content line + underline line)
-        duplicateDiagnostic.description?.lines()?.forEachIndexed { index, line ->
-          append("    ")
-          if (index < (duplicateDiagnostic.description.lines().size - 1)) {
-            appendLine(line)
-          } else {
-            append(line)
-          }
-        }
-        appendBindingStack(bindingStack, short = false)
-      }
-      reportCompat(graphDeclaration.sourceGraphIfMetroGraph, MetroDiagnostics.METRO_ERROR, message)
+      trackedDuplicateBindings +=
+        TrackedDuplicateBinding.BindsCallableDuplicate(typeKey, existing, duplicate)
     }
 
     private fun reportQualifierMismatch(
@@ -945,11 +887,11 @@ internal class DependencyGraphNodeCache(
           val existingIsDynamic = typeKey in dynamicTypeKeys
           val existingFactory = providerFactories[typeKey]
           if (existingFactory != null) {
-            // Report duplicate if both are non-dynamic OR both are dynamic
+            // Track duplicate if both are non-dynamic OR both are dynamic
             val bothNonDynamic = !isDynamicContainer && !existingIsDynamic
             val bothDynamic = isDynamicContainer && existingIsDynamic
             if (bothNonDynamic || bothDynamic) {
-              reportDuplicateProviderFactory(typeKey, existingFactory, factory)
+              trackDuplicateProviderFactory(typeKey, existingFactory, factory)
             }
           }
           if (isDynamicContainer || !existingIsDynamic) {
@@ -966,11 +908,11 @@ internal class DependencyGraphNodeCache(
             val existingIsDynamic = typeKey in dynamicTypeKeys
             val existingCallable = bindsCallables[typeKey]
             if (existingCallable != null) {
-              // Report duplicate if both are non-dynamic OR both are dynamic
+              // Track duplicate if both are non-dynamic OR both are dynamic
               val bothNonDynamic = !isDynamicContainer && !existingIsDynamic
               val bothDynamic = isDynamicContainer && existingIsDynamic
               if (bothNonDynamic || bothDynamic) {
-                reportDuplicateBindsCallable(typeKey, existingCallable, callable)
+                trackDuplicateBindsCallable(typeKey, existingCallable, callable)
               }
             }
             if (isDynamicContainer || !existingIsDynamic) {
@@ -1023,6 +965,7 @@ internal class DependencyGraphNodeCache(
           bindingContainers = managedBindingContainers,
           dynamicTypeKeys = dynamicTypeKeys,
           typeKey = graphTypeKey,
+          trackedDuplicateBindings = trackedDuplicateBindings.toList(),
         )
 
       // Check after creating a node for access to recursive allDependencies
@@ -1054,10 +997,8 @@ internal class DependencyGraphNodeCache(
         exitProcessing()
       }
 
-      // Exit after collecting all duplicate binding errors
-      if (hasDuplicateBindingErrors) {
-        exitProcessing()
-      }
+      // Note: Duplicate binding errors are tracked but not reported here.
+      // They will be reported later in IrBindingGraph.seal() only if the binding is actually used.
 
       return dependencyGraphNode
     }
@@ -1156,6 +1097,7 @@ internal class DependencyGraphNodeCache(
           bindingContainers = emptySet(),
           bindsFunctions = emptyList(),
           dynamicTypeKeys = emptyMap(),
+          trackedDuplicateBindings = emptyList(),
         )
 
       return dependentNode

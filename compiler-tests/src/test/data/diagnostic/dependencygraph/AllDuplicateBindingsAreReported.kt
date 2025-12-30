@@ -3,6 +3,9 @@
 
 @DependencyGraph
 interface <!METRO_ERROR, METRO_ERROR, METRO_ERROR, METRO_ERROR!>AppGraph<!> {
+  // Accessor to actually use the String binding - duplicates are only reported for used bindings
+  val string: String
+
   @Provides fun provideString1(): String = "1"
   @Provides fun provideString2(): String = "2"
   @Provides fun provideString3(): String = "3"

@@ -74,6 +74,7 @@ internal class BindingGraphGenerator(
         },
         findMemberInjectors = membersInjectorTransformer::getOrGenerateAllInjectorsFor,
         parentContext = parentContext,
+        trackedDuplicates = node.trackedDuplicateBindings,
       )
 
     val graph =
@@ -196,7 +197,8 @@ internal class BindingGraphGenerator(
           continue
         } else {
           // Both are from the same level (both current or both inherited) - this is an error
-          graph.reportDuplicateBinding(typeKey, existingProvider, binding, bindingStack)
+          // Track the duplicate, will be reported later only if the binding is actually used
+          bindingLookup.trackDuplicateBinding(typeKey, existingProvider, binding)
           continue
         }
       } else if (existingProvider == null) {
@@ -221,7 +223,8 @@ internal class BindingGraphGenerator(
             continue
           } else {
             // Both are from the same level - this is an error
-            graph.reportDuplicateBinding(targetTypeKey, existingAlias, binding, bindingStack)
+            // Track the duplicate, will be reported later only if the binding is actually used
+            bindingLookup.trackDuplicateBinding(targetTypeKey, existingAlias, binding)
             continue
           }
         } else {
@@ -305,7 +308,8 @@ internal class BindingGraphGenerator(
         } else {
           // Both are from the same level (both current or both inherited) - this is an error
           // TODO Could check if there's a duplicate from provider factories to better message
-          graph.reportDuplicateBinding(targetTypeKey, existingBinding, binding, bindingStack)
+          // Track the duplicate, will be reported later only if the binding is actually used
+          bindingLookup.trackDuplicateBinding(targetTypeKey, existingBinding, binding)
           continue
         }
       } else if (existingBinding == null) {
@@ -330,7 +334,8 @@ internal class BindingGraphGenerator(
             continue
           } else {
             // Both are from the same level - this is an error
-            graph.reportDuplicateBinding(targetTypeKey, existingProvider, binding, bindingStack)
+            // Track the duplicate, will be reported later only if the binding is actually used
+            bindingLookup.trackDuplicateBinding(targetTypeKey, existingProvider, binding)
             continue
           }
         } else {

@@ -218,6 +218,7 @@ internal class IrBindingGraph(
       }
     }
 
+    parentTracer.traceNested("check duplicate bindings") { checkDuplicateBindings(reachableKeys) }
     parentTracer.traceNested("check empty multibindings") { checkEmptyMultibindings(onError) }
     parentTracer.traceNested("check for absent bindings") {
       check(realGraph.bindings.values.none { it is IrBinding.Absent }) {
@@ -245,6 +246,21 @@ internal class IrBindingGraph(
     bindingStack: IrBindingStack,
   ) {
     realGraph.reportDuplicateBinding(key, existing, duplicate, bindingStack)
+  }
+
+  /**
+   * Checks for duplicate bindings and reports errors only for bindings that are actually used
+   * (reachable from roots). This allows unused duplicate bindings to be silently ignored, similar
+   * to how unused missing bindings are handled.
+   */
+  private fun checkDuplicateBindings(reachableKeys: Set<IrTypeKey>) {
+    val duplicates = bindingLookup.getDuplicateBindings()
+    val bindingStack = newBindingStack()
+    duplicates.forEach {
+      if (it.key in reachableKeys) {
+        realGraph.reportDuplicateBinding(it.key, it.existing, it.duplicate, bindingStack)
+      }
+    }
   }
 
   private fun checkEmptyMultibindings(onError: (List<GraphError>) -> Unit) {

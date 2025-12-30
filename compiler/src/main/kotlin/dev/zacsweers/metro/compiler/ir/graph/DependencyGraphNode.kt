@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
+import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.BitField
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.ir.BindsCallable
@@ -64,6 +65,8 @@ internal data class DependencyGraphNode(
   // TODO not ideal that this is mutable/lateinit but welp
   //  maybe we track these protos separately somewhere?
   var proto: DependencyGraphProto? = null,
+  /** Duplicate bindings detected during node population. Deferred for reporting only if used. */
+  val trackedDuplicateBindings: List<TrackedDuplicateBinding>,
 ) {
   // For quick lookups
   val supertypeClassIds: Set<ClassId> by memoize {
@@ -146,6 +149,28 @@ internal data class DependencyGraphNode(
       override val parameters: Parameters,
       override val bindingContainersParameterIndices: BitField,
     ) : Creator()
+  }
+
+  /**
+   * Represents a duplicate binding detected during node population. Reporting is deferred until we
+   * know which bindings are actually used.
+   */
+  internal sealed class TrackedDuplicateBinding {
+    abstract val typeKey: IrTypeKey
+
+    @Poko
+    class ProviderFactoryDuplicate(
+      override val typeKey: IrTypeKey,
+      val existing: ProviderFactory,
+      val duplicate: ProviderFactory,
+    ) : TrackedDuplicateBinding()
+
+    @Poko
+    class BindsCallableDuplicate(
+      override val typeKey: IrTypeKey,
+      val existing: BindsCallable,
+      val duplicate: BindsCallable,
+    ) : TrackedDuplicateBinding()
   }
 }
 
