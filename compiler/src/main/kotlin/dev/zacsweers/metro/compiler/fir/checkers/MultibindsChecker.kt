@@ -217,14 +217,27 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
     // @ElementsIntoSet must be a Collection
     if (annotations.isElementsIntoSet) {
       // Provides checker will check separately for an explicit return type
-      declaration.returnTypeRef.coneTypeOrNull?.toClassSymbol(session)?.let { returnType ->
-        if (!returnType.isOrImplements(StandardClassIds.Collection, session)) {
-          reporter.reportOn(
-            source,
-            MetroDiagnostics.MULTIBINDS_ERROR,
-            "`@ElementsIntoSet` must return a Collection.",
-          )
-          return
+      declaration.returnTypeRef.coneTypeOrNull?.let { returnConeType ->
+        returnConeType.toClassSymbol(session)?.let { returnType ->
+          if (!returnType.isOrImplements(StandardClassIds.Collection, session)) {
+            reporter.reportOn(
+              declaration.returnTypeRef.source ?: source,
+              MetroDiagnostics.MULTIBINDS_ERROR,
+              "`@ElementsIntoSet` must return a Collection.",
+            )
+          } else if (returnConeType.typeArguments.size != 1) {
+            reporter.reportOn(
+              declaration.returnTypeRef.source ?: source,
+              MetroDiagnostics.MULTIBINDS_ERROR,
+              "`@ElementsIntoSet` must return a Collection type with exactly one generic type argument.",
+            )
+          } else if (returnConeType.typeArguments[0] is ConeStarProjection) {
+            reporter.reportOn(
+              declaration.returnTypeRef.source ?: source,
+              MetroDiagnostics.MULTIBINDS_ERROR,
+              "`@ElementsIntoSet` cannot return a star projection type.",
+            )
+          }
         }
       }
     }

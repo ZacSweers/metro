@@ -16,6 +16,8 @@ Changelog
 - [FIR, Anvil Interop] Fix rank-based binding replacements getting dropped for multi-contribution classes in root graphs when contributions are from external modules.
 - [FIR] Named annotation arguments in different order from declared parameters getting silently skipped.
 - [FIR] Fix `Map<K, Provider<V>>` parameters to `@Provides` functions mistakenly unwrapping the Provider value type.
+- [FIR] Disallow star projections in `@ElementsIntoSet` binding types.
+- [FIR] Require exactly one generic type argument `@ElementsIntoSet` binding types.
 - [IR, Anvil Interop] Fix rank-based binding replacements getting dropped for multi-contribution classes in graph extensions when contributions are from external modules.
 - [IR] Prohibit duplicate map keys.
 - [IR] Fix propagation of scoped multibinding sources to graph extensions.
