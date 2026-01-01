@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1767118995891,
+  "lastUpdate": 1767295449771,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time (baseline)": [
@@ -376,6 +376,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "Build Time (baseline)",
             "value": 16728.544,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "ralf@squareup.com",
+            "name": "Ralf Wondratschek",
+            "username": "vRallev"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d35cff7e2053034d589246f487fb19187ee782a2",
+          "message": "Reconstruct type key for multibindings (#1603)\n\nCo-authored-by: Zac Sweers <pandanomic@gmail.com>",
+          "timestamp": "2026-01-01T18:51:06Z",
+          "tree_id": "d674974b8a7b09c07b52fa1f9ef187d03b5acb95",
+          "url": "https://github.com/ZacSweers/metro/commit/d35cff7e2053034d589246f487fb19187ee782a2"
+        },
+        "date": 1767295449454,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time (baseline)",
+            "value": 17502.656,
             "unit": "ms"
           }
         ]
