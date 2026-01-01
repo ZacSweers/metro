@@ -234,12 +234,12 @@ internal class BindingLookup(
           } else {
             originalElementTypeKey.type
           }
-        originalElementTypeKey.copy(context.symbols.set.typeWith(elementType))
+        originalElementTypeKey.copy(context.irBuiltIns.setClass.typeWith(elementType))
       } else {
         // It's a map
         val keyType = mapKeyType(multibindingKeyData.mapKey)
         originalElementTypeKey.copy(
-          context.symbols.map.typeWith(keyType, originalElementTypeKey.type)
+          context.irBuiltIns.mapClass.typeWith(keyType, originalElementTypeKey.type)
         )
       }
 
