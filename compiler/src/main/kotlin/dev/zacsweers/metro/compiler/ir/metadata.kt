@@ -43,7 +43,7 @@ internal fun DependencyGraphNode.toProto(bindingGraph: IrBindingGraph): Dependen
 
   return createGraphProto(
     isGraph = true,
-    providerFactories = providerFactories.values,
+    providerFactories = providerFactories.values.flatten(),
     accessorNames = accessorNames,
     multibindingAccessorIndices = multibindingAccessors.toIntList(),
   )

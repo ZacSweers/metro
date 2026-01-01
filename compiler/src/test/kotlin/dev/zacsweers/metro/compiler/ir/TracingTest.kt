@@ -56,7 +56,6 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,Sort and validate
           ExampleGraph,Compute binding indices
           ExampleGraph,seal graph
-          ExampleGraph,check duplicate bindings
           ExampleGraph,check empty multibindings
           ExampleGraph,check for absent bindings
           ExampleGraph,compute shard groups
@@ -113,8 +112,6 @@ class TracingTest : MetroCompilerTest() {
                       ▶ Compute binding indices
                       ◀ Compute binding indices (xx ms)
                     ◀ seal graph (xx ms)
-                    ▶ check duplicate bindings
-                    ◀ check duplicate bindings (xx ms)
                     ▶ check empty multibindings
                     ◀ check empty multibindings (xx ms)
                     ▶ check for absent bindings
@@ -198,7 +195,6 @@ class TracingTest : MetroCompilerTest() {
           ChildGraphImpl,Sort and validate
           ChildGraphImpl,Compute binding indices
           ChildGraphImpl,seal graph
-          ChildGraphImpl,check duplicate bindings
           ChildGraphImpl,check empty multibindings
           ChildGraphImpl,check for absent bindings
           ChildGraphImpl,compute shard groups
@@ -219,7 +215,6 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,Sort and validate
           ExampleGraph,Compute binding indices
           ExampleGraph,seal graph
-          ExampleGraph,check duplicate bindings
           ExampleGraph,check empty multibindings
           ExampleGraph,check for absent bindings
           ExampleGraph,compute shard groups
@@ -285,8 +280,6 @@ class TracingTest : MetroCompilerTest() {
                       ▶ Compute binding indices
                       ◀ Compute binding indices (xx ms)
                     ◀ seal graph (xx ms)
-                    ▶ check duplicate bindings
-                    ◀ check duplicate bindings (xx ms)
                     ▶ check empty multibindings
                     ◀ check empty multibindings (xx ms)
                     ▶ check for absent bindings
@@ -326,8 +319,6 @@ class TracingTest : MetroCompilerTest() {
                       ▶ Compute binding indices
                       ◀ Compute binding indices (xx ms)
                     ◀ seal graph (xx ms)
-                    ▶ check duplicate bindings
-                    ◀ check duplicate bindings (xx ms)
                     ▶ check empty multibindings
                     ◀ check empty multibindings (xx ms)
                     ▶ check for absent bindings
@@ -411,7 +402,6 @@ class TracingTest : MetroCompilerTest() {
           ChildGraphImpl,Sort and validate
           ChildGraphImpl,Compute binding indices
           ChildGraphImpl,seal graph
-          ChildGraphImpl,check duplicate bindings
           ChildGraphImpl,check empty multibindings
           ChildGraphImpl,check for absent bindings
           ChildGraphImpl,compute shard groups
@@ -432,7 +422,6 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,Sort and validate
           ExampleGraph,Compute binding indices
           ExampleGraph,seal graph
-          ExampleGraph,check duplicate bindings
           ExampleGraph,check empty multibindings
           ExampleGraph,check for absent bindings
           ExampleGraph,compute shard groups
@@ -498,8 +487,6 @@ class TracingTest : MetroCompilerTest() {
                       ▶ Compute binding indices
                       ◀ Compute binding indices (xx ms)
                     ◀ seal graph (xx ms)
-                    ▶ check duplicate bindings
-                    ◀ check duplicate bindings (xx ms)
                     ▶ check empty multibindings
                     ◀ check empty multibindings (xx ms)
                     ▶ check for absent bindings
@@ -539,8 +526,6 @@ class TracingTest : MetroCompilerTest() {
                       ▶ Compute binding indices
                       ◀ Compute binding indices (xx ms)
                     ◀ seal graph (xx ms)
-                    ▶ check duplicate bindings
-                    ◀ check duplicate bindings (xx ms)
                     ▶ check empty multibindings
                     ◀ check empty multibindings (xx ms)
                     ▶ check for absent bindings

@@ -19,6 +19,7 @@ Changelog
 - [IR, Anvil Interop] Fix rank-based binding replacements getting dropped for multi-contribution classes in graph extensions when contributions are from external modules.
 - [IR] Prohibit duplicate map keys.
 - [IR] Fix propagation of scoped multibinding sources to graph extensions.
+- [IR] Don't eagerly validate duplicate bindings (only report them if used).
 - [Gradle] Report all tested Kotlin versions when emitting compatibility warnings.
 
 ### Changes
