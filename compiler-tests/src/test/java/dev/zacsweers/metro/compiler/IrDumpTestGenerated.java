@@ -184,6 +184,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("ReusableScalarBindings.kt")
+    public void testReusableScalarBindings() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/ReusableScalarBindings.kt");
+    }
+
+    @Test
     @TestMetadata("UnusedInstanceBindingsInUnextendedGraphGetNoProviderFields.kt")
     public void testUnusedInstanceBindingsInUnextendedGraphGetNoProviderFields() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/UnusedInstanceBindingsInUnextendedGraphGetNoProviderFields.kt");

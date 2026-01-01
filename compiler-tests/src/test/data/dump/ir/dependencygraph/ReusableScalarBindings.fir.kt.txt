@@ -1,0 +1,282 @@
+@Inject
+class NonReused {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<NonReused> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    fun create(): Factory<NonReused> {
+      return MetroFactory
+    }
+
+    fun newInstance(): NonReused {
+      return NonReused()
+    }
+
+    override operator fun invoke(): NonReused {
+      return MetroFactory.newInstance()
+    }
+
+    fun mirrorFunction(): NonReused {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class Reused {
+  val nonReused: NonReused
+    field = nonReused
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<Reused> {
+    private /* final field */ val nonReused: Provider<NonReused> = nonReused
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(nonReused: Provider<NonReused>): Factory<Reused> {
+        return MetroFactory(nonReused = nonReused)
+      }
+
+      fun newInstance(nonReused: NonReused): Reused {
+        return Reused(nonReused = nonReused)
+      }
+
+    }
+
+    private constructor(nonReused: Provider<NonReused>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): Reused {
+      return Companion.newInstance(nonReused = <this>.#nonReused.invoke())
+    }
+
+    fun mirrorFunction(nonReused: NonReused): Reused {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(nonReused: NonReused) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@DependencyGraph
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val thisGraphInstance: AppGraph
+      field = <this>
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val double: Double
+      override get(): Double {
+        return Companion.provideDouble(instance = <this>.#thisGraphInstance, long = <this>.<get-provideLong>(), long2 = <this>.<get-provideLong>())
+      }
+
+    private val provideLong: Long
+      private get(): Long {
+        return Companion.provideLong(instance = <this>.#thisGraphInstance, int = Companion.provideInt(instance = <this>.#thisGraphInstance), int2 = Companion.provideInt(instance = <this>.#thisGraphInstance))
+      }
+
+    override val reused: Reused
+      override get(): Reused {
+        return <this>.<get-reused3>()
+      }
+
+    override val reused2: Reused
+      override get(): Reused {
+        return <this>.<get-reused3>()
+      }
+
+    private val reused3: Reused
+      private get(): Reused {
+        return Reused(nonReused = NonReused())
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideDouble", propertyName = "", startOffset = 274, endOffset = 450, newInstanceName = "provideDouble")
+  class ProvideDoubleMetroFactory : Factory<Double> {
+    private /* final field */ val instance: AppGraph = instance
+    private /* final field */ val long: Provider<Long> = long
+    private /* final field */ val long2: Provider<Long> = long2
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(instance: AppGraph, long: Provider<Long>, long2: Provider<Long>): Factory<Double> {
+        return ProvideDoubleMetroFactory(instance = instance, long = long, long2 = long2)
+      }
+
+      fun provideDouble(instance: AppGraph, long: Long, long2: Long): Double {
+        return instance.provideDouble(long = long, long2 = long2)
+      }
+
+    }
+
+    private constructor(instance: AppGraph, long: Provider<Long>, long2: Provider<Long>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): Double {
+      return Companion.provideDouble(instance = <this>.#instance, long = <this>.#long.invoke(), long2 = <this>.#long2.invoke())
+    }
+
+    fun mirrorFunction(long: Long, long2: Long): Double {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 69, endOffset = 104, newInstanceName = "provideInt")
+  class ProvideIntMetroFactory : Factory<Int> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(instance: AppGraph): Factory<Int> {
+        return ProvideIntMetroFactory(instance = instance)
+      }
+
+      fun provideInt(instance: AppGraph): Int {
+        return instance.provideInt()
+      }
+
+    }
+
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): Int {
+      return Companion.provideInt(instance = <this>.#instance)
+    }
+
+    fun mirrorFunction(): Int {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideLong", propertyName = "", startOffset = 108, endOffset = 270, newInstanceName = "provideLong")
+  class ProvideLongMetroFactory : Factory<Long> {
+    private /* final field */ val instance: AppGraph = instance
+    private /* final field */ val int: Provider<Int> = int
+    private /* final field */ val int2: Provider<Int> = int2
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(instance: AppGraph, int: Provider<Int>, int2: Provider<Int>): Factory<Long> {
+        return ProvideLongMetroFactory(instance = instance, int = int, int2 = int2)
+      }
+
+      fun provideLong(instance: AppGraph, int: Int, int2: Int): Long {
+        return instance.provideLong(int = int, int2 = int2)
+      }
+
+    }
+
+    private constructor(instance: AppGraph, int: Provider<Int>, int2: Provider<Int>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): Long {
+      return Companion.provideLong(instance = <this>.#instance, int = <this>.#int.invoke(), int2 = <this>.#int2.invoke())
+    }
+
+    fun mirrorFunction(int: Int, int2: Int): Long {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Provides
+  private fun provideDouble(long: Long, long2: Long): Double {
+    return long.plus(other = long2).toDouble()
+  }
+
+  @Provides
+  private fun provideInt(): Int {
+    return 3
+  }
+
+  @Provides
+  private fun provideLong(int: Int, int2: Int): Long {
+    return int.plus(other = int2).toLong()
+  }
+
+  abstract val double: Double
+    abstract get
+
+  abstract val reused: Reused
+    abstract get
+
+  abstract val reused2: Reused
+    abstract get
+
+}
+

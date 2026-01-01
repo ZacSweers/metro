@@ -674,6 +674,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ReusableScalarBindings.kt")
+    public void testReusableScalarBindings() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/ReusableScalarBindings.kt");
+    }
+
+    @Test
     @TestMetadata("StaticGraphCompanions.kt")
     public void testStaticGraphCompanions() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/StaticGraphCompanions.kt");
@@ -910,6 +916,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("ParentTypesAvailableToExtensionsViaParentClassMemberInjection.kt")
       public void testParentTypesAvailableToExtensionsViaParentClassMemberInjection() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ParentTypesAvailableToExtensionsViaParentClassMemberInjection.kt");
+      }
+
+      @Test
+      @TestMetadata("PropagatingMultibindingsAcrossExtensionsOnlyUsedInExtensions.kt")
+      public void testPropagatingMultibindingsAcrossExtensionsOnlyUsedInExtensions() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/PropagatingMultibindingsAcrossExtensionsOnlyUsedInExtensions.kt");
       }
 
       @Test

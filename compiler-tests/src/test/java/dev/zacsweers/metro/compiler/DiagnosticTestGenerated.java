@@ -736,6 +736,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ElementsIntoSetMustHaveTypeArg.kt")
+    public void testElementsIntoSetMustHaveTypeArg() {
+      runTest("compiler-tests/src/test/data/diagnostic/multibindings/ElementsIntoSetMustHaveTypeArg.kt");
+    }
+
+    @Test
     @TestMetadata("MapKeyDiagnostics.kt")
     public void testMapKeyDiagnostics() {
       runTest("compiler-tests/src/test/data/diagnostic/multibindings/MapKeyDiagnostics.kt");
