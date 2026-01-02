@@ -152,3 +152,15 @@ internal inline fun <T, R> List<T>.fastFilteredMap(
   fastForEach { if (predicate(it)) target += transform(it) }
   return target
 }
+
+internal inline fun <T> List<T>.fastAny(predicate: (T) -> Boolean): Boolean {
+  contract { callsInPlace(predicate) }
+  fastForEach { if (predicate(it)) return true }
+  return false
+}
+
+internal fun <T> List<T>.allElementsAreEqual(): Boolean {
+  if (size < 2) return true
+  val firstElement = first()
+  return !fastAny { it != firstElement }
+}

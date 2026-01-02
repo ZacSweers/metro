@@ -1,35 +1,17 @@
-/AllDuplicateBindingsAreReported.kt:(144,152): error: [Metro/DuplicateBinding] Multiple bindings found for kotlin.String
+/AllDuplicateBindingsAreReported.kt:(121,129): error: [Metro/DuplicateBinding] Multiple bindings found for kotlin.String
 
-  AllDuplicateBindingsAreReported.kt:11:3
-    @Provides fun provideString4(): kotlin.String
-                                    ~~~~~~~~~~~~~
-  AllDuplicateBindingsAreReported.kt:12:3
-    @Provides fun provideString5(): kotlin.String
-                                    ~~~~~~~~~~~~~
-
-/AllDuplicateBindingsAreReported.kt:(144,152): error: [Metro/DuplicateBinding] Multiple bindings found for kotlin.String
-
-  AllDuplicateBindingsAreReported.kt:8:3
+  file:///private/var/folders/_s/ft8kp2k12ps1jlfbt2r38z_r0000gn/T/dev.zacsweers.metro.compiler.DiagnosticTestGenerated$DependencygraphtestAllDuplicateBindingsAreReported/kotlin-sources/main/AllDuplicateBindingsAreReported.kt:10:13
     @Provides fun provideString1(): kotlin.String
                                     ~~~~~~~~~~~~~
-  AllDuplicateBindingsAreReported.kt:9:3
+  file:///private/var/folders/_s/ft8kp2k12ps1jlfbt2r38z_r0000gn/T/dev.zacsweers.metro.compiler.DiagnosticTestGenerated$DependencygraphtestAllDuplicateBindingsAreReported/kotlin-sources/main/AllDuplicateBindingsAreReported.kt:11:13
     @Provides fun provideString2(): kotlin.String
                                     ~~~~~~~~~~~~~
-
-/AllDuplicateBindingsAreReported.kt:(144,152): error: [Metro/DuplicateBinding] Multiple bindings found for kotlin.String
-
-  AllDuplicateBindingsAreReported.kt:9:3
-    @Provides fun provideString2(): kotlin.String
-                                    ~~~~~~~~~~~~~
-  AllDuplicateBindingsAreReported.kt:10:3
+  file:///private/var/folders/_s/ft8kp2k12ps1jlfbt2r38z_r0000gn/T/dev.zacsweers.metro.compiler.DiagnosticTestGenerated$DependencygraphtestAllDuplicateBindingsAreReported/kotlin-sources/main/AllDuplicateBindingsAreReported.kt:12:13
     @Provides fun provideString3(): kotlin.String
                                     ~~~~~~~~~~~~~
-
-/AllDuplicateBindingsAreReported.kt:(144,152): error: [Metro/DuplicateBinding] Multiple bindings found for kotlin.String
-
-  AllDuplicateBindingsAreReported.kt:10:3
-    @Provides fun provideString3(): kotlin.String
-                                    ~~~~~~~~~~~~~
-  AllDuplicateBindingsAreReported.kt:11:3
+  file:///private/var/folders/_s/ft8kp2k12ps1jlfbt2r38z_r0000gn/T/dev.zacsweers.metro.compiler.DiagnosticTestGenerated$DependencygraphtestAllDuplicateBindingsAreReported/kotlin-sources/main/AllDuplicateBindingsAreReported.kt:13:13
     @Provides fun provideString4(): kotlin.String
+                                    ~~~~~~~~~~~~~
+  file:///private/var/folders/_s/ft8kp2k12ps1jlfbt2r38z_r0000gn/T/dev.zacsweers.metro.compiler.DiagnosticTestGenerated$DependencygraphtestAllDuplicateBindingsAreReported/kotlin-sources/main/AllDuplicateBindingsAreReported.kt:14:13
+    @Provides fun provideString5(): kotlin.String
                                     ~~~~~~~~~~~~~

@@ -297,7 +297,7 @@ class BindingGraphTest {
           A
           A
 
-        (Hint) Bindings are equal
+        (Hint) Bindings are all equal
         """
           .trimIndent()
       )
@@ -321,7 +321,7 @@ class BindingGraphTest {
           A
           A
 
-        (Hint) Bindings are the same
+        (Hint) Bindings are all the same
         """
           .trimIndent()
       )

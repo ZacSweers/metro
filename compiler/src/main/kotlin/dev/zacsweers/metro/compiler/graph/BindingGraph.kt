@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
+import dev.zacsweers.metro.compiler.allElementsAreEqual
 import dev.zacsweers.metro.compiler.ir.graph.appendBindingStack
 import dev.zacsweers.metro.compiler.ir.graph.appendBindingStackEntries
 import dev.zacsweers.metro.compiler.ir.graph.withEntry
@@ -394,7 +395,7 @@ internal open class MutableBindingGraph<
       if (bindings.distinctBy { System.identityHashCode(it) }.size == 1) {
         appendLine()
         appendLine("(Hint) Bindings are all the same instance")
-      } else if (bindings.foldIndexed(true) { i, cur, next -> cur && (next == bindings[i]) }) {
+      } else if (bindings.allElementsAreEqual()) {
         appendLine()
         appendLine("(Hint) Bindings are all equal")
       }
