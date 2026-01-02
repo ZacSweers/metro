@@ -1,1 +1,1 @@
-/UnnecessaryMemberInjectShouldError.kt:(417,439): error: Injected class 'DemoClass' is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary.
+/UnnecessaryMemberInjectShouldError.kt:(417,439): warning: Injected class 'DemoClass' is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary.

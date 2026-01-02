@@ -245,10 +245,9 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
           """
             .trimIndent()
         ),
-        expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertDiagnostics(
-      "e: ExampleGraph.kt:8:14 Injected class 'test.ExampleClass' is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary."
+      "w: ExampleGraph.kt:8:14 Injected class 'test.ExampleClass' is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary."
     )
   }
 
@@ -267,10 +266,12 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
           """
             .trimIndent()
         ),
-        expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertDiagnostics(
-      "e: ExampleGraph.kt:8:14 Injected class 'test.ExampleClass' is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary."
+      """
+        w: ExampleGraph.kt:8:14 Injected class 'test.ExampleClass' is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary.
+        w: ExampleGraph.kt:11:20 There is only one @Inject-annotated constructor. Consider moving the annotation to the class instead.
+      """.trimIndent()
     )
   }
 
@@ -291,10 +292,9 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
           """
             .trimIndent()
         ),
-        expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertDiagnostics(
-      "e: ExampleGraph.kt:8:14 Injected class 'test.ExampleClass' is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary."
+      "w: ExampleGraph.kt:8:14 Injected class 'test.ExampleClass' is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary."
     )
   }
 

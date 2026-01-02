@@ -630,7 +630,6 @@ internal class DependencyGraphNodeCache(
               // Check if the target is constructor-injected. We need to do this in IR too because
               // FIR will miss inherited injectors. https://github.com/ZacSweers/metro/issues/1606
               val hasInjectConstructor =
-                declaration.isFakeOverride &&
                   declaration.regularParameters[0]
                     .type
                     .rawTypeOrNull()
@@ -640,24 +639,24 @@ internal class DependencyGraphNodeCache(
                 // If the original declaration is in our compilation, report it. Otherwise fall
                 // through to the nearest available declaration to report.
                 val originalDeclaration = declaration.overriddenSymbolsSequence().last().owner
-                val isExternal = originalDeclaration.isExternalParent
-                val middle =
-                  if (isExternal) {
-                    val callableId = originalDeclaration.callableId
-                    // It's an external declaration, so make it clear which function
-                    "the inherited '${callableId.callableName}' inject function from '${callableId.classId!!.asFqNameString()}'"
-                  } else {
-                    "this inject function"
-                  }
-                metroContext.reportCompat(
-                  originalDeclaration.takeUnless { isExternal } ?: declaration,
-                  MetroDiagnostics.SUSPICIOUS_MEMBER_INJECT_FUNCTION,
-                  "Injected class '${declaration.regularParameters[0].type.classFqName!!.asString()}' is constructor-injected and can be instantiated by Metro directly, so $middle is unnecessary.",
-                )
-                hasErrors = true
-              } else {
-                injectors += InjectorFunction(finalContextKey, metroFunction)
+                if (originalDeclaration.parentAsClass != graphDeclaration) {
+                  val isExternal = originalDeclaration.isExternalParent
+                  val middle =
+                    if (isExternal) {
+                      val callableId = originalDeclaration.callableId
+                      // It's an external declaration, so make it clear which function
+                      "the inherited '${callableId.callableName}' inject function from '${callableId.classId!!.asFqNameString()}'"
+                    } else {
+                      "this inject function"
+                    }
+                  metroContext.reportCompat(
+                    originalDeclaration.takeUnless { isExternal } ?: declaration,
+                    MetroDiagnostics.SUSPICIOUS_MEMBER_INJECT_FUNCTION,
+                    "Injected class '${declaration.regularParameters[0].type.classFqName!!.asString()}' is constructor-injected and can be instantiated by Metro directly, so $middle is unnecessary.",
+                  )
+                }
               }
+              injectors += InjectorFunction(finalContextKey, metroFunction)
             } else {
               // Accessor or binds
               val metroFunction = metroFunctionOf(declaration, annotations)

@@ -2412,4 +2412,107 @@ class ICTests : BaseIncrementalCompilationTest() {
       build(project.rootDir, "assemble", "--no-configuration-cache", "--rerun-tasks")
     }
   }
+
+  /**
+   * Tests that we can properly reload member injections info during IC from metro metadata
+   *
+   * Regression test for https://github.com/ZacSweers/metro/issues/1607
+   */
+  @Test
+  fun memberInjectionsCanReloadFromMetadataInIC() {
+    val fixture =
+      object : MetroProject() {
+        override fun sources() = listOf(appGraph, demoClass, anotherInjectedClass, main)
+
+        private val appGraph =
+          source(
+            """
+            @Suppress("SUSPICIOUS_MEMBER_INJECT_FUNCTION")
+            @DependencyGraph(AppScope::class)
+            interface AppGraph {
+              @Provides
+              fun provideString(): String = "Demo"
+              fun createAnotherInjectedClass(): AnotherInjectedClass
+              fun injectDemoClassMembers(target: DemoClass)
+            }
+            """
+              .trimIndent()
+          )
+
+        private val demoClass =
+          source(
+            """
+            @Inject
+            class DemoClass {
+              @Inject
+              lateinit var injectedString: String
+            }
+            """
+              .trimIndent()
+          )
+
+        val anotherInjectedClass =
+          source(
+            """
+            @Inject
+            class AnotherInjectedClass {
+              init {
+                println("1")
+              }
+            }
+            """
+              .trimIndent()
+          )
+
+        private val main =
+          source(
+            """
+            fun main(): String {
+              val graph = createGraph<AppGraph>()
+              val demoClass = DemoClass()
+              graph.injectDemoClassMembers(demoClass)
+              return demoClass.injectedString
+            }
+            """
+              .trimIndent()
+          )
+      }
+
+    val project = fixture.gradleProject
+
+    // First build should succeed and member injection should work
+    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    with(project.classLoader()) {
+      val mainClass = loadClass("test.MainKt")
+      val result = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as String
+      assertThat(result).isEqualTo("Demo")
+    }
+
+    // Modify AnotherInjectedClass (unrelated to DemoClass member injection)
+    project.modify(
+      fixture.anotherInjectedClass,
+      """
+      @Inject
+      class AnotherInjectedClass {
+        init {
+          println("2")
+        }
+      }
+      """
+        .trimIndent(),
+    )
+
+    // Second build should succeed and member injection should still work
+    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    // This is the key assertion - member injection should still work after IC
+    with(project.classLoader()) {
+      val mainClass = loadClass("test.MainKt")
+      val result = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as String
+      assertThat(result).isEqualTo("Demo")
+    }
+  }
 }

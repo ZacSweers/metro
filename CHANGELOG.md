@@ -25,11 +25,13 @@ Changelog
 - [IR] Prohibit duplicate map keys.
 - [IR] Fix propagation of scoped multibinding sources to graph extensions.
 - [IR] Don't eagerly validate duplicate bindings (only report them if used).
+- [IC] Fix member injection metadata not always being written and causing IC issues with member inject function transformation.
 - [Gradle] Report all tested Kotlin versions when emitting compatibility warnings.
 
 ### Changes
 
-- Remove testing of 2.3.0 prereleases. IntelliJ stable currently builds off Kotlin `2.3.2x` and Android Studio stable currently points to Kotlin `2.2.2x`.
+- [FIR] Change `SUSPICIOUS_MEMBER_INJECT_FUNCTION` diagnostic to be a warning instead of an error.
+- Remove testing of 2.3.0 pre-releases. IntelliJ stable currently builds off Kotlin `2.3.2x` and Android Studio stable currently points to Kotlin `2.2.2x`.
 
 0.9.2
 -----

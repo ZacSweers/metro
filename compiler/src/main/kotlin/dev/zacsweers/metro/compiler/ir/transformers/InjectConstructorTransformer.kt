@@ -31,8 +31,6 @@ import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
-import dev.zacsweers.metro.compiler.proto.InjectConstructorFactoryProto
-import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Optional
@@ -101,7 +99,7 @@ internal class InjectConstructorTransformer(
 
     if (isExternal) {
       // For external: read class name from metadata and match by name
-      val metadata = declaration.metroMetadata?.inject_constructor_factory
+      val metadata = declaration.metroMetadata?.injected_class
 
       fun reportAndReturn(): ClassFactory? {
         val message = buildString {
@@ -119,7 +117,7 @@ internal class InjectConstructorTransformer(
       }
 
       return when {
-        metadata != null -> {
+        metadata != null && metadata.factory_class_name != null -> {
           val factoryClassName = metadata.factory_class_name.asName()
           val factoryCls =
             declaration.nestedClasses.singleOrNull { it.name == factoryClassName }
@@ -275,23 +273,25 @@ internal class InjectConstructorTransformer(
 
     factoryCls.dumpToMetroLog()
 
-    // Write metadata to indicate Metro generated this factory
-    cacheFactoryInMetadata(declaration, factoryCls)
-
     val wrapper =
       ClassFactory.MetroFactory(factoryCls, mirrorFunction.parameters(), targetConstructor)
+
+    // Write metadata to indicate Metro generated this factory
+    cacheFactoryInMetadata(declaration, wrapper)
+
     generatedFactories[injectedClassId] = Optional.of(wrapper)
     return wrapper
   }
 
-  private fun cacheFactoryInMetadata(targetClass: IrClass, factoryClass: IrClass) {
-    if (targetClass.isExternalParent) {
+  private fun cacheFactoryInMetadata(declaration: IrClass, classFactory: ClassFactory) {
+    if (classFactory.factoryClass.isExternalParent) {
       return
     }
-    val factory = InjectConstructorFactoryProto(factory_class_name = factoryClass.name.asString())
+
+    val memberInjections = membersInjectorTransformer.getOrGenerateInjector(declaration)
 
     // Store the metadata for this class
-    targetClass.metroMetadata = MetroMetadata(inject_constructor_factory = factory)
+    declaration.writeInjectedClassMetadata(classFactory, memberInjections)
   }
 
   private fun implementFactoryInvokeOrGetBody(
