@@ -1940,10 +1940,10 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
       """
       [Metro/DuplicateBinding] Multiple bindings found for kotlin.String
 
-        test/BindingContainerA.provideString
+        test.BindingContainerA
           fun provideString(): kotlin.String
                                ~~~~~~~~~~~~~
-        test/BindingContainerB.provideString
+        test.BindingContainerB
           fun provideString(): kotlin.String
                                ~~~~~~~~~~~~~
       """

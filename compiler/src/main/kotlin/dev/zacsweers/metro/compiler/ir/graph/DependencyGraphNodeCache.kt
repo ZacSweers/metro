@@ -8,8 +8,10 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
+import dev.zacsweers.metro.compiler.fastForEachIndexed
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.getAndAdd
+import dev.zacsweers.metro.compiler.getOrInit
 import dev.zacsweers.metro.compiler.ir.BindsCallable
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
@@ -34,7 +36,6 @@ import dev.zacsweers.metro.compiler.ir.isBindingContainer
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.isInheritedFromAny
 import dev.zacsweers.metro.compiler.ir.linkDeclarationsInCompilation
-import dev.zacsweers.metro.compiler.ir.locationOrNull
 import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
@@ -47,8 +48,6 @@ import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
-import dev.zacsweers.metro.compiler.ir.render
-import dev.zacsweers.metro.compiler.ir.renderForDiagnostic
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.scopeAnnotations
 import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
@@ -60,7 +59,6 @@ import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.isSyntheticGeneratedGraph
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.mapToSet
-import dev.zacsweers.metro.compiler.memoized
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -156,11 +154,11 @@ internal class DependencyGraphNodeCache(
       nodeCache.bindingContainerTransformer
     private val accessors = mutableListOf<GraphAccessor>()
     private val bindsFunctions = mutableListOf<Pair<MetroSimpleFunction, IrContextualTypeKey>>()
-    private val bindsCallables = mutableMapOf<IrTypeKey, BindsCallable>()
+    private val bindsCallables = mutableMapOf<IrTypeKey, MutableList<BindsCallable>>()
     private val multibindsCallables = mutableSetOf<MultibindsCallable>()
     private val optionalKeys = mutableMapOf<IrTypeKey, MutableSet<BindsOptionalOfCallable>>()
     private val scopes = mutableSetOf<IrAnnotation>()
-    private val providerFactories = mutableMapOf<IrTypeKey, ProviderFactory>()
+    private val providerFactories = mutableMapOf<IrTypeKey, MutableList<ProviderFactory>>()
     private val extendedGraphNodes = mutableMapOf<IrTypeKey, DependencyGraphNode>()
     private val graphExtensions = mutableMapOf<IrTypeKey, MutableList<GraphExtensionAccessor>>()
     private val injectors = mutableListOf<InjectorFunction>()
@@ -171,7 +169,7 @@ internal class DependencyGraphNodeCache(
     private val bindingContainers = mutableSetOf<BindingContainer>()
     private val managedBindingContainers = mutableSetOf<IrClass>()
     private val dynamicBindingContainers = mutableSetOf<IrClass>()
-    private val dynamicTypeKeys = mutableMapOf<IrTypeKey, IrBindingContainerCallable?>()
+    private val dynamicTypeKeys = mutableMapOf<IrTypeKey, MutableSet<IrBindingContainerCallable>>()
 
     private val dependencyGraphAnno =
       cachedDependencyGraphAnno
@@ -179,7 +177,7 @@ internal class DependencyGraphNodeCache(
     private val aggregationScopes = mutableSetOf<ClassId>()
     private val isGraph = dependencyGraphAnno != null
     private val supertypes =
-      (metroGraph ?: graphDeclaration).allSupertypesSequence(excludeSelf = false).memoized()
+      (metroGraph ?: graphDeclaration).allSupertypesSequence(excludeSelf = false).toList()
 
     private var hasGraphExtensions = false
     private var hasErrors = false
@@ -285,7 +283,7 @@ internal class DependencyGraphNodeCache(
           if (isDynamicContainer) {
             dynamicBindingContainers += klass
             // Parameter's dynamism will be checked by its origin
-            dynamicTypeKeys[parameter.typeKey] = null
+            dynamicTypeKeys.getOrInit(parameter.typeKey)
           }
           val isRegularContainer = nonNullCreator.bindingContainersParameterIndices.isSet(i)
           val isContainer = isDynamicContainer || isRegularContainer
@@ -360,82 +358,6 @@ internal class DependencyGraphNodeCache(
       }
     }
 
-    private fun reportDuplicateProviderFactory(
-      typeKey: IrTypeKey,
-      existing: ProviderFactory,
-      duplicate: ProviderFactory,
-    ) {
-      hasErrors = true
-
-      fun StringBuilder.appendFactory(factory: ProviderFactory) {
-        append("  ")
-        appendLine(
-          factory.function.locationOrNull()?.render(short = true) ?: factory.callableId.toString()
-        )
-        append("    ")
-        renderForDiagnostic(
-          declaration = factory.function,
-          short = false,
-          typeKey = factory.rawTypeKey,
-          annotations = factory.annotations,
-          parameters = factory.parameters,
-          isProperty = factory.isPropertyAccessor,
-          underlineTypeKey = true,
-        )
-      }
-
-      val message = buildString {
-        appendLine(
-          "[Metro/DuplicateBinding] Multiple bindings found for ${typeKey.render(short = false, includeQualifier = true)}"
-        )
-        appendLine()
-        // Render each location with its signature (indented with 4 spaces)
-        appendFactory(existing)
-        appendLine()
-        appendFactory(duplicate)
-        appendBindingStack(bindingStack, short = false)
-      }
-      reportCompat(graphDeclaration.sourceGraphIfMetroGraph, MetroDiagnostics.METRO_ERROR, message)
-    }
-
-    private fun reportDuplicateBindsCallable(
-      typeKey: IrTypeKey,
-      existing: BindsCallable,
-      duplicate: BindsCallable,
-    ) {
-      hasErrors = true
-      val existingDiagnostic =
-        existing.renderLocationDiagnostic(short = false, existing.function.parameters())
-      val duplicateDiagnostic =
-        duplicate.renderLocationDiagnostic(short = false, duplicate.function.parameters())
-      val message = buildString {
-        appendLine(
-          "[Metro/DuplicateBinding] Multiple bindings found for ${typeKey.render(short = false, includeQualifier = true)}"
-        )
-        appendLine()
-        append("  ")
-        appendLine(existingDiagnostic.location)
-        // Indent each line of the description (content line + underline line)
-        existingDiagnostic.description?.lines()?.forEach { line ->
-          append("    ")
-          appendLine(line)
-        }
-        append("  ")
-        appendLine(duplicateDiagnostic.location)
-        // Indent each line of the description (content line + underline line)
-        duplicateDiagnostic.description?.lines()?.forEachIndexed { index, line ->
-          append("    ")
-          if (index < (duplicateDiagnostic.description.lines().size - 1)) {
-            appendLine(line)
-          } else {
-            append(line)
-          }
-        }
-        appendBindingStack(bindingStack, short = false)
-      }
-      reportCompat(graphDeclaration.sourceGraphIfMetroGraph, MetroDiagnostics.METRO_ERROR, message)
-    }
-
     private fun reportQualifierMismatch(
       declaration: IrOverridableDeclaration<*>,
       expectedQualifier: IrAnnotation?,
@@ -485,7 +407,7 @@ internal class DependencyGraphNodeCache(
       scopes += declaredScopes
       val graphExtensionSupertypes = mutableSetOf<ClassId>()
 
-      for ((i, type) in supertypes.withIndex()) {
+      supertypes.fastForEachIndexed { i, type ->
         val clazz = type.classOrFail.owner
 
         // Index 0 is this class, which we've already computed above
@@ -653,13 +575,15 @@ internal class DependencyGraphNodeCache(
                 val graphExtensionTypeKey = IrTypeKey(graphExtensionType)
                 if (graphExtensionTypeKey != sourceGraphTypeKey) {
                   // Only add it to our graph extensions if it's not exposing itself
-                  graphExtensions.getOrPut(graphExtensionTypeKey, ::mutableListOf) +=
+                  graphExtensions.getAndAdd(
+                    graphExtensionTypeKey,
                     GraphExtensionAccessor(
                       accessor = metroFunction,
                       key = factoryContextKey,
                       isFactory = true,
                       isFactorySAM = false,
-                    )
+                    ),
+                  )
                 }
               } else {
                 // Regular graph extension
@@ -681,13 +605,15 @@ internal class DependencyGraphNodeCache(
                   } else {
                     IrContextualTypeKey.from(declaration)
                   }
-                graphExtensions.getOrPut(contextKey.typeKey, ::mutableListOf) +=
+                graphExtensions.getAndAdd(
+                  contextKey.typeKey,
                   GraphExtensionAccessor(
                     metroFunction,
                     key = contextKey,
                     isFactory = false,
                     isFactorySAM = isSamFunction,
-                  )
+                  ),
+                )
               }
               hasGraphExtensions = true
             } else if (isInjector) {
@@ -833,13 +759,15 @@ internal class DependencyGraphNodeCache(
                 val graphExtensionTypeKey = IrTypeKey(graphExtensionType)
                 if (graphExtensionTypeKey != sourceGraphTypeKey) {
                   // Only add it to our graph extensions if it's not exposing itself
-                  graphExtensions.getOrPut(graphExtensionTypeKey, ::mutableListOf) +=
+                  graphExtensions.getAndAdd(
+                    graphExtensionTypeKey,
                     GraphExtensionAccessor(
                       metroFunction,
                       key = contextKey,
                       isFactory = true,
                       isFactorySAM = false,
-                    )
+                    ),
+                  )
                 }
               } else {
                 // Regular graph extension
@@ -862,13 +790,15 @@ internal class DependencyGraphNodeCache(
                   } else {
                     contextKey
                   }
-                graphExtensions.getOrPut(finalContextKey.typeKey, ::mutableListOf) +=
+                graphExtensions.getAndAdd(
+                  finalContextKey.typeKey,
                   GraphExtensionAccessor(
                     metroFunction,
                     key = finalContextKey,
                     isFactory = false,
                     isFactorySAM = isSamFunction,
-                  )
+                  ),
+                )
               }
               hasGraphExtensions = true
             } else {
@@ -904,7 +834,9 @@ internal class DependencyGraphNodeCache(
 
         // Propagate dynamic type keys from parent graph to this graph extension
         // This ensures dynamic bindings from createDynamicGraph are available to child extensions
-        dynamicTypeKeys.putAll(node.dynamicTypeKeys)
+        for ((key, callables) in node.dynamicTypeKeys) {
+          dynamicTypeKeys.getOrInit(key).addAll(callables)
+        }
       }
 
       // First, add explicitly declared binding containers from the annotation
@@ -976,20 +908,18 @@ internal class DependencyGraphNodeCache(
           val typeKey = factory.typeKey
           // Dynamic containers should override non-dynamic ones with the same typeKey
           val existingIsDynamic = typeKey in dynamicTypeKeys
-          val existingFactory = providerFactories[typeKey]
-          if (existingFactory != null) {
-            // Report duplicate if both are non-dynamic OR both are dynamic
-            val bothNonDynamic = !isDynamicContainer && !existingIsDynamic
-            val bothDynamic = isDynamicContainer && existingIsDynamic
-            if (bothNonDynamic || bothDynamic) {
-              reportDuplicateProviderFactory(typeKey, existingFactory, factory)
-            }
-          }
-          if (isDynamicContainer || !existingIsDynamic) {
-            providerFactories[typeKey] = factory
-          }
           if (isDynamicContainer) {
-            dynamicTypeKeys[typeKey] = factory
+            if (!existingIsDynamic) {
+              // Dynamic overrides non-dynamic - clear existing and add new
+              providerFactories[typeKey] = mutableListOf(factory)
+            } else {
+              // Both are dynamic - add to list for duplicate detection
+              providerFactories.getAndAdd(typeKey, factory)
+            }
+            dynamicTypeKeys.getAndAdd(typeKey, factory)
+          } else if (!existingIsDynamic) {
+            // Neither is dynamic - add to list for duplicate detection
+            providerFactories.getAndAdd(typeKey, factory)
           }
         }
         container.bindsMirror?.let { bindsMirror ->
@@ -997,32 +927,30 @@ internal class DependencyGraphNodeCache(
             val typeKey = callable.typeKey
             // Dynamic containers should override non-dynamic ones with the same typeKey
             val existingIsDynamic = typeKey in dynamicTypeKeys
-            val existingCallable = bindsCallables[typeKey]
-            if (existingCallable != null) {
-              // Report duplicate if both are non-dynamic OR both are dynamic
-              val bothNonDynamic = !isDynamicContainer && !existingIsDynamic
-              val bothDynamic = isDynamicContainer && existingIsDynamic
-              if (bothNonDynamic || bothDynamic) {
-                reportDuplicateBindsCallable(typeKey, existingCallable, callable)
-              }
-            }
-            if (isDynamicContainer || !existingIsDynamic) {
-              bindsCallables[typeKey] = callable
-            }
             if (isDynamicContainer) {
-              dynamicTypeKeys[typeKey] = callable
+              if (!existingIsDynamic) {
+                // Dynamic overrides non-dynamic, clear existing and add new
+                bindsCallables[typeKey] = mutableListOf(callable)
+              } else {
+                // Both are dynamic, add to list for duplicate detection
+                bindsCallables.getAndAdd(typeKey, callable)
+              }
+              dynamicTypeKeys.getAndAdd(typeKey, callable)
+            } else if (!existingIsDynamic) {
+              // Neither is dynamic, add to list for duplicate detection
+              bindsCallables.getAndAdd(typeKey, callable)
             }
           }
           for (callable in bindsMirror.multibindsCallables) {
             multibindsCallables += callable
             if (isDynamicContainer) {
-              dynamicTypeKeys[callable.typeKey] = callable
+              dynamicTypeKeys.getAndAdd(callable.typeKey, callable)
             }
           }
           for (callable in bindsMirror.optionalKeys) {
             optionalKeys.getAndAdd(callable.typeKey, callable)
             if (isDynamicContainer) {
-              dynamicTypeKeys[callable.typeKey] = callable
+              dynamicTypeKeys.getAndAdd(callable.typeKey, callable)
             }
           }
         }
@@ -1111,7 +1039,7 @@ internal class DependencyGraphNodeCache(
           // Track overridden symbols so that we dedupe merged overrides in the final class
           val seenSymbols = mutableSetOf<IrSymbol>()
           // TODO single supertype pass
-          supertypes.flatMap { type ->
+          supertypes.asSequence().flatMap { type ->
             type
               .rawType()
               .allCallableMembers(
@@ -1148,11 +1076,13 @@ internal class DependencyGraphNodeCache(
           if (declaration == metroGraph) continue
           bindingContainerTransformer.findContainer(declaration)?.let { bindingContainer ->
             for ((_, factory) in bindingContainer.providerFactories) {
-              providerFactories[factory.typeKey] = factory
+              providerFactories.getAndAdd(factory.typeKey, factory)
             }
 
             bindingContainer.bindsMirror?.let { bindsMirror ->
-              bindsCallables.putAll(bindsMirror.bindsCallables.associateBy { it.typeKey })
+              for (callable in bindsMirror.bindsCallables) {
+                bindsCallables.getAndAdd(callable.typeKey, callable)
+              }
               multibindsCallables += bindsMirror.multibindsCallables
               for (callable in bindsMirror.optionalKeys) {
                 optionalKeys.getAndAdd(callable.typeKey, callable)
@@ -1161,9 +1091,10 @@ internal class DependencyGraphNodeCache(
           }
         }
       } else {
-        providerFactories.putAll(
-          bindingContainerTransformer.factoryClassesFor(metroGraph ?: graphDeclaration)
-        )
+        for ((typeKey, factory) in
+          bindingContainerTransformer.factoryClassesFor(metroGraph ?: graphDeclaration)) {
+          providerFactories.getAndAdd(typeKey, factory)
+        }
       }
 
       // TODO split DependencyGraphNode into sealed interface with external/internal variants?

@@ -2001,7 +2001,10 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       source(
         """
         @DependencyGraph(AppScope::class)
-        interface ExampleGraph
+        interface ExampleGraph {
+          // Accessor to use the binding - duplicate errors are only reported for used bindings
+          val otherClass: OtherClass
+        }
         """
           .trimIndent(),
         extraImports = arrayOf("other.OtherClass"),
@@ -2055,7 +2058,10 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       source(
         """
         @DependencyGraph(AppScope::class)
-        interface ExampleGraph
+        interface ExampleGraph {
+          // Accessor to use the binding - duplicate errors are only reported for used bindings
+          val otherClass: OtherClass
+        }
         """
           .trimIndent(),
         extraImports = arrayOf("other.OtherClass"),

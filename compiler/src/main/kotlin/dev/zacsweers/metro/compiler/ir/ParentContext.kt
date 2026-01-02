@@ -207,7 +207,7 @@ internal class ParentContext(private val metroContext: IrMetroContext) {
     if (key !in level.deltaProvided) {
       level.deltaProvided.add(key)
       available.add(key)
-      keyIntroStack.getOrPut(key) { ArrayDeque() }.addLast(levelIdx)
+      keyIntroStack.getOrPut(key, ::ArrayDeque).addLast(levelIdx)
     }
   }
 

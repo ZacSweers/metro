@@ -314,7 +314,7 @@ internal class DependencyGraphTransformer(
       localParentContext.add(node.typeKey)
 
       // @Provides
-      for ((_, providerFactory) in node.providerFactories) {
+      for (providerFactory in node.providerFactories.values.flatten()) {
         if (providerFactory.annotations.isScoped) {
           localParentContext.add(providerFactory.typeKey)
         }
@@ -536,7 +536,7 @@ internal class DependencyGraphTransformer(
           .asSequence()
           .map { it.metroFunction.ir }
           .plus(node.injectors.map { it.metroFunction.ir })
-          .plus(node.bindsCallables.values.map { it.callableMetadata.function })
+          .plus(node.bindsCallables.values.flatten().map { it.callableMetadata.function })
           .plus(node.graphExtensions.flatMap { it.value }.map { it.accessor.ir })
           .filterNot { it.isExternalParent }
           .forEach { function ->

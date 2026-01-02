@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.ir.graph
 
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
+import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
 import dev.zacsweers.metro.compiler.ir.ClassFactory
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
@@ -53,9 +54,8 @@ internal class BindingLookup(
   private val parentContext: ParentContext?,
 ) {
 
-  // Caches
-  private val providedBindingsCache = mutableMapOf<IrTypeKey, IrBinding.Provided>()
-  private val aliasBindingsCache = mutableMapOf<IrTypeKey, IrBinding.Alias>()
+  // Single cache for all bindings, storing lists to track duplicates naturally
+  private val bindingsCache = mutableMapOf<IrTypeKey, MutableList<IrBinding>>()
   private val membersInjectorBindingsCache = mutableMapOf<IrTypeKey, IrBinding.MembersInjected>()
   private val classBindingsCache = mutableMapOf<IrContextualTypeKey, Set<IrBinding>>()
 
@@ -89,65 +89,48 @@ internal class BindingLookup(
   // Cache for created optional bindings
   private val optionalBindingsCache = mutableMapOf<IrTypeKey, IrBinding.CustomWrapper>()
 
-  /** Returns all static bindings for similarity checking. */
-  fun getAvailableStaticBindings(): Map<IrTypeKey, IrBinding.StaticBinding> {
-    return buildMap(providedBindingsCache.size + aliasBindingsCache.size) {
-      putAll(providedBindingsCache)
-      putAll(aliasBindingsCache)
-    }
+  /** Returns all bindings for similarity checking. */
+  fun getAvailableBindings(): Map<IrTypeKey, IrBinding> {
+    return bindingsCache.mapValues { it.value.first() }
   }
 
-  fun getStaticBinding(typeKey: IrTypeKey): IrBinding.StaticBinding? {
-    return providedBindingsCache[typeKey] ?: aliasBindingsCache[typeKey]
-  }
+  /** Returns all bindings for a given type key, or null if none exist. */
+  fun getBindings(typeKey: IrTypeKey): List<IrBinding>? = bindingsCache[typeKey]
 
-  fun getMembersInjectorBinding(typeKey: IrTypeKey): IrBinding.MembersInjected? {
-    return membersInjectorBindingsCache[typeKey]
-  }
+  /** Returns the first binding for a given type key, or null if none exist. */
+  fun getBinding(typeKey: IrTypeKey): IrBinding? = bindingsCache[typeKey]?.firstOrNull()
 
+  /** Adds a binding to the cache. Multiple bindings for the same key are tracked as duplicates. */
   context(context: IrMetroContext)
-  fun putBinding(binding: IrBinding.Provided) {
-    providedBindingsCache[binding.typeKey] = binding
+  fun putBinding(binding: IrBinding) {
+    bindingsCache.getAndAdd(binding.typeKey, binding)
 
     // If this is a multibinding contributor, register it
-    if (binding.annotations.isIntoMultibinding) {
-      val multibindingTypeKey =
-        computeMultibindingTypeKey(
-          annotations = binding.annotations,
-          valueType = binding.contextualTypeKey.typeKey.type,
-          qualifier = binding.providerFactory.rawTypeKey.qualifier,
-        )
-      registerMultibindingContribution(multibindingTypeKey, binding.typeKey)
+    if (binding is IrBinding.BindingWithAnnotations && binding.annotations.isIntoMultibinding) {
+      val (qualifier, valueType) =
+        when (binding) {
+          is IrBinding.Provided ->
+            binding.providerFactory.rawTypeKey.qualifier to binding.contextualTypeKey.typeKey.type
+          is IrBinding.Alias ->
+            binding.bindsCallable?.callableMetadata?.annotations?.qualifier to
+              binding.contextualTypeKey.typeKey.type
+          else -> null to null
+        }
+      if (valueType != null) {
+        val multibindingTypeKey =
+          computeMultibindingTypeKey(
+            annotations = binding.annotations,
+            valueType = valueType,
+            qualifier = qualifier,
+          )
+        registerMultibindingContribution(multibindingTypeKey, binding.typeKey)
+      }
     }
   }
 
-  context(context: IrMetroContext)
-  fun putBinding(binding: IrBinding.Alias) {
-    aliasBindingsCache[binding.typeKey] = binding
-
-    // If this is a multibinding contributor, register it
-    val bindsCallable = binding.bindsCallable
-    if (bindsCallable != null && bindsCallable.callableMetadata.annotations.isIntoMultibinding) {
-      val multibindingTypeKey =
-        computeMultibindingTypeKey(
-          annotations = bindsCallable.callableMetadata.annotations,
-          valueType = binding.contextualTypeKey.typeKey.type,
-          qualifier = bindsCallable.callableMetadata.annotations.qualifier,
-        )
-      registerMultibindingContribution(multibindingTypeKey, binding.typeKey)
-    }
-  }
-
-  fun putBinding(binding: IrBinding.MembersInjected) {
-    membersInjectorBindingsCache[binding.typeKey] = binding
-  }
-
-  fun removeProvidedBinding(typeKey: IrTypeKey) {
-    providedBindingsCache.remove(typeKey)
-  }
-
-  fun removeAliasBinding(typeKey: IrTypeKey) {
-    aliasBindingsCache.remove(typeKey)
+  /** Clears all bindings for a given type key. */
+  fun clearBindings(typeKey: IrTypeKey) {
+    bindingsCache.remove(typeKey)
   }
 
   fun addLazyParentKey(typeKey: IrTypeKey, bindingFactory: () -> IrBinding) {
@@ -287,7 +270,7 @@ internal class BindingLookup(
    * @param callable The @BindsOptionalOf callable
    */
   fun registerOptionalBinding(typeKey: IrTypeKey, callable: BindsOptionalOfCallable) {
-    optionalBindingDeclarations.getOrPut(typeKey, ::mutableSetOf) += callable
+    optionalBindingDeclarations.getAndAdd(typeKey, callable)
   }
 
   /**
@@ -442,29 +425,33 @@ internal class BindingLookup(
     return bindings
   }
 
-  /** Looks up bindings for the given [contextKey] or returns an empty set. */
+  /**
+   * Looks up bindings for the given [contextKey] or returns an empty set. If multiple bindings
+   * exist for the same key, reports a duplicate binding error.
+   */
   internal fun lookup(
     contextKey: IrContextualTypeKey,
     currentBindings: Set<IrTypeKey>,
     stack: IrBindingStack,
+    onDuplicateBindings: (IrTypeKey, List<IrBinding>) -> Unit,
   ): Set<IrBinding> =
     context(metroContext) {
       val key = contextKey.typeKey
 
-      // First check @Provides
-      providedBindingsCache[key]?.let { providedBinding ->
+      // First check cached bindings
+      bindingsCache[key]?.let { bindings ->
+        // Report duplicates if there are multiple bindings
+        if (bindings.size > 1) {
+          onDuplicateBindings(key, bindings)
+        }
+
+        val binding = bindings.first()
         // Check if this is available from parent and is scoped
-        if (providedBinding.scope != null && parentContext?.contains(key) == true) {
-          val fieldAccess = parentContext.mark(key, providedBinding.scope!!)
+        if (binding.scope != null && parentContext?.contains(key) == true) {
+          val fieldAccess = parentContext.mark(key, binding.scope!!)
           return setOf(createParentGraphDependency(key, fieldAccess!!))
         }
-        return setOf(providedBinding)
-      }
-
-      // Then check @Binds
-      // TODO if @Binds from a parent matches a parent accessor, which one wins?
-      aliasBindingsCache[key]?.let {
-        return setOf(it)
+        return setOf(binding)
       }
 
       // Check for lazy parent keys

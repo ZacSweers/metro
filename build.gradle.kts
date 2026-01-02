@@ -162,6 +162,7 @@ allprojects {
         "**/topologicalSort.kt",
         "**/TopologicalSortTest.kt",
         "**/ir/cache/*.kt",
+        "**/collectionUtil.kt",
       )
     }
     format("licenseJava") {

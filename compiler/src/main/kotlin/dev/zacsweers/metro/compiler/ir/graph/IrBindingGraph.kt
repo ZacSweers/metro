@@ -73,7 +73,9 @@ internal class IrBindingGraph(
         }
       },
       computeBindings = { contextKey, currentBindings, stack ->
-        bindingLookup.lookup(contextKey, currentBindings, stack)
+        bindingLookup.lookup(contextKey, currentBindings, stack) { key, bindings ->
+          reportDuplicateBindings(key, bindings, stack)
+        }
       },
       onError = ::onError,
       onHardError = { message, stack ->
@@ -238,13 +240,12 @@ internal class IrBindingGraph(
     return BindingGraphResult(sortedKeys, deferredTypes, reachableKeys, shardGroups, false)
   }
 
-  fun reportDuplicateBinding(
+  fun reportDuplicateBindings(
     key: IrTypeKey,
-    existing: IrBinding,
-    duplicate: IrBinding,
+    bindings: List<IrBinding>,
     bindingStack: IrBindingStack,
   ) {
-    realGraph.reportDuplicateBinding(key, existing, duplicate, bindingStack)
+    realGraph.reportDuplicateBindings(key, bindings, bindingStack)
   }
 
   private fun checkEmptyMultibindings(onError: (List<GraphError>) -> Unit) {
@@ -400,7 +401,7 @@ internal class IrBindingGraph(
     val allBindings = buildMap {
       putAll(realGraph.bindings)
       // Add cached bindings that aren't already in the graph
-      for ((bindingKey, binding) in bindingLookup.getAvailableStaticBindings()) {
+      for ((bindingKey, binding) in bindingLookup.getAvailableBindings()) {
         putIfAbsent(bindingKey, binding)
       }
       // Add multibindings that have been registered

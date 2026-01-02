@@ -17,7 +17,6 @@ kotlin {
   compilerOptions {
     freeCompilerArgs.add("-Xcontext-parameters")
     optIn.addAll(
-      "dev.drewhamilton.poko.SkipSupport",
       "kotlin.contracts.ExperimentalContracts",
       "org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi",
       "org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI",

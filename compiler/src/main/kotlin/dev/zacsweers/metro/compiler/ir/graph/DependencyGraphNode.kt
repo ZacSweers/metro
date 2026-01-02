@@ -42,17 +42,17 @@ internal data class DependencyGraphNode(
   val graphExtensions: Map<IrTypeKey, List<GraphExtensionAccessor>>,
   val scopes: Set<IrAnnotation>,
   val aggregationScopes: Set<ClassId>,
-  val providerFactories: Map<IrTypeKey, ProviderFactory>,
+  val providerFactories: Map<IrTypeKey, List<ProviderFactory>>,
   // Types accessible via this graph (includes inherited)
   // Dagger calls these "provision methods", but that's a bit vague IMO
   val accessors: List<GraphAccessor>,
-  val bindsCallables: Map<IrTypeKey, BindsCallable>,
+  val bindsCallables: Map<IrTypeKey, List<BindsCallable>>,
   val multibindsCallables: Set<MultibindsCallable>,
   val optionalKeys: Map<IrTypeKey, Set<BindsOptionalOfCallable>>,
   /** Binding containers that need a managed instance. */
   val bindingContainers: Set<IrClass>,
-  // Values may be null for cases like BindingContainer parameter types
-  val dynamicTypeKeys: Map<IrTypeKey, IrBindingContainerCallable?>,
+  // Set of all dynamic callables for each type key (allows tracking multiple dynamic bindings)
+  val dynamicTypeKeys: Map<IrTypeKey, Set<IrBindingContainerCallable>>,
   /** Fake overrides of binds functions that need stubbing. */
   val bindsFunctions: List<MetroSimpleFunction>,
   // TypeKey key is the injected type wrapped in MembersInjector
