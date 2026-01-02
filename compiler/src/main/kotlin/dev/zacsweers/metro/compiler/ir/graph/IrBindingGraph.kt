@@ -240,25 +240,12 @@ internal class IrBindingGraph(
     return BindingGraphResult(sortedKeys, deferredTypes, reachableKeys, shardGroups, false)
   }
 
-  fun reportDuplicateBinding(
-    key: IrTypeKey,
-    existing: IrBinding,
-    duplicate: IrBinding,
-    bindingStack: IrBindingStack,
-  ) {
-    realGraph.reportDuplicateBinding(key, existing, duplicate, bindingStack)
-  }
-
-  /** Reports duplicate bindings when multiple bindings are found for the same key. */
   fun reportDuplicateBindings(
     key: IrTypeKey,
     bindings: List<IrBinding>,
     bindingStack: IrBindingStack,
   ) {
-    // Report all pairs of duplicates
-    for ((dup1, dup2) in bindings.windowed(2, 1)) {
-      realGraph.reportDuplicateBinding(key, dup1, dup2, bindingStack)
-    }
+    realGraph.reportDuplicateBindings(key, bindings, bindingStack)
   }
 
   private fun checkEmptyMultibindings(onError: (List<GraphError>) -> Unit) {

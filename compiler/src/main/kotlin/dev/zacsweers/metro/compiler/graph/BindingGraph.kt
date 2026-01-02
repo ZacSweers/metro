@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.ir.graph.appendBindingStackEntries
 import dev.zacsweers.metro.compiler.ir.graph.withEntry
 import dev.zacsweers.metro.compiler.joinWithDynamicSeparatorTo
 import dev.zacsweers.metro.compiler.mapToSet
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import java.util.SortedMap
@@ -382,50 +383,42 @@ internal open class MutableBindingGraph<
     if (key in bindings) {
       val existing = bindings.getValue(key)
       val duplicate = binding
-      reportDuplicateBinding(key, existing, duplicate, bindingStack)
+      reportDuplicateBindings(key, listOf(existing, duplicate), bindingStack)
     } else {
       bindings[binding.typeKey] = binding
     }
   }
 
-  fun reportDuplicateBinding(
-    key: TypeKey,
-    existing: Binding,
-    duplicate: Binding,
-    bindingStack: BindingStack,
-  ) {
-    reportDuplicateBinding(
-      key,
-      existing.renderLocationDiagnostic(),
-      duplicate.renderLocationDiagnostic(),
-      bindingStack,
-    ) {
-      if (existing === duplicate) {
+  fun reportDuplicateBindings(key: TypeKey, bindings: List<Binding>, bindingStack: BindingStack) {
+    reportDuplicateBindings(key, bindings.map { it.renderLocationDiagnostic() }, bindingStack) {
+      if (bindings.distinctBy { System.identityHashCode(it) }.size == 1) {
         appendLine()
-        appendLine("(Hint) Bindings are the same")
-      } else if (existing == duplicate) {
+        appendLine("(Hint) Bindings are all the same instance")
+      } else if (bindings.foldIndexed(true) { i, cur, next -> cur && (next == bindings[i]) }) {
         appendLine()
-        appendLine("(Hint) Bindings are equal")
+        appendLine("(Hint) Bindings are all equal")
       }
     }
   }
 
-  fun reportDuplicateBinding(
+  fun reportDuplicateBindings(
     key: TypeKey,
-    location1: LocationDiagnostic,
-    location2: LocationDiagnostic,
+    locations: List<LocationDiagnostic>,
     bindingStack: BindingStack,
     extraContent: StringBuilder.() -> Unit = {},
   ) {
+    if (locations.size < 2) {
+      reportCompilerBug("Must have at least two locations to report duplicate bindings")
+    }
     val message = buildString {
       appendLine(
         "[Metro/DuplicateBinding] Multiple bindings found for ${key.render(short = false, includeQualifier = true)}"
       )
       appendLine()
-      appendLine("  ${location1.location}")
-      location1.description?.let { appendLine(it.prependIndent("    ")) }
-      appendLine("  ${location2.location}")
-      location2.description?.let { appendLine(it.prependIndent("    ")) }
+      for (location in locations) {
+        appendLine("  ${location.location}")
+        location.description?.let { appendLine(it.prependIndent("    ")) }
+      }
       extraContent()
       appendBindingStack(bindingStack)
     }
