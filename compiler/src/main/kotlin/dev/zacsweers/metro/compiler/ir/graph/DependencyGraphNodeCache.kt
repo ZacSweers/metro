@@ -630,10 +630,10 @@ internal class DependencyGraphNodeCache(
               // Check if the target is constructor-injected. We need to do this in IR too because
               // FIR will miss inherited injectors. https://github.com/ZacSweers/metro/issues/1606
               val hasInjectConstructor =
-                  declaration.regularParameters[0]
-                    .type
-                    .rawTypeOrNull()
-                    ?.findInjectableConstructor(false) != null
+                declaration.regularParameters[0]
+                  .type
+                  .rawTypeOrNull()
+                  ?.findInjectableConstructor(false) != null
 
               if (hasInjectConstructor) {
                 // If the original declaration is in our compilation, report it. Otherwise fall

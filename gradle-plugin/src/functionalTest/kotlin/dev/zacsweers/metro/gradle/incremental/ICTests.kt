@@ -15,6 +15,7 @@ import dev.zacsweers.metro.gradle.MetroProject
 import dev.zacsweers.metro.gradle.buildAndAssertThat
 import dev.zacsweers.metro.gradle.classLoader
 import dev.zacsweers.metro.gradle.cleanOutputLine
+import dev.zacsweers.metro.gradle.invokeMain
 import dev.zacsweers.metro.gradle.source
 import java.io.File
 import java.net.URLClassLoader
@@ -936,11 +937,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val firstBuildResult = build(project.rootDir, "compileKotlin")
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
-    with(project.classLoader()) {
-      val mainClass = loadClass("test.MainKt")
-      val int = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as Int
-      assertThat(int).isEqualTo(1)
-    }
+    assertThat(project.invokeMain<Int>()).isEqualTo(1)
 
     project.modify(
       fixture.exampleGraph,
@@ -961,11 +958,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Check that count is scoped now and never increments
-    with(project.classLoader()) {
-      val mainClass = loadClass("test.MainKt")
-      val int = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as Int
-      assertThat(int).isEqualTo(0)
-    }
+    assertThat(project.invokeMain<Int>()).isEqualTo(0)
 
     project.modify(
       fixture.exampleGraph,
@@ -986,11 +979,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(thirdBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Check that count is unscoped again and increments
-    with(project.classLoader()) {
-      val mainClass = loadClass("test.MainKt")
-      val int = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as Int
-      assertThat(int).isEqualTo(1)
-    }
+    assertThat(project.invokeMain<Int>()).isEqualTo(1)
   }
 
   @Test
@@ -1042,11 +1031,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val firstBuildResult = build(project.rootDir, "compileKotlin")
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
-    with(project.classLoader()) {
-      val mainClass = loadClass("test.MainKt")
-      val int = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as Int
-      assertThat(int).isEqualTo(0)
-    }
+    assertThat(project.invokeMain<Int>()).isEqualTo(0)
 
     project.modify(
       fixture.exampleClass,
@@ -1065,11 +1050,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Check that count is scoped now and never increments
-    with(project.classLoader()) {
-      val mainClass = loadClass("test.MainKt")
-      val int = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as Int
-      assertThat(int).isEqualTo(1)
-    }
+    assertThat(project.invokeMain<Int>()).isEqualTo(1)
 
     project.modify(
       fixture.exampleClass,
@@ -1087,11 +1068,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(thirdBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Check that count is unscoped again and increments
-    with(project.classLoader()) {
-      val mainClass = loadClass("test.MainKt")
-      val int = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as Int
-      assertThat(int).isEqualTo(0)
-    }
+    assertThat(project.invokeMain<Int>()).isEqualTo(0)
   }
 
   @Test
@@ -2317,11 +2294,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     // First build should succeed
     val firstBuildResult = build(project.rootDir, "compileKotlin")
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    with(project.classLoader()) {
-      val mainClass = loadClass("test.MainKt")
-      val result = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as String
-      assertThat(result).isEqualTo("Feature")
-    }
+    assertThat(project.invokeMain<String>()).isEqualTo("Feature")
 
     // Modify the MyActivityInjector to contribute itself to the AppScope
     libProject.modify(
@@ -2339,11 +2312,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     // Second build is still marked as success so we have to check the output
     val secondBuildResult = build(project.rootDir, "compileKotlin")
     assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    with(project.classLoader()) {
-      val mainClass = loadClass("test.MainKt")
-      val result = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as String
-      assertThat(result).isEqualTo("App")
-    }
+    assertThat(project.invokeMain<String>()).isEqualTo("App")
   }
 
   @Test
@@ -2483,12 +2452,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     // First build should succeed and member injection should work
     val firstBuildResult = build(project.rootDir, "compileKotlin")
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-
-    with(project.classLoader()) {
-      val mainClass = loadClass("test.MainKt")
-      val result = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as String
-      assertThat(result).isEqualTo("Demo")
-    }
+    assertThat(project.invokeMain<String>()).isEqualTo("Demo")
 
     // Modify AnotherInjectedClass (unrelated to DemoClass member injection)
     project.modify(
@@ -2509,10 +2473,6 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // This is the key assertion - member injection should still work after IC
-    with(project.classLoader()) {
-      val mainClass = loadClass("test.MainKt")
-      val result = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as String
-      assertThat(result).isEqualTo("Demo")
-    }
+    assertThat(project.invokeMain<String>()).isEqualTo("Demo")
   }
 }

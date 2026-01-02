@@ -135,3 +135,15 @@ fun BuildResult.assertOutputContainsOnDifferentKotlinVersions(map: Map<String, S
 
 fun getTestCompilerVersion(): String =
   System.getProperty("dev.zacsweers.metro.gradle.test.kotlin-version")
+
+/**
+ * Invokes the `main` function from the compiled test sources and returns the result.
+ *
+ * @param className the fully qualified class name containing the main function (defaults to
+ *   "test.MainKt")
+ * @return the result of invoking the main function, cast to type [T]
+ */
+inline fun <reified T> GradleProject.invokeMain(className: String = "test.MainKt"): T {
+  return classLoader().loadClass(className).declaredMethods.first { it.name == "main" }.invoke(null)
+    as T
+}

@@ -13,7 +13,7 @@ import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.metro.gradle.MetroOptionOverrides
 import dev.zacsweers.metro.gradle.MetroProject
 import dev.zacsweers.metro.gradle.assertOutputContains
-import dev.zacsweers.metro.gradle.classLoader
+import dev.zacsweers.metro.gradle.invokeMain
 import dev.zacsweers.metro.gradle.source
 import org.gradle.testkit.runner.TaskOutcome
 import org.junit.Test
@@ -2036,10 +2036,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     // First build should succeed
     val firstBuildResult = build(project.rootDir, "compileKotlin", "--quiet")
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    with(project.classLoader().loadClass("test.MainKt")) {
-      val result = declaredMethods.first { it.name == "main" }.invoke(null) as String
-      assertThat(result).isEqualTo("[AppMultibinding]")
-    }
+    assertThat(project.invokeMain<String>()).isEqualTo("[AppMultibinding]")
 
     // Remove contributing module from the build
     libProject.delete(project.rootDir, fixture.appModule)
@@ -2047,10 +2044,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     // Second build should succeed
     val secondBuildResult = build(project.rootDir, "compileKotlin", "--quiet")
     assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    with(project.classLoader().loadClass("test.MainKt")) {
-      val result = declaredMethods.first { it.name == "main" }.invoke(null) as String
-      assertThat(result).isEqualTo("[]")
-    }
+    assertThat(project.invokeMain<String>()).isEqualTo("[]")
 
     // Restore contributing module to the build
     libProject.modify(project.rootDir, fixture.appModule, fixture.appModuleContent)
@@ -2058,9 +2052,6 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     // Third build should succeed
     val thirdBuildResult = build(project.rootDir, "compileKotlin", "--quiet")
     assertThat(thirdBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-    with(project.classLoader().loadClass("test.MainKt")) {
-      val result = declaredMethods.first { it.name == "main" }.invoke(null) as String
-      assertThat(result).isEqualTo("[AppMultibinding]")
-    }
+    assertThat(project.invokeMain<String>()).isEqualTo("[AppMultibinding]")
   }
 }
