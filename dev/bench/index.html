@@ -119,10 +119,10 @@
           googlecpp: '#f34b7d',
           catch2: '#f34b7d',
           julia: '#a270ba',
-          jmh: '#b07219',
+          jmh: '#6366f1',  // Nice indigo
           benchmarkdotnet: '#178600',
           customBiggerIsBetter: '#38ff38',
-          customSmallerIsBetter: '#ff3838',
+          customSmallerIsBetter: '#6366f1',  // Match jmh
           _: '#333333'
         };
 
@@ -176,6 +176,10 @@
             parent.appendChild(canvas);
 
             const color = toolColors[dataset.length > 0 ? dataset[0].tool : '_'];
+            // Alternate point styles: hollow for "before", filled for "after"
+            const pointStyles = dataset.map((d, i) => i % 2 === 0 ? 'circle' : 'rectRot');
+            const pointRadius = dataset.map((d, i) => i % 2 === 0 ? 4 : 5);
+            const pointBgColors = dataset.map((d, i) => i % 2 === 0 ? '#fff' : color);
             const data = {
               labels: dataset.map(d => d.commit.id.slice(0, 7)),
               datasets: [
@@ -183,11 +187,19 @@
                   label: name,
                   data: dataset.map(d => d.bench.value),
                   borderColor: color,
-                  backgroundColor: color + '60', // Add alpha for #rrggbbaa
+                  backgroundColor: color + '20', // Lighter fill
+                  pointStyle: pointStyles,
+                  pointRadius: pointRadius,
+                  pointBackgroundColor: pointBgColors,
+                  pointBorderColor: color,
+                  pointBorderWidth: 2,
                 }
               ],
             };
             const options = {
+              legend: {
+                display: false,
+              },
               scales: {
                 xAxes: [
                   {
