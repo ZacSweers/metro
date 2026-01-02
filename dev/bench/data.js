@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1767340760626,
+  "lastUpdate": 1767340761774,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup (baseline)": [
@@ -930,6 +930,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "current",
             "value": 0.21712287911372447,
+            "unit": "ms/op",
+            "extra": "iterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "pandanomic@gmail.com",
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8d649bf29990a0843350da491ebfa8067af2cdfd",
+          "message": "Fix member injection metadata not always being written (#1611)",
+          "timestamp": "2026-01-02T07:30:07Z",
+          "tree_id": "ccd7aae20d4a691f5e6b070db71a722ee262df14",
+          "url": "https://github.com/ZacSweers/metro/commit/8d649bf29990a0843350da491ebfa8067af2cdfd"
+        },
+        "date": 1767340761360,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "current",
+            "value": 0.21397969691236654,
             "unit": "ms/op",
             "extra": "iterations: 10\nforks: 2\nthreads: 1"
           }
