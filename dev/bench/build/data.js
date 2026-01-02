@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1767333190808,
+  "lastUpdate": 1767333191751,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time (baseline)": [
@@ -842,6 +842,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "Build Time (current)",
             "value": 17248.972,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "pandanomic@gmail.com",
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d2bf2361fa34cf76b46cef2906a8de42e753323a",
+          "message": "Detect suspicious member injects in IR too (#1610)",
+          "timestamp": "2026-01-02T00:24:19-05:00",
+          "tree_id": "55602b9853b53732e713508aac5d2767b7d014f4",
+          "url": "https://github.com/ZacSweers/metro/commit/d2bf2361fa34cf76b46cef2906a8de42e753323a"
+        },
+        "date": 1767333191343,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time (current)",
+            "value": 16976.922,
             "unit": "ms"
           }
         ]
