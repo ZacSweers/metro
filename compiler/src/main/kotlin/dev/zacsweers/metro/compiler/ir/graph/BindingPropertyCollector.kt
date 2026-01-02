@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
+import dev.zacsweers.metro.compiler.fastForEach
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
@@ -68,7 +69,7 @@ internal class BindingPropertyCollector(
     // Roots (accessors/injectors) don't get properties themselves, but they contribute to
     // factory refcounts when they require provider instances so we mark them here.
     // This includes both direct Provider/Lazy wrapping and map types with Provider values.
-    for (root in roots) {
+    roots.fastForEach { root ->
       markAccess(root, isFactory = root.requiresProviderInstance)
       maybeMarkMultibindingSourcesAsFactoryAccess(
         root,
@@ -81,8 +82,8 @@ internal class BindingPropertyCollector(
     // so its factoryRefCount is finalized. Nodes are created lazily via getOrPut - either
     // here during iteration or earlier via markFactoryAccess when a dependent
     // marks this binding as a factory access.
-    for (key in sortedKeys.asReversed()) {
-      val binding = graph.findBinding(key) ?: continue
+    sortedKeys.asReversed().fastForEach { key ->
+      val binding = graph.findBinding(key) ?: return@fastForEach
 
       // Initialize node (may already exist from markFactoryAccess)
       val node = nodes.getOrPut(key) { Node(binding) }
@@ -94,10 +95,10 @@ internal class BindingPropertyCollector(
       }
 
       // Skip alias bindings for refcount and dependency processing
-      if (binding is IrBinding.Alias) continue
+      if (binding is IrBinding.Alias) return@fastForEach
 
       // Multibindings are always created adhoc and don't get properties
-      if (binding is IrBinding.Multibinding) continue
+      if (binding is IrBinding.Multibinding) return@fastForEach
 
       // factoryRefCount is finalized - check if we need a property to cache the factory
       if (key !in keysWithBackingProperties) {
@@ -120,7 +121,7 @@ internal class BindingPropertyCollector(
       // Mark dependencies as factory accesses if:
       // - Explicitly Provider<T> or Lazy<T>
       // - This binding is in a factory path (factory.create() takes Provider params)
-      for (dependency in binding.dependencies) {
+      binding.dependencies.fastForEach { dependency ->
         markAccess(dependency, isFactory = dependency.requiresProviderInstance || inFactoryPath)
         maybeMarkMultibindingSourcesAsFactoryAccess(dependency, inFactoryPath = inFactoryPath)
       }

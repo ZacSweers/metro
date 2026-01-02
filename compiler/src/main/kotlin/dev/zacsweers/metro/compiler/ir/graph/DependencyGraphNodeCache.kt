@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
+import dev.zacsweers.metro.compiler.fastForEach
 import dev.zacsweers.metro.compiler.fastForEachIndexed
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.getAndAdd
@@ -201,7 +202,7 @@ internal class DependencyGraphNodeCache(
             .getValueArgument(Symbols.Names.additionalScopes)
             ?.expectAs<IrVararg>()
             ?.elements
-            ?.forEach { scopeArg ->
+            ?.fastForEach { scopeArg ->
               scopeArg.expectAsOrNull<IrClassReference>()?.classType?.rawTypeOrNull()?.let {
                 aggregationScopes += it.classIdOrFail
               }
@@ -269,8 +270,8 @@ internal class DependencyGraphNodeCache(
         }
 
       creator?.let { nonNullCreator ->
-        nonNullCreator.parameters.regularParameters.forEachIndexed { i, parameter ->
-          if (parameter.isBindsInstance) return@forEachIndexed
+        nonNullCreator.parameters.regularParameters.fastForEachIndexed { i, parameter ->
+          if (parameter.isBindsInstance) return@fastForEachIndexed
 
           // It's an `@Includes` parameter
           val klass = parameter.typeKey.type.rawType()
@@ -302,7 +303,7 @@ internal class DependencyGraphNodeCache(
                 managedBindingContainers += container.ir
               }
             }
-            return@forEachIndexed
+            return@fastForEachIndexed
           }
 
           // It's a graph-like
@@ -438,15 +439,15 @@ internal class DependencyGraphNodeCache(
         )
       }
 
-      for (declaration in nonNullMetroGraph.declarations) {
+      nonNullMetroGraph.declarations.fastForEach { declaration ->
         // Functions and properties only
-        if (declaration !is IrOverridableDeclaration<*>) continue
-        if (!declaration.isFakeOverride) continue
+        if (declaration !is IrOverridableDeclaration<*>) return@fastForEach
+        if (!declaration.isFakeOverride) return@fastForEach
         if (declaration is IrFunction && declaration.isInheritedFromAny(pluginContext.irBuiltIns)) {
-          continue
+          return@fastForEach
         }
         val annotations = metroAnnotationsOf(declaration)
-        if (annotations.isProvides) continue
+        if (annotations.isProvides) return@fastForEach
         when (declaration) {
           is IrSimpleFunction -> {
             // Could be an injector, accessor, or graph extension
@@ -529,7 +530,7 @@ internal class DependencyGraphNodeCache(
               }
             }
 
-            if (hasDefaultImplementation && !isOptionalBinding) continue
+            if (hasDefaultImplementation && !isOptionalBinding) return@fastForEach
 
             // Report qualifier mismatch error if found
             if (qualifierMismatchData != null) {
@@ -731,7 +732,7 @@ internal class DependencyGraphNodeCache(
               }
             }
 
-            if (hasDefaultImplementation && !isOptionalBinding) continue
+            if (hasDefaultImplementation && !isOptionalBinding) return@fastForEach
 
             // Report qualifier mismatch error if found
             if (qualifierMismatchData != null) {
@@ -1071,10 +1072,10 @@ internal class DependencyGraphNodeCache(
       // TODO need to look up accessors and binds functions
       if (isGraph) {
         // TODO is this duplicating info we already have in the proto?
-        for (type in supertypes) {
-          val declaration = type.classOrNull?.owner ?: continue
+        supertypes.fastForEach { type ->
+          val declaration = type.classOrNull?.owner ?: return@fastForEach
           // Skip the metrograph, it won't have custom nested factories
-          if (declaration == metroGraph) continue
+          if (declaration == metroGraph) return@fastForEach
           bindingContainerTransformer.findContainer(declaration)?.let { bindingContainer ->
             for ((_, factory) in bindingContainer.providerFactories) {
               providerFactories.getAndAdd(factory.typeKey, factory)
@@ -1092,8 +1093,8 @@ internal class DependencyGraphNodeCache(
           }
         }
       } else {
-        for ((typeKey, factory) in
-          bindingContainerTransformer.factoryClassesFor(metroGraph ?: graphDeclaration)) {
+        bindingContainerTransformer.factoryClassesFor(metroGraph ?: graphDeclaration).fastForEach {
+          (typeKey, factory) ->
           providerFactories.getAndAdd(typeKey, factory)
         }
       }

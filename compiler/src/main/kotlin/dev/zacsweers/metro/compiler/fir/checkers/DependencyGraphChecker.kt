@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.MetroAnnotations
+import dev.zacsweers.metro.compiler.fastForEach
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.additionalScopesArgument
@@ -75,7 +76,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
       }
 
     if (dependencyGraphAnnos.size > 1) {
-      for (anno in dependencyGraphAnnos) {
+      dependencyGraphAnnos.fastForEach { anno ->
         reporter.reportOn(
           anno.source,
           MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
@@ -164,7 +165,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
       graphExtensionFactorySupertypes.values.mapToSet { it.classId }
 
     // Note this doesn't check inherited supertypes. Maybe we should, but where do we report errors?
-    for (callable in declaration.symbol.directCallableSymbols()) {
+    declaration.symbol.directCallableSymbols().fastForEach { callable ->
       val annotations =
         callable.metroAnnotations(
           session,
@@ -178,10 +179,10 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
 
       val isEffectivelyOpen = with(session.compatContext) { callable.isEffectivelyOpen() }
 
-      if (!isEffectivelyOpen && !annotations.isOptionalBinding) continue
+      if (!isEffectivelyOpen && !annotations.isOptionalBinding) return@fastForEach
 
       val isBindsOrProvides = annotations.isBinds || annotations.isProvides
-      if (isBindsOrProvides) continue
+      if (isBindsOrProvides) return@fastForEach
 
       // Check graph extensions
       val returnType = callable.resolvedReturnTypeRef.coneType
@@ -206,13 +207,11 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
           parentScopeAnnotations = scopeAnnotations,
           parentAggregationScopes = aggregationScopes,
         )
-        continue
-      }
-
-      if (callable.isOverride) {
+        return@fastForEach
+      } else if (callable.isOverride) {
         // If it's an optionaldep, ensure annotations are propagated
         if (!annotations.isOptionalBinding) {
-          for (overridden in callable.directOverriddenSymbolsSafe()) {
+          callable.directOverriddenSymbolsSafe().fastForEach { overridden ->
             if (
               overridden
                 .metroAnnotations(session, MetroAnnotations.Kind.OptionalBinding)
@@ -243,179 +242,177 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
             parentScopeAnnotations = scopeAnnotations,
             parentAggregationScopes = aggregationScopes,
           )
-          continue
+          return@fastForEach
         }
       }
 
       val isGraphExtension =
         returnTypeClassSymbol?.isAnnotatedWithAny(session, classIds.graphExtensionAnnotations) ==
           true
-      if (isGraphExtension) {
-        // Check if that extension has a creator. If so, we either must implement that creator or
-        // it's an error
-        // because they need to use it
-        val creator =
-          returnTypeClassSymbol.nestedClasses().firstOrNull { nestedClass ->
-            nestedClass.isAnnotatedWithAny(session, classIds.graphExtensionFactoryAnnotations)
-          }
-        if (creator != null) {
-          // Final check - make sure this callable belongs to that extension
-          val belongsToExtension =
-            callable.isOverride &&
-              creator.classId !in implementedGraphExtensionCreators &&
-              callable.directOverriddenSymbolsSafe().any {
-                it.dispatchReceiverClassLookupTagOrNull()?.classId == creator.classId
+      when {
+        isGraphExtension -> {
+          // Check if that extension has a creator. If so, we either must implement that creator or
+          // it's an error because they need to use it
+          val creator =
+            returnTypeClassSymbol.nestedClasses().firstOrNull { nestedClass ->
+              nestedClass.isAnnotatedWithAny(session, classIds.graphExtensionFactoryAnnotations)
+            }
+          when {
+            creator != null -> {
+              // Final check - make sure this callable belongs to that extension
+              val belongsToExtension =
+                callable.isOverride &&
+                  creator.classId !in implementedGraphExtensionCreators &&
+                  callable.directOverriddenSymbolsSafe().any {
+                    it.dispatchReceiverClassLookupTagOrNull()?.classId == creator.classId
+                  }
+              if (!belongsToExtension) {
+                reporter.reportOn(
+                  callable.source,
+                  MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+                  "Graph extension '${returnTypeClassSymbol.classId.asSingleFqName()}' has a creator type '${creator.classId.asSingleFqName()}' that must be used to create its instances. Either make '${declaration.classId.asSingleFqName()}' implement '${creator.classId.asSingleFqName()}' or expose an accessor for '${creator.classId.asSingleFqName()}' instead of '${returnTypeClassSymbol.classId.asSingleFqName()}' directly.",
+                )
               }
-          if (!belongsToExtension) {
-            reporter.reportOn(
-              callable.source,
-              MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-              "Graph extension '${returnTypeClassSymbol.classId.asSingleFqName()}' has a creator type '${creator.classId.asSingleFqName()}' that must be used to create its instances. Either make '${declaration.classId.asSingleFqName()}' implement '${creator.classId.asSingleFqName()}' or expose an accessor for '${creator.classId.asSingleFqName()}' instead of '${returnTypeClassSymbol.classId.asSingleFqName()}' directly.",
-            )
-            continue
-          }
-        } else if (callable.contextParameterSymbols.isNotEmpty()) {
-          for (parameter in callable.contextParameterSymbols) {
-            reporter.reportOn(
-              parameter.source,
-              MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-              "Graph extension accessors may not have context parameters.",
-            )
-          }
-          continue
-        } else if (callable.receiverParameterSymbol != null) {
-          reporter.reportOn(
-            callable.receiverParameterSymbol!!.source,
-            MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-            "Graph extension accessors may not have extension receivers. Use `@GraphExtension.Factory` instead.",
-          )
-          continue
-        } else if (
-          callable is FirNamedFunctionSymbol && callable.valueParameterSymbols.isNotEmpty()
-        ) {
-          for (parameter in callable.valueParameterSymbols) {
-            reporter.reportOn(
-              parameter.source,
-              MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-              "Graph extension accessors may not have parameters. Use `@GraphExtension.Factory` instead.",
-            )
-          }
-          continue
-        }
-      }
+            }
 
-      // Functions with no params are accessors
-      if (
-        callable is FirPropertySymbol ||
-          (callable is FirNamedFunctionSymbol && callable.valueParameterSymbols.isEmpty())
-      ) {
-        callable.validateBindingRef(annotations)
+            callable.contextParameterSymbols.isNotEmpty() -> {
+              callable.contextParameterSymbols.fastForEach { parameter ->
+                reporter.reportOn(
+                  parameter.source,
+                  MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+                  "Graph extension accessors may not have context parameters.",
+                )
+              }
+            }
 
-        val hasBody =
-          when (callable) {
-            is FirPropertySymbol -> callable.getterSymbol?.hasBody == true
-            is FirNamedFunctionSymbol -> callable.hasBody
-            else -> false
-          }
-
-        if (annotations.isOptionalBinding) {
-          callable.checkOptionalDepAccessor(isEffectivelyOpen, hasBody)
-        } else if (hasBody) {
-          continue
-        }
-
-        val returnType = callable.resolvedReturnTypeRef.coneType
-        if (returnType.isUnit) {
-          reporter.reportOn(
-            callable.resolvedReturnTypeRef.source ?: callable.source,
-            MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-            "Graph accessor members must have a return type and cannot be Unit.",
-          )
-          continue
-        } else if (returnType.isNothing) {
-          reporter.reportOn(
-            callable.source,
-            MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-            "Graph accessor members cannot return Nothing.",
-          )
-          continue
-        }
-
-        validateInjectionSiteType(
-          session,
-          callable.resolvedReturnTypeRef,
-          callable.qualifierAnnotation(session),
-          callable.source,
-          isAccessor = true,
-          isOptionalBinding = annotations.isOptionalBinding,
-        )
-
-        val scopeAnnotations = callable.allAnnotations().scopeAnnotations(session)
-        for (scopeAnnotation in scopeAnnotations) {
-          reporter.reportOn(
-            scopeAnnotation.fir.source,
-            MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-            "Graph accessor members cannot be scoped.",
-          )
-        }
-        continue
-      }
-
-      // Functions with params are possibly injectors
-      if (callable is FirNamedFunctionSymbol && callable.valueParameterSymbols.isNotEmpty()) {
-        if (!callable.resolvedReturnTypeRef.coneType.isUnit) {
-          reporter.reportOn(
-            callable.resolvedReturnTypeRef.source,
-            MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-            "Inject functions must not return anything other than Unit.",
-          )
-          continue
-        }
-
-        // If it has one param, it's an injector
-        when (callable.valueParameterSymbols.size) {
-          1 -> {
-            val parameter = callable.valueParameterSymbols[0]
-            val clazz = parameter.resolvedReturnTypeRef.firClassLike(session) ?: continue
-            val classSymbol = clazz.symbol as? FirClassSymbol<*> ?: continue
-            val isInjected = classSymbol.findInjectLikeConstructors(session).isNotEmpty()
-
-            parameter.validateBindingRef(annotations)
-
-            if (isInjected) {
+            callable.receiverParameterSymbol != null -> {
               reporter.reportOn(
-                parameter.source,
-                MetroDiagnostics.SUSPICIOUS_MEMBER_INJECT_FUNCTION,
-                "Injected class '${clazz.classId.asSingleFqName()}' is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary.",
+                callable.receiverParameterSymbol!!.source,
+                MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+                "Graph extension accessors may not have extension receivers. Use `@GraphExtension.Factory` instead.",
               )
             }
 
-            if (annotations.isOptionalBinding) {
+            callable is FirNamedFunctionSymbol && callable.valueParameterSymbols.isNotEmpty() -> {
+              callable.valueParameterSymbols.fastForEach { parameter ->
+                reporter.reportOn(
+                  parameter.source,
+                  MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+                  "Graph extension accessors may not have parameters. Use `@GraphExtension.Factory` instead.",
+                )
+              }
+            }
+          }
+        }
+
+        callable is FirPropertySymbol ||
+          callable is FirNamedFunctionSymbol && callable.valueParameterSymbols.isEmpty() -> {
+          // Functions with no params are accessors
+          callable.validateBindingRef(annotations)
+
+          val hasBody =
+            when (callable) {
+              is FirPropertySymbol -> callable.getterSymbol?.hasBody == true
+              is FirNamedFunctionSymbol -> callable.hasBody
+              else -> false
+            }
+
+          if (annotations.isOptionalBinding) {
+            callable.checkOptionalDepAccessor(isEffectivelyOpen, hasBody)
+          } else if (hasBody) {
+            return@fastForEach
+          }
+
+          val returnType = callable.resolvedReturnTypeRef.coneType
+          if (returnType.isUnit) {
+            reporter.reportOn(
+              callable.resolvedReturnTypeRef.source ?: callable.source,
+              MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+              "Graph accessor members must have a return type and cannot be Unit.",
+            )
+          } else if (returnType.isNothing) {
+            reporter.reportOn(
+              callable.source,
+              MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+              "Graph accessor members cannot return Nothing.",
+            )
+          }
+
+          validateInjectionSiteType(
+            session,
+            callable.resolvedReturnTypeRef,
+            callable.qualifierAnnotation(session),
+            callable.source,
+            isAccessor = true,
+            isOptionalBinding = annotations.isOptionalBinding,
+          )
+
+          val scopeAnnotations = callable.allAnnotations().scopeAnnotations(session)
+          for (scopeAnnotation in scopeAnnotations) {
+            reporter.reportOn(
+              scopeAnnotation.fir.source,
+              MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+              "Graph accessor members cannot be scoped.",
+            )
+          }
+        }
+
+        callable is FirNamedFunctionSymbol && callable.valueParameterSymbols.isNotEmpty() -> {
+          // Functions with params are possibly injectors
+          if (!callable.resolvedReturnTypeRef.coneType.isUnit) {
+            reporter.reportOn(
+              callable.resolvedReturnTypeRef.source,
+              MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+              "Inject functions must not return anything other than Unit.",
+            )
+          }
+
+          // If it has one param, it's an injector
+          when (callable.valueParameterSymbols.size) {
+            1 -> {
+              val parameter = callable.valueParameterSymbols[0]
+              val clazz =
+                parameter.resolvedReturnTypeRef.firClassLike(session) ?: return@fastForEach
+              val classSymbol = clazz.symbol as? FirClassSymbol<*> ?: return@fastForEach
+              val isInjected = classSymbol.findInjectLikeConstructors(session).isNotEmpty()
+
+              parameter.validateBindingRef(annotations)
+
+              if (isInjected) {
+                reporter.reportOn(
+                  parameter.source,
+                  MetroDiagnostics.SUSPICIOUS_MEMBER_INJECT_FUNCTION,
+                  "Injected class '${clazz.classId.asSingleFqName()}' is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary.",
+                )
+              }
+
+              if (annotations.isOptionalBinding) {
+                reporter.reportOn(
+                  callable.source,
+                  MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+                  "Injector functions cannot be annotated with @OptionalBinding.",
+                )
+              }
+              parameter
+                .annotationsIn(session, session.classIds.optionalBindingAnnotations)
+                .firstOrNull()
+                ?.let {
+                  reporter.reportOn(
+                    it.source ?: parameter.source,
+                    MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+                    "Injector function parameters cannot be annotated with @OptionalBinding.",
+                  )
+                }
+            }
+            // > 1
+            else -> {
+              // TODO Not actually sure what dagger does. Maybe we should support this?
               reporter.reportOn(
                 callable.source,
                 MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-                "Injector functions cannot be annotated with @OptionalBinding.",
+                "Inject functions must have exactly one parameter.",
               )
             }
-            parameter
-              .annotationsIn(session, session.classIds.optionalBindingAnnotations)
-              .firstOrNull()
-              ?.let {
-                reporter.reportOn(
-                  it.source ?: parameter.source,
-                  MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-                  "Injector function parameters cannot be annotated with @OptionalBinding.",
-                )
-              }
-          }
-          // > 1
-          else -> {
-            // TODO Not actually sure what dagger does. Maybe we should support this?
-            reporter.reportOn(
-              callable.source,
-              MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-              "Inject functions must have exactly one parameter.",
-            )
           }
         }
       }

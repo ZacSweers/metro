@@ -257,9 +257,9 @@ private fun IrAnnotationContainer.metroAnnotations(
   var qualifier: IrAnnotation? = null
   val mapKeys = mutableSetOf<IrAnnotation>()
 
-  for (annotation in annotations) {
-    val annotationClass = annotation.type.classOrNull?.owner ?: continue
-    val classId = annotationClass.classId ?: continue
+  annotations.fastForEach { annotation ->
+    val annotationClass = annotation.type.classOrNull?.owner ?: return@fastForEach
+    val classId = annotationClass.classId ?: return@fastForEach
 
     when (this) {
       is IrValueParameter -> {
@@ -267,15 +267,15 @@ private fun IrAnnotationContainer.metroAnnotations(
         when (classId) {
           in ids.providesAnnotations if (Kind.Provides in kinds) -> {
             isBindsInstance = true
-            continue
+            return@fastForEach
           }
           in ids.assistedAnnotations if (Kind.Assisted in kinds) -> {
             assisted = expectNullAndSet("assisted", assisted, annotation.asIrAnnotation())
-            continue
+            return@fastForEach
           }
           in ids.optionalBindingAnnotations if (Kind.OptionalBinding in kinds) -> {
             isOptionalBinding = true
-            continue
+            return@fastForEach
           }
         }
       }
@@ -286,39 +286,39 @@ private fun IrAnnotationContainer.metroAnnotations(
         when (classId) {
           in ids.bindsAnnotations if (Kind.Binds in kinds) -> {
             isBinds = true
-            continue
+            return@fastForEach
           }
           in ids.providesAnnotations if (Kind.Provides in kinds) -> {
             isProvides = true
-            continue
+            return@fastForEach
           }
           in ids.intoSetAnnotations if (Kind.IntoSet in kinds) -> {
             isIntoSet = true
-            continue
+            return@fastForEach
           }
           in ids.elementsIntoSetAnnotations if (Kind.ElementsIntoSet in kinds) -> {
             isElementsIntoSet = true
-            continue
+            return@fastForEach
           }
           in ids.intoMapAnnotations if (Kind.IntoMap in kinds) -> {
             isIntoMap = true
-            continue
+            return@fastForEach
           }
           in ids.multibindsAnnotations -> {
             multibinds = expectNullAndSet("multibindings", multibinds, annotation.asIrAnnotation())
-            continue
+            return@fastForEach
           }
           Symbols.ClassIds.Composable if (Kind.Composable in kinds) -> {
             isComposable = true
-            continue
+            return@fastForEach
           }
           DaggerSymbols.ClassIds.DAGGER_BINDS_OPTIONAL_OF if (Kind.BindsOptionalOf in kinds) -> {
             isBindsOptionalOf = true
-            continue
+            return@fastForEach
           }
           in ids.optionalBindingAnnotations if (Kind.OptionalBinding in kinds) -> {
             isOptionalBinding = true
-            continue
+            return@fastForEach
           }
         }
       }
@@ -328,15 +328,15 @@ private fun IrAnnotationContainer.metroAnnotations(
         when (classId) {
           in ids.assistedFactoryAnnotations if (Kind.AssistedFactory in kinds) -> {
             isAssistedFactory = true
-            continue
+            return@fastForEach
           }
           in ids.dependencyGraphAnnotations if (Kind.DependencyGraph in kinds) -> {
             isDependencyGraph = true
-            continue
+            return@fastForEach
           }
           in ids.dependencyGraphFactoryAnnotations if (Kind.DependencyGraphFactory in kinds) -> {
             isDependencyGraphFactory = true
-            continue
+            return@fastForEach
           }
         }
       }
@@ -346,25 +346,25 @@ private fun IrAnnotationContainer.metroAnnotations(
 
     if (classId in ids.injectAnnotations) {
       isInject = true
-      continue
+      return@fastForEach
     }
 
     if (Kind.AssistedInject in kinds && classId in ids.assistedInjectAnnotations) {
       isAssistedInject = true
-      continue
+      return@fastForEach
     }
 
     if (Kind.Scope in kinds && annotationClass.isAnnotatedWithAny(ids.scopeAnnotations)) {
       scope = expectNullAndSet("scope", scope, annotation.asIrAnnotation())
-      continue
+      return@fastForEach
     } else if (
       Kind.Qualifier in kinds && annotationClass.isAnnotatedWithAny(ids.qualifierAnnotations)
     ) {
       qualifier = expectNullAndSet("qualifier", qualifier, annotation.asIrAnnotation())
-      continue
+      return@fastForEach
     } else if (Kind.MapKey in kinds && annotationClass.isAnnotatedWithAny(ids.mapKeyAnnotations)) {
       mapKeys += annotation.asIrAnnotation()
-      continue
+      return@fastForEach
     }
   }
 

@@ -367,7 +367,7 @@ internal class BindingGraphGenerator(
       addAll(node.allExtendedNodes.values.flatMapToSet { it.multibindsCallables })
     }
 
-    for (multibindsCallable in allMultibindsCallables) {
+    allMultibindsCallables.fastForEach { multibindsCallable ->
       // Track IC lookups but don't add bindings yet - they'll be added lazily
       trackFunctionCall(node.sourceGraph, multibindsCallable.function)
       trackClassLookup(
@@ -402,11 +402,11 @@ internal class BindingGraphGenerator(
     for ((typeKey, extendedNode) in node.allExtendedNodes) {
       // If it's a contributed graph, add an alias for the parent types since that's what
       // bindings will look for. i.e. LoggedInGraphImpl -> LoggedInGraph + supertypes
-      for (superType in extendedNode.supertypes) {
+      extendedNode.supertypes.fastForEach { superType ->
         val parentTypeKey = IrTypeKey(superType)
 
         // Ignore the graph declaration itself, handled separately
-        if (parentTypeKey == typeKey) continue
+        if (parentTypeKey == typeKey) return@fastForEach
 
         superTypeToAlias.putIfAbsent(parentTypeKey, typeKey)
       }
@@ -435,7 +435,7 @@ internal class BindingGraphGenerator(
       )
     }
 
-    for ((contextualTypeKey, getter, _) in accessorsToAdd) {
+    accessorsToAdd.fastForEach { (contextualTypeKey, getter, _) ->
       val multibinds = getter.annotations.multibinds
       val isMultibindingDeclaration = multibinds != null
 
@@ -454,7 +454,7 @@ internal class BindingGraphGenerator(
     }
 
     for ((key, accessors) in node.graphExtensions) {
-      for (accessor in accessors) {
+      accessors.fastForEach { accessor ->
         val shouldAddBinding =
           accessor.isFactory &&
             // It's allowed to specify multiple accessors for the same factory
@@ -485,7 +485,7 @@ internal class BindingGraphGenerator(
     // accessors
     for ((depNodeKey, depNode) in node.includedGraphNodes) {
       // Only add accessors for included types
-      for ((contextualTypeKey, getter, _) in depNode.accessors) {
+      depNode.accessors.fastForEach { (contextualTypeKey, getter, _) ->
         // Add a ref to the included graph if not already present
         if (depNodeKey !in graph) {
           graph.addBinding(
@@ -625,13 +625,13 @@ internal class BindingGraphGenerator(
     }
 
     // Add MembersInjector bindings defined on injector functions
-    for ((contextKey, injector) in node.injectors) {
+    node.injectors.fastForEach { (contextKey, injector) ->
       val entry = IrBindingStack.Entry.requestedAt(contextKey, injector.ir)
 
       graph.addInjector(contextKey, entry)
       if (contextKey.typeKey in graph) {
         // Injectors may be requested multiple times, don't double-add a binding
-        continue
+        return@fastForEach
       }
       bindingStack.withEntry(entry) {
         val param = injector.ir.regularParameters.single()

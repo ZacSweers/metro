@@ -4,6 +4,8 @@ package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.fastFilterNot
+import dev.zacsweers.metro.compiler.fastForEach
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
@@ -69,10 +71,11 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
 
     val classQualifier = declaration.annotations.qualifierAnnotation(session)
 
-    for (annotation in declaration.annotations.filter { it.isResolved }) {
-      val classId = annotation.toAnnotationClassId(session) ?: continue
+    declaration.annotations.fastForEach { annotation ->
+      if (!annotation.isResolved) return@fastForEach
+      val classId = annotation.toAnnotationClassId(session) ?: return@fastForEach
       if (classId in classIds.allContributesAnnotations) {
-        val scope = annotation.resolvedScopeClassId() ?: continue
+        val scope = annotation.resolvedScopeClassId() ?: return@fastForEach
         val replaces = emptySet<ClassId>() // TODO implement
         val checkIntoSet by memoize {
           checkBindingContribution(
@@ -202,7 +205,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
       return false
     }
 
-    val supertypesExcludingAny = declaration.superTypeRefs.filterNot { it.coneType.isAny }
+    val supertypesExcludingAny = declaration.superTypeRefs.fastFilterNot { it.coneType.isAny }
     val hasSupertypes = supertypesExcludingAny.isNotEmpty()
 
     val explicitBindingType = annotation.resolvedBindingArgument(session)

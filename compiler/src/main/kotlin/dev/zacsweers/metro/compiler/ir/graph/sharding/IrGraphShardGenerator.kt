@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir.graph.sharding
 import dev.zacsweers.metro.compiler.DEFAULT_KEYS_PER_GRAPH_SHARD
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.fastForEach
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
@@ -250,7 +251,7 @@ internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext b
       val generatedExpressions = mutableListOf<Pair<PropertyBinding, IrExpression>>()
 
       createIrBuilder(initializeFunction.symbol).run {
-        for (binding in bindings) {
+        bindings.fastForEach { binding ->
           val backingField = binding.property.backingField
           if (backingField != null) {
             val initValue = binding.initializer.invoke(this@run, outerThisParam, binding.typeKey)
@@ -301,7 +302,7 @@ internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext b
                 val localShardReceiver = shardClass.thisReceiverOrFail.copyTo(this)
                 setDispatchReceiver(localShardReceiver)
                 buildBlockBody {
-                  for ((backingField, initValue) in chunk) {
+                  chunk.fastForEach { (backingField, initValue) ->
                     +irSetField(irGet(outerThisParam), backingField, initValue)
                   }
                 }
@@ -309,7 +310,7 @@ internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext b
           }
 
         initializeFunction.buildBlockBody {
-          for (chunkedFn in chunkedFunctions) {
+          chunkedFunctions.fastForEach { chunkedFn ->
             +irInvoke(
               dispatchReceiver = irGet(initializeFunction.dispatchReceiverParameter!!),
               callee = chunkedFn.symbol,
@@ -319,7 +320,7 @@ internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext b
       } else {
         initializeFunction.body =
           createIrBuilder(initializeFunction.symbol).irBlockBody {
-            for ((backingField, initValue) in statementData) {
+            statementData.fastForEach { (backingField, initValue) ->
               +irSetField(irGet(outerThisParam), backingField, initValue)
             }
           }

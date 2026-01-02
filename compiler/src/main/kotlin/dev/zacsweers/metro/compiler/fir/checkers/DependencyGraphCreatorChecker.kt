@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
+import dev.zacsweers.metro.compiler.fastForEach
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.allScopeClassIds
@@ -137,7 +138,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
 
     val paramTypes = mutableSetOf<FirTypeKey>()
 
-    for (param in createFunction.valueParameterSymbols) {
+    createFunction.valueParameterSymbols.fastForEach { param ->
       val typeKey = FirTypeKey.from(session, param)
       if (!paramTypes.add(typeKey)) {
         reporter.reportOn(
@@ -145,7 +146,6 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
           MetroDiagnostics.GRAPH_CREATORS_ERROR,
           "${annotationClassId.relativeClassName.asString()} abstract function parameters must be unique.",
         )
-        continue
       }
 
       if (param.isVararg) {
@@ -154,7 +154,6 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
           MetroDiagnostics.GRAPH_CREATORS_VARARG_ERROR,
           "${annotationClassId.relativeClassName.asString()} abstract function parameters may not be vararg.",
         )
-        continue
       }
 
       var isIncludes = false
@@ -183,10 +182,10 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
       }
       if (isIncludes && isProvides) {
         reportAnnotationCountError()
-        continue
+        return@fastForEach
       }
 
-      val type = param.resolvedReturnTypeRef.toClassLikeSymbol(session) ?: continue
+      val type = param.resolvedReturnTypeRef.toClassLikeSymbol(session) ?: return@fastForEach
 
       // Don't allow the target graph as a param
       if (type.classId == targetGraph?.classId) {
@@ -195,7 +194,6 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
           MetroDiagnostics.GRAPH_CREATORS_ERROR,
           "${annotationClassId.relativeClassName.asString()} declarations cannot have their target graph type as parameters.",
         )
-        continue
       }
 
       when {
@@ -209,7 +207,6 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
                 MetroDiagnostics.GRAPH_CREATORS_ERROR,
                 "Invalid binding container argument: $bindingContainerErrorMessage",
               )
-              continue
             }
           } else {
             if (type.classKind in NON_INCLUDES_KINDS || type.classId.isPlatformType()) {
