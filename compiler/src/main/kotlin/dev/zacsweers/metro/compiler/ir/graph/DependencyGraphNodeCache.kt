@@ -354,7 +354,9 @@ internal class DependencyGraphNodeCache(
           MetroDiagnostics.GRAPH_DEPENDENCY_CYCLE,
           message,
         )
-        hasErrors = true
+        // In this case, we exit early as we have a self-cycle in the graph that deferring would
+        // just loop
+        exitProcessing()
       }
     }
 
