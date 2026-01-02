@@ -27,6 +27,7 @@ import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.bindingContainerClasses
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.excludedClasses
+import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
 import dev.zacsweers.metro.compiler.ir.isAccessorCandidate
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isBindingContainer
@@ -79,10 +80,12 @@ import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrVararg
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
+import org.jetbrains.kotlin.ir.types.classFqName
 import org.jetbrains.kotlin.ir.types.classOrFail
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.isUnit
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.defaultType
@@ -179,6 +182,7 @@ internal class DependencyGraphNodeCache(
       (metroGraph ?: graphDeclaration).allSupertypesSequence(excludeSelf = false).memoized()
 
     private var hasGraphExtensions = false
+    private var hasErrors = false
 
     private fun computeDeclaredScopes(): Set<IrAnnotation> {
       return buildSet {
@@ -352,18 +356,16 @@ internal class DependencyGraphNodeCache(
           MetroDiagnostics.GRAPH_DEPENDENCY_CYCLE,
           message,
         )
-        exitProcessing()
+        hasErrors = true
       }
     }
-
-    private var hasDuplicateBindingErrors = false
 
     private fun reportDuplicateProviderFactory(
       typeKey: IrTypeKey,
       existing: ProviderFactory,
       duplicate: ProviderFactory,
     ) {
-      hasDuplicateBindingErrors = true
+      hasErrors = true
 
       fun StringBuilder.appendFactory(factory: ProviderFactory) {
         append("  ")
@@ -401,7 +403,7 @@ internal class DependencyGraphNodeCache(
       existing: BindsCallable,
       duplicate: BindsCallable,
     ) {
-      hasDuplicateBindingErrors = true
+      hasErrors = true
       val existingDiagnostic =
         existing.renderLocationDiagnostic(short = false, existing.function.parameters())
       val duplicateDiagnostic =
@@ -469,6 +471,7 @@ internal class DependencyGraphNodeCache(
         MetroDiagnostics.METRO_ERROR,
         message,
       )
+      hasErrors = true
     }
 
     fun build(): DependencyGraphNode {
@@ -696,7 +699,37 @@ internal class DependencyGraphNodeCache(
                 contextKey.typeKey.copy(contextKey.typeKey.type.wrapInMembersInjector())
               val finalContextKey = contextKey.withTypeKey(memberInjectorTypeKey)
 
-              injectors += InjectorFunction(finalContextKey, metroFunction)
+              // Check if the target is constructor-injected. We need to do this in IR too because
+              // FIR will miss inherited injectors. https://github.com/ZacSweers/metro/issues/1606
+              val hasInjectConstructor =
+                declaration.isFakeOverride &&
+                  declaration.regularParameters[0]
+                    .type
+                    .rawTypeOrNull()
+                    ?.findInjectableConstructor(false) != null
+
+              if (hasInjectConstructor) {
+                // If the original declaration is in our compilation, report it. Otherwise fall
+                // through to the nearest available declaration to report.
+                val originalDeclaration = declaration.overriddenSymbolsSequence().last().owner
+                val isExternal = originalDeclaration.isExternalParent
+                val middle =
+                  if (isExternal) {
+                    val callableId = originalDeclaration.callableId
+                    // It's an external declaration, so make it clear which function
+                    "the inherited '${callableId.callableName}' inject function from '${callableId.classId!!.asFqNameString()}'"
+                  } else {
+                    "this inject function"
+                  }
+                metroContext.reportCompat(
+                  originalDeclaration.takeUnless { isExternal } ?: declaration,
+                  MetroDiagnostics.SUSPICIOUS_MEMBER_INJECT_FUNCTION,
+                  "Injected class '${declaration.regularParameters[0].type.classFqName!!.asString()}' is constructor-injected and can be instantiated by Metro directly, so $middle is unnecessary.",
+                )
+                hasErrors = true
+              } else {
+                injectors += InjectorFunction(finalContextKey, metroFunction)
+              }
             } else {
               // Accessor or binds
               val metroFunction = metroFunctionOf(declaration, annotations)
@@ -1054,8 +1087,8 @@ internal class DependencyGraphNodeCache(
         exitProcessing()
       }
 
-      // Exit after collecting all duplicate binding errors
-      if (hasDuplicateBindingErrors) {
+      // Exit after collecting all errors
+      if (hasErrors) {
         exitProcessing()
       }
 

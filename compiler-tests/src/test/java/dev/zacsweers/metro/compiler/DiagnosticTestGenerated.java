@@ -655,6 +655,18 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       public void testMissingMemberInjectionShouldFailBinding2() {
         runTest("compiler-tests/src/test/data/diagnostic/inject/member/MissingMemberInjectionShouldFailBinding2.kt");
       }
+
+      @Test
+      @TestMetadata("UnnecessaryMemberInjectShouldError.kt")
+      public void testUnnecessaryMemberInjectShouldError() {
+        runTest("compiler-tests/src/test/data/diagnostic/inject/member/UnnecessaryMemberInjectShouldError.kt");
+      }
+
+      @Test
+      @TestMetadata("UnnecessaryMemberInjectShouldErrorInSeparateModule.kt")
+      public void testUnnecessaryMemberInjectShouldErrorInSeparateModule() {
+        runTest("compiler-tests/src/test/data/diagnostic/inject/member/UnnecessaryMemberInjectShouldErrorInSeparateModule.kt");
+      }
     }
   }
 

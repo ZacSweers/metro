@@ -898,7 +898,7 @@ internal fun Sequence<IrElement?>.joinToKotlinLike(separator: String = "\n"): St
 }
 
 internal val IrDeclarationParent.isExternalParent: Boolean
-  get() = this is Fir2IrLazyClass || this is IrExternalPackageFragment
+  get() = this is AbstractFir2IrLazyDeclaration<*> || this is IrExternalPackageFragment
 
 /**
  * An [irBlockBody] with a single [expression]. This is useful because [irExprBody] is not

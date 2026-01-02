@@ -59,6 +59,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_PROPERTIES_CAN
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.REDUNDANT_PROVIDES
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUGGEST_CLASS_INJECTION
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_MEMBER_INJECT_FUNCTION
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_OBJECT_INJECTION_WARNING
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactoryToRendererMap
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticRenderers.TO_STRING
@@ -95,6 +96,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
 
   // DependencyGraph errors
   val DEPENDENCY_GRAPH_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val SUSPICIOUS_MEMBER_INJECT_FUNCTION by error1<KtElement, String>(NAME_IDENTIFIER)
 
   // Inject constructor errors
   val SUGGEST_CLASS_INJECTION by warning0<KtElement>(NAME_IDENTIFIER)
@@ -192,6 +194,7 @@ private object FirMetroErrorMessages : BaseDiagnosticRendererFactory() {
 
         // DependencyGraph errors
         put(DEPENDENCY_GRAPH_ERROR, "{0}", STRING)
+        put(SUSPICIOUS_MEMBER_INJECT_FUNCTION, "{0}", STRING)
 
         // Inject Constructor errors
         put(
