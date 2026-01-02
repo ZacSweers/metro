@@ -244,10 +244,22 @@ internal fun <T> Sequence<T>.singleOrNullUnlessMultiple(
   return found
 }
 
+@JvmName("getAndAddSet")
 internal fun <K, V> MutableMap<K, MutableSet<V>>.getAndAdd(key: K, value: V): MutableSet<V> {
   return getOrInit(key).also { it.add(value) }
 }
 
+@JvmName("getAndAddList")
+internal fun <K, V> MutableMap<K, MutableList<V>>.getAndAdd(key: K, value: V): MutableList<V> {
+  return getOrInit(key).also { it.add(value) }
+}
+
+@JvmName("getOrInitSet")
 internal fun <K, V> MutableMap<K, MutableSet<V>>.getOrInit(key: K): MutableSet<V> {
   return getOrPut(key, ::mutableSetOf)
+}
+
+@JvmName("getOrInitList")
+internal fun <K, V> MutableMap<K, MutableList<V>>.getOrInit(key: K): MutableList<V> {
+  return getOrPut(key, ::mutableListOf)
 }

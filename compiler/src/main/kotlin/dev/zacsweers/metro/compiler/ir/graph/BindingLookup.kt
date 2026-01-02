@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.ir.graph
 
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
+import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
 import dev.zacsweers.metro.compiler.ir.ClassFactory
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
@@ -102,7 +103,7 @@ internal class BindingLookup(
   /** Adds a binding to the cache. Multiple bindings for the same key are tracked as duplicates. */
   context(context: IrMetroContext)
   fun putBinding(binding: IrBinding) {
-    bindingsCache.getOrPut(binding.typeKey) { mutableListOf() }.add(binding)
+    bindingsCache.getAndAdd(binding.typeKey, binding)
 
     // If this is a multibinding contributor, register it
     if (binding is IrBinding.BindingWithAnnotations && binding.annotations.isIntoMultibinding) {
@@ -269,7 +270,7 @@ internal class BindingLookup(
    * @param callable The @BindsOptionalOf callable
    */
   fun registerOptionalBinding(typeKey: IrTypeKey, callable: BindsOptionalOfCallable) {
-    optionalBindingDeclarations.getOrPut(typeKey, ::mutableSetOf) += callable
+    optionalBindingDeclarations.getAndAdd(typeKey, callable)
   }
 
   /**

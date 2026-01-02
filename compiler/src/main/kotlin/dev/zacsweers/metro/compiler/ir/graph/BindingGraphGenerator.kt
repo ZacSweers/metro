@@ -59,10 +59,10 @@ internal class BindingGraphGenerator(
 ) : IrMetroContext by metroContext {
 
   private val ProviderFactory.isDynamic: Boolean
-    get() = this in (node.dynamicTypeKeys[typeKey] ?: emptySet())
+    get() = this in node.dynamicTypeKeys[typeKey].orEmpty()
 
   private val BindsLikeCallable.isDynamic: Boolean
-    get() = this in (node.dynamicTypeKeys[typeKey] ?: emptySet())
+    get() = this in node.dynamicTypeKeys[typeKey].orEmpty()
 
   fun generate(): IrBindingGraph {
     val bindingLookup =
@@ -135,6 +135,7 @@ internal class BindingGraphGenerator(
           }
         }
         .asSequence()
+        // Filter out inherited providers whose typeKey is already in the current node
         .filterNot { (typeKey, _) -> typeKey in node.providerFactories }
         .onEach { (typeKey, _) -> inheritedProviderFactoryKeys.add(typeKey) }
         .toSet()
@@ -184,16 +185,17 @@ internal class BindingGraphGenerator(
       val existingBindings = bindingLookup.getBindings(targetTypeKey)
 
       if (isDynamic && existingBindings != null) {
-        // Only clear existing if they are NOT dynamic
-        // If existing bindings are also dynamic, keep them for duplicate detection
+        // Only clear existing if they are not dynamic
+        // If existing bindings are also dynamic, keep them both for duplicate detection
         val existingAreDynamic =
-          existingBindings.firstOrNull()?.let { binding ->
+          existingBindings.getOrNull(0)?.let { binding ->
             when (binding) {
               is IrBinding.Provided -> binding.providerFactory.isDynamic
               is IrBinding.Alias -> binding.bindsCallable?.isDynamic == true
               else -> false
             }
           } ?: false
+
         if (!existingAreDynamic) {
           // Dynamic binding replaces non-dynamic existing bindings
           bindingLookup.clearBindings(targetTypeKey)
