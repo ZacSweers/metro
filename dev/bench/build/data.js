@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1767340762930,
+  "lastUpdate": 1767340763888,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time (baseline)": [
@@ -900,6 +900,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "Build Time (current)",
             "value": 16976.922,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "pandanomic@gmail.com",
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8d649bf29990a0843350da491ebfa8067af2cdfd",
+          "message": "Fix member injection metadata not always being written (#1611)",
+          "timestamp": "2026-01-02T07:30:07Z",
+          "tree_id": "ccd7aae20d4a691f5e6b070db71a722ee262df14",
+          "url": "https://github.com/ZacSweers/metro/commit/8d649bf29990a0843350da491ebfa8067af2cdfd"
+        },
+        "date": 1767340763477,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time (current)",
+            "value": 16933.16,
             "unit": "ms"
           }
         ]
