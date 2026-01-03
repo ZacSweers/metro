@@ -12,4 +12,5 @@ jmh {
   iterations = 10
   fork = 2
   resultFormat = "JSON"
+  profilers = listOf("gc")
 }

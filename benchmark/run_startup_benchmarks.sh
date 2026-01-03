@@ -793,6 +793,17 @@ extract_jmh_score() {
     fi
 }
 
+# Extract JMH GC allocation rate from results (bytes per operation)
+extract_jmh_alloc() {
+    local results_file="$1"
+    if [ -f "$results_file" ]; then
+        if command -v jq &> /dev/null; then
+            # Extract gc.alloc.rate.norm from secondaryMetrics (B/op)
+            jq -r '.[0].secondaryMetrics["·gc.alloc.rate.norm"].score // empty' "$results_file" 2>/dev/null || echo ""
+        fi
+    fi
+}
+
 # Extract Android macrobenchmark score from results
 extract_android_macro_score() {
     local results_dir="$1"
@@ -840,21 +851,24 @@ generate_summary() {
 
 Graph creation and initialization time (lower is better):
 
-| Framework | Time (ms) | vs Metro |
-|-----------|-----------|----------|
+| Framework | Time (ms) | Alloc (KB/op) | vs Metro |
+|-----------|-----------|---------------|----------|
 EOF
 
     # Collect JVM results
     local metro_jvm_score=""
+    local metro_jvm_alloc=""
 
     IFS=',' read -ra MODE_ARRAY <<< "$MODES"
     for mode in "${MODE_ARRAY[@]}"; do
         local jvm_dir="$RESULTS_DIR/${TIMESTAMP}/jvm_${mode}"
         local score=""
+        local alloc=""
 
-        # Try to get score from JSON first, then text output
+        # Try to get score and alloc from JSON first, then text output
         if [ -f "$jvm_dir/results.json" ]; then
             score=$(extract_jmh_score "$jvm_dir/results.json")
+            alloc=$(extract_jmh_alloc "$jvm_dir/results.json")
         fi
 
         # Fallback: parse from results.txt or jmh-output.txt
@@ -869,6 +883,7 @@ EOF
 
         if [ "$mode" = "metro" ]; then
             metro_jvm_score="$score"
+            metro_jvm_alloc="$alloc"
         fi
 
         # Calculate comparison
@@ -886,7 +901,13 @@ EOF
             display_score=$(printf "%.2f" "$score")
         fi
 
-        echo "| $mode | $display_score | $comparison |" >> "$summary_file"
+        # Format allocation in KB
+        local display_alloc="N/A"
+        if [ -n "$alloc" ]; then
+            display_alloc=$(echo "scale=2; $alloc / 1024" | bc 2>/dev/null || echo "N/A")
+        fi
+
+        echo "| $mode | $display_score | $display_alloc | $comparison |" >> "$summary_file"
     done
 
     # Add JVM R8 results if any exist
@@ -899,11 +920,13 @@ EOF
     done
 
     if [ "$has_r8_results" = true ]; then
-        # Get metro R8 score for "vs Metro R8" column
+        # Get metro R8 score and alloc for "vs Metro R8" column
         local metro_jvm_r8_score=""
+        local metro_jvm_r8_alloc=""
         local r8_dir="$RESULTS_DIR/${TIMESTAMP}/jvm-r8_metro"
         if [ -f "$r8_dir/results.json" ]; then
             metro_jvm_r8_score=$(extract_jmh_score "$r8_dir/results.json")
+            metro_jvm_r8_alloc=$(extract_jmh_alloc "$r8_dir/results.json")
         fi
         if [ -z "$metro_jvm_r8_score" ] && [ -f "$r8_dir/jmh-output.txt" ]; then
             metro_jvm_r8_score=$(grep 'graphCreationAndInitialization' "$r8_dir/jmh-output.txt" 2>/dev/null | grep 'avgt' | tail -1 | awk '{print $4}' || echo "")
@@ -915,8 +938,8 @@ EOF
 
 Graph creation and initialization time with R8 optimization (lower is better):
 
-| Framework | Time (ms) | vs Metro R8 |
-|-----------|-----------|-------------|
+| Framework | Time (ms) | Alloc (KB/op) | vs Metro R8 |
+|-----------|-----------|---------------|-------------|
 EOF
 
         for mode in "${MODE_ARRAY[@]}"; do
@@ -926,8 +949,10 @@ EOF
             fi
 
             local r8_score=""
+            local r8_alloc=""
             if [ -f "$jvm_r8_dir/results.json" ]; then
                 r8_score=$(extract_jmh_score "$jvm_r8_dir/results.json")
+                r8_alloc=$(extract_jmh_alloc "$jvm_r8_dir/results.json")
             fi
             if [ -z "$r8_score" ] && [ -f "$jvm_r8_dir/jmh-output.txt" ]; then
                 r8_score=$(grep 'graphCreationAndInitialization' "$jvm_r8_dir/jmh-output.txt" 2>/dev/null | grep 'avgt' | tail -1 | awk '{print $4}' || echo "")
@@ -945,7 +970,14 @@ EOF
             fi
 
             local r8_display_score=$(printf "%.2f" "$r8_score")
-            echo "| $mode | $r8_display_score | $r8_comparison |" >> "$summary_file"
+
+            # Format allocation in KB
+            local r8_display_alloc="N/A"
+            if [ -n "$r8_alloc" ]; then
+                r8_display_alloc=$(echo "scale=2; $r8_alloc / 1024" | bc 2>/dev/null || echo "N/A")
+            fi
+
+            echo "| $mode | $r8_display_score | $r8_display_alloc | $r8_comparison |" >> "$summary_file"
         done
     fi
 
@@ -1897,6 +1929,17 @@ extract_jmh_score_for_ref() {
     echo "$score"
 }
 
+# Extract JMH alloc for a ref
+extract_jmh_alloc_for_ref() {
+    local ref_label="$1"
+    local mode="$2"
+    local jvm_dir="$RESULTS_DIR/${TIMESTAMP}/${ref_label}/jvm_${mode}"
+
+    if [ -f "$jvm_dir/results.json" ]; then
+        extract_jmh_alloc "$jvm_dir/results.json"
+    fi
+}
+
 # Extract JMH R8 score for a ref
 extract_jmh_r8_score_for_ref() {
     local ref_label="$1"
@@ -1918,6 +1961,17 @@ extract_jmh_r8_score_for_ref() {
     fi
 
     echo "$score"
+}
+
+# Extract JMH R8 alloc for a ref
+extract_jmh_r8_alloc_for_ref() {
+    local ref_label="$1"
+    local mode="$2"
+    local jvm_dir="$RESULTS_DIR/${TIMESTAMP}/${ref_label}/jvm-r8_${mode}"
+
+    if [ -f "$jvm_dir/results.json" ]; then
+        extract_jmh_alloc "$jvm_dir/results.json"
+    fi
 }
 
 # Extract Android macro score for a ref
@@ -2084,6 +2138,41 @@ EOF
             echo "| $mode | $display1 | $vs_metro1 | $display2 | $vs_metro2 | $diff |" >> "$summary_file"
         done
 
+        # Add allocation table
+        cat >> "$summary_file" << EOF
+
+### Allocation (KB/op)
+
+| Framework | $ref1_label | $ref2_label | Difference |
+|-----------|-------------|-------------|------------|
+EOF
+
+        for mode in "${MODE_ARRAY[@]}"; do
+            local alloc1=$(extract_jmh_alloc_for_ref "$ref1_label" "$mode")
+            local alloc2=""
+            if mode_was_run_for_ref "$ref2_label" "$mode" "jvm"; then
+                alloc2=$(extract_jmh_alloc_for_ref "$ref2_label" "$mode")
+            fi
+
+            # Format allocations in KB
+            local display_alloc1="N/A"
+            local display_alloc2="N/A"
+            local alloc_diff="-"
+
+            if [ -n "$alloc1" ]; then
+                display_alloc1=$(echo "scale=2; $alloc1 / 1024" | bc 2>/dev/null || echo "N/A")
+            fi
+            if [ -n "$alloc2" ]; then
+                display_alloc2=$(echo "scale=2; $alloc2 / 1024" | bc 2>/dev/null || echo "N/A")
+            fi
+
+            if [ -n "$alloc1" ] && [ -n "$alloc2" ] && [ "$alloc1" != "0" ]; then
+                alloc_diff=$(python3 -c "print(f'{(($alloc2 - $alloc1) / $alloc1) * 100:.2f}%')" 2>/dev/null || echo "-")
+            fi
+
+            echo "| $mode | $display_alloc1 | $display_alloc2 | $alloc_diff |" >> "$summary_file"
+        done
+
         echo "" >> "$summary_file"
     fi
 
@@ -2173,6 +2262,46 @@ EOF
                 fi
 
                 echo "| $mode | $display1 | $vs_metro1 | $display2 | $vs_metro2 | $diff |" >> "$summary_file"
+            done
+
+            # Add R8 allocation table
+            cat >> "$summary_file" << EOF
+
+### Allocation (KB/op)
+
+| Framework | $ref1_label | $ref2_label | Difference |
+|-----------|-------------|-------------|------------|
+EOF
+
+            for mode in "${MODE_ARRAY[@]}"; do
+                local alloc1=$(extract_jmh_r8_alloc_for_ref "$ref1_label" "$mode")
+                local alloc2=""
+                if mode_was_run_for_ref "$ref2_label" "$mode" "jvm-r8"; then
+                    alloc2=$(extract_jmh_r8_alloc_for_ref "$ref2_label" "$mode")
+                fi
+
+                # Skip if no alloc data
+                if [ -z "$alloc1" ] && [ -z "$alloc2" ]; then
+                    continue
+                fi
+
+                # Format allocations in KB
+                local display_alloc1="N/A"
+                local display_alloc2="N/A"
+                local alloc_diff="-"
+
+                if [ -n "$alloc1" ]; then
+                    display_alloc1=$(echo "scale=2; $alloc1 / 1024" | bc 2>/dev/null || echo "N/A")
+                fi
+                if [ -n "$alloc2" ]; then
+                    display_alloc2=$(echo "scale=2; $alloc2 / 1024" | bc 2>/dev/null || echo "N/A")
+                fi
+
+                if [ -n "$alloc1" ] && [ -n "$alloc2" ] && [ "$alloc1" != "0" ]; then
+                    alloc_diff=$(python3 -c "print(f'{(($alloc2 - $alloc1) / $alloc1) * 100:.2f}%')" 2>/dev/null || echo "-")
+                fi
+
+                echo "| $mode | $display_alloc1 | $display_alloc2 | $alloc_diff |" >> "$summary_file"
             done
 
             echo "" >> "$summary_file"
@@ -2728,12 +2857,13 @@ EOF
 
 Graph creation and initialization time (lower is better):
 
-| Framework | Time (ms) | vs Metro |
-|-----------|-----------|----------|
+| Framework | Time (ms) | Alloc (KB/op) | vs Metro |
+|-----------|-----------|---------------|----------|
 EOF
 
         for mode in "${MODE_ARRAY[@]}"; do
             local score=$(extract_jmh_score_for_ref "$ref_label" "$mode")
+            local alloc=$(extract_jmh_alloc_for_ref "$ref_label" "$mode")
             local display="${score:-N/A}"
             local vs_metro="—"
 
@@ -2745,7 +2875,14 @@ EOF
                     vs_metro=$(format_vs_baseline "$score" "$metro_jvm_score")
                 fi
             fi
-            echo "| $mode | $display | $vs_metro |" >> "$summary_file"
+
+            # Format allocation in KB
+            local display_alloc="N/A"
+            if [ -n "$alloc" ]; then
+                display_alloc=$(echo "scale=2; $alloc / 1024" | bc 2>/dev/null || echo "N/A")
+            fi
+
+            echo "| $mode | $display | $display_alloc | $vs_metro |" >> "$summary_file"
         done
 
         echo "" >> "$summary_file"
@@ -2771,8 +2908,8 @@ EOF
 
 Graph creation and initialization time with R8 optimization (lower is better):
 
-| Framework | Time (ms) | vs Metro R8 |
-|-----------|-----------|-------------|
+| Framework | Time (ms) | Alloc (KB/op) | vs Metro R8 |
+|-----------|-----------|---------------|-------------|
 EOF
 
             for mode in "${MODE_ARRAY[@]}"; do
@@ -2783,6 +2920,7 @@ EOF
                     continue
                 fi
 
+                local alloc=$(extract_jmh_r8_alloc_for_ref "$ref_label" "$mode")
                 local display=$(printf "%.3f" "$score")
                 local vs_metro="—"
 
@@ -2791,7 +2929,14 @@ EOF
                 elif [ -n "$metro_jvm_r8_score" ] && [ "$metro_jvm_r8_score" != "0" ]; then
                     vs_metro=$(format_vs_baseline "$score" "$metro_jvm_r8_score")
                 fi
-                echo "| $mode | $display | $vs_metro |" >> "$summary_file"
+
+                # Format allocation in KB
+                local display_alloc="N/A"
+                if [ -n "$alloc" ]; then
+                    display_alloc=$(echo "scale=2; $alloc / 1024" | bc 2>/dev/null || echo "N/A")
+                fi
+
+                echo "| $mode | $display | $display_alloc | $vs_metro |" >> "$summary_file"
             done
 
             echo "" >> "$summary_file"

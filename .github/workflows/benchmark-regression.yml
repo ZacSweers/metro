@@ -85,6 +85,10 @@ jobs:
           score=$(python3 -c "import json; data=json.load(open('$json_path')); print(data[0]['primaryMetric']['score'])")
           echo "score=$score" >> $GITHUB_OUTPUT
 
+          # Extract allocation rate (B/op)
+          alloc_rate=$(python3 -c "import json; data=json.load(open('$json_path')); print(data[0].get('secondaryMetrics', {}).get('·gc.alloc.rate.norm', {}).get('score', 0))")
+          echo "alloc_rate=$alloc_rate" >> $GITHUB_OUTPUT
+
           # Copy to temp location
           mkdir -p /tmp/benchmark-baseline
           cp "$json_path" /tmp/benchmark-baseline/results.json
@@ -143,6 +147,10 @@ jobs:
           score=$(python3 -c "import json; data=json.load(open('$json_path')); print(data[0]['primaryMetric']['score'])")
           echo "score=$score" >> $GITHUB_OUTPUT
 
+          # Extract allocation rate (B/op)
+          alloc_rate=$(python3 -c "import json; data=json.load(open('$json_path')); print(data[0].get('secondaryMetrics', {}).get('·gc.alloc.rate.norm', {}).get('score', 0))")
+          echo "alloc_rate=$alloc_rate" >> $GITHUB_OUTPUT
+
           # Copy to temp location
           mkdir -p /tmp/benchmark-current
           cp "$json_path" /tmp/benchmark-current/results.json
@@ -181,6 +189,8 @@ jobs:
         run: |
           baseline=${{ steps.baseline.outputs.score }}
           current=${{ steps.current.outputs.score }}
+          baseline_alloc=${{ steps.baseline.outputs.alloc_rate }}
+          current_alloc=${{ steps.current.outputs.alloc_rate }}
 
           delta_pct=$(python3 -c "
           baseline = $baseline
@@ -189,7 +199,18 @@ jobs:
           print(f'{delta:.2f}')
           ")
 
+          alloc_delta_pct=$(python3 -c "
+          baseline = $baseline_alloc
+          current = $current_alloc
+          if baseline == 0:
+              print('0.00')
+          else:
+              delta = ((current - baseline) / baseline) * 100
+              print(f'{delta:.2f}')
+          ")
+
           echo "delta_pct=$delta_pct" >> $GITHUB_OUTPUT
+          echo "alloc_delta_pct=$alloc_delta_pct" >> $GITHUB_OUTPUT
 
           # Check if regression (>5% slower)
           is_regression=$(python3 -c "print('true' if $delta_pct > 5 else 'false')")
@@ -200,6 +221,11 @@ jobs:
           baseline_score=${{ steps.baseline.outputs.score }}
           current_score=${{ steps.current.outputs.score }}
           delta_pct=${{ steps.compare.outputs.delta_pct }}
+          
+          baseline_alloc=${{ steps.baseline.outputs.alloc_rate }}
+          current_alloc=${{ steps.current.outputs.alloc_rate }}
+          alloc_delta_pct=${{ steps.compare.outputs.alloc_delta_pct }}
+          
           is_regression=${{ steps.compare.outputs.is_regression }}
 
           # Binary metrics
@@ -209,6 +235,10 @@ jobs:
           current_fields=${{ steps.current.outputs.fields }}
           current_methods=${{ steps.current.outputs.methods }}
           current_size_kb=${{ steps.current.outputs.size_kb }}
+          
+          # Format alloc rate to KB
+          baseline_alloc_kb=$(python3 -c "print(f'{$baseline_alloc / 1024:.2f}')")
+          current_alloc_kb=$(python3 -c "print(f'{$current_alloc / 1024:.2f}')")
 
           echo "## Multiplatform Startup Benchmark" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -218,11 +248,10 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
           fi
 
-          echo "| Ref | Score (ms/op) |" >> $GITHUB_STEP_SUMMARY
-          echo "|-----|---------------|" >> $GITHUB_STEP_SUMMARY
-          echo "| ${{ steps.refs.outputs.baseline_name }} (baseline) | ${baseline_score} |" >> $GITHUB_STEP_SUMMARY
-          echo "| ${{ steps.refs.outputs.current_name }} (current) | ${current_score} |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Delta** | **${delta_pct}%** |" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | ${{ steps.refs.outputs.baseline_name }} (baseline) | ${{ steps.refs.outputs.current_name }} (current) | Delta |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Score (ms/op)** | ${baseline_score} | ${current_score} | **${delta_pct}%** |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Alloc (KB/op)** | ${baseline_alloc_kb} | ${current_alloc_kb} | **${alloc_delta_pct}%** |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           # Add binary metrics table if we have data
@@ -263,6 +292,9 @@ jobs:
             const currentMethods = '${{ steps.current.outputs.methods }}';
             const baselineSize = '${{ steps.baseline.outputs.size_kb }}';
             const currentSize = '${{ steps.current.outputs.size_kb }}';
+            
+            const baselineAlloc = (${{ steps.baseline.outputs.alloc_rate }} / 1024).toFixed(2);
+            const currentAlloc = (${{ steps.current.outputs.alloc_rate }} / 1024).toFixed(2);
 
             let binaryMetrics = '';
             if (baselineFields !== '0' || currentFields !== '0') {
@@ -288,11 +320,11 @@ jobs:
               repo: context.repo.repo,
               body: `## ⚠️ Benchmark Regression Detected
 
-            | Ref | Score (ms/op) |
-            |-----|---------------|
-            | main (baseline) | ${{ steps.baseline.outputs.score }} |
-            | This PR (current) | ${{ steps.current.outputs.score }} |
-            | **Delta** | **${{ steps.compare.outputs.delta_pct }}%** |
+            | Metric | Baseline | Current | Delta |
+            |---|---|---|---|
+            | **Score (ms/op)** | ${{ steps.baseline.outputs.score }} | ${{ steps.current.outputs.score }} | **${{ steps.compare.outputs.delta_pct }}%** |
+            | **Alloc (KB/op)** | ${baselineAlloc} | ${currentAlloc} | **${{ steps.compare.outputs.alloc_delta_pct }}%** |
+            
             ${binaryMetrics}
             The startup benchmark shows a >5% regression. Please investigate.
 
