@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1767401986892,
+  "lastUpdate": 1767420186863,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -952,6 +952,62 @@ window.BENCHMARK_DATA = {
             "value": 17403.232,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +0.62%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "e3b98a86~1",
+          "message": "[before] Add gc allocs to JMH results (#1614)",
+          "timestamp": "2026-01-03T05:32:58Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/e3b98a86c099826b06164571660cd365dc550209"
+        },
+        "date": 1767420186863,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18320.846,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "e3b98a86c099826b06164571660cd365dc550209",
+          "message": "[after] Add gc allocs to JMH results (#1614)",
+          "timestamp": "2026-01-03T05:32:58Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/e3b98a86c099826b06164571660cd365dc550209"
+        },
+        "date": 1767420186864,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18192.18,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -0.70%"
           }
         ]
       }
