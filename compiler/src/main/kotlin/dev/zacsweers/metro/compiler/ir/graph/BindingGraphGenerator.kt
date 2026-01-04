@@ -4,10 +4,6 @@ package dev.zacsweers.metro.compiler.ir.graph
 
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.Origins
-import dev.zacsweers.metro.compiler.fastFilterNotTo
-import dev.zacsweers.metro.compiler.fastFilteredForEach
-import dev.zacsweers.metro.compiler.fastFilteredMap
-import dev.zacsweers.metro.compiler.fastForEach
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.ir.BindsLikeCallable
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
@@ -118,7 +114,7 @@ internal class BindingGraphGenerator(
 
     // Add aliases for all its supertypes
     // TODO dedupe supertype iteration
-    node.supertypes.fastForEach { superType ->
+    node.supertypes.forEach { superType ->
       val superTypeKey = IrTypeKey(superType)
       superTypeToAlias.putIfAbsent(superTypeKey, node.typeKey)
     }
@@ -127,14 +123,14 @@ internal class BindingGraphGenerator(
     val inheritedProviderFactoryKeys = mutableSetOf<IrTypeKey>()
     val inheritedProviderFactories =
       node.allExtendedNodes
+        .asSequence()
         .flatMap { (_, extendedNode) ->
           extendedNode.providerFactories.entries.flatMap { (key, factories) ->
             // Do not include scoped providers as these should _only_ come from this graph
             // instance
-            factories.fastFilteredMap({ !it.annotations.isScoped }) { key to it }
+            factories.asSequence().filter { !it.annotations.isScoped }.map { key to it }
           }
         }
-        .asSequence()
         // Filter out inherited providers whose typeKey is already in the current node
         .filterNot { (typeKey, _) -> typeKey in node.providerFactories }
         .onEach { (typeKey, _) -> inheritedProviderFactoryKeys.add(typeKey) }
@@ -145,17 +141,15 @@ internal class BindingGraphGenerator(
       node.allExtendedNodes.values
         .flatMap { it.bindsCallables.entries.flatMap { (key, callables) -> callables.map { key } } }
         // Filter out inherited binds callables whose typeKey is already in the current node
-        .fastFilterNotTo(mutableSetOf()) { typeKey -> typeKey in node.bindsCallables }
+        .filterNotTo(mutableSetOf()) { typeKey -> typeKey in node.bindsCallables }
 
     // Collect all provider factories to add (flatten from lists)
     val providerFactoriesToAdd = buildList {
-      node.providerFactories.values.flatten().fastForEach { factory ->
-        add(factory.typeKey to factory)
-      }
+      node.providerFactories.values.flatten().forEach { factory -> add(factory.typeKey to factory) }
       addAll(inheritedProviderFactories)
     }
 
-    providerFactoriesToAdd.fastForEach { (typeKey, providerFactory) ->
+    for ((typeKey, providerFactory) in providerFactoriesToAdd) {
       // Track IC lookups but don't add bindings yet - they'll be added lazily
       trackClassLookup(node.sourceGraph, providerFactory.factoryClass)
       trackFunctionCall(node.sourceGraph, providerFactory.function)
@@ -166,7 +160,7 @@ internal class BindingGraphGenerator(
       val isInherited = typeKey in inheritedProviderFactoryKeys
       if (!providerFactory.annotations.isIntoMultibinding && typeKey in graph && isInherited) {
         // If we already have a binding provisioned in this scenario, ignore the parent's version
-        return@fastForEach
+        continue
       }
 
       // typeKey is already the transformed multibinding key
@@ -214,18 +208,16 @@ internal class BindingGraphGenerator(
 
     // Collect all binds callables to add (flatten from lists)
     val bindsCallablesToAdd = buildList {
-      node.bindsCallables.values.flatten().fastForEach { callable ->
-        add(callable.typeKey to callable)
-      }
+      node.bindsCallables.values.flatten().forEach { callable -> add(callable.typeKey to callable) }
       // Add inherited from extended nodes
       node.allExtendedNodes.values
         .flatMap { it.bindsCallables.values.flatten() }
-        .fastFilteredForEach({ it.typeKey !in node.bindsCallables }) { callable ->
-          add(callable.typeKey to callable)
-        }
+        .asSequence()
+        .filter { it.typeKey !in node.bindsCallables }
+        .forEach { callable -> add(callable.typeKey to callable) }
     }
 
-    bindsCallablesToAdd.fastForEach { (typeKey, bindsCallable) ->
+    for ((typeKey, bindsCallable) in bindsCallablesToAdd) {
       // Track IC lookups but don't add bindings yet - they'll be added lazily
       trackFunctionCall(node.sourceGraph, bindsCallable.function)
       trackFunctionCall(node.sourceGraph, bindsCallable.callableMetadata.mirrorFunction)
@@ -242,7 +234,7 @@ internal class BindingGraphGenerator(
           isInherited
       ) {
         // If we already have a binding provisioned in this scenario, ignore the parent's version
-        return@fastForEach
+        continue
       }
 
       // typeKey is already the transformed multibinding key
@@ -292,7 +284,7 @@ internal class BindingGraphGenerator(
       }
     }
 
-    node.creator?.parameters?.regularParameters.orEmpty().fastForEach { creatorParam ->
+    node.creator?.parameters?.regularParameters.orEmpty().forEach { creatorParam ->
       // Only expose the binding if it's a bound instance, extended graph, or target is a binding
       // container
       val shouldExposeBinding =
@@ -367,7 +359,7 @@ internal class BindingGraphGenerator(
       addAll(node.allExtendedNodes.values.flatMapToSet { it.multibindsCallables })
     }
 
-    allMultibindsCallables.fastForEach { multibindsCallable ->
+    allMultibindsCallables.forEach { multibindsCallable ->
       // Track IC lookups but don't add bindings yet - they'll be added lazily
       trackFunctionCall(node.sourceGraph, multibindsCallable.function)
       trackClassLookup(
@@ -402,11 +394,11 @@ internal class BindingGraphGenerator(
     for ((typeKey, extendedNode) in node.allExtendedNodes) {
       // If it's a contributed graph, add an alias for the parent types since that's what
       // bindings will look for. i.e. LoggedInGraphImpl -> LoggedInGraph + supertypes
-      extendedNode.supertypes.fastForEach { superType ->
+      for (superType in extendedNode.supertypes) {
         val parentTypeKey = IrTypeKey(superType)
 
         // Ignore the graph declaration itself, handled separately
-        if (parentTypeKey == typeKey) return@fastForEach
+        if (parentTypeKey == typeKey) continue
 
         superTypeToAlias.putIfAbsent(parentTypeKey, typeKey)
       }
@@ -435,7 +427,7 @@ internal class BindingGraphGenerator(
       )
     }
 
-    accessorsToAdd.fastForEach { (contextualTypeKey, getter, _) ->
+    accessorsToAdd.forEach { (contextualTypeKey, getter, _) ->
       val multibinds = getter.annotations.multibinds
       val isMultibindingDeclaration = multibinds != null
 
@@ -454,7 +446,7 @@ internal class BindingGraphGenerator(
     }
 
     for ((key, accessors) in node.graphExtensions) {
-      accessors.fastForEach { accessor ->
+      accessors.forEach { accessor ->
         val shouldAddBinding =
           accessor.isFactory &&
             // It's allowed to specify multiple accessors for the same factory
@@ -485,7 +477,7 @@ internal class BindingGraphGenerator(
     // accessors
     for ((depNodeKey, depNode) in node.includedGraphNodes) {
       // Only add accessors for included types
-      depNode.accessors.fastForEach { (contextualTypeKey, getter, _) ->
+      depNode.accessors.forEach { (contextualTypeKey, getter, _) ->
         // Add a ref to the included graph if not already present
         if (depNodeKey !in graph) {
           graph.addBinding(
@@ -625,13 +617,13 @@ internal class BindingGraphGenerator(
     }
 
     // Add MembersInjector bindings defined on injector functions
-    node.injectors.fastForEach { (contextKey, injector) ->
+    for ((contextKey, injector) in node.injectors) {
       val entry = IrBindingStack.Entry.requestedAt(contextKey, injector.ir)
 
       graph.addInjector(contextKey, entry)
       if (contextKey.typeKey in graph) {
         // Injectors may be requested multiple times, don't double-add a binding
-        return@fastForEach
+        continue
       }
       bindingStack.withEntry(entry) {
         val param = injector.ir.regularParameters.single()

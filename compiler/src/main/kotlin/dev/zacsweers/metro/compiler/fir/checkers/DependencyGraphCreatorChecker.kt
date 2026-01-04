@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
-import dev.zacsweers.metro.compiler.fastForEach
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.allScopeClassIds
@@ -138,7 +137,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
 
     val paramTypes = mutableSetOf<FirTypeKey>()
 
-    createFunction.valueParameterSymbols.fastForEach { param ->
+    for (param in createFunction.valueParameterSymbols) {
       val typeKey = FirTypeKey.from(session, param)
       if (!paramTypes.add(typeKey)) {
         reporter.reportOn(
@@ -182,10 +181,10 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
       }
       if (isIncludes && isProvides) {
         reportAnnotationCountError()
-        return@fastForEach
+        continue
       }
 
-      val type = param.resolvedReturnTypeRef.toClassLikeSymbol(session) ?: return@fastForEach
+      val type = param.resolvedReturnTypeRef.toClassLikeSymbol(session) ?: continue
 
       // Don't allow the target graph as a param
       if (type.classId == targetGraph?.classId) {
@@ -218,9 +217,11 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
             }
           }
         }
+
         isProvides -> {
           // TODO anything?
         }
+
         else -> {
           reportAnnotationCountError()
         }

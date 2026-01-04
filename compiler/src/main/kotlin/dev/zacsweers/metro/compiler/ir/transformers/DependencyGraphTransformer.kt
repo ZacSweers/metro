@@ -9,7 +9,6 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
-import dev.zacsweers.metro.compiler.fastForEach
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ir.IrBindingContainerResolver
 import dev.zacsweers.metro.compiler.ir.IrContributionData
@@ -315,14 +314,14 @@ internal class DependencyGraphTransformer(
       localParentContext.add(node.typeKey)
 
       // @Provides
-      node.providerFactories.values.flatten().fastForEach { providerFactory ->
+      node.providerFactories.values.flatten().forEach { providerFactory ->
         if (providerFactory.annotations.isScoped) {
           localParentContext.add(providerFactory.typeKey)
         }
       }
 
       // Instance bindings
-      node.creator?.parameters?.regularParameters?.fastForEach { parameter ->
+      node.creator?.parameters?.regularParameters?.forEach { parameter ->
         // Make both provides and includes available
         localParentContext.add(parameter.typeKey)
       }
@@ -339,11 +338,11 @@ internal class DependencyGraphTransformer(
       for ((typeKey, accessors) in node.graphExtensions) {
         if (typeKey in bindingGraph) continue // Skip if already in graph
 
-        accessors.fastForEach { extensionAccessor ->
+        for (extensionAccessor in accessors) {
           if (extensionAccessor.isFactory) {
             // It's a factory returner instead
             localParentContext.add(extensionAccessor.key.typeKey)
-            return@fastForEach
+            continue
           }
 
           if (!extensionAccessor.isFactorySAM) {

@@ -8,7 +8,6 @@ import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.escapeIfNull
-import dev.zacsweers.metro.compiler.fastForEachIndexed
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.generatedClass
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -303,7 +302,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
         val instanceParam = regularParameters[0]
 
         // Copy any qualifier annotations over to propagate them
-        regularParameters.drop(1).fastForEachIndexed { i, param ->
+        regularParameters.drop(1).forEachIndexed { i, param ->
           val injectedParam = params.regularParameters[i]
           injectedParam.typeKey.qualifier?.let { qualifier ->
             pluginContext.metadataDeclarationRegistrar.addMetadataVisibleAnnotationsToElement(

@@ -61,8 +61,8 @@ private fun buildDeepSubstitutionMap(
     }
 
     // Walk up the hierarchy
-    currentClass.superTypes.forEach { superType ->
-      val superClass = superType.classOrNull?.owner ?: return@forEach
+    for (superType in currentClass.superTypes) {
+      val superClass = superType.classOrNull?.owner ?: continue
 
       // Apply current substitutions to the supertype
       val substitutedSuperType = superType.substitute(result)

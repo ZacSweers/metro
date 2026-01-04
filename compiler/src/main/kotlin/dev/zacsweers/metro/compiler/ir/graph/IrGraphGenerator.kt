@@ -8,8 +8,6 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.expectAs
-import dev.zacsweers.metro.compiler.fastForEach
-import dev.zacsweers.metro.compiler.fastForEachIndexed
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
@@ -290,7 +288,7 @@ internal class IrGraphGenerator(
       }
 
       node.creator?.let { creator ->
-        creator.parameters.regularParameters.fastForEachIndexed { i, param ->
+        for ((i, param) in creator.parameters.regularParameters.withIndex()) {
           val isBindsInstance = param.isBindsInstance
 
           // TODO if we copy the annotations over in FIR we can skip this creator lookup all
@@ -303,7 +301,7 @@ internal class IrGraphGenerator(
 
             if (!isDynamic && param.typeKey in node.dynamicTypeKeys) {
               // Don't add it if there's a dynamic replacement
-              return@fastForEachIndexed
+              continue
             }
             addBoundInstanceProperty(param.typeKey, param.name) { _, _ -> irGet(irParam) }
           } else {
@@ -314,7 +312,7 @@ internal class IrGraphGenerator(
                 ?: reportCompilerBug("Undefined graph node ${param.typeKey}")
 
             // Don't add it if it's not used
-            if (param.typeKey !in sealResult.reachableKeys) return@fastForEachIndexed
+            if (param.typeKey !in sealResult.reachableKeys) continue
 
             val graphDepProperty =
               addSimpleInstanceProperty(
@@ -375,7 +373,7 @@ internal class IrGraphGenerator(
       }
       allBindingContainers
         .sortedBy { it.kotlinFqName.asString() }
-        .fastForEach { clazz ->
+        .forEach { clazz ->
           val typeKey = IrTypeKey(clazz)
           if (typeKey !in node.dynamicTypeKeys) {
             // Only add if not replaced with a dynamic instance
@@ -439,7 +437,7 @@ internal class IrGraphGenerator(
           val collectedProperties =
             BindingPropertyCollector(bindingGraph, sealResult.sortedKeys, roots).collect()
           buildList(collectedProperties.size) {
-            sealResult.sortedKeys.fastForEach { key ->
+            sealResult.sortedKeys.forEach { key ->
               if (key in sealResult.reachableKeys) {
                 collectedProperties[key]?.let(::add)
               }
@@ -505,7 +503,7 @@ internal class IrGraphGenerator(
               .joinToString("\n") { it.binding.typeKey.toString() }
           }
         }
-        .fastForEach { (binding, propertyType) ->
+        .forEach { (binding, propertyType) ->
           val key = binding.typeKey
           // Since assisted-inject classes don't implement Factory, we can't just type these
           // as Provider<*> properties
@@ -645,7 +643,7 @@ internal class IrGraphGenerator(
             buildList<InitStatement> {
                 // Add property initializers and interleave setDelegate calls as dependencies are
                 // ready
-                propertyInitializers.fastForEach { (property, init) ->
+                propertyInitializers.forEach { (property, init) ->
                   val typeKey = propertiesToTypeKeys.getValue(property)
 
                   // Add this property's initialization
@@ -681,7 +679,7 @@ internal class IrGraphGenerator(
                 }
             }
           constructorStatements += buildList {
-            initFunctionsToCall.fastForEach { initFunction ->
+            initFunctionsToCall.forEach { initFunction ->
               add { dispatchReceiver ->
                 irInvoke(dispatchReceiver = irGet(dispatchReceiver), callee = initFunction.symbol)
               }
@@ -690,7 +688,7 @@ internal class IrGraphGenerator(
         } else {
           // Small graph, just do it in the constructor
           // Assign those initializers directly to their properties and mark them as final
-          propertyInitializers.fastForEach { (property, init) ->
+          propertyInitializers.forEach { (property, init) ->
             property.initFinal {
               val typeKey = propertiesToTypeKeys.getValue(property)
               init(thisReceiverParameter, typeKey)
@@ -705,7 +703,7 @@ internal class IrGraphGenerator(
         val originalBody = checkNotNull(body)
         buildBlockBody {
           +originalBody.statements
-          constructorStatements.fastForEach { statement -> +statement(thisReceiverParameter) }
+          constructorStatements.forEach { statement -> +statement(thisReceiverParameter) }
         }
       }
 
@@ -715,7 +713,7 @@ internal class IrGraphGenerator(
       if (lazyProperties.isNotEmpty()) {
         lazyProperties.values
           .sortedBy { it.name.asString() }
-          .fastForEach { property -> addChild(property) }
+          .forEach { property -> addChild(property) }
       }
 
       if (!graphClass.origin.isSyntheticGeneratedGraph) {
@@ -754,11 +752,11 @@ internal class IrGraphGenerator(
 
   private fun DependencyGraphNode.implementOverrides() {
     // Implement abstract getters for accessors
-    accessors.fastForEach { (contextualTypeKey, function, isOptionalDep) ->
+    for ((contextualTypeKey, function, isOptionalDep) in accessors) {
       val binding = bindingGraph.findBinding(contextualTypeKey.typeKey)
 
       if (isOptionalDep && binding == null) {
-        return@fastForEach // Just use its default impl
+        continue // Just use its default impl
       } else if (binding == null) {
         // Should never happen
         reportCompilerBug("No binding found for $contextualTypeKey")
@@ -793,7 +791,7 @@ internal class IrGraphGenerator(
     }
 
     // Implement abstract injectors
-    injectors.fastForEach { (contextKey, overriddenFunction) ->
+    injectors.forEach { (contextKey, overriddenFunction) ->
       val typeKey = contextKey.typeKey
       overriddenFunction.ir.apply {
         finalizeFakeOverride(graphClass.thisReceiverOrFail)
@@ -873,7 +871,7 @@ internal class IrGraphGenerator(
     // Implement bodies for contributed graphs
     // Sort by keys when generating so they have deterministic ordering
     for ((typeKey, functions) in graphExtensions) {
-      functions.fastForEach { extensionAccessor ->
+      functions.forEach { extensionAccessor ->
         val function = extensionAccessor.accessor
         val irFunction = function.ir
         irFunction.apply {

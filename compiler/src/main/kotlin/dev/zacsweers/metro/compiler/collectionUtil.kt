@@ -15,8 +15,6 @@
  */
 package dev.zacsweers.metro.compiler
 
-import kotlin.contracts.contract
-
 internal fun <T> Iterable<T>.filterToSet(predicate: (T) -> Boolean): Set<T> {
   return filterTo(mutableSetOf(), predicate)
 }
@@ -69,98 +67,9 @@ internal fun <T, R> Iterable<T>.mapToSetWithDupes(transform: (T) -> R): Pair<Set
 }
 
 internal fun <T> List<T>.filterToSet(predicate: (T) -> Boolean): Set<T> {
-  return fastFilterTo(mutableSetOf(), predicate)
+  return filterTo(mutableSetOf(), predicate)
 }
 
 internal fun <T, R> List<T>.mapToSet(transform: (T) -> R): Set<R> {
-  return fastMapTo(mutableSetOf(), transform)
-}
-
-internal inline fun <T> List<T>.fastForEach(action: (T) -> Unit) {
-  contract { callsInPlace(action) }
-  for (index in indices) {
-    val item = get(index)
-    action(item)
-  }
-}
-
-internal inline fun <T> List<T>.fastForEachIndexed(action: (Int, T) -> Unit) {
-  contract { callsInPlace(action) }
-  for (index in indices) {
-    val item = get(index)
-    action(index, item)
-  }
-}
-
-internal inline fun <T, R, C : MutableCollection<in R>> List<T>.fastMapTo(
-  destination: C,
-  transform: (T) -> R,
-): C {
-  contract { callsInPlace(transform) }
-  fastForEach { item -> destination.add(transform(item)) }
-  return destination
-}
-
-internal inline fun <T> List<T>.fastFilter(predicate: (T) -> Boolean): List<T> {
-  contract { callsInPlace(predicate) }
-  return fastFilterTo(ArrayList(size), predicate)
-}
-
-internal inline fun <T, C : MutableCollection<in T>> List<T>.fastFilterTo(
-  destination: C,
-  predicate: (T) -> Boolean,
-): C {
-  contract { callsInPlace(predicate) }
-  fastFilteredForEach(predicate) { destination.add(it) }
-  return destination
-}
-
-internal inline fun <T> List<T>.fastFilterNot(predicate: (T) -> Boolean): List<T> {
-  contract { callsInPlace(predicate) }
-  return fastFilterNotTo(ArrayList(size), predicate)
-}
-
-internal inline fun <T, C : MutableCollection<in T>> List<T>.fastFilterNotTo(
-  destination: C,
-  predicate: (T) -> Boolean,
-): C {
-  contract { callsInPlace(predicate) }
-  fastForEach { item -> if (!predicate(item)) destination.add(item) }
-  return destination
-}
-
-internal inline fun <T> List<T>.fastFilteredForEach(
-  predicate: (T) -> Boolean,
-  action: (T) -> Unit,
-) {
-  contract {
-    callsInPlace(predicate)
-    callsInPlace(action)
-  }
-  fastForEach { item -> if (predicate(item)) action(item) }
-}
-
-internal inline fun <T, R> List<T>.fastFilteredMap(
-  predicate: (T) -> Boolean,
-  transform: (T) -> R,
-): List<R> {
-  contract {
-    callsInPlace(predicate)
-    callsInPlace(transform)
-  }
-  val target = ArrayList<R>(size)
-  fastForEach { if (predicate(it)) target += transform(it) }
-  return target
-}
-
-internal inline fun <T> List<T>.fastAny(predicate: (T) -> Boolean): Boolean {
-  contract { callsInPlace(predicate) }
-  fastForEach { if (predicate(it)) return true }
-  return false
-}
-
-internal fun <T> List<T>.allElementsAreEqual(): Boolean {
-  if (size < 2) return true
-  val firstElement = first()
-  return !fastAny { it != firstElement }
+  return mapTo(mutableSetOf(), transform)
 }

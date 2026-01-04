@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.MetroAnnotations
-import dev.zacsweers.metro.compiler.fastForEach
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.additionalScopesArgument
@@ -76,7 +75,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
       }
 
     if (dependencyGraphAnnos.size > 1) {
-      dependencyGraphAnnos.fastForEach { anno ->
+      dependencyGraphAnnos.forEach { anno ->
         reporter.reportOn(
           anno.source,
           MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
@@ -165,7 +164,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
       graphExtensionFactorySupertypes.values.mapToSet { it.classId }
 
     // Note this doesn't check inherited supertypes. Maybe we should, but where do we report errors?
-    declaration.symbol.directCallableSymbols().fastForEach { callable ->
+    for (callable in declaration.symbol.directCallableSymbols()) {
       val annotations =
         callable.metroAnnotations(
           session,
@@ -179,10 +178,10 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
 
       val isEffectivelyOpen = with(session.compatContext) { callable.isEffectivelyOpen() }
 
-      if (!isEffectivelyOpen && !annotations.isOptionalBinding) return@fastForEach
+      if (!isEffectivelyOpen && !annotations.isOptionalBinding) continue
 
       val isBindsOrProvides = annotations.isBinds || annotations.isProvides
-      if (isBindsOrProvides) return@fastForEach
+      if (isBindsOrProvides) continue
 
       // Check graph extensions
       val returnType = callable.resolvedReturnTypeRef.coneType
@@ -207,11 +206,11 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
           parentScopeAnnotations = scopeAnnotations,
           parentAggregationScopes = aggregationScopes,
         )
-        return@fastForEach
+        continue
       } else if (callable.isOverride) {
         // If it's an optionaldep, ensure annotations are propagated
         if (!annotations.isOptionalBinding) {
-          callable.directOverriddenSymbolsSafe().fastForEach { overridden ->
+          callable.directOverriddenSymbolsSafe().forEach { overridden ->
             if (
               overridden
                 .metroAnnotations(session, MetroAnnotations.Kind.OptionalBinding)
@@ -242,7 +241,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
             parentScopeAnnotations = scopeAnnotations,
             parentAggregationScopes = aggregationScopes,
           )
-          return@fastForEach
+          continue
         }
       }
 
@@ -276,7 +275,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
             }
 
             callable.contextParameterSymbols.isNotEmpty() -> {
-              callable.contextParameterSymbols.fastForEach { parameter ->
+              callable.contextParameterSymbols.forEach { parameter ->
                 reporter.reportOn(
                   parameter.source,
                   MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
@@ -294,7 +293,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
             }
 
             callable is FirNamedFunctionSymbol && callable.valueParameterSymbols.isNotEmpty() -> {
-              callable.valueParameterSymbols.fastForEach { parameter ->
+              callable.valueParameterSymbols.forEach { parameter ->
                 reporter.reportOn(
                   parameter.source,
                   MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
@@ -320,7 +319,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
           if (annotations.isOptionalBinding) {
             callable.checkOptionalDepAccessor(isEffectivelyOpen, hasBody)
           } else if (hasBody) {
-            return@fastForEach
+            continue
           }
 
           val returnType = callable.resolvedReturnTypeRef.coneType
@@ -371,9 +370,8 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
           when (callable.valueParameterSymbols.size) {
             1 -> {
               val parameter = callable.valueParameterSymbols[0]
-              val clazz =
-                parameter.resolvedReturnTypeRef.firClassLike(session) ?: return@fastForEach
-              val classSymbol = clazz.symbol as? FirClassSymbol<*> ?: return@fastForEach
+              val clazz = parameter.resolvedReturnTypeRef.firClassLike(session) ?: continue
+              val classSymbol = clazz.symbol as? FirClassSymbol<*> ?: continue
               val isInjected = classSymbol.findInjectLikeConstructors(session).isNotEmpty()
 
               parameter.validateBindingRef(annotations)

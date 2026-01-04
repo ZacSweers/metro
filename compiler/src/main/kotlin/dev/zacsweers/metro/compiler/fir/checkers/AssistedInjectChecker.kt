@@ -3,8 +3,6 @@
 package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.ClassIds
-import dev.zacsweers.metro.compiler.fastFilter
-import dev.zacsweers.metro.compiler.fastForEachIndexed
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ASSISTED_INJECTION_ERROR
 import dev.zacsweers.metro.compiler.fir.annotationsIn
@@ -120,7 +118,7 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
 
     val functionParams = function.valueParameterSymbols
     val constructorAssistedParams =
-      injectConstructor.constructor?.valueParameterSymbols.orEmpty().fastFilter {
+      injectConstructor.constructor?.valueParameterSymbols.orEmpty().filter {
         it.isAnnotatedWithAny(session, classIds.assistedAnnotations)
       }
 
@@ -140,7 +138,7 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
     val factorySubstitutionMap = mutableMapOf<FirTypeParameterSymbol, ConeKotlinType>()
 
     // Map factory type parameters to the same concrete types
-    declaration.typeParameters.fastForEachIndexed { index, factoryTypeParam ->
+    declaration.typeParameters.forEachIndexed { index, factoryTypeParam ->
       val targetTypeParam = targetType.typeParameters.getOrNull(index)
       if (targetTypeParam != null) {
         // Use the concrete type from the return type if available

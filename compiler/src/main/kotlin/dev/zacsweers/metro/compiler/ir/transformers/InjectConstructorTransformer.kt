@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
-import dev.zacsweers.metro.compiler.fastFilterNot
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.generatedClass
 import dev.zacsweers.metro.compiler.ir.ClassFactory
@@ -208,7 +207,7 @@ internal class InjectConstructorTransformer(
         }
         .distinct()
     val allValueParameters = allParameters.flatMap { it.regularParameters }
-    val nonAssistedParameters = allValueParameters.fastFilterNot { it.isAssisted }
+    val nonAssistedParameters = allValueParameters.filterNot { it.isAssisted }
 
     val ctor = factoryCls.primaryConstructor!!
 

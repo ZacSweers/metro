@@ -6,7 +6,6 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
-import dev.zacsweers.metro.compiler.fastForEach
 import dev.zacsweers.metro.compiler.ir.BindsCallable
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -127,10 +126,10 @@ private fun transformBindingMirrorClass(parentClass: IrClass, mirrorClass: IrCla
   // If external, just read the mirror class directly. If current round, transform the parent and
   // generate its mirrors
   val classToProcess = if (isExternal) mirrorClass else parentClass
-  classToProcess.declarations.fastForEach { declaration ->
+  for (declaration in classToProcess.declarations) {
     when (declaration) {
       is IrProperty -> {
-        val getter = declaration.getter ?: return@fastForEach
+        val getter = declaration.getter ?: continue
         processFunction(getter)
       }
       is IrSimpleFunction -> processFunction(declaration)

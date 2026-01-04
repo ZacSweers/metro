@@ -4,8 +4,6 @@ package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.MetroOptions
-import dev.zacsweers.metro.compiler.fastFilterNot
-import dev.zacsweers.metro.compiler.fastForEach
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
@@ -71,11 +69,11 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
 
     val classQualifier = declaration.annotations.qualifierAnnotation(session)
 
-    declaration.annotations.fastForEach { annotation ->
-      if (!annotation.isResolved) return@fastForEach
-      val classId = annotation.toAnnotationClassId(session) ?: return@fastForEach
+    for (annotation in declaration.annotations) {
+      if (!annotation.isResolved) continue
+      val classId = annotation.toAnnotationClassId(session) ?: continue
       if (classId in classIds.allContributesAnnotations) {
-        val scope = annotation.resolvedScopeClassId() ?: return@fastForEach
+        val scope = annotation.resolvedScopeClassId() ?: continue
         val replaces = emptySet<ClassId>() // TODO implement
         val checkIntoSet by memoize {
           checkBindingContribution(
@@ -128,6 +126,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
               return
             }
           }
+
           in classIds.contributesBindingAnnotations -> {
             val valid =
               checkBindingContribution(
@@ -153,16 +152,19 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
               return
             }
           }
+
           in classIds.contributesIntoSetAnnotations -> {
             if (!checkIntoSet) {
               return
             }
           }
+
           in classIds.contributesIntoMapAnnotations -> {
             if (!checkIntoMap) {
               return
             }
           }
+
           in classIds.customContributesIntoSetAnnotations -> {
             val isMapBinding = declaration.annotations.mapKeyAnnotation(session) != null
             val valid = if (isMapBinding) checkIntoMap else checkIntoSet
@@ -205,7 +207,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
       return false
     }
 
-    val supertypesExcludingAny = declaration.superTypeRefs.fastFilterNot { it.coneType.isAny }
+    val supertypesExcludingAny = declaration.superTypeRefs.filterNot { it.coneType.isAny }
     val hasSupertypes = supertypesExcludingAny.isNotEmpty()
 
     val explicitBindingType = annotation.resolvedBindingArgument(session)
