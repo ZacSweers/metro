@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph.sharding
 
+import androidx.collection.MutableObjectIntMap
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
@@ -51,7 +52,7 @@ internal object ShardingDiagnostics {
     appendLine()
 
     // First compute cross-shard dependencies to get per-shard counts
-    val bindingToShard = mutableMapOf<IrTypeKey, Int>()
+    val bindingToShard = MutableObjectIntMap<IrTypeKey>()
     shardInfos.forEach { info ->
       info.bindings.forEach { binding -> bindingToShard[binding.typeKey] = info.index }
     }
@@ -62,8 +63,8 @@ internal object ShardingDiagnostics {
       info.bindings.forEach { binding ->
         val deps = bindingGraph.requireBinding(binding.typeKey).dependencies
         deps.forEach { dep ->
-          val depShard = bindingToShard[dep.typeKey]
-          if (depShard != null && depShard != info.index) {
+          val depShard = bindingToShard.getOrDefault(dep.typeKey, -1)
+          if (depShard != -1 && depShard != info.index) {
             crossShardEdgeCounts[info.index]++
           }
         }
@@ -105,8 +106,8 @@ internal object ShardingDiagnostics {
       info.bindings.forEach { binding ->
         val deps = bindingGraph.requireBinding(binding.typeKey).dependencies
         deps.forEach { dep ->
-          val depShard = bindingToShard[dep.typeKey]
-          if (depShard != null && depShard != info.index) {
+          val depShard = bindingToShard.getOrDefault(dep.typeKey, -1)
+          if (depShard != -1 && depShard != info.index) {
             if (reportedCount < MAX_CROSS_SHARD_DEPS) {
               appendLine(
                 "  Shard${info.index + 1}.${binding.typeKey} → Shard${depShard + 1}.${dep.typeKey}"

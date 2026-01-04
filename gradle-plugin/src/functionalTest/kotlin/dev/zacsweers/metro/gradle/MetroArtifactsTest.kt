@@ -188,9 +188,8 @@ class MetroArtifactsTest {
                 "unscopedBindings": 5,
                 "bindingsByKind": {
                   "Alias": 2,
-                  "BoundInstance": 1,
-                  "ConstructorInjected": 1,
-                  "MembersInjected": 1
+                  "BoundInstance": 2,
+                  "ConstructorInjected": 1
                 },
                 "averageDependencies": 0.8,
                 "maxDependencies": 1,
@@ -244,7 +243,7 @@ class MetroArtifactsTest {
                   },
                   {
                     "key": "test.App",
-                    "bindingKind": "MembersInjected",
+                    "bindingKind": "BoundInstance",
                     "dominatedCount": 0,
                     "dominatedKeys": []
                   },
@@ -260,7 +259,7 @@ class MetroArtifactsTest {
                 "centralityScores": [
                   {
                     "key": "test.App",
-                    "bindingKind": "MembersInjected",
+                    "bindingKind": "BoundInstance",
                     "betweennessCentrality": 1.0,
                     "normalizedCentrality": 1.0
                   },
@@ -294,7 +293,7 @@ class MetroArtifactsTest {
                 "bindings": [
                   {
                     "key": "test.App",
-                    "bindingKind": "MembersInjected",
+                    "bindingKind": "BoundInstance",
                     "fanIn": 1,
                     "fanOut": 1,
                     "dependents": [],
@@ -336,7 +335,7 @@ class MetroArtifactsTest {
                 "highFanIn": [
                   {
                     "key": "test.App",
-                    "bindingKind": "MembersInjected",
+                    "bindingKind": "BoundInstance",
                     "fanIn": 1,
                     "fanOut": 1,
                     "dependents": [
@@ -394,7 +393,7 @@ class MetroArtifactsTest {
                 "highFanOut": [
                   {
                     "key": "test.App",
-                    "bindingKind": "MembersInjected",
+                    "bindingKind": "BoundInstance",
                     "fanIn": 1,
                     "fanOut": 1,
                     "dependents": [

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
+import androidx.collection.ObjectList
 import org.jetbrains.kotlin.name.FqName
 
 internal interface BaseBindingStack<
@@ -12,7 +13,7 @@ internal interface BaseBindingStack<
   Impl : BaseBindingStack<ClassType, Type, TypeKey, Entry, Impl>,
 > {
   val graph: ClassType
-  val entries: List<Entry>
+  val entries: ObjectList<Entry>
   val graphFqName: FqName
 
   fun push(entry: Entry)
@@ -26,7 +27,7 @@ internal interface BaseBindingStack<
   fun entriesSince(key: TypeKey): List<Entry> {
     // Top entry is always the key currently being processed, so exclude it from analysis with
     // dropLast(1)
-    val inFocus = entries.asReversed().dropLast(1)
+    val inFocus = entries.asList().asReversed().dropLast(1)
     if (inFocus.isEmpty()) return emptyList()
 
     val first = inFocus.indexOfFirst { !it.isSynthetic && it.typeKey == key }

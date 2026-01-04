@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
+import androidx.collection.MutableScatterMap
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
@@ -40,7 +41,7 @@ internal class IrGraphExtensionGenerator(
 ) : IrMetroContext by context {
 
   private val classNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
-  private val generatedClassesCache = mutableMapOf<CacheKey, IrClass>()
+  private val generatedClassesCache = MutableScatterMap<CacheKey, IrClass>()
 
   private data class CacheKey(val typeKey: IrTypeKey, val parentGraph: ClassId)
 

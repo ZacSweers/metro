@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
+import androidx.collection.MutableObjectList
+import androidx.collection.ObjectList
+import androidx.collection.emptyObjectList
 import com.jakewharton.picnic.TextAlignment
 import com.jakewharton.picnic.renderText
 import com.jakewharton.picnic.table
@@ -15,6 +18,7 @@ import dev.zacsweers.metro.compiler.ir.graph.IrBindingStack.Entry
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.resolveOverriddenTypeIfAny
 import dev.zacsweers.metro.compiler.memoize
+import dev.zacsweers.metro.compiler.removeFirstOrNull
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.withoutLineBreaks
@@ -255,8 +259,8 @@ internal interface IrBindingStack :
         override val graphFqName: FqName
           get() = FqName.ROOT
 
-        override val entries: List<Entry>
-          get() = emptyList()
+        override val entries: ObjectList<Entry>
+          get() = emptyObjectList()
 
         override fun push(entry: Entry) {
           // Do nothing
@@ -304,17 +308,17 @@ internal fun Appendable.appendBindingStack(
   indent: String = "    ",
   ellipse: Boolean = false,
   short: Boolean = true,
-) = appendBindingStackEntries(stack.graphFqName, stack.entries, indent, ellipse, short)
+) = appendBindingStackEntries(stack.graphFqName, stack.entries.asList(), indent, ellipse, short)
 
 internal fun Appendable.appendBindingStackEntries(
   graphName: FqName,
-  entries: Collection<BaseBindingStack.BaseEntry<*, *, *>>,
+  entries: List<BaseBindingStack.BaseEntry<*, *, *>>,
   indent: String = "    ",
   ellipse: Boolean = false,
   short: Boolean = true,
 ) {
   if (graphName == FqName.ROOT || entries.isEmpty()) return
-  for (entry in entries) {
+  entries.forEach { entry ->
     entry.render(graphName, short).prependIndent(indent).lineSequence().forEach { appendLine(it) }
   }
   if (ellipse) {
@@ -330,8 +334,8 @@ internal class IrBindingStackImpl(override val graph: IrClass, private val logge
   // TODO can we use one structure?
   // TODO can we use scattermap's IntIntMap? Store the typekey hash to its index
   private val entrySet = mutableSetOf<IrTypeKey>()
-  private val stack = ArrayDeque<Entry>()
-  override val entries: List<Entry> = stack
+  private val stack = MutableObjectList<Entry>()
+  override val entries: ObjectList<Entry> = stack
 
   init {
     logger.log("New stack: ${logger.type}")
@@ -339,11 +343,7 @@ internal class IrBindingStackImpl(override val graph: IrClass, private val logge
 
   override fun copy(): IrBindingStack {
     val currentStack = stack
-    return IrBindingStackImpl(graph, logger).apply {
-      for (entry in currentStack) {
-        push(entry)
-      }
-    }
+    return IrBindingStackImpl(graph, logger).apply { currentStack.forEach { entry -> push(entry) } }
   }
 
   override fun push(entry: Entry) {
@@ -356,7 +356,7 @@ internal class IrBindingStackImpl(override val graph: IrClass, private val logge
     val contextHint =
       if (entry.typeKey != entry.displayTypeKey) "(${entry.typeKey.render(short = true)}) " else ""
     logger.log("$logPrefix $contextHint${entry.toString().withoutLineBreaks}")
-    stack.addFirst(entry)
+    stack.add(0, entry)
     entrySet.add(entry.typeKey)
     logger.indent()
   }
@@ -379,7 +379,7 @@ internal class IrBindingStackImpl(override val graph: IrClass, private val logge
   override fun entriesSince(key: IrTypeKey): List<Entry> {
     // Top entry is always the key currently being processed, so exclude it from analysis with
     // dropLast(1)
-    val inFocus = stack.asReversed().dropLast(1)
+    val inFocus = stack.asList().asReversed().dropLast(1)
     if (inFocus.isEmpty()) return emptyList()
 
     val first = inFocus.indexOfFirst { !it.isSynthetic && it.typeKey == key }
@@ -411,7 +411,7 @@ internal class IrBindingStackImpl(override val graph: IrClass, private val logge
           }
         }
 
-        for ((i, entry) in stack.withIndex()) {
+        for ((i, entry) in stack.asList().withIndex()) {
           body {
             row {
               cellStyle { alignment = TextAlignment.MiddleCenter }

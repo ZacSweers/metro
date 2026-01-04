@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
+import androidx.collection.ObjectList
+import androidx.collection.emptyObjectList
 import dev.zacsweers.metro.compiler.fastForEach
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
@@ -24,8 +26,8 @@ private const val INITIAL_VALUE = 512
  */
 internal class BindingPropertyCollector(
   private val graph: IrBindingGraph,
-  private val sortedKeys: List<IrTypeKey>,
-  private val roots: List<IrContextualTypeKey> = emptyList(),
+  private val sortedKeys: ObjectList<IrTypeKey>,
+  private val roots: ObjectList<IrContextualTypeKey> = emptyObjectList(),
 ) {
 
   data class CollectedProperty(val binding: IrBinding, val propertyType: PropertyType)
@@ -69,7 +71,7 @@ internal class BindingPropertyCollector(
     // Roots (accessors/injectors) don't get properties themselves, but they contribute to
     // factory refcounts when they require provider instances so we mark them here.
     // This includes both direct Provider/Lazy wrapping and map types with Provider values.
-    roots.fastForEach { root ->
+    roots.forEach { root ->
       markAccess(root, isFactory = root.requiresProviderInstance)
       maybeMarkMultibindingSourcesAsFactoryAccess(
         root,
@@ -82,8 +84,8 @@ internal class BindingPropertyCollector(
     // so its factoryRefCount is finalized. Nodes are created lazily via getOrPut - either
     // here during iteration or earlier via markFactoryAccess when a dependent
     // marks this binding as a factory access.
-    sortedKeys.asReversed().fastForEach { key ->
-      val binding = graph.findBinding(key) ?: return@fastForEach
+    sortedKeys.forEachReversed { key ->
+      val binding = graph.findBinding(key) ?: return@forEachReversed
 
       // Initialize node (may already exist from markFactoryAccess)
       val node = nodes.getOrPut(key) { Node(binding) }
@@ -95,10 +97,10 @@ internal class BindingPropertyCollector(
       }
 
       // Skip alias bindings for refcount and dependency processing
-      if (binding is IrBinding.Alias) return@fastForEach
+      if (binding is IrBinding.Alias) return@forEachReversed
 
       // Multibindings are always created adhoc and don't get properties
-      if (binding is IrBinding.Multibinding) return@fastForEach
+      if (binding is IrBinding.Multibinding) return@forEachReversed
 
       // factoryRefCount is finalized - check if we need a property to cache the factory
       if (key !in keysWithBackingProperties) {

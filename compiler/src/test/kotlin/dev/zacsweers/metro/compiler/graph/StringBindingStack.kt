@@ -2,15 +2,17 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
+import androidx.collection.MutableObjectList
+import dev.zacsweers.metro.compiler.removeFirstOrNull
 import org.jetbrains.kotlin.name.FqName
 
 internal class StringBindingStack(override val graph: String) :
   BaseBindingStack<String, String, StringTypeKey, StringBindingStack.Entry, StringBindingStack> {
-  override val entries = ArrayDeque<Entry>()
+  override val entries = MutableObjectList<Entry>()
   override val graphFqName: FqName = FqName(graph)
 
   override fun push(entry: Entry) {
-    entries.addFirst(entry)
+    entries.add(0, entry)
   }
 
   override fun pop() {

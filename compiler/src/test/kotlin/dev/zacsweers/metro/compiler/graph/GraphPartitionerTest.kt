@@ -2,6 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
+import androidx.collection.ObjectIntMap
+import androidx.collection.ObjectList
+import androidx.collection.emptyIntObjectMap
+import androidx.collection.emptyObjectIntMap
+import androidx.collection.emptyObjectList
+import androidx.collection.emptyOrderedScatterSet
+import androidx.collection.mutableObjectListOf
+import androidx.collection.objectIntMapOf
+import androidx.collection.objectListOf
 import com.google.common.truth.Truth.assertThat
 import java.util.*
 import kotlin.test.Test
@@ -13,7 +22,7 @@ class GraphPartitionerTest {
     // Simple chain: a -> b -> c -> d -> e (5 keys, each in its own single-node component)
     val topology =
       buildTopology(
-        sortedKeys = listOf("e", "d", "c", "b", "a"),
+        sortedKeys = objectListOf("e", "d", "c", "b", "a"),
         adjacency =
           sortedMapOf(
             "a" to sortedSetOf("b"),
@@ -23,14 +32,14 @@ class GraphPartitionerTest {
             "e" to sortedSetOf(),
           ),
         components =
-          listOf(
-            Component(0, mutableListOf("e")),
-            Component(1, mutableListOf("d")),
-            Component(2, mutableListOf("c")),
-            Component(3, mutableListOf("b")),
-            Component(4, mutableListOf("a")),
+          objectListOf(
+            Component(0, mutableObjectListOf("e")),
+            Component(1, mutableObjectListOf("d")),
+            Component(2, mutableObjectListOf("c")),
+            Component(3, mutableObjectListOf("b")),
+            Component(4, mutableObjectListOf("a")),
           ),
-        componentOf = mapOf("e" to 0, "d" to 1, "c" to 2, "b" to 3, "a" to 4),
+        componentOf = objectIntMapOf("e", 0, "d", 1, "c", 2, "b", 3, "a", 4),
       )
 
     val partitions = topology.partitionBySCCs(keysPerGraphShard = 2)
@@ -45,11 +54,11 @@ class GraphPartitionerTest {
     // Cycle: a -> b -> c -> a (all in one SCC)
     val topology =
       buildTopology(
-        sortedKeys = listOf("a", "b", "c"),
+        sortedKeys = objectListOf("a", "b", "c"),
         adjacency =
           sortedMapOf("a" to sortedSetOf("b"), "b" to sortedSetOf("c"), "c" to sortedSetOf("a")),
-        components = listOf(Component(0, mutableListOf("a", "b", "c"))),
-        componentOf = mapOf("a" to 0, "b" to 0, "c" to 0),
+        components = objectListOf(Component(0, mutableObjectListOf("a", "b", "c"))),
+        componentOf = objectIntMapOf("a", 0, "b", 0, "c", 0),
       )
 
     val partitions = topology.partitionBySCCs(keysPerGraphShard = 2)
@@ -65,7 +74,7 @@ class GraphPartitionerTest {
     // sortedKeys should have the correct order with c and d together
     val topology =
       buildTopology(
-        sortedKeys = listOf("e", "c", "d", "b", "a"),
+        sortedKeys = objectListOf("e", "c", "d", "b", "a"),
         adjacency =
           sortedMapOf(
             "a" to sortedSetOf("b"),
@@ -75,13 +84,13 @@ class GraphPartitionerTest {
             "e" to sortedSetOf(),
           ),
         components =
-          listOf(
-            Component(0, mutableListOf("c", "d")), // multi-node cycle
-            Component(1, mutableListOf("e")),
-            Component(2, mutableListOf("b")),
-            Component(3, mutableListOf("a")),
+          objectListOf(
+            Component(0, mutableObjectListOf("c", "d")), // multi-node cycle
+            Component(1, mutableObjectListOf("e")),
+            Component(2, mutableObjectListOf("b")),
+            Component(3, mutableObjectListOf("a")),
           ),
-        componentOf = mapOf("c" to 0, "d" to 0, "e" to 1, "b" to 2, "a" to 3),
+        componentOf = objectIntMapOf("c", 0, "d", 0, "e", 1, "b", 2, "a", 3),
       )
 
     val partitions = topology.partitionBySCCs(keysPerGraphShard = 2)
@@ -98,7 +107,7 @@ class GraphPartitionerTest {
     // Two independent cycles: (a <-> b) and (c <-> d)
     val topology =
       buildTopology(
-        sortedKeys = listOf("a", "b", "c", "d"),
+        sortedKeys = objectListOf("a", "b", "c", "d"),
         adjacency =
           sortedMapOf(
             "a" to sortedSetOf("b"),
@@ -107,8 +116,11 @@ class GraphPartitionerTest {
             "d" to sortedSetOf("c"),
           ),
         components =
-          listOf(Component(0, mutableListOf("a", "b")), Component(1, mutableListOf("c", "d"))),
-        componentOf = mapOf("a" to 0, "b" to 0, "c" to 1, "d" to 1),
+          objectListOf(
+            Component(0, mutableObjectListOf("a", "b")),
+            Component(1, mutableObjectListOf("c", "d")),
+          ),
+        componentOf = objectIntMapOf("a", 0, "b", 0, "c", 1, "d", 1),
       )
 
     val partitions = topology.partitionBySCCs(keysPerGraphShard = 2)
@@ -125,7 +137,7 @@ class GraphPartitionerTest {
     // sortedKeys determines the overall order
     val topology =
       buildTopology(
-        sortedKeys = listOf("c", "d", "a", "b"),
+        sortedKeys = objectListOf("c", "d", "a", "b"),
         adjacency =
           sortedMapOf(
             "a" to sortedSetOf("b"),
@@ -134,12 +146,12 @@ class GraphPartitionerTest {
             "d" to sortedSetOf(),
           ),
         components =
-          listOf(
-            Component(0, mutableListOf("a", "b")), // multi-node cycle
-            Component(1, mutableListOf("c")),
-            Component(2, mutableListOf("d")),
+          objectListOf(
+            Component(0, mutableObjectListOf("a", "b")), // multi-node cycle
+            Component(1, mutableObjectListOf("c")),
+            Component(2, mutableObjectListOf("d")),
           ),
-        componentOf = mapOf("a" to 0, "b" to 0, "c" to 1, "d" to 2),
+        componentOf = objectIntMapOf("a", 0, "b", 0, "c", 1, "d", 2),
       )
 
     val partitions = topology.partitionBySCCs(keysPerGraphShard = 2)
@@ -154,16 +166,16 @@ class GraphPartitionerTest {
   fun `all keys fit in single partition`() {
     val topology =
       buildTopology(
-        sortedKeys = listOf("a", "b", "c"),
+        sortedKeys = objectListOf("a", "b", "c"),
         adjacency =
           sortedMapOf("a" to sortedSetOf("b"), "b" to sortedSetOf("c"), "c" to sortedSetOf()),
         components =
-          listOf(
-            Component(0, mutableListOf("a")),
-            Component(1, mutableListOf("b")),
-            Component(2, mutableListOf("c")),
+          objectListOf(
+            Component(0, mutableObjectListOf("a")),
+            Component(1, mutableObjectListOf("b")),
+            Component(2, mutableObjectListOf("c")),
           ),
-        componentOf = mapOf("a" to 0, "b" to 1, "c" to 2),
+        componentOf = objectIntMapOf("a", 0, "b", 1, "c", 2),
       )
 
     val partitions = topology.partitionBySCCs(keysPerGraphShard = 10)
@@ -177,7 +189,7 @@ class GraphPartitionerTest {
     // 5-node cycle with maxPerPartition=2
     val topology =
       buildTopology(
-        sortedKeys = listOf("a", "b", "c", "d", "e"),
+        sortedKeys = objectListOf("a", "b", "c", "d", "e"),
         adjacency =
           sortedMapOf(
             "a" to sortedSetOf("b"),
@@ -186,8 +198,8 @@ class GraphPartitionerTest {
             "d" to sortedSetOf("e"),
             "e" to sortedSetOf("a"),
           ),
-        components = listOf(Component(0, mutableListOf("a", "b", "c", "d", "e"))),
-        componentOf = mapOf("a" to 0, "b" to 0, "c" to 0, "d" to 0, "e" to 0),
+        components = objectListOf(Component(0, mutableObjectListOf("a", "b", "c", "d", "e"))),
+        componentOf = objectIntMapOf("a", 0, "b", 0, "c", 0, "d", 0, "e", 0),
       )
 
     val partitions = topology.partitionBySCCs(keysPerGraphShard = 2)
@@ -201,10 +213,10 @@ class GraphPartitionerTest {
   fun `empty topology returns empty list`() {
     val topology =
       buildTopology(
-        sortedKeys = emptyList(),
+        sortedKeys = emptyObjectList(),
         adjacency = sortedMapOf(),
-        components = emptyList(),
-        componentOf = emptyMap(),
+        components = emptyObjectList(),
+        componentOf = emptyObjectIntMap(),
       )
 
     val partitions = topology.partitionBySCCs(keysPerGraphShard = 10)
@@ -217,10 +229,14 @@ class GraphPartitionerTest {
     // sortedKeys contains "x" but adjacency doesn't
     val topology =
       buildTopology(
-        sortedKeys = listOf("a", "b", "x"),
+        sortedKeys = objectListOf("a", "b", "x"),
         adjacency = sortedMapOf("a" to sortedSetOf("b"), "b" to sortedSetOf()),
-        components = listOf(Component(0, mutableListOf("a")), Component(1, mutableListOf("b"))),
-        componentOf = mapOf("a" to 0, "b" to 1, "x" to 2),
+        components =
+          objectListOf(
+            Component(0, mutableObjectListOf("a")),
+            Component(1, mutableObjectListOf("b")),
+          ),
+        componentOf = objectIntMapOf("a", 0, "b", 1, "x", 2),
       )
 
     val partitions = topology.partitionBySCCs(keysPerGraphShard = 10)
@@ -234,15 +250,15 @@ class GraphPartitionerTest {
     // Verify that the output preserves the topological order from sortedKeys
     val topology =
       buildTopology(
-        sortedKeys = listOf("x", "y", "z"),
+        sortedKeys = objectListOf("x", "y", "z"),
         adjacency = sortedMapOf("x" to sortedSetOf(), "y" to sortedSetOf(), "z" to sortedSetOf()),
         components =
-          listOf(
-            Component(0, mutableListOf("x")),
-            Component(1, mutableListOf("y")),
-            Component(2, mutableListOf("z")),
+          objectListOf(
+            Component(0, mutableObjectListOf("x")),
+            Component(1, mutableObjectListOf("y")),
+            Component(2, mutableObjectListOf("z")),
           ),
-        componentOf = mapOf("x" to 0, "y" to 1, "z" to 2),
+        componentOf = objectIntMapOf("x", 0, "y", 1, "z", 2),
       )
 
     val partitions = topology.partitionBySCCs(keysPerGraphShard = 2)
@@ -252,18 +268,18 @@ class GraphPartitionerTest {
   }
 
   private fun buildTopology(
-    sortedKeys: List<String>,
+    sortedKeys: ObjectList<String>,
     adjacency: SortedMap<String, SortedSet<String>>,
-    components: List<Component<String>>,
-    componentOf: Map<String, Int>,
+    components: ObjectList<Component<String>>,
+    componentOf: ObjectIntMap<String>,
   ): GraphTopology<String> =
     GraphTopology(
       sortedKeys = sortedKeys,
-      deferredTypes = emptySet(),
+      deferredTypes = emptyOrderedScatterSet(),
       reachableKeys = adjacency.keys.toSet(),
       adjacency = adjacency,
       components = components,
       componentOf = componentOf,
-      componentDag = emptyMap(),
+      componentDag = emptyIntObjectMap(),
     )
 }

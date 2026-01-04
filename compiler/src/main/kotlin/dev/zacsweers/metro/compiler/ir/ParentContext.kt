@@ -2,6 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import androidx.collection.MutableIntList
+import androidx.collection.MutableObjectList
+import androidx.collection.MutableScatterMap
+import androidx.collection.MutableScatterSet
+import androidx.collection.ScatterSet
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.decapitalizeUS
@@ -10,7 +15,9 @@ import dev.zacsweers.metro.compiler.ir.graph.GraphPropertyData
 import dev.zacsweers.metro.compiler.ir.graph.PropertyType
 import dev.zacsweers.metro.compiler.ir.graph.ensureInitialized
 import dev.zacsweers.metro.compiler.ir.graph.graphPropertyData
+import dev.zacsweers.metro.compiler.lastOrNull
 import dev.zacsweers.metro.compiler.newName
+import dev.zacsweers.metro.compiler.removeLast
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.suffixIfNot
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
@@ -40,19 +47,19 @@ internal class ParentContext(private val metroContext: IrMetroContext) {
   )
 
   // Stack of parent graphs (root at 0, top is last)
-  private val levels = ArrayDeque<Level>()
+  private val levels = MutableObjectList<Level>()
 
   // Fast membership of “currently available anywhere in stack”, not including pending
-  private val available = mutableSetOf<IrTypeKey>()
+  private val available = MutableScatterSet<IrTypeKey>()
 
   // For each key, the stack of level indices where it was introduced (nearest provider = last)
-  private val keyIntroStack = mutableMapOf<IrTypeKey, ArrayDeque<Int>>()
+  private val keyIntroStack = MutableScatterMap<IrTypeKey, MutableIntList>()
 
   // All active scopes (union of level.node.scopes)
-  private val parentScopes = mutableSetOf<IrAnnotation>()
+  private val parentScopes = MutableScatterSet<IrAnnotation>()
 
   // Keys collected before the next push
-  private val pending = mutableSetOf<IrTypeKey>()
+  private val pending = MutableScatterSet<IrTypeKey>()
 
   fun add(key: IrTypeKey) {
     pending.add(key)
@@ -140,14 +147,12 @@ internal class ParentContext(private val metroContext: IrMetroContext) {
   fun pushParentGraph(node: DependencyGraphNode, fieldNameAllocator: NameAllocator) {
     val idx = levels.size
     val level = Level(node, fieldNameAllocator)
-    levels.addLast(level)
+    levels.add(level)
     parentScopes.addAll(node.scopes)
 
     if (pending.isNotEmpty()) {
       // Introduce each pending key *at this level only*
-      for (k in pending) {
-        introduceAtLevel(idx, k)
-      }
+      pending.forEach { k -> introduceAtLevel(idx, k) }
       pending.clear()
     }
   }
@@ -188,10 +193,10 @@ internal class ParentContext(private val metroContext: IrMetroContext) {
     return key in pending || key in available
   }
 
-  fun availableKeys(): Set<IrTypeKey> {
+  fun availableKeys(): ScatterSet<IrTypeKey> {
     // Pending + all currently available
-    if (pending.isEmpty()) return available.toSet()
-    return buildSet(available.size + pending.size) {
+    if (pending.isEmpty()) return available
+    return MutableScatterSet<IrTypeKey>(available.size + pending.size).apply {
       addAll(available)
       addAll(pending)
     }
@@ -207,7 +212,7 @@ internal class ParentContext(private val metroContext: IrMetroContext) {
     if (key !in level.deltaProvided) {
       level.deltaProvided.add(key)
       available.add(key)
-      keyIntroStack.getOrPut(key, ::ArrayDeque).addLast(levelIdx)
+      keyIntroStack.getOrPut(key, ::MutableIntList).add(levelIdx)
     }
   }
 

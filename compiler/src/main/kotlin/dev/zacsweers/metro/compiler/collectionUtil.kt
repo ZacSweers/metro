@@ -15,6 +15,20 @@
  */
 package dev.zacsweers.metro.compiler
 
+import androidx.collection.IntList
+import androidx.collection.IntSet
+import androidx.collection.MutableIntList
+import androidx.collection.MutableObjectList
+import androidx.collection.MutableScatterMap
+import androidx.collection.MutableScatterSet
+import androidx.collection.ObjectList
+import androidx.collection.ScatterMap
+import androidx.collection.ScatterSet
+import androidx.collection.emptyIntSet
+import androidx.collection.emptyObjectList
+import androidx.collection.emptyScatterSet
+import androidx.collection.objectListOf
+import androidx.collection.scatterSetOf
 import kotlin.contracts.contract
 
 internal fun <T> Iterable<T>.filterToSet(predicate: (T) -> Boolean): Set<T> {
@@ -164,3 +178,245 @@ internal fun <T> List<T>.allElementsAreEqual(): Boolean {
   val firstElement = first()
   return !fastAny { it != firstElement }
 }
+
+internal inline fun <T> Iterable<T>.filterToScatterSet(predicate: (T) -> Boolean): ScatterSet<T> {
+  contract { callsInPlace(predicate) }
+  return if (this is Collection) {
+    when (size) {
+      0 -> emptyScatterSet()
+      1 -> {
+        val first = first()
+        if (predicate(first)) scatterSetOf(first) else emptyScatterSet()
+      }
+      else -> {
+        val result = MutableScatterSet<T>(size)
+        forEach { if (predicate(it)) result.add(it) }
+        result
+      }
+    }
+  } else {
+    val result = MutableScatterSet<T>()
+    forEach { if (predicate(it)) result.add(it) }
+    result
+  }
+}
+
+internal inline fun <T> ScatterSet<T>.filter(predicate: (T) -> Boolean): ScatterSet<T> {
+  contract { callsInPlace(predicate) }
+  return when (size) {
+    0 -> emptyScatterSet()
+    1 -> {
+      val first = first()
+      if (predicate(first)) scatterSetOf(first) else emptyScatterSet()
+    }
+    else -> {
+      val result = MutableScatterSet<T>(size)
+      forEach { if (predicate(it)) result.add(it) }
+      result
+    }
+  }
+}
+
+internal inline fun <T> ObjectList<T>.filter(predicate: (T) -> Boolean): ObjectList<T> {
+  contract { callsInPlace(predicate) }
+  return when (size) {
+    0 -> emptyObjectList()
+    1 -> {
+      val first = first()
+      if (predicate(first)) objectListOf(first) else emptyObjectList()
+    }
+    else -> {
+      val result = MutableObjectList<T>(size)
+      forEach { if (predicate(it)) result.add(it) }
+      result
+    }
+  }
+}
+
+internal inline fun <T> ScatterSet<T>.filterNot(predicate: (T) -> Boolean): ScatterSet<T> {
+  contract { callsInPlace(predicate) }
+  return when (size) {
+    0 -> emptyScatterSet()
+    1 -> {
+      val first = first()
+      if (!predicate(first)) scatterSetOf(first) else emptyScatterSet()
+    }
+    else -> {
+      val result = MutableScatterSet<T>(size)
+      forEach { if (!predicate(it)) result.add(it) }
+      result
+    }
+  }
+}
+
+internal fun <T, R> List<T>.mapNotNullToScatterSet(transform: (T) -> R?): ScatterSet<R> {
+  return when (size) {
+    0 -> emptyScatterSet()
+    1 -> transform(first())?.let(::scatterSetOf) ?: emptyScatterSet()
+    else -> {
+      val result = MutableScatterSet<R>(size)
+      fastForEach { transform(it)?.let(result::add) }
+      result
+    }
+  }
+}
+
+internal fun <T, R> List<T>.mapToScatterSet(transform: (T) -> R): ScatterSet<R> {
+  return when (size) {
+    0 -> emptyScatterSet()
+    1 -> scatterSetOf(transform(first()))
+    else -> {
+      val result = MutableScatterSet<R>(size)
+      fastForEach { result.add(transform(it)) }
+      result
+    }
+  }
+}
+
+internal fun <T, R> List<T>.mapToObjectList(transform: (T) -> R): ObjectList<R> {
+  return when (size) {
+    0 -> emptyObjectList()
+    1 -> objectListOf(transform(first()))
+    else -> {
+      val result = MutableObjectList<R>(size)
+      fastForEach { result.add(transform(it)) }
+      result
+    }
+  }
+}
+
+internal fun <T, R> ObjectList<T>.mapToScatterSet(transform: (T) -> R): ScatterSet<R> {
+  return when (size) {
+    0 -> emptyScatterSet()
+    1 -> scatterSetOf(transform(first()))
+    else -> {
+      val result = MutableScatterSet<R>(size)
+      forEach { result.add(transform(it)) }
+      result
+    }
+  }
+}
+
+internal fun <T> List<T>.filterToScatterSet(predicate: (T) -> Boolean): ScatterSet<T> {
+  return when (size) {
+    0 -> emptyScatterSet()
+    1 -> {
+      val first = get(0)
+      if (predicate(first)) scatterSetOf(first) else emptyScatterSet()
+    }
+    else -> {
+      mutableMapOf(3 to 3).getValue(3)
+      val result = MutableScatterSet<T>(size)
+      fastForEach { if (predicate(it)) result.add(it) }
+      result
+    }
+  }
+}
+
+@Suppress("NOTHING_TO_INLINE")
+internal inline fun <K, V> ScatterMap<K, V>.getValue(key: K): V =
+  get(key) ?: throw NoSuchElementException("Key $key is missing in the map.")
+
+internal inline fun <K, V> ScatterMap<K, V>.firstValue(predicate: (K, V) -> Boolean): V {
+  contract { callsInPlace(predicate) }
+  return firstValueOrNull(predicate)
+    ?: throw NoSuchElementException("No value matched the predicate.")
+}
+
+internal inline fun <K, V> ScatterMap<K, V>.firstValueOrNull(predicate: (K, V) -> Boolean): V? {
+  contract { callsInPlace(predicate) }
+  forEach { k, v -> if (predicate(k, v)) return v }
+  return null
+}
+
+@Suppress("NOTHING_TO_INLINE")
+internal inline fun <K> ScatterMap<K, *>.keys(): ScatterSet<K> {
+  return mapKeysToScatterSet { it }
+}
+
+internal inline fun <K, R> ScatterMap<K, *>.mapKeysToScatterSet(
+  transform: (K) -> R
+): ScatterSet<R> {
+  contract { callsInPlace(transform) }
+  val set = MutableScatterSet<R>(size)
+  forEachKey { k -> transform(k).let(set::add) }
+  return set
+}
+
+internal operator fun <K, V> ScatterMap<K, V>.plus(other: ScatterMap<K, V>): ScatterMap<K, V> {
+  val map = MutableScatterMap<K, V>(size + other.size)
+  map += this
+  map += other
+  return map
+}
+
+internal fun <T> Set<T>.toScatterSet(): ScatterSet<T> {
+  return when (size) {
+    0 -> emptyScatterSet()
+    1 -> scatterSetOf(first())
+    else -> {
+      val result = MutableScatterSet<T>(size)
+      result += this
+      result
+    }
+  }
+}
+
+internal fun IntSet?.orEmpty(): IntSet = this ?: emptyIntSet()
+
+internal fun MutableIntList.removeLast(): Int {
+  val lastIndex = lastIndex
+  return if (lastIndex == -1) {
+    throw NoSuchElementException("List is empty.")
+  } else {
+    removeAt(lastIndex)
+  }
+}
+
+internal fun <T> MutableObjectList<T>.removeLast(): T {
+  val lastIndex = lastIndex
+  return if (lastIndex == -1) {
+    throw NoSuchElementException("List is empty.")
+  } else {
+    removeAt(lastIndex)
+  }
+}
+
+internal fun <T> MutableObjectList<T>.removeFirstOrNull(): T? {
+  return if (isEmpty()) {
+    null
+  } else {
+    removeAt(0)
+  }
+}
+
+internal fun IntList.lastOrNull(): Int? {
+  val lastIndex = lastIndex
+  return if (lastIndex == -1) {
+    null
+  } else {
+    get(lastIndex)
+  }
+}
+
+private const val INT_MAX_POWER_OF_TWO: Int = 1 shl (Int.SIZE_BITS - 2)
+
+/**
+ * Calculate the initial capacity of a map, based on Guava's
+ * [com.google.common.collect.Maps.capacity](https://github.com/google/guava/blob/v28.2/guava/src/com/google/common/collect/Maps.java#L325)
+ * approach.
+ *
+ * Pulled from Kotlin stdlib's collection builders. Slightly different from dagger's but
+ * functionally the same.
+ */
+internal fun calculateInitialCapacity(expectedSize: Int): Int =
+  when {
+    // We are not coercing the value to a valid one and not throwing an exception. It is up to the
+    // caller to
+    // properly handle negative values.
+    expectedSize < 0 -> expectedSize
+    expectedSize < 3 -> expectedSize + 1
+    expectedSize < INT_MAX_POWER_OF_TWO -> ((expectedSize / 0.75F) + 1.0F).toInt()
+    // any large value
+    else -> Int.MAX_VALUE
+  }

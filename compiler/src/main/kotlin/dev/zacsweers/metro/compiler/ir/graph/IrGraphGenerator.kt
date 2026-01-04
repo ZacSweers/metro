@@ -2,10 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
+import androidx.collection.MutableObjectList
 import dev.zacsweers.metro.compiler.METRO_VERSION
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
+import dev.zacsweers.metro.compiler.calculateInitialCapacity
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.fastForEach
@@ -432,14 +434,15 @@ internal class IrGraphGenerator(
       val initOrder =
         parentTracer.traceNested("Collect bindings") {
           // Collect roots (accessors + injectors) for refcount tracking
-          val roots = buildList {
-            node.accessors.mapTo(this) { it.contextKey }
-            node.injectors.mapTo(this) { it.contextKey }
-          }
+          val roots =
+            MutableObjectList<IrContextualTypeKey>().apply {
+              node.accessors.forEach { add(it.contextKey) }
+              node.injectors.forEach { add(it.contextKey) }
+            }
           val collectedProperties =
             BindingPropertyCollector(bindingGraph, sealResult.sortedKeys, roots).collect()
           buildList(collectedProperties.size) {
-            sealResult.sortedKeys.fastForEach { key ->
+            sealResult.sortedKeys.forEach { key ->
               if (key in sealResult.reachableKeys) {
                 collectedProperties[key]?.let(::add)
               }
@@ -449,34 +452,42 @@ internal class IrGraphGenerator(
 
       // For all deferred types, assign them first as factories
       // DelegateFactory properties can be initialized inline since they're just empty factories.
+      // LinkedHashMap here as we want stable insertion order
       @Suppress("UNCHECKED_CAST")
-      val deferredProperties: Map<IrTypeKey, IrProperty> =
-        sealResult.deferredTypes.associateWith { deferredTypeKey ->
-          val binding = bindingGraph.requireBinding(deferredTypeKey)
-          val deferredProviderType = deferredTypeKey.type.wrapInProvider(metroSymbols.metroProvider)
-          val deferredContextKey =
-            IrContextualTypeKey.create(
-              binding.typeKey,
-              isWrappedInProvider = true,
-              rawType = deferredProviderType,
-            )
-          val property =
-            getOrCreateBindingProperty(
-                deferredContextKey,
-                { binding.nameHint.decapitalizeUS() + "Provider" },
-                { deferredProviderType },
-                PropertyType.FIELD,
-              )
-              .withInit(binding.typeKey) { _, _ ->
-                irInvoke(
-                  callee = metroSymbols.metroDelegateFactoryConstructor,
-                  typeArgs = listOf(deferredTypeKey.type),
+      // No androidx collection here
+      val deferredProperties =
+        LinkedHashMap<IrTypeKey, IrProperty>(
+            calculateInitialCapacity(sealResult.deferredTypes.size)
+          )
+          .apply {
+            sealResult.deferredTypes.forEach { deferredTypeKey ->
+              val binding = bindingGraph.requireBinding(deferredTypeKey)
+              val deferredProviderType =
+                deferredTypeKey.type.wrapInProvider(metroSymbols.metroProvider)
+              val deferredContextKey =
+                IrContextualTypeKey.create(
+                  binding.typeKey,
+                  isWrappedInProvider = true,
+                  rawType = deferredProviderType,
                 )
-              }
+              val property =
+                getOrCreateBindingProperty(
+                    deferredContextKey,
+                    { binding.nameHint.decapitalizeUS() + "Provider" },
+                    { deferredProviderType },
+                    PropertyType.FIELD,
+                  )
+                  .withInit(binding.typeKey) { _, _ ->
+                    irInvoke(
+                      callee = metroSymbols.metroDelegateFactoryConstructor,
+                      typeArgs = listOf(deferredTypeKey.type),
+                    )
+                  }
 
-          bindingPropertyContext.putProviderProperty(deferredTypeKey, property)
-          property
-        }
+              bindingPropertyContext.putProviderProperty(deferredTypeKey, property)
+              put(deferredTypeKey, property)
+            }
+          }
 
       initOrder
         .asSequence()
@@ -579,7 +590,7 @@ internal class IrGraphGenerator(
       fun addDeferredSetDelegateCalls(collector: MutableList<InitStatement>) {
         // Add statements to our constructor's deferred properties _after_ we've added all provider
         // properties for everything else. This is important in case they reference each other
-        for ((deferredTypeKey, field) in deferredProperties) {
+        deferredProperties.forEach { deferredTypeKey, field ->
           val binding = bindingGraph.requireBinding(deferredTypeKey)
           collector.add { thisReceiver ->
             irInvoke(

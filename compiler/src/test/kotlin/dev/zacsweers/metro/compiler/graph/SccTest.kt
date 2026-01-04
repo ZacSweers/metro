@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
+import androidx.collection.objectListOf
 import java.util.SortedSet
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -24,7 +25,7 @@ class SccTest {
     val (components, componentOf) = graph.computeStronglyConnectedComponents()
 
     assertEquals(1, components.size)
-    assertEquals(listOf(1), components[0].vertices)
+    assertEquals(objectListOf(1), components[0].vertices)
     assertEquals(0, componentOf[1])
   }
 
@@ -39,7 +40,7 @@ class SccTest {
     val (components, componentOf) = graph.computeStronglyConnectedComponents()
 
     assertEquals(3, components.size)
-    assertEquals(setOf(0, 1, 2), components.map { it.id }.toSet())
+    assertEquals(setOf(0, 1, 2), components.asList().map { it.id }.toSet())
     assertEquals(0, componentOf[1])
     assertEquals(1, componentOf[2])
     assertEquals(2, componentOf[3])
@@ -56,7 +57,7 @@ class SccTest {
     val (components, componentOf) = graph.computeStronglyConnectedComponents()
 
     assertEquals(1, components.size)
-    assertEquals(listOf(3, 2, 1), components[0].vertices)
+    assertEquals(objectListOf(3, 2, 1), components[0].vertices)
     assertEquals(0, componentOf[1])
     assertEquals(0, componentOf[2])
     assertEquals(0, componentOf[3])
@@ -78,7 +79,7 @@ class SccTest {
     assertEquals(3, components.size)
     assertEquals(
       setOf(setOf(1, 2), setOf(3, 4, 5), setOf(6)),
-      components.map { it.vertices.toSet() }.toSet(),
+      components.asList().map { it.vertices.asList().toSet() }.toSet(),
     )
     assertEquals(0, componentOf[1])
     assertEquals(0, componentOf[2])
@@ -102,7 +103,7 @@ class SccTest {
     assertEquals(3, components.size)
     assertEquals(
       setOf(setOf(1), setOf(2), setOf(3, 4)),
-      components.map { it.vertices.toSet() }.toSet(),
+      components.asList().map { it.vertices.asList().toSet() }.toSet(),
     )
     assertEquals(0, componentOf[1])
     assertEquals(1, componentOf[2])

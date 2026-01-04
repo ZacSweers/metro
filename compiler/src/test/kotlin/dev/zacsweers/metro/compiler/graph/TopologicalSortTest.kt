@@ -16,6 +16,11 @@
 
 package dev.zacsweers.metro.compiler.graph
 
+import androidx.collection.MutableScatterSet
+import androidx.collection.ObjectList
+import androidx.collection.ScatterSet
+import androidx.collection.objectListOf
+import androidx.collection.orderedScatterSetOf
 import com.google.common.truth.Truth.assertThat
 import java.util.SortedSet
 import kotlin.test.Test
@@ -28,10 +33,10 @@ import kotlin.test.fail
 class TopologicalSortTest {
   @Test
   fun emptyEdges() {
-    val unsorted = listOf("a", "b", "c")
-    val sorted = listOf("a", "b", "c")
+    val unsorted = objectListOf("a", "b", "c")
+    val sorted = objectListOf("a", "b", "c")
     val sourceToTarget = edges()
-    val actual = unsorted.topologicalSort(sourceToTarget)
+    val actual = unsorted.asList().topologicalSort(sourceToTarget)
     assertTrue(sorted.isTopologicallySorted(sourceToTarget))
     assertEquals(sorted, actual)
   }
@@ -39,35 +44,35 @@ class TopologicalSortTest {
   @Test
   fun alreadySorted() {
     val sourceToTarget = edges("ba", "cb")
-    val unsorted = listOf("a", "b", "c")
-    val sorted = listOf("a", "b", "c")
-    val actual = unsorted.topologicalSort(sourceToTarget)
+    val unsorted = objectListOf("a", "b", "c")
+    val sorted = objectListOf("a", "b", "c")
+    val actual = unsorted.asList().topologicalSort(sourceToTarget)
     assertTrue(sorted.isTopologicallySorted(sourceToTarget))
     assertEquals(sorted, actual)
   }
 
   @Test
   fun happyPath() {
-    assertTopologicalSort(unsorted = listOf("a", "b"), sorted = listOf("b", "a"), "ab")
+    assertTopologicalSort(unsorted = objectListOf("a", "b"), sorted = objectListOf("b", "a"), "ab")
     assertTopologicalSort(
-      unsorted = listOf("b", "c", "d", "a"),
-      sorted = listOf("a", "b", "c", "d"),
+      unsorted = objectListOf("b", "c", "d", "a"),
+      sorted = objectListOf("a", "b", "c", "d"),
       "ba",
       "ca",
       "db",
       "dc",
     )
     assertTopologicalSort(
-      unsorted = listOf("d", "b", "c", "a"),
-      sorted = listOf("a", "b", "c", "d"),
+      unsorted = objectListOf("d", "b", "c", "a"),
+      sorted = objectListOf("a", "b", "c", "d"),
       "ba",
       "ca",
       "db",
       "dc",
     )
     assertTopologicalSort(
-      unsorted = listOf("a", "b", "c", "d", "e"),
-      sorted = listOf("d", "c", "a", "e", "b"),
+      unsorted = objectListOf("a", "b", "c", "d", "e"),
+      sorted = objectListOf("d", "c", "a", "e", "b"),
       "be",
       "bc",
       "ec",
@@ -130,10 +135,10 @@ class TopologicalSortTest {
 
   @Test
   fun deterministicWhenThereAreNoEdges() {
-    val unsorted = listOf("c", "a", "b")
-    val expected = listOf("a", "b", "c")
+    val unsorted = objectListOf("c", "a", "b")
+    val expected = objectListOf("a", "b", "c")
 
-    val actual = unsorted.topologicalSort(edges())
+    val actual = unsorted.asList().topologicalSort(edges())
 
     assertEquals(expected, actual)
     assertTrue(actual.isTopologicallySorted(edges()))
@@ -153,10 +158,10 @@ class TopologicalSortTest {
   fun deterministicTieBreakWhenMultipleNodesReadyTogether() {
     val sourceToTarget = edges("ab", "ac")
 
-    val unsorted = listOf("c", "a", "b")
-    val expected = listOf("b", "c", "a")
+    val unsorted = objectListOf("c", "a", "b")
+    val expected = objectListOf("b", "c", "a")
 
-    val actual = unsorted.topologicalSort(sourceToTarget)
+    val actual = unsorted.asList().topologicalSort(sourceToTarget)
 
     assertEquals(expected, actual)
     assertTrue(actual.isTopologicallySorted(sourceToTarget))
@@ -173,10 +178,10 @@ class TopologicalSortTest {
      */
     val deps = edges("rv1", "rv2", "rv3", "rv4", "rv5")
 
-    val expected = listOf("v1", "v2", "v3", "v4", "v5", "r")
+    val expected = objectListOf("v1", "v2", "v3", "v4", "v5", "r")
 
     repeat(1000) {
-      val shuffled = expected.shuffled()
+      val shuffled = expected.asList().shuffled()
       val actual = shuffled.topologicalSort(deps)
 
       assertTrue(actual.isTopologicallySorted(deps))
@@ -215,7 +220,7 @@ class TopologicalSortTest {
         )
         .sortedKeys
 
-    assertEquals(listOf("a", "b"), result)
+    assertEquals(objectListOf("a", "b"), result)
   }
 
   @Test
@@ -244,7 +249,7 @@ class TopologicalSortTest {
       )
 
     assertEquals(setOf("c", "b", "a"), resultFromA.reachableKeys)
-    assertEquals(listOf("c", "b", "a"), resultFromA.sortedKeys)
+    assertEquals(objectListOf("c", "b", "a"), resultFromA.sortedKeys)
 
     // Test 2: Start from "d" - should only reach d, e
     val resultFromD =
@@ -256,7 +261,7 @@ class TopologicalSortTest {
       )
 
     assertEquals(setOf("d", "e"), resultFromD.reachableKeys)
-    assertEquals(listOf("e", "d"), resultFromD.sortedKeys)
+    assertEquals(objectListOf("e", "d"), resultFromD.sortedKeys)
 
     // Test 3: Start from "f" - should only reach f
     val resultFromF =
@@ -268,7 +273,7 @@ class TopologicalSortTest {
       )
 
     assertEquals(setOf("f"), resultFromF.reachableKeys)
-    assertEquals(listOf("f"), resultFromF.sortedKeys)
+    assertEquals(objectListOf("f"), resultFromF.sortedKeys)
 
     // Test 4: Multiple roots - should reach union of reachable sets
     val resultFromMultiple =
@@ -280,7 +285,7 @@ class TopologicalSortTest {
       )
 
     assertEquals(setOf("a", "b", "c", "d", "e"), resultFromMultiple.reachableKeys)
-    assertEquals(listOf("c", "b", "a", "e", "d"), resultFromMultiple.sortedKeys)
+    assertEquals(objectListOf("c", "b", "a", "e", "d"), resultFromMultiple.sortedKeys)
 
     // Test 5: Empty roots - should process entire graph
     val resultNoRoots =
@@ -291,7 +296,7 @@ class TopologicalSortTest {
       )
 
     assertEquals(fullAdjacency.keys, resultNoRoots.reachableKeys)
-    assertEquals(listOf("c", "b", "a", "e", "d", "f"), resultNoRoots.sortedKeys)
+    assertEquals(objectListOf("c", "b", "a", "e", "d", "f"), resultNoRoots.sortedKeys)
   }
 
   @Test
@@ -328,7 +333,7 @@ class TopologicalSortTest {
       )
 
     assertEquals(setOf("e", "d"), resultFromD.reachableKeys)
-    assertEquals(listOf("e", "d"), resultFromD.sortedKeys)
+    assertEquals(objectListOf("e", "d"), resultFromD.sortedKeys)
   }
 
   @Test
@@ -354,8 +359,8 @@ class TopologicalSortTest {
 
     assertEquals(setOf("a", "b", "c"), result.reachableKeys)
     // b is deferred due to the cycle
-    assertEquals(setOf("b"), result.deferredTypes)
-    assertTrue(result.sortedKeys.containsAll(listOf("a", "b", "c")))
+    assertEquals(orderedScatterSetOf("b"), result.deferredTypes)
+    assertTrue(result.sortedKeys.containsAll(objectListOf("a", "b", "c")))
   }
 
   @Test
@@ -429,10 +434,10 @@ class TopologicalSortTest {
       )
 
     // Service2 should be deferred
-    assertEquals(setOf("Service2"), result.deferredTypes)
+    assertEquals(orderedScatterSetOf("Service2"), result.deferredTypes)
 
     assertEquals(
-      listOf("CommonUtil", "SharedService", "Service2", "Service1", "Service3", "Client"),
+      objectListOf("CommonUtil", "SharedService", "Service2", "Service1", "Service3", "Client"),
       result.sortedKeys,
     )
   }
@@ -463,7 +468,7 @@ class TopologicalSortTest {
     // Ready = {A,C}. We prefer deferred nodes first -> A.
     // Ready = {C} → C; this unlocks B -> B.
     // So it goes A (deferred), C (first that depends on A), B (remainer)
-    assertEquals(listOf("A", "C", "B"), result.sortedKeys)
+    assertEquals(objectListOf("A", "C", "B"), result.sortedKeys)
   }
 
   @Test
@@ -484,10 +489,10 @@ class TopologicalSortTest {
       )
 
     // Both should be present
-    assertEquals(listOf("A", "B"), result.sortedKeys)
+    assertEquals(objectListOf("A", "B"), result.sortedKeys)
 
     // A should be deferred since it has the deferrable edge
-    assertEquals(setOf("A"), result.deferredTypes)
+    assertEquals(orderedScatterSetOf("A"), result.deferredTypes)
   }
 
   @Test
@@ -507,7 +512,7 @@ class TopologicalSortTest {
           fullAdjacency = fullAdjacency,
           isDeferrable = isDeferrable,
           onCycle = { cycle ->
-            throw IllegalArgumentException("Hard cycle detected: ${cycle.sorted()}")
+            throw IllegalArgumentException("Hard cycle detected: ${cycle.asList().sorted()}")
           },
         )
       }
@@ -548,10 +553,10 @@ class TopologicalSortTest {
     // The actual result [X, W, Z, Y] makes sense:
     // - X has no dependencies when we ignore X→Y
     // - Then comes the cycle Y→Z→W, which when topologically sorted gives W, Z, Y
-    assertEquals(listOf("X", "W", "Z", "Y"), result.sortedKeys)
+    assertEquals(objectListOf("X", "W", "Z", "Y"), result.sortedKeys)
 
     // X should be deferred
-    assertEquals(setOf("X"), result.deferredTypes)
+    assertEquals(orderedScatterSetOf("X"), result.deferredTypes)
   }
 
   @Test
@@ -578,7 +583,7 @@ class TopologicalSortTest {
           fullAdjacency = fullAdjacency,
           isDeferrable = isDeferrable,
           onCycle = { cycle ->
-            throw IllegalArgumentException("Hard cycle detected: ${cycle.sorted()}")
+            throw IllegalArgumentException("Hard cycle detected: ${cycle.asList().sorted()}")
           },
         )
       }
@@ -588,15 +593,15 @@ class TopologicalSortTest {
   }
 
   private fun assertTopologicalSort(
-    unsorted: List<String>,
-    sorted: List<String>,
+    unsorted: ObjectList<String>,
+    sorted: ObjectList<String>,
     vararg edges: String,
   ) {
     val sourceToTarget = edges(*edges)
     assertFalse(unsorted.isTopologicallySorted(sourceToTarget))
     assertTrue(sorted.isTopologicallySorted(sourceToTarget))
 
-    val actual = unsorted.topologicalSort(sourceToTarget)
+    val actual = unsorted.asList().topologicalSort(sourceToTarget)
 
     assertTrue(actual.isTopologicallySorted(sourceToTarget))
     assertEquals(sorted, actual)
@@ -608,7 +613,11 @@ class TopologicalSortTest {
   }
 
   /** Each string is two characters, source and destination of an edge. */
-  private fun edges(vararg edges: String): (String) -> List<String> {
-    return { node: String -> edges.filter { it.startsWith(node) }.map { it.substring(1) } }
+  private fun edges(vararg edges: String): (String) -> ScatterSet<String> {
+    return { node: String ->
+      MutableScatterSet<String>().apply {
+        addAll(edges.filter { it.startsWith(node) }.map { it.substring(1) })
+      }
+    }
   }
 }

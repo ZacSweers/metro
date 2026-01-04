@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
+import androidx.collection.MutableObjectList
 import dev.zacsweers.metro.compiler.METRO_VERSION
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
@@ -668,7 +669,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
   ): Set<BindingContainer> {
     val result = mutableSetOf<BindingContainer>()
     val localVisited = mutableSetOf<ClassId>()
-    val queue = ArrayDeque<IrClass>()
+    val queue = MutableObjectList<IrClass>()
 
     // Map to track direct containers (before computing transitive closure)
     val directContainers = mutableMapOf<ClassId, BindingContainer?>()
@@ -677,7 +678,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
 
     // First pass: collect all direct binding containers
     while (queue.isNotEmpty()) {
-      val bindingContainerClass = queue.removeFirst()
+      val bindingContainerClass = queue.removeAt(0)
       val classId = bindingContainerClass.classIdOrFail
 
       // Skip if we've already processed this class locally

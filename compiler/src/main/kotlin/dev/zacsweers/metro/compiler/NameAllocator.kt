@@ -17,6 +17,8 @@
 
 package dev.zacsweers.metro.compiler
 
+import androidx.collection.MutableScatterMap
+import androidx.collection.MutableScatterSet
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import org.jetbrains.kotlin.name.Name
@@ -106,7 +108,11 @@ private val CROSS_PLATFORM_RESERVED_KEYWORDS =
   )
 
 private const val SAFE_CODE = '_'.code
-private val RESERVED_KEYWORDS = KEYWORDS + CROSS_PLATFORM_RESERVED_KEYWORDS
+private val RESERVED_KEYWORDS =
+  MutableScatterSet<String>().apply {
+    addAll(KEYWORDS)
+    addAll(CROSS_PLATFORM_RESERVED_KEYWORDS)
+  }
 
 /**
  * Assigns Kotlin identifier names to avoid collisions, keywords, and invalid characters. To use,
@@ -166,8 +172,8 @@ private val RESERVED_KEYWORDS = KEYWORDS + CROSS_PLATFORM_RESERVED_KEYWORDS
 // TODO change to Name?
 internal class NameAllocator
 private constructor(
-  private val allocatedNames: MutableSet<String>,
-  private val tagToName: MutableMap<Any, String>,
+  private val allocatedNames: MutableScatterSet<String>,
+  private val tagToName: MutableScatterMap<Any, String>,
   private val mode: Mode,
 ) {
   /**
@@ -201,11 +207,11 @@ private constructor(
   ) : this(
     allocatedNames =
       if (preallocateKeywords) {
-        RESERVED_KEYWORDS.toMutableSet()
+        MutableScatterSet<String>(RESERVED_KEYWORDS.size).apply { addAll(RESERVED_KEYWORDS) }
       } else {
-        mutableSetOf()
+        MutableScatterSet()
       },
-    tagToName = mutableMapOf(),
+    tagToName = MutableScatterMap(),
     mode = mode,
   )
 
@@ -250,7 +256,11 @@ private constructor(
    * @return A deep copy of this NameAllocator.
    */
   fun copy(): NameAllocator {
-    return NameAllocator(allocatedNames.toMutableSet(), tagToName.toMutableMap(), mode = mode)
+    return NameAllocator(
+      MutableScatterSet<String>().apply { addAll(allocatedNames) },
+      MutableScatterMap<Any, String>().apply { putAll(tagToName) },
+      mode = mode,
+    )
   }
 
   internal enum class Mode {

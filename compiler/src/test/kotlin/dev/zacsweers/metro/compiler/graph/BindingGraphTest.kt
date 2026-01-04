@@ -2,6 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
+import androidx.collection.ScatterMap
+import androidx.collection.ScatterSet
+import androidx.collection.emptyScatterSet
+import androidx.collection.scatterSetOf
 import com.google.common.truth.Truth.assertThat
 import kotlin.test.assertFails
 import kotlin.test.assertFailsWith
@@ -55,7 +59,7 @@ class BindingGraphTest {
       assertThat(b.dependsOn(b)).isTrue()
     }
 
-    assertThat(result.deferredTypes).containsExactly(a, b)
+    assertThat(result.deferredTypes.asSet()).containsExactly(a, b)
   }
 
   @Test
@@ -67,7 +71,7 @@ class BindingGraphTest {
 
     with(graph) { assertThat(aProvider.dependsOn(b)).isTrue() }
 
-    assertThat(result.deferredTypes).isEmpty()
+    assertThat(result.deferredTypes.asSet()).isEmpty()
   }
 
   @Test
@@ -220,7 +224,7 @@ class BindingGraphTest {
       }
 
     with(graph) { assertThat("A".typeKey.dependsOn("Provider<A>".typeKey)).isTrue() }
-    assertThat(result.deferredTypes).containsExactly("A".typeKey)
+    assertThat(result.deferredTypes.asSet()).containsExactly("A".typeKey)
   }
 
   @Test
@@ -277,7 +281,7 @@ class BindingGraphTest {
     val (graph, result) = buildGraph { "A" dependsOn "Lazy<A>" }
 
     with(graph) { assertThat("A".typeKey.dependsOn("Lazy<A>".typeKey)).isTrue() }
-    assertThat(result.deferredTypes).containsExactly("A".typeKey)
+    assertThat(result.deferredTypes.asSet()).containsExactly("A".typeKey)
   }
 
   @Test
@@ -354,9 +358,11 @@ private fun StringTypeKey.toBinding(vararg dependencies: StringTypeKey): StringB
 private fun newStringBindingGraph(
   graph: String = "AppGraph",
   computeBinding:
-    (StringContextualTypeKey, Set<StringTypeKey>, StringBindingStack) -> Set<StringBinding> =
+    (
+      StringContextualTypeKey, ScatterMap<StringTypeKey, StringBinding>, StringBindingStack,
+    ) -> ScatterSet<StringBinding> =
     { _, _, _ ->
-      emptySet()
+      emptyScatterSet()
     },
 ): StringGraph {
   return StringGraph(
@@ -386,7 +392,7 @@ private fun buildChainedGraph(
 internal class StringGraphBuilder {
   private val constructorInjectedTypes = mutableMapOf<StringTypeKey, StringBinding>()
   private val graph = newStringBindingGraph { contextKey, _, _ ->
-    setOfNotNull(constructorInjectedTypes[contextKey.typeKey])
+    scatterSetOf(constructorInjectedTypes[contextKey.typeKey]!!)
   }
 
   fun binding(key: String): String {

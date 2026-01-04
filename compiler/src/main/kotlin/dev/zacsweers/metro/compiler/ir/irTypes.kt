@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import androidx.collection.MutableObjectList
 import dev.zacsweers.metro.compiler.ir.cache.IrCache
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -232,11 +233,11 @@ internal fun IrType.hasErrorTypes(): Boolean {
 
   val visited = hashSetOf<IrType>()
 
-  val stack = ArrayDeque<IrType>()
+  val stack = MutableObjectList<IrType>()
   stack.add(this)
 
   while (stack.isNotEmpty()) {
-    val current = stack.removeLast()
+    @Suppress("Range") val current = stack.removeAt(stack.lastIndex)
 
     // fail-fast
     if (current is IrErrorType) return true

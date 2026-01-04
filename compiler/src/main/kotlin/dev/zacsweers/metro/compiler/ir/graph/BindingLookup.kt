@@ -2,6 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
+import androidx.collection.MutableScatterMap
+import androidx.collection.MutableScatterSet
+import androidx.collection.ScatterMap
+import androidx.collection.ScatterSet
+import androidx.collection.emptyScatterSet
+import androidx.collection.scatterSetOf
+import dev.zacsweers.metro.compiler.filterToScatterSet
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
@@ -55,22 +62,24 @@ internal class BindingLookup(
 ) {
 
   // Single cache for all bindings, storing lists to track duplicates naturally
-  private val bindingsCache = mutableMapOf<IrTypeKey, MutableList<IrBinding>>()
-  private val membersInjectorBindingsCache = mutableMapOf<IrTypeKey, IrBinding.MembersInjected>()
-  private val classBindingsCache = mutableMapOf<IrContextualTypeKey, Set<IrBinding>>()
+  private val bindingsCache = MutableScatterMap<IrTypeKey, MutableList<IrBinding>>()
+  private val membersInjectorBindingsCache =
+    MutableScatterMap<IrTypeKey, IrBinding.MembersInjected>()
+  private val classBindingsCache = MutableScatterMap<IrContextualTypeKey, ScatterSet<IrBinding>>()
 
   private data class ParentGraphDepKey(val owner: IrClass, val typeKey: IrTypeKey)
 
-  private val parentGraphDepCache = mutableMapOf<ParentGraphDepKey, IrBinding.GraphDependency>()
+  private val parentGraphDepCache =
+    MutableScatterMap<ParentGraphDepKey, IrBinding.GraphDependency>()
 
   // Lazy parent key bindings - only created when actually accessed
-  private val lazyParentKeys = mutableMapOf<IrTypeKey, Lazy<IrBinding>>()
+  private val lazyParentKeys = MutableScatterMap<IrTypeKey, Lazy<IrBinding>>()
 
   // Cache for created multibindings, keyed by type key (Set<T> or Map<K, V>)
-  private val multibindingsCache = mutableMapOf<IrTypeKey, IrBinding.Multibinding>()
+  private val multibindingsCache = MutableScatterMap<IrTypeKey, IrBinding.Multibinding>()
 
   // Index from bindingId to multibinding for lookup when registering contributions
-  private val multibindingsByBindingId = mutableMapOf<String, IrBinding.Multibinding>()
+  private val multibindingsByBindingId = MutableScatterMap<String, IrBinding.Multibinding>()
 
   /** Information about an explicit @Multibinds declaration */
   private data class MultibindsDeclaration(
@@ -90,8 +99,8 @@ internal class BindingLookup(
   private val optionalBindingsCache = mutableMapOf<IrTypeKey, IrBinding.CustomWrapper>()
 
   /** Returns all bindings for similarity checking. */
-  fun getAvailableBindings(): Map<IrTypeKey, IrBinding> {
-    return bindingsCache.mapValues { it.value.first() }
+  fun getAvailableBindings(): ScatterMap<IrTypeKey, out List<IrBinding>> {
+    return bindingsCache
   }
 
   /** Returns all bindings for a given type key, or null if none exist. */
@@ -103,7 +112,7 @@ internal class BindingLookup(
   /** Adds a binding to the cache. Multiple bindings for the same key are tracked as duplicates. */
   context(context: IrMetroContext)
   fun putBinding(binding: IrBinding) {
-    bindingsCache.getAndAdd(binding.typeKey, binding)
+    bindingsCache.getOrPut(binding.typeKey, ::mutableListOf).add(binding)
 
     // If this is a multibinding contributor, register it
     if (binding is IrBinding.BindingWithAnnotations && binding.annotations.isIntoMultibinding) {
@@ -280,7 +289,7 @@ internal class BindingLookup(
    * @Multibinds declarations.
    */
   context(context: IrMetroContext)
-  fun getAvailableMultibindings(): Map<IrTypeKey, IrBinding.Multibinding> {
+  fun getAvailableMultibindings(): ScatterMap<IrTypeKey, IrBinding.Multibinding> {
     // Ensure all @Multibinds declarations have their multibindings created
     for (key in multibindsDeclarations.keys) {
       getOrCreateMultibindingIfNeeded(key)
@@ -431,10 +440,10 @@ internal class BindingLookup(
    */
   internal fun lookup(
     contextKey: IrContextualTypeKey,
-    currentBindings: Set<IrTypeKey>,
+    currentBindings: ScatterMap<IrTypeKey, IrBinding>,
     stack: IrBindingStack,
     onDuplicateBindings: (IrTypeKey, List<IrBinding>) -> Unit,
-  ): Set<IrBinding> =
+  ): ScatterSet<IrBinding> =
     context(metroContext) {
       val key = contextKey.typeKey
 
@@ -449,24 +458,24 @@ internal class BindingLookup(
         // Check if this is available from parent and is scoped
         if (binding.scope != null && parentContext?.contains(key) == true) {
           val fieldAccess = parentContext.mark(key, binding.scope!!)
-          return setOf(createParentGraphDependency(key, fieldAccess!!))
+          return scatterSetOf(createParentGraphDependency(key, fieldAccess!!))
         }
-        return setOf(binding)
+        return scatterSetOf(binding)
       }
 
       // Check for lazy parent keys
       lazyParentKeys[key]?.let { lazyBinding ->
-        return setOf(lazyBinding.value)
+        return scatterSetOf(lazyBinding.value)
       }
 
       // Check for multibindings (Set<T> or Map<K, V> with contributions)
       getOrCreateMultibindingIfNeeded(key)?.let { multibinding ->
-        return setOf(multibinding)
+        return scatterSetOf(multibinding)
       }
 
       // Check for optional bindings (Optional<T>)
       getOrCreateOptionalBindingIfNeeded(key)?.let { optionalBinding ->
-        return setOf(optionalBinding)
+        return scatterSetOf(optionalBinding)
       }
 
       // Finally, fall back to class-based lookup and cache the result
@@ -474,8 +483,8 @@ internal class BindingLookup(
 
       // Check if this class binding is available from parent and is scoped
       if (parentContext != null) {
-        val remappedBindings = mutableSetOf<IrBinding>()
-        for (binding in classBindings) {
+        val remappedBindings = MutableScatterSet<IrBinding>(classBindings.size)
+        classBindings.forEach { binding ->
           val scope = binding.scope
           if (scope != null) {
             val scopeInParent =
@@ -485,7 +494,7 @@ internal class BindingLookup(
             if (scopeInParent) {
               val propertyAccess = parentContext.mark(key, scope)
               remappedBindings += createParentGraphDependency(key, propertyAccess!!)
-              continue
+              return@forEach
             }
           }
           remappedBindings += binding
@@ -517,9 +526,9 @@ internal class BindingLookup(
   context(context: IrMetroContext)
   private fun lookupClassBinding(
     contextKey: IrContextualTypeKey,
-    currentBindings: Set<IrTypeKey>,
+    currentBindings: ScatterMap<IrTypeKey, IrBinding>,
     stack: IrBindingStack,
-  ): Set<IrBinding> {
+  ): ScatterSet<IrBinding> {
     return classBindingsCache.getOrPut(contextKey) {
       val key = contextKey.typeKey
       val irClass = key.type.rawType()
@@ -530,7 +539,7 @@ internal class BindingLookup(
         val targetClass = targetType.rawType()
         val remapper = targetClass.deepRemapperFor(targetType)
         // Filter out bindings that already exist to avoid duplicates
-        return targetClass.computeMembersInjectorBindings(remapper).filterTo(mutableSetOf()) {
+        return targetClass.computeMembersInjectorBindings(remapper).filterToScatterSet {
           it.typeKey !in currentBindings
         }
       }
@@ -543,10 +552,10 @@ internal class BindingLookup(
           // annotations, so reference it here so IC triggers
           trackFunctionCall(sourceGraph, it)
         }
-        return setOf(IrBinding.ObjectClass(irClass, classAnnotations, key))
+        return scatterSetOf(IrBinding.ObjectClass(irClass, classAnnotations, key))
       }
 
-      val bindings = mutableSetOf<IrBinding>()
+      val bindings = MutableScatterSet<IrBinding>()
       val remapper by memoize { irClass.deepRemapperFor(key.type) }
 
       // Compute all member injector bindings (needed for injectedMembers field)
@@ -577,7 +586,7 @@ internal class BindingLookup(
             appendBindingStack(stack)
           }
           context.reportCompat(irClass, MetroDiagnostics.METRO_ERROR, message)
-          return@getOrPut emptySet()
+          return@getOrPut emptyScatterSet()
         }
 
         val binding =

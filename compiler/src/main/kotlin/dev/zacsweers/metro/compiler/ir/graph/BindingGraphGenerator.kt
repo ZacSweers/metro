@@ -572,16 +572,16 @@ internal class BindingGraphGenerator(
         }
       }
 
-      for (key in parentContext.availableKeys()) {
+      parentContext.availableKeys().forEach { key ->
         // Graph extensions that are scoped instances _in_ their parents may show up here, so we
         // check and continue if we see them
-        if (key == node.typeKey) continue
-        if (key == node.metroGraph?.generatedGraphExtensionData?.typeKey) continue
+        if (key == node.typeKey) return@forEach
+        if (key == node.metroGraph?.generatedGraphExtensionData?.typeKey) return@forEach
         val existingBinding = graph.findBinding(key)
         if (existingBinding != null) {
           // If we already have a binding provisioned in this scenario, ignore the parent's
           // version
-          continue
+          return@forEach
         }
 
         // If this key is a multibinding contribution (has @MultibindingElement qualifier),
@@ -678,12 +678,12 @@ internal class BindingGraphGenerator(
         val extraBindings =
           bindingLookup.lookup(
             IrContextualTypeKey.from(param),
-            graph.bindingsSnapshot().keys,
+            graph.bindingsSnapshot(),
             bindingStack,
           ) { _, _ ->
             // Duplicates will be reported later during graph seal
           }
-        for (extraBinding in extraBindings) {
+        extraBindings.forEach { extraBinding ->
           graph.addBinding(extraBinding.typeKey, extraBinding, bindingStack)
         }
       }

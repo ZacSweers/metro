@@ -429,12 +429,12 @@ internal class MultibindingExpressionGenerator(
   ): IrExpression =
     with(scope) {
       /*
-        val builder = MapFactory.<Integer, Integer>builder(2)
+        val builder = MapFactory.<Int, Int>builder(2)
         builder.put(1, FileSystemModule_Companion_ProvideMapInt1Factory.create())
         builder.put(2, provideMapInt2Provider)
         builder.build()
 
-        val builder = MapProviderFactory.<Integer, Integer>builder(2)
+        val builder = MapProviderFactory.<Int, Int>builder(2)
         builder.put(1, FileSystemModule_Companion_ProvideMapInt1Factory.create())
         builder.put(2, provideMapInt2Provider)
         builder.build()
@@ -600,8 +600,8 @@ internal class MultibindingExpressionGenerator(
             )
 
           irBlock(resultType = resultType) {
-            // MapFactory.<Integer, Integer>builder(2)
-            // MapProviderFactory.<Integer, Integer>builder(2)
+            // MapFactory.<Int, Int>builder(2)
+            // MapProviderFactory.<Int, Int>builder(2)
             val builder =
               createAndAddTemporaryVariable(
                 irInvoke(

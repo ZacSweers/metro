@@ -2,12 +2,25 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
+import androidx.collection.MutableObjectIntMap
+import androidx.collection.MutableObjectList
+import androidx.collection.MutableScatterMap
+import androidx.collection.MutableScatterSet
+import androidx.collection.ObjectList
+import androidx.collection.ScatterMap
+import androidx.collection.ScatterSet
+import androidx.collection.emptyScatterMap
+import androidx.collection.emptyScatterSet
 import dev.zacsweers.metro.compiler.allElementsAreEqual
+import dev.zacsweers.metro.compiler.firstValueOrNull
+import dev.zacsweers.metro.compiler.getValue
 import dev.zacsweers.metro.compiler.ir.graph.appendBindingStack
 import dev.zacsweers.metro.compiler.ir.graph.appendBindingStackEntries
 import dev.zacsweers.metro.compiler.ir.graph.withEntry
 import dev.zacsweers.metro.compiler.joinWithDynamicSeparatorTo
-import dev.zacsweers.metro.compiler.mapToSet
+import dev.zacsweers.metro.compiler.mapKeysToScatterSet
+import dev.zacsweers.metro.compiler.mapToScatterSet
+import dev.zacsweers.metro.compiler.plus
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
@@ -23,7 +36,7 @@ internal interface BindingGraph<
   BindingStackEntry : BaseBindingStack.BaseEntry<Type, TypeKey, ContextualTypeKey>,
   BindingStack : BaseBindingStack<*, Type, TypeKey, BindingStackEntry, BindingStack>,
 > {
-  val bindings: Map<TypeKey, Binding>
+  val bindings: ScatterMap<TypeKey, Binding>
 
   operator fun get(key: TypeKey): Binding?
 
@@ -47,7 +60,7 @@ internal open class MutableBindingGraph<
     BindingStack.(
       contextKey: ContextualTypeKey,
       callingBinding: Binding?,
-      roots: Map<ContextualTypeKey, BindingStackEntry>,
+      roots: ScatterMap<ContextualTypeKey, BindingStackEntry>,
     ) -> BindingStackEntry,
   /**
    * Creates bindings for keys not necessarily manually added to the graph (e.g.,
@@ -55,11 +68,13 @@ internal open class MutableBindingGraph<
    * returns a set.
    */
   private val computeBindings:
-    (contextKey: ContextualTypeKey, currentBindings: Set<TypeKey>, stack: BindingStack) -> Set<
-        Binding
-      > =
+    (
+      contextKey: ContextualTypeKey,
+      currentBindings: ScatterMap<TypeKey, Binding>,
+      stack: BindingStack,
+    ) -> ScatterSet<Binding> =
     { _, _, _ ->
-      emptySet()
+      emptyScatterSet()
     },
   private val onError: (String, BindingStack) -> Unit = { message, _ -> error(message) },
   private val onHardError: (String, BindingStack) -> Nothing = { message, _ -> error(message) },
@@ -70,9 +85,9 @@ internal open class MutableBindingGraph<
     },
 ) : BindingGraph<Type, TypeKey, ContextualTypeKey, Binding, BindingStackEntry, BindingStack> {
   // Populated by initial graph setup and later seal()
-  override val bindings = mutableMapOf<TypeKey, Binding>()
-  private val bindingIndices = mutableMapOf<TypeKey, Int>()
-  private val reportedMissingKeys = mutableSetOf<TypeKey>()
+  override val bindings = MutableScatterMap<TypeKey, Binding>()
+  private val bindingIndices = MutableObjectIntMap<TypeKey>()
+  private val reportedMissingKeys = MutableScatterSet<TypeKey>()
 
   var sealed = false
     private set
@@ -83,11 +98,12 @@ internal open class MutableBindingGraph<
    * This function operates in a two-step process:
    * 1. Validates the binding graph by performing a [topologicalSort]. Cycles that involve
    *    deferrable types, such as `Lazy` or `Provider`, are allowed and deferred for special
-   *    handling at code-generation-time and store any deferred types in [deferredTypes]. Any
-   *    strictly invalid cycles or missing bindings result in an error being thrown.
+   *    handling at code-generation-time and store any deferred types in
+   *    [GraphTopology.deferredTypes]. Any strictly invalid cycles or missing bindings result in an
+   *    error being thrown.
    * 2. The returned topologically sorted list is then processed to compute [bindingIndices] and
-   *    [deferredTypes]. Any dependency whose index is later than the current index is presumed a
-   *    valid cycle indicator and thus that type must be deferred.
+   *    [GraphTopology.deferredTypes]. Any dependency whose index is later than the current index is
+   *    presumed a valid cycle indicator and thus that type must be deferred.
    *
    * This operation runs in O(V+E). After calling this function, the binding graph becomes
    * immutable.
@@ -101,17 +117,17 @@ internal open class MutableBindingGraph<
    * @param keep optional set of keys to keep, even if they are unused.
    */
   fun seal(
-    roots: Map<ContextualTypeKey, BindingStackEntry> = emptyMap(),
-    keep: Map<ContextualTypeKey, BindingStackEntry> = emptyMap(),
+    roots: ScatterMap<ContextualTypeKey, BindingStackEntry> = emptyScatterMap(),
+    keep: ScatterMap<ContextualTypeKey, BindingStackEntry> = emptyScatterMap(),
     shrinkUnusedBindings: Boolean = true,
     tracer: Tracer = Tracer.NONE,
     onPopulated: () -> Unit = {},
-    onSortedCycle: (List<TypeKey>) -> Unit = {},
+    onSortedCycle: (ObjectList<TypeKey>) -> Unit = {},
     validateBindings:
       (
-        bindings: Map<TypeKey, Binding>,
+        bindings: ScatterMap<TypeKey, Binding>,
         stack: BindingStack,
-        roots: Map<ContextualTypeKey, BindingStackEntry>,
+        roots: ScatterMap<ContextualTypeKey, BindingStackEntry>,
         adjacency: Map<TypeKey, Set<TypeKey>>,
       ) -> Unit =
       { _, _, _, _ -> /* noop */
@@ -137,7 +153,7 @@ internal open class MutableBindingGraph<
       tracer.traceNested("Build adjacency list") {
         buildFullAdjacency(
           bindings = bindings,
-          dependenciesOf = { binding -> binding.dependencies.map { it.typeKey } },
+          dependenciesOf = { binding -> binding.dependencies.mapToScatterSet { it.typeKey } },
           onMissing = { source, missing ->
             val binding = bindings.getValue(source)
             val contextKey = binding.dependencies.first { it.typeKey == missing }
@@ -147,7 +163,7 @@ internal open class MutableBindingGraph<
 
               // If there's a root entry for the missing binding, add it into the stack too
               val matchingRootEntry =
-                roots.entries.firstOrNull { it.key.typeKey == binding.typeKey }?.value
+                roots.firstValueOrNull { k, _ -> k.typeKey == binding.typeKey }
               matchingRootEntry?.let { stackCopy.push(it) }
               stackCopy.withEntry(stackEntry) { reportMissingBinding(missing, stackCopy) }
             }
@@ -156,7 +172,14 @@ internal open class MutableBindingGraph<
       }
 
     // Report all missing bindings _after_ building adjacency so we can backtrace where possible
-    missingBindings.forEach { (key, stack) -> reportMissingBinding(key, stack) }
+    // Sort reports for stable outputs
+    if (missingBindings.isNotEmpty()) {
+      missingBindings
+        .asMap()
+        .entries
+        .sortedBy { it.key }
+        .forEach { (key, stack) -> reportMissingBinding(key, stack) }
+    }
 
     // Validate bindings
     validateBindings(bindings, stack, roots, fullAdjacency)
@@ -165,9 +188,13 @@ internal open class MutableBindingGraph<
       tracer.traceNested("Sort and validate") { parentTracer ->
         val allKeeps =
           if (shrinkUnusedBindings) {
-            keep.keys.mapToSet { it.typeKey }
+            keep.mapKeysToScatterSet { it.typeKey }
           } else {
-            fullAdjacency.keys + keep.keys.mapToSet { it.typeKey }
+            val keepSet = keep.mapKeysToScatterSet { it.typeKey }
+            MutableScatterSet<TypeKey>(fullAdjacency.size + keepSet.size).apply {
+              addAll(fullAdjacency.keys)
+              addAll(keepSet)
+            }
           }
         sortAndValidate(roots, allKeeps, fullAdjacency, stack, parentTracer, onSortedCycle)
       }
@@ -177,28 +204,26 @@ internal open class MutableBindingGraph<
       // must be deferred. This is how we handle cycles that are broken by deferrable
       // types like Provider/Lazy/...
       // O(1) “does A depend on B?”
-      bindingIndices.putAll(topo.sortedKeys.withIndex().associate { it.value to it.index })
+      topo.sortedKeys.forEachIndexed { i, key -> bindingIndices.put(key, i) }
     }
 
     return topo
   }
 
   private fun populateGraph(
-    roots: Map<ContextualTypeKey, BindingStackEntry>,
+    roots: ScatterMap<ContextualTypeKey, BindingStackEntry>,
     stack: BindingStack,
     tracer: Tracer,
-  ): Map<TypeKey, BindingStack> {
+  ): ScatterMap<TypeKey, BindingStack> {
     // Traverse all the bindings up front to
     // First ensure all the roots' bindings are present
     // Defer missing binding reporting until after we finish populating
-    val missingBindings = mutableMapOf<TypeKey, BindingStack>()
-    for ((contextKey, entry) in roots) {
+    val missingBindings = MutableScatterMap<TypeKey, BindingStack>()
+    roots.forEach { contextKey, entry ->
       if (contextKey.typeKey !in bindings) {
-        val bindings = computeBindings(contextKey, bindings.keys, stack)
+        val bindings = computeBindings(contextKey, bindings, stack)
         if (bindings.isNotEmpty()) {
-          for (binding in bindings) {
-            tryPut(binding, stack, binding.typeKey)
-          }
+          bindings.forEach { binding -> tryPut(binding, stack, binding.typeKey) }
         } else {
           stack.withEntry(entry) { missingBindings[contextKey.typeKey] = stack.copy() }
         }
@@ -209,11 +234,11 @@ internal open class MutableBindingGraph<
     // are computed (i.e., constructor-injected types) as they are used. We do this upfront
     // so that the graph is fully populated before we start validating it and avoid mutating
     // it while we're validating it.
-    val bindingQueue = ArrayDeque<Binding>().also { it.addAll(bindings.values) }
+    val bindingQueue = MutableObjectList<Binding>().apply { bindings.forEachValue(::add) }
 
     tracer.traceNested("Populate bindings") {
       while (bindingQueue.isNotEmpty()) {
-        val binding = bindingQueue.removeFirst()
+        val binding = bindingQueue.removeAt(0)
         if (binding.typeKey !in bindings && !binding.isTransient) {
           bindings[binding.typeKey] = binding
         }
@@ -223,11 +248,9 @@ internal open class MutableBindingGraph<
             val typeKey = depKey.typeKey
             if (typeKey !in bindings) {
               // If the binding isn't present, we'll report it later
-              val bindings = computeBindings(depKey, bindings.keys, stack)
+              val bindings = computeBindings(depKey, bindings, stack)
               if (bindings.isNotEmpty()) {
-                for (binding in bindings) {
-                  bindingQueue.addLast(binding)
-                }
+                bindings.forEach { binding -> bindingQueue.add(binding) }
               } else if (depKey.hasDefault) {
                 // Do nothing here, it has a default value and missing is ok
               } else {
@@ -243,17 +266,17 @@ internal open class MutableBindingGraph<
   }
 
   private fun sortAndValidate(
-    roots: Map<ContextualTypeKey, BindingStackEntry>,
-    keep: Set<TypeKey>,
+    roots: ScatterMap<ContextualTypeKey, BindingStackEntry>,
+    keep: ScatterSet<TypeKey>,
     fullAdjacency: SortedMap<TypeKey, SortedSet<TypeKey>>,
     stack: BindingStack,
     parentTracer: Tracer,
-    onSortedCycle: (List<TypeKey>) -> Unit,
+    onSortedCycle: (ObjectList<TypeKey>) -> Unit,
   ): GraphTopology<TypeKey> {
     val sortedRootKeys =
       TreeSet<TypeKey>().apply {
-        roots.keys.forEach { add(it.typeKey) }
-        addAll(keep)
+        roots.forEachKey { add(it.typeKey) }
+        keep.forEach { add(it) }
       }
 
     // Run topo sort. It gives back either a valid order or calls onCycle for errors
@@ -273,7 +296,7 @@ internal open class MutableBindingGraph<
           onCycle = { cycle ->
             val fullCycle =
               buildList {
-                  addAll(cycle)
+                  addAll(cycle.asList())
                   add(cycle.first())
                 }
                 // Reverse upfront so we can backward look at dependency requests
@@ -432,7 +455,7 @@ internal open class MutableBindingGraph<
 
   // O(1) after seal()
   override fun TypeKey.dependsOn(other: TypeKey): Boolean {
-    return bindingIndices.getValue(this) >= bindingIndices.getValue(other)
+    return bindingIndices[this] >= bindingIndices[other]
   }
 
   fun reportMissingBinding(

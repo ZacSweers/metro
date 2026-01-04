@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import androidx.collection.MutableObjectList
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -53,12 +54,12 @@ internal class IrBindingContainerResolver(private val bindingContainerAnnotation
   ): Set<IrClass> {
     val result = mutableSetOf<IrClass>()
     val localVisited = mutableSetOf<ClassId>()
-    val queue = ArrayDeque<IrClass>()
+    val queue = MutableObjectList<IrClass>()
 
     queue += root
 
     while (queue.isNotEmpty()) {
-      val bindingContainerClass = queue.removeFirst()
+      @Suppress("Range") val bindingContainerClass = queue.removeAt(queue.lastIndex)
       val classId = bindingContainerClass.classIdOrFail
 
       // Skip if we've already processed this class in any context

@@ -9,10 +9,10 @@ interface AppGraph {
   @Named("2") val <!METRO_ERROR!>int2<!>: Int
   @Named("3") val <!METRO_ERROR!>int3<!>: Int
   @Named("4") val <!METRO_ERROR!>int4<!>: Int
-  @Named("5") val <!METRO_ERROR!>int5<!>: Int
+  @Named("5") val int5: Int
   @Named("6") val int6: Int
   @Named("7") val int7: Int
   @Named("8") val int8: Int
   @Named("9") val int9: Int
-  @Named("10") val int10: Int
+  @Named("10") val <!METRO_ERROR!>int10<!>: Int
 }

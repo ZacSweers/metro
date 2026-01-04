@@ -2,6 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
+import androidx.collection.ScatterMap
+import androidx.collection.ScatterSet
+import androidx.collection.emptyScatterSet
+
 @Suppress("UNCHECKED_CAST")
 internal class StringGraph(
   newBindingStack: () -> StringBindingStack,
@@ -9,7 +13,7 @@ internal class StringGraph(
     StringBindingStack.(
       contextKey: StringContextualTypeKey,
       binding: StringBinding?,
-      roots: Map<StringContextualTypeKey, StringBindingStack.Entry>,
+      roots: ScatterMap<StringContextualTypeKey, StringBindingStack.Entry>,
     ) -> StringBindingStack.Entry,
   /**
    * Creates a binding for keys not necessarily manually added to the graph (e.g.,
@@ -18,32 +22,22 @@ internal class StringGraph(
   computeBinding:
     (
       contextKey: StringContextualTypeKey,
-      currentBindings: Set<StringTypeKey>,
+      currentBindings: ScatterMap<StringTypeKey, StringBinding>,
       stack: StringBindingStack,
-    ) -> Set<StringBinding> =
+    ) -> ScatterSet<StringBinding> =
     { _, _, _ ->
-      emptySet()
+      emptyScatterSet()
     },
 ) :
   MutableBindingGraph<
     String,
     StringTypeKey,
     StringContextualTypeKey,
-    BaseBinding<String, StringTypeKey, StringContextualTypeKey>,
+    StringBinding,
     StringBindingStack.Entry,
     StringBindingStack,
-  >(
-    newBindingStack,
-    newBindingStackEntry
-      as
-      StringBindingStack.(
-        StringContextualTypeKey,
-        BaseBinding<String, StringTypeKey, StringContextualTypeKey>?,
-        Map<StringContextualTypeKey, StringBindingStack.Entry>,
-      ) -> StringBindingStack.Entry,
-    computeBinding,
-  ) {
-  fun tryPut(binding: BaseBinding<String, StringTypeKey, StringContextualTypeKey>) {
+  >(newBindingStack, newBindingStackEntry, computeBinding) {
+  fun tryPut(binding: StringBinding) {
     tryPut(binding, StringBindingStack("AppGraph"))
   }
 }
