@@ -127,6 +127,7 @@ dependencies {
   compileOnly(libs.kotlin.stdlib)
   compileOnly(libs.poko.annotations)
 
+  add(embedded.name, libs.androidx.collection)
   add(embedded.name, libs.picnic)
   add(embedded.name, libs.wire.runtime)
   add(embedded.name, libs.kotlinx.serialization.json)
@@ -143,6 +144,7 @@ dependencies {
   testImplementation(project(":interop-dagger"))
   testImplementation(libs.kotlin.reflect)
   testImplementation(libs.kotlin.stdlib)
+  testImplementation(libs.androidx.collection)
   val testCompilerVersion =
     providers.gradleProperty("metro.testCompilerVersion").orElse(libs.versions.kotlin).get()
   testRuntimeOnly("org.jetbrains.kotlin:kotlin-compiler:$testCompilerVersion")

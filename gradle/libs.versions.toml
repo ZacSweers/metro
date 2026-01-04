@@ -79,6 +79,7 @@ wire = { id = "com.squareup.wire", version.ref = "wire" }
 androidx-activity = "androidx.activity:activity-compose:1.12.2"
 androidx-annotation = { module = "androidx.annotation:annotation", version.ref = "annotation" }
 androidx-appcompat = "androidx.appcompat:appcompat:1.7.1"
+androidx-collection = "androidx.collection:collection:1.5.0"
 androidx-core = "androidx.core:core-ktx:1.17.0"
 androidx-fragment = "androidx.fragment:fragment-ktx:1.8.9"
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
