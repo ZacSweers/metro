@@ -80,8 +80,7 @@ raw_compilation {
     iterations = 5
 
     # Metro/Vanilla/Metro-NOOP: Pure compiler plugin, rerun only app:component tasks (not all modules)
-    tasks = [":app:component:compileKotlin"]
-    gradle-args = ["--rerun-tasks", "-a"]
+    tasks = [":app:component:compileKotlin", "--rerun"]
 }
 
 raw_compilation_ksp {
