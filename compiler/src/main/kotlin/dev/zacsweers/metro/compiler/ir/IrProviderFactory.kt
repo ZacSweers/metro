@@ -16,10 +16,12 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isObject
+import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.platform.konan.isNative
 
 internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallable {
   /**
@@ -141,6 +143,25 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
     ): Metro {
       val rawTypeKey = contextKey.typeKey.copy(qualifier = callableMetadata.annotations.qualifier)
       val typeKey = rawTypeKey.transformIfIntoMultibinding(callableMetadata.annotations)
+
+      if (mirrorFunction.isExternalParent && context.platform.isNative()) {
+        // Validate qualifiers due to https://github.com/ZacSweers/metro/issues/1556
+        val createFunctionParams =
+          clazz.requireSimpleFunction(Symbols.StringNames.CREATE).owner.parameters().allParameters
+        for ((i, mirrorP) in
+          callableMetadata.mirrorFunction.parameters().allParameters.withIndex()) {
+          val createP = createFunctionParams[i]
+          if (createP.typeKey != mirrorP.typeKey) {
+            reportCompilerBug(
+              """
+                Mirror/create function parameter type mismatch: ${mirrorP.typeKey} != ${createP.typeKey}
+                Source: ${callableMetadata.function.kotlinFqName.asString()}
+              """
+                .trimIndent()
+            )
+          }
+        }
+      }
 
       return Metro(
         factoryClass = clazz,
