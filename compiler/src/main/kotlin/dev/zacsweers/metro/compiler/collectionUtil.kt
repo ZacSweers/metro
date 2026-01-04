@@ -73,3 +73,12 @@ internal fun <T> List<T>.filterToSet(predicate: (T) -> Boolean): Set<T> {
 internal fun <T, R> List<T>.mapToSet(transform: (T) -> R): Set<R> {
   return mapTo(mutableSetOf(), transform)
 }
+
+internal fun <T> List<T>.allElementsAreEqual(): Boolean {
+  if (size < 2) return true
+  val firstElement = get(0)
+  for (i in 1 until size) {
+    if (get(i) != firstElement) return false
+  }
+  return true
+}
