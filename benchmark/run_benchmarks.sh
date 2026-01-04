@@ -38,6 +38,8 @@ ORIGINAL_GIT_IS_BRANCH=false
 RERUN_NON_METRO=false
 # Whether to include baseline modes (vanilla, metro-noop)
 INCLUDE_BASELINES=false
+# Profile options to pass to gradle-profiler (e.g., "jfr", "async-profiler-heap")
+PROFILE_OPTIONS=()
 
 # Script-specific print functions (styles differ from run_startup_benchmarks.sh)
 print_status() {
@@ -324,11 +326,21 @@ run_scenarios() {
             profiler_cmd="$GRADLE_PROFILER_BIN"
         fi
 
+        # Build profile arguments (use ${arr[@]+"${arr[@]}"} to handle empty array with set -u)
+        local profile_args=()
+        if [ ${#PROFILE_OPTIONS[@]} -gt 0 ]; then
+            for profile_type in "${PROFILE_OPTIONS[@]}"; do
+                profile_args+=("--profile" "$profile_type")
+            done
+        fi
+
         $profiler_cmd \
             --benchmark \
+            --measure-gc \
             --scenario-file benchmark.scenarios \
             --output-dir "$scenario_output_dir" \
             --gradle-user-home ~/.gradle \
+            ${profile_args[@]+"${profile_args[@]}"} \
             "$scenario" \
             || {
                 print_error "Benchmark failed for scenario $scenario in $mode mode"
@@ -429,6 +441,12 @@ show_usage() {
     echo "  --ref2 <ref>                 Second ref to compare - git ref or Metro version"
     echo "  --rerun-non-metro            Re-run non-metro modes on ref2 (default: only run metro on ref2)"
     echo "                               When disabled (default), ref2 uses ref1's non-metro results for comparison"
+    echo ""
+    echo "Profiling Options:"
+    echo "  --profile <type>             Add a profiling option (can be specified multiple times)"
+    echo "                               Available types: jfr, async-profiler-heap, async-profiler-all,"
+    echo "                               yourkit-heap, heap-dump"
+    echo "                               Note: GC time is always measured via --measure-gc"
     echo ""
     echo "Ref Types:"
     echo "  Refs can be either git refs or Metro versions. The script automatically detects"
@@ -683,6 +701,66 @@ extract_median_for_ref() {
     fi
 }
 
+# Extract median GC time from benchmark CSV for a specific test type
+# GC time is in column 3 when --measure-gc is enabled
+extract_gc_for_ref() {
+    local ref_label="$1"
+    local mode_prefix="$2"
+    local test_type="$3"
+
+    # Determine the scenario directory name (same logic as extract_median_for_ref)
+    local scenario_name="$test_type"
+    case "$test_type" in
+        raw_compilation)
+            case "$mode_prefix" in
+                metro|vanilla|metro_noop)
+                    scenario_name="raw_compilation"
+                    ;;
+                kotlin_inject_anvil)
+                    scenario_name="raw_compilation_ksp"
+                    ;;
+                dagger_ksp|dagger_kapt)
+                    scenario_name="raw_compilation_java"
+                    ;;
+            esac
+            ;;
+    esac
+
+    local csv_file="$RESULTS_DIR/${TIMESTAMP}/${ref_label}/${mode_prefix}_${TIMESTAMP}/${scenario_name}/benchmark.csv"
+
+    if [ -f "$csv_file" ]; then
+        # Extract measured GC times (column 3, skip header and warm-up builds)
+        local times=$(awk -F, '/^measured build/ {print $3}' "$csv_file" | sort -n)
+
+        if [ -z "$times" ]; then
+            echo ""
+            return
+        fi
+
+        # Convert to array and calculate median
+        local times_array=($times)
+        local count=${#times_array[@]}
+
+        if [ $count -eq 0 ]; then
+            echo ""
+            return
+        fi
+
+        local median_index=$((count / 2))
+
+        if [ $((count % 2)) -eq 1 ]; then
+            echo "${times_array[$median_index]}"
+        else
+            local mid1_index=$((median_index - 1))
+            local mid1=${times_array[$mid1_index]}
+            local mid2=${times_array[$median_index]}
+            echo "scale=2; ($mid1 + $mid2) / 2" | bc 2>/dev/null || echo ""
+        fi
+    else
+        echo ""
+    fi
+}
+
 # Check if a mode was run for a given ref (by checking if results exist)
 mode_was_run_for_ref() {
     local ref_label="$1"
@@ -782,6 +860,7 @@ EOF
             esac
 
             local score1=$(extract_median_for_ref "$ref1_label" "$mode_prefix" "$test_type")
+            local gc1=$(extract_gc_for_ref "$ref1_label" "$mode_prefix" "$test_type")
 
             # Check if this mode was run on ref2
             local mode_ran_on_ref2=false
@@ -790,8 +869,10 @@ EOF
             fi
 
             local score2=""
+            local gc2=""
             if [ "$mode_ran_on_ref2" = true ]; then
                 score2=$(extract_median_for_ref "$ref2_label" "$mode_prefix" "$test_type")
+                gc2=$(extract_gc_for_ref "$ref2_label" "$mode_prefix" "$test_type")
             fi
 
             local display1="N/A"
@@ -804,6 +885,13 @@ EOF
                 local secs1=$(echo "scale=1; $score1 / 1000" | bc 2>/dev/null || echo "")
                 if [ -n "$secs1" ]; then
                     display1="${secs1}s"
+                    # Add GC time if available
+                    if [ -n "$gc1" ]; then
+                        local gc_secs1=$(echo "scale=2; $gc1 / 1000" | bc 2>/dev/null || echo "")
+                        if [ -n "$gc_secs1" ]; then
+                            display1="${secs1}s (gc: ${gc_secs1}s)"
+                        fi
+                    fi
                 fi
                 # Calculate vs Metro for ref1
                 if [ "$mode" = "metro" ]; then
@@ -818,6 +906,13 @@ EOF
                     local secs2=$(echo "scale=1; $score2 / 1000" | bc 2>/dev/null || echo "")
                     if [ -n "$secs2" ]; then
                         display2="${secs2}s"
+                        # Add GC time if available
+                        if [ -n "$gc2" ]; then
+                            local gc_secs2=$(echo "scale=2; $gc2 / 1000" | bc 2>/dev/null || echo "")
+                            if [ -n "$gc_secs2" ]; then
+                                display2="${secs2}s (gc: ${gc_secs2}s)"
+                            fi
+                        fi
                     fi
                     # Calculate vs Metro for ref2
                     if [ "$mode" = "metro" ]; then
@@ -937,6 +1032,7 @@ generate_html_report() {
         .metadata-group dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 1rem; font-size: 0.85rem; }
         .metadata-group dt { color: #888; }
         .metadata-group dd { margin: 0; font-family: 'SF Mono', Monaco, monospace; color: #333; word-break: break-all; }
+        .gc-time { color: #888; font-size: 0.85em; }
     </style>
 </head>
 <body>
@@ -966,6 +1062,20 @@ let selectedBaseline = 'metro';
 function formatTime(ms) {
     if (ms === null || ms === undefined) return '—';
     return (ms / 1000).toFixed(1) + 's';
+}
+
+function formatGcTime(ms) {
+    if (ms === null || ms === undefined) return '';
+    return (ms / 1000).toFixed(2) + 's';
+}
+
+function formatTimeWithGc(time, gc) {
+    if (time === null || time === undefined) return '—';
+    let result = formatTime(time);
+    if (gc !== null && gc !== undefined) {
+        result += ` <span class="gc-time">(gc: ${formatGcTime(gc)})</span>`;
+    }
+    return result;
 }
 
 // Calculate percentage difference vs baseline: (value - baseline) / baseline * 100
@@ -1078,8 +1188,8 @@ function renderTable(benchmark, idx) {
         html += `<tr class="${isBaseline ? 'baseline-row' : ''}" data-key="${result.key}">
             <td class="baseline-select" onclick="setBaseline('${result.key}')"><span class="baseline-radio ${isBaseline ? 'selected' : ''}"></span></td>
             <td class="framework" style="color: ${colors[result.key]}">${result.framework}</td>
-            ${benchmarkData.refs.ref1 ? `<td class="numeric">${result.ref1 ? formatTime(result.ref1) : '<span class="no-data">N/A</span>'}</td><td class="numeric vs-baseline ${vsBaseline1.class}">${vsBaseline1.text}</td>` : ''}
-            ${benchmarkData.refs.ref2 ? `<td class="numeric">${result.ref2 ? formatTime(result.ref2) : '<span class="no-data">(not run)</span>'}</td><td class="numeric vs-baseline ${vsBaseline2.class}">${vsBaseline2.text}</td>` : ''}
+            ${benchmarkData.refs.ref1 ? `<td class="numeric">${result.ref1 ? formatTimeWithGc(result.ref1, result.gc1) : '<span class="no-data">N/A</span>'}</td><td class="numeric vs-baseline ${vsBaseline1.class}">${vsBaseline1.text}</td>` : ''}
+            ${benchmarkData.refs.ref2 ? `<td class="numeric">${result.ref2 ? formatTimeWithGc(result.ref2, result.gc2) : '<span class="no-data">(not run)</span>'}</td><td class="numeric vs-baseline ${vsBaseline2.class}">${vsBaseline2.text}</td>` : ''}
             ${benchmarkData.refs.ref1 && benchmarkData.refs.ref2 ? `<td class="numeric diff ${diff.class}">${diff.text}</td>` : ''}</tr>`;
     });
     tbody.innerHTML = html;
@@ -1274,9 +1384,12 @@ build_benchmark_json() {
             first_mode=false
 
             local score1=$(extract_median_for_ref "$ref1_label" "$mode_prefix" "$test_type")
+            local gc1=$(extract_gc_for_ref "$ref1_label" "$mode_prefix" "$test_type")
             local score2=""
+            local gc2=""
             if [ -n "$ref2_label" ]; then
                 score2=$(extract_median_for_ref "$ref2_label" "$mode_prefix" "$test_type")
+                gc2=$(extract_gc_for_ref "$ref2_label" "$mode_prefix" "$test_type")
             fi
 
             echo '        {'
@@ -1287,10 +1400,20 @@ build_benchmark_json() {
             else
                 echo '          "ref1": null,'
             fi
-            if [ -n "$score2" ]; then
-                echo '          "ref2": '"$score2"
+            if [ -n "$gc1" ]; then
+                echo '          "gc1": '"$gc1"','
             else
-                echo '          "ref2": null'
+                echo '          "gc1": null,'
+            fi
+            if [ -n "$score2" ]; then
+                echo '          "ref2": '"$score2"','
+            else
+                echo '          "ref2": null,'
+            fi
+            if [ -n "$gc2" ]; then
+                echo '          "gc2": '"$gc2"
+            else
+                echo '          "gc2": null'
             fi
             echo -n '        }'
         done
@@ -1341,8 +1464,8 @@ EOF
         cat >> "$summary_file" << EOF
 ## $test_name
 
-| Framework | Time | vs Metro |
-|-----------|------|----------|
+| Framework | Time | GC Time | vs Metro |
+|-----------|------|---------|----------|
 EOF
 
         for mode in "${MODE_ARRAY[@]}"; do
@@ -1358,8 +1481,10 @@ EOF
             esac
 
             local score=$(extract_median_for_ref "$ref_label" "$mode_prefix" "$test_type")
+            local gc_time=$(extract_gc_for_ref "$ref_label" "$mode_prefix" "$test_type")
 
             local display="N/A"
+            local display_gc="N/A"
             local vs_metro="—"
 
             if [ -n "$score" ]; then
@@ -1375,7 +1500,14 @@ EOF
                 fi
             fi
 
-            echo "| $mode | $display | $vs_metro |" >> "$summary_file"
+            if [ -n "$gc_time" ]; then
+                local gc_secs=$(echo "scale=2; $gc_time / 1000" | bc 2>/dev/null || echo "")
+                if [ -n "$gc_secs" ]; then
+                    display_gc="${gc_secs}s"
+                fi
+            fi
+
+            echo "| $mode | $display | $display_gc | $vs_metro |" >> "$summary_file"
         done
 
         echo "" >> "$summary_file"
@@ -1628,6 +1760,10 @@ main() {
             --rerun-non-metro)
                 RERUN_NON_METRO=true
                 shift
+                ;;
+            --profile)
+                PROFILE_OPTIONS+=("$2")
+                shift 2
                 ;;
             [0-9]*)
                 # Positional count argument

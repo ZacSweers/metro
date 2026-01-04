@@ -102,6 +102,33 @@ Use the `run_benchmarks.sh` script for comprehensive performance testing:
 # HTML reports are generated with comparison charts
 ```
 
+### GC and Memory Profiling
+
+Build benchmarks automatically track GC time via `--measure-gc` (Gradle 6.1+). GC time is displayed
+inline with build times in both markdown summaries and HTML reports (e.g., `24.5s (gc: 1.2s)`).
+
+For deeper memory/allocation analysis, use the `--profile` option (can be specified multiple times):
+
+```bash
+# Add JFR profiling (low-overhead CPU, allocation, IO wait, lock profiling)
+./run_benchmarks.sh metro --profile jfr
+
+# Profile heap allocations with async-profiler
+./run_benchmarks.sh metro --profile async-profiler-heap
+
+# Combine multiple profilers
+./run_benchmarks.sh metro --profile jfr --profile async-profiler-heap
+
+# Available profile types:
+#   jfr                  - Java Flight Recorder (recommended for allocation analysis)
+#   async-profiler-heap  - Heap allocation profiling (Linux/macOS)
+#   async-profiler-all   - CPU + heap + locks combined
+#   yourkit-heap         - YourKit memory allocation profiling
+#   heap-dump            - Capture heap dump at end of each measured build
+```
+
+Profile outputs are saved alongside benchmark results in the scenario output directories.
+
 ### Benchmark Scenarios
 
 The benchmark suite uses generic scenarios that are shared across all modes. The script automatically
