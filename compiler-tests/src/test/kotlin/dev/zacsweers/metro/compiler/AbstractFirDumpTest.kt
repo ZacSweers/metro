@@ -8,12 +8,11 @@ import org.jetbrains.kotlin.test.directives.FirDiagnosticsDirectives.FIR_DUMP
 import org.jetbrains.kotlin.test.directives.TestPhaseDirectives.RUN_PIPELINE_TILL
 import org.jetbrains.kotlin.test.services.TestPhase
 
-open class AbstractFirDumpTest : AbstractDiagnosticTest(), LeakPatchingTest by LeakPatchingTest() {
+open class AbstractFirDumpTest : AbstractDiagnosticTest() {
   override fun configure(builder: TestConfigurationBuilder) {
     super.configure(builder)
 
     with(builder) {
-      registerLeakPatcher()
       defaultDirectives {
         RUN_PIPELINE_TILL.with(TestPhase.FRONTEND)
         +FIR_DUMP

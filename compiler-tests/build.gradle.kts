@@ -1,7 +1,5 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-import org.gradle.kotlin.dsl.sourceSets
-
 plugins {
   alias(libs.plugins.kotlin.jvm)
   alias(libs.plugins.buildConfig)
@@ -157,11 +155,17 @@ val enableShardTest = providers.gradleProperty("metro.enableShardTest").isPresen
 tasks.withType<Test> {
   outputs.upToDateWhen { false }
 
-  if (enableShardTest) {
-    // Increase heap for LargeGraphStressTest stress test
-    minHeapSize = "512m"
-    maxHeapSize = "2g"
-  }
+  // Inspo from https://youtrack.jetbrains.com/issue/KT-83440
+  minHeapSize = "512m"
+  maxHeapSize = "2g"
+  jvmArgs(
+    "-ea",
+    "-XX:+UseCodeCacheFlushing",
+    "-XX:ReservedCodeCacheSize=256m",
+    "-XX:MaxMetaspaceSize=512m",
+    "-XX:CICompilerCount=2",
+    "-Djna.nosys=true",
+  )
 
   dependsOn(metroRuntimeClasspath)
   dependsOn(daggerInteropClasspath)
@@ -176,7 +180,6 @@ tasks.withType<Test> {
   workingDir = rootDir
 
   if (providers.gradleProperty("metro.debugCompilerTests").isPresent) {
-
     testLogging {
       showStandardStreams = true
       showStackTraces = true
