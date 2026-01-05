@@ -1,7 +1,5 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-import org.gradle.kotlin.dsl.sourceSets
-
 plugins {
   alias(libs.plugins.kotlin.jvm)
   alias(libs.plugins.buildConfig)
@@ -157,11 +155,17 @@ val enableShardTest = providers.gradleProperty("metro.enableShardTest").isPresen
 tasks.withType<Test> {
   outputs.upToDateWhen { false }
 
-  if (enableShardTest) {
-    // Increase heap for LargeGraphStressTest stress test
-    minHeapSize = "512m"
-    maxHeapSize = "2g"
-  }
+  // Inspo from https://youtrack.jetbrains.com/issue/KT-83440
+  minHeapSize = "512m"
+  maxHeapSize = "2g"
+  jvmArgs(
+    "-ea",
+    "-XX:+UseCodeCacheFlushing",
+    "-XX:ReservedCodeCacheSize=256m",
+    "-XX:MaxMetaspaceSize=512m",
+    "-XX:CICompilerCount=2",
+    "-Djna.nosys=true",
+  )
 
   dependsOn(metroRuntimeClasspath)
   dependsOn(daggerInteropClasspath)
@@ -174,6 +178,33 @@ tasks.withType<Test> {
     .withPathSensitivity(PathSensitivity.RELATIVE)
 
   workingDir = rootDir
+
+  if (providers.gradleProperty("metro.debugCompilerTests").isPresent) {
+    testLogging {
+      showStandardStreams = true
+      showStackTraces = true
+
+      // Set options for log level LIFECYCLE
+      events("started", "passed", "failed", "skipped")
+      setExceptionFormat("short")
+
+      // Setting this to 0 (the default is 2) will display the test executor that each test is
+      // running on.
+      displayGranularity = 0
+    }
+
+    val outputDir = isolated.rootProject.projectDirectory.dir("tmp").asFile.apply { mkdirs() }
+
+    jvmArgs(
+      "-XX:+HeapDumpOnOutOfMemoryError", // Produce a heap dump when an OOM occurs
+      "-XX:+CrashOnOutOfMemoryError", // Produce a crash report when an OOM occurs
+      "-XX:+UseGCOverheadLimit",
+      "-XX:GCHeapFreeLimit=10",
+      "-XX:GCTimeLimit=20",
+      "-XX:HeapDumpPath=$outputDir",
+      "-XX:ErrorFile=$outputDir",
+    )
+  }
 
   useJUnitPlatform()
 
