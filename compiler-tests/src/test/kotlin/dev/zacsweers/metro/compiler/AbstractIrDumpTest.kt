@@ -14,7 +14,8 @@ import org.jetbrains.kotlin.test.directives.JvmEnvironmentConfigurationDirective
 import org.jetbrains.kotlin.test.runners.ir.AbstractFirLightTreeJvmIrTextTest
 import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
 
-open class AbstractIrDumpTest : AbstractFirLightTreeJvmIrTextTest() {
+open class AbstractIrDumpTest :
+  AbstractFirLightTreeJvmIrTextTest(), LeakPatchingTest by LeakPatchingTest() {
   override fun createKotlinStandardLibrariesPathProvider(): KotlinStandardLibrariesPathProvider {
     return ClasspathBasedStandardLibrariesPathProvider
   }
@@ -23,6 +24,7 @@ open class AbstractIrDumpTest : AbstractFirLightTreeJvmIrTextTest() {
     super.configure(builder)
 
     with(builder) {
+      registerLeakPatcher()
       configurePlugin()
 
       defaultDirectives {

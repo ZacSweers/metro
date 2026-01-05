@@ -13,7 +13,8 @@ import org.jetbrains.kotlin.test.runners.AbstractPhasedJvmDiagnosticLightTreeTes
 import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
 import org.jetbrains.kotlin.test.services.TestPhase
 
-open class AbstractDiagnosticTest : AbstractPhasedJvmDiagnosticLightTreeTest() {
+open class AbstractDiagnosticTest :
+  AbstractPhasedJvmDiagnosticLightTreeTest(), LeakPatchingTest by LeakPatchingTest() {
   override fun createKotlinStandardLibrariesPathProvider(): KotlinStandardLibrariesPathProvider {
     return ClasspathBasedStandardLibrariesPathProvider
   }
@@ -22,6 +23,7 @@ open class AbstractDiagnosticTest : AbstractPhasedJvmDiagnosticLightTreeTest() {
     super.configure(builder)
 
     with(builder) {
+      registerLeakPatcher()
       configurePlugin()
 
       useMetaTestConfigurators(::MetroTestConfigurator)
