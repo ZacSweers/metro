@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1767564930523,
+  "lastUpdate": 1767736560821,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -1176,6 +1176,62 @@ window.BENCHMARK_DATA = {
             "value": 18784.935999999998,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -3.88%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Chris Banes",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Chris Banes",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "eef41e6c~1",
+          "message": "[before] Update ProGuard rules for @ComptimeOnly classes (#",
+          "timestamp": "2026-01-06T16:17:07-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/eef41e6c4ac4e796d4251217b1b88f4b0f13ee1a"
+        },
+        "date": 1767736560821,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 21485.298000000003,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Chris Banes",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Chris Banes",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "eef41e6c4ac4e796d4251217b1b88f4b0f13ee1a",
+          "message": "[after] Update ProGuard rules for @ComptimeOnly classes (#",
+          "timestamp": "2026-01-06T16:17:07-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/eef41e6c4ac4e796d4251217b1b88f4b0f13ee1a"
+        },
+        "date": 1767736560822,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20369.507999999998,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -5.19%"
           }
         ]
       }
