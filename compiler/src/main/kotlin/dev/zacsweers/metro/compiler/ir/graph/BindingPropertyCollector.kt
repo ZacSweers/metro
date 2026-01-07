@@ -99,9 +99,13 @@ internal class BindingPropertyCollector(
       // Multibindings are always created adhoc and don't get properties
       if (binding is IrBinding.Multibinding) continue
 
-      // factoryRefCount is finalized - check if we need a property to cache the factory
+      // refcounts are finalized - check if we need a property to cache the factory
       if (key !in keysWithBackingProperties) {
-        if (node.factoryRefCount > 1) {
+        // If we have multiple factory refs or any type has both types of refs, use a backing field
+        // property
+        val useField =
+          node.factoryRefCount > 1 || ((node.factoryRefCount == 1) && (node.scalarRefCount >= 1))
+        if (useField) {
           keysWithBackingProperties[key] = CollectedProperty(binding, PropertyType.FIELD)
         } else if (node.scalarRefCount > 1 && !node.binding.isSimpleBinding()) {
           keysWithBackingProperties[key] = CollectedProperty(binding, PropertyType.GETTER)
