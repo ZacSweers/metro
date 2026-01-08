@@ -25,6 +25,7 @@ internal class BindingPropertyCollector(
   private val graph: IrBindingGraph,
   private val sortedKeys: List<IrTypeKey>,
   private val roots: List<IrContextualTypeKey> = emptyList(),
+  private val deferredTypes: Set<IrTypeKey> = emptySet(),
 ) {
 
   data class CollectedProperty(val binding: IrBinding, val propertyType: PropertyType)
@@ -68,7 +69,7 @@ internal class BindingPropertyCollector(
     // Roots (accessors/injectors) don't get properties themselves, but they contribute to
     // factory refcounts when they require provider instances so we mark them here.
     // This includes both direct Provider/Lazy wrapping and map types with Provider values.
-    roots.forEach { root ->
+    for (root in roots) {
       markAccess(root, isFactory = root.requiresProviderInstance)
       maybeMarkMultibindingSourcesAsFactoryAccess(
         root,
@@ -87,10 +88,10 @@ internal class BindingPropertyCollector(
       // Initialize node (may already exist from markFactoryAccess)
       val node = nodes.getOrPut(key) { Node(binding) }
 
-      // Check static property type (applies to all bindings including aliases)
-      val staticPropertyType = staticPropertyType(key, binding)
-      if (staticPropertyType != null) {
-        keysWithBackingProperties[key] = CollectedProperty(binding, staticPropertyType)
+      // Check known property type (applies to all bindings including aliases)
+      val knownPropertyType = knownPropertyType(binding)
+      if (knownPropertyType != null) {
+        keysWithBackingProperties[key] = CollectedProperty(binding, knownPropertyType)
       }
 
       // Skip alias bindings for refcount and dependency processing
@@ -137,7 +138,12 @@ internal class BindingPropertyCollector(
    * Returns the property type for bindings that statically require properties, or null if the
    * binding's property requirement depends on refcount.
    */
-  private fun staticPropertyType(key: IrTypeKey, binding: IrBinding): PropertyType? {
+  private fun knownPropertyType(binding: IrBinding): PropertyType? {
+    val key = binding.typeKey
+
+    // Deferred types always end up in DelegateFactory fields
+    if (key in deferredTypes) return PropertyType.FIELD
+
     // Check reserved properties first
     graph.findAnyReservedProperty(key)?.let { reserved ->
       return when {
@@ -161,13 +167,16 @@ internal class BindingPropertyCollector(
     }
   }
 
+  private fun markAccess(contextualTypeKey: IrContextualTypeKey, isFactory: Boolean) {
+    val binding = graph.requireBinding(contextualTypeKey)
+    markAccess(binding, isFactory)
+  }
+
   /**
    * Marks a dependency access, resolving through alias chains to mark the final non-alias target.
    * Increments the target's factoryRefCount if isFactory is true, or scalarRefCount if false.
    */
-  private fun markAccess(contextualTypeKey: IrContextualTypeKey, isFactory: Boolean) {
-    val binding = graph.requireBinding(contextualTypeKey)
-
+  private fun markAccess(binding: IrBinding, isFactory: Boolean) {
     // For aliases, resolve to the final target and mark that instead.
     val targetKey =
       if (binding is IrBinding.Alias && binding.typeKey != binding.aliasedType) {

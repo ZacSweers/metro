@@ -435,7 +435,13 @@ internal class IrGraphGenerator(
             node.injectors.mapTo(this) { it.contextKey }
           }
           val collectedProperties =
-            BindingPropertyCollector(bindingGraph, sealResult.sortedKeys, roots).collect()
+            BindingPropertyCollector(
+                graph = bindingGraph,
+                sortedKeys = sealResult.sortedKeys,
+                roots = roots,
+                deferredTypes = sealResult.deferredTypes,
+              )
+              .collect()
           buildList(collectedProperties.size) {
             sealResult.sortedKeys.forEach { key ->
               if (key in sealResult.reachableKeys) {
