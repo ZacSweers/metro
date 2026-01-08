@@ -366,6 +366,18 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("ElementsIntoSetWorkInScalars.kt")
+    public void testElementsIntoSetWorkInScalars() {
+      runTest("compiler-tests/src/test/data/dump/ir/multibindings/ElementsIntoSetWorkInScalars.kt");
+    }
+
+    @Test
+    @TestMetadata("ElementsIntoSetWorkInScalarsMixed.kt")
+    public void testElementsIntoSetWorkInScalarsMixed() {
+      runTest("compiler-tests/src/test/data/dump/ir/multibindings/ElementsIntoSetWorkInScalarsMixed.kt");
+    }
+
+    @Test
     @TestMetadata("MapProvidersParticipateInProviderRefcounting.kt")
     public void testMapProvidersParticipateInProviderRefcounting() {
       runTest("compiler-tests/src/test/data/dump/ir/multibindings/MapProvidersParticipateInProviderRefcounting.kt");
