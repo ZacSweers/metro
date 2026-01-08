@@ -182,6 +182,34 @@ internal fun IrContextualTypeKey.stripLazy(): IrContextualTypeKey {
 }
 
 context(context: IrMetroContext)
+internal fun IrContextualTypeKey.stripProvider(): IrContextualTypeKey {
+  return if (wrappedType !is WrappedType.Provider) {
+    this
+  } else {
+    IrContextualTypeKey(
+      typeKey,
+      wrappedType.innerType,
+      hasDefault,
+      rawType?.requireSimpleType()?.arguments?.single()?.typeOrFail,
+    )
+  }
+}
+
+/**
+ * Strips outer Provider/Lazy wrapping while preserving inner structure like map value types. This
+ * is used for property lookup where the outer wrapping determines access type (scalar vs provider)
+ * but the inner structure (e.g., Map<K, V> vs Map<K, Provider<V>>) determines the binding variant.
+ */
+context(context: IrMetroContext)
+internal fun IrContextualTypeKey.stripOuterProviderOrLazy(): IrContextualTypeKey {
+  return when (wrappedType) {
+    is WrappedType.Provider -> stripProvider()
+    is WrappedType.Lazy -> stripLazy()
+    else -> this
+  }
+}
+
+context(context: IrMetroContext)
 internal fun IrContextualTypeKey.wrapInProvider(
   providerType: IrClass = context.metroSymbols.metroProvider.owner
 ): IrContextualTypeKey {
