@@ -13,7 +13,6 @@ Changelog
 ### Fixes
 
 - [IR] Always use a provider field if multiple provider and scalar refs are found. Previously we would possibly use just a scalar getter field wrapped in `InstanceFactory` for provider refs.
-- [IR] Use deterministic (but opaque) order for multibinding elements generation.
 
 ### Changes
 

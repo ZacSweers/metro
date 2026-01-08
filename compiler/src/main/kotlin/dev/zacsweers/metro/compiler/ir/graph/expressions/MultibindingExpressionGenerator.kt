@@ -132,8 +132,6 @@ internal class MultibindingExpressionGenerator(
     val (collectionProviders, individualProviders) =
       binding.sourceBindings
         .map { bindingGraph.requireBinding(it) }
-        // Deterministic sort (but opaque to users) for build reproducibility
-        .sortedBy { it.typeKey.multibindingBindingElementId }
         .partition { it.typeKey.multibindingKeyData?.isElementsIntoSet ?: false }
 
     val actualAccessType: AccessType
@@ -610,12 +608,12 @@ internal class MultibindingExpressionGenerator(
         )
       }
 
-      val sourceBindings = binding.sourceBindings
-        .map { sourceKey -> bindingGraph.requireBinding(sourceKey) }
-        // Deterministic sort (but opaque to users) for build reproducibility
-        .sortedBy { it.typeKey.multibindingBindingElementId }
+      val sourceBindings =
+        binding.sourceBindings
+          .map { sourceKey -> bindingGraph.requireBinding(sourceKey) }
 
-      val instance = if (accessType == AccessType.INSTANCE) {
+      val instance =
+        if (accessType == AccessType.INSTANCE) {
           // Multiple elements but only needs a Map<Key, Value> type
           // Even if the value type is Provider<Value>, we'll denote it with `valueAccessType`
           return generateMapBuilderExpression(
