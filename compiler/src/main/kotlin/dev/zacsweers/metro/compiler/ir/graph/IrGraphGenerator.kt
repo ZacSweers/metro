@@ -78,6 +78,7 @@ import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.copyTo
+import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.primaryConstructor
@@ -224,6 +225,8 @@ internal class IrGraphGenerator(
         .apply {
           parent = graphClass
           graphPropertyData = GraphPropertyData(contextualTypeKey, contextualTypeKey.toIrType())
+
+          contextualTypeKey.typeKey.qualifier?.ir?.let { annotations += it.deepCopyWithSymbols() }
 
           // Add getter with the provided body generator
           addGetter {
