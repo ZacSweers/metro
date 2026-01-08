@@ -8,9 +8,12 @@ Changelog
 
 ### Enhancements
 
+- [IR] Support generation of scalar multibinding sets that use `@ElementsIntoSet` source bindings. Previously these would always use a `SetFactory` under the hood.
+
 ### Fixes
 
 - [IR] Always use a provider field if multiple provider and scalar refs are found. Previously we would possibly use just a scalar getter field wrapped in `InstanceFactory` for provider refs.
+- [IR] Use deterministic (but opaque) order for multibinding elements generation.
 
 ### Changes
 

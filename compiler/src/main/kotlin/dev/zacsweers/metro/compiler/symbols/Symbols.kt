@@ -14,6 +14,7 @@ import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.declarations.IrEnumEntry
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrPackageFragment
+import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.createEmptyExternalPackageFragment
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
@@ -499,6 +500,20 @@ internal class Symbols(
     pluginContext.irBuiltIns.mutableSetClass.owner.declarations
       .filterIsInstance<IrSimpleFunction>()
       .single { it.name.asString() == "add" }
+  }
+
+  val mutableSetAddAll by lazy {
+    pluginContext.irBuiltIns.mutableSetClass.owner.declarations
+      .filterIsInstance<IrSimpleFunction>()
+      .single { it.name.asString() == "addAll" }
+  }
+
+  val collectionSize by lazy {
+    pluginContext.irBuiltIns.collectionClass.owner.declarations
+      .filterIsInstance<IrProperty>()
+      .single { it.name.asString() == "size" }
+      .getter!!
+      .symbol
   }
 
   val buildMapWithCapacity by lazy {
