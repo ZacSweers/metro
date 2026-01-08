@@ -160,6 +160,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("MixedUseFactoryAcrossMultipleMultis.kt")
+    public void testMixedUseFactoryAcrossMultipleMultis() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/MixedUseFactoryAcrossMultipleMultis.kt");
+    }
+
+    @Test
     @TestMetadata("MixedUseFactoryAndScalarRefsShouldUseOneProviderField.kt")
     public void testMixedUseFactoryAndScalarRefsShouldUseOneProviderField() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/MixedUseFactoryAndScalarRefsShouldUseOneProviderField.kt");
