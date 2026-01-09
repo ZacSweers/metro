@@ -69,8 +69,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
 
   /**
    * Returns true if this binding should be scoped (cached) in the graph. For most bindings, this is
-   * true if [scope] != null. For [GraphExtension] bindings, this is true if
-   * [GraphExtension.extensionScopes] is not empty.
+   * true if [scope] != null.
    */
   fun isScoped(): Boolean = scope != null
 
@@ -738,12 +737,6 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val scope: IrAnnotation? = null
 
     override val nameHint: String = typeKey.type.rawType().name.asString()
-
-    /**
-     * Returns true if this graph extension should be scoped (cached) in the parent graph. A graph
-     * extension is scoped if it has any extension scopes defined.
-     */
-    override fun isScoped(): Boolean = extensionScopes.isNotEmpty()
 
     override fun renderDescriptionDiagnostic(short: Boolean, underlineTypeKey: Boolean) =
       buildString {

@@ -108,8 +108,12 @@ internal class BindingPropertyCollector(
       for (key in keys) {
         val binding = graph.findBinding(key) ?: continue
 
-        // Skip alias bindings for refcount and dependency processing
-        if (binding is IrBinding.Alias) {
+        // Skip alias/extension bindings for refcount and dependency processing
+        val shouldSkip =
+          binding is IrBinding.Alias ||
+            binding is IrBinding.GraphExtension ||
+            binding is IrBinding.GraphExtensionFactory
+        if (shouldSkip) {
           continue
         }
 
@@ -237,8 +241,8 @@ internal class BindingPropertyCollector(
     if (binding.isScoped()) return PropertyKind.FIELD
 
     return when (binding) {
-      // Graph dependencies always need fields
-      is IrBinding.GraphDependency -> PropertyKind.FIELD
+      // Graph dependencies always need fields, unless it's one inherited from a parent
+      is IrBinding.GraphDependency if (binding.propertyAccess == null) -> PropertyKind.FIELD
       // Assisted types always need to be a single field to ensure use of the same provider
       is IrBinding.Assisted -> PropertyKind.FIELD
       // Assisted inject factories use factory path
