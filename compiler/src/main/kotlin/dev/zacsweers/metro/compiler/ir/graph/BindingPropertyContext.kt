@@ -2,10 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
+import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
-import dev.zacsweers.metro.compiler.ir.stripIfLazy
+import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 
 /**
@@ -43,8 +45,15 @@ internal class BindingPropertyContext(private val bindingGraph: IrBindingGraph) 
     }
 
     // For non-provider requests, try provider key (a provider can satisfy an instance request)
-    if (!key.isWrappedInProvider || key.isWrappedInLazy) {
-      val providerKey = key.stripIfLazy().wrapInProvider()
+    // - if it's a scalar (non-provider/lazy type)
+    // - if it's a provider but _not_ a metro provider
+    val tryReWrapping =
+      !key.isWrappedInProvider ||
+        key.isWrappedInLazy ||
+        (key.wrappedType is WrappedType.Provider &&
+          key.wrappedType.providerType != Symbols.ClassIds.metroProvider)
+    if (tryReWrapping) {
+      val providerKey = key.stripOuterProviderOrLazy().wrapInProvider()
       properties[providerKey]?.let {
         return BindingProperty(it, providerKey)
       }
