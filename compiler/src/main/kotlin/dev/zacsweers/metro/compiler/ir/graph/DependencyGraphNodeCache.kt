@@ -624,7 +624,7 @@ internal class DependencyGraphNodeCache(
               val contextKey = IrContextualTypeKey.from(declaration.regularParameters[0])
               val memberInjectorTypeKey =
                 contextKey.typeKey.copy(contextKey.typeKey.type.wrapInMembersInjector())
-              val finalContextKey = contextKey.withTypeKey(memberInjectorTypeKey)
+              val finalContextKey = contextKey.withIrTypeKey(memberInjectorTypeKey)
 
               // Check if the target is constructor-injected. We need to do this in IR too because
               // FIR will miss inherited injectors. https://github.com/ZacSweers/metro/issues/1606

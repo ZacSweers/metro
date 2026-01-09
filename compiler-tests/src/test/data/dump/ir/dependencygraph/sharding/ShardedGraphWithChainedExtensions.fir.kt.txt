@@ -548,7 +548,7 @@ interface AppGraph : MetroContributionToAppScope {
 
       override val grandchildFactory: Factory
         override get(): Factory {
-          return <this>.#childGraphImplProvider.invoke()
+          return <this>.#thisGraphInstance
         }
 
     }
@@ -582,7 +582,7 @@ interface AppGraph : MetroContributionToAppScope {
 
     override val childFactory: Factory
       override get(): Factory {
-        return <this>.#appGraphProvider.invoke()
+        return <this>.#thisGraphInstance
       }
 
   }

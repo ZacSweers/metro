@@ -281,7 +281,7 @@ interface AppGraph {
       super/*Any*/()
       /* <init>() */
 
-      Companion.setDelegate<CommonAppHeadersInterceptor>(delegateFactory = <this>.#commonAppHeadersInterceptorProvider, delegate = Companion.create(additionalHeaders = <this>.<get-setOfPair_String__String_>(), lazyDelegate = <this>.#commonAppHeadersInterceptorProvider))
+      Companion.setDelegate<CommonAppHeadersInterceptor>(delegateFactory = <this>.#commonAppHeadersInterceptorProvider, delegate = Companion.create(additionalHeaders = <this>.<get-setOfPair_String__String_Provider2>(), lazyDelegate = <this>.#commonAppHeadersInterceptorProvider))
     }
 
     override val interceptor: CommonAppHeadersInterceptor
@@ -294,21 +294,22 @@ interface AppGraph {
         return <this>.#internalHeaderProvider.invoke()
       }
 
-    private val setOfPair_String__String_: Provider<Set<Pair<String, String>>>
+    @Named(name = "other")
+    private val setOfPair_String__String_Provider: Provider<Set<Pair<String, String>>>
       private get(): Provider<Set<Pair<String, String>>> {
         return { // BLOCK
-          val tmp_0: Builder<Pair<String, String>> = Companion.builder<Pair<String, String>>(individualProviderSize = 0, collectionProviderSize = 1)
-          tmp_0.addCollectionProvider(collectionProvider = Companion.create(instance = <this>.#thisGraphInstance, otherHeaders = <this>.<get-setOfPair_String__String_2>()))
+          val tmp_0: Builder<Pair<String, String>> = Companion.builder<Pair<String, String>>(individualProviderSize = 1, collectionProviderSize = 1)
+          tmp_0.addProvider(individualProvider = Companion.create(instance = <this>.#thisGraphInstance, header = <this>.#internalHeaderProvider))
+          tmp_0.addCollectionProvider(collectionProvider = Companion.create(instance = <this>.#thisGraphInstance))
           tmp_0.build()
         }
       }
 
-    private val setOfPair_String__String_2: Provider<Set<Pair<String, String>>>
+    private val setOfPair_String__String_Provider2: Provider<Set<Pair<String, String>>>
       private get(): Provider<Set<Pair<String, String>>> {
         return { // BLOCK
-          val tmp_1: Builder<Pair<String, String>> = Companion.builder<Pair<String, String>>(individualProviderSize = 1, collectionProviderSize = 1)
-          tmp_1.addProvider(individualProvider = Companion.create(instance = <this>.#thisGraphInstance, header = <this>.#internalHeaderProvider))
-          tmp_1.addCollectionProvider(collectionProvider = Companion.create(instance = <this>.#thisGraphInstance))
+          val tmp_1: Builder<Pair<String, String>> = Companion.builder<Pair<String, String>>(individualProviderSize = 0, collectionProviderSize = 1)
+          tmp_1.addCollectionProvider(collectionProvider = Companion.create(instance = <this>.#thisGraphInstance, otherHeaders = <this>.<get-setOfPair_String__String_Provider>()))
           tmp_1.build()
         }
       }

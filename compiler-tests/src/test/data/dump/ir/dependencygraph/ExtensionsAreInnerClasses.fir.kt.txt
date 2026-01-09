@@ -30,7 +30,7 @@ interface AppGraph : Factory {
 
       override val id: String
         override get(): String {
-          return <this>.#idInstanceProvider.invoke()
+          return <this>.#idInstance
         }
 
     }

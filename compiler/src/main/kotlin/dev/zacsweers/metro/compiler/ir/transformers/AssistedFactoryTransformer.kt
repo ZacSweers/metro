@@ -350,7 +350,7 @@ internal class AssistedFactoryTransformer(
       assistedParameters.map { parameter ->
         val substitutedTypeKey = parameter.typeKey.remapTypes(remapper)
         parameter
-          .copy(contextualTypeKey = parameter.contextualTypeKey.withTypeKey(substitutedTypeKey))
+          .copy(contextualTypeKey = parameter.contextualTypeKey.withIrTypeKey(substitutedTypeKey))
           .assistedParameterKey
       }
 

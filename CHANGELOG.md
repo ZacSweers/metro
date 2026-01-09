@@ -9,10 +9,12 @@ Changelog
 ### Enhancements
 
 - [IR] Support generation of scalar multibinding sets that use `@ElementsIntoSet` source bindings. Previously these would always use a `SetFactory` under the hood.
+- [IR] Refactor multibinding getter logic to align with all other binding field/getter logic, allowing more precise generation of multibindings based on different contextual needs (scalar, `Provider`, etc representations).
 
 ### Fixes
 
 - [IR] Always use a provider field if multiple provider and scalar refs are found. Previously we would possibly use just a scalar getter field wrapped in `InstanceFactory` for provider refs.
+- [IR / Dagger Interop] Ensure `@BindsOptionalOf` bindings that are satisfied by scoped bindings use the scoped instance.
 
 ### Changes
 

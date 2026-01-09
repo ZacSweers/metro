@@ -27,7 +27,7 @@ import org.jetbrains.kotlin.name.StandardClassIds
 internal class IrContextualTypeKey(
   override val typeKey: IrTypeKey,
   override val wrappedType: WrappedType<IrType>,
-  override val hasDefault: Boolean = false,
+  @Poko.Skip override val hasDefault: Boolean = false,
   @Poko.Skip override val rawType: IrType? = null,
 ) : BaseContextualTypeKey<IrType, IrTypeKey, IrContextualTypeKey> {
   override fun toString(): String = render(short = false)
@@ -174,7 +174,7 @@ internal class IrContextualTypeKey(
 }
 
 context(context: IrMetroContext)
-internal fun IrContextualTypeKey.stripLazy(): IrContextualTypeKey {
+internal fun IrContextualTypeKey.stripIfLazy(): IrContextualTypeKey {
   return if (wrappedType !is WrappedType.Lazy) {
     this
   } else {
@@ -210,7 +210,7 @@ context(context: IrMetroContext)
 internal fun IrContextualTypeKey.stripOuterProviderOrLazy(): IrContextualTypeKey {
   return when (wrappedType) {
     is WrappedType.Provider -> stripProvider()
-    is WrappedType.Lazy -> stripLazy()
+    is WrappedType.Lazy -> stripIfLazy()
     else -> this
   }
 }

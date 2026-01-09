@@ -666,12 +666,12 @@ interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope {
 
     override val feature1Factory: Factory
       override get(): Factory {
-        return <this>.#appGraphProvider.invoke()
+        return <this>.#thisGraphInstance
       }
 
     override val feature2Factory: Factory
       override get(): Factory {
-        return <this>.#appGraphProvider.invoke()
+        return <this>.#thisGraphInstance
       }
 
   }

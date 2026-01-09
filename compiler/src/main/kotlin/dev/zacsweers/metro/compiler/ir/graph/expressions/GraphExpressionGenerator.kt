@@ -36,10 +36,8 @@ import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrFunction
-import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
-import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.util.allParameters
@@ -64,10 +62,6 @@ private constructor(
   private val assistedFactoryTransformer: AssistedFactoryTransformer,
   private val graphExtensionGenerator: IrGraphExtensionGenerator,
   override val parentTracer: Tracer,
-  getterPropertyFor:
-    (
-      IrBinding, IrContextualTypeKey, IrBuilderWithScope.(GraphExpressionGenerator) -> IrBody,
-    ) -> IrProperty,
 ) : BindingExpressionGenerator<IrBinding>(context) {
 
   class Factory(
@@ -80,10 +74,6 @@ private constructor(
     private val assistedFactoryTransformer: AssistedFactoryTransformer,
     private val graphExtensionGenerator: IrGraphExtensionGenerator,
     private val parentTracer: Tracer,
-    private val getterPropertyFor:
-      (
-        IrBinding, IrContextualTypeKey, IrBuilderWithScope.(GraphExpressionGenerator) -> IrBody,
-      ) -> IrProperty,
   ) {
     fun create(thisReceiver: IrValueParameter): GraphExpressionGenerator {
       return GraphExpressionGenerator(
@@ -97,23 +87,12 @@ private constructor(
         assistedFactoryTransformer = assistedFactoryTransformer,
         graphExtensionGenerator = graphExtensionGenerator,
         parentTracer = parentTracer,
-        getterPropertyFor = getterPropertyFor,
       )
     }
   }
 
   private val wrappedTypeGenerators = listOf(IrOptionalExpressionGenerator).associateBy { it.key }
-  private val multibindingExpressionGenerator by memoize {
-    MultibindingExpressionGenerator(this) { binding, contextKey, generateCode ->
-      getterPropertyFor(binding, contextKey) { parentGenerator ->
-        generateCode(parentGenerator.multibindingGetter)
-      }
-    }
-  }
-
-  // Here to defeat type checking
-  private val multibindingGetter: MultibindingExpressionGenerator
-    get() = multibindingExpressionGenerator
+  private val multibindingExpressionGenerator by memoize { MultibindingExpressionGenerator(this) }
 
   context(scope: IrBuilderWithScope)
   override fun generateBindingCode(
@@ -142,17 +121,11 @@ private constructor(
       // provider for it.
       // This is important for cases like DelegateFactory and breaking cycles.
       if (fieldInitKey == null || fieldInitKey != binding.typeKey) {
-        if (bindingPropertyContext.hasKey(binding.typeKey)) {
-          bindingPropertyContext.providerProperty(binding.typeKey)?.let {
-            return irGetProperty(irGet(thisReceiver), it)
-              .toTargetType(actual = AccessType.PROVIDER, contextualTypeKey = contextualTypeKey)
-          }
-          bindingPropertyContext.instanceProperty(binding.typeKey)?.let {
-            return irGetProperty(irGet(thisReceiver), it)
-              .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
-          }
-          // Should never get here
-          reportCompilerBug("Unable to find instance or provider field for ${binding.typeKey}")
+        bindingPropertyContext.get(contextualTypeKey)?.let { (property, storedKey) ->
+          val actual =
+            if (storedKey.isWrappedInProvider) AccessType.PROVIDER else AccessType.INSTANCE
+          return irGetProperty(irGet(thisReceiver), property)
+            .toTargetType(actual = actual, contextualTypeKey = contextualTypeKey)
         }
       }
 
@@ -260,12 +233,13 @@ private constructor(
         }
 
         is IrBinding.Alias -> {
+          // TODO cache the aliases (or retrieve from binding property collector?)
           // For binds functions, just use the backing type
           val aliasedBinding = binding.aliasedBinding(bindingGraph)
           check(aliasedBinding != binding) { "Aliased binding aliases itself" }
           generateBindingCode(
             aliasedBinding,
-            contextualTypeKey = contextualTypeKey.withTypeKey(aliasedBinding.typeKey),
+            contextualTypeKey = contextualTypeKey.withIrTypeKey(aliasedBinding.typeKey),
             accessType = accessType,
             fieldInitKey = fieldInitKey,
           )
@@ -521,9 +495,9 @@ private constructor(
               )
             } else if (binding.getter != null) {
               val graphInstanceProperty =
-                bindingPropertyContext.instanceProperty(ownerKey)
+                bindingPropertyContext.get(IrContextualTypeKey(ownerKey))?.property
                   ?: reportCompilerBug(
-                    "No matching included type instance found for type $ownerKey while processing ${node.typeKey}. Available instance fields ${bindingPropertyContext.availableInstanceKeys}"
+                    "No matching included type instance found for type $ownerKey while processing ${node.typeKey}"
                   )
 
               val getterContextKey = IrContextualTypeKey.from(binding.getter)
@@ -651,16 +625,19 @@ private constructor(
         // TODO consolidate this logic with generateBindingCode
         if (accessType == AccessType.INSTANCE) {
           // IFF the parameter can take a direct instance, try our instance fields
-          bindingPropertyContext.instanceProperty(typeKey)?.let { instanceField ->
-            return@mapIndexed irGetProperty(irGet(thisReceiver), instanceField)
-              .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
+          bindingPropertyContext.get(contextualTypeKey)?.let { (property, storedKey) ->
+            // Only return early if we got an actual instance property, not a provider fallback
+            if (!storedKey.isWrappedInProvider) {
+              return@mapIndexed irGetProperty(irGet(thisReceiver), property)
+                .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
+            }
           }
         }
 
         val providerInstance =
-          bindingPropertyContext.providerProperty(typeKey)?.let { field ->
+          bindingPropertyContext.get(contextualTypeKey)?.let { (property, _) ->
             // If it's in provider fields, invoke that field
-            irGetProperty(irGet(thisReceiver), field)
+            irGetProperty(irGet(thisReceiver), property)
           }
             ?: run {
               // Generate binding code for each param

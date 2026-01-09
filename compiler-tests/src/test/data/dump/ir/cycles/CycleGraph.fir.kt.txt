@@ -409,7 +409,7 @@ interface CycleGraph {
     }
 
     override fun childCycleGraph(): Factory {
-      return FactoryImpl(parentInstance = <this>.#cycleGraphProvider.invoke())
+      return FactoryImpl(parentInstance = <this>.#thisGraphInstance)
     }
 
     override val objWithCycle: Any

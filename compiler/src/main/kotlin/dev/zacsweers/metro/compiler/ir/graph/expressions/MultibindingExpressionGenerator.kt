@@ -10,8 +10,6 @@ import dev.zacsweers.metro.compiler.ir.createAndAddTemporaryVariable
 import dev.zacsweers.metro.compiler.ir.extensionReceiverParameterCompat
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
-import dev.zacsweers.metro.compiler.ir.irExprBodySafe
-import dev.zacsweers.metro.compiler.ir.irGetProperty
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.irLambda
 import dev.zacsweers.metro.compiler.ir.irTemporaryVariable
@@ -20,7 +18,7 @@ import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.ir.shouldUnwrapMapKeyValues
-import dev.zacsweers.metro.compiler.ir.stripLazy
+import dev.zacsweers.metro.compiler.ir.stripIfLazy
 import dev.zacsweers.metro.compiler.ir.toIrType
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
@@ -35,10 +33,8 @@ import org.jetbrains.kotlin.ir.builders.irCallOp
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irInt
 import org.jetbrains.kotlin.ir.builders.parent
-import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.IrVariable
-import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
@@ -50,15 +46,8 @@ import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.util.OperatorNameConventions
 
-private typealias MultibindingExpression =
-  IrBuilderWithScope.(MultibindingExpressionGenerator) -> IrExpression
-
 internal class MultibindingExpressionGenerator(
-  private val parentGenerator: BindingExpressionGenerator<IrBinding>,
-  private val getterPropertyFor:
-    (
-      IrBinding, IrContextualTypeKey, IrBuilderWithScope.(MultibindingExpressionGenerator) -> IrBody,
-    ) -> IrProperty,
+  private val parentGenerator: BindingExpressionGenerator<IrBinding>
 ) : BindingExpressionGenerator<IrBinding.Multibinding>(parentGenerator) {
   override val thisReceiver: IrValueParameter
     get() = parentGenerator.thisReceiver
@@ -79,7 +68,7 @@ internal class MultibindingExpressionGenerator(
     // need to change this to a Metro Provider for our generation
     val transformedContextKey =
       contextualTypeKey.letIf(contextualTypeKey.requiresProviderInstance) {
-        contextualTypeKey.stripLazy().wrapInProvider()
+        contextualTypeKey.stripIfLazy().wrapInProvider()
       }
     return if (binding.isSet) {
       generateSetMultibindingExpression(binding, accessType, transformedContextKey, fieldInitKey)
@@ -91,38 +80,6 @@ internal class MultibindingExpressionGenerator(
 
   context(scope: IrBuilderWithScope)
   private fun generateSetMultibindingExpression(
-    binding: IrBinding.Multibinding,
-    accessType: AccessType,
-    contextualTypeKey: IrContextualTypeKey,
-    fieldInitKey: IrTypeKey?,
-  ): IrExpression =
-    with(scope) {
-      val generateCode: MultibindingExpression = { expressionGenerator ->
-        expressionGenerator.buildSetMultibindingExpression(
-          binding,
-          accessType,
-          contextualTypeKey,
-          fieldInitKey,
-        )
-      }
-
-      if (binding.isEmpty()) {
-        // Short-circuit and generate the empty call directly
-        return generateCode(this@MultibindingExpressionGenerator)
-      }
-
-      // Use lazy property to cache the multibinding
-      val property =
-        getterPropertyFor(binding, contextualTypeKey) { expressionGenerator ->
-          irExprBodySafe(generateCode(expressionGenerator))
-        }
-
-      // Return the property access, which will be the provider
-      return irGetProperty(irGet(thisReceiver), property)
-    }
-
-  context(scope: IrBuilderWithScope)
-  private fun buildSetMultibindingExpression(
     binding: IrBinding.Multibinding,
     accessType: AccessType,
     contextualTypeKey: IrContextualTypeKey,
@@ -348,7 +305,9 @@ internal class MultibindingExpressionGenerator(
                       generateMapKeyLiteral(binding),
                       generateMultibindingArgument(
                         binding,
-                        originalValueContextKey,
+                        // Use the same context but with this binding's type key (which will have
+                        // its MultibindingElement qualifier key)
+                        originalValueContextKey.withIrTypeKey(binding.typeKey),
                         fieldInitKey,
                         accessType = valueAccessType,
                       ),
@@ -452,38 +411,6 @@ internal class MultibindingExpressionGenerator(
 
   context(scope: IrBuilderWithScope)
   private fun generateMapMultibindingExpression(
-    binding: IrBinding.Multibinding,
-    contextualTypeKey: IrContextualTypeKey,
-    accessType: AccessType,
-    fieldInitKey: IrTypeKey?,
-  ): IrExpression =
-    with(scope) {
-      val generateCode: MultibindingExpression = { expressionGenerator ->
-        expressionGenerator.generateMapMultibindingExpressionImpl(
-          binding,
-          contextualTypeKey,
-          accessType,
-          fieldInitKey,
-        )
-      }
-
-      if (binding.isEmpty()) {
-        // Short-circuit and generate the empty call directly
-        return generateCode(this@MultibindingExpressionGenerator)
-      }
-
-      // Use lazy property to cache the multibinding and handle different access patterns
-      val property =
-        getterPropertyFor(binding, contextualTypeKey) { expressionGenerator ->
-          irExprBodySafe(generateCode(expressionGenerator))
-        }
-
-      // Return the property access, which will be the provider
-      return irGetProperty(irGet(thisReceiver), property)
-    }
-
-  context(scope: IrBuilderWithScope)
-  private fun generateMapMultibindingExpressionImpl(
     binding: IrBinding.Multibinding,
     contextualTypeKey: IrContextualTypeKey,
     accessType: AccessType,
@@ -609,8 +536,7 @@ internal class MultibindingExpressionGenerator(
       }
 
       val sourceBindings =
-        binding.sourceBindings
-          .map { sourceKey -> bindingGraph.requireBinding(sourceKey) }
+        binding.sourceBindings.map { sourceKey -> bindingGraph.requireBinding(sourceKey) }
 
       val instance =
         if (accessType == AccessType.INSTANCE) {
@@ -708,7 +634,8 @@ internal class MultibindingExpressionGenerator(
                     generateMapKeyLiteral(sourceBinding),
                     generateMultibindingArgument(
                       sourceBinding,
-                      originalValueContextKey.wrapInProvider(providerType),
+                      originalValueContextKey.wrapInProvider(providerType)
+                        .withIrTypeKey(sourceBinding.typeKey),
                       fieldInitKey,
                       accessType = AccessType.PROVIDER,
                     ),

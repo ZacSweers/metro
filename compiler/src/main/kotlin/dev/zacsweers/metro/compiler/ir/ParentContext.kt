@@ -7,7 +7,7 @@ import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.ir.graph.DependencyGraphNode
 import dev.zacsweers.metro.compiler.ir.graph.GraphPropertyData
-import dev.zacsweers.metro.compiler.ir.graph.PropertyType
+import dev.zacsweers.metro.compiler.ir.graph.PropertyKind
 import dev.zacsweers.metro.compiler.ir.graph.ensureInitialized
 import dev.zacsweers.metro.compiler.ir.graph.graphPropertyData
 import dev.zacsweers.metro.compiler.newName
@@ -19,6 +19,7 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 
 internal class ParentContext(private val metroContext: IrMetroContext) {
 
@@ -235,8 +236,12 @@ internal class ParentContext(private val metroContext: IrMetroContext) {
         parent = graphClass
         graphPropertyData = GraphPropertyData(contextKey, propertyType)
 
+        key.qualifier?.ir?.let {
+          annotations += it.deepCopyWithSymbols()
+        }
+
         // These must always be fields
-        with(metroContext) { ensureInitialized(PropertyType.FIELD) }
+        with(metroContext) { ensureInitialized(PropertyKind.FIELD) }
       }
   }
 

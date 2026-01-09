@@ -224,7 +224,7 @@ interface TestGraph {
       field = Companion.create(instance = <this>.#thisGraphInstance)
 
     private val setConsumerProvider: Provider<SetConsumer>
-      field = Companion.create(set = <this>.<get-setOfInt>())
+      field = Companion.create(set = <this>.<get-setOfIntProvider>())
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -237,7 +237,7 @@ interface TestGraph {
         return Entry(a = ConsumerA(consumer = <this>.#setConsumerProvider), b = ConsumerB(consumer = <this>.#setConsumerProvider))
       }
 
-    private val setOfInt: Provider<Set<Int>>
+    private val setOfIntProvider: Provider<Set<Int>>
       private get(): Provider<Set<Int>> {
         return { // BLOCK
           val tmp_0: Builder<Int> = Companion.builder<Int>(individualProviderSize = 2, collectionProviderSize = 0)

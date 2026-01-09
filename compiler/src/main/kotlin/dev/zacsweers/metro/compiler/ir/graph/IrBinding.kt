@@ -19,6 +19,7 @@ import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.allowEmpty
 import dev.zacsweers.metro.compiler.ir.annotationClass
+import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.computeMultibindingId
 import dev.zacsweers.metro.compiler.ir.createMapBindingId
 import dev.zacsweers.metro.compiler.ir.implements
@@ -300,7 +301,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
 
     fun aliasedBinding(graph: IrBindingGraph): IrBinding {
       // O(1) lookup at this point
-      return graph.requireBinding(contextualTypeKey.withTypeKey(aliasedType))
+      return graph.requireBinding(aliasedType)
     }
 
     override val scope: IrAnnotation? = null
@@ -506,7 +507,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
   //  unscoped always initializes inline? Dagger sometimes generates private getters
   @Poko
   class Multibinding(
-    override val typeKey: IrTypeKey,
+    override val contextualTypeKey: IrContextualTypeKey,
     /** The original `@Multibinds` declaration, if any. Note this may point at a fake override. */
     @Poko.Skip var declaration: IrSimpleFunction?,
     val multibindsAnnotation: IrAnnotation?,
@@ -519,6 +520,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     // TreeSet sorting for consistency
     val sourceBindings: MutableSet<IrTypeKey> = TreeSet(),
   ) : IrBinding {
+    override val typeKey: IrTypeKey = contextualTypeKey.typeKey
     override val scope: IrAnnotation? = null
     override val dependencies by memoize { sourceBindings.map { IrContextualTypeKey(it) } }
     override val parameters: Parameters = Parameters.empty()
@@ -545,8 +547,6 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
         }
       }
     }
-
-    override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
 
     override val reportableDeclaration: IrDeclarationWithName? = declaration
 
@@ -642,7 +642,13 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
           }
 
         return Multibinding(
-          typeKey,
+          contextualTypeKey =
+            typeKey.type.asContextualTypeKey(
+              qualifierAnnotation = typeKey.qualifier,
+              hasDefault = false,
+              patchMutableCollections = false,
+              declaration = declaration,
+            ),
           isSet = isSet,
           isMap = isMap,
           bindingId = bindingId,

@@ -21,6 +21,7 @@ interface AppGraph {
     private val thisGraphInstance: AppGraph
       field = <this>
 
+    @MultibindingElement(bindingId = "kotlin.Int_kotlin.Int", elementId = "-1823364611")
     private val provideIntProvider: Provider<Int>
       field = Companion.create(instance = <this>.#thisGraphInstance)
 
