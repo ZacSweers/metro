@@ -183,20 +183,20 @@ class MetroArtifactsTest {
             {
               "graphName": "test.AppGraph",
               "statistics": {
-                "totalBindings": 5,
+                "totalBindings": 6,
                 "scopedBindings": 0,
-                "unscopedBindings": 5,
+                "unscopedBindings": 6,
                 "bindingsByKind": {
                   "Alias": 2,
-                  "BoundInstance": 1,
+                  "BoundInstance": 2,
                   "ConstructorInjected": 1,
                   "MembersInjected": 1
                 },
-                "averageDependencies": 0.8,
+                "averageDependencies": 0.6666666666666666,
                 "maxDependencies": 1,
-                "maxDependenciesBinding": "test.App",
-                "rootBindings": 1,
-                "leafBindings": 1,
+                "maxDependenciesBinding": "dev.zacsweers.metro.MembersInjector<test.App>",
+                "rootBindings": 2,
+                "leafBindings": 2,
                 "multibindingCount": 0,
                 "aliasCount": 2
               },
@@ -209,8 +209,9 @@ class MetroArtifactsTest {
                     "test.App"
                   ]
                 ],
-                "averagePathLength": 2.5,
+                "averagePathLength": 2.0,
                 "pathLengthDistribution": {
+                  "1": 1,
                   "2": 1,
                   "3": 1
                 }
@@ -243,8 +244,14 @@ class MetroArtifactsTest {
                     ]
                   },
                   {
-                    "key": "test.App",
+                    "key": "dev.zacsweers.metro.MembersInjector<test.App>",
                     "bindingKind": "MembersInjected",
+                    "dominatedCount": 0,
+                    "dominatedKeys": []
+                  },
+                  {
+                    "key": "test.App",
+                    "bindingKind": "BoundInstance",
                     "dominatedCount": 0,
                     "dominatedKeys": []
                   },
@@ -259,22 +266,28 @@ class MetroArtifactsTest {
               "centrality": {
                 "centralityScores": [
                   {
-                    "key": "test.App",
-                    "bindingKind": "MembersInjected",
-                    "betweennessCentrality": 1.0,
-                    "normalizedCentrality": 1.0
-                  },
-                  {
                     "key": "test.ExampleClass",
                     "bindingKind": "ConstructorInjected",
-                    "betweennessCentrality": 1.0,
+                    "betweennessCentrality": 2.0,
                     "normalizedCentrality": 1.0
                   },
                   {
                     "key": "test.Context",
                     "bindingKind": "Alias",
-                    "betweennessCentrality": 1.0,
+                    "betweennessCentrality": 2.0,
                     "normalizedCentrality": 1.0
+                  },
+                  {
+                    "key": "dev.zacsweers.metro.MembersInjector<test.App>",
+                    "bindingKind": "MembersInjected",
+                    "betweennessCentrality": 0.0,
+                    "normalizedCentrality": 0.0
+                  },
+                  {
+                    "key": "test.App",
+                    "bindingKind": "BoundInstance",
+                    "betweennessCentrality": 0.0,
+                    "normalizedCentrality": 0.0
                   },
                   {
                     "key": "test.AppGraph.Impl",
@@ -293,10 +306,18 @@ class MetroArtifactsTest {
               "fanAnalysis": {
                 "bindings": [
                   {
-                    "key": "test.App",
+                    "key": "dev.zacsweers.metro.MembersInjector<test.App>",
                     "bindingKind": "MembersInjected",
-                    "fanIn": 1,
+                    "fanIn": 0,
                     "fanOut": 1,
+                    "dependents": [],
+                    "dependencies": []
+                  },
+                  {
+                    "key": "test.App",
+                    "bindingKind": "BoundInstance",
+                    "fanIn": 1,
+                    "fanOut": 0,
                     "dependents": [],
                     "dependencies": []
                   },
@@ -336,15 +357,13 @@ class MetroArtifactsTest {
                 "highFanIn": [
                   {
                     "key": "test.App",
-                    "bindingKind": "MembersInjected",
+                    "bindingKind": "BoundInstance",
                     "fanIn": 1,
-                    "fanOut": 1,
+                    "fanOut": 0,
                     "dependents": [
                       "test.Context"
                     ],
-                    "dependencies": [
-                      "test.ExampleClass"
-                    ]
+                    "dependencies": []
                   },
                   {
                     "key": "test.AppGraph",
@@ -374,10 +393,20 @@ class MetroArtifactsTest {
                     "fanIn": 1,
                     "fanOut": 1,
                     "dependents": [
-                      "test.App"
+                      "dev.zacsweers.metro.MembersInjector<test.App>"
                     ],
                     "dependencies": [
                       "test.Context"
+                    ]
+                  },
+                  {
+                    "key": "dev.zacsweers.metro.MembersInjector<test.App>",
+                    "bindingKind": "MembersInjected",
+                    "fanIn": 0,
+                    "fanOut": 1,
+                    "dependents": [],
+                    "dependencies": [
+                      "test.ExampleClass"
                     ]
                   },
                   {
@@ -393,13 +422,11 @@ class MetroArtifactsTest {
                 ],
                 "highFanOut": [
                   {
-                    "key": "test.App",
+                    "key": "dev.zacsweers.metro.MembersInjector<test.App>",
                     "bindingKind": "MembersInjected",
-                    "fanIn": 1,
+                    "fanIn": 0,
                     "fanOut": 1,
-                    "dependents": [
-                      "test.Context"
-                    ],
+                    "dependents": [],
                     "dependencies": [
                       "test.ExampleClass"
                     ]
@@ -432,11 +459,21 @@ class MetroArtifactsTest {
                     "fanIn": 1,
                     "fanOut": 1,
                     "dependents": [
-                      "test.App"
+                      "dev.zacsweers.metro.MembersInjector<test.App>"
                     ],
                     "dependencies": [
                       "test.Context"
                     ]
+                  },
+                  {
+                    "key": "test.App",
+                    "bindingKind": "BoundInstance",
+                    "fanIn": 1,
+                    "fanOut": 0,
+                    "dependents": [
+                      "test.Context"
+                    ],
+                    "dependencies": []
                   },
                   {
                     "key": "test.AppGraph",
@@ -449,12 +486,13 @@ class MetroArtifactsTest {
                     "dependencies": []
                   }
                 ],
-                "averageFanIn": 0.8,
-                "averageFanOut": 0.8
+                "averageFanIn": 0.6666666666666666,
+                "averageFanOut": 0.6666666666666666
               },
               "pathsToRoot": {
                 "rootKey": "test.AppGraph",
                 "paths": {
+                  "dev.zacsweers.metro.MembersInjector<test.App>": [],
                   "test.App": [],
                   "test.AppGraph": [
                     "test.AppGraph"

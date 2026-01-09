@@ -16,6 +16,7 @@ Changelog
 - [IR] Fix accidental potential for runtime eager calls to non-initialized bindings in some multi-level multibinding scenarios.
 - [IR] Always use a provider field if multiple provider and scalar refs are found. Previously we would possibly use just a scalar getter field wrapped in `InstanceFactory` for provider refs.
 - [IR / Dagger Interop] Ensure `@BindsOptionalOf` bindings that are satisfied by scoped bindings use the scoped instance.
+- [IR / Reports] Don't de-dupe alias/memberinject bindings in graph metadata reports if one is already present.
 
 ### Changes
 
