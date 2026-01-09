@@ -28,8 +28,8 @@ fun box(): String {
   val loggedInGraph = graph.loggedInGraph
   assertEquals(3, loggedInGraph.int)
   assertNotSame(loggedInGraph, graph.loggedInGraph)
-//  val anotherGraph = graph.anotherGraph
-//  assertNotSame(anotherGraph, graph.anotherGraph)
-//  assertEquals("3", anotherGraph.value)
+  val anotherGraph = graph.anotherGraph
+  assertNotSame(anotherGraph, graph.anotherGraph)
+  assertEquals("3", anotherGraph.value)
   return "OK"
 }
