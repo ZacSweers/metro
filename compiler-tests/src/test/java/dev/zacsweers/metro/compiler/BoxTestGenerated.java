@@ -584,6 +584,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("MixedUseFactoryAcrossMultipleNestedMiddleMultis.kt")
+    public void testMixedUseFactoryAcrossMultipleNestedMiddleMultis() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/MixedUseFactoryAcrossMultipleNestedMiddleMultis.kt");
+    }
+
+    @Test
     @TestMetadata("MultiLevelTransitiveIncludes.kt")
     public void testMultiLevelTransitiveIncludes() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/MultiLevelTransitiveIncludes.kt");
