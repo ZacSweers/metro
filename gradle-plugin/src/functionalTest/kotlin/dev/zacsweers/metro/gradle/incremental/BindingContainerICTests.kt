@@ -15,6 +15,7 @@ import dev.zacsweers.metro.gradle.MetroProject
 import dev.zacsweers.metro.gradle.assertOutputContains
 import dev.zacsweers.metro.gradle.invokeMain
 import dev.zacsweers.metro.gradle.source
+import kotlin.test.assertFails
 import org.gradle.testkit.runner.TaskOutcome
 import org.junit.Test
 
@@ -2053,5 +2054,162 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     val thirdBuildResult = build(project.rootDir, "compileKotlin", "--quiet")
     assertThat(thirdBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
     assertThat(project.invokeMain<String>()).isEqualTo("[AppMultibinding]")
+  }
+
+  @Test
+  fun contributionScopeChangeInMultiModuleProject() {
+    val fixture =
+      object : MetroProject() {
+        val appGraph =
+          source(
+            """
+            @DependencyGraph(AppScope::class)
+            interface AppGraph {
+              val target: Target
+            }
+
+            @Inject
+            class Target(val string: String)
+            """
+              .trimIndent()
+          )
+
+        val bindingContainer =
+          source(
+            """
+            @BindingContainer
+            @ContributesTo(AppScope::class)
+            class StringModule {
+              @Provides
+              fun provideString(): String = "test"
+            }
+            """
+              .trimIndent()
+          )
+
+        val changedContribution =
+          """
+          class AnotherScope
+
+          @BindingContainer
+          @ContributesTo(AnotherScope::class)
+          class StringModule {
+            @Provides
+            fun provideString(): String = "test"
+          }
+          """
+            .trimIndent()
+
+        override fun sources() = error("Provided via gradleProject")
+
+        override val gradleProject: GradleProject
+          get() =
+            newGradleProjectBuilder(DslKind.KOTLIN)
+              .withRootProject {
+                withBuildScript {
+                  sources = listOf(appGraph)
+                  applyMetroDefault()
+                  dependencies(Dependency.implementation(":lib"))
+                }
+
+                withMetroSettings()
+              }
+              .withSubproject("lib") {
+                sources.add(bindingContainer)
+                withBuildScript { applyMetroDefault() }
+              }
+              .write()
+      }
+
+    val project = fixture.gradleProject
+    val libProject = project.subprojects.first { it.name == "lib" }
+
+    // First build succeed and caches hint about StringModule
+    val firstBuildResult = build(project.rootDir, "compileKotlin", "--quiet")
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    // Change contribution target scope, which should stop contributing to AppGraph
+    libProject.modify(project.rootDir, fixture.bindingContainer, fixture.changedContribution)
+
+    assertFails("Build is expected to fail, because module is contributed to wrong scope") {
+      build(project.rootDir, "compileKotlin", "--quiet")
+    }
+  }
+
+  @Test
+  fun contributionWasRemovedInMultiModuleProject() {
+    val fixture =
+      object : MetroProject() {
+        val appGraph =
+          source(
+            """
+            @DependencyGraph(AppScope::class)
+            interface AppGraph {
+              val target: Target
+            }
+
+            @Inject
+            class Target(val string: String)
+            """
+              .trimIndent()
+          )
+
+        val bindingContainer =
+          source(
+            """
+            @BindingContainer
+            @ContributesTo(AppScope::class)
+            class StringModule {
+              @Provides
+              fun provideString(): String = "test"
+            }
+            """
+              .trimIndent()
+          )
+
+        val removedContribution =
+          """
+          @BindingContainer
+          class StringModule {
+            @Provides
+            fun provideString(): String = "test"
+          }
+          """
+            .trimIndent()
+
+        override fun sources() = error("Provided via gradleProject")
+
+        override val gradleProject: GradleProject
+          get() =
+            newGradleProjectBuilder(DslKind.KOTLIN)
+              .withRootProject {
+                withBuildScript {
+                  sources = listOf(appGraph)
+                  applyMetroDefault()
+                  dependencies(Dependency.implementation(":lib"))
+                }
+
+                withMetroSettings()
+              }
+              .withSubproject("lib") {
+                sources.add(bindingContainer)
+                withBuildScript { applyMetroDefault() }
+              }
+              .write()
+      }
+
+    val project = fixture.gradleProject
+    val libProject = project.subprojects.first { it.name == "lib" }
+
+    // First build succeed and caches hint about StringModule
+    val firstBuildResult = build(project.rootDir, "compileKotlin", "--quiet")
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    // Remove contribution
+    libProject.modify(project.rootDir, fixture.bindingContainer, fixture.removedContribution)
+
+    assertFails("Build is expected to fail due to missing contribution") {
+      build(project.rootDir, "compileKotlin", "--quiet")
+    }
   }
 }
