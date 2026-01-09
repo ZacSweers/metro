@@ -173,7 +173,7 @@ picnic = "com.jakewharton.picnic:picnic:0.7.0"
 
 poko-annotations = { module = "dev.drewhamilton.poko:poko-annotations", version.ref = "poko" }
 
-r8 = "com.android.tools:r8:8.13.17"
+r8 = "com.android.tools:r8:8.13.19"
 
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 
