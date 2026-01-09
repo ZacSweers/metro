@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1767736560821,
+  "lastUpdate": 1767949781398,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -1232,6 +1232,62 @@ window.BENCHMARK_DATA = {
             "value": 20369.507999999998,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -5.19%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "25fa8e78~1",
+          "message": "[before] Refactor multibinding getter property logic to Bin",
+          "timestamp": "2026-01-09T08:35:29Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/25fa8e78b8c58d84f04d92fa6079a69bd06ee210"
+        },
+        "date": 1767949781398,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18983.378,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "25fa8e78b8c58d84f04d92fa6079a69bd06ee210",
+          "message": "[after] Refactor multibinding getter property logic to Bin",
+          "timestamp": "2026-01-09T08:35:29Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/25fa8e78b8c58d84f04d92fa6079a69bd06ee210"
+        },
+        "date": 1767949781399,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19273.724,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +1.53%"
           }
         ]
       }
