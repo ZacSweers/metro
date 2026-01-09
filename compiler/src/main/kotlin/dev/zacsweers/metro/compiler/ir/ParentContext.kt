@@ -109,8 +109,8 @@ internal class ParentContext(private val metroContext: IrMetroContext) {
           // Create the contextual key based on what kind of property is needed
           val contextKey = createContextKey(key, requiresProviderProperty)
 
-          // Get or create field
-          val field =
+          // Get or create property
+          val property =
             level.properties.getOrPut(contextKey) {
               createPropertyInLevel(level, key, requiresProviderProperty)
             }
@@ -119,7 +119,7 @@ internal class ParentContext(private val metroContext: IrMetroContext) {
           level.usedContextKeys.add(contextKey)
           return PropertyAccess(
             level.node.typeKey,
-            field,
+            property,
             level.node.metroGraphOrFail.thisReceiverOrFail,
           )
         }
