@@ -634,7 +634,8 @@ internal class MultibindingExpressionGenerator(
                     generateMapKeyLiteral(sourceBinding),
                     generateMultibindingArgument(
                       sourceBinding,
-                      originalValueContextKey.wrapInProvider(providerType)
+                      originalValueContextKey
+                        .wrapInProvider(providerType)
                         .withIrTypeKey(sourceBinding.typeKey),
                       fieldInitKey,
                       accessType = AccessType.PROVIDER,

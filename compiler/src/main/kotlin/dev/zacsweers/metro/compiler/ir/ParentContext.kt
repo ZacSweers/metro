@@ -236,9 +236,7 @@ internal class ParentContext(private val metroContext: IrMetroContext) {
         parent = graphClass
         graphPropertyData = GraphPropertyData(contextKey, propertyType)
 
-        key.qualifier?.ir?.let {
-          annotations += it.deepCopyWithSymbols()
-        }
+        key.qualifier?.ir?.let { annotations += it.deepCopyWithSymbols() }
 
         // These must always be fields
         with(metroContext) { ensureInitialized(PropertyKind.FIELD) }

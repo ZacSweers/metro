@@ -189,9 +189,7 @@ internal class IrGraphGenerator(
           }
           .apply {
             graphPropertyData = GraphPropertyData(contextKey, type())
-            contextKey.typeKey.qualifier?.ir?.let {
-              annotations += it.deepCopyWithSymbols()
-            }
+            contextKey.typeKey.qualifier?.ir?.let { annotations += it.deepCopyWithSymbols() }
           }
 
     return property.ensureInitialized(propertyKind, type)
@@ -397,7 +395,7 @@ internal class IrGraphGenerator(
           }
           val collectedProperties =
             BindingPropertyCollector(
-              metroContext,
+                metroContext,
                 graph = bindingGraph,
                 sortedKeys = sealResult.sortedKeys,
                 roots = roots,
@@ -481,9 +479,7 @@ internal class IrGraphGenerator(
           // Since assisted-inject classes don't implement Factory, we can't just type these
           // as Provider<*> properties
           var isProviderType = collectedIsProviderType
-          val finalContextKey = collectedContextKey.letIf(isProviderType) {
-            it.wrapInProvider()
-          }
+          val finalContextKey = collectedContextKey.letIf(isProviderType) { it.wrapInProvider() }
           val suffix: String
           val irType =
             if (binding is IrBinding.ConstructorInjected && binding.isAssisted) {

@@ -12,10 +12,7 @@ import org.jetbrains.kotlin.ir.declarations.IrProperty
  * Represents a binding property along with the contextual type key it was stored under. This allows
  * consumers to know whether the property returns a provider or instance type.
  */
-internal data class BindingProperty(
-  val property: IrProperty,
-  val storedKey: IrContextualTypeKey,
-)
+internal data class BindingProperty(val property: IrProperty, val storedKey: IrContextualTypeKey)
 
 /**
  * Tracks binding properties by their contextual type key. The contextual type key distinguishes
