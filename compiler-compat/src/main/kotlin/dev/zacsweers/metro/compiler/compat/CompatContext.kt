@@ -7,8 +7,12 @@ import java.util.ServiceLoader
 import org.jetbrains.kotlin.GeneratedDeclarationKey
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
+import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibility
+import org.jetbrains.kotlin.diagnostics.KtDiagnosticWithoutSource
+import org.jetbrains.kotlin.diagnostics.KtSourcelessDiagnosticFactory
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
@@ -28,6 +32,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
+import org.jetbrains.kotlin.ir.IrDiagnosticReporter
 import org.jetbrains.kotlin.ir.builders.Scope
 import org.jetbrains.kotlin.ir.builders.declarations.IrFieldBuilder
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -349,6 +354,51 @@ public interface CompatContext {
   // TODO enable in 2.3.20-dev-7429 dev build
   public val supportsExternalRepeatableAnnotations: Boolean
     get() = false
+
+  @CompatApi(
+    since = "2.3.20",
+    reason = CompatApi.Reason.COMPAT,
+    message =
+      """
+        IR doesn't support reporting source-less elements until 2.3.20.
+        Note that this is somewhat fluid across the 2.3.20 dev builds
+      """,
+  )
+  public val supportsSourcelessIrDiagnostics: Boolean
+    get() = false
+
+  @CompatApi(
+    since = "2.3.20-dev-7621",
+    reason = CompatApi.Reason.COMPAT,
+    message =
+      """
+        Compat backport for the new sourceless CompilerMessageSourceLocation
+        https://github.com/JetBrains/kotlin/commit/5ba8a58457f2e6b4f8a943d0c17104cda6cd4484
+      """,
+  )
+  public fun KtSourcelessDiagnosticFactory.createCompat(
+    message: String,
+    location: CompilerMessageSourceLocation?,
+    languageVersionSettings: LanguageVersionSettings,
+  ): KtDiagnosticWithoutSource? {
+    return create(message, languageVersionSettings)
+  }
+
+  @CompatApi(
+    since = "2.3.20-dev-7621",
+    reason = CompatApi.Reason.COMPAT,
+    message =
+      """
+        Compat backport for the new sourceless reporting
+        https://github.com/JetBrains/kotlin/commit/5ba8a58457f2e6b4f8a943d0c17104cda6cd4484
+      """,
+  )
+  public fun IrDiagnosticReporter.reportCompat(
+    factory: KtSourcelessDiagnosticFactory,
+    message: String,
+  ) {
+    throw NotImplementedError("reportCompat is not implemented on this version of the compiler")
+  }
 }
 
 private data class FactoryData(
