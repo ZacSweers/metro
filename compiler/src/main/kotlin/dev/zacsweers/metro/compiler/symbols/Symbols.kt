@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.symbols
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
+import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.joinSimpleNames
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -26,6 +27,7 @@ import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.constructors
+import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.getPropertyGetter
 import org.jetbrains.kotlin.ir.util.hasShape
 import org.jetbrains.kotlin.ir.util.kotlinPackageFqn
@@ -513,6 +515,20 @@ internal class Symbols(
       .filterIsInstance<IrProperty>()
       .single { it.name.asString() == "size" }
       .getter!!
+      .symbol
+  }
+
+  val intPlus by lazy {
+    pluginContext.irBuiltIns.intClass.owner.functions
+      .single {
+        it.name.asString() == "plus" &&
+          it.hasShape(
+            dispatchReceiver = true,
+            regularParameters = 1,
+            parameterTypes =
+              listOf(pluginContext.irBuiltIns.intType, pluginContext.irBuiltIns.intType),
+          )
+      }
       .symbol
   }
 

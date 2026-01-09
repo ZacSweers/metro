@@ -29,7 +29,6 @@ import dev.zacsweers.metro.compiler.tracing.Tracer
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irBlock
 import org.jetbrains.kotlin.ir.builders.irCall
-import org.jetbrains.kotlin.ir.builders.irCallOp
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irInt
 import org.jetbrains.kotlin.ir.builders.parent
@@ -44,7 +43,6 @@ import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.types.typeWithArguments
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
-import org.jetbrains.kotlin.util.OperatorNameConventions
 
 internal class MultibindingExpressionGenerator(
   private val parentGenerator: BindingExpressionGenerator<IrBinding>
@@ -186,20 +184,17 @@ internal class MultibindingExpressionGenerator(
                 }
 
                 sizeVar =
-                  irCallOp(
-                    callee =
-                      irBuiltIns.getBinaryOperator(
-                        OperatorNameConventions.PLUS,
-                        context.irBuiltIns.intType,
-                        context.irBuiltIns.intType,
-                      ),
+                  irInvoke(
                     dispatchReceiver = sizeVar!!,
-                    argument =
-                      irInvoke(
-                        dispatchReceiver = irGet(collectionProviderVar),
-                        callee = metroSymbols.collectionSize,
+                    callee = metroSymbols.intPlus,
+                    args =
+                      listOf(
+                        irInvoke(
+                          dispatchReceiver = irGet(collectionProviderVar),
+                          callee = metroSymbols.collectionSize,
+                        )
                       ),
-                    type = irBuiltIns.intType,
+                    typeHint = irBuiltIns.intType,
                   )
               }
             }
