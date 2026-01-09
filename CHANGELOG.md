@@ -12,6 +12,8 @@ Changelog
 
 ### Changes
 
+- Test Kotlin `2.3.20-Beta1`.
+
 ### Contributors
 
 0.9.3
