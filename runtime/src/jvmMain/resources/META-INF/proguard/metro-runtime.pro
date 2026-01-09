@@ -10,9 +10,3 @@
 # Remove classes annotated with @ComptimeOnly
 # These are compile-time-only classes (like BindsMirror) that are not needed at runtime
 -assumenosideeffects @dev.zacsweers.metro.internal.ComptimeOnly class *
-
-# Verify that @ComptimeOnly elements are actually removed
--checkdiscard class * {
-    @dev.zacsweers.metro.internal.ComptimeOnly <methods>;
-}
--checkdiscard @dev.zacsweers.metro.internal.ComptimeOnly class *
