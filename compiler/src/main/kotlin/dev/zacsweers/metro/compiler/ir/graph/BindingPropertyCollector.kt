@@ -31,6 +31,7 @@ internal class BindingPropertyCollector(
   private val graph: IrBindingGraph,
   private val sortedKeys: List<IrTypeKey>,
   private val roots: List<IrContextualTypeKey> = emptyList(),
+  private val extraKeeps: Collection<IrContextualTypeKey> = emptyList(),
   private val deferredTypes: Set<IrTypeKey> = emptySet(),
 ) {
 
@@ -97,11 +98,11 @@ internal class BindingPropertyCollector(
   fun collect(): Map<IrContextualTypeKey, CollectedProperty> {
     val keysWithBackingProperties = mutableMapOf<IrContextualTypeKey, CollectedProperty>()
 
-    // Roots (accessors/injectors) don't get properties themselves, but they contribute to
+    // Roots (accessors/injectors) + keeps don't get properties themselves, but they contribute to
     // factory refcounts when they require provider instances so we mark them here.
     // This includes both direct Provider/Lazy wrapping and map types with Provider values.
-    for (root in roots) {
-      markAccess(root, isFactory = root.requiresProviderInstance)
+    for (contextKey in (roots + extraKeeps)) {
+      markAccess(contextKey, isFactory = contextKey.requiresProviderInstance)
     }
 
     fun visitKeys(keys: Collection<IrTypeKey>) {

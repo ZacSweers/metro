@@ -99,6 +99,8 @@ internal class IrBindingGraph(
   // Thin immutable view over the internal bindings
   fun bindingsSnapshot(): Map<IrTypeKey, IrBinding> = realGraph.bindings
 
+  fun keeps(): Set<IrContextualTypeKey> = extraKeeps.keys
+
   fun addAccessor(key: IrContextualTypeKey, entry: IrBindingStack.Entry) {
     accessors[key] = entry
   }

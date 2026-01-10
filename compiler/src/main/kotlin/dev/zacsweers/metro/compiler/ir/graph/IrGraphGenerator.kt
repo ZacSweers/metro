@@ -399,6 +399,7 @@ internal class IrGraphGenerator(
                 graph = bindingGraph,
                 sortedKeys = sealResult.sortedKeys,
                 roots = roots,
+                extraKeeps = bindingGraph.keeps(),
                 deferredTypes = sealResult.deferredTypes,
               )
               .collect()
