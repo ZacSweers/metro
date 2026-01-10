@@ -94,7 +94,11 @@ internal class IrBindingGraph(
   private val accessors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
   private val injectors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
   private val extraKeeps = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
-  private val reservedProperties = mutableMapOf<IrContextualTypeKey, ParentContext.PropertyAccess>()
+  /**
+   * Context keys that child graphs need from this parent. Used to ensure these bindings are
+   * reachable during seal() and to inform BindingPropertyCollector about child usage.
+   */
+  private val reservedContextKeys = mutableSetOf<IrContextualTypeKey>()
 
   // Thin immutable view over the internal bindings
   fun bindingsSnapshot(): Map<IrTypeKey, IrBinding> = realGraph.bindings
@@ -117,29 +121,35 @@ internal class IrBindingGraph(
     extraKeeps[key] = entry
   }
 
-  fun reserveProperty(contextKey: IrContextualTypeKey, access: ParentContext.PropertyAccess) {
-    reservedProperties[contextKey] = access
+  /**
+   * Tracks a context key as requested by a child graph. This ensures the binding is kept during
+   * seal() and informs BindingPropertyCollector about child usage.
+   */
+  fun reserveContextKey(contextKey: IrContextualTypeKey) {
+    reservedContextKeys.add(contextKey)
   }
 
-  fun reservedProperty(contextKey: IrContextualTypeKey): ParentContext.PropertyAccess? =
-    reservedProperties[contextKey]
+  /** Returns all context keys reserved by child graphs. */
+  fun reservedContextKeys(): Set<IrContextualTypeKey> = reservedContextKeys
+
+  /** Checks if a specific context key is reserved by child graphs. */
+  fun isContextKeyReserved(contextKey: IrContextualTypeKey): Boolean =
+    contextKey in reservedContextKeys
 
   /**
-   * Finds any reserved property for the given type key, checking both instance and provider
-   * variants.
+   * Checks if any variant (provider or instance) of this type key is reserved by child graphs.
+   * Provider variant is checked first since scoped bindings need Provider fields.
    */
-  fun findAnyReservedProperty(key: IrTypeKey): ParentContext.PropertyAccess? {
-    // Check instance property
-    val instanceKey = IrContextualTypeKey.create(key)
-    reservedProperties[instanceKey]?.let {
-      return it
-    }
-
-    // Check provider property
+  fun hasReservedKey(key: IrTypeKey): Boolean {
+    // Check provider key first
     val providerType = metroContext.metroSymbols.metroProvider.typeWith(key.type)
     val providerKey =
       IrContextualTypeKey.create(key, isWrappedInProvider = true, rawType = providerType)
-    return reservedProperties[providerKey]
+    if (providerKey in reservedContextKeys) return true
+
+    // Check instance key
+    val instanceKey = IrContextualTypeKey.create(key)
+    return instanceKey in reservedContextKeys
   }
 
   fun findBinding(key: IrTypeKey): IrBinding? = realGraph[key]
