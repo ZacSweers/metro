@@ -717,16 +717,19 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
 
   /**
    * Represents a graph extension binding. Graph extensions are treated as bindings to enable
-   * standard code generation for scoped instances when the extension graph itself is scoped.
+   * standard code generation.
+   *
+   * Note: GraphExtension bindings are specially handled in [BindingPropertyCollector] to only ever
+   * be getter properties if used by child graphs or reused.
    */
   @Poko
   class GraphExtension(
     override val typeKey: IrTypeKey,
     @Poko.Skip val parent: IrClass,
     val accessor: IrSimpleFunction,
-    val extensionScopes: Set<IrAnnotation>,
-    override val dependencies: List<IrContextualTypeKey> = emptyList(),
+    parentGraphKey: IrTypeKey,
   ) : IrBinding {
+    override val dependencies: List<IrContextualTypeKey> = listOf(IrContextualTypeKey(parentGraphKey))
     override val reportableDeclaration: IrDeclarationWithName = accessor
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
     override val parameters: Parameters = Parameters.empty()
