@@ -7,7 +7,6 @@ import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
-import dev.zacsweers.metro.compiler.reportCompilerBug
 
 private const val INITIAL_VALUE = 512
 
@@ -109,11 +108,8 @@ internal class BindingPropertyCollector(
       for (key in keys) {
         val binding = graph.findBinding(key) ?: continue
 
-        // Skip alias/extension bindings for refcount and dependency processing
-        val shouldSkip =
-          binding is IrBinding.Alias ||
-            binding is IrBinding.GraphExtension ||
-            binding is IrBinding.GraphExtensionFactory
+        // Skip alias bindings for refcount and dependency processing
+        val shouldSkip = binding is IrBinding.Alias
         if (shouldSkip) {
           continue
         }
@@ -166,6 +162,10 @@ internal class BindingPropertyCollector(
     // Initialize node (may already exist from markAccess)
     val node = nodes.getOrPut(contextKey) { Node(binding) }
 
+    // Graph extensions should never have FIELD properties - they're always scalar getters or
+    // inlined. If Provider access is needed, the getter call gets wrapped in InstanceFactory.
+    val isGraphExtension = binding is IrBinding.GraphExtension
+
     // Check known property type (applies to all bindings including aliases)
     val knownPropertyType = knownPropertyType(binding)
     if (knownPropertyType != null) {
@@ -184,14 +184,20 @@ internal class BindingPropertyCollector(
     // refcounts are finalized - check if we need a property to cache the factory
     if (contextKey !in keysWithBackingProperties) {
       // If we have multiple factory refs or any type has both types of refs, use a backing field
-      // property
+      // property (unless it's a graph extension)
       val useField =
-        node.factoryRefCount > 1 || ((node.factoryRefCount == 1) && (node.scalarRefCount >= 1))
+        !isGraphExtension &&
+          (node.factoryRefCount > 1 || ((node.factoryRefCount == 1) && (node.scalarRefCount >= 1)))
+
+      // For graph extensions, convert factory refs to scalar refs for the purpose of deciding
+      // whether to create a getter property
+      val effectiveScalarRefCount =
+        if (isGraphExtension) node.scalarRefCount + node.factoryRefCount else node.scalarRefCount
 
       if (useField) {
         keysWithBackingProperties[contextKey] =
           CollectedProperty(binding, PropertyKind.FIELD, contextKey)
-      } else if (node.scalarRefCount > 1 && !node.binding.isSimpleBinding()) {
+      } else if (effectiveScalarRefCount > 1 && !node.binding.isSimpleBinding()) {
         keysWithBackingProperties[contextKey] =
           CollectedProperty(binding, PropertyKind.GETTER, contextKey)
       }
@@ -203,13 +209,18 @@ internal class BindingPropertyCollector(
     //
     // In both cases, its dependencies are accessed via Provider params in the factory.
     // Note: GETTER properties are for sharing scalar access, not factory access.
+    //
+    // Graph extensions are never in a factory path - their dependencies (just the parent graph)
+    // are accessed as scalar values. If Provider access is needed for the extension itself,
+    // the getter call is wrapped in InstanceFactory at the call site.
     val hasFieldProperty = keysWithBackingProperties[contextKey]?.propertyKind == PropertyKind.FIELD
     val inFactoryPath =
-      hasFieldProperty ||
-        node.factoryRefCount > 0 ||
-        contextKey.isMapProvider ||
-        // MembersInjector instances can only be factory forms
-        binding is IrBinding.MembersInjected
+      !isGraphExtension &&
+        (hasFieldProperty ||
+          node.factoryRefCount > 0 ||
+          contextKey.isMapProvider ||
+          // MembersInjector instances can only be factory forms
+          binding is IrBinding.MembersInjected)
 
     // Mark dependencies as factory accesses if:
     // - Explicitly Provider<T> or Lazy<T>
@@ -229,21 +240,12 @@ internal class BindingPropertyCollector(
     // Deferred types always end up in DelegateFactory fields
     if (key in deferredTypes) return PropertyKind.FIELD
 
-    // Check reserved properties first
-    graph.findAnyReservedProperty(key)?.let { reserved ->
-      return when {
-        reserved.property.getter != null -> PropertyKind.GETTER
-        reserved.property.backingField != null -> PropertyKind.FIELD
-        else -> reportCompilerBug("No getter or backing field for reserved property")
-      }
-    }
-
     // Scoped bindings always need provider fields (for DoubleCheck)
     if (binding.isScoped()) return PropertyKind.FIELD
 
     return when (binding) {
-      // Graph dependencies always need fields, unless it's one inherited from a parent
-      is IrBinding.GraphDependency if (binding.propertyAccess == null) -> PropertyKind.FIELD
+      // Graph dependencies always need fields, unless it's accessing a parent's property
+      is IrBinding.GraphDependency if (binding.token == null) -> PropertyKind.FIELD
       // Assisted types always need to be a single field to ensure use of the same provider
       is IrBinding.Assisted -> PropertyKind.FIELD
       // Assisted inject factories use factory path
@@ -252,6 +254,10 @@ internal class BindingPropertyCollector(
       is IrBinding.Multibinding if binding.sourceBindings.isNotEmpty() -> {
         PropertyKind.GETTER
       }
+      // Graph extensions used by child graphs need getter properties so children can resolve
+      // their property access tokens. Graph extensions are "simple" bindings (0 dependencies)
+      // so they wouldn't otherwise get properties via refcount logic.
+      is IrBinding.GraphExtension if graph.hasReservedKey(key) -> PropertyKind.GETTER
       else -> null
     }
   }
