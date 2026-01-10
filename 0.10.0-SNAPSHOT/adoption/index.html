@@ -1665,7 +1665,6 @@
 <p>Most things will Just Work™, but you will still possibly need to do some manual migrations.</p>
 <ul>
 <li>If you use <code>KClass</code> and <code>Class</code> interchangeably in your graph, Metro distinguishes between these and you&rsquo;ll need to move fully over to one or the other, likely <code>KClass</code>.</li>
-<li>If you use subcomponents, you&rsquo;ll have to switch to <a href="../dependency-graphs/#graph-extensions">Graph extensions</a>.</li>
 <li>If you use <code>@MergeComponent</code> with <code>@Component</code>, it&rsquo;ll be easier if you just migrate those interfaces to <code>@DependencyGraph</code> since they&rsquo;re combined in there now.</li>
 <li>Not necessary if coming from anvil-ksp.</li>
 <li>Migrate <code>@BindsInstance</code> to <code>@Provides</code>. Metro consolidated these to just one annotation.</li>
