@@ -148,6 +148,7 @@ internal class IrBindingGraph(
     if (providerKey in reservedContextKeys) return true
 
     // Check instance key
+    // TODO cache these in metrocontext. Just IrTypekey -> IrContextualTypeKey
     val instanceKey = IrContextualTypeKey.create(key)
     return instanceKey in reservedContextKeys
   }
