@@ -1333,19 +1333,19 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Unreleased">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#new" class="md-nav__link">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#094" class="md-nav__link">
     <span class="md-ellipsis">
       
-        New
+        0.9.4
       
     </span>
   </a>
   
-</li>
+    <nav class="md-nav" aria-label="0.9.4">
+      <ul class="md-nav__list">
         
           <li class="md-nav__item">
   <a href="#enhancements" class="md-nav__link">
@@ -1363,17 +1363,6 @@
     <span class="md-ellipsis">
       
         Fixes
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#changes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Changes
       
     </span>
   </a>
@@ -1431,7 +1420,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#changes_1" class="md-nav__link">
+  <a href="#changes" class="md-nav__link">
     <span class="md-ellipsis">
       
         Changes
@@ -1470,7 +1459,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#new_1" class="md-nav__link">
+  <a href="#new" class="md-nav__link">
     <span class="md-ellipsis">
       
         New
@@ -2250,19 +2239,19 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Unreleased">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#new" class="md-nav__link">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#094" class="md-nav__link">
     <span class="md-ellipsis">
       
-        New
+        0.9.4
       
     </span>
   </a>
   
-</li>
+    <nav class="md-nav" aria-label="0.9.4">
+      <ul class="md-nav__list">
         
           <li class="md-nav__item">
   <a href="#enhancements" class="md-nav__link">
@@ -2280,17 +2269,6 @@
     <span class="md-ellipsis">
       
         Fixes
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#changes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Changes
       
     </span>
   </a>
@@ -2348,7 +2326,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#changes_1" class="md-nav__link">
+  <a href="#changes" class="md-nav__link">
     <span class="md-ellipsis">
       
         Changes
@@ -2387,7 +2365,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#new_1" class="md-nav__link">
+  <a href="#new" class="md-nav__link">
     <span class="md-ellipsis">
       
         New
@@ -3105,7 +3083,8 @@
 
 <h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
 <h2 id="unreleased"><strong>Unreleased</strong><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
-<h3 id="new">New<a class="headerlink" href="#new" title="Permanent link">&para;</a></h3>
+<h2 id="094">0.9.4<a class="headerlink" href="#094" title="Permanent link">&para;</a></h2>
+<p><em>2026-01-09</em></p>
 <h3 id="enhancements">Enhancements<a class="headerlink" href="#enhancements" title="Permanent link">&para;</a></h3>
 <ul>
 <li>[IR] Support generation of scalar multibinding sets that use <code>@ElementsIntoSet</code> source bindings. Previously these would always use a <code>SetFactory</code> under the hood.</li>
@@ -3118,8 +3097,12 @@
 <li>[IR / Dagger Interop] Ensure <code>@BindsOptionalOf</code> bindings that are satisfied by scoped bindings use the scoped instance.</li>
 <li>[IR / Reports] Don&rsquo;t de-dupe alias/memberinject bindings in graph metadata reports if one is already present.</li>
 </ul>
-<h3 id="changes">Changes<a class="headerlink" href="#changes" title="Permanent link">&para;</a></h3>
 <h3 id="contributors">Contributors<a class="headerlink" href="#contributors" title="Permanent link">&para;</a></h3>
+<p>Special thanks to the following contributors for contributing to this release!</p>
+<ul>
+<li><a href="https://github.com/C2H6O">@C2H6O</a></li>
+<li><a href="https://github.com/chrisbanes">@chrisbanes</a></li>
+</ul>
 <h2 id="093">0.9.3<a class="headerlink" href="#093" title="Permanent link">&para;</a></h2>
 <p><em>2026-01-02</em></p>
 <p>Happy new year!</p>
@@ -3145,7 +3128,7 @@
 <li>[IC] Fix member injection metadata not always being written and causing IC issues with member inject function transformation.</li>
 <li>[Gradle] Report all tested Kotlin versions when emitting compatibility warnings.</li>
 </ul>
-<h3 id="changes_1">Changes<a class="headerlink" href="#changes_1" title="Permanent link">&para;</a></h3>
+<h3 id="changes">Changes<a class="headerlink" href="#changes" title="Permanent link">&para;</a></h3>
 <ul>
 <li>[FIR] Change <code>SUSPICIOUS_MEMBER_INJECT_FUNCTION</code> diagnostic to be a warning instead of an error.</li>
 <li>Remove testing of 2.3.0 pre-releases. IntelliJ stable currently builds off Kotlin <code>2.3.2x</code> and Android Studio stable currently points to Kotlin <code>2.2.2x</code>.</li>
@@ -3159,7 +3142,7 @@
 </ul>
 <h2 id="092">0.9.2<a class="headerlink" href="#092" title="Permanent link">&para;</a></h2>
 <p><em>2025-12-18</em></p>
-<h3 id="new_1">New<a class="headerlink" href="#new_1" title="Permanent link">&para;</a></h3>
+<h3 id="new">New<a class="headerlink" href="#new" title="Permanent link">&para;</a></h3>
 <ul>
 <li>[Gradle DSL + FIR] Configurable <code>nonPublicContributionSeverity</code> diagnostic that allows for configuring non-public contributions to warn or error. See its kdoc for full details.</li>
 </ul>
