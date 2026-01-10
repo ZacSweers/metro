@@ -27,7 +27,6 @@ import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
-import dev.zacsweers.metro.compiler.ir.trackMemberDeclarationCall
 import dev.zacsweers.metro.compiler.ir.transformers.InjectConstructorTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -36,7 +35,6 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.typeWithArguments
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 
@@ -538,7 +536,7 @@ internal class BindingGraphGenerator(
 
         // Add bindings for the parent itself as a field reference
         // TODO it would be nice if we could do this lazily with addLazyParentKey
-        val propertyAccess =
+        val token =
           parentContext.mark(parentKey) ?: reportCompilerBug("Missing parent key $parentKey")
         graph.addBinding(
           parentKey,
@@ -547,7 +545,7 @@ internal class BindingGraphGenerator(
             "parent",
             parentNode.sourceGraph,
             classReceiverParameter = parentNodeClass.thisReceiver,
-            providerPropertyAccess = propertyAccess,
+            token = token,
           ),
           bindingStack,
         )
@@ -584,31 +582,24 @@ internal class BindingGraphGenerator(
 
         // Register a lazy parent key that will only call mark() when actually used
         bindingLookup.addLazyParentKey(key) {
-          val propertyAccess =
-            parentContext.mark(key) ?: reportCompilerBug("Missing parent key $key")
+          val token = parentContext.mark(key) ?: reportCompilerBug("Missing parent key $key")
 
-          // Record a lookup for IC when the binding is actually created
-          val propertyParentClass = propertyAccess.property.parentAsClass
-          trackMemberDeclarationCall(
-            node.sourceGraph,
-            propertyParentClass.kotlinFqName,
-            propertyAccess.property.name.asString(),
-          )
+          // IC tracking will be done during generation when the actual property is resolved
 
-          if (key == propertyAccess.parentKey) {
+          if (key == token.ownerGraphKey) {
             // Add bindings for the parent itself as a field reference
             IrBinding.BoundInstance(
               key,
               "parent",
-              propertyAccess.property,
-              classReceiverParameter = propertyAccess.receiverParameter,
-              providerPropertyAccess = propertyAccess,
+              null, // reportableDeclaration will be available during generation
+              classReceiverParameter = token.receiverParameter,
+              token = token,
             )
           } else {
             IrBinding.GraphDependency(
-              ownerKey = parentKeysByClass.getValue(propertyParentClass),
+              ownerKey = token.ownerGraphKey,
               graph = node.sourceGraph,
-              propertyAccess = propertyAccess,
+              token = token,
               typeKey = key,
             )
           }
