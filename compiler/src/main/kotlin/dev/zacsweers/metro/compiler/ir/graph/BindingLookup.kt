@@ -448,8 +448,8 @@ internal class BindingLookup(
         val binding = bindings.first()
         // Check if this is available from parent and is scoped
         if (binding.scope != null && parentContext?.contains(key) == true) {
-          val fieldAccess = parentContext.mark(key, binding.scope!!)
-          return setOf(createParentGraphDependency(key, fieldAccess!!))
+          val token = parentContext.mark(key, binding.scope!!)
+          return setOf(createParentGraphDependency(key, token!!))
         }
         return setOf(binding)
       }
@@ -483,8 +483,8 @@ internal class BindingLookup(
                 // Discovered here but unused in the parents, mark it anyway so they include it
                 parentContext.containsScope(scope)
             if (scopeInParent) {
-              val propertyAccess = parentContext.mark(key, scope)
-              remappedBindings += createParentGraphDependency(key, propertyAccess!!)
+              val token = parentContext.mark(key, scope)
+              remappedBindings += createParentGraphDependency(key, token!!)
               continue
             }
           }
@@ -498,7 +498,7 @@ internal class BindingLookup(
 
   private fun createParentGraphDependency(
     key: IrTypeKey,
-    propertyAccess: ParentContext.PropertyAccess,
+    token: ParentContext.Token,
   ): IrBinding.GraphDependency {
     val parentGraph = parentContext!!.currentParentGraph
     val cacheKey = ParentGraphDepKey(parentGraph, key)
@@ -508,7 +508,7 @@ internal class BindingLookup(
       IrBinding.GraphDependency(
         ownerKey = parentTypeKey,
         graph = sourceGraph,
-        propertyAccess = propertyAccess,
+        token = token,
         typeKey = key,
       )
     }
