@@ -73,6 +73,9 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(context: IrMet
    * @param actual The current access type (inferred from expression type by default)
    * @param requested The desired access type (inferred from contextualTypeKey by default)
    * @param useInstanceFactory Whether to use InstanceFactory for INSTANCE->PROVIDER (vs lambda)
+   * @param allowPropertyGetter Whether to allow wrapping property getter calls in InstanceFactory.
+   *   Normally this would eagerly init the getter, but for graph extension GETTER properties this is
+   *   intentional since the getter lazily creates the extension.
    */
   context(scope: IrBuilderWithScope)
   protected fun IrExpression.toTargetType(
@@ -94,6 +97,7 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(context: IrMet
         AccessType.INSTANCE
       },
     useInstanceFactory: Boolean = true,
+    allowPropertyGetter: Boolean = false,
   ): IrExpression {
     // Step 1: Transform access type (INSTANCE <-> PROVIDER)
     val accessTransformed =
@@ -102,7 +106,7 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(context: IrMet
         AccessType.PROVIDER -> {
           if (useInstanceFactory) {
             // actual is an instance, wrap it
-            wrapInInstanceFactory(contextualTypeKey.typeKey.type)
+            wrapInInstanceFactory(contextualTypeKey.typeKey.type, allowPropertyGetter)
           } else {
             scope.wrapInProviderFunction(contextualTypeKey.typeKey.type) { this@toTargetType }
           }
@@ -126,8 +130,11 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(context: IrMet
   }
 
   context(scope: IrBuilderWithScope)
-  protected fun IrExpression.wrapInInstanceFactory(type: IrType): IrExpression {
-    return with(scope) { instanceFactory(type, this@wrapInInstanceFactory) }
+  protected fun IrExpression.wrapInInstanceFactory(
+    type: IrType,
+    allowPropertyGetter: Boolean = false,
+  ): IrExpression {
+    return with(scope) { instanceFactory(type, this@wrapInInstanceFactory, allowPropertyGetter) }
   }
 
   protected fun IrBuilderWithScope.wrapInProviderFunction(
