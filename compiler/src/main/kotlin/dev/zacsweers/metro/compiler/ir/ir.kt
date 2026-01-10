@@ -1554,8 +1554,12 @@ internal fun IrClass.findInjectableConstructor(
 
 // InstanceFactory(...)
 context(context: IrMetroContext)
-internal fun IrBuilderWithScope.instanceFactory(type: IrType, arg: IrExpression): IrExpression {
-  assert(!(arg is IrCall && arg.symbol.owner.isPropertyAccessor)) {
+internal fun IrBuilderWithScope.instanceFactory(
+  type: IrType,
+  arg: IrExpression,
+  allowPropertyGetter: Boolean = false,
+): IrExpression {
+  assert(allowPropertyGetter || !(arg is IrCall && arg.symbol.owner.isPropertyAccessor)) {
     reportCompilerBug(
       "Metro compiler attempted to wrap a call to a property getter in an InstanceFactory. This is probably a bug because it'll likely eagerly init that getter!"
     )
