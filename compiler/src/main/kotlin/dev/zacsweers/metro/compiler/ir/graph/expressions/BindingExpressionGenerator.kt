@@ -32,7 +32,17 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(context: IrMet
   enum class AccessType {
     INSTANCE,
     // note: maybe rename this to PROVIDER_LIKE or PROVIDER_OR_FACTORY
-    PROVIDER,
+    PROVIDER;
+
+    companion object {
+      fun of(contextKey: IrContextualTypeKey): AccessType {
+        return if (contextKey.isWrappedInProvider) {
+          PROVIDER
+        } else {
+          INSTANCE
+        }
+      }
+    }
   }
 
   context(scope: IrBuilderWithScope)
