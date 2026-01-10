@@ -383,8 +383,7 @@ internal open class MutableBindingGraph<
     }
     if (key in bindings) {
       val existing = bindings.getValue(key)
-      val duplicate = binding
-      reportDuplicateBindings(key, listOf(existing, duplicate), bindingStack)
+      reportDuplicateBindings(key, listOf(existing, binding), bindingStack)
     } else {
       bindings[binding.typeKey] = binding
     }
