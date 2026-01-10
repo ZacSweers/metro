@@ -227,7 +227,7 @@ echo "$KOTLIN_VERSION" > "$MODULE_DIR/version.txt"
 if [ -n "$DELEGATES_TO" ]; then
   # With delegation - add dependency on delegate module
   cat > "$MODULE_DIR/build.gradle.kts" << EOF
-// Copyright (C) 2025 Zac Sweers
+// Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 plugins { alias(libs.plugins.kotlin.jvm) }
 
@@ -253,7 +253,7 @@ EOF
 else
   # Without delegation - standard template
   cat > "$MODULE_DIR/build.gradle.kts" << EOF
-// Copyright (C) 2025 Zac Sweers
+// Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 plugins { alias(libs.plugins.kotlin.jvm) }
 
@@ -280,7 +280,7 @@ fi
 if [ -n "$DELEGATES_TO" ]; then
   # With delegation - delegate to the specified version's implementation
   cat > "$MODULE_DIR/src/main/kotlin/dev/zacsweers/metro/compiler/compat/$MODULE_NAME/CompatContextImpl.kt" << EOF
-// Copyright (C) 2025 Zac Sweers
+// Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.compat.$MODULE_NAME
 
@@ -298,7 +298,7 @@ EOF
 else
   # Without delegation - standard template
   cat > "$MODULE_DIR/src/main/kotlin/dev/zacsweers/metro/compiler/compat/$MODULE_NAME/CompatContextImpl.kt" << EOF
-// Copyright (C) 2025 Zac Sweers
+// Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.compat.$MODULE_NAME
 

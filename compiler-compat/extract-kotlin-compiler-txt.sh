@@ -13,4 +13,16 @@ if [ ! -f "$JAR" ]; then
   exit 1
 fi
 
+echo "lib/kotlinc.kotlin-compiler-common.jar/META-INF/compiler.version:"
 unzip -p "$JAR" META-INF/compiler.version
+
+BUILD_TXT="$BASE/kotlinc/build.txt"
+if [ ! -f "$BUILD_TXT" ]; then
+  echo "Error: build.txt not found at $BUILD_TXT"
+  exit 1
+fi
+
+echo ""
+echo ""
+echo "build.txt:"
+cat "$BUILD_TXT"
