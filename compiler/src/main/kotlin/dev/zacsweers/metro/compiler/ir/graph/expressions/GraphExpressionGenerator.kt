@@ -46,7 +46,6 @@ import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isObject
-import org.jetbrains.kotlin.ir.util.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.superClass
@@ -402,51 +401,20 @@ private constructor(
         }
 
         is IrBinding.BoundInstance -> {
-          if (binding.classReceiverParameter != null) {
-            // Check if the binding is for the parent graph itself (the receiver's type)
-            // In this case, just use the receiver directly - it's an inner class relationship
-            // We use isSubtypeOf because the receiver is the impl class (e.g., AppGraphImpl)
-            // while the binding type is the interface (e.g., AppGraph)
-            // TODO this is ugly, reconcile classReceiverParameter with token's receiver
-            val isParentGraphBinding =
-              binding.classReceiverParameter.type.isSubtypeOf(
-                binding.typeKey.type,
-                irTypeSystemContext,
-              )
-
-            val token = binding.token
-            if (token != null && !isParentGraphBinding) {
-              // Resolve the token to get the actual property from parent's context
-              val propertyAccess = resolveToken(token)
-
-              // Get the property from the parent receiver (for sibling extensions, etc.)
-              val actual =
-                if (propertyAccess.isProviderProperty) AccessType.PROVIDER else AccessType.INSTANCE
-              irGetProperty(irGet(binding.classReceiverParameter), propertyAccess.property)
-                .toTargetType(
-                  actual = actual,
-                  contextualTypeKey = contextualTypeKey,
-                  allowPropertyGetter = fieldInitKey == null,
-                )
-            } else {
-              // Parent graph binding or no property access - use the receiver directly
-              when (accessType) {
-                AccessType.INSTANCE -> irGet(binding.classReceiverParameter)
-                AccessType.PROVIDER -> {
-                  irGet(binding.classReceiverParameter)
-                    .toTargetType(
-                      actual = AccessType.INSTANCE,
-                      contextualTypeKey = contextualTypeKey,
-                    )
-                }
-              }
+          // BoundInstance represents either:
+          // 1. Self-binding (token == null): graph provides itself via thisReceiver
+          // 2. Parent graph binding (token != null): parent graph type accessed via token's
+          // receiver
+          //
+          // Note: Property access on parent graphs uses GraphDependency, not BoundInstance.
+          // BoundInstance with token is always the parent graph type itself.
+          val receiver = binding.token?.receiverParameter ?: thisReceiver
+          when (accessType) {
+            AccessType.INSTANCE -> irGet(receiver)
+            AccessType.PROVIDER -> {
+              irGet(receiver)
+                .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
             }
-          } else {
-            // Should never happen, this should get handled in the provider/instance fields logic
-            // above.
-            reportCompilerBug(
-              "Unable to generate code for unexpected BoundInstance binding: $binding"
-            )
           }
         }
 
@@ -530,7 +498,7 @@ private constructor(
               // Resolve the token to get the actual property from parent's context
               val propertyAccess = resolveToken(binding.token)
               val isScalarProperty = !propertyAccess.isProviderProperty
-              irGetProperty(irGet(propertyAccess.receiverParameter), propertyAccess.property) to
+              propertyAccess.accessProperty() to
                 if (isScalarProperty) {
                   AccessType.INSTANCE
                 } else {

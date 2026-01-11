@@ -403,15 +403,20 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override fun toString() = renderDescriptionDiagnostic(short = true, underlineTypeKey = false)
   }
 
+  /**
+   * Represents a bound instance in the graph.
+   *
+   * @property typeKey The type key of the bound instance
+   * @property nameHint A hint for naming generated properties
+   * @property reportableDeclaration The declaration to report in diagnostics
+   * @property token Token for accessing a parent graph's property. When non-null, this binding
+   *   accesses a property from an ancestor graph. When null, this is a self-binding where the graph
+   *   provides itself (use `thisReceiver` in code gen).
+   */
   data class BoundInstance(
     override val typeKey: IrTypeKey,
     override val nameHint: String,
     override val reportableDeclaration: IrDeclarationWithName?,
-    val classReceiverParameter: IrValueParameter? = null,
-    /**
-     * Token for accessing a parent graph's property. This is set during validation and resolved to
-     * an actual property during generation via the parent's BindingPropertyContext.
-     */
     val token: ParentContext.Token? = null,
   ) : IrBinding {
     constructor(

@@ -24,7 +24,6 @@ import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
-import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.transformers.InjectConstructorTransformer
@@ -94,10 +93,10 @@ internal class BindingGraphGenerator(
     // Add instance parameters
     val graphInstanceBinding =
       IrBinding.BoundInstance(
-        node.typeKey,
-        "${node.sourceGraph.name}Provider",
-        node.sourceGraph,
-        node.metroGraph!!.thisReceiverOrFail,
+        typeKey = node.typeKey,
+        nameHint = "${node.sourceGraph.name}Provider",
+        reportableDeclaration = node.sourceGraph,
+        token = null, // indicates self-binding, code gen uses thisReceiver
       )
     graph.addBinding(node.typeKey, graphInstanceBinding, bindingStack)
 
@@ -541,10 +540,9 @@ internal class BindingGraphGenerator(
         graph.addBinding(
           parentKey,
           IrBinding.BoundInstance(
-            parentKey,
-            "parent",
-            parentNode.sourceGraph,
-            classReceiverParameter = parentNodeClass.thisReceiver,
+            typeKey = parentKey,
+            nameHint = "parent",
+            reportableDeclaration = parentNode.sourceGraph,
             token = token,
           ),
           bindingStack,
@@ -589,10 +587,9 @@ internal class BindingGraphGenerator(
           if (key == token.ownerGraphKey) {
             // Add bindings for the parent itself as a field reference
             IrBinding.BoundInstance(
-              key,
-              "parent",
-              null, // reportableDeclaration will be available during generation
-              classReceiverParameter = token.receiverParameter,
+              typeKey = key,
+              nameHint = "parent",
+              reportableDeclaration = null, // will be available during generation
               token = token,
             )
           } else {

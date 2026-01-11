@@ -959,7 +959,7 @@ internal class DependencyGraphNodeCache(
         trackClassLookup(graphDeclaration, container.ir)
       }
 
-      writeDiagnostic("bindingContainers-${parentTracer.tag}.txt") {
+      writeDiagnostic("bindingContainers-${parentTracer.diagnosticTag}.txt") {
         allMergedContainers.joinToString("\n") { it.ir.classId.toString() }
       }
 

@@ -193,13 +193,13 @@ internal class IrBindingGraph(
           shrinkUnusedBindings = metroContext.options.shrinkUnusedBindings,
           tracer = tracer,
           onPopulated = {
-            writeDiagnostic("keys-populated-${parentTracer.tag}.txt") {
+            writeDiagnostic("keys-populated-${parentTracer.diagnosticTag}.txt") {
               realGraph.bindings.keys.sorted().joinToString("\n")
             }
           },
           onSortedCycle = { elementsInCycle ->
             writeDiagnostic(
-              "cycle-${parentTracer.tag}-${elementsInCycle[0].render(short = true, includeQualifier = false)}.txt"
+              "cycle-${parentTracer.diagnosticTag}-${elementsInCycle[0].render(short = true, includeQualifier = false)}.txt"
             ) {
               elementsInCycle.plus(elementsInCycle[0]).joinToString("\n")
             }
@@ -216,18 +216,18 @@ internal class IrBindingGraph(
       return BindingGraphResult(emptyList(), emptySet(), emptySet(), emptyList(), true)
     }
 
-    writeDiagnostic("keys-validated-${parentTracer.tag}.txt") {
+    writeDiagnostic("keys-validated-${parentTracer.diagnosticTag}.txt") {
       sortedKeys.joinToString(separator = "\n")
     }
 
-    writeDiagnostic("keys-deferred-${parentTracer.tag}.txt") {
+    writeDiagnostic("keys-deferred-${parentTracer.diagnosticTag}.txt") {
       deferredTypes.joinToString(separator = "\n")
     }
 
     val unused = bindingsSnapshot().keys - reachableKeys
     if (unused.isNotEmpty()) {
       // TODO option to warn or fail? What about extensions that implicitly have many unused
-      writeDiagnostic("keys-unused-${parentTracer.tag}.txt") {
+      writeDiagnostic("keys-unused-${parentTracer.diagnosticTag}.txt") {
         unused.joinToString(separator = "\n")
       }
     }

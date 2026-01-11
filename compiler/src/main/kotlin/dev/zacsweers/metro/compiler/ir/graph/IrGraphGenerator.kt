@@ -468,17 +468,17 @@ internal class IrGraphGenerator(
             // We don't generate properties for these even though we do track them in dependencies
             // above, it's just for propagating their aliased type in sorting
             binding is IrBinding.Alias ||
-            // For implicit outer class receivers we don't need to generate a property for them
-            (binding is IrBinding.BoundInstance && binding.classReceiverParameter != null) ||
+            // BoundInstance bindings use receivers (thisReceiver for self, token for parents)
+            binding is IrBinding.BoundInstance ||
             // Parent graph bindings don't need duplicated properties
             (binding is IrBinding.GraphDependency && binding.token != null)
         }
         .toList()
         .also { propertyBindings ->
-          writeDiagnostic("keys-providerProperties-${parentTracer.tag}.txt") {
+          writeDiagnostic("keys-providerProperties-${parentTracer.diagnosticTag}.txt") {
             propertyBindings.joinToString("\n") { it.binding.typeKey.toString() }
           }
-          writeDiagnostic("keys-scopedProviderProperties-${parentTracer.tag}.txt") {
+          writeDiagnostic("keys-scopedProviderProperties-${parentTracer.diagnosticTag}.txt") {
             propertyBindings
               .filter { it.binding.isScoped() }
               .joinToString("\n") { it.binding.typeKey.toString() }
@@ -594,7 +594,7 @@ internal class IrGraphGenerator(
           propertyBindings = propertyBindings,
           plannedGroups = sealResult.shardGroups,
           bindingGraph = bindingGraph,
-          diagnosticTag = parentTracer.tag,
+          diagnosticTag = parentTracer.diagnosticTag,
           deferredInit = ::addDeferredSetDelegateCalls,
         )
 

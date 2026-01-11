@@ -10,6 +10,8 @@ import kotlin.time.TimeSource.Monotonic.ValueTimeMark
 internal interface Tracer {
   val tag: String
   val description: String
+  val diagnosticTag: String
+    get() = tag.replace('.', '_')
 
   fun start()
 

@@ -2,12 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyCollector
 import dev.zacsweers.metro.compiler.ir.graph.DependencyGraphNode
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
+import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
+import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.typeWith
 
 internal class ParentContext(private val metroContext: IrMetroContext) {
@@ -25,15 +29,49 @@ internal class ParentContext(private val metroContext: IrMetroContext) {
     val receiverParameter: IrValueParameter,
   )
 
-  // Data for property access tracking (used during generation phase)
-  data class PropertyAccess(
-    /** Corresponds to [Token.ownerGraphKey] */
+  /**
+   * Data for property access tracking (used during generation phase).
+   *
+   * Supports both direct property access (`graph.property`) and sharded property access
+   * (`graph.shard.property`) for future sharding support where properties may be organized into
+   * nested shard classes.
+   *
+   * @property ownerGraphKey The type key of the graph that owns this property
+   * @property property The property to access (may be on the graph directly or on a shard)
+   * @property receiverParameter The receiver parameter for the owning graph
+   * @property shardProperty If non-null, the property must be accessed through this shard property
+   *   first (i.e., `receiver.shardProperty.property` instead of `receiver.property`)
+   * @property isProviderProperty Whether the property returns a Provider type
+   */
+  @Poko
+  class PropertyAccess(
     val ownerGraphKey: IrTypeKey,
-    val property: IrProperty,
-    val receiverParameter: IrValueParameter,
+    private val property: IrProperty,
+    private val receiverParameter: IrValueParameter,
+    private val shardProperty: IrProperty? = null,
     // TODO use AccessType
     val isProviderProperty: Boolean,
-  )
+  ) {
+    /**
+     * Generates an IR expression to access this property on the receiver.
+     *
+     * Handles both direct access (`receiver.property`) and sharded access
+     * (`receiver.shardProperty.property`).
+     */
+    context(scope: IrBuilderWithScope)
+    fun accessProperty(): IrExpression {
+      val baseReceiver = scope.irGet(receiverParameter)
+      val propertyOwner =
+        if (shardProperty != null) {
+          // Access through shard: receiver.shardProperty
+          scope.irGetProperty(baseReceiver, shardProperty)
+        } else {
+          // Direct access on receiver
+          baseReceiver
+        }
+      return scope.irGetProperty(propertyOwner, property)
+    }
+  }
 
   private data class Level(
     val node: DependencyGraphNode,
