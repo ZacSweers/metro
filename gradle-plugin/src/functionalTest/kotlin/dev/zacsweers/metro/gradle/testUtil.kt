@@ -17,6 +17,7 @@ import kotlin.collections.component1
 import kotlin.io.path.absolute
 import kotlin.io.path.exists
 import kotlin.test.assertContains
+import kotlin.test.fail
 import org.gradle.testkit.runner.BuildResult
 import org.intellij.lang.annotations.Language
 
@@ -146,4 +147,15 @@ fun getTestCompilerVersion(): String =
 inline fun <reified T> GradleProject.invokeMain(className: String = "test.MainKt"): T {
   return classLoader().loadClass(className).declaredMethods.first { it.name == "main" }.invoke(null)
     as T
+}
+
+internal fun File.resolveSafe(relative: String): File {
+  val dir = this
+  return resolve(relative).apply {
+    if (!exists()) {
+      fail(
+        "Could not find $relative in $dir. Files are:\n${dir.walkTopDown().filter { it.isFile }.joinToString("\n")}"
+      )
+    }
+  }
 }
