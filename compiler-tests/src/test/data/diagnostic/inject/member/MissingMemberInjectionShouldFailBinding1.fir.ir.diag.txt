@@ -1,7 +1,10 @@
-/MissingMemberInjectionShouldFailBinding1.kt:(702,726): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: Implementation
+/MissingMemberInjectionShouldFailBinding1.kt:(697,721): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: Implementation
 
     Implementation is injected at
-        [TestGraph.$$ContributedSubscopeGraph] SubscopeGraph#bindImplementation(…, instance)
+        [TestGraph.Impl.SubscopeGraphImpl] SubscopeGraph.bindImplementation(…, instance)
+    Base is requested at
+        [TestGraph.Impl.SubscopeGraphImpl] SubscopeGraph.base
 
 Similar bindings:
-  - Base (Supertype). Type: Alias. Source: MissingMemberInjectionShouldFailBinding1.kt:28:3
+  - Base (Supertype). Type: Alias. Source: MissingMemberInjectionShouldFailBinding1.kt:31:3
+

@@ -1,4 +1,29 @@
 /ConfigurableMaxIrErrors.kt:(233,237): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @dev.zacsweers.metro.Named("1") kotlin.Int
 
     @dev.zacsweers.metro.Named("1") kotlin.Int is requested at
-        [AppGraph] AppGraph#int1
+        [AppGraph] AppGraph.int1
+
+
+/ConfigurableMaxIrErrors.kt:(261,265): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @dev.zacsweers.metro.Named("2") kotlin.Int
+
+    @dev.zacsweers.metro.Named("2") kotlin.Int is requested at
+        [AppGraph] AppGraph.int2
+
+
+/ConfigurableMaxIrErrors.kt:(289,293): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @dev.zacsweers.metro.Named("3") kotlin.Int
+
+    @dev.zacsweers.metro.Named("3") kotlin.Int is requested at
+        [AppGraph] AppGraph.int3
+
+
+/ConfigurableMaxIrErrors.kt:(317,321): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @dev.zacsweers.metro.Named("4") kotlin.Int
+
+    @dev.zacsweers.metro.Named("4") kotlin.Int is requested at
+        [AppGraph] AppGraph.int4
+
+
+/ConfigurableMaxIrErrors.kt:(345,349): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @dev.zacsweers.metro.Named("5") kotlin.Int
+
+    @dev.zacsweers.metro.Named("5") kotlin.Int is requested at
+        [AppGraph] AppGraph.int5
+

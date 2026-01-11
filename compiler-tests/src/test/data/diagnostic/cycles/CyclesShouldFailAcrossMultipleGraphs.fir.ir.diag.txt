@@ -1,12 +1,13 @@
 /CyclesShouldFailAcrossMultipleGraphs.kt:(134,151): error: [Metro/GraphDependencyCycle] Graph dependency cycle detected!
-    test.StringGraph is requested at
-        [test.CharSequenceGraph] test.StringGraph.Factory#create()
-    test.CharSequenceGraph is requested at
-        [test.CharSequenceGraph] test.CharSequenceGraph.Factory#create()
+    test.StringGraph is injected at
+        [test.CharSequenceGraph] test.StringGraph.Factory.create()
+    test.CharSequenceGraph is injected at
+        [test.CharSequenceGraph] test.CharSequenceGraph.Factory.create()
 
 
 /CyclesShouldFailAcrossMultipleGraphs.kt:(412,423): error: [Metro/GraphDependencyCycle] Graph dependency cycle detected!
-    test.CharSequenceGraph is requested at
-        [test.StringGraph] test.CharSequenceGraph.Factory#create()
-    test.StringGraph is requested at
-        [test.StringGraph] test.StringGraph.Factory#create()
+    test.CharSequenceGraph is injected at
+        [test.StringGraph] test.CharSequenceGraph.Factory.create()
+    test.StringGraph is injected at
+        [test.StringGraph] test.StringGraph.Factory.create()
+
