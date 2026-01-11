@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyContext
 import dev.zacsweers.metro.compiler.ir.graph.DependencyGraphNode
@@ -30,16 +31,14 @@ import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
-import dev.zacsweers.metro.compiler.tracing.Tracer
+import dev.zacsweers.metro.compiler.tracing.TraceScope
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrFunction
-import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
-import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.util.allParameters
@@ -55,35 +54,31 @@ import org.jetbrains.kotlin.name.Name
 internal class GraphExpressionGenerator
 private constructor(
   context: IrMetroContext,
+  traceScope: TraceScope,
   private val node: DependencyGraphNode,
   override val thisReceiver: IrValueParameter,
   private val bindingPropertyContext: BindingPropertyContext,
+  /** All ancestor graphs' binding property contexts, keyed by graph type key. */
+  private val ancestorBindingContexts: Map<IrTypeKey, BindingPropertyContext>,
   override val bindingGraph: IrBindingGraph,
   private val bindingContainerTransformer: BindingContainerTransformer,
   private val membersInjectorTransformer: MembersInjectorTransformer,
   private val assistedFactoryTransformer: AssistedFactoryTransformer,
   private val graphExtensionGenerator: IrGraphExtensionGenerator,
-  override val parentTracer: Tracer,
-  getterPropertyFor:
-    (
-      IrBinding, IrContextualTypeKey, IrBuilderWithScope.(GraphExpressionGenerator) -> IrBody,
-    ) -> IrProperty,
-) : BindingExpressionGenerator<IrBinding>(context) {
+) : BindingExpressionGenerator<IrBinding>(context, traceScope) {
 
   class Factory(
     private val context: IrMetroContext,
     private val node: DependencyGraphNode,
     private val bindingPropertyContext: BindingPropertyContext,
+    /** All ancestor graphs' binding property contexts, keyed by graph type key. */
+    private val ancestorBindingContexts: Map<IrTypeKey, BindingPropertyContext>,
     private val bindingGraph: IrBindingGraph,
     private val bindingContainerTransformer: BindingContainerTransformer,
     private val membersInjectorTransformer: MembersInjectorTransformer,
     private val assistedFactoryTransformer: AssistedFactoryTransformer,
     private val graphExtensionGenerator: IrGraphExtensionGenerator,
-    private val parentTracer: Tracer,
-    private val getterPropertyFor:
-      (
-        IrBinding, IrContextualTypeKey, IrBuilderWithScope.(GraphExpressionGenerator) -> IrBody,
-      ) -> IrProperty,
+    private val traceScope: TraceScope,
   ) {
     fun create(thisReceiver: IrValueParameter): GraphExpressionGenerator {
       return GraphExpressionGenerator(
@@ -91,29 +86,19 @@ private constructor(
         node = node,
         thisReceiver = thisReceiver,
         bindingPropertyContext = bindingPropertyContext,
+        ancestorBindingContexts = ancestorBindingContexts,
         bindingGraph = bindingGraph,
         bindingContainerTransformer = bindingContainerTransformer,
         membersInjectorTransformer = membersInjectorTransformer,
         assistedFactoryTransformer = assistedFactoryTransformer,
         graphExtensionGenerator = graphExtensionGenerator,
-        parentTracer = parentTracer,
-        getterPropertyFor = getterPropertyFor,
+        traceScope = traceScope,
       )
     }
   }
 
   private val wrappedTypeGenerators = listOf(IrOptionalExpressionGenerator).associateBy { it.key }
-  private val multibindingExpressionGenerator by memoize {
-    MultibindingExpressionGenerator(this) { binding, contextKey, generateCode ->
-      getterPropertyFor(binding, contextKey) { parentGenerator ->
-        generateCode(parentGenerator.multibindingGetter)
-      }
-    }
-  }
-
-  // Here to defeat type checking
-  private val multibindingGetter: MultibindingExpressionGenerator
-    get() = multibindingExpressionGenerator
+  private val multibindingExpressionGenerator by memoize { MultibindingExpressionGenerator(this) }
 
   context(scope: IrBuilderWithScope)
   override fun generateBindingCode(
@@ -142,17 +127,16 @@ private constructor(
       // provider for it.
       // This is important for cases like DelegateFactory and breaking cycles.
       if (fieldInitKey == null || fieldInitKey != binding.typeKey) {
-        if (bindingPropertyContext.hasKey(binding.typeKey)) {
-          bindingPropertyContext.providerProperty(binding.typeKey)?.let {
-            return irGetProperty(irGet(thisReceiver), it)
-              .toTargetType(actual = AccessType.PROVIDER, contextualTypeKey = contextualTypeKey)
-          }
-          bindingPropertyContext.instanceProperty(binding.typeKey)?.let {
-            return irGetProperty(irGet(thisReceiver), it)
-              .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
-          }
-          // Should never get here
-          reportCompilerBug("Unable to find instance or provider field for ${binding.typeKey}")
+        bindingPropertyContext.get(contextualTypeKey)?.let { (property, storedKey) ->
+          val actual =
+            if (storedKey.isWrappedInProvider) AccessType.PROVIDER else AccessType.INSTANCE
+
+          return irGetProperty(irGet(thisReceiver), property)
+            .toTargetType(
+              actual = actual,
+              contextualTypeKey = contextualTypeKey,
+              allowPropertyGetter = fieldInitKey == null,
+            )
         }
       }
 
@@ -260,12 +244,13 @@ private constructor(
         }
 
         is IrBinding.Alias -> {
+          // TODO cache the aliases (or retrieve from binding property collector?)
           // For binds functions, just use the backing type
           val aliasedBinding = binding.aliasedBinding(bindingGraph)
           check(aliasedBinding != binding) { "Aliased binding aliases itself" }
           generateBindingCode(
             aliasedBinding,
-            contextualTypeKey = contextualTypeKey.withTypeKey(aliasedBinding.typeKey),
+            contextualTypeKey = contextualTypeKey.withIrTypeKey(aliasedBinding.typeKey),
             accessType = accessType,
             fieldInitKey = fieldInitKey,
           )
@@ -416,27 +401,20 @@ private constructor(
         }
 
         is IrBinding.BoundInstance -> {
-          if (binding.classReceiverParameter != null) {
-            when (accessType) {
-              AccessType.INSTANCE -> {
-                // Get it directly
-                irGet(binding.classReceiverParameter)
-              }
-
-              AccessType.PROVIDER -> {
-                // We need the provider
-                irGetProperty(
-                  irGet(binding.classReceiverParameter),
-                  binding.providerPropertyAccess!!.property,
-                )
-              }
+          // BoundInstance represents either:
+          // 1. Self-binding (token == null): graph provides itself via thisReceiver
+          // 2. Parent graph binding (token != null): parent graph type accessed via token's
+          // receiver
+          //
+          // Note: Property access on parent graphs uses GraphDependency, not BoundInstance.
+          // BoundInstance with token is always the parent graph type itself.
+          val receiver = binding.token?.receiverParameter ?: thisReceiver
+          when (accessType) {
+            AccessType.INSTANCE -> irGet(receiver)
+            AccessType.PROVIDER -> {
+              irGet(receiver)
+                .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
             }
-          } else {
-            // Should never happen, this should get handled in the provider/instance fields logic
-            // above.
-            reportCompilerBug(
-              "Unable to generate code for unexpected BoundInstance binding: $binding"
-            )
           }
         }
 
@@ -448,7 +426,6 @@ private constructor(
               node.sourceGraph,
               // The reportableDeclaration should be the accessor function
               metroFunctionOf(binding.reportableDeclaration as IrSimpleFunction),
-              parentTracer,
             )
 
           if (options.enableGraphImplClassAsReturnType) {
@@ -480,7 +457,6 @@ private constructor(
               binding.extensionTypeKey,
               node.sourceGraph,
               metroFunctionOf(binding.reportableDeclaration as IrSimpleFunction),
-              parentTracer,
             )
 
           // Get the factory implementation that was generated alongside the extension
@@ -512,18 +488,25 @@ private constructor(
 
         is IrBinding.GraphDependency -> {
           val ownerKey = binding.ownerKey
-          val bindingGetter =
-            if (binding.propertyAccess != null) {
-              // Just get the property
-              irGetProperty(
-                irGet(binding.propertyAccess.receiverParameter),
-                binding.propertyAccess.property,
-              )
+          // When propertyAccessToken is set, resolve it and check if the property returns a
+          // Provider or scalar
+          // When getter is used, the result is wrapped in a provider function
+          val (bindingGetter, actual) =
+            if (binding.token != null) {
+              // Resolve the token to get the actual property from parent's context
+              val propertyAccess = resolveToken(binding.token)
+              val isScalarProperty = !propertyAccess.isProviderProperty
+              propertyAccess.accessProperty() to
+                if (isScalarProperty) {
+                  AccessType.INSTANCE
+                } else {
+                  AccessType.PROVIDER
+                }
             } else if (binding.getter != null) {
               val graphInstanceProperty =
-                bindingPropertyContext.instanceProperty(ownerKey)
+                bindingPropertyContext.get(IrContextualTypeKey(ownerKey))?.property
                   ?: reportCompilerBug(
-                    "No matching included type instance found for type $ownerKey while processing ${node.typeKey}. Available instance fields ${bindingPropertyContext.availableInstanceKeys}"
+                    "No matching included type instance found for type $ownerKey while processing ${node.typeKey}"
                   )
 
               val getterContextKey = IrContextualTypeKey.from(binding.getter)
@@ -535,26 +518,30 @@ private constructor(
                   typeHint = binding.typeKey.type,
                 )
 
-              if (getterContextKey.isWrappedInProvider) {
-                // It's already a provider
-                invokeGetter
-              } else {
-                wrapInProviderFunction(binding.typeKey.type) {
-                  if (getterContextKey.isWrappedInProvider) {
-                    irInvoke(invokeGetter, callee = metroSymbols.providerInvoke)
-                  } else if (getterContextKey.isWrappedInLazy) {
-                    irInvoke(invokeGetter, callee = metroSymbols.lazyGetValue)
-                  } else {
-                    invokeGetter
+              val expr =
+                if (getterContextKey.isWrappedInProvider) {
+                  // It's already a provider
+                  invokeGetter
+                } else {
+                  wrapInProviderFunction(binding.typeKey.type) {
+                    if (getterContextKey.isWrappedInProvider) {
+                      irInvoke(invokeGetter, callee = metroSymbols.providerInvoke)
+                    } else if (getterContextKey.isWrappedInLazy) {
+                      irInvoke(invokeGetter, callee = metroSymbols.lazyGetValue)
+                    } else {
+                      invokeGetter
+                    }
                   }
                 }
-              }
+              // getter case always produces a Provider
+              expr to AccessType.PROVIDER
             } else {
               reportCompilerBug("Unknown graph dependency type")
             }
           bindingGetter.toTargetType(
             contextualTypeKey = contextualTypeKey,
-            actual = AccessType.PROVIDER,
+            actual = actual,
+            allowPropertyGetter = binding.token?.let { !it.contextKey.isWrappedInProvider } ?: false,
           )
         }
       }
@@ -639,8 +626,6 @@ private constructor(
 
       return params.allParameters.mapIndexed { i, param ->
         val contextualTypeKey = paramsToMap[i].contextualTypeKey
-        val typeKey = contextualTypeKey.typeKey
-
         val accessType =
           if (param.contextualTypeKey.requiresProviderInstance) {
             AccessType.PROVIDER
@@ -651,16 +636,19 @@ private constructor(
         // TODO consolidate this logic with generateBindingCode
         if (accessType == AccessType.INSTANCE) {
           // IFF the parameter can take a direct instance, try our instance fields
-          bindingPropertyContext.instanceProperty(typeKey)?.let { instanceField ->
-            return@mapIndexed irGetProperty(irGet(thisReceiver), instanceField)
-              .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
+          bindingPropertyContext.get(contextualTypeKey)?.let { (property, storedKey) ->
+            // Only return early if we got an actual instance property, not a provider fallback
+            if (!storedKey.isWrappedInProvider) {
+              return@mapIndexed irGetProperty(irGet(thisReceiver), property)
+                .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
+            }
           }
         }
 
         val providerInstance =
-          bindingPropertyContext.providerProperty(typeKey)?.let { field ->
+          bindingPropertyContext.get(contextualTypeKey)?.let { (property, _) ->
             // If it's in provider fields, invoke that field
-            irGetProperty(irGet(thisReceiver), field)
+            irGetProperty(irGet(thisReceiver), property)
           }
             ?: run {
               // Generate binding code for each param
@@ -687,4 +675,37 @@ private constructor(
         )
       }
     }
+
+  /**
+   * Resolves a [ParentContext.Token] to finalized [ParentContext.PropertyAccess] information by
+   * looking up the property in the appropriate ancestor's [BindingPropertyContext].
+   *
+   * The token's [ParentContext.Token.ownerGraphKey] identifies which ancestor graph owns the
+   * binding, allowing us to look up the correct context in nested extension chains.
+   */
+  private fun resolveToken(token: ParentContext.Token): ParentContext.PropertyAccess {
+    // Look up the correct ancestor's context using the token's parentKey
+    val ancestorContext =
+      ancestorBindingContexts[token.ownerGraphKey]
+        ?: reportCompilerBug(
+          "Cannot resolve property access token - no binding context found for ancestor ${token.ownerGraphKey}"
+        )
+
+    val bindingProperty =
+      ancestorContext.get(token.contextKey)
+        ?: reportCompilerBug(
+          "Cannot resolve property access token - property not found for ${token.contextKey} in ${token.ownerGraphKey}"
+        )
+
+    // Use the storedKey to determine if the property returns a Provider type,
+    // not the token's contextKey. The parent may have upgraded the property to a
+    // Provider field (e.g., because the binding is scoped or reused by factories) even if the child
+    // originally only needed scalar access.
+    return ParentContext.PropertyAccess(
+      ownerGraphKey = token.ownerGraphKey,
+      property = bindingProperty.property,
+      receiverParameter = token.receiverParameter,
+      isProviderProperty = bindingProperty.storedKey.isWrappedInProvider,
+    )
+  }
 }

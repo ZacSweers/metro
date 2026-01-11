@@ -6,6 +6,7 @@ import com.autonomousapps.kit.GradleProject
 import com.autonomousapps.kit.Source
 import com.autonomousapps.kit.Subproject
 import dev.zacsweers.metro.gradle.copy
+import dev.zacsweers.metro.gradle.resolveSafe
 import java.io.File
 import org.intellij.lang.annotations.Language
 
@@ -27,29 +28,29 @@ abstract class BaseIncrementalCompilationTest {
     get() = buildDir.resolve("metro")
 
   protected fun MetroGradleProject.reports(compilation: String): Reports =
-    metroDir.resolve(compilation).let(::Reports)
+    metroDir.resolveSafe(compilation).let(::Reports)
 
   protected val MetroGradleProject.mainReports: Reports
     get() = reports("main")
 
   protected val MetroGradleProject.appGraphReports: GraphReports
-    get() = mainReports.forGraph("AppGraph")
+    get() = mainReports.forGraph("AppGraph", "test_AppGraph_Impl")
 
   class Reports(val dir: File) {
-    fun forGraph(graph: String): GraphReports {
-      return GraphReports(dir, graph)
+    fun forGraph(simpleName: String, implFqName: String): GraphReports {
+      return GraphReports(dir, simpleName, implFqName)
     }
   }
 
-  class GraphReports(val reportsDir: File, val name: String) {
+  class GraphReports(val reportsDir: File, val simpleName: String, val implFqName: String) {
     val keysPopulated: Set<String> by lazy {
-      reportsDir.resolve("keys-populated-$name.txt").readLines().toSet()
+      reportsDir.resolveSafe("keys-populated-$simpleName.txt").readLines().toSet()
     }
     val providerPropertyKeys: Set<String> by lazy {
-      reportsDir.resolve("keys-providerProperties-$name.txt").readLines().toSet()
+      reportsDir.resolveSafe("keys-providerProperties-$implFqName.txt").readLines().toSet()
     }
     val scopedProviderPropertyKeys: Set<String> by lazy {
-      reportsDir.resolve("keys-scopedProviderProperties-$name.txt").readLines().toSet()
+      reportsDir.resolveSafe("keys-scopedProviderProperties-$implFqName.txt").readLines().toSet()
     }
   }
 

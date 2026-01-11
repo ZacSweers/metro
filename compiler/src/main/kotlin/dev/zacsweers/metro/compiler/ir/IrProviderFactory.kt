@@ -178,7 +178,7 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
       return Metro(
         factoryClass = clazz,
         typeKey = typeKey,
-        contextualTypeKey = contextKey.withTypeKey(typeKey),
+        contextualTypeKey = contextKey.withIrTypeKey(typeKey),
         rawTypeKey = rawTypeKey,
         callableMetadata = callableMetadata,
         realDeclaration =

@@ -6,9 +6,6 @@ interface AppGraph : Factory {
     private val thisGraphInstance: AppGraph
       field = <this>
 
-    private val appGraphProvider: Provider<AppGraph>
-      field = Companion.invoke<AppGraph>(value = <this>.#thisGraphInstance)
-
     @DependencyGraph
     private inner class LoggedInGraphImpl : LoggedInGraph {
       private val idInstance: String
@@ -30,7 +27,7 @@ interface AppGraph : Factory {
 
       override val id: String
         override get(): String {
-          return <this>.#idInstanceProvider.invoke()
+          return <this>.#idInstance
         }
 
     }

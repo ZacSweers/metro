@@ -49,23 +49,23 @@ public class MetroIrGenerationExtension(
     context.log("Starting IR processing of ${moduleFragment.name.asString()}")
     try {
       tracer(moduleFragment.name.asString().removePrefix("<").removeSuffix(">"), "Metro compiler")
-        .trace { tracer ->
+        .trace {
           // Create contribution data container
           val contributionData = IrContributionData(context)
 
           // First - transform `MetroContribution` interfaces and collect contribution data in a
           // single pass
-          tracer.traceNested("Transform contributions") {
+          traceNested("Transform contributions") {
             moduleFragment.transform(ContributionTransformer(context), contributionData)
           }
 
           // Second - transform the dependency graphs
-          tracer.traceNested("Core transformers") { nestedTracer ->
+          traceNested("Core transformers") {
             val dependencyGraphTransformer =
               DependencyGraphTransformer(
                 context,
                 contributionData,
-                nestedTracer,
+                this,
                 HintGenerator(context, moduleFragment),
               )
             moduleFragment.transform(dependencyGraphTransformer, null)

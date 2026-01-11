@@ -45,7 +45,6 @@ If adopting Metro into an existing codebase, you can use a few different strateg
     Most things will Just Work™, but you will still possibly need to do some manual migrations.
 
     - If you use `KClass` and `Class` interchangeably in your graph, Metro distinguishes between these and you'll need to move fully over to one or the other, likely `KClass`.
-    - If you use subcomponents, you'll have to switch to [Graph extensions](dependency-graphs.md#graph-extensions).
     - If you use `@MergeComponent` with `@Component`, it'll be easier if you just migrate those interfaces to `@DependencyGraph` since they're combined in there now.
       - Not necessary if coming from anvil-ksp.
     - Migrate `@BindsInstance` to `@Provides`. Metro consolidated these to just one annotation.

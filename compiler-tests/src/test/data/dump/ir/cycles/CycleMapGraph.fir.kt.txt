@@ -138,14 +138,14 @@ interface CycleMapGraph {
       super/*Any*/()
       /* <init>() */
 
-      Companion.setDelegate<Y>(delegateFactory = <this>.#yProvider, delegate = Companion.create(mapOfProvidersOfX = <this>.<get-mapOfStringToX>(), mapOfProvidersOfY = <this>.<get-mapOfStringToY>()))
+      Companion.setDelegate<Y>(delegateFactory = <this>.#yProvider, delegate = Companion.create(mapOfProvidersOfX = <this>.<get-mapOfStringToXProvider>(), mapOfProvidersOfY = <this>.<get-mapOfStringToYProvider>()))
     }
 
     override fun y(): Y {
       return <this>.#yProvider.invoke()
     }
 
-    private val mapOfStringToX: Provider<Map<String, Provider<X>>>
+    private val mapOfStringToXProvider: Provider<Map<String, Provider<X>>>
       private get(): Provider<Map<String, Provider<X>>> {
         return { // BLOCK
           val tmp_0: Builder<String, X> = Companion.builder<String, X>(size = 1)
@@ -154,7 +154,7 @@ interface CycleMapGraph {
         }
       }
 
-    private val mapOfStringToY: Provider<Map<String, Provider<Y>>>
+    private val mapOfStringToYProvider: Provider<Map<String, Provider<Y>>>
       private get(): Provider<Map<String, Provider<Y>>> {
         return { // BLOCK
           val tmp_1: Builder<String, Y> = Companion.builder<String, Y>(size = 1)

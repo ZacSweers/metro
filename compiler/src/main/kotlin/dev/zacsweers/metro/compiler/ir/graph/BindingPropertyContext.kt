@@ -2,54 +2,72 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
-import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.graph.WrappedType
+import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
+import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
+import dev.zacsweers.metro.compiler.ir.wrapInProvider
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 
+/**
+ * Represents a binding property along with the contextual type key it was stored under. This allows
+ * consumers to know whether the property returns a provider or instance type.
+ */
+internal data class BindingProperty(val property: IrProperty, val storedKey: IrContextualTypeKey)
+
+/**
+ * Tracks binding properties by their contextual type key. The contextual type key distinguishes
+ * between scalar and provider access (e.g., `Foo` vs `Provider<Foo>`) as well as multibinding
+ * variants (e.g., `Map<K, V>` vs `Map<K, Provider<V>>`).
+ */
 internal class BindingPropertyContext(private val bindingGraph: IrBindingGraph) {
-  // TODO we can end up in awkward situations where we
-  //  have the same type keys in both instance and provider fields
-  //  this is tricky because depending on the context, it's not valid
-  //  to use an instance (for example - you need a provider). How can we
-  //  clean this up?
-  // Properties for this graph and other instance params
-  private val instanceProperties = mutableMapOf<IrTypeKey, IrProperty>()
-  // Properties for providers. May include both scoped and unscoped providers as well as bound
-  // instances
-  private val providerProperties = mutableMapOf<IrTypeKey, IrProperty>()
+  private val properties = mutableMapOf<IrContextualTypeKey, IrProperty>()
 
-  val availableInstanceKeys: Set<IrTypeKey>
-    get() = instanceProperties.keys
-
-  val availableProviderKeys: Set<IrTypeKey>
-    get() = providerProperties.keys
-
-  fun hasKey(key: IrTypeKey): Boolean = key in instanceProperties || key in providerProperties
-
-  fun putInstanceProperty(key: IrTypeKey, property: IrProperty) {
-    instanceProperties[key] = property
+  fun put(key: IrContextualTypeKey, property: IrProperty) {
+    properties[key] = property
   }
 
-  fun putProviderProperty(key: IrTypeKey, property: IrProperty) {
-    providerProperties[key] = property
-  }
-
-  fun instanceProperty(key: IrTypeKey): IrProperty? {
-    instanceProperties[key]?.let {
-      return it
+  /**
+   * Looks up a property for the given contextual type key.
+   *
+   * For non-provider requests, this will also try the provider variant of the key since a provider
+   * property can satisfy an instance request (via .invoke()).
+   *
+   * @return A [BindingProperty] containing both the property and the key it was stored under, or
+   *   null if no matching property exists.
+   */
+  context(metroContext: IrMetroContext)
+  fun get(key: IrContextualTypeKey): BindingProperty? {
+    // Direct match
+    properties[key]?.let {
+      return BindingProperty(it, key)
     }
-    bindingGraph.findBinding(key)?.let {
+
+    // For non-provider requests, try provider key (a provider can satisfy an instance request)
+    // - if it's a scalar (non-provider/lazy type)
+    // - if it's a provider but _not_ a metro provider
+    val tryReWrapping =
+      !key.isWrappedInProvider ||
+        key.isWrappedInLazy ||
+        (key.wrappedType is WrappedType.Provider &&
+          key.wrappedType.providerType != Symbols.ClassIds.metroProvider)
+    if (tryReWrapping) {
+      val providerKey = key.stripOuterProviderOrLazy().wrapInProvider()
+      properties[providerKey]?.let {
+        return BindingProperty(it, providerKey)
+      }
+    }
+
+    // For aliases, try the aliased target
+    bindingGraph.findBinding(key.typeKey)?.let {
       if (it is IrBinding.Alias) {
-        // try the aliased target
-        return instanceProperty(it.aliasedType)
+        return get(key.withIrTypeKey(it.aliasedType))
       }
     }
     return null
   }
 
-  fun providerProperty(key: IrTypeKey): IrProperty? {
-    return providerProperties[key]
-  }
-
-  operator fun contains(key: IrTypeKey): Boolean =
-    instanceProperties.containsKey(key) || providerProperties.containsKey(key)
+  context(metroContext: IrMetroContext)
+  operator fun contains(key: IrContextualTypeKey): Boolean = get(key) != null
 }

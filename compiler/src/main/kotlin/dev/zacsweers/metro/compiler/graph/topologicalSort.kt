@@ -18,7 +18,7 @@ package dev.zacsweers.metro.compiler.graph
 
 import dev.zacsweers.metro.compiler.filterToSet
 import dev.zacsweers.metro.compiler.getAndAdd
-import dev.zacsweers.metro.compiler.tracing.Tracer
+import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import java.util.PriorityQueue
 import java.util.SortedMap
@@ -40,6 +40,7 @@ import java.util.SortedSet
  *   https://github.com/cashapp/zipline/blob/30ca7c9d782758737e9d20e8d9505930178d1992/zipline/src/hostMain/kotlin/app/cash/zipline/internal/topologicalSort.kt">Adapted
  *   from Zipline's implementation</a>
  */
+context(traceScope: TraceScope)
 internal fun <T : Comparable<T>> Iterable<T>.topologicalSort(
   sourceToTarget: (T) -> Iterable<T>,
   onCycle: (List<T>) -> Nothing = { cycle ->
@@ -176,12 +177,12 @@ internal data class GraphTopology<T>(
  *   kept.
  * @param onSortedCycle optional callback reporting (sorted) cycles.
  */
+context(traceScope: TraceScope)
 internal fun <V : Comparable<V>> topologicalSort(
   fullAdjacency: SortedMap<V, SortedSet<V>>,
   isDeferrable: (from: V, to: V) -> Boolean,
   onCycle: (List<V>) -> Unit,
   roots: SortedSet<V>? = null,
-  parentTracer: Tracer = Tracer.NONE,
   isImplicitlyDeferrable: (V) -> Boolean = { false },
   onSortedCycle: (List<V>) -> Unit = {},
 ): GraphTopology<V> {
@@ -189,16 +190,14 @@ internal fun <V : Comparable<V>> topologicalSort(
 
   // Collapse the graph into strongly‑connected components
   val (components, componentOf) =
-    parentTracer.traceNested("Compute SCCs") {
-      fullAdjacency.computeStronglyConnectedComponents(roots)
-    }
+    traceNested("Compute SCCs") { fullAdjacency.computeStronglyConnectedComponents(roots) }
 
   // Only vertices visited by SCC will be in componentOf
   // TODO single pass this
   val reachableKeys = fullAdjacency.filterKeys { it in componentOf }.toSortedMap()
 
   // Check for cycles
-  parentTracer.traceNested("Check for cycles") {
+  traceNested("Check for cycles") {
     for (component in components) {
       val vertices = component.vertices
 
@@ -231,17 +230,15 @@ internal fun <V : Comparable<V>> topologicalSort(
   }
 
   val componentDag =
-    parentTracer.traceNested("Build component DAG") {
-      buildComponentDag(reachableKeys, componentOf)
-    }
+    traceNested("Build component DAG") { buildComponentDag(reachableKeys, componentOf) }
   val componentOrder =
-    parentTracer.traceNested("Topo sort component DAG") {
+    traceNested("Topo sort component DAG") {
       topologicallySortComponentDag(componentDag, components.size)
     }
 
   // Expand each component back to its original vertices
   val sortedKeys =
-    parentTracer.traceNested("Expand components") {
+    traceNested("Expand components") {
       componentOrder.flatMap { id ->
         val component = components[id]
         if (component.vertices.size == 1) {

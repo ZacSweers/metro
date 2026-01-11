@@ -405,9 +405,6 @@ interface AppGraph : MetroContributionToAppScope {
     private val thisGraphInstance: AppGraph
       field = <this>
 
-    private val appGraphProvider: Provider<AppGraph>
-      field = Companion.invoke<AppGraph>(value = <this>.#thisGraphInstance)
-
     private val appService1Provider: Provider<AppService1>
 
     private val appService2Provider: Provider<AppService2>
@@ -445,9 +442,6 @@ interface AppGraph : MetroContributionToAppScope {
     private inner class ChildGraphImpl : ChildGraph, MetroContributionToChildScope {
       private val thisGraphInstance: ChildGraphImpl
         field = <this>
-
-      private val childGraphImplProvider: Provider<ChildGraphImpl>
-        field = Companion.invoke<ChildGraphImpl>(value = <this>.#thisGraphInstance)
 
       private val childService1Provider: Provider<ChildService1>
 
@@ -548,7 +542,7 @@ interface AppGraph : MetroContributionToAppScope {
 
       override val grandchildFactory: Factory
         override get(): Factory {
-          return <this>.#childGraphImplProvider.invoke()
+          return <this>.#thisGraphInstance
         }
 
     }
@@ -582,7 +576,7 @@ interface AppGraph : MetroContributionToAppScope {
 
     override val childFactory: Factory
       override get(): Factory {
-        return <this>.#appGraphProvider.invoke()
+        return <this>.#thisGraphInstance
       }
 
   }

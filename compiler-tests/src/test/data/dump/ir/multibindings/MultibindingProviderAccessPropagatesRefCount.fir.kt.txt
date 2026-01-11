@@ -382,10 +382,10 @@ interface TestGraph {
 
     override val mapConsumer: MapConsumer
       override get(): MapConsumer {
-        return MapConsumer(map = <this>.<get-mapOfIntToB>())
+        return MapConsumer(map = <this>.<get-mapOfIntToBProvider>())
       }
 
-    private val mapOfIntToB: Provider<Map<Int, B>>
+    private val mapOfIntToBProvider: Provider<Map<Int, B>>
       private get(): Provider<Map<Int, B>> {
         return { // BLOCK
           val tmp_0: Builder<Int, B> = Companion.builder<Int, B>(size = 1)
@@ -409,10 +409,10 @@ interface TestGraph {
 
     override val setConsumer: SetConsumer
       override get(): SetConsumer {
-        return SetConsumer(set = <this>.<get-setOfA>())
+        return SetConsumer(set = <this>.<get-setOfAProvider>())
       }
 
-    private val setOfA: Provider<Set<A>>
+    private val setOfAProvider: Provider<Set<A>>
       private get(): Provider<Set<A>> {
         return { // BLOCK
           val tmp_1: Builder<A> = Companion.builder<A>(individualProviderSize = 1, collectionProviderSize = 0)

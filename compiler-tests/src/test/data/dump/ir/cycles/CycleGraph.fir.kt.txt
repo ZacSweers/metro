@@ -329,9 +329,6 @@ interface CycleGraph {
     private val thisGraphInstance: CycleGraph
       field = <this>
 
-    private val cycleGraphProvider: Provider<CycleGraph>
-      field = Companion.invoke<CycleGraph>(value = <this>.#thisGraphInstance)
-
     private val cProvider: Provider<C>
       field = DelegateFactory<C>()
 
@@ -409,7 +406,7 @@ interface CycleGraph {
     }
 
     override fun childCycleGraph(): Factory {
-      return FactoryImpl(parentInstance = <this>.#cycleGraphProvider.invoke())
+      return FactoryImpl(parentInstance = <this>.#thisGraphInstance)
     }
 
     override val objWithCycle: Any

@@ -28,7 +28,8 @@ internal interface BaseContextualTypeKey<
       wrappedType is WrappedType.Provider &&
         (wrappedType as WrappedType.Provider<Type>).innerType is WrappedType.Lazy
 
-  fun withTypeKey(typeKey: TypeKey, rawType: Type? = null): ImplType
+  val isMapProvider: Boolean
+    get() = wrappedType.findMapValueType() is WrappedType.Provider
 
   fun render(short: Boolean, includeQualifier: Boolean = true): String
 }

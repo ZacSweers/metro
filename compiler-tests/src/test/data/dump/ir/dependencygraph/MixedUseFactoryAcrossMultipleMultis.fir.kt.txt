@@ -1,0 +1,520 @@
+@Inject
+class ClientDevice {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<ClientDevice> {
+    private /* final field */ val userAgentProvider: Provider<UserAgentProvider> = userAgentProvider
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(userAgentProvider: Provider<UserAgentProvider>): Factory<ClientDevice> {
+        return MetroFactory(userAgentProvider = userAgentProvider)
+      }
+
+      fun newInstance(userAgentProvider: UserAgentProvider): ClientDevice {
+        return ClientDevice(userAgentProvider = userAgentProvider)
+      }
+
+    }
+
+    private constructor(userAgentProvider: Provider<UserAgentProvider>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): ClientDevice {
+      return Companion.newInstance(userAgentProvider = <this>.#userAgentProvider.invoke())
+    }
+
+    fun mirrorFunction(userAgentProvider: UserAgentProvider): ClientDevice {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(userAgentProvider: UserAgentProvider) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class ClientId {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<ClientId> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    fun create(): Factory<ClientId> {
+      return MetroFactory
+    }
+
+    fun newInstance(): ClientId {
+      return ClientId()
+    }
+
+    override operator fun invoke(): ClientId {
+      return MetroFactory.newInstance()
+    }
+
+    fun mirrorFunction(): ClientId {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class CommonAppHeadersInterceptor {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<CommonAppHeadersInterceptor> {
+    private /* final field */ val additionalHeaders: Provider<Set<Pair<String, String>>> = additionalHeaders
+    private /* final field */ val lazyDelegate: Provider<CommonAppHeadersInterceptor> = lazyDelegate
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(additionalHeaders: Provider<Set<Pair<String, String>>>, lazyDelegate: Provider<CommonAppHeadersInterceptor>): Factory<CommonAppHeadersInterceptor> {
+        return MetroFactory(additionalHeaders = additionalHeaders, lazyDelegate = lazyDelegate)
+      }
+
+      fun newInstance(additionalHeaders: Set<Pair<String, String>>, lazyDelegate: Lazy<CommonAppHeadersInterceptor>): CommonAppHeadersInterceptor {
+        return CommonAppHeadersInterceptor(additionalHeaders = additionalHeaders, lazyDelegate = lazyDelegate)
+      }
+
+    }
+
+    private constructor(additionalHeaders: Provider<Set<Pair<String, String>>>, lazyDelegate: Provider<CommonAppHeadersInterceptor>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): CommonAppHeadersInterceptor {
+      return Companion.newInstance(additionalHeaders = <this>.#additionalHeaders.invoke(), lazyDelegate = Companion.lazy<Provider<CommonAppHeadersInterceptor>, CommonAppHeadersInterceptor>(provider = <this>.#lazyDelegate))
+    }
+
+    fun mirrorFunction(additionalHeaders: Set<Pair<String, String>>, lazyDelegate: Lazy<CommonAppHeadersInterceptor>): CommonAppHeadersInterceptor {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(additionalHeaders: Set<Pair<String, String>>, lazyDelegate: Lazy<CommonAppHeadersInterceptor>) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class InternalHeader {
+  val key: String
+    field = key
+    get
+
+  val value: String
+    field = "value"
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<InternalHeader> {
+    private /* final field */ val key: Provider<String> = key
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(key: Provider<String>): Factory<InternalHeader> {
+        return MetroFactory(key = key)
+      }
+
+      fun newInstance(key: String): InternalHeader {
+        return InternalHeader(key = key)
+      }
+
+    }
+
+    private constructor(key: Provider<String>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): InternalHeader {
+      return Companion.newInstance(key = <this>.#key.invoke())
+    }
+
+    fun mirrorFunction(key: String): InternalHeader {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(key: String) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class UserAgent {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<UserAgent> {
+    private /* final field */ val userAgentProvider: Provider<UserAgentProvider> = userAgentProvider
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(userAgentProvider: Provider<UserAgentProvider>): Factory<UserAgent> {
+        return MetroFactory(userAgentProvider = userAgentProvider)
+      }
+
+      fun newInstance(userAgentProvider: UserAgentProvider): UserAgent {
+        return UserAgent(userAgentProvider = userAgentProvider)
+      }
+
+    }
+
+    private constructor(userAgentProvider: Provider<UserAgentProvider>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): UserAgent {
+      return Companion.newInstance(userAgentProvider = <this>.#userAgentProvider.invoke())
+    }
+
+    fun mirrorFunction(userAgentProvider: UserAgentProvider): UserAgent {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(userAgentProvider: UserAgentProvider) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class UserAgentProvider {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<UserAgentProvider> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    fun create(): Factory<UserAgentProvider> {
+      return MetroFactory
+    }
+
+    fun newInstance(): UserAgentProvider {
+      return UserAgentProvider()
+    }
+
+    override operator fun invoke(): UserAgentProvider {
+      return MetroFactory.newInstance()
+    }
+
+    fun mirrorFunction(): UserAgentProvider {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@DependencyGraph(scope = AppScope::class)
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val thisGraphInstance: AppGraph
+      field = <this>
+
+    private val commonAppHeadersInterceptorProvider: Provider<CommonAppHeadersInterceptor>
+      field = DelegateFactory<CommonAppHeadersInterceptor>()
+
+    private val internalHeaderProvider: Provider<InternalHeader>
+      field = Companion.create(key = Companion.create(instance = <this>.#thisGraphInstance))
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+      Companion.setDelegate<CommonAppHeadersInterceptor>(delegateFactory = <this>.#commonAppHeadersInterceptorProvider, delegate = Companion.create(additionalHeaders = <this>.<get-setOfPair_String__String_Provider2>(), lazyDelegate = <this>.#commonAppHeadersInterceptorProvider))
+    }
+
+    override val interceptor: CommonAppHeadersInterceptor
+      override get(): CommonAppHeadersInterceptor {
+        return <this>.#commonAppHeadersInterceptorProvider.invoke()
+      }
+
+    override val internalHeader: InternalHeader
+      override get(): InternalHeader {
+        return <this>.#internalHeaderProvider.invoke()
+      }
+
+    @Named(name = "other")
+    private val setOfPair_String__String_Provider: Provider<Set<Pair<String, String>>>
+      private get(): Provider<Set<Pair<String, String>>> {
+        return { // BLOCK
+          val tmp_0: Builder<Pair<String, String>> = Companion.builder<Pair<String, String>>(individualProviderSize = 1, collectionProviderSize = 1)
+          tmp_0.addProvider(individualProvider = Companion.create(instance = <this>.#thisGraphInstance, header = <this>.#internalHeaderProvider))
+          tmp_0.addCollectionProvider(collectionProvider = Companion.create(instance = <this>.#thisGraphInstance))
+          tmp_0.build()
+        }
+      }
+
+    private val setOfPair_String__String_Provider2: Provider<Set<Pair<String, String>>>
+      private get(): Provider<Set<Pair<String, String>>> {
+        return { // BLOCK
+          val tmp_1: Builder<Pair<String, String>> = Companion.builder<Pair<String, String>>(individualProviderSize = 0, collectionProviderSize = 1)
+          tmp_1.addCollectionProvider(collectionProvider = Companion.create(instance = <this>.#thisGraphInstance, otherHeaders = <this>.<get-setOfPair_String__String_Provider>()))
+          tmp_1.build()
+        }
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideHeaders", propertyName = "", startOffset = 513, endOffset = 684, newInstanceName = "provideHeaders")
+  class ProvideHeadersMetroFactory : Factory<Set<Pair<String, String>>> {
+    private /* final field */ val instance: AppGraph = instance
+    private /* final field */ val otherHeaders: Provider<Set<Pair<String, String>>> = otherHeaders
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(instance: AppGraph, @Named(name = "other") otherHeaders: Provider<Set<Pair<String, String>>>): Factory<Set<Pair<String, String>>> {
+        return ProvideHeadersMetroFactory(instance = instance, otherHeaders = otherHeaders)
+      }
+
+      fun provideHeaders(instance: AppGraph, @Named(name = "other") otherHeaders: Set<Pair<String, String>>): Set<Pair<String, String>> {
+        return instance.provideHeaders(otherHeaders = otherHeaders)
+      }
+
+    }
+
+    private constructor(instance: AppGraph, otherHeaders: Provider<Set<Pair<String, String>>>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): Set<Pair<String, String>> {
+      return Companion.provideHeaders(instance = <this>.#instance, otherHeaders = <this>.#otherHeaders.invoke())
+    }
+
+    @ElementsIntoSet
+    fun mirrorFunction(@Named(name = "other") otherHeaders: Set<Pair<String, String>>): Set<Pair<String, String>> {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideInternalHeader", propertyName = "", startOffset = 220, endOffset = 376, newInstanceName = "provideInternalHeader")
+  class ProvideInternalHeaderMetroFactory : Factory<Pair<String, String>> {
+    private /* final field */ val instance: AppGraph = instance
+    private /* final field */ val header: Provider<InternalHeader> = header
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(instance: AppGraph, header: Provider<InternalHeader>): Factory<Pair<String, String>> {
+        return ProvideInternalHeaderMetroFactory(instance = instance, header = header)
+      }
+
+      fun provideInternalHeader(instance: AppGraph, header: InternalHeader): Pair<String, String> {
+        return instance.provideInternalHeader(header = header)
+      }
+
+    }
+
+    private constructor(instance: AppGraph, header: Provider<InternalHeader>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): Pair<String, String> {
+      return Companion.provideInternalHeader(instance = <this>.#instance, header = <this>.#header.invoke())
+    }
+
+    @IntoSet
+    @Named(name = "other")
+    fun mirrorFunction(header: InternalHeader): Pair<String, String> {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideOtherHeaders", propertyName = "", startOffset = 380, endOffset = 509, newInstanceName = "provideOtherHeaders")
+  class ProvideOtherHeadersMetroFactory : Factory<Set<Pair<String, String>>> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(instance: AppGraph): Factory<Set<Pair<String, String>>> {
+        return ProvideOtherHeadersMetroFactory(instance = instance)
+      }
+
+      fun provideOtherHeaders(instance: AppGraph): Set<Pair<String, String>> {
+        return instance.provideOtherHeaders()
+      }
+
+    }
+
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): Set<Pair<String, String>> {
+      return Companion.provideOtherHeaders(instance = <this>.#instance)
+    }
+
+    @ElementsIntoSet
+    @Named(name = "other")
+    fun mirrorFunction(): Set<Pair<String, String>> {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 86, endOffset = 131, newInstanceName = "provideString")
+  class ProvideStringMetroFactory : Factory<String> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(instance: AppGraph): Factory<String> {
+        return ProvideStringMetroFactory(instance = instance)
+      }
+
+      fun provideString(instance: AppGraph): String {
+        return instance.provideString()
+      }
+
+    }
+
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): String {
+      return Companion.provideString(instance = <this>.#instance)
+    }
+
+    fun mirrorFunction(): String {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Provides
+  @ElementsIntoSet
+  private fun provideHeaders(@Named(name = "other") otherHeaders: Set<Pair<String, String>>): Set<Pair<String, String>> {
+    return otherHeaders
+  }
+
+  @Provides
+  @Named(name = "other")
+  @IntoSet
+  private fun provideInternalHeader(header: InternalHeader): Pair<String, String> {
+    return to<String, String>(/* <this> = header.<get-key>(), */ that = header.<get-value>())
+  }
+
+  @Provides
+  @ElementsIntoSet
+  @Named(name = "other")
+  private fun provideOtherHeaders(): Set<Pair<String, String>> {
+    return emptySet<Pair<String, String>>()
+  }
+
+  @Provides
+  private fun provideString(): String {
+    return "key"
+  }
+
+  abstract val interceptor: CommonAppHeadersInterceptor
+    abstract get
+
+  abstract val internalHeader: InternalHeader
+    abstract get
+
+}
+
