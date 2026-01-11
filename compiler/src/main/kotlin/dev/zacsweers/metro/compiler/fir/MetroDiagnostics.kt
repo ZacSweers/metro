@@ -65,7 +65,6 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUGGEST_CLASS_INJECTION
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_MEMBER_INJECT_FUNCTION
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_OBJECT_INJECTION_WARNING
 import org.jetbrains.kotlin.diagnostics.AbstractKtDiagnosticFactory
-import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactoryToRendererMap
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticRenderers.TO_STRING
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticsContainer
@@ -83,7 +82,6 @@ import org.jetbrains.kotlin.diagnostics.error2
 import org.jetbrains.kotlin.diagnostics.errorWithoutSource
 import org.jetbrains.kotlin.diagnostics.rendering.BaseDiagnosticRendererFactory
 import org.jetbrains.kotlin.diagnostics.rendering.CommonRenderers.STRING
-import org.jetbrains.kotlin.diagnostics.rendering.DiagnosticRendererFactory
 import org.jetbrains.kotlin.diagnostics.warning0
 import org.jetbrains.kotlin.diagnostics.warning1
 import org.jetbrains.kotlin.psi.KtClass
@@ -180,11 +178,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
 }
 
 internal fun AbstractKtDiagnosticFactory.asSourcelessFactory(): KtSourcelessDiagnosticFactory {
-  return KtSourcelessDiagnosticFactory(
-    name,
-    severity,
-    rendererFactory
-  )
+  return KtSourcelessDiagnosticFactory(name, severity, rendererFactory)
 }
 
 private object FirMetroErrorMessages : BaseDiagnosticRendererFactory() {

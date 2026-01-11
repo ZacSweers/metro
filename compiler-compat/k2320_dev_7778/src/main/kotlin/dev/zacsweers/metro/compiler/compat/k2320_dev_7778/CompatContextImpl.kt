@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.compat.k2320_dev_7778
 
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.compat.k2320_dev_5437.CompatContextImpl as DelegateType
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.diagnostics.DiagnosticContext
@@ -10,7 +11,6 @@ import org.jetbrains.kotlin.diagnostics.KtDiagnostic
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticWithoutSource
 import org.jetbrains.kotlin.diagnostics.KtSourcelessDiagnosticFactory
 import org.jetbrains.kotlin.ir.IrDiagnosticReporter
-import dev.zacsweers.metro.compiler.compat.k2320_dev_5437.CompatContextImpl as DelegateType
 
 public class CompatContextImpl : CompatContext by DelegateType() {
   override val supportsExternalRepeatableAnnotations: Boolean = true
@@ -19,16 +19,18 @@ public class CompatContextImpl : CompatContext by DelegateType() {
   override fun KtSourcelessDiagnosticFactory.createCompat(
     message: String,
     location: CompilerMessageSourceLocation?,
-    languageVersionSettings: LanguageVersionSettings
+    languageVersionSettings: LanguageVersionSettings,
   ): KtDiagnosticWithoutSource? {
-    val context = object : DiagnosticContext {
-      override val containingFilePath: String?
-        get() = null
+    val context =
+      object : DiagnosticContext {
+        override val containingFilePath: String?
+          get() = null
 
-      override fun isDiagnosticSuppressed(diagnostic: KtDiagnostic): Boolean = false
-      override val languageVersionSettings: LanguageVersionSettings
-        get() = languageVersionSettings
-    }
+        override fun isDiagnosticSuppressed(diagnostic: KtDiagnostic): Boolean = false
+
+        override val languageVersionSettings: LanguageVersionSettings
+          get() = languageVersionSettings
+      }
     return create(message, location, context)
   }
 
