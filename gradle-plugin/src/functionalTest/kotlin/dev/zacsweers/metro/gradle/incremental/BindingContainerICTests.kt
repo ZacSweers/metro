@@ -13,9 +13,11 @@ import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.metro.gradle.MetroOptionOverrides
 import dev.zacsweers.metro.gradle.MetroProject
 import dev.zacsweers.metro.gradle.assertOutputContains
+import dev.zacsweers.metro.gradle.getTestCompilerVersion
 import dev.zacsweers.metro.gradle.invokeMain
 import dev.zacsweers.metro.gradle.source
 import org.gradle.testkit.runner.TaskOutcome
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class BindingContainerICTests : BaseIncrementalCompilationTest() {
@@ -1953,6 +1955,8 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
 
   @Test
   fun restoredMultibindingContributionFromExternalModuleIsDetected() {
+    // TODO 2.3.20-Beta1 seems to have an IC regression
+    assumeTrue(getTestCompilerVersion() != "2.3.20-dev-7791")
     val fixture =
       object : MetroProject() {
         val multibindings =
