@@ -168,7 +168,7 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
                   - Source:         ${callableMetadata.function.kotlinFqName.asString()}
                   - Mirror param:   ${mirrorP.typeKey}
                   - create() param: ${createP.typeKey}
-                
+
                 This is a known bug in the Kotlin compiler, follow https://github.com/ZacSweers/metro/issues/1556
               """
                 .trimIndent(),

@@ -15,7 +15,7 @@ Changelog
     - Source:         com.example.navigation.NavigationProviders.navigationSerializationModule
     - Mirror param:   @com.example.app.navigation.NavigationSerializers kotlin.collections.Set<kotlinx.serialization.modules.SerializersModule>
     - create() param: kotlin.collections.Set<kotlinx.serialization.modules.SerializersModule>
-  
+
   This is a known bug in the Kotlin compiler, follow https://github.com/ZacSweers/metro/issues/1556
   ```
 
