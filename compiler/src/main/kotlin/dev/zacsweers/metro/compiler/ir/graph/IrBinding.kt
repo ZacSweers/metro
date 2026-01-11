@@ -495,12 +495,10 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val parameters: Parameters = Parameters.empty()
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
 
-    // TODO improve both of the below
     override val reportableDeclaration: IrDeclarationWithName?
       get() = getter?.propertyIfAccessor?.expectAs<IrDeclarationWithName>()
 
     override fun renderDescriptionDiagnostic(short: Boolean, underlineTypeKey: Boolean): String {
-      // TODO render parent?
       return buildString {
         if (getter != null) {
           renderForDiagnostic(
@@ -510,12 +508,17 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
             annotations = MetroAnnotations.none(),
             parameters = Parameters.empty(),
             isProperty = null,
-            underlineTypeKey = false,
+            underlineTypeKey = underlineTypeKey,
           )
+        } else if (token != null) {
+          // For parent property access via token, show the parent graph and type being accessed
+          append(typeKey.render(short = short, includeQualifier = true))
+          append(" (from ")
+          append(ownerKey.render(short = short, includeQualifier = false))
+          append(")")
         } else {
-          // For parent property access, just render the type key
-          // TODO ehhhhh
-          append("ParentBinding(${typeKey.render(short = short, includeQualifier = true)})")
+          // Fallback just in case
+          append("GraphDependency(${typeKey.render(short = short, includeQualifier = true)})")
         }
       }
     }
