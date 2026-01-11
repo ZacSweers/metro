@@ -3231,6 +3231,14 @@
 <h3 id="enhancements">Enhancements<a class="headerlink" href="#enhancements" title="Permanent link">&para;</a></h3>
 <ul>
 <li>[IR] Restructure graph validation and generation to be separate phases, allowing for whole-graph validation before any code gen runs and better optimizing shared bindings across graph extension hierarchies.</li>
+<li>[IR] Validate parameter type keys on native builds to help clarify encounters with <a href="https://youtrack.jetbrains.com/issue/KT-83427">KT-83427</a>. Example below:<br />
+  <div class="highlight"><pre><span></span><code>e: Mirror/create function parameter type mismatch:
+  - Source:         com.example.navigation.NavigationProviders.navigationSerializationModule
+  - Mirror param:   @com.example.app.navigation.NavigationSerializers kotlin.collections.Set&lt;kotlinx.serialization.modules.SerializersModule&gt;
+  - create() param: kotlin.collections.Set&lt;kotlinx.serialization.modules.SerializersModule&gt;
+
+This is a known bug in the Kotlin compiler, follow https://github.com/ZacSweers/metro/issues/1556
+</code></pre></div></li>
 </ul>
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
 <ul>
