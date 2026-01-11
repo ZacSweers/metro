@@ -12,6 +12,7 @@ Changelog
 
 ### Fixes
 
+- [IR] Never eagerly init graph extension impls (scoped or not).
 - [IR] Don't cache creator-less scoped graph extension impls in their parent graphs. This was initially implemented this way due to a misunderstanding to how Dagger generated subcomponents! Getters for graph extensions now always return new instances.
 
 ### Changes
