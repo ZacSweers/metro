@@ -52,14 +52,22 @@ public interface CompatContext {
     }
 
     /**
-     * Load [factories][Factory] and pick the highest compatible version (by [Factory.minVersion])
+     * Load [factories][Factory] and pick the highest compatible version (by [Factory.minVersion]).
+     *
+     * dev track versions are special cased to avoid issues with divergent release tracks.
+     *
+     * When the current version is a dev build:
+     * 1. First, look for dev track factories and compare only within the dev track
+     * 2. If no dev factory matches, fall back to non-dev factories
+     *
+     * This ensures that a dev build like 2.3.20-dev-7791 doesn't incorrectly match a 2.3.20-Beta1
+     * factory just because beta > dev in maturity ordering.
      */
     internal fun resolveFactory(
       factories: Sequence<Factory> = loadFactories(),
       testVersionString: String? = null,
     ): Factory {
-      val testVersion = testVersionString?.let { KotlinToolingVersion(it) }
-      val targetFactory =
+      val factoryDataList =
         factories
           .mapNotNull { factory ->
             // Filter out any factories that can't compute the Kotlin version, as
@@ -70,21 +78,58 @@ public interface CompatContext {
               null
             }
           }
-          .filter { (version, factory) ->
-            (testVersion ?: version) >= KotlinToolingVersion(factory.minVersion)
-          }
-          .maxByOrNull { (_, factory) -> KotlinToolingVersion(factory.minVersion) }
-          ?.factory
-          ?: error(
-            """
-              Unrecognized Kotlin version!
+          .toList()
 
-              Available factories for: ${factories.joinToString(separator = "\n") { it.minVersion }}
-              Detected version(s): ${factories.map { it.currentVersion }.distinct().joinToString(separator = "\n")}
-            """
-              .trimIndent()
-          )
+      val currentVersion =
+        testVersionString?.let { KotlinToolingVersion(it) }
+          ?: factoryDataList.firstOrNull()?.version
+          ?: error("No factories available")
+
+      val targetFactory = resolveFactoryForVersion(currentVersion, factoryDataList)
       return targetFactory
+        ?: error(
+          """
+            Unrecognized Kotlin version!
+
+            Available factories for: ${factories.joinToString(separator = "\n") { it.minVersion }}
+            Detected version(s): ${factories.map { it.currentVersion }.distinct().joinToString(separator = "\n")}
+          """
+            .trimIndent()
+        )
+    }
+
+    private fun resolveFactoryForVersion(
+      currentVersion: KotlinToolingVersion,
+      factoryDataList: List<FactoryData>,
+    ): Factory? {
+      // If current version is DEV, try DEV track factories first
+      if (currentVersion.isDev) {
+        val devFactories =
+          factoryDataList.filter { KotlinToolingVersion(it.factory.minVersion).isDev }
+        val devMatch = findHighestCompatibleFactory(currentVersion, devFactories)
+        if (devMatch != null) {
+          return devMatch
+        }
+        // Fall back to non-DEV factories
+        val nonDevFactories =
+          factoryDataList.filter { !KotlinToolingVersion(it.factory.minVersion).isDev }
+        return findHighestCompatibleFactory(currentVersion, nonDevFactories)
+      }
+
+      // For non-DEV versions, only consider non-DEV factories
+      val nonDevFactories =
+        factoryDataList.filter { !KotlinToolingVersion(it.factory.minVersion).isDev }
+      return findHighestCompatibleFactory(currentVersion, nonDevFactories)
+    }
+
+    private fun findHighestCompatibleFactory(
+      currentVersion: KotlinToolingVersion,
+      factoryDataList: List<FactoryData>,
+    ): Factory? {
+      return factoryDataList
+        .filter { (_, factory) -> currentVersion >= KotlinToolingVersion(factory.minVersion) }
+        .maxByOrNull { (_, factory) -> KotlinToolingVersion(factory.minVersion) }
+        ?.factory
     }
 
     private fun create(): CompatContext = resolveFactory().create()

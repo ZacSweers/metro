@@ -185,4 +185,124 @@ class CompatContextTest {
     // testVersionString=2.3.0 should allow selection of 2.3.0 factory
     assertThat(resolved.minVersion).isEqualTo("2.3.0")
   }
+
+  @Test
+  fun `dev version selects dev factory`() {
+    val factoryStable =
+      FakeFactory(minVersion = "2.3.0", reportedCurrentVersion = "2.3.20-dev-7791")
+    val factoryDev =
+      FakeFactory(minVersion = "2.3.20-dev-5437", reportedCurrentVersion = "2.3.20-dev-7791")
+
+    val factories = sequenceOf(factoryStable, factoryDev)
+    val resolved = CompatContext.resolveFactory(factories, testVersionString = "2.3.20-dev-7791")
+
+    // dev version should prefer dev factory
+    assertThat(resolved.minVersion).isEqualTo("2.3.20-dev-5437")
+  }
+
+  @Test
+  fun `dev version selects highest compatible dev factory`() {
+    val factoryDev1 =
+      FakeFactory(minVersion = "2.3.20-dev-5437", reportedCurrentVersion = "2.3.20-dev-7791")
+    val factoryDev2 =
+      FakeFactory(minVersion = "2.3.20-dev-7791", reportedCurrentVersion = "2.3.20-dev-7791")
+
+    val factories = sequenceOf(factoryDev1, factoryDev2)
+    val resolved = CompatContext.resolveFactory(factories, testVersionString = "2.3.20-dev-7791")
+
+    // Should select higher dev factory
+    assertThat(resolved.minVersion).isEqualTo("2.3.20-dev-7791")
+  }
+
+  @Test
+  fun `dev version falls back to non-dev when no dev factory matches`() {
+    val factoryStable =
+      FakeFactory(minVersion = "2.3.0", reportedCurrentVersion = "2.3.20-dev-5000")
+    val factoryDev =
+      FakeFactory(minVersion = "2.3.20-dev-5437", reportedCurrentVersion = "2.3.20-dev-5000")
+
+    val factories = sequenceOf(factoryStable, factoryDev)
+    val resolved = CompatContext.resolveFactory(factories, testVersionString = "2.3.20-dev-5000")
+
+    // dev-5000 < dev-5437, so no dev factory matches
+    // Should fall back to stable factory
+    assertThat(resolved.minVersion).isEqualTo("2.3.0")
+  }
+
+  @Test
+  fun `Beta version does not select dev factory`() {
+    val factoryStable = FakeFactory(minVersion = "2.3.0", reportedCurrentVersion = "2.3.20-Beta1")
+    val factoryDev =
+      FakeFactory(minVersion = "2.3.20-dev-5437", reportedCurrentVersion = "2.3.20-Beta1")
+    val factoryBeta =
+      FakeFactory(minVersion = "2.3.20-Beta1", reportedCurrentVersion = "2.3.20-Beta1")
+
+    val factories = sequenceOf(factoryStable, factoryDev, factoryBeta)
+    val resolved = CompatContext.resolveFactory(factories, testVersionString = "2.3.20-Beta1")
+
+    // Beta version should NOT select dev factory, should select Beta factory
+    assertThat(resolved.minVersion).isEqualTo("2.3.20-Beta1")
+  }
+
+  @Test
+  fun `divergent tracks - dev version after Beta does not select Beta factory`() {
+    // Scenario: 2.3.20-Beta1 was released, then 2.3.20-dev-7791 (from main branch)
+    // The dev version should use dev factory, not Beta factory
+    val factoryStable =
+      FakeFactory(minVersion = "2.3.0", reportedCurrentVersion = "2.3.20-dev-7791")
+    val factoryBeta =
+      FakeFactory(minVersion = "2.3.20-Beta1", reportedCurrentVersion = "2.3.20-dev-7791")
+    val factoryDev =
+      FakeFactory(minVersion = "2.3.20-dev-7791", reportedCurrentVersion = "2.3.20-dev-7791")
+
+    val factories = sequenceOf(factoryStable, factoryBeta, factoryDev)
+    val resolved = CompatContext.resolveFactory(factories, testVersionString = "2.3.20-dev-7791")
+
+    // dev version should select dev factory, not Beta (even though semantically Beta > Dev)
+    assertThat(resolved.minVersion).isEqualTo("2.3.20-dev-7791")
+  }
+
+  @Test
+  fun `divergent tracks - Beta version does not select newer dev factory`() {
+    // Scenario: dev factory exists for dev-7791, but Beta1 should not use it
+    val factoryStable = FakeFactory(minVersion = "2.3.0", reportedCurrentVersion = "2.3.20-Beta1")
+    val factoryBeta =
+      FakeFactory(minVersion = "2.3.20-Beta1", reportedCurrentVersion = "2.3.20-Beta1")
+    val factoryDev =
+      FakeFactory(minVersion = "2.3.20-dev-7791", reportedCurrentVersion = "2.3.20-Beta1")
+
+    val factories = sequenceOf(factoryStable, factoryBeta, factoryDev)
+    val resolved = CompatContext.resolveFactory(factories, testVersionString = "2.3.20-Beta1")
+
+    // Beta version should select Beta factory, not dev factory
+    assertThat(resolved.minVersion).isEqualTo("2.3.20-Beta1")
+  }
+
+  @Test
+  fun `stable version does not select dev factory`() {
+    val factoryOldStable = FakeFactory(minVersion = "2.3.0", reportedCurrentVersion = "2.3.20")
+    val factoryDev = FakeFactory(minVersion = "2.3.20-dev-5437", reportedCurrentVersion = "2.3.20")
+    val factoryBeta = FakeFactory(minVersion = "2.3.20-Beta1", reportedCurrentVersion = "2.3.20")
+
+    val factories = sequenceOf(factoryOldStable, factoryDev, factoryBeta)
+    val resolved = CompatContext.resolveFactory(factories, testVersionString = "2.3.20")
+
+    // Stable 2.3.20 should select Beta factory (highest non-dev), not dev factory
+    assertThat(resolved.minVersion).isEqualTo("2.3.20-Beta1")
+  }
+
+  @Test
+  fun `dev version with only non-dev factories available`() {
+    val factoryStable =
+      FakeFactory(minVersion = "2.3.0", reportedCurrentVersion = "2.3.20-dev-5437")
+    val factoryBeta =
+      FakeFactory(minVersion = "2.3.20-Beta1", reportedCurrentVersion = "2.3.20-dev-5437")
+
+    val factories = sequenceOf(factoryStable, factoryBeta)
+    val resolved = CompatContext.resolveFactory(factories, testVersionString = "2.3.20-dev-5437")
+
+    // No dev factories, should fall back to highest compatible non-dev
+    // dev-5437 < Beta1 semantically, so only 2.3.0 matches
+    assertThat(resolved.minVersion).isEqualTo("2.3.0")
+  }
 }
