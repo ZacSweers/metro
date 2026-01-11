@@ -4,7 +4,10 @@ Changelog
 **Unreleased**
 --------------
 
-### New
+0.9.4
+-----
+
+_2026-01-09_
 
 ### Enhancements
 
@@ -20,7 +23,14 @@ Changelog
 
 ### Changes
 
+- Remove `-checkdiscard` rules from embedded proguard rules.
+
 ### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@C2H6O](https://github.com/C2H6O)
+- [@chrisbanes](https://github.com/chrisbanes)
 
 0.9.3
 -----
