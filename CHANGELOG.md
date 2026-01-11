@@ -9,6 +9,15 @@ Changelog
 ### Enhancements
 
 - [IR] Restructure graph validation and generation to be separate phases, allowing for whole-graph validation before any code gen runs and better optimizing shared bindings across graph extension hierarchies.
+- [IR] Validate parameter type keys on native builds to help clarify encounters with [KT-83427](https://youtrack.jetbrains.com/issue/KT-83427). Example below:
+  ```
+  e: Mirror/create function parameter type mismatch:
+    - Source:         com.example.navigation.NavigationProviders.navigationSerializationModule
+    - Mirror param:   @com.example.app.navigation.NavigationSerializers kotlin.collections.Set<kotlinx.serialization.modules.SerializersModule>
+    - create() param: kotlin.collections.Set<kotlinx.serialization.modules.SerializersModule>
+  
+  This is a known bug in the Kotlin compiler, follow https://github.com/ZacSweers/metro/issues/1556
+  ```
 
 ### Fixes
 
