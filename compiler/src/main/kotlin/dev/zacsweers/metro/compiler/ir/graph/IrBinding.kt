@@ -745,7 +745,8 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     val accessor: IrSimpleFunction,
     parentGraphKey: IrTypeKey,
   ) : IrBinding {
-    override val dependencies: List<IrContextualTypeKey> = listOf(IrContextualTypeKey(parentGraphKey))
+    override val dependencies: List<IrContextualTypeKey> =
+      listOf(IrContextualTypeKey(parentGraphKey))
     override val reportableDeclaration: IrDeclarationWithName = accessor
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
     override val parameters: Parameters = Parameters.empty()

@@ -74,8 +74,8 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(context: IrMet
    * @param requested The desired access type (inferred from contextualTypeKey by default)
    * @param useInstanceFactory Whether to use InstanceFactory for INSTANCE->PROVIDER (vs lambda)
    * @param allowPropertyGetter Whether to allow wrapping property getter calls in InstanceFactory.
-   *   Normally this would eagerly init the getter, but for graph extension GETTER properties this is
-   *   intentional since the getter lazily creates the extension.
+   *   Normally this would eagerly init the getter, but for graph extension GETTER properties this
+   *   is intentional since the getter lazily creates the extension.
    */
   context(scope: IrBuilderWithScope)
   protected fun IrExpression.toTargetType(

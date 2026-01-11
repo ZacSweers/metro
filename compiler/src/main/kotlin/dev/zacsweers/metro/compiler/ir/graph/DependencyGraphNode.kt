@@ -183,5 +183,6 @@ internal data class GraphExtensionAccessor(
   val isFactory: Boolean,
   val isFactorySAM: Boolean,
 ) {
-  val isSimpleAccessor: Boolean get() = !isFactorySAM && !isFactory
+  val isSimpleAccessor: Boolean
+    get() = !isFactorySAM && !isFactory
 }

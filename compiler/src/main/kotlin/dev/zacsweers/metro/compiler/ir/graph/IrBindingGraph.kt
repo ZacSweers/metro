@@ -15,7 +15,6 @@ import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
-import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.bindingTypeOrNull
 import dev.zacsweers.metro.compiler.ir.hasErrorTypes
