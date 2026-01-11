@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.memoize
@@ -147,17 +148,28 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
       if (mirrorFunction.isExternalParent && context.platform.isNative()) {
         // Validate qualifiers due to https://github.com/ZacSweers/metro/issues/1556
         val createFunctionParams =
-          clazz.requireSimpleFunction(Symbols.StringNames.CREATE).owner.parameters().allParameters
+          clazz
+            .requireStaticIshDeclarationContainer()
+            .requireSimpleFunction(Symbols.StringNames.CREATE)
+            .owner
+            .parameters()
+            .allParameters
+
         for ((i, mirrorP) in
           callableMetadata.mirrorFunction.parameters().allParameters.withIndex()) {
           val createP = createFunctionParams[i]
           if (createP.typeKey != mirrorP.typeKey) {
-            reportCompilerBug(
+            context.reportCompat(
+              callableMetadata.function,
+              MetroDiagnostics.KNOWN_KOTLINC_BUG_ERROR,
               """
-                Mirror/create function parameter type mismatch: ${mirrorP.typeKey} != ${createP.typeKey}
+                Mirror/create function parameter type mismatch:
+                  - Mirror param:   ${mirrorP.typeKey}
+                  - create() param: ${createP.typeKey}
                 Source: ${callableMetadata.function.kotlinFqName.asString()}
+                This is a known bug in the Kotlin compiler, follow https://github.com/ZacSweers/metro/issues/1556
               """
-                .trimIndent()
+                .trimIndent(),
             )
           }
         }
