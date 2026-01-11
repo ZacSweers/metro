@@ -775,7 +775,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
         .first { it.classOrNull == metroSymbols.metroFactory }
         .requireSimpleType(factoryCls) {
           appendLine()
-          appendLine("(hint)")
+          appendLine("(Hint)")
           val shortPath = buildString {
             append(callableMetadata.callableId.classId!!.shortClassName)
             append(".")

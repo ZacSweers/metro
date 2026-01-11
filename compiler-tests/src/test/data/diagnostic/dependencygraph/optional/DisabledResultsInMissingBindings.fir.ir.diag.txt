@@ -6,9 +6,10 @@
         [AppGraph] AppGraph.example
 
 
-/DisabledResultsInMissingBindings.kt:(292,330): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Long?
+/DisabledResultsInMissingBindings.kt:(292,310): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Long?
 
     kotlin.Long? is injected at
         [AppGraph] AppGraph.provideInt(…, long)
     kotlin.Int is requested at
         [AppGraph] AppGraph.int
+

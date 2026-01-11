@@ -1,9 +1,10 @@
-/SomeUnusedAndSomeUsed.kt:(226,229): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
+/SomeUnusedAndSomeUsed.kt:(224,227): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
 
     kotlin.Int is injected at
-        [AppGraph] AppGraph#<get-unusedBinding>(…, <this>)
+        [AppGraph] AppGraph.unusedBinding: kotlin.Int
     kotlin.Number is requested at
-        [AppGraph] AppGraph#number
+        [AppGraph] AppGraph.number
 
 Similar bindings:
-  - Number (Supertype). Type: Alias. Source: SomeUnusedAndSomeUsed.kt:10:3
+  - Number (Supertype). Type: Alias. Source: SomeUnusedAndSomeUsed.kt:10:10
+

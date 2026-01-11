@@ -121,7 +121,8 @@ dependencies {
   testRuntimeOnly(libs.anvil.kspCompiler)
 
   // Dependencies required to run the internal test framework.
-  testRuntimeOnly(libs.kotlin.reflect)
+  // Use the test compiler version because 2.3.20+ uses new APIs from here
+  testRuntimeOnly("org.jetbrains.kotlin:kotlin-reflect:$testCompilerVersion")
   testRuntimeOnly(libs.kotlin.test)
   testRuntimeOnly(libs.kotlin.scriptRuntime)
   testRuntimeOnly(libs.kotlin.annotationsJvm)

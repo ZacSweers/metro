@@ -64,6 +64,7 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.platform.konan.isNative
 
 internal class InjectConstructorTransformer(
   context: IrMetroContext,
@@ -124,10 +125,35 @@ internal class InjectConstructorTransformer(
               ?: reportCompilerBug(
                 "Expected nested class '$factoryClassName' not found in '${declaration.kotlinFqName}'."
               )
-          val parameters =
-            factoryCls.requireSimpleFunction(Symbols.StringNames.MIRROR_FUNCTION).owner.parameters()
+          val mirrorFunction =
+            factoryCls.requireSimpleFunction(Symbols.StringNames.MIRROR_FUNCTION).owner
+          val parameters = mirrorFunction.parameters()
+
           // Look up the injectable constructor for direct invocation optimization
           val externalTargetConstructor = targetConstructor()
+
+          if (platform.isNative()) {
+            // Validate qualifiers due to https://github.com/ZacSweers/metro/issues/1556
+            val createFunctionParams =
+              factoryCls
+                .requireSimpleFunction(Symbols.StringNames.CREATE)
+                .owner
+                .parameters()
+                .allParameters
+            for ((i, mirrorP) in parameters.allParameters.withIndex()) {
+              val createP = createFunctionParams[i]
+              if (createP.typeKey != mirrorP.typeKey) {
+                reportCompilerBug(
+                  """
+                Mirror/create function parameter type mismatch: ${mirrorP.typeKey} != ${createP.typeKey}
+                Source: ${externalTargetConstructor?.kotlinFqName ?: declaration.kotlinFqName}
+              """
+                    .trimIndent()
+                )
+              }
+            }
+          }
+
           val wrapper = ClassFactory.MetroFactory(factoryCls, parameters, externalTargetConstructor)
           // If it's from another module, we're done!
           // TODO this doesn't work as expected in KMP, where things compiled in common are seen
