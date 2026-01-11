@@ -15,6 +15,7 @@ import dev.zacsweers.metro.gradle.MetroProject
 import dev.zacsweers.metro.gradle.buildAndAssertThat
 import dev.zacsweers.metro.gradle.classLoader
 import dev.zacsweers.metro.gradle.cleanOutputLine
+import dev.zacsweers.metro.gradle.getTestCompilerVersion
 import dev.zacsweers.metro.gradle.invokeMain
 import dev.zacsweers.metro.gradle.source
 import java.io.File
@@ -337,6 +338,8 @@ class ICTests : BaseIncrementalCompilationTest() {
    */
   @Test
   fun contributedProviderExternalChangeInGraphExtensionDetected() {
+    // TODO 2.3.20-Beta1 seems to have an IC regression
+    assumeTrue(getTestCompilerVersion() != "2.3.20-dev-7791")
     val fixture =
       object : MetroProject() {
         override fun sources() = throw IllegalStateException()

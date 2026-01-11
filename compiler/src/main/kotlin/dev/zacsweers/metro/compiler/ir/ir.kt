@@ -87,6 +87,7 @@ import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.declarations.moduleDescriptor
 import org.jetbrains.kotlin.ir.expressions.IrBlockBody
 import org.jetbrains.kotlin.ir.expressions.IrBody
+import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrConst
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
@@ -150,6 +151,7 @@ import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.hasShape
 import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.isObject
+import org.jetbrains.kotlin.ir.util.isPropertyAccessor
 import org.jetbrains.kotlin.ir.util.isStatic
 import org.jetbrains.kotlin.ir.util.isTopLevelDeclaration
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -1552,7 +1554,17 @@ internal fun IrClass.findInjectableConstructor(
 
 // InstanceFactory(...)
 context(context: IrMetroContext)
-internal fun IrBuilderWithScope.instanceFactory(type: IrType, arg: IrExpression): IrExpression {
+internal fun IrBuilderWithScope.instanceFactory(
+  type: IrType,
+  arg: IrExpression,
+  allowPropertyGetter: Boolean = false,
+): IrExpression {
+  assert(allowPropertyGetter || !(arg is IrCall && arg.symbol.owner.isPropertyAccessor)) {
+    reportCompilerBug(
+      "Metro compiler attempted to wrap a call to a property getter in an InstanceFactory. This is probably a bug because it'll likely eagerly init that getter!"
+    )
+  }
+
   return irInvoke(
     irGetObject(context.metroSymbols.instanceFactoryCompanionObject),
     callee = context.metroSymbols.instanceFactoryInvoke,

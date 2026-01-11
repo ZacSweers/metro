@@ -584,6 +584,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("MixedUseFactoryAcrossMultipleNestedMiddleMultis.kt")
+    public void testMixedUseFactoryAcrossMultipleNestedMiddleMultis() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/MixedUseFactoryAcrossMultipleNestedMiddleMultis.kt");
+    }
+
+    @Test
     @TestMetadata("MultiLevelTransitiveIncludes.kt")
     public void testMultiLevelTransitiveIncludes() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/MultiLevelTransitiveIncludes.kt");
@@ -925,15 +931,15 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
-      @TestMetadata("ScopedExtensionsWithoutFactoriesShouldBeCached.kt")
-      public void testScopedExtensionsWithoutFactoriesShouldBeCached() {
-        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ScopedExtensionsWithoutFactoriesShouldBeCached.kt");
+      @TestMetadata("ScopedExtensionsWithoutFactoriesShouldNotBeCached.kt")
+      public void testScopedExtensionsWithoutFactoriesShouldNotBeCached() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ScopedExtensionsWithoutFactoriesShouldNotBeCached.kt");
       }
 
       @Test
-      @TestMetadata("ScopedExtensionsWithoutFactoriesShouldBeCachedWithOrdering.kt")
-      public void testScopedExtensionsWithoutFactoriesShouldBeCachedWithOrdering() {
-        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ScopedExtensionsWithoutFactoriesShouldBeCachedWithOrdering.kt");
+      @TestMetadata("ScopedExtensionsWithoutFactoriesShouldNotBeCachedWithOrdering.kt")
+      public void testScopedExtensionsWithoutFactoriesShouldNotBeCachedWithOrdering() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ScopedExtensionsWithoutFactoriesShouldNotBeCachedWithOrdering.kt");
       }
 
       @Test

@@ -1,0 +1,139 @@
+@DependencyGraph
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val thisGraphInstance: AppGraph
+      field = <this>
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val ints: Set<Int>
+      override get(): Set<Int> {
+        return <this>.<get-setOfInt>()
+      }
+
+    private val setOfInt: Set<Int>
+      private get(): Set<Int> {
+        return { // BLOCK
+          val tmp_0: Set<Int> = Companion.provideInts(instance = <this>.#thisGraphInstance)
+          buildSet<Int>(capacity = 1.plus(other = tmp_0.<get-size>()), builderAction = local fun MutableSet<Int>.<anonymous>() {
+            $receiver.add(element = Companion.provide4(instance = <this>.#thisGraphInstance))
+            $receiver.addAll(elements = tmp_0)
+          }
+)
+        }
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provide4", propertyName = "", startOffset = 170, endOffset = 212, newInstanceName = "provide4")
+  class Provide4MetroFactory : Factory<Int> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(instance: AppGraph): Factory<Int> {
+        return Provide4MetroFactory(instance = instance)
+      }
+
+      fun provide4(instance: AppGraph): Int {
+        return instance.provide4()
+      }
+
+    }
+
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): Int {
+      return Companion.provide4(instance = <this>.#instance)
+    }
+
+    @IntoSet
+    fun mirrorFunction(): Int {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideInts", propertyName = "", startOffset = 91, endOffset = 166, newInstanceName = "provideInts")
+  class ProvideIntsMetroFactory : Factory<Set<Int>> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(instance: AppGraph): Factory<Set<Int>> {
+        return ProvideIntsMetroFactory(instance = instance)
+      }
+
+      fun provideInts(instance: AppGraph): Set<Int> {
+        return instance.provideInts()
+      }
+
+    }
+
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): Set<Int> {
+      return Companion.provideInts(instance = <this>.#instance)
+    }
+
+    @ElementsIntoSet
+    fun mirrorFunction(): Set<Int> {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Provides
+  @IntoSet
+  private fun provide4(): Int {
+    return 4
+  }
+
+  @Provides
+  @ElementsIntoSet
+  private fun provideInts(): Set<Int> {
+    return setOf<Int>(elements = [1, 2, 3])
+  }
+
+  abstract val ints: Set<Int>
+    abstract get
+
+}

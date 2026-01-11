@@ -104,6 +104,7 @@ internal class Parameters(
     )
   }
 
+  context(metroContext: IrMetroContext)
   fun overlayQualifiers(qualifiers: List<IrAnnotation?>): Parameters {
     return Parameters(
       callableId = callableId,
@@ -114,7 +115,7 @@ internal class Parameters(
           val qualifier = qualifiers[i] ?: return@mapIndexed param
           param.copy(
             contextualTypeKey =
-              param.contextualTypeKey.withTypeKey(
+              param.contextualTypeKey.withIrTypeKey(
                 param.contextualTypeKey.typeKey.copy(qualifier = qualifier)
               )
           )

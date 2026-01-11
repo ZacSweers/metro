@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.cli.common.messages.AnalyzerWithCompilerReport
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
@@ -49,8 +50,6 @@ private fun convertSeverity(severity: Severity): CompilerMessageSeverity =
     Severity.FIXED_WARNING -> FIXED_WARNING
   }
 
-@OptIn(InternalDiagnosticFactoryMethod::class)
-@Suppress("DEPRECATION")
 internal fun <A : Any> IrMetroContext.reportCompat(
   irDeclaration: IrDeclaration?,
   factory: KtDiagnosticFactory1<A>,
@@ -62,13 +61,25 @@ internal fun <A : Any> IrMetroContext.reportCompat(
     // Report through message collector for now
     // If we have a source element, report the diagnostic directly
     if (sourceElement != null) {
-      val diagnostic = factory.on(sourceElement, a, null, languageVersionSettings)
-      reportDiagnosticToMessageCollector(
-        diagnostic!!,
-        irDeclaration.locationOrNull(),
-        messageCollector,
-        false,
-      )
+      // TODO https://youtrack.jetbrains.com/issue/KT-83491
+      // val sourcelessFactory = factory.asSourcelessFactory()
+      val sourcelessFactory = MetroDiagnostics.SOURCELESS_METRO_ERROR
+      if (supportsSourcelessIrDiagnostics) {
+        diagnosticReporter.reportCompat(sourcelessFactory, a as String)
+      } else {
+        val diagnostic =
+          sourcelessFactory.createCompat(
+            a as String,
+            irDeclaration.locationOrNull(),
+            languageVersionSettings,
+          )
+        reportDiagnosticToMessageCollector(
+          diagnostic!!,
+          irDeclaration.locationOrNull(),
+          messageCollector,
+          false,
+        )
+      }
       return
     }
     val severity = convertSeverity(factory.severity)

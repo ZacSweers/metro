@@ -160,6 +160,24 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("MixedUseFactoryAcrossMultipleMultis.kt")
+    public void testMixedUseFactoryAcrossMultipleMultis() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/MixedUseFactoryAcrossMultipleMultis.kt");
+    }
+
+    @Test
+    @TestMetadata("MixedUseFactoryAcrossMultipleNestedMiddleMultis.kt")
+    public void testMixedUseFactoryAcrossMultipleNestedMiddleMultis() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/MixedUseFactoryAcrossMultipleNestedMiddleMultis.kt");
+    }
+
+    @Test
+    @TestMetadata("MixedUseFactoryAndScalarRefsShouldUseOneProviderField.kt")
+    public void testMixedUseFactoryAndScalarRefsShouldUseOneProviderField() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/MixedUseFactoryAndScalarRefsShouldUseOneProviderField.kt");
+    }
+
+    @Test
     @TestMetadata("MultipleRefsGetProviderFields.kt")
     public void testMultipleRefsGetProviderFields() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/MultipleRefsGetProviderFields.kt");
@@ -351,6 +369,18 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     @Test
     public void testAllFilesPresentInMultibindings() {
       KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/multibindings"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    }
+
+    @Test
+    @TestMetadata("ElementsIntoSetWorkInScalars.kt")
+    public void testElementsIntoSetWorkInScalars() {
+      runTest("compiler-tests/src/test/data/dump/ir/multibindings/ElementsIntoSetWorkInScalars.kt");
+    }
+
+    @Test
+    @TestMetadata("ElementsIntoSetWorkInScalarsMixed.kt")
+    public void testElementsIntoSetWorkInScalarsMixed() {
+      runTest("compiler-tests/src/test/data/dump/ir/multibindings/ElementsIntoSetWorkInScalarsMixed.kt");
     }
 
     @Test

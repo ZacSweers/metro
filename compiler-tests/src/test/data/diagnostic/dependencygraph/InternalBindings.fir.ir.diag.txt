@@ -1,7 +1,8 @@
-/module_main_InternalBindings.kt:(154,162): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: SomeRepository
+/module_main_InternalBindings.kt:(156,164): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: SomeRepository
 
     SomeRepository is requested at
         [AppGraph.Impl.LoggedInGraphImpl] LoggedInGraph.someRepository
 
 Similar bindings:
   - SomeRepository (Contributed by 'SomeRepositoryImpl' but that class is internal to its module and its module is not a friend module to this one.)
+

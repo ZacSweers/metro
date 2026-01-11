@@ -19,7 +19,7 @@ import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
-import dev.zacsweers.metro.compiler.tracing.Tracer
+import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -44,11 +44,11 @@ internal class IrGraphExtensionGenerator(
 
   private data class CacheKey(val typeKey: IrTypeKey, val parentGraph: ClassId)
 
+  context(traceScope: TraceScope)
   fun getOrBuildGraphExtensionImpl(
     typeKey: IrTypeKey,
     parentGraph: IrClass,
     contributedAccessor: MetroSimpleFunction,
-    parentTracer: Tracer,
   ): IrClass {
     return generatedClassesCache.getOrPut(CacheKey(typeKey, parentGraph.classIdOrFail)) {
       val sourceSamFunction =
@@ -65,7 +65,7 @@ internal class IrGraphExtensionGenerator(
       val isFactorySAM =
         parent.isAnnotatedWithAny(metroSymbols.classIds.graphExtensionFactoryAnnotations)
       if (isFactorySAM) {
-        generateImplFromFactory(sourceSamFunction, parentTracer, typeKey)
+        generateImplFromFactory(sourceSamFunction, typeKey)
       } else {
         val returnType = contributedAccessor.ir.returnType.rawType()
         val returnIsGraphExtensionFactory =
@@ -77,7 +77,7 @@ internal class IrGraphExtensionGenerator(
             returnType.singleAbstractFunction().apply {
               remapTypes(sourceSamFunction.typeRemapperFor(contributedAccessor.ir.returnType))
             }
-          generateImplFromFactory(samFunction, parentTracer, typeKey)
+          generateImplFromFactory(samFunction, typeKey)
         } else if (returnIsGraphExtension) {
           // Simple case with no creator
           generateImpl(returnType, creatorFunction = null, typeKey)
@@ -88,14 +88,14 @@ internal class IrGraphExtensionGenerator(
     }
   }
 
+  context(traceScope: TraceScope)
   private fun generateImplFromFactory(
     factoryFunction: IrSimpleFunction,
-    parentTracer: Tracer,
     typeKey: IrTypeKey,
   ): IrClass {
     val sourceFactory = factoryFunction.parentAsClass
     val sourceGraph = sourceFactory.parentAsClass
-    return parentTracer.traceNested("Generate graph extension ${sourceGraph.name}") {
+    return traceNested("Generate graph extension ${sourceGraph.name}") {
       generateImpl(sourceGraph = sourceGraph, creatorFunction = factoryFunction, typeKey = typeKey)
     }
   }

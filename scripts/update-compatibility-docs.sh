@@ -112,7 +112,7 @@ max_version=$(echo "$versions" | sort -V | tail -n 1)
 # The badge format is: Kotlin-MIN--MAX where -- represents a hyphen in the version
 badge_min=$(echo "$min_version" | sed 's/-/--/g')
 badge_max=$(echo "$max_version" | sed 's/-/--/g')
-badge_text="Kotlin-${badge_min}--${badge_max}"
+badge_text="Kotlin-${badge_min}%20--%20${badge_max}"
 
 # Update the Kotlin badge in README.md
 # Match the pattern: [![Kotlin](...badge/Kotlin-...-blue.svg...)]

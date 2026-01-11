@@ -8,13 +8,57 @@ Changelog
 
 ### Enhancements
 
+- [IR] Restructure graph validation and generation to be separate phases, allowing for whole-graph validation before any code gen runs and better optimizing shared bindings across graph extension hierarchies.
+- [IR] Validate parameter type keys on native builds to help clarify encounters with [KT-83427](https://youtrack.jetbrains.com/issue/KT-83427). Example below:
+  ```
+  e: Mirror/create function parameter type mismatch:
+    - Source:         com.example.navigation.NavigationProviders.navigationSerializationModule
+    - Mirror param:   @com.example.app.navigation.NavigationSerializers kotlin.collections.Set<kotlinx.serialization.modules.SerializersModule>
+    - create() param: kotlin.collections.Set<kotlinx.serialization.modules.SerializersModule>
+
+  This is a known bug in the Kotlin compiler, follow https://github.com/ZacSweers/metro/issues/1556
+  ```
+
 ### Fixes
+
+- [IR] Never eagerly init graph extension impls (scoped or not).
+- [IR] Don't cache creator-less scoped graph extension impls in their parent graphs. This was initially implemented this way due to a misunderstanding to how Dagger generated subcomponents! Getters for graph extensions now always return new instances.
 
 ### Changes
 
+- [IR] Already mentioned above, but worth calling out again — creator-less scoped graph extensions _are no longer cached_ in their parent graphs. Accessors to this will always get new instances now.
+- [IR] Report log files reported from within graph generation now use snake-cased fully-qualified names of the impl graph as the file name suffix.
 - Test Kotlin `2.3.20-Beta1`.
 
 ### Contributors
+
+0.9.4
+-----
+
+_2026-01-09_
+
+### Enhancements
+
+- [IR] Support generation of scalar multibinding sets that use `@ElementsIntoSet` source bindings. Previously these would always use a `SetFactory` under the hood.
+- [IR] Refactor multibinding getter logic to align with all other binding field/getter logic, allowing more precise generation of multibindings based on different contextual needs (scalar, `Provider`, etc representations).
+
+### Fixes
+
+- [IR] Fix accidental potential for runtime eager calls to non-initialized bindings in some multi-level multibinding scenarios.
+- [IR] Always use a provider field if multiple provider and scalar refs are found. Previously we would possibly use just a scalar getter field wrapped in `InstanceFactory` for provider refs.
+- [IR / Dagger Interop] Ensure `@BindsOptionalOf` bindings that are satisfied by scoped bindings use the scoped instance.
+- [IR / Reports] Don't de-dupe alias/memberinject bindings in graph metadata reports if one is already present.
+
+### Changes
+
+- Remove `-checkdiscard` rules from embedded proguard rules.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@C2H6O](https://github.com/C2H6O)
+- [@chrisbanes](https://github.com/chrisbanes)
 
 0.9.3
 -----

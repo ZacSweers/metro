@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.symbols
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
+import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.joinSimpleNames
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -14,6 +15,7 @@ import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.declarations.IrEnumEntry
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrPackageFragment
+import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.createEmptyExternalPackageFragment
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
@@ -25,6 +27,7 @@ import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.constructors
+import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.getPropertyGetter
 import org.jetbrains.kotlin.ir.util.hasShape
 import org.jetbrains.kotlin.ir.util.kotlinPackageFqn
@@ -499,6 +502,34 @@ internal class Symbols(
     pluginContext.irBuiltIns.mutableSetClass.owner.declarations
       .filterIsInstance<IrSimpleFunction>()
       .single { it.name.asString() == "add" }
+  }
+
+  val mutableSetAddAll by lazy {
+    pluginContext.irBuiltIns.mutableSetClass.owner.declarations
+      .filterIsInstance<IrSimpleFunction>()
+      .single { it.name.asString() == "addAll" }
+  }
+
+  val collectionSize by lazy {
+    pluginContext.irBuiltIns.collectionClass.owner.declarations
+      .filterIsInstance<IrProperty>()
+      .single { it.name.asString() == "size" }
+      .getter!!
+      .symbol
+  }
+
+  val intPlus by lazy {
+    pluginContext.irBuiltIns.intClass.owner.functions
+      .single {
+        it.name.asString() == "plus" &&
+          it.hasShape(
+            dispatchReceiver = true,
+            regularParameters = 1,
+            parameterTypes =
+              listOf(pluginContext.irBuiltIns.intType, pluginContext.irBuiltIns.intType),
+          )
+      }
+      .symbol
   }
 
   val buildMapWithCapacity by lazy {

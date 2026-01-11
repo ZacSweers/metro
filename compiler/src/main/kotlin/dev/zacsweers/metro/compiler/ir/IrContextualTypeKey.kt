@@ -27,13 +27,19 @@ import org.jetbrains.kotlin.name.StandardClassIds
 internal class IrContextualTypeKey(
   override val typeKey: IrTypeKey,
   override val wrappedType: WrappedType<IrType>,
-  override val hasDefault: Boolean = false,
+  @Poko.Skip override val hasDefault: Boolean = false,
   @Poko.Skip override val rawType: IrType? = null,
 ) : BaseContextualTypeKey<IrType, IrTypeKey, IrContextualTypeKey> {
   override fun toString(): String = render(short = false)
 
-  override fun withTypeKey(typeKey: IrTypeKey, rawType: IrType?): IrContextualTypeKey {
-    return IrContextualTypeKey(typeKey, wrappedType, hasDefault, rawType)
+  context(metroContext: IrMetroContext)
+  fun withIrTypeKey(typeKey: IrTypeKey, rawType: IrType? = null): IrContextualTypeKey {
+    return IrContextualTypeKey(
+      typeKey,
+      wrappedType.withCanonicalType(typeKey.type),
+      hasDefault,
+      rawType ?: wrappedType.toIrType(),
+    )
   }
 
   override fun render(short: Boolean, includeQualifier: Boolean): String = buildString {
@@ -168,7 +174,7 @@ internal class IrContextualTypeKey(
 }
 
 context(context: IrMetroContext)
-internal fun IrContextualTypeKey.stripLazy(): IrContextualTypeKey {
+internal fun IrContextualTypeKey.stripIfLazy(): IrContextualTypeKey {
   return if (wrappedType !is WrappedType.Lazy) {
     this
   } else {
@@ -178,6 +184,34 @@ internal fun IrContextualTypeKey.stripLazy(): IrContextualTypeKey {
       hasDefault,
       rawType?.requireSimpleType()?.arguments?.single()?.typeOrFail,
     )
+  }
+}
+
+context(context: IrMetroContext)
+internal fun IrContextualTypeKey.stripProvider(): IrContextualTypeKey {
+  return if (wrappedType !is WrappedType.Provider) {
+    this
+  } else {
+    IrContextualTypeKey(
+      typeKey,
+      wrappedType.innerType,
+      hasDefault,
+      rawType?.requireSimpleType()?.arguments?.single()?.typeOrFail,
+    )
+  }
+}
+
+/**
+ * Strips outer Provider/Lazy wrapping while preserving inner structure like map value types. This
+ * is used for property lookup where the outer wrapping determines access type (scalar vs provider)
+ * but the inner structure (e.g., Map<K, V> vs Map<K, Provider<V>>) determines the binding variant.
+ */
+context(context: IrMetroContext)
+internal fun IrContextualTypeKey.stripOuterProviderOrLazy(): IrContextualTypeKey {
+  return when (wrappedType) {
+    is WrappedType.Provider -> stripProvider()
+    is WrappedType.Lazy -> stripIfLazy()
+    else -> this
   }
 }
 
@@ -354,4 +388,20 @@ internal fun IrContextualTypeKey.remapType(remapper: TypeRemapper): IrContextual
     hasDefault,
     rawType?.let { remapper.remapType(it) },
   )
+}
+
+internal fun WrappedType<IrType>.withCanonicalType(type: IrType): WrappedType<IrType> {
+  return when (this) {
+    is WrappedType.Canonical -> WrappedType.Canonical(type)
+    is WrappedType.Provider -> WrappedType.Provider(innerType.withCanonicalType(type), providerType)
+    is WrappedType.Lazy -> WrappedType.Lazy(innerType.withCanonicalType(type), lazyType)
+    is WrappedType.Map -> {
+      val simpleType = type.requireSimpleType()
+      WrappedType.Map(
+        keyType = simpleType.arguments[0].typeOrFail,
+        valueType = valueType.withCanonicalType(simpleType.arguments[1].typeOrFail),
+        type = { type },
+      )
+    }
+  }
 }

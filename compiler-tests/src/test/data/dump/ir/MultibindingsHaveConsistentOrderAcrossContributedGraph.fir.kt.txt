@@ -119,9 +119,6 @@ interface ExampleGraph : MetroContributionToAppScope {
     private val thisGraphInstance: ExampleGraph
       field = <this>
 
-    private val exampleGraphProvider: Provider<ExampleGraph>
-      field = Companion.invoke<ExampleGraph>(value = <this>.#thisGraphInstance)
-
     @DependencyGraph(scope = Unit::class)
     private inner class LoggedInGraphImpl : LoggedInGraph {
       constructor() /* primary */ {
@@ -132,13 +129,15 @@ interface ExampleGraph : MetroContributionToAppScope {
 
       private val setOfTask: Set<Task>
         private get(): Set<Task> {
-          return buildSet<Task>(capacity = 4, builderAction = local fun MutableSet<Task>.<anonymous>() {
-            $receiver.add(element = Companion.provide4(instance = <this>))
-            $receiver.add(element = Companion.provide3(instance = <this>))
-            $receiver.add(element = TaskImpl1())
-            $receiver.add(element = TaskImpl2())
-          }
+          return { // BLOCK
+            buildSet<Task>(capacity = 4, builderAction = local fun MutableSet<Task>.<anonymous>() {
+              $receiver.add(element = Companion.provide4(instance = <this>))
+              $receiver.add(element = Companion.provide3(instance = <this>))
+              $receiver.add(element = TaskImpl1())
+              $receiver.add(element = TaskImpl2())
+            }
 )
+          }
         }
 
       override val tasksFromParent: Set<Task>
@@ -160,13 +159,15 @@ interface ExampleGraph : MetroContributionToAppScope {
 
     private val setOfTask: Set<Task>
       private get(): Set<Task> {
-        return buildSet<Task>(capacity = 4, builderAction = local fun MutableSet<Task>.<anonymous>() {
-          $receiver.add(element = Companion.provide4(instance = <this>.#thisGraphInstance))
-          $receiver.add(element = Companion.provide3(instance = <this>.#thisGraphInstance))
-          $receiver.add(element = TaskImpl1())
-          $receiver.add(element = TaskImpl2())
-        }
+        return { // BLOCK
+          buildSet<Task>(capacity = 4, builderAction = local fun MutableSet<Task>.<anonymous>() {
+            $receiver.add(element = Companion.provide4(instance = <this>.#thisGraphInstance))
+            $receiver.add(element = Companion.provide3(instance = <this>.#thisGraphInstance))
+            $receiver.add(element = TaskImpl1())
+            $receiver.add(element = TaskImpl2())
+          }
 )
+        }
       }
 
     override val tasks: Set<Task>

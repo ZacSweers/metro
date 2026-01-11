@@ -135,10 +135,12 @@ interface TestGraph {
   class Impl : TestGraph {
     private val service1Provider: Provider<Service1>
 
+    @MultibindingElement(bindingId = "kotlin.Any", elementId = "1716830850")
     private val provideService1Provider: Provider<Any>
 
     private val service2Provider: Provider<Service2>
 
+    @MultibindingElement(bindingId = "kotlin.Any", elementId = "1716890464")
     private val provideService2Provider: Provider<Any>
 
     private val collectorProvider: Provider<Collector>
@@ -167,7 +169,7 @@ interface TestGraph {
 
       fun initialize() {
         <this>.#provideService2Provider = Companion.provider<Provider<Any>, Any>(delegate = Companion.create(s2 = <this>.#service2Provider))
-        <this>.#collectorProvider = Companion.provider<Provider<Collector>, Collector>(delegate = Companion.create(services = <this>.<get-setOfAny>()))
+        <this>.#collectorProvider = Companion.provider<Provider<Collector>, Collector>(delegate = Companion.create(services = <this>.<get-setOfAnyProvider>()))
       }
 
     }
@@ -185,7 +187,7 @@ interface TestGraph {
         return <this>.#collectorProvider.invoke()
       }
 
-    private val setOfAny: Provider<Set<Any>>
+    private val setOfAnyProvider: Provider<Set<Any>>
       private get(): Provider<Set<Any>> {
         return { // BLOCK
           val tmp_0: Builder<Any> = Companion.builder<Any>(individualProviderSize = 2, collectionProviderSize = 0)

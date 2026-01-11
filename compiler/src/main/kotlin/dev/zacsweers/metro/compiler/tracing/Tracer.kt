@@ -10,6 +10,8 @@ import kotlin.time.TimeSource.Monotonic.ValueTimeMark
 internal interface Tracer {
   val tag: String
   val description: String
+  val diagnosticTag: String
+    get() = tag.replace('.', '_')
 
   fun start()
 
@@ -70,20 +72,27 @@ private class SimpleTracer(
     SimpleTracer(tag, description, level + 1, log, onFinished)
 }
 
-internal inline fun <T> Tracer.traceNested(
+context(scope: TraceScope)
+internal inline fun <T> traceNested(
   description: String,
-  tag: String = this.tag,
-  block: (Tracer) -> T,
+  tag: String = scope.tracer.tag,
+  block: TraceScope.() -> T,
 ): T {
   contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
-  return nested(description, tag).trace(block)
+  return scope.tracer.nested(description, tag).trace(block)
 }
 
-internal inline fun <T> Tracer.trace(block: (Tracer) -> T): T {
+context(scope: TraceScope)
+internal inline fun <T> trace(block: TraceScope.() -> T): T {
+  contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
+  return scope.tracer.trace(block)
+}
+
+internal inline fun <T> Tracer.trace(block: TraceScope.() -> T): T {
   contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
   start()
   try {
-    return block(this)
+    return TraceScope(this).block()
   } finally {
     stop()
   }
@@ -95,3 +104,13 @@ internal fun tracer(
   log: (String) -> Unit,
   onFinished: (String, String, Long) -> Unit,
 ): Tracer = SimpleTracer(tag, description, 0, log, onFinished)
+
+internal interface TraceScope {
+  val tracer: Tracer
+
+  companion object {
+    operator fun invoke(tracer: Tracer): TraceScope = TraceScopeImpl(tracer)
+  }
+}
+
+@JvmInline internal value class TraceScopeImpl(override val tracer: Tracer) : TraceScope

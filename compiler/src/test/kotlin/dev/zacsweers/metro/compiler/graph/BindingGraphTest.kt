@@ -3,12 +3,14 @@
 package dev.zacsweers.metro.compiler.graph
 
 import com.google.common.truth.Truth.assertThat
+import dev.zacsweers.metro.compiler.tracing.TraceScope
+import dev.zacsweers.metro.compiler.tracing.Tracer
 import kotlin.test.assertFails
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 import org.junit.Test
 
-class BindingGraphTest {
+class BindingGraphTest : TraceScope by TraceScope(Tracer.NONE) {
 
   @Test
   fun put() {
@@ -366,6 +368,7 @@ private fun newStringBindingGraph(
   )
 }
 
+context(traceScope: TraceScope)
 private fun buildGraph(
   body: StringGraphBuilder.() -> Unit
 ): Pair<StringGraph, GraphTopology<StringTypeKey>> {
@@ -373,6 +376,7 @@ private fun buildGraph(
 }
 
 // Helper method to create a graph with a chain of dependencies
+context(traceScope: TraceScope)
 private fun buildChainedGraph(
   vararg nodes: String
 ): Pair<StringGraph, GraphTopology<StringTypeKey>> {
@@ -445,6 +449,7 @@ internal class StringGraphBuilder {
     constructorInjectedTypes[binding.typeKey] = binding
   }
 
+  context(traceScope: TraceScope)
   fun sealAndReturn(): Pair<StringGraph, GraphTopology<StringTypeKey>> {
     return graph to graph.seal(shrinkUnusedBindings = false)
   }

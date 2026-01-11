@@ -15,7 +15,6 @@ import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
-import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.bindingTypeOrNull
 import dev.zacsweers.metro.compiler.ir.hasErrorTypes
@@ -33,7 +32,7 @@ import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
-import dev.zacsweers.metro.compiler.tracing.Tracer
+import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
@@ -94,10 +93,16 @@ internal class IrBindingGraph(
   private val accessors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
   private val injectors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
   private val extraKeeps = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
-  private val reservedProperties = mutableMapOf<IrContextualTypeKey, ParentContext.PropertyAccess>()
+  /**
+   * Context keys that child graphs need from this parent. Used to ensure these bindings are
+   * reachable during seal() and to inform BindingPropertyCollector about child usage.
+   */
+  private val reservedContextKeys = mutableSetOf<IrContextualTypeKey>()
 
   // Thin immutable view over the internal bindings
   fun bindingsSnapshot(): Map<IrTypeKey, IrBinding> = realGraph.bindings
+
+  fun keeps(): Set<IrContextualTypeKey> = extraKeeps.keys
 
   fun addAccessor(key: IrContextualTypeKey, entry: IrBindingStack.Entry) {
     accessors[key] = entry
@@ -115,29 +120,36 @@ internal class IrBindingGraph(
     extraKeeps[key] = entry
   }
 
-  fun reserveProperty(contextKey: IrContextualTypeKey, access: ParentContext.PropertyAccess) {
-    reservedProperties[contextKey] = access
+  /**
+   * Tracks a context key as requested by a child graph. This ensures the binding is kept during
+   * seal() and informs BindingPropertyCollector about child usage.
+   */
+  fun reserveContextKey(contextKey: IrContextualTypeKey) {
+    reservedContextKeys.add(contextKey)
   }
 
-  fun reservedProperty(contextKey: IrContextualTypeKey): ParentContext.PropertyAccess? =
-    reservedProperties[contextKey]
+  /** Returns all context keys reserved by child graphs. */
+  fun reservedContextKeys(): Set<IrContextualTypeKey> = reservedContextKeys
+
+  /** Checks if a specific context key is reserved by child graphs. */
+  fun isContextKeyReserved(contextKey: IrContextualTypeKey): Boolean =
+    contextKey in reservedContextKeys
 
   /**
-   * Finds any reserved property for the given type key, checking both instance and provider
-   * variants.
+   * Checks if any variant (provider or instance) of this type key is reserved by child graphs.
+   * Provider variant is checked first since scoped bindings need Provider fields.
    */
-  fun findAnyReservedProperty(key: IrTypeKey): ParentContext.PropertyAccess? {
-    // Check instance property
-    val instanceKey = IrContextualTypeKey.create(key)
-    reservedProperties[instanceKey]?.let {
-      return it
-    }
-
-    // Check provider property
+  fun hasReservedKey(key: IrTypeKey): Boolean {
+    // Check provider key first
     val providerType = metroContext.metroSymbols.metroProvider.typeWith(key.type)
     val providerKey =
       IrContextualTypeKey.create(key, isWrappedInProvider = true, rawType = providerType)
-    return reservedProperties[providerKey]
+    if (providerKey in reservedContextKeys) return true
+
+    // Check instance key
+    // TODO cache these in metrocontext. Just IrTypekey -> IrContextualTypeKey
+    val instanceKey = IrContextualTypeKey.create(key)
+    return instanceKey in reservedContextKeys
   }
 
   fun findBinding(key: IrTypeKey): IrBinding? = realGraph[key]
@@ -167,9 +179,10 @@ internal class IrBindingGraph(
 
   data class GraphError(val declaration: IrDeclaration?, val message: String)
 
-  fun seal(parentTracer: Tracer, onError: (List<GraphError>) -> Unit): BindingGraphResult {
+  context(traceScope: TraceScope)
+  fun seal(onError: (List<GraphError>) -> Unit): BindingGraphResult {
     val topologyResult =
-      parentTracer.traceNested("seal graph") { tracer ->
+      traceNested("seal graph") {
         val roots = buildMap {
           putAll(accessors)
           putAll(injectors)
@@ -179,15 +192,14 @@ internal class IrBindingGraph(
           roots = roots,
           keep = extraKeeps,
           shrinkUnusedBindings = metroContext.options.shrinkUnusedBindings,
-          tracer = tracer,
           onPopulated = {
-            writeDiagnostic("keys-populated-${parentTracer.tag}.txt") {
+            writeDiagnostic("keys-populated-${traceScope.tracer.diagnosticTag}.txt") {
               realGraph.bindings.keys.sorted().joinToString("\n")
             }
           },
           onSortedCycle = { elementsInCycle ->
             writeDiagnostic(
-              "cycle-${parentTracer.tag}-${elementsInCycle[0].render(short = true, includeQualifier = false)}.txt"
+              "cycle-${traceScope.tracer.diagnosticTag}-${elementsInCycle[0].render(short = true, includeQualifier = false)}.txt"
             ) {
               elementsInCycle.plus(elementsInCycle[0]).joinToString("\n")
             }
@@ -204,31 +216,31 @@ internal class IrBindingGraph(
       return BindingGraphResult(emptyList(), emptySet(), emptySet(), emptyList(), true)
     }
 
-    writeDiagnostic("keys-validated-${parentTracer.tag}.txt") {
+    writeDiagnostic("keys-validated-${traceScope.tracer.diagnosticTag}.txt") {
       sortedKeys.joinToString(separator = "\n")
     }
 
-    writeDiagnostic("keys-deferred-${parentTracer.tag}.txt") {
+    writeDiagnostic("keys-deferred-${traceScope.tracer.diagnosticTag}.txt") {
       deferredTypes.joinToString(separator = "\n")
     }
 
     val unused = bindingsSnapshot().keys - reachableKeys
     if (unused.isNotEmpty()) {
       // TODO option to warn or fail? What about extensions that implicitly have many unused
-      writeDiagnostic("keys-unused-${parentTracer.tag}.txt") {
+      writeDiagnostic("keys-unused-${traceScope.tracer.diagnosticTag}.txt") {
         unused.joinToString(separator = "\n")
       }
     }
 
-    parentTracer.traceNested("check empty multibindings") { checkEmptyMultibindings(onError) }
-    parentTracer.traceNested("check for absent bindings") {
+    traceNested("check empty multibindings") { checkEmptyMultibindings(onError) }
+    traceNested("check for absent bindings") {
       check(realGraph.bindings.values.none { it is IrBinding.Absent }) {
         "Found absent bindings in the binding graph: ${dumpGraph("Absent bindings", short = true)}"
       }
     }
 
     val shardGroups =
-      parentTracer.traceNested("compute shard groups") {
+      traceNested("compute shard groups") {
         val maxPerShard = metroContext.options.keysPerGraphShard
         val enableSharding = metroContext.options.enableGraphSharding
         if (enableSharding && topologyResult.adjacency.size > maxPerShard) {

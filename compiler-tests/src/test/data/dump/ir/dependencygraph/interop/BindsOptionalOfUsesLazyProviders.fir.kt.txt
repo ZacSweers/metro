@@ -9,6 +9,12 @@ interface AppGraph {
     private val provideStringProvider: Provider<String>
       field = Companion.provider<Provider<String>, String>(delegate = Companion.create(instance = <this>.#thisGraphInstance))
 
+    private val optionalStringProvider: Provider<Optional<String>>
+      field = provider<Optional<String>>(provider = local fun <anonymous>(): Optional<String> {
+        return of<String>(p0 = <this>.#provideStringProvider.invoke())
+      }
+)
+
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -25,15 +31,12 @@ interface AppGraph {
 
     override val string: Optional<String>
       override get(): Optional<String> {
-        return of<String>(p0 = <this>.#provideStringProvider.invoke())
+        return <this>.#optionalStringProvider.invoke()
       }
 
     override val stringProvider: Provider<Optional<String>>
       override get(): Provider<Optional<String>> {
-        return provider<Optional<String>>(provider = local fun <anonymous>(): Optional<String> {
-          return of<String>(p0 = <this>.#provideStringProvider.invoke())
-        }
-)
+        return <this>.#optionalStringProvider
       }
 
   }
