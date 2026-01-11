@@ -17,6 +17,8 @@ Changelog
 
 ### Changes
 
+- [IR] Report log files reported from within graph generation now use snake-cased fully-qualified names of the impl graph as the file name suffix.
+
 ### Contributors
 
 0.9.4
