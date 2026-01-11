@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1767949781398,
+  "lastUpdate": 1768100219623,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -1288,6 +1288,62 @@ window.BENCHMARK_DATA = {
             "value": 19273.724,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +1.53%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "850ca24b~1",
+          "message": "[before] Restructure graph validation and generation to run",
+          "timestamp": "2026-01-10T21:23:28-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/850ca24be2a8f6b44dca624e680e2ac3919edfe2"
+        },
+        "date": 1768100219623,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19466.544,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "850ca24be2a8f6b44dca624e680e2ac3919edfe2",
+          "message": "[after] Restructure graph validation and generation to run",
+          "timestamp": "2026-01-10T21:23:28-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/850ca24be2a8f6b44dca624e680e2ac3919edfe2"
+        },
+        "date": 1768100219624,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20294.954,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +4.26%"
           }
         ]
       }
