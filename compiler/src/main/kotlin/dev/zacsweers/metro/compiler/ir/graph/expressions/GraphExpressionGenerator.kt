@@ -31,7 +31,7 @@ import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
-import dev.zacsweers.metro.compiler.tracing.Tracer
+import dev.zacsweers.metro.compiler.tracing.TraceScope
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irGet
@@ -54,6 +54,7 @@ import org.jetbrains.kotlin.name.Name
 internal class GraphExpressionGenerator
 private constructor(
   context: IrMetroContext,
+  traceScope: TraceScope,
   private val node: DependencyGraphNode,
   override val thisReceiver: IrValueParameter,
   private val bindingPropertyContext: BindingPropertyContext,
@@ -64,8 +65,7 @@ private constructor(
   private val membersInjectorTransformer: MembersInjectorTransformer,
   private val assistedFactoryTransformer: AssistedFactoryTransformer,
   private val graphExtensionGenerator: IrGraphExtensionGenerator,
-  override val parentTracer: Tracer,
-) : BindingExpressionGenerator<IrBinding>(context) {
+) : BindingExpressionGenerator<IrBinding>(context, traceScope) {
 
   class Factory(
     private val context: IrMetroContext,
@@ -78,7 +78,7 @@ private constructor(
     private val membersInjectorTransformer: MembersInjectorTransformer,
     private val assistedFactoryTransformer: AssistedFactoryTransformer,
     private val graphExtensionGenerator: IrGraphExtensionGenerator,
-    private val parentTracer: Tracer,
+    private val traceScope: TraceScope,
   ) {
     fun create(thisReceiver: IrValueParameter): GraphExpressionGenerator {
       return GraphExpressionGenerator(
@@ -92,7 +92,7 @@ private constructor(
         membersInjectorTransformer = membersInjectorTransformer,
         assistedFactoryTransformer = assistedFactoryTransformer,
         graphExtensionGenerator = graphExtensionGenerator,
-        parentTracer = parentTracer,
+        traceScope = traceScope,
       )
     }
   }
@@ -426,7 +426,6 @@ private constructor(
               node.sourceGraph,
               // The reportableDeclaration should be the accessor function
               metroFunctionOf(binding.reportableDeclaration as IrSimpleFunction),
-              parentTracer,
             )
 
           if (options.enableGraphImplClassAsReturnType) {
@@ -458,7 +457,6 @@ private constructor(
               binding.extensionTypeKey,
               node.sourceGraph,
               metroFunctionOf(binding.reportableDeclaration as IrSimpleFunction),
-              parentTracer,
             )
 
           // Get the factory implementation that was generated alongside the extension

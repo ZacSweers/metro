@@ -32,7 +32,7 @@ import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
-import dev.zacsweers.metro.compiler.tracing.Tracer
+import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
@@ -179,9 +179,10 @@ internal class IrBindingGraph(
 
   data class GraphError(val declaration: IrDeclaration?, val message: String)
 
-  fun seal(parentTracer: Tracer, onError: (List<GraphError>) -> Unit): BindingGraphResult {
+  context(traceScope: TraceScope)
+  fun seal(onError: (List<GraphError>) -> Unit): BindingGraphResult {
     val topologyResult =
-      parentTracer.traceNested("seal graph") { tracer ->
+      traceNested("seal graph") {
         val roots = buildMap {
           putAll(accessors)
           putAll(injectors)
@@ -191,15 +192,14 @@ internal class IrBindingGraph(
           roots = roots,
           keep = extraKeeps,
           shrinkUnusedBindings = metroContext.options.shrinkUnusedBindings,
-          tracer = tracer,
           onPopulated = {
-            writeDiagnostic("keys-populated-${parentTracer.diagnosticTag}.txt") {
+            writeDiagnostic("keys-populated-${traceScope.tracer.diagnosticTag}.txt") {
               realGraph.bindings.keys.sorted().joinToString("\n")
             }
           },
           onSortedCycle = { elementsInCycle ->
             writeDiagnostic(
-              "cycle-${parentTracer.diagnosticTag}-${elementsInCycle[0].render(short = true, includeQualifier = false)}.txt"
+              "cycle-${traceScope.tracer.diagnosticTag}-${elementsInCycle[0].render(short = true, includeQualifier = false)}.txt"
             ) {
               elementsInCycle.plus(elementsInCycle[0]).joinToString("\n")
             }
@@ -216,31 +216,31 @@ internal class IrBindingGraph(
       return BindingGraphResult(emptyList(), emptySet(), emptySet(), emptyList(), true)
     }
 
-    writeDiagnostic("keys-validated-${parentTracer.diagnosticTag}.txt") {
+    writeDiagnostic("keys-validated-${traceScope.tracer.diagnosticTag}.txt") {
       sortedKeys.joinToString(separator = "\n")
     }
 
-    writeDiagnostic("keys-deferred-${parentTracer.diagnosticTag}.txt") {
+    writeDiagnostic("keys-deferred-${traceScope.tracer.diagnosticTag}.txt") {
       deferredTypes.joinToString(separator = "\n")
     }
 
     val unused = bindingsSnapshot().keys - reachableKeys
     if (unused.isNotEmpty()) {
       // TODO option to warn or fail? What about extensions that implicitly have many unused
-      writeDiagnostic("keys-unused-${parentTracer.diagnosticTag}.txt") {
+      writeDiagnostic("keys-unused-${traceScope.tracer.diagnosticTag}.txt") {
         unused.joinToString(separator = "\n")
       }
     }
 
-    parentTracer.traceNested("check empty multibindings") { checkEmptyMultibindings(onError) }
-    parentTracer.traceNested("check for absent bindings") {
+    traceNested("check empty multibindings") { checkEmptyMultibindings(onError) }
+    traceNested("check for absent bindings") {
       check(realGraph.bindings.values.none { it is IrBinding.Absent }) {
         "Found absent bindings in the binding graph: ${dumpGraph("Absent bindings", short = true)}"
       }
     }
 
     val shardGroups =
-      parentTracer.traceNested("compute shard groups") {
+      traceNested("compute shard groups") {
         val maxPerShard = metroContext.options.keysPerGraphShard
         val enableSharding = metroContext.options.enableGraphSharding
         if (enableSharding && topologyResult.adjacency.size > maxPerShard) {

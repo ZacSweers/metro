@@ -9,7 +9,7 @@ import dev.zacsweers.metro.compiler.ir.graph.withEntry
 import dev.zacsweers.metro.compiler.joinWithDynamicSeparatorTo
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.reportCompilerBug
-import dev.zacsweers.metro.compiler.tracing.Tracer
+import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import java.util.SortedMap
 import java.util.SortedSet
@@ -83,11 +83,12 @@ internal open class MutableBindingGraph<
    * This function operates in a two-step process:
    * 1. Validates the binding graph by performing a [topologicalSort]. Cycles that involve
    *    deferrable types, such as `Lazy` or `Provider`, are allowed and deferred for special
-   *    handling at code-generation-time and store any deferred types in [deferredTypes]. Any
-   *    strictly invalid cycles or missing bindings result in an error being thrown.
+   *    handling at code-generation-time and store any deferred types in
+   *    [GraphTopology.deferredTypes]. Any strictly invalid cycles or missing bindings result in an
+   *    error being thrown.
    * 2. The returned topologically sorted list is then processed to compute [bindingIndices] and
-   *    [deferredTypes]. Any dependency whose index is later than the current index is presumed a
-   *    valid cycle indicator and thus that type must be deferred.
+   *    [GraphTopology.deferredTypes]. Any dependency whose index is later than the current index is
+   *    presumed a valid cycle indicator and thus that type must be deferred.
    *
    * This operation runs in O(V+E). After calling this function, the binding graph becomes
    * immutable.
@@ -100,11 +101,11 @@ internal open class MutableBindingGraph<
    *   post-adjacency build.
    * @param keep optional set of keys to keep, even if they are unused.
    */
+  context(traceScope: TraceScope)
   fun seal(
     roots: Map<ContextualTypeKey, BindingStackEntry> = emptyMap(),
     keep: Map<ContextualTypeKey, BindingStackEntry> = emptyMap(),
     shrinkUnusedBindings: Boolean = true,
-    tracer: Tracer = Tracer.NONE,
     onPopulated: () -> Unit = {},
     onSortedCycle: (List<TypeKey>) -> Unit = {},
     validateBindings:
@@ -121,7 +122,7 @@ internal open class MutableBindingGraph<
 
     // Order matters, prefer roots over matching kees as they have more information in their entries
     val rootsWithKeeps = keep + roots
-    val missingBindings = populateGraph(rootsWithKeeps, stack, tracer)
+    val missingBindings = populateGraph(rootsWithKeeps, stack)
 
     onPopulated()
 
@@ -134,7 +135,7 @@ internal open class MutableBindingGraph<
      * optional bindings).
      */
     val fullAdjacency =
-      tracer.traceNested("Build adjacency list") {
+      traceNested("Build adjacency list") {
         buildFullAdjacency(
           bindings = bindings,
           dependenciesOf = { binding -> binding.dependencies.map { it.typeKey } },
@@ -162,17 +163,17 @@ internal open class MutableBindingGraph<
     validateBindings(bindings, stack, roots, fullAdjacency)
 
     val topo =
-      tracer.traceNested("Sort and validate") { parentTracer ->
+      traceNested("Sort and validate") {
         val allKeeps =
           if (shrinkUnusedBindings) {
             keep.keys.mapToSet { it.typeKey }
           } else {
             fullAdjacency.keys + keep.keys.mapToSet { it.typeKey }
           }
-        sortAndValidate(roots, allKeeps, fullAdjacency, stack, parentTracer, onSortedCycle)
+        sortAndValidate(roots, allKeeps, fullAdjacency, stack, onSortedCycle)
       }
 
-    tracer.traceNested("Compute binding indices") {
+    traceNested("Compute binding indices") {
       // If it depends itself or something that comes later in the topo sort, it
       // must be deferred. This is how we handle cycles that are broken by deferrable
       // types like Provider/Lazy/...
@@ -183,10 +184,10 @@ internal open class MutableBindingGraph<
     return topo
   }
 
+  context(traceScope: TraceScope)
   private fun populateGraph(
     roots: Map<ContextualTypeKey, BindingStackEntry>,
     stack: BindingStack,
-    tracer: Tracer,
   ): Map<TypeKey, BindingStack> {
     // Traverse all the bindings up front to
     // First ensure all the roots' bindings are present
@@ -211,7 +212,7 @@ internal open class MutableBindingGraph<
     // it while we're validating it.
     val bindingQueue = ArrayDeque<Binding>().also { it.addAll(bindings.values) }
 
-    tracer.traceNested("Populate bindings") {
+    traceNested("Populate bindings") {
       while (bindingQueue.isNotEmpty()) {
         val binding = bindingQueue.removeFirst()
         if (binding.typeKey !in bindings && !binding.isTransient) {
@@ -242,12 +243,12 @@ internal open class MutableBindingGraph<
     return missingBindings
   }
 
+  context(traceScope: TraceScope)
   private fun sortAndValidate(
     roots: Map<ContextualTypeKey, BindingStackEntry>,
     keep: Set<TypeKey>,
     fullAdjacency: SortedMap<TypeKey, SortedSet<TypeKey>>,
     stack: BindingStack,
-    parentTracer: Tracer,
     onSortedCycle: (List<TypeKey>) -> Unit,
   ): GraphTopology<TypeKey> {
     val sortedRootKeys =
@@ -258,7 +259,7 @@ internal open class MutableBindingGraph<
 
     // Run topo sort. It gives back either a valid order or calls onCycle for errors
     val result =
-      parentTracer.traceNested("Topo sort") { nestedTracer ->
+      traceNested("Topo sort") {
         topologicalSort(
           fullAdjacency = fullAdjacency,
           roots = sortedRootKeys,
@@ -297,7 +298,6 @@ internal open class MutableBindingGraph<
               }
             reportCycle(entriesInCycle, stack)
           },
-          parentTracer = nestedTracer,
           isImplicitlyDeferrable = { key -> bindings.getValue(key).isImplicitlyDeferrable },
         )
       }

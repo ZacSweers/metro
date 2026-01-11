@@ -51,7 +51,7 @@ import dev.zacsweers.metro.compiler.newName
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.suffixIfNot
-import dev.zacsweers.metro.compiler.tracing.Tracer
+import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.DescriptorVisibility
@@ -94,12 +94,12 @@ internal typealias InitStatement =
 
 internal class IrGraphGenerator(
   metroContext: IrMetroContext,
+  traceScope: TraceScope,
   private val dependencyGraphNodesByClass: (ClassId) -> DependencyGraphNode?,
   private val node: DependencyGraphNode,
   private val graphClass: IrClass,
   private val bindingGraph: IrBindingGraph,
   private val sealResult: IrBindingGraph.BindingGraphResult,
-  private val parentTracer: Tracer,
   // TODO move these accesses to irAttributes
   bindingContainerTransformer: BindingContainerTransformer,
   private val membersInjectorTransformer: MembersInjectorTransformer,
@@ -107,7 +107,7 @@ internal class IrGraphGenerator(
   graphExtensionGenerator: IrGraphExtensionGenerator,
   /** All ancestor graphs' binding property contexts, keyed by graph type key. */
   private val ancestorBindingContexts: Map<IrTypeKey, BindingPropertyContext>,
-) : IrMetroContext by metroContext {
+) : IrMetroContext by metroContext, TraceScope by traceScope {
 
   private val propertyNameAllocator =
     NameAllocator(mode = NameAllocator.Mode.COUNT).apply {
@@ -154,7 +154,7 @@ internal class IrGraphGenerator(
       membersInjectorTransformer = membersInjectorTransformer,
       assistedFactoryTransformer = assistedFactoryTransformer,
       graphExtensionGenerator = graphExtensionGenerator,
-      parentTracer = parentTracer,
+      traceScope = traceScope,
     )
 
   private val graphMetadataReporter = GraphMetadataReporter(this)
@@ -396,7 +396,7 @@ internal class IrGraphGenerator(
 
       // Collect bindings and their dependencies for provider property ordering
       val initOrder =
-        parentTracer.traceNested("Collect binding properties") {
+        traceNested("Collect binding properties") {
           // Collect roots (accessors + injectors) for refcount tracking
           val roots = buildList {
             node.accessors.mapTo(this) { it.contextKey }
@@ -475,10 +475,10 @@ internal class IrGraphGenerator(
         }
         .toList()
         .also { propertyBindings ->
-          writeDiagnostic("keys-providerProperties-${parentTracer.diagnosticTag}.txt") {
+          writeDiagnostic("keys-providerProperties-${tracer.diagnosticTag}.txt") {
             propertyBindings.joinToString("\n") { it.binding.typeKey.toString() }
           }
-          writeDiagnostic("keys-scopedProviderProperties-${parentTracer.diagnosticTag}.txt") {
+          writeDiagnostic("keys-scopedProviderProperties-${tracer.diagnosticTag}.txt") {
             propertyBindings
               .filter { it.binding.isScoped() }
               .joinToString("\n") { it.binding.typeKey.toString() }
@@ -594,7 +594,7 @@ internal class IrGraphGenerator(
           propertyBindings = propertyBindings,
           plannedGroups = sealResult.shardGroups,
           bindingGraph = bindingGraph,
-          diagnosticTag = parentTracer.diagnosticTag,
+          diagnosticTag = tracer.diagnosticTag,
           deferredInit = ::addDeferredSetDelegateCalls,
         )
 
@@ -675,10 +675,10 @@ internal class IrGraphGenerator(
         }
       }
 
-      parentTracer.traceNested("Implement overrides") { node.implementOverrides() }
+      traceNested("Implement overrides") { node.implementOverrides() }
 
       if (!graphClass.origin.isSyntheticGeneratedGraph) {
-        parentTracer.traceNested("Generate Metro metadata") {
+        traceNested("Generate Metro metadata") {
           // Finally, generate metadata
           val graphProto = node.toProto(bindingGraph = bindingGraph)
           graphMetadataReporter.write(node, bindingGraph)

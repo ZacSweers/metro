@@ -25,7 +25,6 @@ import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.FrameworkSymbols
-import dev.zacsweers.metro.compiler.tracing.Tracer
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irBlock
 import org.jetbrains.kotlin.ir.builders.irCall
@@ -46,15 +45,12 @@ import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 
 internal class MultibindingExpressionGenerator(
   private val parentGenerator: BindingExpressionGenerator<IrBinding>
-) : BindingExpressionGenerator<IrBinding.Multibinding>(parentGenerator) {
+) : BindingExpressionGenerator<IrBinding.Multibinding>(parentGenerator, parentGenerator) {
   override val thisReceiver: IrValueParameter
     get() = parentGenerator.thisReceiver
 
   override val bindingGraph: IrBindingGraph
     get() = parentGenerator.bindingGraph
-
-  override val parentTracer: Tracer
-    get() = parentGenerator.parentTracer
 
   context(scope: IrBuilderWithScope)
   override fun generateBindingCode(

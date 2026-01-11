@@ -11,7 +11,7 @@ import dev.zacsweers.metro.compiler.ir.instanceFactory
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.irLambda
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
-import dev.zacsweers.metro.compiler.tracing.Tracer
+import dev.zacsweers.metro.compiler.tracing.TraceScope
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irReturn
@@ -23,11 +23,12 @@ import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.classId
 
-internal abstract class BindingExpressionGenerator<T : IrBinding>(context: IrMetroContext) :
-  IrMetroContext by context {
+internal abstract class BindingExpressionGenerator<T : IrBinding>(
+  context: IrMetroContext,
+  traceScope: TraceScope,
+) : IrMetroContext by context, TraceScope by traceScope {
   abstract val thisReceiver: IrValueParameter
   abstract val bindingGraph: IrBindingGraph
-  abstract val parentTracer: Tracer
 
   enum class AccessType {
     INSTANCE,
