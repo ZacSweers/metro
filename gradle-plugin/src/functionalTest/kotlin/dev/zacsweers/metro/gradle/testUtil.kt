@@ -13,7 +13,6 @@ import com.autonomousapps.kit.truth.TestKitTruth.Companion.assertThat
 import java.io.File
 import java.net.URLClassLoader
 import java.util.Locale
-import kotlin.collections.component1
 import kotlin.io.path.absolute
 import kotlin.io.path.exists
 import kotlin.test.assertContains
@@ -136,6 +135,9 @@ fun BuildResult.assertOutputContainsOnDifferentKotlinVersions(map: Map<String, S
 
 fun getTestCompilerVersion(): String =
   System.getProperty("dev.zacsweers.metro.gradle.test.kotlin-version")
+
+fun getTestCompilerToolingVersion(): KotlinToolingVersion =
+  KotlinToolingVersion(getTestCompilerVersion())
 
 /**
  * Invokes the `main` function from the compiled test sources and returns the result.

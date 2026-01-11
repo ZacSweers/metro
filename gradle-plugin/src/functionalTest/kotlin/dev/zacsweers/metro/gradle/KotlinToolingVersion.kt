@@ -4,11 +4,11 @@
  */
 @file:Suppress("FunctionName", "DuplicatedCode")
 
-package dev.zacsweers.metro.compiler.compat
+package dev.zacsweers.metro.gradle
 
 import java.io.Serializable
 
-internal fun KotlinToolingVersion(kotlinVersionString: String): KotlinToolingVersion {
+fun KotlinToolingVersion(kotlinVersionString: String): KotlinToolingVersion {
   val baseVersion = kotlinVersionString.split("-", limit = 2)[0]
   val classifier = kotlinVersionString.split("-", limit = 2).getOrNull(1)
 
@@ -31,7 +31,7 @@ internal fun KotlinToolingVersion(kotlinVersionString: String): KotlinToolingVer
   )
 }
 
-internal fun KotlinToolingVersion(
+fun KotlinToolingVersion(
   kotlinVersion: KotlinVersion,
   classifier: String? = null,
 ): KotlinToolingVersion {
@@ -43,7 +43,7 @@ internal fun KotlinToolingVersion(
   )
 }
 
-internal class KotlinToolingVersion(
+class KotlinToolingVersion(
   val major: Int,
   val minor: Int,
   val patch: Int,
@@ -172,38 +172,36 @@ internal class KotlinToolingVersion(
   }
 }
 
-internal fun KotlinToolingVersion.toKotlinVersion(): KotlinVersion =
-  KotlinVersion(major, minor, patch)
+fun KotlinToolingVersion.toKotlinVersion(): KotlinVersion = KotlinVersion(major, minor, patch)
 
-internal fun KotlinVersion.toKotlinToolingVersion(
-  classifier: String? = null
-): KotlinToolingVersion = KotlinToolingVersion(this, classifier)
+fun KotlinVersion.toKotlinToolingVersion(classifier: String? = null): KotlinToolingVersion =
+  KotlinToolingVersion(this, classifier)
 
-internal val KotlinToolingVersion.isSnapshot: Boolean
+val KotlinToolingVersion.isSnapshot: Boolean
   get() = this.maturity == KotlinToolingVersion.Maturity.SNAPSHOT
 
-internal val KotlinToolingVersion.isDev: Boolean
+val KotlinToolingVersion.isDev: Boolean
   get() = this.maturity == KotlinToolingVersion.Maturity.DEV
 
-internal val KotlinToolingVersion.isMilestone: Boolean
+val KotlinToolingVersion.isMilestone: Boolean
   get() = this.maturity == KotlinToolingVersion.Maturity.MILESTONE
 
-internal val KotlinToolingVersion.isAlpha: Boolean
+val KotlinToolingVersion.isAlpha: Boolean
   get() = this.maturity == KotlinToolingVersion.Maturity.ALPHA
 
-internal val KotlinToolingVersion.isBeta: Boolean
+val KotlinToolingVersion.isBeta: Boolean
   get() = this.maturity == KotlinToolingVersion.Maturity.BETA
 
-internal val KotlinToolingVersion.isRC: Boolean
+val KotlinToolingVersion.isRC: Boolean
   get() = this.maturity == KotlinToolingVersion.Maturity.RC
 
-internal val KotlinToolingVersion.isStable: Boolean
+val KotlinToolingVersion.isStable: Boolean
   get() = this.maturity == KotlinToolingVersion.Maturity.STABLE
 
-internal val KotlinToolingVersion.isPreRelease: Boolean
+val KotlinToolingVersion.isPreRelease: Boolean
   get() = !isStable
 
-internal val KotlinToolingVersion.buildNumber: Int?
+val KotlinToolingVersion.buildNumber: Int?
   get() {
     if (classifier == null) return null
 
@@ -224,7 +222,7 @@ internal val KotlinToolingVersion.buildNumber: Int?
     return classifierMatch.groupValues.getOrNull(4)?.toIntOrNull()
   }
 
-internal val KotlinToolingVersion.classifierNumber: Int?
+val KotlinToolingVersion.classifierNumber: Int?
   get() {
     if (classifier == null) return null
 
@@ -249,10 +247,10 @@ internal val KotlinToolingVersion.classifierNumber: Int?
     return classifierMatch.groupValues.getOrNull(2)?.toIntOrNull()
   }
 
-internal operator fun String.compareTo(version: KotlinToolingVersion): Int {
+operator fun String.compareTo(version: KotlinToolingVersion): Int {
   return KotlinToolingVersion(this).compareTo(version)
 }
 
-internal operator fun KotlinToolingVersion.compareTo(kotlinVersionString: String): Int {
+operator fun KotlinToolingVersion.compareTo(kotlinVersionString: String): Int {
   return this.compareTo(KotlinToolingVersion(kotlinVersionString))
 }

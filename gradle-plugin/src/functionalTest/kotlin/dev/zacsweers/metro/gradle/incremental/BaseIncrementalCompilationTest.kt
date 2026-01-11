@@ -5,12 +5,17 @@ package dev.zacsweers.metro.gradle.incremental
 import com.autonomousapps.kit.GradleProject
 import com.autonomousapps.kit.Source
 import com.autonomousapps.kit.Subproject
+import dev.zacsweers.metro.gradle.KotlinToolingVersion
 import dev.zacsweers.metro.gradle.copy
 import dev.zacsweers.metro.gradle.resolveSafe
 import java.io.File
 import org.intellij.lang.annotations.Language
 
 abstract class BaseIncrementalCompilationTest {
+
+  // TODO 2.3.20-Beta1 seems to have an IC regression
+  protected val brokenKotlin2320Versions =
+    setOf("2.3.20-dev-7791", "2.3.20-Beta1").mapTo(mutableSetOf(), ::KotlinToolingVersion)
 
   protected val GradleProject.asMetroProject: MetroGradleProject
     get() = MetroGradleProject(rootDir)
