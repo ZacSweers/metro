@@ -80,6 +80,7 @@ import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.primaryConstructor
+import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.ir.util.statements
 import org.jetbrains.kotlin.name.ClassId
@@ -98,7 +99,6 @@ internal class IrGraphGenerator(
   private val graphClass: IrClass,
   private val bindingGraph: IrBindingGraph,
   private val sealResult: IrBindingGraph.BindingGraphResult,
-  private val propertyNameAllocator: NameAllocator,
   private val parentTracer: Tracer,
   // TODO move these accesses to irAttributes
   bindingContainerTransformer: BindingContainerTransformer,
@@ -108,6 +108,14 @@ internal class IrGraphGenerator(
   /** All ancestor graphs' binding property contexts, keyed by graph type key. */
   private val ancestorBindingContexts: Map<IrTypeKey, BindingPropertyContext>,
 ) : IrMetroContext by metroContext {
+
+  private val propertyNameAllocator =
+    NameAllocator(mode = NameAllocator.Mode.COUNT).apply {
+      // Preallocate any existing property and field names in this graph
+      for (property in node.metroGraphOrFail.properties) {
+        newName(property.name.asString())
+      }
+    }
 
   private var _functionNameAllocatorInitialized = false
   private val _functionNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
@@ -388,7 +396,7 @@ internal class IrGraphGenerator(
 
       // Collect bindings and their dependencies for provider property ordering
       val initOrder =
-        parentTracer.traceNested("Collect bindings") {
+        parentTracer.traceNested("Collect binding properties") {
           // Collect roots (accessors + injectors) for refcount tracking
           val roots = buildList {
             node.accessors.mapTo(this) { it.contextKey }
