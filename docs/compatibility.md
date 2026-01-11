@@ -24,9 +24,25 @@ Pre-release versions are normally only tested during their development cycle. Af
 
 [1]: Metro versions 0.6.9–0.9.0 had a [version comparison bug](https://github.com/ZacSweers/metro/issues/1544) that caused them to incorrectly select a compat module for Kotlin 2.2.20 when running on the Kotlin 2.3.0 final release. This was fixed in 0.9.1.
 
+Some releases may introduce prohibitively difficult breaking changes that require companion release, so check Metro's open PRs for one targeting that Kotlin version for details. There is a tested versions table at the bottom of this page that is updated with each Metro release.
+
+## IDE Support
+
 IDEs have their own compatibility story with Kotlin versions. The Kotlin IDE plugin embeds Kotlin versions built from source, so Metro's IDE support selects the nearest compatible version and tries to support the latest stable IntelliJ and Android Studio releases + the next IntelliJ EAP release.
 
-Some releases may introduce prohibitively difficult breaking changes that require companion release, so check Metro's open PRs for one targeting that Kotlin version for details. There is a tested versions table at the bottom of this page that is updated with each Metro release.
+!!! note "IntelliJ's unusual Kotlin tags"
+
+    IntelliJ sometimes publishes releases that do not use published Kotlin repo tags. For example, usually it uses a `2.3.20-dev-1234` version that exists on GitHub and is published to the Kotlin dev maven repo. However, sometimes it uses something like a `2.3.20-ij253-45` that (at the time of writing) doesn't appear to correspond to any public tag.
+    
+    While these do have artifacts in a known maven repository, it's unclear what git sha in the Kotlin repo these are from and thus unclear where they are in the _order_ of dev builds. For now, Metro handles this by selecting the highest available `-dev-***` build for this base version (i.e. `2.3.20`), before then falling back to the other types (stable, beta, etc.)
+
+    Please star this issue: https://youtrack.jetbrains.com/issue/KTIJ-37076
+
+!!! note "Android Studio's custom versions"
+
+    Android Studio uses a custom version of the Kotlin compiler that does not necessarily correspond to any real published Kotlin version. For example, Android Studio Otter 2 (at the time of writing) declares `2.2.255-dev-255`, which isn't a real version. Android Studio Panda canaries declare `2.3.255-dev-255`. Similar to the mystery `ij` tags for IntelliJ versions above, metro best-effort supports this by just picking the nearest available compat context that is lower that Studio's declared version.
+
+    Please star this issue: https://issuetracker.google.com/issues/474940910
 
 ## Tested Versions
 
