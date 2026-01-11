@@ -153,10 +153,11 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
             .requireSimpleFunction(Symbols.StringNames.CREATE)
             .owner
             .parameters()
-            .allParameters
+            .regularParameters
+            .drop(1) // Drop the dispatch receiver for this
 
         for ((i, mirrorP) in
-          callableMetadata.mirrorFunction.parameters().allParameters.withIndex()) {
+          callableMetadata.mirrorFunction.parameters().nonDispatchParameters.withIndex()) {
           val createP = createFunctionParams[i]
           if (createP.typeKey != mirrorP.typeKey) {
             context.reportCompat(
@@ -164,9 +165,10 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
               MetroDiagnostics.KNOWN_KOTLINC_BUG_ERROR,
               """
                 Mirror/create function parameter type mismatch:
+                  - Source:         ${callableMetadata.function.kotlinFqName.asString()}
                   - Mirror param:   ${mirrorP.typeKey}
                   - create() param: ${createP.typeKey}
-                Source: ${callableMetadata.function.kotlinFqName.asString()}
+                
                 This is a known bug in the Kotlin compiler, follow https://github.com/ZacSweers/metro/issues/1556
               """
                 .trimIndent(),
