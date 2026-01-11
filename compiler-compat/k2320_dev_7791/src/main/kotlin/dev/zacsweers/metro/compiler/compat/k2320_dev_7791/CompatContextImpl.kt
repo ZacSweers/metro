@@ -1,6 +1,6 @@
 // Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-package dev.zacsweers.metro.compiler.compat.k2320_dev_7778
+package dev.zacsweers.metro.compiler.compat.k2320_dev_7791
 
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.compat.k2320_dev_5437.CompatContextImpl as DelegateType
@@ -42,7 +42,7 @@ public class CompatContextImpl : CompatContext by DelegateType() {
   }
 
   public class Factory : CompatContext.Factory {
-    override val minVersion: String = "2.3.20-dev-7778"
+    override val minVersion: String = "2.3.20-dev-7791"
 
     override fun create(): CompatContext = CompatContextImpl()
   }
