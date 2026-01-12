@@ -1,5 +1,9 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
+import org.jetbrains.kotlin.tooling.core.KotlinToolingVersion
+import org.jetbrains.kotlin.tooling.core.isDev
+import org.jetbrains.kotlin.tooling.core.toKotlinVersion
+
 plugins {
   alias(libs.plugins.kotlin.jvm)
   alias(libs.plugins.buildConfig)
@@ -18,10 +22,7 @@ val testCompilerVersionProvider = providers.gradleProperty("metro.testCompilerVe
 
 val testCompilerVersion = testCompilerVersionProvider.orElse(libs.versions.kotlin).get()
 
-val testKotlinVersion =
-  testCompilerVersion.substringBefore('-').split('.').let { (major, minor, patch) ->
-    KotlinVersion(major.toInt(), minor.toInt(), patch.toInt())
-  }
+val testKotlinVersion = KotlinToolingVersion(testCompilerVersion)
 
 buildConfig {
   generateAtSync = true
@@ -59,26 +60,33 @@ val guiceClasspath: Configuration by configurations.creating {}
 val javaxInteropClasspath: Configuration by configurations.creating { isTransitive = false }
 val jakartaInteropClasspath: Configuration by configurations.creating { isTransitive = false }
 
+// IntelliJ maven repo doesn't carry compiler test framework versions, so we'll pull from that as
+// needed for those tests
+var compilerTestFrameworkVersion: String
+var reflectVersion: String
+var generatorConfigToUse: String
+
+if (testKotlinVersion >= KotlinToolingVersion(KotlinVersion(2, 3))) {
+  generatorConfigToUse =
+    if (testKotlinVersion.toKotlinVersion() >= KotlinVersion(2, 3, 20)) {
+      "generator2320"
+    } else {
+      "generator230"
+    }
+  compilerTestFrameworkVersion = testCompilerVersion
+  reflectVersion =
+    if (testKotlinVersion.isDev) {
+      "2.3.20-Beta1"
+    } else {
+      testCompilerVersion
+    }
+} else {
+  generatorConfigToUse = "generator220"
+  compilerTestFrameworkVersion = libs.versions.kotlin.get()
+  reflectVersion = libs.versions.kotlin.get()
+}
+
 dependencies {
-  // IntelliJ maven repo doesn't carry compiler test framework versions, so we'll pull from that as
-  // needed for those tests
-  val compilerTestFrameworkVersion: String
-
-  val generatorConfigToUse: String
-
-  if (testKotlinVersion >= KotlinVersion(2, 3)) {
-    generatorConfigToUse =
-      if (testKotlinVersion >= KotlinVersion(2, 3, 20)) {
-        "generator2320"
-      } else {
-        "generator230"
-      }
-    compilerTestFrameworkVersion = testCompilerVersion
-  } else {
-    generatorConfigToUse = "generator220"
-    compilerTestFrameworkVersion = libs.versions.kotlin.get()
-  }
-
   // 2.3.0 changed the test gen APIs around into different packages
   "generator220CompileOnly"(libs.kotlin.compilerTestFramework)
   "generator230CompileOnly"(
@@ -122,7 +130,7 @@ dependencies {
 
   // Dependencies required to run the internal test framework.
   // Use the test compiler version because 2.3.20+ uses new APIs from here
-  testRuntimeOnly("org.jetbrains.kotlin:kotlin-reflect:$testCompilerVersion")
+  testRuntimeOnly("org.jetbrains.kotlin:kotlin-reflect:$reflectVersion")
   testRuntimeOnly(libs.kotlin.test)
   testRuntimeOnly(libs.kotlin.scriptRuntime)
   testRuntimeOnly(libs.kotlin.annotationsJvm)
