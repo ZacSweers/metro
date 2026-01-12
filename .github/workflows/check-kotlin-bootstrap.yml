@@ -31,7 +31,9 @@ jobs:
       - name: Fetch intellij-dependencies versions
         id: fetch-intellij
         run: |
-          VERSIONS=$(./scripts/fetch-kotlin-bootstrap-versions.sh "https://packages.jetbrains.team/maven/p/ij/intellij-dependencies/org/jetbrains/kotlin/kotlin-compiler" ${{ env.COUNT }})
+          # Fetch COUNT + buffer to account for ij-tagged versions we'll hide (capped at 10 shown)
+          # This ensures we get enough dev versions despite many ij versions in recent releases
+          VERSIONS=$(./scripts/fetch-kotlin-bootstrap-versions.sh "https://packages.jetbrains.team/maven/p/ij/intellij-dependencies/org/jetbrains/kotlin/kotlin-compiler" $(( ${{ env.COUNT }} + 20 )))
           echo "versions<<EOF" >> $GITHUB_OUTPUT
           echo "$VERSIONS" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
@@ -63,8 +65,16 @@ jobs:
             const bootstrapEntries = parseVersions(process.env.BOOTSTRAP_VERSIONS);
             const intellijEntries = parseVersions(process.env.INTELLIJ_VERSIONS);
 
+            // Split intellij into dev (non-ij) and ij-tagged versions
+            const ijPattern = /-ij\d+-/;
+            const intellijDevEntries = intellijEntries.filter(e => !ijPattern.test(e.version));
+            const intellijIjEntries = intellijEntries.filter(e => ijPattern.test(e.version));
+            // Cap ij versions at 10, but show all dev versions
+            const intellijIjCapped = intellijIjEntries.slice(-10);
+
             console.log('Bootstrap versions:', bootstrapEntries);
-            console.log('IntelliJ versions:', intellijEntries);
+            console.log('IntelliJ dev versions:', intellijDevEntries);
+            console.log('IntelliJ ij versions (capped):', intellijIjCapped);
 
             if (bootstrapEntries.length === 0 && intellijEntries.length === 0) {
               core.setFailed('No versions found');
@@ -73,7 +83,8 @@ jobs:
 
             const allLatestVersions = [
               ...bootstrapEntries.map(e => e.version),
-              ...intellijEntries.map(e => e.version)
+              ...intellijDevEntries.map(e => e.version),
+              ...intellijIjCapped.map(e => e.version)
             ];
 
             // Get current issue
@@ -123,7 +134,20 @@ jobs:
 
             // Update issue body with latest versions (including timestamps)
             const bootstrapList = bootstrapEntries.map(e => `- \`${e.version}\` (${e.timestamp})`).join('\n');
-            const intellijList = intellijEntries.map(e => `- \`${e.version}\` (${e.timestamp})`).join('\n');
+
+            // Format intellij entries with "..." separator between dev and ij groups
+            const formatEntries = (entries) => entries.map(e => `- \`${e.version}\` (${e.timestamp})`).join('\n');
+            const intellijParts = [];
+            if (intellijDevEntries.length > 0) {
+              intellijParts.push(formatEntries(intellijDevEntries));
+            }
+            if (intellijDevEntries.length > 0 && intellijIjCapped.length > 0) {
+              intellijParts.push('- ...');
+            }
+            if (intellijIjCapped.length > 0) {
+              intellijParts.push(formatEntries(intellijIjCapped));
+            }
+            const intellijList = intellijParts.join('\n');
             const newBody = [
               '# Kotlin Dev Versions',
               '',
