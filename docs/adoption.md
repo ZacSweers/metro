@@ -56,7 +56,6 @@ If adopting Metro into an existing codebase, you can use a few different strateg
 
     - Remove the Dagger and anvil runtimes.
     - Replace all Dagger/anvil annotations with Metro equivalents.
-    - If you use subcomponents, you'll have to switch to [Graph extensions](dependency-graphs.md#graph-extensions).
     - Update references to generated `Dagger*Component` calls to use metro's `createGraph`/`createGraphFactory` APIs.
     - Migrate from javax/jakarta `Provider` and `dagger.Lazy` APIs to Metro's `Provider` and the stdlib's `Lazy` APIs.
 
