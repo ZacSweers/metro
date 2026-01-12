@@ -6,6 +6,11 @@ pluginManagement {
     google()
     gradlePluginPortal()
     mavenLocal()
+    maven("https://redirector.kotlinlang.org/maven/bootstrap")
+    maven("https://redirector.kotlinlang.org/maven/dev/")
+    // Publications used by IJ
+    // https://kotlinlang.slack.com/archives/C7L3JB43G/p1757001642402909
+    maven("https://redirector.kotlinlang.org/maven/intellij-dependencies/")
   }
   plugins {
     id("com.gradle.develocity") version "4.3"
@@ -19,6 +24,11 @@ dependencyResolutionManagement {
     mavenCentral()
     google()
     mavenLocal()
+    maven("https://redirector.kotlinlang.org/maven/bootstrap")
+    maven("https://redirector.kotlinlang.org/maven/dev/")
+    // Publications used by IJ
+    // https://kotlinlang.slack.com/archives/C7L3JB43G/p1757001642402909
+    maven("https://redirector.kotlinlang.org/maven/intellij-dependencies/")
   }
 }
 

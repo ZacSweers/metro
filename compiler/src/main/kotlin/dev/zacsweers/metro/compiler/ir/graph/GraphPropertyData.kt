@@ -26,14 +26,14 @@ internal enum class PropertyKind {
 context(context: IrMetroContext)
 internal fun IrProperty.ensureInitialized(
   propertyKind: PropertyKind,
-  type: () -> IrType = { graphPropertyData!!.type },
+  type: IrType = graphPropertyData!!.type,
 ): IrProperty = apply {
   if (backingField == null && getter == null) {
     when (propertyKind) {
-      PropertyKind.FIELD -> with(context) { addBackingFieldCompat { this.type = type() } }
+      PropertyKind.FIELD -> with(context) { addBackingFieldCompat { this.type = type } }
       PropertyKind.GETTER ->
         addGetter {
-            this.returnType = type()
+            this.returnType = type
             this.visibility = this@ensureInitialized.visibility
           }
           .apply {

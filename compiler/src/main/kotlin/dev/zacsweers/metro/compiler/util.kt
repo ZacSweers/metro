@@ -62,6 +62,8 @@ internal fun String.capitalizeUS() = replaceFirstChar {
 
 internal fun String.decapitalizeUS() = replaceFirstChar { it.lowercase(Locale.US) }
 
+internal fun Name.decapitalizeUS() = asString().decapitalizeUS().asName()
+
 internal inline fun <T, Buffer : Appendable> Buffer.appendIterableWith(
   iterable: Iterable<T>,
   prefix: String,
@@ -146,6 +148,9 @@ internal fun <T : Comparable<T>> List<T>.compareTo(other: List<T>): Int {
 
 internal fun String.suffixIfNot(suffix: String) =
   if (this.endsWith(suffix)) this else "$this$suffix"
+
+internal fun Name.suffixIfNot(suffix: String) =
+  if (asString().endsWith(suffix)) this else "$this$suffix".asName()
 
 // TODO this doesn't include the package name, should we include it
 internal fun ClassId.scopeHintFunctionName(): Name = joinSimpleNames().shortClassName

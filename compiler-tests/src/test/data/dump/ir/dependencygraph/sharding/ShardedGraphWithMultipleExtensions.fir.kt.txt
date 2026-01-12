@@ -476,9 +476,6 @@ interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope {
     private val thisGraphInstance: AppGraph
       field = <this>
 
-    private val appGraphProvider: Provider<AppGraph>
-      field = Companion.invoke<AppGraph>(value = <this>.#thisGraphInstance)
-
     private val appService1Provider: Provider<AppService1>
 
     private val appService2Provider: Provider<AppService2>

@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
+import dev.zacsweers.metro.compiler.MetroOptions
+
 internal interface BaseBinding<
   Type : Any,
   TypeKey : BaseTypeKey<Type, *, *>,
@@ -36,7 +38,7 @@ internal interface BaseBinding<
 
   fun renderLocationDiagnostic(
     short: Boolean = false,
-    shortLocation: Boolean = short,
+    shortLocation: Boolean = short || MetroOptions.SystemProperties.SHORTEN_LOCATIONS,
     underlineTypeKey: Boolean = true,
   ): LocationDiagnostic
 

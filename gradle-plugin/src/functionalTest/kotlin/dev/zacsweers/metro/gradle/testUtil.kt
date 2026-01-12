@@ -13,10 +13,10 @@ import com.autonomousapps.kit.truth.TestKitTruth.Companion.assertThat
 import java.io.File
 import java.net.URLClassLoader
 import java.util.Locale
-import kotlin.collections.component1
 import kotlin.io.path.absolute
 import kotlin.io.path.exists
 import kotlin.test.assertContains
+import kotlin.test.fail
 import org.gradle.testkit.runner.BuildResult
 import org.intellij.lang.annotations.Language
 
@@ -70,6 +70,7 @@ fun source(
   fileNameWithoutExtension: String? = null,
   packageName: String = "test",
   sourceSet: String = DEFAULT_SOURCE_SET,
+  includeDefaultImports: Boolean = true,
   vararg extraImports: String,
 ): Source {
   @Suppress("DEPRECATION")
@@ -84,8 +85,10 @@ fun source(
         appendLine("package $packageName")
 
         // Imports
-        for (import in DEFAULT_IMPORTS + extraImports) {
-          appendLine("import $import")
+        if (includeDefaultImports) {
+          for (import in DEFAULT_IMPORTS + extraImports) {
+            appendLine("import $import")
+          }
         }
 
         appendLine()
@@ -98,10 +101,17 @@ fun source(
     .build()
 }
 
-fun Source.copy(@Language("Kotlin") newContent: String): Source {
+fun Source.copy(
+  @Language("Kotlin") newContent: String,
+  includeDefaultImports: Boolean = true,
+): Source {
   return when (sourceType) {
     SourceType.KOTLIN -> {
-      source(newContent, fileNameWithoutExtension = name)
+      source(
+        newContent,
+        fileNameWithoutExtension = name,
+        includeDefaultImports = includeDefaultImports,
+      )
     }
     else -> error("Unsupported source: $sourceType")
   }
@@ -136,6 +146,9 @@ fun BuildResult.assertOutputContainsOnDifferentKotlinVersions(map: Map<String, S
 fun getTestCompilerVersion(): String =
   System.getProperty("dev.zacsweers.metro.gradle.test.kotlin-version")
 
+fun getTestCompilerToolingVersion(): KotlinToolingVersion =
+  KotlinToolingVersion(getTestCompilerVersion())
+
 /**
  * Invokes the `main` function from the compiled test sources and returns the result.
  *
@@ -146,4 +159,15 @@ fun getTestCompilerVersion(): String =
 inline fun <reified T> GradleProject.invokeMain(className: String = "test.MainKt"): T {
   return classLoader().loadClass(className).declaredMethods.first { it.name == "main" }.invoke(null)
     as T
+}
+
+internal fun File.resolveSafe(relative: String): File {
+  val dir = this
+  return resolve(relative).apply {
+    if (!exists()) {
+      fail(
+        "Could not find $relative in $dir. Files are:\n${dir.walkTopDown().filter { it.isFile }.joinToString("\n")}"
+      )
+    }
+  }
 }

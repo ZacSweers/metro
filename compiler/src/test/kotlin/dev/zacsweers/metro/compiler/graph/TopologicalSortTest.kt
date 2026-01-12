@@ -17,6 +17,8 @@
 package dev.zacsweers.metro.compiler.graph
 
 import com.google.common.truth.Truth.assertThat
+import dev.zacsweers.metro.compiler.tracing.TraceScope
+import dev.zacsweers.metro.compiler.tracing.Tracer
 import java.util.SortedSet
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -25,7 +27,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.test.fail
 
-class TopologicalSortTest {
+class TopologicalSortTest : TraceScope by TraceScope(Tracer.NONE) {
   @Test
   fun emptyEdges() {
     val unsorted = listOf("a", "b", "c")

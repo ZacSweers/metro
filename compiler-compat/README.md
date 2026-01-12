@@ -91,6 +91,28 @@ Metro's compiler plugin uses `ServiceLoader` to discover and select the appropri
 
 This allows Metro to support multiple Kotlin versions without requiring separate builds or complex version detection logic.
 
+### Track-Based Resolution
+
+dev track versions (e.g., `2.3.20-dev-5437`) are handled specially to avoid issues with divergent release tracks.
+
+Kotlin's release process can create divergent version tracks:
+- **dev builds** are from the main development branch (trunk)
+- **Beta/RC builds** are cut from stable branches with different changes
+
+For example:
+- `2.3.20-dev-5437` - has API change X
+- `2.3.20-Beta1` - released from a branch, has API change X + Y
+- `2.3.20-dev-7791` - new dev build, has X + Z (not Y from Beta1)
+
+Standard semantic version comparison would incorrectly say `2.3.20-dev-7791 < 2.3.20-Beta1` (because dev < BETA in maturity ordering), potentially selecting the wrong factory.
+
+The resolution logic handles this by:
+1. If the current version is a dev build, first look for dev track factories only
+2. Compare only within the dev track (by build number)
+3. If no dev factory matches, fall back to non-dev factories
+
+This ensures dev builds use dev-specific factories when available, and Beta/RC/Stable versions never accidentally use dev factories.
+
 ## Development Notes
 
 - Always implement all interface methods, even if some are no-ops for certain versions

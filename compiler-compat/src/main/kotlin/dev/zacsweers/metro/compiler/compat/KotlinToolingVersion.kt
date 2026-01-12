@@ -249,10 +249,10 @@ internal val KotlinToolingVersion.classifierNumber: Int?
     return classifierMatch.groupValues.getOrNull(2)?.toIntOrNull()
   }
 
-operator internal fun String.compareTo(version: KotlinToolingVersion): Int {
+internal operator fun String.compareTo(version: KotlinToolingVersion): Int {
   return KotlinToolingVersion(this).compareTo(version)
 }
 
-operator internal fun KotlinToolingVersion.compareTo(kotlinVersionString: String): Int {
+internal operator fun KotlinToolingVersion.compareTo(kotlinVersionString: String): Int {
   return this.compareTo(KotlinToolingVersion(kotlinVersionString))
 }

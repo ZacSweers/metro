@@ -18,7 +18,7 @@ fun box(): String {
   val graph = createGraph<AppGraph>()
   val loggedInGraph = graph.loggedInGraph()
   assertEquals(3, loggedInGraph.int)
-  assertSame(loggedInGraph, graph.loggedInGraph())
-  assertSame(graph.loggedInGraphProp, graph.loggedInGraph())
+  assertNotSame(loggedInGraph, graph.loggedInGraph())
+  assertNotSame(graph.loggedInGraphProp, graph.loggedInGraph())
   return "OK"
 }

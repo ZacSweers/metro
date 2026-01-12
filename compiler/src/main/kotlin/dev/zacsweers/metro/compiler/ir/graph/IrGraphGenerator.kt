@@ -47,10 +47,11 @@ import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.isSyntheticGeneratedGraph
 import dev.zacsweers.metro.compiler.letIf
+import dev.zacsweers.metro.compiler.newName
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.suffixIfNot
-import dev.zacsweers.metro.compiler.tracing.Tracer
+import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.DescriptorVisibility
@@ -72,7 +73,6 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
-import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.copyTo
@@ -80,6 +80,7 @@ import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.primaryConstructor
+import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.ir.util.statements
 import org.jetbrains.kotlin.name.ClassId
@@ -93,19 +94,28 @@ internal typealias InitStatement =
 
 internal class IrGraphGenerator(
   metroContext: IrMetroContext,
+  traceScope: TraceScope,
   private val dependencyGraphNodesByClass: (ClassId) -> DependencyGraphNode?,
   private val node: DependencyGraphNode,
   private val graphClass: IrClass,
   private val bindingGraph: IrBindingGraph,
   private val sealResult: IrBindingGraph.BindingGraphResult,
-  private val propertyNameAllocator: NameAllocator,
-  private val parentTracer: Tracer,
   // TODO move these accesses to irAttributes
   bindingContainerTransformer: BindingContainerTransformer,
   private val membersInjectorTransformer: MembersInjectorTransformer,
   assistedFactoryTransformer: AssistedFactoryTransformer,
   graphExtensionGenerator: IrGraphExtensionGenerator,
-) : IrMetroContext by metroContext {
+  /** All ancestor graphs' binding property contexts, keyed by graph type key. */
+  private val ancestorBindingContexts: Map<IrTypeKey, BindingPropertyContext>,
+) : IrMetroContext by metroContext, TraceScope by traceScope {
+
+  private val propertyNameAllocator =
+    NameAllocator(mode = NameAllocator.Mode.COUNT).apply {
+      // Preallocate any existing property and field names in this graph
+      for (property in node.metroGraphOrFail.properties) {
+        newName(property.name.asString())
+      }
+    }
 
   private var _functionNameAllocatorInitialized = false
   private val _functionNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
@@ -138,12 +148,13 @@ internal class IrGraphGenerator(
       context = this,
       node = node,
       bindingPropertyContext = bindingPropertyContext,
+      ancestorBindingContexts = ancestorBindingContexts,
       bindingGraph = bindingGraph,
       bindingContainerTransformer = bindingContainerTransformer,
       membersInjectorTransformer = membersInjectorTransformer,
       assistedFactoryTransformer = assistedFactoryTransformer,
       graphExtensionGenerator = graphExtensionGenerator,
-      parentTracer = parentTracer,
+      traceScope = traceScope,
     )
 
   private val graphMetadataReporter = GraphMetadataReporter(this)
@@ -174,28 +185,27 @@ internal class IrGraphGenerator(
    * Graph extensions may reserve property names for their linking, so if they've done that we use
    * the precomputed property rather than generate a new one.
    */
-  private fun IrClass.getOrCreateBindingProperty(
+  private fun IrClass.createBindingProperty(
     contextKey: IrContextualTypeKey,
-    name: () -> String,
-    type: () -> IrType,
+    name: Name,
+    type: IrType,
     propertyKind: PropertyKind,
     visibility: DescriptorVisibility = DescriptorVisibilities.PRIVATE,
   ): IrProperty {
     val property =
-      bindingGraph.reservedProperty(contextKey)?.property?.also { addChild(it) }
-        ?: addProperty {
-            this.name = propertyNameAllocator.newName(name()).asName()
-            this.visibility = visibility
-          }
-          .apply {
-            graphPropertyData = GraphPropertyData(contextKey, type())
-            contextKey.typeKey.qualifier?.ir?.let { annotations += it.deepCopyWithSymbols() }
-          }
+      addProperty {
+          this.name = propertyNameAllocator.newName(name)
+          this.visibility = visibility
+        }
+        .apply {
+          graphPropertyData = GraphPropertyData(contextKey, type)
+          contextKey.typeKey.qualifier?.ir?.let { annotations += it.deepCopyWithSymbols() }
+        }
 
     return property.ensureInitialized(propertyKind, type)
   }
 
-  fun generate() =
+  fun generate(): BindingPropertyContext {
     with(graphClass) {
       val ctor = primaryConstructor!!
 
@@ -214,23 +224,24 @@ internal class IrGraphGenerator(
 
         val instanceContextKey = IrContextualTypeKey.create(typeKey)
         val instanceProperty =
-          getOrCreateBindingProperty(
+          createBindingProperty(
               instanceContextKey,
-              { name.asString().decapitalizeUS().suffixIfNot("Instance") },
-              { typeKey.type },
+              name.decapitalizeUS().suffixIfNot("Instance"),
+              typeKey.type,
               PropertyKind.FIELD,
             )
             .initFinal { initializer(thisReceiverParameter, typeKey) }
+
         bindingPropertyContext.put(instanceContextKey, instanceProperty)
 
         val providerType = metroSymbols.metroProvider.typeWith(typeKey.type)
         val providerContextKey =
           IrContextualTypeKey.create(typeKey, isWrappedInProvider = true, rawType = providerType)
         val providerProperty =
-          getOrCreateBindingProperty(
+          createBindingProperty(
               providerContextKey,
-              { instanceProperty.name.asString().suffixIfNot("Provider") },
-              { providerType },
+              instanceProperty.name.suffixIfNot("Provider"),
+              providerType,
               PropertyKind.FIELD,
             )
             .initFinal {
@@ -289,12 +300,12 @@ internal class IrGraphGenerator(
                 rawType = graphDepProviderType,
               )
             // Only create the provider property if it was reserved (requested by a child graph)
-            if (bindingGraph.reservedProperty(graphDepProviderContextKey) != null) {
+            if (bindingGraph.isContextKeyReserved(graphDepProviderContextKey)) {
               val providerWrapperProperty =
-                getOrCreateBindingProperty(
+                createBindingProperty(
                   graphDepProviderContextKey,
-                  { graphDepProperty.name.asString() + "Provider" },
-                  { graphDepProviderType },
+                  graphDepProperty.name.suffixIfNot("Provider"),
+                  graphDepProviderType,
                   PropertyKind.FIELD,
                 )
 
@@ -362,12 +373,12 @@ internal class IrGraphGenerator(
             isWrappedInProvider = true,
             rawType = thisGraphProviderType,
           )
-        if (bindingGraph.reservedProperty(thisGraphProviderContextKey) != null) {
+        if (bindingGraph.isContextKeyReserved(thisGraphProviderContextKey)) {
           val property =
-            getOrCreateBindingProperty(
+            createBindingProperty(
               thisGraphProviderContextKey,
-              { "thisGraphInstanceProvider" },
-              { thisGraphProviderType },
+              "thisGraphInstanceProvider".asName(),
+              thisGraphProviderType,
               PropertyKind.FIELD,
             )
 
@@ -385,12 +396,10 @@ internal class IrGraphGenerator(
 
       // Collect bindings and their dependencies for provider property ordering
       val initOrder =
-        parentTracer.traceNested("Collect bindings") {
+        traceNested("Collect binding properties") {
           // Collect roots (accessors + injectors) for refcount tracking
           val roots = buildList {
-            node.accessors
-              //              .filterNot { it.metroFunction.annotations.isMultibinds }
-              .mapTo(this) { it.contextKey }
+            node.accessors.mapTo(this) { it.contextKey }
             node.injectors.mapTo(this) { it.contextKey }
           }
           val collectedProperties =
@@ -399,6 +408,7 @@ internal class IrGraphGenerator(
                 graph = bindingGraph,
                 sortedKeys = sealResult.sortedKeys,
                 roots = roots,
+                extraKeeps = bindingGraph.keeps(),
                 deferredTypes = sealResult.deferredTypes,
               )
               .collect()
@@ -430,10 +440,10 @@ internal class IrGraphGenerator(
               rawType = deferredProviderType,
             )
           val property =
-            getOrCreateBindingProperty(
+            createBindingProperty(
                 deferredContextKey,
-                { binding.nameHint.decapitalizeUS() + "Provider" },
-                { deferredProviderType },
+                (binding.nameHint.decapitalizeUS() + "Provider").asName(),
+                deferredProviderType,
                 PropertyKind.FIELD,
               )
               .withInit(binding.typeKey) { _, _ ->
@@ -458,17 +468,17 @@ internal class IrGraphGenerator(
             // We don't generate properties for these even though we do track them in dependencies
             // above, it's just for propagating their aliased type in sorting
             binding is IrBinding.Alias ||
-            // For implicit outer class receivers we don't need to generate a property for them
-            (binding is IrBinding.BoundInstance && binding.classReceiverParameter != null) ||
+            // BoundInstance bindings use receivers (thisReceiver for self, token for parents)
+            binding is IrBinding.BoundInstance ||
             // Parent graph bindings don't need duplicated properties
-            (binding is IrBinding.GraphDependency && binding.propertyAccess != null)
+            (binding is IrBinding.GraphDependency && binding.token != null)
         }
         .toList()
         .also { propertyBindings ->
-          writeDiagnostic("keys-providerProperties-${parentTracer.tag}.txt") {
+          writeDiagnostic("keys-providerProperties-${tracer.diagnosticTag}.txt") {
             propertyBindings.joinToString("\n") { it.binding.typeKey.toString() }
           }
-          writeDiagnostic("keys-scopedProviderProperties-${parentTracer.tag}.txt") {
+          writeDiagnostic("keys-scopedProviderProperties-${tracer.diagnosticTag}.txt") {
             propertyBindings
               .filter { it.binding.isScoped() }
               .joinToString("\n") { it.binding.typeKey.toString() }
@@ -506,10 +516,10 @@ internal class IrGraphGenerator(
           // If we've reserved a property for this key here, pull it out and use that
           // For multibindings, use the collected contextual key which may include variant info
           val property =
-            getOrCreateBindingProperty(
+            createBindingProperty(
               finalContextKey,
-              { binding.nameHint.decapitalizeUS().suffixIfNot(suffix) },
-              { irType },
+              binding.nameHint.decapitalizeUS().suffixIfNot(suffix).asName(),
+              irType,
               propertyType,
             )
 
@@ -584,7 +594,7 @@ internal class IrGraphGenerator(
           propertyBindings = propertyBindings,
           plannedGroups = sealResult.shardGroups,
           bindingGraph = bindingGraph,
-          diagnosticTag = parentTracer.tag,
+          diagnosticTag = tracer.diagnosticTag,
           deferredInit = ::addDeferredSetDelegateCalls,
         )
 
@@ -665,10 +675,10 @@ internal class IrGraphGenerator(
         }
       }
 
-      parentTracer.traceNested("Implement overrides") { node.implementOverrides() }
+      traceNested("Implement overrides") { node.implementOverrides() }
 
       if (!graphClass.origin.isSyntheticGeneratedGraph) {
-        parentTracer.traceNested("Generate Metro metadata") {
+        traceNested("Generate Metro metadata") {
           // Finally, generate metadata
           val graphProto = node.toProto(bindingGraph = bindingGraph)
           graphMetadataReporter.write(node, bindingGraph)
@@ -687,6 +697,8 @@ internal class IrGraphGenerator(
         }
       }
     }
+    return bindingPropertyContext
+  }
 
   // TODO add asProvider support?
   private fun IrClass.addSimpleInstanceProperty(
@@ -844,9 +856,7 @@ internal class IrGraphGenerator(
                   typeKey = typeKey,
                   parent = metroGraphOrFail,
                   accessor = irFunction,
-                  // Implementing a factory SAM, no scoping or dependencies here,
-                  extensionScopes = emptySet(),
-                  dependencies = emptyList(),
+                  parentGraphKey = node.typeKey,
                 )
             val contextKey = IrContextualTypeKey.from(irFunction)
             body =

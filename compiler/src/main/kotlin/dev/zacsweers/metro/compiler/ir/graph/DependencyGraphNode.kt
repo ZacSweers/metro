@@ -65,6 +65,8 @@ internal data class DependencyGraphNode(
   //  maybe we track these protos separately somewhere?
   var proto: DependencyGraphProto? = null,
 ) {
+  val contextKey = IrContextualTypeKey(typeKey)
+
   // For quick lookups
   val supertypeClassIds: Set<ClassId> by memoize {
     supertypes.mapNotNullToSet { it.classOrNull?.owner?.classId }
@@ -180,4 +182,7 @@ internal data class GraphExtensionAccessor(
   val key: IrContextualTypeKey,
   val isFactory: Boolean,
   val isFactorySAM: Boolean,
-)
+) {
+  val isSimpleAccessor: Boolean
+    get() = !isFactorySAM && !isFactory
+}

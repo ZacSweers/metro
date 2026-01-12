@@ -61,7 +61,7 @@ import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
-import dev.zacsweers.metro.compiler.tracing.Tracer
+import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import java.util.EnumSet
 import org.jetbrains.kotlin.descriptors.Modality
@@ -110,10 +110,10 @@ internal class DependencyGraphNodeCache(
 
   fun requirePreviouslyComputed(classId: ClassId) = dependencyGraphNodesByClass.getValue(classId)
 
+  context(traceScope: TraceScope)
   fun getOrComputeDependencyGraphNode(
     graphDeclaration: IrClass,
     bindingStack: IrBindingStack,
-    parentTracer: Tracer,
     metroGraph: IrClass? = null,
     dependencyGraphAnno: IrConstructorCall? = null,
   ): DependencyGraphNode {
@@ -123,7 +123,6 @@ internal class DependencyGraphNodeCache(
         return getOrComputeDependencyGraphNode(
           sourceGraph,
           bindingStack,
-          parentTracer,
           metroGraph,
           dependencyGraphAnno,
         )
@@ -133,21 +132,28 @@ internal class DependencyGraphNodeCache(
     val graphClassId = graphDeclaration.classIdOrFail
 
     return dependencyGraphNodesByClass.getOrPut(graphClassId) {
-      parentTracer.traceNested("Build DependencyGraphNode") { tracer ->
-        Builder(this, graphDeclaration, bindingStack, tracer, metroGraph, dependencyGraphAnno)
+      traceNested("Build DependencyGraphNode") {
+        Builder(
+            this,
+            this@DependencyGraphNodeCache,
+            graphDeclaration,
+            bindingStack,
+            metroGraph,
+            dependencyGraphAnno,
+          )
           .build()
       }
     }
   }
 
   private class Builder(
+    traceScope: TraceScope,
     private val nodeCache: DependencyGraphNodeCache,
     private val graphDeclaration: IrClass,
     private val bindingStack: IrBindingStack,
-    private val parentTracer: Tracer,
     metroGraph: IrClass? = null,
     cachedDependencyGraphAnno: IrConstructorCall? = null,
-  ) : IrMetroContext by nodeCache {
+  ) : IrMetroContext by nodeCache, TraceScope by traceScope {
     private val metroGraph = metroGraph ?: graphDeclaration.metroGraphOrNull
     private val bindingContainerTransformer: BindingContainerTransformer =
       nodeCache.bindingContainerTransformer
@@ -315,7 +321,7 @@ internal class DependencyGraphNodeCache(
                 } else {
                   sourceGraph
                 }
-              nodeCache.getOrComputeDependencyGraphNode(nodeKey, bindingStack, parentTracer)
+              nodeCache.getOrComputeDependencyGraphNode(nodeKey, bindingStack)
             }
 
           // Still tie to the parameter key because that's what gets the instance binding
@@ -828,7 +834,7 @@ internal class DependencyGraphNodeCache(
               parentGraph.kotlinFqName.asString(),
             )
           ) {
-            nodeCache.getOrComputeDependencyGraphNode(parentGraph, bindingStack, parentTracer)
+            nodeCache.getOrComputeDependencyGraphNode(parentGraph, bindingStack)
           }
         extendedGraphNodes[node.typeKey] = node
 
@@ -959,7 +965,7 @@ internal class DependencyGraphNodeCache(
         trackClassLookup(graphDeclaration, container.ir)
       }
 
-      writeDiagnostic("bindingContainers-${parentTracer.tag}.txt") {
+      writeDiagnostic("bindingContainers-${tracer.diagnosticTag}.txt") {
         allMergedContainers.joinToString("\n") { it.ir.classId.toString() }
       }
 

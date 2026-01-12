@@ -24,7 +24,7 @@ import org.jetbrains.kotlin.gradle.plugin.kotlinToolingVersion
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 import org.jetbrains.kotlin.tooling.core.KotlinToolingVersion
 
-public class MetroGradleSubplugin @Inject constructor(private val problems: Problems) :
+public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
   KotlinCompilerPluginSupportPlugin {
 
   private companion object {
@@ -34,6 +34,9 @@ public class MetroGradleSubplugin @Inject constructor(private val problems: Prob
       }
 
     val PROBLEM_GROUP: ProblemGroup = ProblemGroup.create("metro-group", "Metro Problems")
+
+    private const val COMPILER_VERSION_OVERRIDE = "metro.compilerVersionOverride"
+    private const val COMPILER_VERSION_OVERRIDE_PROPERTY = "metroCompilerVersionOverride"
   }
 
   private val problemReporter = problems.reporter
@@ -164,7 +167,7 @@ public class MetroGradleSubplugin @Inject constructor(private val problems: Prob
   override fun getCompilerPluginId(): String = PLUGIN_ID
 
   override fun getPluginArtifact(): SubpluginArtifact {
-    val version = System.getProperty("metro.compilerVersionOverride", VERSION)
+    val version = System.getProperty(COMPILER_VERSION_OVERRIDE, VERSION)
     return SubpluginArtifact(
       groupId = "dev.zacsweers.metro",
       artifactId = "compiler",
@@ -200,8 +203,14 @@ public class MetroGradleSubplugin @Inject constructor(private val problems: Prob
       }
     }
 
-    // Ensure that the languageVersion is 2.x
     kotlinCompilation.compileTaskProvider.configure { task ->
+      // Specify the compiler version
+      task.inputs.property(
+        COMPILER_VERSION_OVERRIDE_PROPERTY,
+        project.providers.systemProperty(COMPILER_VERSION_OVERRIDE).orElse(VERSION),
+      )
+
+      // Ensure that the languageVersion is 2.x
       task.doFirst { innerTask ->
         val compilerOptions = (innerTask as KotlinCompilationTask<*>).compilerOptions
         val languageVersion = compilerOptions.languageVersion.orNull ?: return@doFirst

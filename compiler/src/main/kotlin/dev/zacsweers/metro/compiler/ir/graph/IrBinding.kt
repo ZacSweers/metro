@@ -30,7 +30,6 @@ import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.render
 import dev.zacsweers.metro.compiler.ir.renderForDiagnostic
-import dev.zacsweers.metro.compiler.ir.reportableDeclaration
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -69,8 +68,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
 
   /**
    * Returns true if this binding should be scoped (cached) in the graph. For most bindings, this is
-   * true if [scope] != null. For [GraphExtension] bindings, this is true if
-   * [GraphExtension.extensionScopes] is not empty.
+   * true if [scope] != null.
    */
   fun isScoped(): Boolean = scope != null
 
@@ -405,12 +403,21 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override fun toString() = renderDescriptionDiagnostic(short = true, underlineTypeKey = false)
   }
 
+  /**
+   * Represents a bound instance in the graph.
+   *
+   * @property typeKey The type key of the bound instance
+   * @property nameHint A hint for naming generated properties
+   * @property reportableDeclaration The declaration to report in diagnostics
+   * @property token Token for accessing a parent graph's property. When non-null, this binding
+   *   accesses a property from an ancestor graph. When null, this is a self-binding where the graph
+   *   provides itself (use `thisReceiver` in code gen).
+   */
   data class BoundInstance(
     override val typeKey: IrTypeKey,
     override val nameHint: String,
     override val reportableDeclaration: IrDeclarationWithName?,
-    val classReceiverParameter: IrValueParameter? = null,
-    val providerPropertyAccess: ParentContext.PropertyAccess? = null,
+    val token: ParentContext.Token? = null,
   ) : IrBinding {
     constructor(
       parameter: Parameter,
@@ -456,18 +463,25 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     @Poko.Skip val graph: IrClass,
     @Poko.Skip val getter: IrSimpleFunction? = null,
     override val typeKey: IrTypeKey,
-    @Poko.Skip val propertyAccess: ParentContext.PropertyAccess? = null,
-    val callableId: CallableId =
-      propertyAccess?.property?.callableId
-        ?: getter?.callableId
-        ?: reportCompilerBug("One of getter or fieldAccess must be present"),
+    /**
+     * Token for accessing a parent graph's property. This is set during validation and resolved to
+     * an actual property during generation via the parent's [BindingPropertyContext].
+     */
+    @Poko.Skip val token: ParentContext.Token? = null,
   ) : IrBinding {
+    // callableId is only used when getter is present (local graph dependency)
+    // For parent property access (propertyAccessToken), the callableId is determined during
+    // generation
+    val callableId: CallableId?
+      get() = getter?.callableId
+
     override val dependencies: List<IrContextualTypeKey> = listOf(IrContextualTypeKey(ownerKey))
     override val scope: IrAnnotation? = null
     override val nameHint: String = buildString {
       append(graph.name)
-      if (propertyAccess != null) {
-        append(propertyAccess.property.name)
+      if (token != null) {
+        // Use the context key's type name as a hint
+        append(token.contextKey.typeKey.type.rawType().name.asString().capitalizeUS())
       } else {
         val property = getter!!.correspondingPropertySymbol
         if (property != null) {
@@ -482,21 +496,30 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
 
     override val reportableDeclaration: IrDeclarationWithName?
-      get() =
-        propertyAccess?.property ?: getter?.propertyIfAccessor?.expectAs<IrDeclarationWithName>()
+      get() = getter?.propertyIfAccessor?.expectAs<IrDeclarationWithName>()
 
     override fun renderDescriptionDiagnostic(short: Boolean, underlineTypeKey: Boolean): String {
-      // TODO render parent?
       return buildString {
-        renderForDiagnostic(
-          declaration = propertyAccess?.property?.reportableDeclaration ?: getter!!,
-          short = short,
-          typeKey = typeKey,
-          annotations = MetroAnnotations.none(),
-          parameters = Parameters.empty(),
-          isProperty = null,
-          underlineTypeKey = false,
-        )
+        if (getter != null) {
+          renderForDiagnostic(
+            declaration = getter,
+            short = short,
+            typeKey = typeKey,
+            annotations = MetroAnnotations.none(),
+            parameters = Parameters.empty(),
+            isProperty = null,
+            underlineTypeKey = underlineTypeKey,
+          )
+        } else if (token != null) {
+          // For parent property access via token, show the parent graph and type being accessed
+          append(typeKey.render(short = short, includeQualifier = true))
+          append(" (from ")
+          append(ownerKey.render(short = short, includeQualifier = false))
+          append(")")
+        } else {
+          // Fallback just in case
+          append("GraphDependency(${typeKey.render(short = short, includeQualifier = true)})")
+        }
       }
     }
 
@@ -718,16 +741,20 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
 
   /**
    * Represents a graph extension binding. Graph extensions are treated as bindings to enable
-   * standard code generation for scoped instances when the extension graph itself is scoped.
+   * standard code generation.
+   *
+   * Note: GraphExtension bindings are specially handled in [BindingPropertyCollector] to only ever
+   * be getter properties if used by child graphs or reused.
    */
   @Poko
   class GraphExtension(
     override val typeKey: IrTypeKey,
     @Poko.Skip val parent: IrClass,
     val accessor: IrSimpleFunction,
-    val extensionScopes: Set<IrAnnotation>,
-    override val dependencies: List<IrContextualTypeKey> = emptyList(),
+    parentGraphKey: IrTypeKey,
   ) : IrBinding {
+    override val dependencies: List<IrContextualTypeKey> =
+      listOf(IrContextualTypeKey(parentGraphKey))
     override val reportableDeclaration: IrDeclarationWithName = accessor
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
     override val parameters: Parameters = Parameters.empty()
@@ -738,12 +765,6 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val scope: IrAnnotation? = null
 
     override val nameHint: String = typeKey.type.rawType().name.asString()
-
-    /**
-     * Returns true if this graph extension should be scoped (cached) in the parent graph. A graph
-     * extension is scoped if it has any extension scopes defined.
-     */
-    override fun isScoped(): Boolean = extensionScopes.isNotEmpty()
 
     override fun renderDescriptionDiagnostic(short: Boolean, underlineTypeKey: Boolean) =
       buildString {

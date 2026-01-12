@@ -1,4 +1,8 @@
 /module_main_InternalHintsAreNotVisibleWithoutFriends.kt:(123,134): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: ContributedInterface
 
     ContributedInterface is requested at
-        [AppGraph] AppGraph#contributed
+        [AppGraph] AppGraph.contributed
+
+Similar bindings:
+  - ContributedInterface (Contributed by 'Impl' but that class is internal to its module and its module is not a friend module to this one.)
+

@@ -11,7 +11,7 @@ import dev.zacsweers.metro.compiler.ir.instanceFactory
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.irLambda
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
-import dev.zacsweers.metro.compiler.tracing.Tracer
+import dev.zacsweers.metro.compiler.tracing.TraceScope
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irReturn
@@ -23,16 +23,27 @@ import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.classId
 
-internal abstract class BindingExpressionGenerator<T : IrBinding>(context: IrMetroContext) :
-  IrMetroContext by context {
+internal abstract class BindingExpressionGenerator<T : IrBinding>(
+  context: IrMetroContext,
+  traceScope: TraceScope,
+) : IrMetroContext by context, TraceScope by traceScope {
   abstract val thisReceiver: IrValueParameter
   abstract val bindingGraph: IrBindingGraph
-  abstract val parentTracer: Tracer
 
   enum class AccessType {
     INSTANCE,
     // note: maybe rename this to PROVIDER_LIKE or PROVIDER_OR_FACTORY
-    PROVIDER,
+    PROVIDER;
+
+    companion object {
+      fun of(contextKey: IrContextualTypeKey): AccessType {
+        return if (contextKey.isWrappedInProvider) {
+          PROVIDER
+        } else {
+          INSTANCE
+        }
+      }
+    }
   }
 
   context(scope: IrBuilderWithScope)
@@ -63,6 +74,9 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(context: IrMet
    * @param actual The current access type (inferred from expression type by default)
    * @param requested The desired access type (inferred from contextualTypeKey by default)
    * @param useInstanceFactory Whether to use InstanceFactory for INSTANCE->PROVIDER (vs lambda)
+   * @param allowPropertyGetter Whether to allow wrapping property getter calls in InstanceFactory.
+   *   Normally this would eagerly init the getter, but for graph extension GETTER properties this
+   *   is intentional since the getter lazily creates the extension.
    */
   context(scope: IrBuilderWithScope)
   protected fun IrExpression.toTargetType(
@@ -84,6 +98,7 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(context: IrMet
         AccessType.INSTANCE
       },
     useInstanceFactory: Boolean = true,
+    allowPropertyGetter: Boolean = false,
   ): IrExpression {
     // Step 1: Transform access type (INSTANCE <-> PROVIDER)
     val accessTransformed =
@@ -92,7 +107,7 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(context: IrMet
         AccessType.PROVIDER -> {
           if (useInstanceFactory) {
             // actual is an instance, wrap it
-            wrapInInstanceFactory(contextualTypeKey.typeKey.type)
+            wrapInInstanceFactory(contextualTypeKey.typeKey.type, allowPropertyGetter)
           } else {
             scope.wrapInProviderFunction(contextualTypeKey.typeKey.type) { this@toTargetType }
           }
@@ -116,8 +131,11 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(context: IrMet
   }
 
   context(scope: IrBuilderWithScope)
-  protected fun IrExpression.wrapInInstanceFactory(type: IrType): IrExpression {
-    return with(scope) { instanceFactory(type, this@wrapInInstanceFactory) }
+  protected fun IrExpression.wrapInInstanceFactory(
+    type: IrType,
+    allowPropertyGetter: Boolean = false,
+  ): IrExpression {
+    return with(scope) { instanceFactory(type, this@wrapInInstanceFactory, allowPropertyGetter) }
   }
 
   protected fun IrBuilderWithScope.wrapInProviderFunction(
