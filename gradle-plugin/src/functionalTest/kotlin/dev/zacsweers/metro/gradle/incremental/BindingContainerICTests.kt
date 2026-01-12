@@ -13,7 +13,6 @@ import dev.zacsweers.metro.gradle.MetroProject
 import dev.zacsweers.metro.gradle.assertOutputContains
 import dev.zacsweers.metro.gradle.invokeMain
 import dev.zacsweers.metro.gradle.source
-import kotlin.test.assertFails
 import org.gradle.testkit.runner.TaskOutcome
 import org.junit.Test
 
@@ -2123,15 +2122,14 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     val libProject = project.subprojects.first { it.name == "lib" }
 
     // First build succeed and caches hint about StringModule
-    val firstBuildResult = build(project.rootDir, "compileKotlin", "--quiet")
+    val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Change contribution target scope, which should stop contributing to AppGraph
     libProject.modify(project.rootDir, fixture.bindingContainer, fixture.changedContribution)
 
-    assertFails("Build is expected to fail, because module is contributed to wrong scope") {
-      build(project.rootDir, "compileKotlin", "--quiet")
-    }
+    // Build is expected to fail, because module is contributed to wrong scope
+    project.compileKotlinAndFail()
   }
 
   @Test
@@ -2200,14 +2198,13 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     val libProject = project.subprojects.first { it.name == "lib" }
 
     // First build succeed and caches hint about StringModule
-    val firstBuildResult = build(project.rootDir, "compileKotlin", "--quiet")
+    val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Remove contribution
     libProject.modify(project.rootDir, fixture.bindingContainer, fixture.removedContribution)
 
-    assertFails("Build is expected to fail due to missing contribution") {
-      build(project.rootDir, "compileKotlin", "--quiet")
-    }
+    // Build is expected to fail due to missing contribution
+    project.compileKotlinAndFail()
   }
 }
