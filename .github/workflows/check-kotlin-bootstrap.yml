@@ -1,0 +1,131 @@
+name: Check Kotlin Bootstrap Versions
+
+on:
+  schedule:
+    # Run twice a day
+    - cron: '0 0,12 * * *'
+  workflow_dispatch:
+
+env:
+  ISSUE_NUMBER: 1645
+
+jobs:
+  check-versions:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Fetch versions
+        id: fetch
+        run: |
+          VERSIONS=$(./scripts/fetch-kotlin-bootstrap-versions.sh 10)
+          echo "versions<<EOF" >> $GITHUB_OUTPUT
+          echo "$VERSIONS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Update issue and notify
+        uses: actions/github-script@v8
+        env:
+          VERSIONS: ${{ steps.fetch.outputs.versions }}
+        with:
+          script: |
+            const MAVEN_URL = 'https://packages.jetbrains.team/maven/p/kt/bootstrap/org/jetbrains/kotlin/kotlin-compiler/';
+            const ISSUE_NUMBER = parseInt(process.env.ISSUE_NUMBER);
+            const NOTIFICATION_MARKER = '<!-- kotlin-bootstrap-notification -->';
+
+            // Parse versions from script output
+            const latestVersions = process.env.VERSIONS
+              .split('\n')
+              .map(v => v.trim())
+              .filter(v => v.length > 0);
+
+            console.log('Latest versions:', latestVersions);
+
+            if (latestVersions.length === 0) {
+              core.setFailed('No versions found');
+              return;
+            }
+
+            // Get current issue
+            const { data: issue } = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ISSUE_NUMBER
+            });
+
+            // Parse existing versions from issue body
+            const existingBody = issue.body || '';
+            const existingVersions = [];
+            const versionLineRegex = /^- `([^`]+)`$/gm;
+            let versionMatch;
+            while ((versionMatch = versionLineRegex.exec(existingBody)) !== null) {
+              existingVersions.push(versionMatch[1]);
+            }
+            console.log('Existing versions in issue:', existingVersions);
+
+            // Find new versions (in latest but not in existing)
+            // If issue was blank (no existing versions), this is initial seeding - don't notify
+            const isInitialSeed = existingVersions.length === 0;
+            const newVersions = isInitialSeed ? [] : latestVersions.filter(v => !existingVersions.includes(v));
+            if (isInitialSeed) {
+              console.log('Initial seed - populating versions without notification');
+            } else {
+              console.log('New versions detected:', newVersions);
+            }
+
+            // Delete any existing notification comments from previous runs
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ISSUE_NUMBER
+            });
+
+            for (const comment of comments) {
+              if (comment.body.includes(NOTIFICATION_MARKER)) {
+                console.log(`Deleting previous notification comment ${comment.id}`);
+                await github.rest.issues.deleteComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: comment.id
+                });
+              }
+            }
+
+            // Update issue body with latest versions
+            const newBody = `# Kotlin Bootstrap Versions
+
+Latest versions from the [JetBrains bootstrap repository](${MAVEN_URL}):
+
+${latestVersions.map(v => `- \`${v}\``).join('\n')}
+
+_Last updated: ${new Date().toISOString()}_`;
+
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ISSUE_NUMBER,
+              body: newBody
+            });
+            console.log('Updated issue body');
+
+            // If there are new versions, add a notification comment
+            if (newVersions.length > 0) {
+              const commentBody = `${NOTIFICATION_MARKER}
+## New Kotlin Bootstrap Version${newVersions.length > 1 ? 's' : ''} Detected!
+
+${newVersions.map(v => `- \`${v}\``).join('\n')}
+
+_This comment will be automatically removed on the next check._`;
+
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: ISSUE_NUMBER,
+                body: commentBody
+              });
+              console.log('Created notification comment for new versions');
+            }
