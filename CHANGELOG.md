@@ -30,7 +30,7 @@ Changelog
 - [IR] Already mentioned above, but worth calling out again — creator-less scoped graph extensions _are no longer cached_ in their parent graphs. Accessors to this will always get new instances now.
 - [IR] Report log files reported from within graph generation now use snake-cased fully-qualified names of the impl graph as the file name suffix.
 - Test Kotlin `2.3.20-Beta1`.
-- Switch `2.3.20-dev-5437` support/testing to `2.3.20-dev-5426`. This is necessary to avoid ephemeral dev build artifacts and stick to persistent ones.
+- Switch `2.3.20-dev-5437` support/testing to `2.3.20-dev-4962`. This is necessary to avoid ephemeral dev build artifacts and stick to persistent ones.
 
 ### Contributors
 
