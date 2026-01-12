@@ -9,8 +9,9 @@ Pre-release versions are normally only tested during their development cycle. Af
 | Kotlin version  | Metro versions (inclusive) | Notes                                |
 |-----------------|----------------------------|--------------------------------------|
 | 2.3.20-Beta1    | 0.9.5 -                    |                                      |
-| 2.3.20-dev-7791 | 0.9.5 -                    |                                      |
-| 2.3.20-dev-5437 | 0.9.1 -                    |                                      |
+| 2.3.20-dev-7874 | 0.9.5 -                    |                                      |
+| 2.3.20-dev-4962 | 0.9.5 -                    |                                      |
+| 2.3.20-dev-5437 | 0.9.1 - [0.9.4]            | [2]                                  |
 | 2.3.0           | 0.9.1 -                    | [1]                                  |
 | 2.3.0-RC3       | 0.6.9, 0.6.11 - [0.9.2]    |                                      |
 | 2.3.0-RC2       | 0.6.9, 0.6.11 - [0.9.2]    |                                      |
@@ -25,6 +26,7 @@ Pre-release versions are normally only tested during their development cycle. Af
 | 2.1.20          | 0.1.2 - 0.3.0              |                                      |
 
 [1]: Metro versions 0.6.9–0.9.0 had a [version comparison bug](https://github.com/ZacSweers/metro/issues/1544) that caused them to incorrectly select a compat module for Kotlin 2.2.20 when running on the Kotlin 2.3.0 final release. This was fixed in 0.9.1.
+[1]: Metro switched `2.3.20-dev-5437` support/testing to `2.3.20-dev-4962` after `0.9.4`. This is necessary to avoid ephemeral dev build artifacts and stick to persistent ones.
 
 Some releases may introduce prohibitively difficult breaking changes that require companion release, so check Metro's open PRs for one targeting that Kotlin version for details. There is a tested versions table at the bottom of this page that is updated with each Metro release.
 
