@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.mapNotNullToSet
@@ -11,10 +12,12 @@ import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrFail
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.defaultType
+import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.name.CallableId
@@ -80,6 +83,13 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
   ): Set<IrClass> {
     val functionsInPackage = metroContext.referenceFunctions(scopeHintFor(scope))
 
+    context(metroContext) {
+      writeDiagnostic("discovered-hints-ir-${scope.asFqNameString()}.txt") {
+        functionsInPackage.map { it.owner.dumpKotlinLike() }.sorted().joinToString("\n") +
+          "\n----\nCalled by:\n${callingDeclaration.expectAsOrNull<IrDeclarationWithName>()?.name}"
+      }
+    }
+
     trackScopeHintLookup(scope, callingDeclaration)
 
     val contributingClasses =
@@ -96,7 +106,10 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
         }
         .mapToSet { contribution ->
           // This is the single value param
-          contribution.owner.regularParameters.single().type.classOrFail.owner
+          contribution.owner.regularParameters.single().type.classOrFail.owner.also {
+            // Ensure we also track the contributing class, not just the hint
+            context(metroContext) { trackClassLookup(callingDeclaration, it) }
+          }
         }
     return contributingClasses
   }
