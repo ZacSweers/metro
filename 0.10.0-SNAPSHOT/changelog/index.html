@@ -3244,6 +3244,7 @@ This is a known bug in the Kotlin compiler, follow https://github.com/ZacSweers/
 <ul>
 <li>[IR] Never eagerly init graph extension impls (scoped or not).</li>
 <li>[IR] Don&rsquo;t cache creator-less scoped graph extension impls in their parent graphs. This was initially implemented this way due to a misunderstanding to how Dagger generated subcomponents! Getters for graph extensions now always return new instances.</li>
+<li>[IC] Record lookups of contributed classes when looking up hints from IR. Previously Metro only recorded a lookup of the generated hint function, which appears to not be enough for Kotlin 2.3.20.</li>
 </ul>
 <h3 id="changes">Changes<a class="headerlink" href="#changes" title="Permanent link">&para;</a></h3>
 <ul>
