@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1768203871260,
+  "lastUpdate": 1768251008354,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -1512,6 +1512,62 @@ window.BENCHMARK_DATA = {
             "value": 21831.29,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -2.18%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "d2ae940c~1",
+          "message": "[before] Clean up JB repos (#1650)",
+          "timestamp": "2026-01-12T20:10:19Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/d2ae940c521a3dc21841f2a1c4bf03fad56ab0cd"
+        },
+        "date": 1768251008354,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19788.43,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "d2ae940c521a3dc21841f2a1c4bf03fad56ab0cd",
+          "message": "[after] Clean up JB repos (#1650)",
+          "timestamp": "2026-01-12T20:10:19Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/d2ae940c521a3dc21841f2a1c4bf03fad56ab0cd"
+        },
+        "date": 1768251008355,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19737.48,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -0.26%"
           }
         ]
       }
