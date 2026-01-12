@@ -5,7 +5,6 @@
 package dev.zacsweers.metro.gradle.incremental
 
 import com.autonomousapps.kit.GradleBuilder.build
-import com.autonomousapps.kit.GradleBuilder.buildAndFail
 import com.autonomousapps.kit.GradleProject
 import com.autonomousapps.kit.GradleProject.DslKind
 import com.autonomousapps.kit.gradle.Dependency
@@ -15,7 +14,6 @@ import dev.zacsweers.metro.gradle.MetroProject
 import dev.zacsweers.metro.gradle.buildAndAssertThat
 import dev.zacsweers.metro.gradle.classLoader
 import dev.zacsweers.metro.gradle.cleanOutputLine
-import dev.zacsweers.metro.gradle.getTestCompilerToolingVersion
 import dev.zacsweers.metro.gradle.invokeMain
 import dev.zacsweers.metro.gradle.source
 import java.io.File
@@ -90,7 +88,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     // First build should succeed
-    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Modify the FeatureScreen class to comment out the dependency property
@@ -113,7 +111,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     )
 
     // Second build should fail correctly on a missing binding
-    val secondBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlinAndFail()
 
     // Verify that the build failed with the expected error message
     assertThat(secondBuildResult.output)
@@ -167,7 +165,7 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     val project = fixture.gradleProject
 
-    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     project.modify(
@@ -180,7 +178,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         .trimIndent(),
     )
 
-    val secondBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlinAndFail()
     assertThat(secondBuildResult.output)
       .contains(
         """
@@ -234,7 +232,7 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     val project = fixture.gradleProject
 
-    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     project.modify(
@@ -250,7 +248,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         .trimIndent(),
     )
 
-    val secondBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlinAndFail()
     assertThat(secondBuildResult.output)
       .contains(
         """
@@ -298,7 +296,7 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     val project = fixture.gradleProject
 
-    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     project.modify(
@@ -313,7 +311,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         .trimIndent(),
     )
 
-    val secondBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlinAndFail()
     assertThat(secondBuildResult.output)
       .contains(
         """
@@ -338,7 +336,6 @@ class ICTests : BaseIncrementalCompilationTest() {
    */
   @Test
   fun contributedProviderExternalChangeInGraphExtensionDetected() {
-    assumeTrue(getTestCompilerToolingVersion() !in brokenKotlin2320Versions)
     val fixture =
       object : MetroProject() {
         override fun sources() = throw IllegalStateException()
@@ -421,8 +418,7 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     // First build should fail for both graphs due to missing binding
     // Both graphs use String::class scope, so both should see the contributed DependencyProvider
-    val firstBuildResult = buildAndFail(project.rootDir, "compileKotlin")
-    println(firstBuildResult.output)
+    val firstBuildResult = project.compileKotlinAndFail()
     assertThat(firstBuildResult.output).contains(failureMessage)
 
     // Both graphs should report the error (StringGraph and StringGraph2)
@@ -432,7 +428,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     // Remove dependencyProvider to fix the build
     libProject.modify(project.rootDir, fixture.dependencyProvider, "")
 
-    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlin()
     assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Restore dependencyProvider to break the build - both graphs should detect this change
@@ -440,7 +436,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     // within a single compilation, it should still register its IC dependency and be recompiled
     libProject.modify(project.rootDir, fixture.dependencyProvider, fixture.dependencyProviderSource)
 
-    val thirdBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    val thirdBuildResult = project.compileKotlinAndFail()
     assertThat(thirdBuildResult.output).contains(failureMessage)
 
     // Both graphs should still report the error after incremental recompilation
@@ -483,7 +479,7 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     val project = fixture.gradleProject
 
-    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     project.modify(
@@ -500,7 +496,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         .trimIndent(),
     )
 
-    val secondBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlinAndFail()
     assertThat(secondBuildResult.output)
       .contains(
         """
@@ -546,7 +542,7 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     val project = fixture.gradleProject
 
-    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     project.modify(
@@ -563,7 +559,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         .trimIndent(),
     )
 
-    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlin()
     assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Verify that the new contribution is included in the interfaces
@@ -608,7 +604,7 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     val project = fixture.gradleProject
 
-    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Verify that the new contribution is included in the interfaces
@@ -628,7 +624,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         .trimIndent(),
     )
 
-    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlin()
     assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Verify that the removed contribution is removed from supertypes
@@ -741,7 +737,7 @@ class ICTests : BaseIncrementalCompilationTest() {
       }
     val project = fixture.gradleProject
 
-    val firstBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlinAndFail()
 
     assertThat(firstBuildResult.output.cleanOutputLine())
       .contains(
@@ -829,12 +825,12 @@ class ICTests : BaseIncrementalCompilationTest() {
       return URLClassLoader(urls.toTypedArray(), this::class.java.classLoader)
     }
 
-    val firstBuildResult = build(project.rootDir, ":app:compileKotlin")
+    val firstBuildResult = project.compileKotlin(":app:compileKotlin")
     assertThat(firstBuildResult.task(":app:compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     libProject.modify(project.rootDir, fixture.dummy, fixture.dummyWithContributionSource)
 
-    val secondBuildResult = build(project.rootDir, ":app:compileKotlin")
+    val secondBuildResult = project.compileKotlin(":app:compileKotlin")
     assertThat(secondBuildResult.task(":app:compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     val secondClassLoader = appClassLoader()
@@ -874,7 +870,7 @@ class ICTests : BaseIncrementalCompilationTest() {
       }
     val project = fixture.gradleProject
 
-    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     with(project.classLoader()) {
@@ -892,7 +888,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         .trimIndent(),
     )
 
-    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlin()
     assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Check that ContributedInterface2 was removed as a supertype
@@ -936,7 +932,7 @@ class ICTests : BaseIncrementalCompilationTest() {
       }
     val project = fixture.gradleProject
 
-    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     assertThat(project.invokeMain<Int>()).isEqualTo(1)
@@ -956,7 +952,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         .trimIndent(),
     )
 
-    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlin()
     assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Check that count is scoped now and never increments
@@ -977,7 +973,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         .trimIndent(),
     )
 
-    val thirdBuildResult = build(project.rootDir, "compileKotlin")
+    val thirdBuildResult = project.compileKotlin()
     assertThat(thirdBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Check that count is unscoped again and increments
@@ -1030,7 +1026,7 @@ class ICTests : BaseIncrementalCompilationTest() {
       }
     val project = fixture.gradleProject
 
-    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     assertThat(project.invokeMain<Int>()).isEqualTo(0)
@@ -1048,7 +1044,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         .trimIndent(),
     )
 
-    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlin()
     assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Check that count is scoped now and never increments
@@ -1066,7 +1062,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         .trimIndent(),
     )
 
-    val thirdBuildResult = build(project.rootDir, "compileKotlin")
+    val thirdBuildResult = project.compileKotlin()
     assertThat(thirdBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Check that count is unscoped again and increments
@@ -1140,7 +1136,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     // First build should fail because [ExampleClass] is scoped incompatibly with both graph nodes
-    val firstBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlinAndFail()
 
     assertThat(firstBuildResult.output.cleanOutputLine())
       .contains(
@@ -1167,7 +1163,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         .trimIndent(),
     )
 
-    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlin()
     assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     with(project.classLoader()) {
@@ -1188,7 +1184,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         .trimIndent(),
     )
 
-    val thirdBuildResult = build(project.rootDir, "compileKotlin")
+    val thirdBuildResult = project.compileKotlin()
     assertThat(thirdBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     project.modify(
@@ -1203,7 +1199,7 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     // We expect that changing the source back to what we started with should again give us the
     // original error
-    val fourthBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    val fourthBuildResult = project.compileKotlinAndFail()
     assertThat(fourthBuildResult.output.cleanOutputLine())
       .contains(
         """
@@ -1250,7 +1246,7 @@ class ICTests : BaseIncrementalCompilationTest() {
       }
     val project = fixture.gradleProject
 
-    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     project.modify(
@@ -1264,7 +1260,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     )
 
     // Second build should fail correctly on class visibility
-    val secondBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlinAndFail()
 
     // Verify that the build failed with the expected error message
     assertThat(secondBuildResult.output)
@@ -1318,7 +1314,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     fun buildAndAssertOutput() {
-      val buildResult = build(project.rootDir, "compileKotlin")
+      val buildResult = project.compileKotlin()
       assertThat(buildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
       val mainClass = project.classLoader().loadClass("test.MainKt")
@@ -1423,7 +1419,7 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     // First build should fail because `ExampleClass` is not contributed to the scopes of either
     // graph
-    val firstBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlinAndFail()
 
     assertThat(firstBuildResult.output.cleanOutputLine())
       .contains(
@@ -1447,7 +1443,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         .trimIndent(),
     )
 
-    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlin()
     assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     with(project.classLoader()) {
@@ -1467,7 +1463,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         .trimIndent(),
     )
 
-    val thirdBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    val thirdBuildResult = project.compileKotlinAndFail()
     assertThat(thirdBuildResult.output.cleanOutputLine())
       // Omit 'e: ExampleGraph.kt:7:11 ' prefix until 2.3.0+ as we report a more accurate location
       // there
@@ -1565,7 +1561,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val libProject = project.subprojects.first { it.name == "lib" }
 
     fun buildAndAssertOutput() {
-      val buildResult = build(project.rootDir, "compileKotlin")
+      val buildResult = project.compileKotlin()
       assertThat(buildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
       val mainClass = project.classLoader().loadClass("test.MainKt")
@@ -1678,7 +1674,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val libProject = project.subprojects.first { it.name == "lib" }
 
     fun buildAndAssertOutput() {
-      val buildResult = build(project.rootDir, "compileKotlin")
+      val buildResult = project.compileKotlin()
       assertThat(buildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
       val mainClass = project.classLoader().loadClass("test.MainKt")
@@ -1965,7 +1961,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val libProject = project.subprojects.first { it.name == "lib" }
 
     fun buildAndAssertOutput() {
-      val buildResult = build(project.rootDir, "compileKotlin")
+      val buildResult = project.compileKotlin()
       assertThat(buildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
       val mainClass = project.classLoader().loadClass("test.MainKt")
@@ -2058,7 +2054,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val libProject = project.subprojects.first { it.name == "lib" }
 
     // First build should succeed
-    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Modify the FeatureGraph class to contribute the factory directly but leave ParentBindings
@@ -2095,7 +2091,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     )
 
     // Second build is still marked as success so we have to check the output
-    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlin()
     assertThat(secondBuildResult.output).doesNotContain("Incremental compilation failed")
   }
 
@@ -2145,7 +2141,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     // First build should succeed
-    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // Modify the FeatureGraph class to contribute the factory directly but leave ParentBindings
@@ -2181,7 +2177,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     )
 
     // Second build is still marked as success so we have to check the output
-    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlin()
     assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
   }
 
@@ -2294,7 +2290,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val libProject = project.subprojects.first { it.name == "lib" }
 
     // First build should succeed
-    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
     assertThat(project.invokeMain<String>()).isEqualTo("Feature")
 
@@ -2312,7 +2308,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     )
 
     // Second build is still marked as success so we have to check the output
-    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlin()
     assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
     assertThat(project.invokeMain<String>()).isEqualTo("App")
   }
@@ -2452,7 +2448,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     // First build should succeed and member injection should work
-    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    val firstBuildResult = project.compileKotlin()
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
     assertThat(project.invokeMain<String>()).isEqualTo("Demo")
 
@@ -2471,7 +2467,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     )
 
     // Second build should succeed and member injection should still work
-    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    val secondBuildResult = project.compileKotlin()
     assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     // This is the key assertion - member injection should still work after IC

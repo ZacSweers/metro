@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.gradle.incremental
 
+import com.autonomousapps.kit.GradleBuilder.build
+import com.autonomousapps.kit.GradleBuilder.buildAndFail
 import com.autonomousapps.kit.GradleProject
 import com.autonomousapps.kit.Source
 import com.autonomousapps.kit.Subproject
@@ -157,4 +159,13 @@ abstract class BaseIncrementalCompilationTest {
     val filePath = "src/main/kotlin/$packageDir/$fileName"
     rootDir.resolve(filePath).writeText(content)
   }
+
+  protected fun GradleProject.compileKotlin(task: String = "compileKotlin") = compileKotlin(rootDir, task)
+  protected fun GradleProject.compileKotlinAndFail(task: String = "compileKotlin") = compileKotlinAndFail(rootDir, task)
+
+  protected fun compileKotlin(projectDir: File, task: String = "compileKotlin", vararg args: String) =
+    build(projectDir, *listOf(task, "--quiet", *args).toTypedArray())
+
+  protected fun compileKotlinAndFail(projectDir: File, task: String = "compileKotlin", vararg args: String) =
+    buildAndFail(projectDir, *listOf(task, "--quiet", *args).toTypedArray())
 }
