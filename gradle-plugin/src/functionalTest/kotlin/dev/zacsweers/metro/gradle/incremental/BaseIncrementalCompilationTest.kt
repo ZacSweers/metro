@@ -160,12 +160,21 @@ abstract class BaseIncrementalCompilationTest {
     rootDir.resolve(filePath).writeText(content)
   }
 
-  protected fun GradleProject.compileKotlin(task: String = "compileKotlin") = compileKotlin(rootDir, task)
-  protected fun GradleProject.compileKotlinAndFail(task: String = "compileKotlin") = compileKotlinAndFail(rootDir, task)
+  protected fun GradleProject.compileKotlin(task: String = "compileKotlin") =
+    compileKotlin(rootDir, task)
 
-  protected fun compileKotlin(projectDir: File, task: String = "compileKotlin", vararg args: String) =
-    build(projectDir, *listOf(task, "--quiet", *args).toTypedArray())
+  protected fun GradleProject.compileKotlinAndFail(task: String = "compileKotlin") =
+    compileKotlinAndFail(rootDir, task)
 
-  protected fun compileKotlinAndFail(projectDir: File, task: String = "compileKotlin", vararg args: String) =
-    buildAndFail(projectDir, *listOf(task, "--quiet", *args).toTypedArray())
+  protected fun compileKotlin(
+    projectDir: File,
+    task: String = "compileKotlin",
+    vararg args: String,
+  ) = build(projectDir, *listOf(task, "--quiet", *args).toTypedArray())
+
+  protected fun compileKotlinAndFail(
+    projectDir: File,
+    task: String = "compileKotlin",
+    vararg args: String,
+  ) = buildAndFail(projectDir, *listOf(task, "--quiet", *args).toTypedArray())
 }
