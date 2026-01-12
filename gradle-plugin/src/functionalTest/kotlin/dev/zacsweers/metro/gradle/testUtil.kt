@@ -70,6 +70,7 @@ fun source(
   fileNameWithoutExtension: String? = null,
   packageName: String = "test",
   sourceSet: String = DEFAULT_SOURCE_SET,
+  includeDefaultImports: Boolean = true,
   vararg extraImports: String,
 ): Source {
   @Suppress("DEPRECATION")
@@ -84,8 +85,10 @@ fun source(
         appendLine("package $packageName")
 
         // Imports
-        for (import in DEFAULT_IMPORTS + extraImports) {
-          appendLine("import $import")
+        if (includeDefaultImports) {
+          for (import in DEFAULT_IMPORTS + extraImports) {
+            appendLine("import $import")
+          }
         }
 
         appendLine()
@@ -98,10 +101,17 @@ fun source(
     .build()
 }
 
-fun Source.copy(@Language("Kotlin") newContent: String): Source {
+fun Source.copy(
+  @Language("Kotlin") newContent: String,
+  includeDefaultImports: Boolean = true,
+): Source {
   return when (sourceType) {
     SourceType.KOTLIN -> {
-      source(newContent, fileNameWithoutExtension = name)
+      source(
+        newContent,
+        fileNameWithoutExtension = name,
+        includeDefaultImports = includeDefaultImports,
+      )
     }
     else -> error("Unsupported source: $sourceType")
   }

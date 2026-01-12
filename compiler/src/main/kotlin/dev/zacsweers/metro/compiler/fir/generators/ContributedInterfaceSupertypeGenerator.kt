@@ -53,6 +53,7 @@ import org.jetbrains.kotlin.fir.lookupTracker
 import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.moduleVisibilityChecker
 import org.jetbrains.kotlin.fir.recordFqNameLookup
+import org.jetbrains.kotlin.fir.render
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
@@ -130,25 +131,56 @@ internal class ContributedInterfaceSupertypeGenerator(
           scopeHintFqName.shortName(),
         )
 
-      val contributingClasses =
-        functionsInPackage
-          .filter {
-            when (it.visibility) {
-              Visibilities.Internal -> {
-                it.moduleData == session.moduleData ||
-                  @OptIn(SymbolInternals::class)
-                  session.moduleVisibilityChecker?.isInFriendModule(it.fir) == true
-              }
-              else -> true
+      val filteredFunctions =
+        functionsInPackage.filter {
+          when (it.visibility) {
+            Visibilities.Internal -> {
+              it.moduleData == session.moduleData ||
+                @OptIn(SymbolInternals::class)
+                session.moduleVisibilityChecker?.isInFriendModule(it.fir) == true
             }
+            else -> true
           }
-          .mapNotNull { contribution ->
-            // This is the single value param
-            contribution.valueParameterSymbols
-              .single()
-              .resolvedReturnType
-              .toRegularClassSymbol(session)
-          }
+        }
+
+      val contributingClasses =
+        filteredFunctions.mapNotNull { contribution ->
+          // This is the single value param
+          contribution.valueParameterSymbols
+            .single()
+            .resolvedReturnType
+            .toRegularClassSymbol(session)
+        }
+
+      session.metroFirBuiltIns.writeDiagnostic({
+        "discovered-hints-fir-${scopeClassId.asFqNameString()}.txt"
+      }) {
+        val allFunctions =
+          functionsInPackage
+            .map { @OptIn(SymbolInternals::class) it.fir.render() }
+            .sorted()
+            .joinToString("\n")
+
+        val filtered =
+          filteredFunctions
+            .map { @OptIn(SymbolInternals::class) it.fir.render() }
+            .sorted()
+            .joinToString("\n")
+
+        val contributedIds =
+          contributingClasses.map { it.classId.asFqNameString() }.sorted().joinToString("\n")
+
+        buildString {
+          appendLine("== All functions")
+          appendLine(allFunctions)
+          appendLine()
+          appendLine("== Filtered functions")
+          appendLine(filtered)
+          appendLine()
+          appendLine("== Contributing classes")
+          appendLine(contributedIds)
+        }
+      }
 
       getScopedContributions(contributingClasses, scopeClassId, typeResolver)
     }

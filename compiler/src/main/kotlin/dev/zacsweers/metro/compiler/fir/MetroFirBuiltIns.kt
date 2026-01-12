@@ -7,6 +7,10 @@ import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import java.nio.file.Path
+import kotlin.io.path.createParentDirectories
+import kotlin.io.path.deleteIfExists
+import kotlin.io.path.writeText
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.extensions.FirExtensionSessionComponent
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
@@ -155,6 +159,21 @@ internal class MetroFirBuiltIns(
   val metroImplMarkerClassSymbol by memoize {
     session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.metroImplMarker)
       as FirRegularClassSymbol
+  }
+
+  internal inline fun writeDiagnostic(fileName: () -> String, text: () -> String) {
+    options.reportsDestination?.let { writeDiagnostic(it, fileName(), text()) }
+  }
+
+  private fun writeDiagnostic(reportsDir: Path, fileName: String, text: String) {
+    reportsDir
+      .resolve(fileName)
+      .apply {
+        // Ensure that the path leading up to the file has been created
+        createParentDirectories()
+        deleteIfExists()
+      }
+      .writeText(text)
   }
 
   companion object {
