@@ -1,0 +1,4 @@
+/module_main_SimilarBindingsNotReportedWhenMissingBindingTypeIsAny.kt:(171,174): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Any
+
+    kotlin.Any is requested at
+        [AppGraph] AppGraph.any

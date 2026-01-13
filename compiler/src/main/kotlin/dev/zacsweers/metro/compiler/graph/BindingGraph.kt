@@ -457,7 +457,7 @@ internal open class MutableBindingGraph<
             appendLine("(Hint)")
             messages.joinTo(this, separator = "\n\n")
           }
-          if (similarBindings.isNotEmpty()) {
+          if (similarBindings.isNotEmpty() && typeKey.render(short = false) != "kotlin.Any") {
             appendLine()
             appendLine("Similar bindings:")
             similarBindings.values.map { "  - $it" }.sorted().forEach(::appendLine)

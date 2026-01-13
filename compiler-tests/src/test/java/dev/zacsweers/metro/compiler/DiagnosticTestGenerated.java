@@ -60,6 +60,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     public void testNonPublicContributionWarning() {
       runTest("compiler-tests/src/test/data/diagnostic/aggregation/NonPublicContributionWarning.kt");
     }
+
+    @Test
+    @TestMetadata("SimilarBindingsNotReportedWhenMissingBindingTypeIsAny.kt")
+    public void testSimilarBindingsNotReportedWhenMissingBindingTypeIsAny() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/SimilarBindingsNotReportedWhenMissingBindingTypeIsAny.kt");
+    }
   }
 
   @Nested
