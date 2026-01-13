@@ -1226,6 +1226,16 @@ internal val IrClass.sourceGraphIfMetroGraph: IrClass
     }
   }
 
+// Adds `@Throws` annotations to relevant functions with stubbed expression bodies for native
+// linking that requires it
+context(context: IrMetroContext)
+internal fun IrSimpleFunction.addThrowsAnnotation() {
+  annotations +=
+    buildAnnotation(symbol, context.metroSymbols.throwsAnnotationConstructor) {
+      it.arguments[0] = kClassReference(context.metroSymbols.illegalStateExceptionClassSymbol)
+    }
+}
+
 // Adapted from compose-compiler
 // https://github.com/JetBrains/kotlin/blob/d36a97bb4b935c719c44b76dc8de952579404f91/plugins/compose/compiler-hosted/src/main/java/androidx/compose/compiler/plugins/kotlin/lower/AbstractComposeLowering.kt#L1608
 context(context: IrMetroContext)
