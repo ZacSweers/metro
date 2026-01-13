@@ -455,6 +455,7 @@ internal class DependencyGraphNodeCache(
 
         // TODO it appears that on native compilations, which appear to complain if you don't
         //  implement fake overrides even if they have a default impl
+        //  https://youtrack.jetbrains.com/issue/KT-83666
         val isBindsLike =
           annotations.isBinds || annotations.isMultibinds || annotations.isBindsOptionalOf
         val canDeferToDefaultImpl = !isBindsLike || !platform.isNative()

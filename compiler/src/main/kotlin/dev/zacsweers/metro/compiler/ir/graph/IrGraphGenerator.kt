@@ -830,8 +830,9 @@ internal class IrGraphGenerator(
 
     // Binds stub bodies are implemented in BindsMirrorClassTransformer on the original
     // declarations, so we don't need to implement fake overrides here
-    // EXCEPT in native compilations, which appear to complain if you don't implement fake overrides
-    // even if they have a default impl
+    // TODO EXCEPT in native compilations, which appear to complain if you don't implement fake
+    //  overrides even if they have a default impl
+    //  https://youtrack.jetbrains.com/issue/KT-83666
     if (metroContext.platform.isNative() && bindsFunctions.isNotEmpty()) {
       for (function in bindsFunctions) {
         // Note we can't source this from the node.bindsCallables as those are pointed at their
