@@ -28,6 +28,7 @@ Changelog
 
 - [IR] Never eagerly init graph extension impls (scoped or not).
 - [IR] Don't cache creator-less scoped graph extension impls in their parent graphs. This was initially implemented this way due to a misunderstanding to how Dagger generated subcomponents! Getters for graph extensions now always return new instances.
+- [IR] Check for `open` or `final` modality on classes first before searching for injectable constructors.
 - [IR/Native] Work around `Abstract function '___' is not implemented in non-abstract class 'Impl'` info warnings from native compilations.
 - [IC] Record lookups of contributed classes when looking up hints from IR. Previously Metro only recorded a lookup of the generated hint function, which appears to not be enough for Kotlin 2.3.20.
 - [IC] Link IR-generated hint function files back to source class via expect-actual tracker to link their compilations. This fixes an edge case where simply changing a contribution scope (or removing it) could leave behind a stale hint file that downstream compilations would incidentally read.
@@ -35,6 +36,12 @@ Changelog
 
 ### Changes
 
+- Enable `contributesAsInject` by default. See its docs for more details, but in short this means that `@Inject` is now optional on `@ContributesBinding`, `@ContributesIntoSet`, and `@ContributesIntoMap` annotated declarations.
+  ```kotlin
+  @ContributesBinding(AppScope::class)
+  // @Inject // <-- now implicit!
+  class TacoImpl(...) : Taco
+  ```
 - [IR] Already mentioned above, but worth calling out again — creator-less scoped graph extensions _are no longer cached_ in their parent graphs. Accessors to this will always get new instances now.
 - [IR] Report log files reported from within graph generation now use snake-cased fully-qualified names of the impl graph as the file name suffix.
 - [IR] Do not report similar bindings when a missing binding has type `kotlin.Any`. In practice this reported all available bindings.

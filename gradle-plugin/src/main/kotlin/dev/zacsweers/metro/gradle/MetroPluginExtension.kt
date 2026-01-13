@@ -251,10 +251,10 @@ constructor(
    * If enabled, treats `@Contributes*` annotations (except ContributesTo) as implicit `@Inject`
    * annotations.
    *
-   * Disabled by default.
+   * Enabled by default.
    */
   public val contributesAsInject: Property<Boolean> =
-    objects.property(Boolean::class.javaObjectType).convention(false)
+    objects.property(Boolean::class.javaObjectType).convention(true)
 
   /**
    * If set, the Metro compiler will dump verbose report diagnostics about resolved dependency
