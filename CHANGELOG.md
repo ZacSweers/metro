@@ -14,6 +14,19 @@ Changelog
 ### Enhancements
 
 - [IR] Restructure graph validation and generation to be separate phases, allowing for whole-graph validation before any code gen runs and better optimizing shared bindings across graph extension hierarchies.
+- [IR] Improve member injection error trace in graph validation.
+  - Previously it would show something like this
+    ```
+    dev.zacsweers.metro.MembersInjector<test.FeatureScreen> is requested at
+        [test.FeatureGraph] test.FeatureGraph#inject()
+    ```
+  - Now it will specify the injected type is being injected instead
+    ```
+    test.Dependency is requested at
+        [test.FeatureGraph] test.FeatureScreen.dependency
+    test.FeatureScreen is injected at
+        [test.FeatureGraph] test.FeatureGraph#inject()
+    ```
 - [IR] Validate parameter type keys on native builds to help clarify encounters with [KT-83427](https://youtrack.jetbrains.com/issue/KT-83427). Example below:
   ```
   e: Mirror/create function parameter type mismatch:

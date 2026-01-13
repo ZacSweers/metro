@@ -480,7 +480,15 @@ internal fun bindingStackEntryForDependency(
       Entry.injectedAt(contextKey, callingBinding.function, displayTypeKey = targetKey)
     }
     is IrBinding.MembersInjected -> {
-      Entry.injectedAt(contextKey, callingBinding.function, displayTypeKey = targetKey)
+      // Try to find the specific member (property/function) that requires this dependency
+      val param = callingBinding.parameterFor(targetKey)
+      if (param != null && param.isMember && param.ir != null) {
+        // Show the specific callable that requires this dependency
+        Entry.memberInjectedAt(contextKey, param.ir, displayTypeKey = targetKey)
+      } else {
+        // Fallback to showing the inject() function
+        Entry.injectedAt(contextKey, callingBinding.function, displayTypeKey = targetKey)
+      }
     }
     is IrBinding.Multibinding -> {
       Entry.contributedToMultibinding(callingBinding.contextualTypeKey, callingBinding.declaration)
