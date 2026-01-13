@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1768258168801,
+  "lastUpdate": 1768286265695,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -1624,6 +1624,62 @@ window.BENCHMARK_DATA = {
             "value": 0.21986132594830368,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: +0.25%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Andrius Semionovas",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Andrius Semionovas",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "10644c50~1",
+          "message": "[before] Link IR hint files with expect/actual tracker to a",
+          "timestamp": "2026-01-13T06:04:11Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/10644c509b5c432a74045be5322e7e7e7ae3bc42"
+        },
+        "date": 1768286265695,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.21557767236487005,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Andrius Semionovas",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Andrius Semionovas",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "10644c509b5c432a74045be5322e7e7e7ae3bc42",
+          "message": "[after] Link IR hint files with expect/actual tracker to a",
+          "timestamp": "2026-01-13T06:04:11Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/10644c509b5c432a74045be5322e7e7e7ae3bc42"
+        },
+        "date": 1768286265696,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.21930344460011417,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +1.73%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1768258168942,
+  "lastUpdate": 1768286265839,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -1624,6 +1624,62 @@ window.BENCHMARK_DATA = {
             "value": 19524.341999999997,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +3.38%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Andrius Semionovas",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Andrius Semionovas",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "10644c50~1",
+          "message": "[before] Link IR hint files with expect/actual tracker to a",
+          "timestamp": "2026-01-13T06:04:11Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/10644c509b5c432a74045be5322e7e7e7ae3bc42"
+        },
+        "date": 1768286265839,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18752.866,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Andrius Semionovas",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Andrius Semionovas",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "10644c509b5c432a74045be5322e7e7e7ae3bc42",
+          "message": "[after] Link IR hint files with expect/actual tracker to a",
+          "timestamp": "2026-01-13T06:04:11Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/10644c509b5c432a74045be5322e7e7e7ae3bc42"
+        },
+        "date": 1768286265840,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18346.59,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -2.17%"
           }
         ]
       }
