@@ -17,7 +17,7 @@ import org.jetbrains.kotlin.tooling.core.KotlinToolingVersion
 public abstract class MetroPluginExtension
 @Inject
 constructor(
-  baseKotlinVersion: KotlinToolingVersion,
+  toolingVersion: KotlinToolingVersion,
   layout: ProjectLayout,
   objects: ObjectFactory,
   providers: ProviderFactory,
@@ -71,7 +71,7 @@ constructor(
       .convention(
         providers.provider {
           // Kotlin 2.3.20-Beta1, top-level declaration gen is fully supported
-          baseKotlinVersion >= KotlinVersions.kotlin2320Beta1
+          KotlinVersions.supportsTopLevelFirGen(toolingVersion)
         }
       )
 
@@ -104,7 +104,7 @@ constructor(
       .convention(
         providers.provider {
           // Kotlin 2.3.20-Beta1, FIR hint gen is fully supported
-          baseKotlinVersion >= KotlinVersions.kotlin2320Beta1
+          KotlinVersions.supportsTopLevelFirGen(toolingVersion)
         }
       )
 
@@ -124,7 +124,7 @@ constructor(
       .setProperty(KotlinPlatformType::class.javaObjectType)
       .convention(
         providers.provider {
-          if (baseKotlinVersion >= KotlinVersions.kotlin2320) {
+          if (KotlinVersions.supportsTopLevelFirGen(toolingVersion)) {
             // Kotlin 2.3.20, all platforms are supported
             KotlinPlatformType.entries
           } else {
