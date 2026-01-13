@@ -3258,6 +3258,7 @@ This is a known bug in the Kotlin compiler, follow https://github.com/ZacSweers/
 <ul>
 <li>[IR] Already mentioned above, but worth calling out again — creator-less scoped graph extensions <em>are no longer cached</em> in their parent graphs. Accessors to this will always get new instances now.</li>
 <li>[IR] Report log files reported from within graph generation now use snake-cased fully-qualified names of the impl graph as the file name suffix.</li>
+<li>[IR] Do not report similar bindings when a missing binding has type <code>kotlin.Any</code>. In practice this reported all available bindings.</li>
 <li>Test Kotlin <code>2.3.20-Beta1</code>.</li>
 </ul>
 <h3 id="contributors">Contributors<a class="headerlink" href="#contributors" title="Permanent link">&para;</a></h3>
