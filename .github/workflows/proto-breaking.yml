@@ -1,0 +1,48 @@
+name: Buf
+
+on:
+  pull_request:
+    paths:
+      - 'compiler/src/main/proto/**'
+      - 'compiler/build.gradle.kts'
+
+jobs:
+  proto-breaking:
+    name: Check proto breaking changes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Buf
+        uses: bufbuild/buf-setup-action@v1
+
+      - name: Check for breaking changes
+        id: breaking
+        working-directory: compiler/src/main/proto
+        continue-on-error: true
+        run: |
+          if buf breaking --against '.git#branch=origin/main' 2>&1 | tee breaking_output.txt; then
+            echo "breaking=false" >> $GITHUB_OUTPUT
+          else
+            echo "breaking=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check METADATA_VERSION bump
+        if: steps.breaking.outputs.breaking == 'true'
+        run: |
+          echo "Breaking proto changes detected:"
+          cat compiler/src/main/proto/breaking_output.txt
+          echo ""
+
+          # Check if METADATA_VERSION was changed in this PR
+          if git diff origin/main -- compiler/build.gradle.kts | grep -q 'METADATA_VERSION'; then
+            echo "✅ METADATA_VERSION was updated - breaking change is properly versioned"
+          else
+            echo "❌ ERROR: Breaking proto changes detected but METADATA_VERSION was not incremented!"
+            echo ""
+            echo "Please increment METADATA_VERSION in compiler/build.gradle.kts"
+            exit 1
+          fi
