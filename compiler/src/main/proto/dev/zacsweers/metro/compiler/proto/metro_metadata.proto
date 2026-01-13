@@ -46,8 +46,11 @@ message MemberInjectionsProto {
   repeated string member_inject_functions = 2;
 }
 
+// IMPORTANT: When making breaking changes to this file, you must increment
+// METADATA_VERSION in compiler/build.gradle.kts
 message MetroMetadata {
-  string version = 1;
+  // Metadata version for compatibility checking. Must match METADATA_VERSION in buildconfig.
+  int32 version = 1;
 
   DependencyGraphProto dependency_graph = 2;
 

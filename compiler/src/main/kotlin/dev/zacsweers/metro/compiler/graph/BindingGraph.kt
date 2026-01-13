@@ -457,7 +457,9 @@ internal open class MutableBindingGraph<
             appendLine("(Hint)")
             messages.joinTo(this, separator = "\n\n")
           }
-          if (similarBindings.isNotEmpty()) {
+
+          // Don't have access to an IrPluginContext here to check it's an anyType
+          if (similarBindings.isNotEmpty() && typeKey.render(short = false) != "kotlin.Any") {
             appendLine()
             appendLine("Similar bindings:")
             similarBindings.values.map { "  - $it" }.sorted().forEach(::appendLine)

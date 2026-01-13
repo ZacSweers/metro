@@ -53,6 +53,13 @@ constructor(
     objects.property(Boolean::class.javaObjectType).convention(false)
 
   /**
+   * Enables whether the Metro compiler plugin will generate `@Throws` annotations on stubbed
+   * function bodies.
+   */
+  public val generateThrowsAnnotations: Property<Boolean> =
+    objects.property(Boolean::class.javaObjectType).convention(false)
+
+  /**
    * Enables whether the Metro compiler plugin can inject top-level functions. See the kdoc on
    * `Inject` for more details.
    *
