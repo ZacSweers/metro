@@ -606,7 +606,15 @@ internal class BindingGraphGenerator(
 
     // Add MembersInjector bindings defined on injector functions
     for ((contextKey, injector) in node.injectors) {
-      val entry = IrBindingStack.Entry.requestedAt(contextKey, injector.ir)
+      val param = injector.ir.regularParameters.single()
+      val paramType = param.type
+      // Show the target class being injected, not the MembersInjector<T> type
+      val entry =
+        IrBindingStack.Entry.injectedAt(
+          contextKey = contextKey,
+          function = injector.ir,
+          displayTypeKey = IrTypeKey(paramType),
+        )
 
       graph.addInjector(contextKey, entry)
       if (contextKey.typeKey in graph) {
@@ -614,8 +622,6 @@ internal class BindingGraphGenerator(
         continue
       }
       bindingStack.withEntry(entry) {
-        val param = injector.ir.regularParameters.single()
-        val paramType = param.type
         val targetClass = paramType.rawType()
         // Don't return null on missing because it's legal to inject a class with no member
         // injections

@@ -710,6 +710,13 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
 
     override val nameHint: String by memoize { "${targetClassId.shortClassName}MembersInjector" }
 
+    /**
+     * Returns the [Parameter] for the given [typeKey], or null if not found. This is used to trace
+     * which injected member (property/function) requires a specific dependency.
+     */
+    fun parameterFor(typeKey: IrTypeKey): Parameter? =
+      parameters.nonDispatchParameters.find { it.typeKey == typeKey }
+
     override fun renderDescriptionDiagnostic(short: Boolean, underlineTypeKey: Boolean) =
       buildString {
         typeKey.qualifier?.let {

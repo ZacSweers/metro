@@ -645,6 +645,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("MemberInjectedShowsInjectFunctionInTrace.kt")
+      public void testMemberInjectedShowsInjectFunctionInTrace() {
+        runTest("compiler-tests/src/test/data/diagnostic/inject/member/MemberInjectedShowsInjectFunctionInTrace.kt");
+      }
+
+      @Test
       @TestMetadata("MembersInjectorParameterWithNoDefaultShouldError.kt")
       public void testMembersInjectorParameterWithNoDefaultShouldError() {
         runTest("compiler-tests/src/test/data/diagnostic/inject/member/MembersInjectorParameterWithNoDefaultShouldError.kt");

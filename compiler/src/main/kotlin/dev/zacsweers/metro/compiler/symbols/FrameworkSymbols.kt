@@ -484,6 +484,7 @@ internal class DaggerSymbols(
     val DAGGER_BINDS = ClassId(daggerRuntimePackageFqName, "Binds".asName())
     val DAGGER_REUSABLE_CLASS_ID = ClassId(daggerRuntimePackageFqName, "Reusable".asName())
     val DAGGER_BINDS_OPTIONAL_OF = ClassId(daggerRuntimePackageFqName, "BindsOptionalOf".asName())
+    val DAGGER_MEMBERS_INJECTOR = ClassId(daggerRuntimePackageFqName, "MembersInjector".asName())
     val DAGGER_INTERNAL_PROVIDER_CLASS_ID =
       ClassId(daggerInternalPackageFqName, Symbols.Names.ProviderClass)
     val DAGGER_INTERNAL_SET_FACTORY_CLASS_ID =
