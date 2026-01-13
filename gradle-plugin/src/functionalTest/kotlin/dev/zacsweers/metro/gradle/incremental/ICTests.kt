@@ -182,7 +182,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.output)
       .contains(
         """
-        BaseGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
             kotlin.String is injected at
                 [test.BaseGraph] test.Target(…, string)
@@ -252,7 +252,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.output)
       .contains(
         """
-        AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
             kotlin.String is injected at
                 [test.AppGraph.Impl.ChildGraphImpl] test.Target(…, string)
@@ -315,7 +315,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.output)
       .contains(
         """
-        AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
             kotlin.String is injected at
                 [test.AppGraph] test.Target(…, string)
@@ -500,7 +500,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.output)
       .contains(
         """
-        AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
             kotlin.String is injected at
                 [test.AppGraph] test.Target(…, string)

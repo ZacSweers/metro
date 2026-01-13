@@ -44,14 +44,11 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
   override fun apply(target: Project) {
     val toolingVersion = target.kotlinToolingVersion
 
-    val baseToolingVersion =
-      KotlinToolingVersion(toolingVersion.major, toolingVersion.minor, toolingVersion.patch, null)
-
     val extension =
       target.extensions.create(
         "metro",
         MetroPluginExtension::class.java,
-        baseToolingVersion,
+        toolingVersion,
         target.layout,
       )
 

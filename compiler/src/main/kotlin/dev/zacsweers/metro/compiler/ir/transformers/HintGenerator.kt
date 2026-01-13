@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.addThrowsAnnotation
 import dev.zacsweers.metro.compiler.ir.effectiveVisibility
+import dev.zacsweers.metro.compiler.ir.linkDeclarationsInCompilation
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
@@ -129,6 +130,12 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
     // Link the hint back to the source class so source class changes in IC also mark this hint
     // https://github.com/ZacSweers/metro/pull/1349
     trackClassLookup(function, sourceClass)
+    // We do this extra step to cover cases where the scope changes or is removed from the source,
+    // and thus this hint file should ostensibly be recompiled or even removed. This appears to work
+    // for this scenario.
+    // https://github.com/ZacSweers/metro/pull/1637
+    // https://github.com/ZacSweers/metro/issues/1393
+    linkDeclarationsInCompilation(callingFile = hintFile, sourceClass)
     hintFile.dumpToMetroLog(fakeNewPath.name)
     return function
   }

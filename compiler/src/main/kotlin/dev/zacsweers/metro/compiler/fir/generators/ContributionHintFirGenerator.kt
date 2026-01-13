@@ -119,6 +119,7 @@ internal class ContributionHintFirGenerator(session: FirSession, compatContext: 
             session.builtinTypes.unitType.coneType,
             containingFileName = containingFileName,
           ) {
+            visibility = contributingClass.rawStatus.visibility
             valueParameter(Symbols.Names.contributed, { contributingClass.constructType(it) })
           }
           .apply { markAsDeprecatedHidden(session) }
