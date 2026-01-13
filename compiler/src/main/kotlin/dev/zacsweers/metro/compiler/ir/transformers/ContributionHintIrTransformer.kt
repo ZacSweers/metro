@@ -30,7 +30,7 @@ internal class ContributionHintIrTransformer(
     if (declaration.origin == Origins.ContributionHint) {
       declaration.apply {
         body = stubExpressionBody()
-        addThrowsAnnotation()
+        addThrowsAnnotation(addToMetadata = true)
       }
     }
   }

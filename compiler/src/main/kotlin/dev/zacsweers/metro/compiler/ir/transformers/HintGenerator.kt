@@ -82,7 +82,7 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
               kind = IrParameterKind.Regular
             }
           body = stubExpressionBody()
-          addThrowsAnnotation()
+          addThrowsAnnotation(addToMetadata = false)
         }
 
     val fileName = hintFileName(sourceClass.classIdOrFail, hintName)

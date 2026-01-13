@@ -112,7 +112,7 @@ private fun transformBindingMirrorClass(parentClass: IrClass, mirrorClass: IrCla
           declaration.apply {
             body = stubExpressionBody()
             comptimeOnlyConstructor?.let { ctor -> annotations += buildAnnotation(symbol, ctor) }
-            addThrowsAnnotation()
+            addThrowsAnnotation(addToMetadata = true)
           }
         }
 

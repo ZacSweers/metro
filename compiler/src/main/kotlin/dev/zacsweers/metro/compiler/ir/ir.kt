@@ -1229,11 +1229,25 @@ internal val IrClass.sourceGraphIfMetroGraph: IrClass
 // Adds `@Throws` annotations to relevant functions with stubbed expression bodies for native
 // linking that requires it
 context(context: IrMetroContext)
-internal fun IrSimpleFunction.addThrowsAnnotation() {
-  annotations +=
-    buildAnnotation(symbol, context.metroSymbols.throwsAnnotationConstructor) {
-      it.arguments[0] = kClassReference(context.metroSymbols.illegalStateExceptionClassSymbol)
+internal fun IrSimpleFunction.addThrowsAnnotation(addToMetadata: Boolean) {
+  if (!context.options.generateThrowsAnnotations) return
+
+  val throwsConstructor = context.metroSymbols.throwsAnnotationConstructor ?: return
+  val newAnnotation =
+    buildAnnotation(symbol, throwsConstructor) {
+      it.arguments[0] =
+        irVararg(
+          context.irBuiltIns.kClassClass.typeWithArguments(
+            listOf(makeTypeProjection(context.irBuiltIns.nothingType, Variance.OUT_VARIANCE))
+          ),
+          listOf(kClassReference(context.metroSymbols.illegalStateExceptionClassSymbol)),
+        )
     }
+  if (addToMetadata) {
+    context.metadataDeclarationRegistrar.addMetadataVisibleAnnotationsToElement(this, newAnnotation)
+  } else {
+    annotations += newAnnotation
+  }
 }
 
 // Adapted from compose-compiler

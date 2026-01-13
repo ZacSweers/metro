@@ -391,8 +391,9 @@ internal class Symbols(
     pluginContext.referenceClass(ClassIds.ComptimeOnly)?.constructors?.first()!!
   }
 
-  val throwsAnnotationConstructor: IrConstructorSymbol by lazy {
-    pluginContext.referenceClass(ClassIds.Throws)?.constructors?.first()!!
+  val throwsAnnotationConstructor: IrConstructorSymbol? by lazy {
+    // For some reason this isn't visible until 2.3.0?
+    pluginContext.referenceClass(ClassIds.Throws)?.constructors?.first()
   }
 
   val illegalStateExceptionClassSymbol: IrClassSymbol by lazy {
