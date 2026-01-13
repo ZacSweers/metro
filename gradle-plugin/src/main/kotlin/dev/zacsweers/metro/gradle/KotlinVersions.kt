@@ -7,5 +7,5 @@ import org.jetbrains.kotlin.tooling.core.KotlinToolingVersion
 internal object KotlinVersions {
   val kotlin230 = KotlinToolingVersion(2, 3, 0, null)
   val kotlin2320 = KotlinToolingVersion(2, 3, 20, null)
-  val kotlin2320Beta1 = KotlinToolingVersion(2, 3, 20, "Beta1")
+  val kotlin2320Beta1 = KotlinToolingVersion("2.3.20-Beta1")
 }
