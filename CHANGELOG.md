@@ -27,6 +27,7 @@ Changelog
     test.FeatureScreen is injected at
         [test.FeatureGraph] test.FeatureGraph#inject()
     ```
+  - It now also reports the location at the exact member injection callable declaration, rather than the graph.
 - [IR] Validate parameter type keys on native builds to help clarify encounters with [KT-83427](https://youtrack.jetbrains.com/issue/KT-83427). Example below:
   ```
   e: Mirror/create function parameter type mismatch:

@@ -117,11 +117,11 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.output)
       .contains(
         """
-        FeatureGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Dependency
+        FeatureScreen.kt:8:18 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Dependency
 
             test.Dependency is injected at
-                [test.FeatureGraph] test.FeatureGraph.inject()
-            dev.zacsweers.metro.MembersInjector<test.FeatureScreen> is requested at
+                [test.FeatureGraph] test.FeatureScreen.dependency
+            test.FeatureScreen is injected at
                 [test.FeatureGraph] test.FeatureGraph.inject()
         """
           .trimIndent()
