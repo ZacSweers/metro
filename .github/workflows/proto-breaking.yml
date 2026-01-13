@@ -1,4 +1,4 @@
-name: Proto Breaking Change Check
+name: Buf
 
 on:
   pull_request:
