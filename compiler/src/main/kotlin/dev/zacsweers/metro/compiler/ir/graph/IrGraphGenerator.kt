@@ -34,6 +34,7 @@ import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
+import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toProto
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
@@ -84,6 +85,7 @@ import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.ir.util.statements
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.platform.konan.isNative
 
 internal typealias PropertyInitializer =
   IrBuilderWithScope.(thisReceiver: IrValueParameter, key: IrTypeKey) -> IrExpression
@@ -827,8 +829,23 @@ internal class IrGraphGenerator(
     }
 
     // Binds stub bodies are implemented in BindsMirrorClassTransformer on the original
-    // declarations,
-    // so we don't need to implement fake overrides here
+    // declarations, so we don't need to implement fake overrides here
+    // EXCEPT in native compilations, which appear to complain if you don't implement fake overrides
+    // even if they have a default impl
+    if (metroContext.platform.isNative() && bindsFunctions.isNotEmpty()) {
+      for (function in bindsFunctions) {
+        // Note we can't source this from the node.bindsCallables as those are pointed at their
+        // original declarations and we need to implement their fake overrides here
+        val irFunction = function.ir
+        irFunction.apply {
+          val declarationToFinalize = propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
+          if (declarationToFinalize.isFakeOverride) {
+            declarationToFinalize.finalizeFakeOverride(graphClass.thisReceiverOrFail)
+          }
+          body = stubExpressionBody()
+        }
+      }
+    }
 
     // Implement bodies for contributed graphs
     // Sort by keys when generating so they have deterministic ordering

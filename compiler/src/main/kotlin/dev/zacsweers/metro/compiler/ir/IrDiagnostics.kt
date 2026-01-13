@@ -73,6 +73,7 @@ internal fun <A : Any> IrMetroContext.reportCompat(
             irDeclaration.locationOrNull(),
             languageVersionSettings,
           )
+        @Suppress("DEPRECATION")
         reportDiagnosticToMessageCollector(
           diagnostic!!,
           irDeclaration.locationOrNull(),
@@ -110,6 +111,7 @@ internal fun <A : Any> IrMetroContext.reportCompat(
       } else {
         a.toString()
       }
+    @Suppress("DEPRECATION")
     messageCollector.report(severity, message, location)
   } else {
     diagnosticReporter.at(irDeclaration).report(factory, a)

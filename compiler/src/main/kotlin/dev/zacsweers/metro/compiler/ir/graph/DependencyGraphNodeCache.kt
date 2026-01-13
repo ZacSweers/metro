@@ -96,6 +96,7 @@ import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.platform.konan.isNative
 
 internal class DependencyGraphNodeCache(
   metroContext: IrMetroContext,
@@ -433,8 +434,7 @@ internal class DependencyGraphNodeCache(
       val inheritedScopes = (scopes - declaredScopes).map { it.ir }
       if (graphDeclaration.origin.isSyntheticGeneratedGraph) {
         // If it's a contributed/dynamic graph, just add it directly as these are not visible to
-        // metadata
-        // anyway
+        // metadata anyway
         graphDeclaration.annotations += inheritedScopes
       } else {
         pluginContext.metadataDeclarationRegistrar.addMetadataVisibleAnnotationsToElement(
@@ -452,6 +452,13 @@ internal class DependencyGraphNodeCache(
         }
         val annotations = metroAnnotationsOf(declaration)
         if (annotations.isProvides) continue
+
+        // TODO it appears that on native compilations, which appear to complain if you don't
+        //  implement fake overrides even if they have a default impl
+        val isBindsLike =
+          annotations.isBinds || annotations.isMultibinds || annotations.isBindsOptionalOf
+        val canDeferToDefaultImpl = !isBindsLike || !platform.isNative()
+
         when (declaration) {
           is IrSimpleFunction -> {
             // Could be an injector, accessor, or graph extension
@@ -466,69 +473,71 @@ internal class DependencyGraphNodeCache(
 
             // Single pass through overridden symbols
             for (overridden in declaration.overriddenSymbolsSequence()) {
-              if (overridden.owner.modality == Modality.OPEN || overridden.owner.body != null) {
-                if (!isOptionalBinding) {
-                  isOptionalBinding =
-                    metroAnnotationsOf(
-                        overridden.owner,
-                        EnumSet.of(MetroAnnotations.Kind.OptionalBinding),
-                      )
-                      .isOptionalBinding
+              if (canDeferToDefaultImpl) {
+                if (overridden.owner.modality == Modality.OPEN || overridden.owner.body != null) {
+                  if (!isOptionalBinding) {
+                    isOptionalBinding =
+                      metroAnnotationsOf(
+                          overridden.owner,
+                          EnumSet.of(MetroAnnotations.Kind.OptionalBinding),
+                        )
+                        .isOptionalBinding
+                  }
+                  hasDefaultImplementation = true
+                  break
                 }
-                hasDefaultImplementation = true
-                break
-              }
 
-              // Check for graph extension patterns
-              val overriddenParentClass = overridden.owner.parentClassOrNull ?: continue
-              val isGraphExtensionFactory =
-                overriddenParentClass.isAnnotatedWithAny(
-                  metroSymbols.classIds.graphExtensionFactoryAnnotations
-                )
-
-              if (isGraphExtensionFactory) {
-                isGraphExtension = true
-                // Only continue because we may ignore this if it has a default body in a parent
-                continue
-              }
-
-              // Check if return type is a @GraphExtension itself (i.e. no factory)
-              val returnType = overridden.owner.returnType
-              val returnClass = returnType.classOrNull?.owner
-              if (returnClass != null) {
-                val returnsExtensionOrExtensionFactory =
-                  returnClass.isAnnotatedWithAny(
-                    metroSymbols.classIds.allGraphExtensionAndFactoryAnnotations
+                // Check for graph extension patterns
+                val overriddenParentClass = overridden.owner.parentClassOrNull ?: continue
+                val isGraphExtensionFactory =
+                  overriddenParentClass.isAnnotatedWithAny(
+                    metroSymbols.classIds.graphExtensionFactoryAnnotations
                   )
-                if (returnsExtensionOrExtensionFactory) {
+
+                if (isGraphExtensionFactory) {
                   isGraphExtension = true
                   // Only continue because we may ignore this if it has a default body in a parent
                   continue
                 }
-              }
 
-              // Check qualifier consistency for injectors and non-binds accessors
-              if (qualifierMismatchData == null && !isGraphExtension && !annotations.isBinds) {
-                val overriddenQualifier =
-                  if (isInjectorCandidate) {
-                    overridden.owner.regularParameters[0].qualifierAnnotation()
-                  } else {
-                    overridden.owner.metroAnnotations(metroSymbols.classIds).qualifier
+                // Check if return type is a @GraphExtension itself (i.e. no factory)
+                val returnType = overridden.owner.returnType
+                val returnClass = returnType.classOrNull?.owner
+                if (returnClass != null) {
+                  val returnsExtensionOrExtensionFactory =
+                    returnClass.isAnnotatedWithAny(
+                      metroSymbols.classIds.allGraphExtensionAndFactoryAnnotations
+                    )
+                  if (returnsExtensionOrExtensionFactory) {
+                    isGraphExtension = true
+                    // Only continue because we may ignore this if it has a default body in a parent
+                    continue
                   }
+                }
 
-                if (overriddenQualifier != null) {
-                  val expectedQualifier =
+                // Check qualifier consistency for injectors and non-binds accessors
+                if (qualifierMismatchData == null && !isGraphExtension && !annotations.isBinds) {
+                  val overriddenQualifier =
                     if (isInjectorCandidate) {
-                      // For injectors, get the qualifier from the first parameter
-                      declaration.regularParameters[0].qualifierAnnotation()
+                      overridden.owner.regularParameters[0].qualifierAnnotation()
                     } else {
-                      // For accessors, get it from the function's annotations
-                      metroAnnotationsOf(declaration).qualifier
+                      overridden.owner.metroAnnotations(metroSymbols.classIds).qualifier
                     }
 
-                  if (overriddenQualifier != expectedQualifier) {
-                    qualifierMismatchData =
-                      Triple(expectedQualifier, overriddenQualifier, overridden.owner)
+                  if (overriddenQualifier != null) {
+                    val expectedQualifier =
+                      if (isInjectorCandidate) {
+                        // For injectors, get the qualifier from the first parameter
+                        declaration.regularParameters[0].qualifierAnnotation()
+                      } else {
+                        // For accessors, get it from the function's annotations
+                        metroAnnotationsOf(declaration).qualifier
+                      }
+
+                    if (overriddenQualifier != expectedQualifier) {
+                      qualifierMismatchData =
+                        Triple(expectedQualifier, overriddenQualifier, overridden.owner)
+                    }
                   }
                 }
               }
@@ -690,20 +699,22 @@ internal class DependencyGraphNodeCache(
             // Single pass through overridden symbols
             if (!isGraphExtensionFactory) {
               for (overridden in declaration.overriddenSymbolsSequence()) {
-                if (
-                  overridden.owner.getter?.modality == Modality.OPEN ||
-                    overridden.owner.getter?.body != null
-                ) {
-                  if (!isOptionalBinding) {
-                    isOptionalBinding =
-                      metroAnnotationsOf(
-                          overridden.owner,
-                          EnumSet.of(MetroAnnotations.Kind.OptionalBinding),
-                        )
-                        .isOptionalBinding
+                if (canDeferToDefaultImpl) {
+                  if (
+                    overridden.owner.getter?.modality == Modality.OPEN ||
+                      overridden.owner.getter?.body != null
+                  ) {
+                    if (!isOptionalBinding) {
+                      isOptionalBinding =
+                        metroAnnotationsOf(
+                            overridden.owner,
+                            EnumSet.of(MetroAnnotations.Kind.OptionalBinding),
+                          )
+                          .isOptionalBinding
+                    }
+                    hasDefaultImplementation = true
+                    break
                   }
-                  hasDefaultImplementation = true
-                  break
                 }
 
                 // Check if return type is a @GraphExtension or its factory
