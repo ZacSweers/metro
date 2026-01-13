@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
+import dev.zacsweers.metro.compiler.ir.createMetroMetadata
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
 import dev.zacsweers.metro.compiler.ir.generateDefaultConstructorBody
@@ -35,7 +36,6 @@ import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer.A
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.proto.AssistedFactoryImplProto
-import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -421,7 +421,7 @@ internal class AssistedFactoryTransformer(
       )
 
     // Store the metadata for this factory class
-    factoryClass.metroMetadata = MetroMetadata(assisted_factory_impl = assistedFactoryImpl)
+    factoryClass.metroMetadata = createMetroMetadata(assisted_factory_impl = assistedFactoryImpl)
   }
 
   /** Represents a parsed function in an `@AssistedFactory`-annotated interface. */
