@@ -34,6 +34,12 @@ Changelog
 
 ### Changes
 
+- Enable `contributesAsInject` by default. See its docs for more details, but in short this means that `@Inject` is now optional on `@ContributesBinding`, `@ContributesIntoSet`, and `@ContributesIntoMap` annotated declarations.
+  ```kotlin
+  @ContributesBinding(AppScope::class)
+  // @Inject // <-- now implicit!
+  class TacoImpl(...) : Taco
+  ```
 - [IR] Already mentioned above, but worth calling out again — creator-less scoped graph extensions _are no longer cached_ in their parent graphs. Accessors to this will always get new instances now.
 - [IR] Report log files reported from within graph generation now use snake-cased fully-qualified names of the impl graph as the file name suffix.
 - Test Kotlin `2.3.20-Beta1`.
