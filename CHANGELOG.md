@@ -6,6 +6,9 @@ Changelog
 
 ### New
 
+- [Gradle / FIR] Enable FIR hint generation by default on Kotlin `2.3.20-Beta1` or later.
+- [Gradle / FIR] Enable top-level function injection by default on Kotlin `2.3.20-Beta1` or later.
+
 ### Enhancements
 
 - [IR] Restructure graph validation and generation to be separate phases, allowing for whole-graph validation before any code gen runs and better optimizing shared bindings across graph extension hierarchies.
