@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1768296189521,
+  "lastUpdate": 1768349132222,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -1904,6 +1904,62 @@ window.BENCHMARK_DATA = {
             "value": 0.21441601712439393,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -4.87%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "d73bd475~1",
+          "message": "[before] Work around abstract functions warning in native c",
+          "timestamp": "2026-01-13T23:30:54Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/d73bd47538028b26cf0d6d4cd48d654a0bce90a2"
+        },
+        "date": 1768349132222,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.22134249338908432,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "d73bd47538028b26cf0d6d4cd48d654a0bce90a2",
+          "message": "[after] Work around abstract functions warning in native c",
+          "timestamp": "2026-01-13T23:30:54Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/d73bd47538028b26cf0d6d4cd48d654a0bce90a2"
+        },
+        "date": 1768349132223,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.21565616104211172,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: -2.57%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }

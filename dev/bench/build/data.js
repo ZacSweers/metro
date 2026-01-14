@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1768296189661,
+  "lastUpdate": 1768349132357,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -1904,6 +1904,62 @@ window.BENCHMARK_DATA = {
             "value": 20698.0,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -1.26%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "d73bd475~1",
+          "message": "[before] Work around abstract functions warning in native c",
+          "timestamp": "2026-01-13T23:30:54Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/d73bd47538028b26cf0d6d4cd48d654a0bce90a2"
+        },
+        "date": 1768349132357,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 21096.27,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "d73bd47538028b26cf0d6d4cd48d654a0bce90a2",
+          "message": "[after] Work around abstract functions warning in native c",
+          "timestamp": "2026-01-13T23:30:54Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/d73bd47538028b26cf0d6d4cd48d654a0bce90a2"
+        },
+        "date": 1768349132358,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20132.976000000002,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -4.57%"
           }
         ]
       }
