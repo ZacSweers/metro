@@ -37,6 +37,7 @@ Changelog
 
   This is a known bug in the Kotlin compiler, follow https://github.com/ZacSweers/metro/issues/1556
   ```
+- [IR] Avoid generating unnecessary `Provider` refcounts for bindings only used by graph injector functions.
 
 ### Fixes
 

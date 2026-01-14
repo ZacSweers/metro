@@ -384,6 +384,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("InjectorFunctionsDoNotTriggerProviderGets.kt")
+    public void testInjectorFunctionsDoNotTriggerProviderGets() {
+      runTest("compiler-tests/src/test/data/dump/ir/multibindings/InjectorFunctionsDoNotTriggerProviderGets.kt");
+    }
+
+    @Test
     @TestMetadata("MapProvidersParticipateInProviderRefcounting.kt")
     public void testMapProvidersParticipateInProviderRefcounting() {
       runTest("compiler-tests/src/test/data/dump/ir/multibindings/MapProvidersParticipateInProviderRefcounting.kt");

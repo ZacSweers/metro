@@ -30,6 +30,8 @@ internal class BindingPropertyCollector(
   private val graph: IrBindingGraph,
   private val sortedKeys: List<IrTypeKey>,
   private val roots: List<IrContextualTypeKey> = emptyList(),
+  /** Injector function roots specifically, these don't create MembersInjector instances. */
+  private val injectorRoots: Set<IrContextualTypeKey> = emptySet(),
   private val extraKeeps: Collection<IrContextualTypeKey> = emptyList(),
   private val deferredTypes: Set<IrTypeKey> = emptySet(),
 ) {
@@ -214,13 +216,21 @@ internal class BindingPropertyCollector(
     // are accessed as scalar values. If Provider access is needed for the extension itself,
     // the getter call is wrapped in InstanceFactory at the call site.
     val hasFieldProperty = keysWithBackingProperties[contextKey]?.propertyKind == PropertyKind.FIELD
+
+    // MembersInjected bindings that are injector function roots (like `fun inject(target: T)`)
+    // don't create MembersInjector instances - they call static inject methods directly, so their
+    // dependencies are scalar accesses. Accessor roots (like `val foo: MembersInjector<T>`) DO
+    // create MembersInjector instances, so they remain in factory path.
+    val isInjectorFunctionRoot = binding is IrBinding.MembersInjected && contextKey in injectorRoots
+    val isMembersInjectedInFactoryPath =
+      binding is IrBinding.MembersInjected && !isInjectorFunctionRoot
+
     val inFactoryPath =
       !isGraphExtension &&
         (hasFieldProperty ||
           node.factoryRefCount > 0 ||
           contextKey.isMapProvider ||
-          // MembersInjector instances can only be factory forms
-          binding is IrBinding.MembersInjected)
+          isMembersInjectedInFactoryPath)
 
     // Mark dependencies as factory accesses if:
     // - Explicitly Provider<T> or Lazy<T>

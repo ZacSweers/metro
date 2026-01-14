@@ -398,10 +398,17 @@ internal class IrGraphGenerator(
       // Collect bindings and their dependencies for provider property ordering
       val initOrder =
         traceNested("Collect binding properties") {
+          // Injector roots are specifically from inject() functions - they don't create
+          // MembersInjector instances, so their dependencies are scalar accesses
+          val injectorRoots = mutableSetOf<IrContextualTypeKey>()
+
           // Collect roots (accessors + injectors) for refcount tracking
           val roots = buildList {
             node.accessors.mapTo(this) { it.contextKey }
-            node.injectors.mapTo(this) { it.contextKey }
+            for (injector in node.injectors) {
+              add(injector.contextKey)
+              injectorRoots.add(injector.contextKey)
+            }
           }
           val collectedProperties =
             BindingPropertyCollector(
@@ -409,6 +416,7 @@ internal class IrGraphGenerator(
                 graph = bindingGraph,
                 sortedKeys = sealResult.sortedKeys,
                 roots = roots,
+                injectorRoots = injectorRoots,
                 extraKeeps = bindingGraph.keeps(),
                 deferredTypes = sealResult.deferredTypes,
               )
