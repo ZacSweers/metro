@@ -67,6 +67,7 @@ import java.util.EnumSet
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
@@ -276,6 +277,13 @@ internal class DependencyGraphNodeCache(
 
       creator?.let { nonNullCreator ->
         for ((i, parameter) in nonNullCreator.parameters.regularParameters.withIndex()) {
+          // Skip parent graph parameters (used by extension graphs as static nested classes)
+          if (
+            creator.function is IrConstructor && parameter.ir?.origin == Origins.ParentGraphParam
+          ) {
+            continue
+          }
+
           if (parameter.isBindsInstance) continue
 
           // It's an `@Includes` parameter
