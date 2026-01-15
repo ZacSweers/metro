@@ -410,6 +410,22 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
         runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/optional/RequiredAnnotationResultsInMissingBindings.kt");
       }
     }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/diagnostic/dependencygraph/sharding")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Sharding {
+      @Test
+      public void testAllFilesPresentInSharding() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/dependencygraph/sharding"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      }
+
+      @Test
+      @TestMetadata("ShardingThresholdNotReachedWarning.kt")
+      public void testShardingThresholdNotReachedWarning() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/sharding/ShardingThresholdNotReachedWarning.kt");
+      }
+    }
   }
 
   @Nested
