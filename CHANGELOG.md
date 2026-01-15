@@ -123,6 +123,7 @@ Happy new year!
 
 ### Changes
 
+- Generated graph extension impls are now static nested classes rather inner classes.
 - [FIR] Change `SUSPICIOUS_MEMBER_INJECT_FUNCTION` diagnostic to be a warning instead of an error.
 - Remove testing of 2.3.0 pre-releases. IntelliJ stable currently builds off Kotlin `2.3.2x` and Android Studio stable currently points to Kotlin `2.2.2x`.
 
