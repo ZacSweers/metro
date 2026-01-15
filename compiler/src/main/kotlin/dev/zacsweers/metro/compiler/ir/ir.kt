@@ -125,6 +125,7 @@ import org.jetbrains.kotlin.ir.types.classifierOrNull
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.impl.buildSimpleType
 import org.jetbrains.kotlin.ir.types.impl.makeTypeProjection
+import org.jetbrains.kotlin.ir.types.isAny
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.makeNotNull
 import org.jetbrains.kotlin.ir.types.mergeNullability
@@ -1220,7 +1221,10 @@ internal val IrClass.sourceGraphIfMetroGraph: IrClass
         origin.isGraphImpl
       }
     return if (isGeneratedGraph) {
-      superTypes.firstOrNull()?.rawTypeOrNull()
+      // Filter out Any which is always added as the first supertype for classes
+      // Previously we didn't need to filter Any when these were inner classes,
+      // but now we do!
+      superTypes.filterNot { it.isAny() }.firstOrNull()?.rawTypeOrNull()
         ?: reportCompilerBug("No super type found for $kotlinFqName")
     } else {
       this
