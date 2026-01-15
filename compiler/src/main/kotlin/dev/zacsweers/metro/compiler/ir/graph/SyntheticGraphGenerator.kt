@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir.graph
 
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
+import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.ir.IrBindingContainerResolver
 import dev.zacsweers.metro.compiler.ir.IrContributionMerger
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -23,11 +24,13 @@ import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.scopeClassOrNull
-import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
+import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toIrVararg
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
+import dev.zacsweers.metro.compiler.suffixIfNot
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
@@ -48,7 +51,6 @@ import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.copyAnnotationsFrom
-import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.defaultType
@@ -81,7 +83,8 @@ internal class SyntheticGraphGenerator(
     factoryInterface: IrClass,
     storedParams: List<SyntheticGraphParameter>,
   ): IrClass {
-    val implIsInner = graphImpl.isInner
+    // Extension graphs are static nested classes with an explicit parent graph parameter
+    val hasParentGraph = parentGraph != null
 
     // Create the factory implementation class
     val factoryImpl =
@@ -109,8 +112,11 @@ internal class SyntheticGraphGenerator(
           returnType = factoryImpl.symbol.defaultType
         }
         .apply {
-          if (implIsInner) {
-            addValueParameter(name = "parentInstance", type = graphImpl.parentAsClass.defaultType)
+          if (hasParentGraph) {
+            addValueParameter(
+              name = parentGraph.parentGraphParamName,
+              type = parentGraph.defaultType,
+            )
           }
           storedParams.forEach { param -> addValueParameter(param.name, param.type) }
           body = generateDefaultConstructorBody()
@@ -132,8 +138,8 @@ internal class SyntheticGraphGenerator(
             val samParams = samFunction.regularParameters
 
             var paramIndex = 0
-            if (implIsInner) {
-              // First arg is always the graph instance if it's inner
+            if (hasParentGraph) {
+              // First arg is always the parent graph instance
               arguments[paramIndex++] =
                 irGetField(irGet(samFunction.dispatchReceiverParameter!!), storedFields.removeAt(0))
             }
@@ -149,6 +155,16 @@ internal class SyntheticGraphGenerator(
 
     return factoryImpl
   }
+
+  private val IrClass.parentGraphParamName: Name
+    get() {
+      return if (name == Symbols.Names.Impl) {
+        // Parent is a regular dependency graph, go up one level for clarity
+        sourceGraphIfMetroGraph.name.suffixIfNot("Impl")
+      } else {
+        name
+      }
+    }
 
   /** Builds a `@DependencyGraph` annotation for a generated graph class. */
   internal fun buildDependencyGraphAnnotation(targetClass: IrClass): IrConstructorCall {
@@ -196,7 +212,6 @@ internal class SyntheticGraphGenerator(
         this.name = name
         this.origin = origin
         kind = ClassKind.CLASS
-        this.isInner = parentGraph != null
         visibility = DescriptorVisibilities.PRIVATE
       }
 
@@ -234,8 +249,14 @@ internal class SyntheticGraphGenerator(
         }
         .apply {
           // TODO generics?
+          // For extension graphs, the parent graph is passed as an explicit constructor parameter
+          // (not as a dispatch receiver since we're using static nested classes)
           if (parentGraph != null) {
-            setDispatchReceiver(parentGraph.thisReceiverOrFail.copyTo(this))
+            addValueParameter(
+              parentGraph.parentGraphParamName.decapitalizeUS(),
+              parentGraph.defaultType,
+              Origins.ParentGraphParam,
+            )
           }
           // Copy over any creator params
           creatorFunction?.let {
