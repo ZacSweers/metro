@@ -30,7 +30,14 @@ internal fun IrProperty.ensureInitialized(
 ): IrProperty = apply {
   if (backingField == null && getter == null) {
     when (propertyKind) {
-      PropertyKind.FIELD -> with(context) { addBackingFieldCompat { this.type = type } }
+      PropertyKind.FIELD ->
+        with(context) {
+          addBackingFieldCompat {
+            this.type = type
+            // Match the property visibility
+            this.visibility = this@ensureInitialized.visibility
+          }
+        }
       PropertyKind.GETTER ->
         addGetter {
             this.returnType = type
