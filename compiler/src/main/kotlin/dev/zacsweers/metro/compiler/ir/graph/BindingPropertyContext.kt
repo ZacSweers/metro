@@ -13,8 +13,19 @@ import org.jetbrains.kotlin.ir.declarations.IrProperty
 /**
  * Represents a binding property along with the contextual type key it was stored under. This allows
  * consumers to know whether the property returns a provider or instance type.
+ *
+ * @property property The binding property itself
+ * @property storedKey The contextual type key the property was stored under
+ * @property shardProperty If non-null, the property lives in a shard class and must be accessed
+ *   through this shard property (e.g., `graph.shard1.providerProperty`)
+ * @property shardIndex If non-null, the index of the shard containing this property
  */
-internal data class BindingProperty(val property: IrProperty, val storedKey: IrContextualTypeKey)
+internal data class BindingProperty(
+  val property: IrProperty,
+  val storedKey: IrContextualTypeKey,
+  val shardProperty: IrProperty? = null,
+  val shardIndex: Int? = null,
+)
 
 /**
  * Tracks binding properties by their contextual type key. The contextual type key distinguishes
@@ -23,9 +34,22 @@ internal data class BindingProperty(val property: IrProperty, val storedKey: IrC
  */
 internal class BindingPropertyContext(private val bindingGraph: IrBindingGraph) {
   private val properties = mutableMapOf<IrContextualTypeKey, IrProperty>()
+  private val shardProperties = mutableMapOf<IrContextualTypeKey, IrProperty>()
+  private val shardIndices = mutableMapOf<IrContextualTypeKey, Int>()
 
-  fun put(key: IrContextualTypeKey, property: IrProperty) {
+  fun put(
+    key: IrContextualTypeKey,
+    property: IrProperty,
+    shardProperty: IrProperty? = null,
+    shardIndex: Int? = null,
+  ) {
     properties[key] = property
+    if (shardProperty != null) {
+      shardProperties[key] = shardProperty
+    }
+    if (shardIndex != null) {
+      shardIndices[key] = shardIndex
+    }
   }
 
   /**
@@ -41,7 +65,7 @@ internal class BindingPropertyContext(private val bindingGraph: IrBindingGraph) 
   fun get(key: IrContextualTypeKey): BindingProperty? {
     // Direct match
     properties[key]?.let {
-      return BindingProperty(it, key)
+      return BindingProperty(it, key, shardProperties[key], shardIndices[key])
     }
 
     // For non-provider requests, try provider key (a provider can satisfy an instance request)
@@ -55,7 +79,12 @@ internal class BindingPropertyContext(private val bindingGraph: IrBindingGraph) 
     if (tryReWrapping) {
       val providerKey = key.stripOuterProviderOrLazy().wrapInProvider()
       properties[providerKey]?.let {
-        return BindingProperty(it, providerKey)
+        return BindingProperty(
+          property = it,
+          storedKey = providerKey,
+          shardProperty = shardProperties[providerKey],
+          shardIndex = shardIndices[providerKey],
+        )
       }
     }
 
