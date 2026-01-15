@@ -5,9 +5,9 @@ package dev.zacsweers.metro.compiler.ir
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyCollector
 import dev.zacsweers.metro.compiler.ir.graph.DependencyGraphNode
+import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
-import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
@@ -32,44 +32,62 @@ internal class ParentContext(private val metroContext: IrMetroContext) {
   /**
    * Data for property access tracking (used during generation phase).
    *
-   * Supports both direct property access (`graph.property`) and sharded property access
-   * (`graph.shard.property`) for future sharding support where properties may be organized into
-   * nested shard classes.
+   * Encapsulates all the information needed to generate a property access expression, including
+   * ancestor graph chains (for extension graphs) and shard navigation. This provides a unified
+   * abstraction for property access that handles:
+   * - Direct property access: `receiver.property`
+   * - Sharded property access: `receiver.shardProperty.property`
+   * - Ancestor graph access: `receiver.parentGraph.grandparentGraph.property`
+   * - Combined: `receiver.parentGraph.shardProperty.property`
    *
    * @property ownerGraphKey The type key of the graph that owns this property
    * @property property The property to access (may be on the graph directly or on a shard)
-   * @property receiverParameter The receiver parameter for the owning graph
    * @property shardProperty If non-null, the property must be accessed through this shard property
    *   first (i.e., `receiver.shardProperty.property` instead of `receiver.property`)
+   * @property ancestorChain If non-null, properties to chain through to reach the ancestor graph
+   *   that owns this binding. For extension graphs accessing parent bindings.
+   * @property shardGraphProperty For shard contexts, the property on the shard that references the
+   *   main graph class. Must be accessed first before the ancestor chain.
    * @property isProviderProperty Whether the property returns a Provider type
    */
   @Poko
   class PropertyAccess(
     val ownerGraphKey: IrTypeKey,
     private val property: IrProperty,
-    private val receiverParameter: IrValueParameter,
     private val shardProperty: IrProperty? = null,
+    private val ancestorChain: List<IrProperty>? = null,
+    private val shardGraphProperty: IrProperty? = null,
     // TODO use AccessType
     val isProviderProperty: Boolean,
   ) {
+
+    private val ancestorPropertiesChain by memoize {
+      // Build the full chain of properties to traverse
+      buildList {
+        shardGraphProperty?.let(::add)
+        ancestorChain?.let(::addAll)
+        shardProperty?.let(::add)
+        add(property)
+      }
+    }
+
     /**
      * Generates an IR expression to access this property on the receiver.
      *
-     * Handles both direct access (`receiver.property`) and sharded access
-     * (`receiver.shardProperty.property`).
+     * Handles the full property access chain:
+     * 1. If in shard context, first access the graph property: `receiver.graphProperty`
+     * 2. Chain through ancestor graphs if present: `...parentGraph.grandparentGraph`
+     * 3. Chain through shard property if present: `...shardProperty`
+     * 4. Finally access the target property: `...property`
+     *
+     * @param baseReceiver The base receiver expression (typically `irGet(thisReceiver)`)
      */
     context(scope: IrBuilderWithScope)
-    fun accessProperty(): IrExpression {
-      val baseReceiver = scope.irGet(receiverParameter)
-      val propertyOwner =
-        if (shardProperty != null) {
-          // Access through shard: receiver.shardProperty
-          scope.irGetProperty(baseReceiver, shardProperty)
-        } else {
-          // Direct access on receiver
-          baseReceiver
-        }
-      return scope.irGetProperty(propertyOwner, property)
+    fun accessProperty(baseReceiver: IrExpression): IrExpression {
+      // Fold through the chain to build the access expression
+      return ancestorPropertiesChain.fold(baseReceiver) { receiver, prop ->
+        scope.irGetProperty(receiver, prop)
+      }
     }
   }
 
