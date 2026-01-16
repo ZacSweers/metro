@@ -301,6 +301,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       public void testCreateDynamicGraphCannotBeInLocalClasses() {
         runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/dynamic/CreateDynamicGraphCannotBeInLocalClasses.kt");
       }
+
+      @Test
+      @TestMetadata("DuplicateBindingsInDynamicGraphReportTheCallLocation.kt")
+      public void testDuplicateBindingsInDynamicGraphReportTheCallLocation() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/dynamic/DuplicateBindingsInDynamicGraphReportTheCallLocation.kt");
+      }
     }
 
     @Nested
