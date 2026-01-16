@@ -99,7 +99,7 @@ anvil-annotations = { module = "dev.zacsweers.anvil:annotations", version.ref = 
 anvil-annotations-optional = { module = "dev.zacsweers.anvil:annotations-optional", version.ref = "anvil" }
 anvil-kspCompiler = { module = "dev.zacsweers.anvil:compiler", version.ref = "anvil" }
 
-clikt = "com.github.ajalt.clikt:clikt:5.0.3"
+clikt = "com.github.ajalt.clikt:clikt:5.1.0"
 
 circuit-codegen = { module = "com.slack.circuit:circuit-codegen", version.ref = "circuit" }
 circuit-foundation = { module = "com.slack.circuit:circuit-foundation", version.ref = "circuit" }
