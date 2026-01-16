@@ -163,6 +163,11 @@ internal class BindingGraphGenerator(
         continue
       }
 
+      // Skip non-dynamic bindings that have dynamic replacements
+      if (!providerFactory.isDynamic && typeKey in node.dynamicTypeKeys) {
+        continue
+      }
+
       // typeKey is already the transformed multibinding key
       val targetTypeKey = providerFactory.typeKey
       val contextKey = IrContextualTypeKey(targetTypeKey)
@@ -234,6 +239,11 @@ internal class BindingGraphGenerator(
           isInherited
       ) {
         // If we already have a binding provisioned in this scenario, ignore the parent's version
+        continue
+      }
+
+      // Skip non-dynamic bindings that have dynamic replacements
+      if (!bindsCallable.isDynamic && typeKey in node.dynamicTypeKeys) {
         continue
       }
 
@@ -408,7 +418,7 @@ internal class BindingGraphGenerator(
     for ((superTypeKey, aliasedType) in superTypeToAlias) {
       // We may have already added a `@Binds` declaration explicitly, this is ok!
       // TODO warning?
-      if (superTypeKey !in graph) {
+      if (superTypeKey !in graph && superTypeKey !in node.dynamicTypeKeys) {
         graph.addBinding(
           superTypeKey,
           IrBinding.Alias(superTypeKey, aliasedType, null, Parameters.empty()),
@@ -427,7 +437,7 @@ internal class BindingGraphGenerator(
       )
     }
 
-    accessorsToAdd.forEach { (contextualTypeKey, getter, _) ->
+    for ((contextualTypeKey, getter, _) in accessorsToAdd) {
       val multibinds = getter.annotations.multibinds
       val isMultibindingDeclaration = multibinds != null
 
@@ -452,7 +462,9 @@ internal class BindingGraphGenerator(
             // It's allowed to specify multiple accessors for the same factory
             accessor.key.typeKey !in graph &&
             // Don't add a binding if the graph itself implements the factory
-            accessor.key.typeKey.classId !in node.supertypeClassIds
+            accessor.key.typeKey.classId !in node.supertypeClassIds &&
+            // Don't add a binding if there's a dynamic replacement
+            accessor.key.typeKey !in node.dynamicTypeKeys
 
         if (shouldAddBinding) {
           graph.addBinding(
@@ -478,6 +490,11 @@ internal class BindingGraphGenerator(
     for ((depNodeKey, depNode) in node.includedGraphNodes) {
       // Only add accessors for included types
       depNode.accessors.forEach { (contextualTypeKey, getter, _) ->
+        // Skip if there's a dynamic replacement for this binding
+        if (contextualTypeKey.typeKey in node.dynamicTypeKeys) {
+          return@forEach
+        }
+
         // Add a ref to the included graph if not already present
         if (depNodeKey !in graph) {
           graph.addBinding(
@@ -568,6 +585,8 @@ internal class BindingGraphGenerator(
         // check and continue if we see them
         if (key == node.typeKey) continue
         if (key == node.metroGraph?.generatedGraphExtensionData?.typeKey) continue
+        // Skip if there's a dynamic replacement for this key
+        if (key in node.dynamicTypeKeys) continue
         val existingBinding = graph.findBinding(key)
         if (existingBinding != null) {
           // If we already have a binding provisioned in this scenario, ignore the parent's
@@ -622,6 +641,10 @@ internal class BindingGraphGenerator(
       graph.addInjector(contextKey, entry)
       if (contextKey.typeKey in graph) {
         // Injectors may be requested multiple times, don't double-add a binding
+        continue
+      }
+      // Skip if there's a dynamic replacement for this injector type
+      if (contextKey.typeKey in node.dynamicTypeKeys) {
         continue
       }
       bindingStack.withEntry(entry) {
