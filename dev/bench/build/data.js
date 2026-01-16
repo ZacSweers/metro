@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1768581912694,
+  "lastUpdate": 1768589948189,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -2240,6 +2240,62 @@ window.BENCHMARK_DATA = {
             "value": 19512.788,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -1.14%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "a6be37a3~1",
+          "message": "[before] Update Gradle to v9.3.0 (#1674)",
+          "timestamp": "2026-01-16T13:23:58-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/a6be37a36ae6103493d5bb6f64198b852519ba87"
+        },
+        "date": 1768589948189,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19698.198,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "a6be37a36ae6103493d5bb6f64198b852519ba87",
+          "message": "[after] Update Gradle to v9.3.0 (#1674)",
+          "timestamp": "2026-01-16T13:23:58-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/a6be37a36ae6103493d5bb6f64198b852519ba87"
+        },
+        "date": 1768589948190,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19987.956,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +1.47%"
           }
         ]
       }
