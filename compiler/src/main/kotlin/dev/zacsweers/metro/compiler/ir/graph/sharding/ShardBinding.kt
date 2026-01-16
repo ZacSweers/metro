@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph.sharding
 
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
@@ -16,8 +18,8 @@ internal data class ShardBinding(
   val isScoped: Boolean,
   /**
    * True if this binding is a deferred type (i.e., `DelegateFactory` for breaking cycles). Deferred
-   * properties are initialized with empty DelegateFactory(), then `setDelegate` is called at the end
-   * of the shard's initialization.
+   * properties are initialized with empty DelegateFactory(), then `setDelegate` is called at the
+   * end of the shard's initialization.
    */
   val isDeferred: Boolean = false,
 )

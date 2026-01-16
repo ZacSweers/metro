@@ -134,7 +134,11 @@ internal class IrGraphShardGenerator(
       }
     }
 
-    return ShardResult(shards = shards, shardLookup = shardLookup, isGraphAsShard = !useNestedShards)
+    return ShardResult(
+      shards = shards,
+      shardLookup = shardLookup,
+      isGraphAsShard = !useNestedShards,
+    )
   }
 
   private fun planShardGroups(): List<List<ShardBinding>> {
