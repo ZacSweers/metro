@@ -497,18 +497,25 @@ internal fun FirClassSymbol<*>.findInjectConstructorsImpl(
   // Look at raw declarations, otherwise we infinite loop
   @OptIn(DirectDeclarationsAccess::class)
   val ctors = declarationSymbols.filterIsInstance<FirConstructorSymbol>()
-  if (checkClass) {
-    val classInject = annotationsIn(session, annotationClassIds).firstOrNull()
-    if (classInject != null) {
-      val primaryConstructor = ctors.find { it.isPrimary }
-      return listOf(FirInjectConstructor(classInject, primaryConstructor, true, ctors.size))
-    }
-  }
-
   return buildList {
+    var primary: FirConstructorSymbol? = null
+
+    // Always check for an annotated constructor first even if the annotated. Otherwise something
+    // annotated with `@Contributes*` with contributesAsInject enabled may fall back to just using
+    // the primary constructor
     for (ctor in ctors) {
+      if (ctor.isPrimary) {
+        primary = ctor
+      }
       val injectAnno = ctor.annotationsIn(session, annotationClassIds).firstOrNull() ?: continue
       add(FirInjectConstructor(injectAnno, ctor, false, ctors.size))
+    }
+    if (isEmpty() && checkClass) {
+      val classInject = annotationsIn(session, annotationClassIds).firstOrNull()
+      if (classInject != null) {
+        val primaryConstructor = primary ?: ctors.find { it.isPrimary }
+        add(FirInjectConstructor(classInject, primaryConstructor, true, ctors.size))
+      }
     }
   }
 }
