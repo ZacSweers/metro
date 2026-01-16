@@ -759,6 +759,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("DynamicKeysReplaceContributedKeys.kt")
+      public void testDynamicKeysReplaceContributedKeys() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/dynamic/DynamicKeysReplaceContributedKeys.kt");
+      }
+
+      @Test
       @TestMetadata("GraphsAreCachedByType.kt")
       public void testGraphsAreCachedByType() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/dynamic/GraphsAreCachedByType.kt");
