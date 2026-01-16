@@ -60,6 +60,7 @@ import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.DescriptorVisibility
 import org.jetbrains.kotlin.ir.IrStatement
+import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.declarations.addProperty
@@ -849,8 +850,7 @@ internal class IrGraphGenerator(
     thisReceiverParameter: IrValueParameter,
     constructorStatements: MutableList<InitStatement>,
   ) {
-    val targetClass = shard.shardClass
-    val targetThisReceiver = targetClass.thisReceiverOrFail
+    val targetThisReceiver = shard.shardClass.thisReceiverOrFail
 
     // Create shard expression context for property access (only for nested shards)
     val shardExprContext =
@@ -884,8 +884,6 @@ internal class IrGraphGenerator(
     if (shardPropertyInitializers.isNotEmpty()) {
       generateShardChunking(
         shard = shard,
-        targetClass = targetClass,
-        targetThisReceiver = targetThisReceiver,
         shardExprContext = shardExprContext,
         expressionGeneratorFactory = expressionGeneratorFactory,
         shardPropertyInitializers = shardPropertyInitializers,
@@ -894,6 +892,11 @@ internal class IrGraphGenerator(
         thisReceiverParameter = thisReceiverParameter,
         constructorStatements = constructorStatements,
       )
+    } else if (!shard.isGraphAsShard) {
+      // For nested shards, we must always generate the constructor body even if there are no
+      // field-backed property initializers (e.g., all getter-based properties), since the
+      // constructor needs the delegating call to Any and graph field initialization.
+      shard.shardClass.buildShardConstructor()
     }
 
     // For graph-as-shard, add deferred setDelegate calls after property inits
@@ -992,8 +995,6 @@ internal class IrGraphGenerator(
   /** Applies chunking logic to shard property initializers. */
   private fun generateShardChunking(
     shard: Shard,
-    targetClass: IrClass,
-    targetThisReceiver: IrValueParameter,
     shardExprContext: ShardExpressionContext?,
     expressionGeneratorFactory: GraphExpressionGenerator.Factory,
     shardPropertyInitializers: List<Pair<IrProperty, PropertyInitializer>>,
@@ -1051,8 +1052,6 @@ internal class IrGraphGenerator(
     if (mustChunkInits) {
       generateChunkedInits(
         shard = shard,
-        targetClass = targetClass,
-        targetThisReceiver = targetThisReceiver,
         shardFunctionNameAllocator = shardFunctionNameAllocator,
         shardPropertyInitializers = shardPropertyInitializers,
         shardPropertiesToTypeKeys = shardPropertiesToTypeKeys,
@@ -1064,8 +1063,6 @@ internal class IrGraphGenerator(
     } else {
       generateDirectInits(
         shard = shard,
-        targetClass = targetClass,
-        targetThisReceiver = targetThisReceiver,
         shardPropertyInitializers = shardPropertyInitializers,
         shardPropertiesToTypeKeys = shardPropertiesToTypeKeys,
         thisReceiverParameter = thisReceiverParameter,
@@ -1079,8 +1076,6 @@ internal class IrGraphGenerator(
   /** Applies chunked initialization for large shards. */
   private fun generateChunkedInits(
     shard: Shard,
-    targetClass: IrClass,
-    targetThisReceiver: IrValueParameter,
     shardFunctionNameAllocator: NameAllocator,
     shardPropertyInitializers: List<Pair<IrProperty, PropertyInitializer>>,
     shardPropertiesToTypeKeys: Map<IrProperty, IrTypeKey>,
@@ -1098,10 +1093,12 @@ internal class IrGraphGenerator(
         }
         .chunked(options.statementsPerInitFun)
 
+    val targetThisReceiver = shard.shardClass.thisReceiverOrFail
+
     val initFunctionsToCall =
       chunks.map { statementsChunk ->
         val initName = shardFunctionNameAllocator.newName("init")
-        targetClass
+        shard.shardClass
           .addFunction(initName, irBuiltIns.unitType, visibility = DescriptorVisibilities.PRIVATE)
           .apply {
             val localReceiver = targetThisReceiver.copyTo(this)
@@ -1125,9 +1122,7 @@ internal class IrGraphGenerator(
       }
     } else {
       // For nested shard, add init calls to shard constructor
-      val shardConstructor = targetClass.primaryConstructor!!
-      shardConstructor.buildBlockBody {
-        +irDelegatingConstructorCall(irBuiltIns.anyClass.owner.primaryConstructor!!)
+      shard.shardClass.buildShardConstructor {
         // Initialize graph property field from constructor parameter (if needed)
         shard.graphProperty?.backingField?.let { graphBackingField ->
           +irSetField(irGet(targetThisReceiver), graphBackingField, irGet(shard.graphParam!!))
@@ -1144,8 +1139,6 @@ internal class IrGraphGenerator(
   /** Applies direct initialization for small shards. */
   private fun generateDirectInits(
     shard: Shard,
-    targetClass: IrClass,
-    targetThisReceiver: IrValueParameter,
     shardPropertyInitializers: List<Pair<IrProperty, PropertyInitializer>>,
     shardPropertiesToTypeKeys: Map<IrProperty, IrTypeKey>,
     thisReceiverParameter: IrValueParameter,
@@ -1161,9 +1154,9 @@ internal class IrGraphGenerator(
       }
     } else {
       // For nested shard, set fields in constructor body
-      val shardConstructor = targetClass.primaryConstructor!!
-      shardConstructor.buildBlockBody {
-        +irDelegatingConstructorCall(irBuiltIns.anyClass.owner.primaryConstructor!!)
+      shard.shardClass.buildShardConstructor {
+        val targetThisReceiver = shard.shardClass.thisReceiverOrFail
+
         // Initialize graph property field from constructor parameter (if needed)
         shard.graphProperty?.backingField?.let { graphBackingField ->
           +irSetField(irGet(targetThisReceiver), graphBackingField, irGet(shard.graphParam!!))
@@ -1179,6 +1172,14 @@ internal class IrGraphGenerator(
         // Add setDelegate calls for deferred properties in this shard
         generateDeferredSetDelegateCalls(targetThisReceiver).forEach { +it }
       }
+    }
+  }
+
+  private fun IrClass.buildShardConstructor(body: IrBlockBodyBuilder.() -> Unit = {}) {
+    val shardConstructor = primaryConstructor!!
+    shardConstructor.buildBlockBody {
+      +irDelegatingConstructorCall(irBuiltIns.anyClass.owner.primaryConstructor!!)
+      body()
     }
   }
 
