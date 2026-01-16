@@ -89,10 +89,20 @@ internal class IrGraphShardGenerator(
       return null
     }
 
+    // If sharding is disabled, use graph-as-shard directly without computing shard groups
+    if (!context.options.enableGraphSharding) {
+      val shardLookup = ShardLookup()
+      return ShardResult(
+        shards = listOf(generateGraphAsShard(shardLookup)),
+        shardLookup = shardLookup,
+        isGraphAsShard = true,
+      )
+    }
+
     val shardGroups = planShardGroups()
 
     // Determine if we need actual shard classes or just use the graph class
-    val useNestedShards = context.options.enableGraphSharding && shardGroups.size > 1
+    val useNestedShards = shardGroups.size > 1
 
     // Only warn if user explicitly customized keysPerGraphShard, as this suggests
     // they expected sharding to occur but the graph is too small
