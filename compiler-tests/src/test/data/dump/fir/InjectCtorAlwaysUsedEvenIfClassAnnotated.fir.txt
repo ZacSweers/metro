@@ -1,0 +1,37 @@
+FILE: InjectCtorAlwaysUsedEvenIfClassAnnotated.kt
+    public abstract interface Base : R|kotlin/Any| {
+    }
+    @R|dev/zacsweers/metro/ContributesBinding|(scope = <getClass>(Q|dev/zacsweers/metro/AppScope|)) public final class Impl : R|Base| {
+        public constructor(int: R|kotlin/Int|): R|Impl| {
+            super<R|kotlin/Any|>()
+        }
+
+        public final val int: R|kotlin/Int| = R|<local>/int|
+            public get(): R|kotlin/Int|
+
+        @R|dev/zacsweers/metro/Inject|() public constructor(): R|Impl| {
+            this<R|Impl|>(Int(3))
+        }
+
+        @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) public final object MetroFactory : R|dev/zacsweers/metro/internal/Factory<Impl>| {
+            public final fun create(): R|dev/zacsweers/metro/internal/Factory<Impl>|
+
+            public final fun newInstance(): R|Impl|
+
+            private constructor(): R|Impl.MetroFactory| {
+                super<R|kotlin/Any|>()
+            }
+
+        }
+
+        @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/MetroContribution|(scope = <getClass>(Q|dev/zacsweers/metro/AppScope|)) public abstract interface MetroContributionToAppScope : R|kotlin/Any| {
+            @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) public abstract class BindsMirror : R|kotlin/Any| {
+                private constructor(): R|Impl.MetroContributionToAppScope.BindsMirror| {
+                    super<R|kotlin/Any|>()
+                }
+
+            }
+
+        }
+
+    }
