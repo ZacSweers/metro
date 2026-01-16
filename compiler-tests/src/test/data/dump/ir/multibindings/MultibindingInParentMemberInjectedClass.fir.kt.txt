@@ -577,51 +577,26 @@ interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope, M
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
+    private val viewModelFactoryProvider: Provider<ViewModelFactory>
+      field = Companion.create(viewModels = <this>.<get-mapOfKClass___ToViewModelProvider>())
+
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
 
-    @IntoMap
-    @Binds
-    @ClassKey(value = BFragment::class)
-    override fun bindIntoMapAsInjector3091874274(instance: BFragmentInjector): Injector {
-      return error(message = "Never called")
-    }
-
-    @IntoMap
-    @Binds
-    @ClassKey(value = AFragment::class)
-    override fun bindIntoMapAsInjector3288387779(instance: AFragmentInjector): Injector {
-      return error(message = "Never called")
-    }
-
-    @IntoMap
-    @Binds
-    @ClassKey(value = BViewModel::class)
-    override fun bindIntoMapAsViewModel2406466354(instance: BViewModel): ViewModel {
-      return error(message = "Never called")
-    }
-
-    @IntoMap
-    @Binds
-    @ClassKey(value = AViewModel::class)
-    override fun bindIntoMapAsViewModel4203417713(instance: AViewModel): ViewModel {
-      return error(message = "Never called")
-    }
-
-    private val mapOfKClass___ToInjector: Provider<Map<KClass<*>, Injector>>
+    private val mapOfKClass___ToInjectorProvider: Provider<Map<KClass<*>, Injector>>
       private get(): Provider<Map<KClass<*>, Injector>> {
         return { // BLOCK
           val tmp_0: Builder<KClass<*>, Injector> = Companion.builder<KClass<*>, Injector>(size = 2)
-          tmp_0.put(key = BFragment::class, providerOfValue = Companion.create(memberInjector = Companion.invoke<MembersInjector<BFragment>>(value = Companion.create(viewModelFactory = Companion.create(viewModels = <this>.<get-mapOfKClass___ToViewModel>())))))
-          tmp_0.put(key = AFragment::class, providerOfValue = Companion.create(memberInjector = Companion.invoke<MembersInjector<AFragment>>(value = Companion.create(viewModelFactory = Companion.create(viewModels = <this>.<get-mapOfKClass___ToViewModel>())))))
+          tmp_0.put(key = BFragment::class, providerOfValue = Companion.create(memberInjector = Companion.invoke<MembersInjector<BFragment>>(value = Companion.create(viewModelFactory = <this>.#viewModelFactoryProvider))))
+          tmp_0.put(key = AFragment::class, providerOfValue = Companion.create(memberInjector = Companion.invoke<MembersInjector<AFragment>>(value = Companion.create(viewModelFactory = <this>.#viewModelFactoryProvider))))
           tmp_0.build()
         }
       }
 
-    private val mapOfKClass___ToViewModel: Provider<Map<KClass<*>, Provider<ViewModel>>>
+    private val mapOfKClass___ToViewModelProvider: Provider<Map<KClass<*>, Provider<ViewModel>>>
       private get(): Provider<Map<KClass<*>, Provider<ViewModel>>> {
         return { // BLOCK
           val tmp_1: Builder<KClass<*>, ViewModel> = Companion.builder<KClass<*>, ViewModel>(size = 2)
@@ -633,7 +608,7 @@ interface AppGraph : MetroContributionToAppScope, MetroContributionToAppScope, M
 
     override val memberInjector: MembersInjector<MyActivity>
       override get(): MembersInjector<MyActivity> {
-        return Companion.create(fragmentInjector = Companion.create(injectors = <this>.<get-mapOfKClass___ToInjector>()))
+        return Companion.create(fragmentInjector = Companion.create(injectors = <this>.<get-mapOfKClass___ToInjectorProvider>()))
       }
 
   }
@@ -687,3 +662,4 @@ package metro.hints
 fun AppScope(contributed: BViewModel) {
   return error(message = "Never called")
 }
+
