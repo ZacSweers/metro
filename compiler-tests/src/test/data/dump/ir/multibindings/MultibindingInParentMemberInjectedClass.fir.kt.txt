@@ -93,6 +93,7 @@ class AFragmentInjector : Injector {
   @MetroContribution(scope = AppScope::class)
   interface MetroContributionToAppScope {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @ComptimeOnly
     abstract class BindsMirror {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -111,7 +112,10 @@ class AFragmentInjector : Injector {
     @IntoMap
     @Binds
     @ClassKey(value = AFragment::class)
-    abstract fun bindIntoMapAsInjector3288387779(instance: AFragmentInjector): Injector
+    @ComptimeOnly
+    abstract fun bindIntoMapAsInjector3288387779(instance: AFragmentInjector): Injector {
+      return error(message = "Never called")
+    }
 
   }
 
@@ -157,6 +161,7 @@ class AViewModel : ViewModel {
   @MetroContribution(scope = AppScope::class)
   interface MetroContributionToAppScope {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @ComptimeOnly
     abstract class BindsMirror {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -175,7 +180,10 @@ class AViewModel : ViewModel {
     @IntoMap
     @Binds
     @ClassKey(value = AViewModel::class)
-    abstract fun bindIntoMapAsViewModel4203417713(instance: AViewModel): ViewModel
+    @ComptimeOnly
+    abstract fun bindIntoMapAsViewModel4203417713(instance: AViewModel): ViewModel {
+      return error(message = "Never called")
+    }
 
   }
 
@@ -289,6 +297,7 @@ class BFragmentInjector : Injector {
   @MetroContribution(scope = AppScope::class)
   interface MetroContributionToAppScope {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @ComptimeOnly
     abstract class BindsMirror {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -307,7 +316,10 @@ class BFragmentInjector : Injector {
     @IntoMap
     @Binds
     @ClassKey(value = BFragment::class)
-    abstract fun bindIntoMapAsInjector3091874274(instance: BFragmentInjector): Injector
+    @ComptimeOnly
+    abstract fun bindIntoMapAsInjector3091874274(instance: BFragmentInjector): Injector {
+      return error(message = "Never called")
+    }
 
   }
 
@@ -353,6 +365,7 @@ class BViewModel : ViewModel {
   @MetroContribution(scope = AppScope::class)
   interface MetroContributionToAppScope {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @ComptimeOnly
     abstract class BindsMirror {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -371,7 +384,10 @@ class BViewModel : ViewModel {
     @IntoMap
     @Binds
     @ClassKey(value = BViewModel::class)
-    abstract fun bindIntoMapAsViewModel2406466354(instance: BViewModel): ViewModel
+    @ComptimeOnly
+    abstract fun bindIntoMapAsViewModel2406466354(instance: BViewModel): ViewModel {
+      return error(message = "Never called")
+    }
 
   }
 
@@ -526,7 +542,7 @@ class ViewModelFactory {
         return MetroFactory(viewModels = viewModels)
       }
 
-      fun newInstance(viewModels: Map<KClass<*>, ViewModel>): ViewModelFactory {
+      fun newInstance(viewModels: Map<KClass<*>, Provider<ViewModel>>): ViewModelFactory {
         return ViewModelFactory(viewModels = viewModels)
       }
 
