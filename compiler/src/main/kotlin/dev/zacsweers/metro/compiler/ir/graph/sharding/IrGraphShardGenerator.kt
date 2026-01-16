@@ -157,17 +157,80 @@ internal class IrGraphShardGenerator(
     }
 
     // Use remove() to both lookup and track which bindings have been assigned to groups
-    val bindingsByKey = shardBindings.associateBy { it.typeKey }.toMutableMap()
-    val groups =
+    val bindingsByKey = shardBindings.associateByTo(mutableMapOf()) { it.typeKey }
+    val filteredGroups =
       plannedGroups.mapNotNull { group ->
         group.mapNotNull(bindingsByKey::remove).takeIf { it.isNotEmpty() }
       }
 
-    return when {
-      groups.isEmpty() -> listOf(shardBindings)
-      bindingsByKey.isEmpty() -> groups
-      else -> groups + listOf(bindingsByKey.values.toList())
+    // Add any remaining bindings not in planned groups
+    val allGroups =
+      if (bindingsByKey.isEmpty()) {
+        filteredGroups
+      } else {
+        filteredGroups + listOf(bindingsByKey.values.toList())
+      }
+
+    if (allGroups.isEmpty()) {
+      return listOf(shardBindings)
     }
+
+    // Rebalance: the original partitioning was based on all bindings, but after filtering
+    // to only ShardBindings, groups may be very uneven (e.g., 901/1/1 from 2000/2000/1529).
+    // Merge small groups together while preserving topological order and SCC constraints.
+    // Since original groups already respect SCC boundaries, merging preserves that constraint.
+    return rebalanceGroups(allGroups)
+  }
+
+  /**
+   * Rebalances groups by merging small adjacent groups together.
+   *
+   * This preserves:
+   * - Topological order (groups are processed in order, bindings concatenated)
+   * - SCC constraints (original groups already keep SCCs together, we only merge, never split)
+   */
+  private fun rebalanceGroups(
+    groups: List<List<ShardBinding>>,
+    targetSize: Int = metroContext.options.keysPerGraphShard,
+  ): List<List<ShardBinding>> {
+    if (groups.size <= 1) return groups
+
+    // Pre-size to worst-case (no merging) to avoid resizing
+    val rebalanced = ArrayList<List<ShardBinding>>(groups.size)
+    var currentBatch: ArrayList<ShardBinding>? = null
+    var pending: List<ShardBinding>? = null
+
+    for (group in groups) {
+      val p = pending
+      if (p == null) {
+        pending = group
+        continue
+      }
+
+      if (p.size + group.size <= targetSize) {
+        // Merge needed.
+        // If we don't have a mutable batch yet, create one and copy the pending group into it.
+        var batch = currentBatch
+        if (batch == null) {
+          batch = ArrayList(targetSize)
+          batch.addAll(p)
+          currentBatch = batch
+          pending = batch
+        }
+        batch.addAll(group)
+      } else {
+        // Cannot merge, flush the pending group
+        rebalanced.add(p)
+        pending = group
+        currentBatch = null
+      }
+    }
+
+    if (pending != null) {
+      rebalanced.add(pending)
+    }
+
+    return rebalanced
   }
 
   /**
