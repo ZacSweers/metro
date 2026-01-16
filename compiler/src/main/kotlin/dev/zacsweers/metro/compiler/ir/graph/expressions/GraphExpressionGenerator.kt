@@ -60,8 +60,6 @@ private constructor(
   private val node: DependencyGraphNode,
   override val thisReceiver: IrValueParameter,
   private val bindingPropertyContext: BindingPropertyContext,
-  /** All ancestor graphs' binding property contexts, keyed by graph type key. */
-  private val ancestorBindingContexts: Map<IrTypeKey, BindingPropertyContext>,
   override val bindingGraph: IrBindingGraph,
   private val bindingContainerTransformer: BindingContainerTransformer,
   private val membersInjectorTransformer: MembersInjectorTransformer,
@@ -81,8 +79,6 @@ private constructor(
     private val traceScope: TraceScope,
     private val node: DependencyGraphNode,
     private val bindingPropertyContext: BindingPropertyContext,
-    /** All ancestor graphs' binding property contexts, keyed by graph type key. */
-    private val ancestorBindingContexts: Map<IrTypeKey, BindingPropertyContext>,
     private val bindingGraph: IrBindingGraph,
     private val bindingContainerTransformer: BindingContainerTransformer,
     private val membersInjectorTransformer: MembersInjectorTransformer,
@@ -103,7 +99,6 @@ private constructor(
         node = node,
         thisReceiver = thisReceiver,
         bindingPropertyContext = bindingPropertyContext,
-        ancestorBindingContexts = ancestorBindingContexts,
         bindingGraph = bindingGraph,
         bindingContainerTransformer = bindingContainerTransformer,
         membersInjectorTransformer = membersInjectorTransformer,
@@ -430,8 +425,9 @@ private constructor(
           val instanceExpr =
             if (binding.token != null) {
               val parentContextKey = binding.contextualTypeKey
-              // First try current graph's binding property context
-              // TODO allow BindingPropertyContext to have parents?
+              // Check if the property is in the local context
+              // If found locally, use simple property access; otherwise use resolveToken
+              // to build the full property access chain through ancestors
               val localProperty = bindingPropertyContext.get(parentContextKey)
               if (localProperty != null) {
                 irGetProperty(irGet(thisReceiver), localProperty.property)
@@ -720,15 +716,15 @@ private constructor(
    * looking up the property in the appropriate ancestor's [BindingPropertyContext].
    *
    * The token's [ParentContext.Token.ownerGraphKey] identifies which ancestor graph owns the
-   * binding, allowing us to look up the correct context in nested extension chains.
+   * binding, allowing us to look up the correct context via the parent chain.
    *
    * The returned [ParentContext.PropertyAccess] encapsulates all information needed to generate the
    * property access expression, including ancestor chains and shard navigation.
    */
   private fun resolveToken(token: ParentContext.Token): ParentContext.PropertyAccess {
-    // Look up the correct ancestor's context using the token's parentKey
+    // Look up the correct ancestor's context by traversing the parent chain
     val ancestorContext =
-      ancestorBindingContexts[token.ownerGraphKey]
+      bindingPropertyContext.findAncestorContext(token.ownerGraphKey)
         ?: reportCompilerBug(
           "Cannot resolve property access token - no binding context found for ancestor ${token.ownerGraphKey}"
         )

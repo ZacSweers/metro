@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir.graph
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -19,23 +20,50 @@ import org.jetbrains.kotlin.ir.declarations.IrProperty
  * @property shardProperty If non-null, the property lives in a shard class and must be accessed
  *   through this shard property (e.g., `graph.shard1.providerProperty`)
  * @property shardIndex If non-null, the index of the shard containing this property
+ * @property ownerGraphKey If non-null, this property was found in an ancestor context with this
+ *   graph key. Used to determine if ancestor chain access is needed.
  */
 internal data class BindingProperty(
   val property: IrProperty,
   val storedKey: IrContextualTypeKey,
   val shardProperty: IrProperty? = null,
   val shardIndex: Int? = null,
+  val ownerGraphKey: IrTypeKey? = null,
 )
 
 /**
  * Tracks binding properties by their contextual type key. The contextual type key distinguishes
  * between scalar and provider access (e.g., `Foo` vs `Provider<Foo>`) as well as multibinding
  * variants (e.g., `Map<K, V>` vs `Map<K, Provider<V>>`).
+ *
+ * Supports hierarchical lookup through parent contexts for extension graphs. When a property is
+ * found in a parent context, the returned [BindingProperty] includes the
+ * [BindingProperty.ownerGraphKey] to indicate which ancestor owns the property.
+ *
+ * @property bindingGraph The binding graph for this context
+ * @property graphKey The type key of the graph this context belongs to. Used to populate
+ *   [BindingProperty.ownerGraphKey] when properties are found via parent lookup.
+ * @property parent Optional parent context for hierarchical lookup in extension graphs
  */
-internal class BindingPropertyContext(private val bindingGraph: IrBindingGraph) {
+internal class BindingPropertyContext(
+  private val bindingGraph: IrBindingGraph,
+  private val graphKey: IrTypeKey? = null,
+  private val parent: BindingPropertyContext? = null,
+) {
   private val properties = mutableMapOf<IrContextualTypeKey, IrProperty>()
   private val shardProperties = mutableMapOf<IrContextualTypeKey, IrProperty>()
   private val shardIndices = mutableMapOf<IrContextualTypeKey, Int>()
+
+  /** Lazily computed map of ancestor graph keys to their contexts. */
+  private val ancestorContextCache: Map<IrTypeKey, BindingPropertyContext> by lazy {
+    buildMap {
+      var current: BindingPropertyContext? = parent
+      while (current != null) {
+        current.graphKey?.let { put(it, current) }
+        current = current.parent
+      }
+    }
+  }
 
   fun put(
     key: IrContextualTypeKey,
@@ -58,12 +86,18 @@ internal class BindingPropertyContext(private val bindingGraph: IrBindingGraph) 
    * For non-provider requests, this will also try the provider variant of the key since a provider
    * property can satisfy an instance request (via .invoke()).
    *
+   * When [searchParents] is true, this will search parent contexts if the key is not found locally.
+   * Properties found in parent contexts will have [BindingProperty.ownerGraphKey] set to indicate
+   * which ancestor owns the property. By default, only the local context is searched.
+   *
+   * @param key The contextual type key to look up
+   * @param searchParents Whether to search parent contexts if not found locally (default: false)
    * @return A [BindingProperty] containing both the property and the key it was stored under, or
    *   null if no matching property exists.
    */
   context(metroContext: IrMetroContext)
-  fun get(key: IrContextualTypeKey): BindingProperty? {
-    // Direct match
+  fun get(key: IrContextualTypeKey, searchParents: Boolean = false): BindingProperty? {
+    // Direct match in current context
     properties[key]?.let {
       return BindingProperty(it, key, shardProperties[key], shardIndices[key])
     }
@@ -91,11 +125,29 @@ internal class BindingPropertyContext(private val bindingGraph: IrBindingGraph) 
     // For aliases, try the aliased target
     bindingGraph.findBinding(key.typeKey)?.let {
       if (it is IrBinding.Alias) {
-        return get(key.withIrTypeKey(it.aliasedType))
+        return get(key.withIrTypeKey(it.aliasedType), searchParents)
       }
     }
+
+    // Search parent context if allowed
+    if (searchParents && parent != null) {
+      parent.get(key, searchParents = true)?.let { parentResult ->
+        // Mark with the owner graph key (use parent's key or propagate existing)
+        return parentResult.copy(ownerGraphKey = parentResult.ownerGraphKey ?: parent.graphKey)
+      }
+    }
+
     return null
   }
+
+  /**
+   * Finds the ancestor context with the given graph key.
+   *
+   * @param targetGraphKey The graph type key to find
+   * @return The ancestor context with the matching graph key, or null if not found
+   */
+  fun findAncestorContext(targetGraphKey: IrTypeKey): BindingPropertyContext? =
+    ancestorContextCache[targetGraphKey]
 
   context(metroContext: IrMetroContext)
   operator fun contains(key: IrContextualTypeKey): Boolean = get(key) != null

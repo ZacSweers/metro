@@ -109,8 +109,8 @@ internal class IrGraphGenerator(
   private val membersInjectorTransformer: MembersInjectorTransformer,
   private val assistedFactoryTransformer: AssistedFactoryTransformer,
   private val graphExtensionGenerator: IrGraphExtensionGenerator,
-  /** All ancestor graphs' binding property contexts, keyed by graph type key. */
-  private val ancestorBindingContexts: Map<IrTypeKey, BindingPropertyContext>,
+  /** Parent graph's binding property context for hierarchical lookup. Null for root graphs. */
+  parentBindingContext: BindingPropertyContext?,
 ) : IrMetroContext by metroContext, TraceScope by traceScope {
 
   private val propertyNameAllocator =
@@ -135,7 +135,8 @@ internal class IrGraphGenerator(
       return _functionNameAllocator
     }
 
-  private val bindingPropertyContext = BindingPropertyContext(bindingGraph)
+  private val bindingPropertyContext =
+    BindingPropertyContext(bindingGraph, graphKey = node.typeKey, parent = parentBindingContext)
 
   /**
    * To avoid `MethodTooLargeException`, we split property field initializations up over multiple
@@ -282,7 +283,6 @@ internal class IrGraphGenerator(
           traceScope = this@IrGraphGenerator,
           node = node,
           bindingPropertyContext = bindingPropertyContext,
-          ancestorBindingContexts = ancestorBindingContexts,
           ancestorGraphProperties = ancestorGraphProperties,
           bindingGraph = bindingGraph,
           bindingContainerTransformer = bindingContainerTransformer,
