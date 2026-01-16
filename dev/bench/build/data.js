@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1768589948189,
+  "lastUpdate": 1768603442527,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -2296,6 +2296,62 @@ window.BENCHMARK_DATA = {
             "value": 19987.956,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +1.47%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "bd3d5161~1",
+          "message": "[before] Various gradle cleanups (#1675)",
+          "timestamp": "2026-01-16T22:09:50Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/bd3d516119b83e33d760603529c8300c53fc8201"
+        },
+        "date": 1768603442527,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19440.152,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "bd3d516119b83e33d760603529c8300c53fc8201",
+          "message": "[after] Various gradle cleanups (#1675)",
+          "timestamp": "2026-01-16T22:09:50Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/bd3d516119b83e33d760603529c8300c53fc8201"
+        },
+        "date": 1768603442528,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19258.254,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -0.94%"
           }
         ]
       }
