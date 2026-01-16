@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1768603442527,
+  "lastUpdate": 1768605354845,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -2352,6 +2352,62 @@ window.BENCHMARK_DATA = {
             "value": 19258.254,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -0.94%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "f5515290~1",
+          "message": "[before] Always use inject constructor even class has an in",
+          "timestamp": "2026-01-16T22:40:34Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/f5515290a36d3865e15de34d68614e3030bf8a64"
+        },
+        "date": 1768605354845,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19890.216,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "f5515290a36d3865e15de34d68614e3030bf8a64",
+          "message": "[after] Always use inject constructor even class has an in",
+          "timestamp": "2026-01-16T22:40:34Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/f5515290a36d3865e15de34d68614e3030bf8a64"
+        },
+        "date": 1768605354846,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20026.002,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +0.68%"
           }
         ]
       }

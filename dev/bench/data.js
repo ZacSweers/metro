@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1768603442375,
+  "lastUpdate": 1768605354701,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -2352,6 +2352,62 @@ window.BENCHMARK_DATA = {
             "value": 0.23554444414847536,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: +8.42%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "f5515290~1",
+          "message": "[before] Always use inject constructor even class has an in",
+          "timestamp": "2026-01-16T22:40:34Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/f5515290a36d3865e15de34d68614e3030bf8a64"
+        },
+        "date": 1768605354701,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.21901524320593566,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "f5515290a36d3865e15de34d68614e3030bf8a64",
+          "message": "[after] Always use inject constructor even class has an in",
+          "timestamp": "2026-01-16T22:40:34Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/f5515290a36d3865e15de34d68614e3030bf8a64"
+        },
+        "date": 1768605354702,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.21705032466582536,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: -0.90%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
