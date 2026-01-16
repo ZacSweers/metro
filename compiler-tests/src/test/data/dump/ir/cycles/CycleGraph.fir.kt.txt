@@ -332,22 +332,22 @@ interface CycleGraph {
     private val cProvider: Provider<C>
       field = DelegateFactory<C>()
 
-    private val provideObjectWithCycleProvider: Provider<Any>
-      field = DelegateFactory<Any>()
-
     private val bProvider: Provider<B>
       field = Companion.create(c = <this>.#cProvider)
 
     private val aProvider: Provider<A>
       field = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider)))
 
+    private val provideObjectWithCycleProvider: Provider<Any>
+      field = DelegateFactory<Any>()
+
     @DependencyGraph
-    private inner class ChildCycleGraphImpl : ChildCycleGraph {
+    private class ChildCycleGraphImpl : ChildCycleGraph {
+      private val cycleGraphImpl: Impl
+        field = cycleGraphImpl
+
       private val cProvider: Provider<C>
         field = DelegateFactory<C>()
-
-      private val provideObjectWithCycleProvider: Provider<Any>
-        field = DelegateFactory<Any>()
 
       private val bProvider: Provider<B>
         field = Companion.create(c = <this>.#cProvider)
@@ -355,26 +355,29 @@ interface CycleGraph {
       private val aProvider: Provider<A>
         field = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider)))
 
+      private val provideObjectWithCycleProvider: Provider<Any>
+        field = DelegateFactory<Any>()
+
       private class FactoryImpl : Factory {
-        private /* final field */ val parentInstance: Impl = parentInstance
-        constructor(parentInstance: Impl) /* primary */ {
+        private /* final field */ val CycleGraphImpl: Impl = CycleGraphImpl
+        constructor(CycleGraphImpl: Impl) /* primary */ {
           super/*Any*/()
           /* <init>() */
 
         }
 
         override fun create(): ChildCycleGraph {
-          return <this>.#parentInstance.ChildCycleGraphImpl()
+          return ChildCycleGraphImpl(cycleGraphImpl = <this>.#CycleGraphImpl)
         }
 
       }
 
-      constructor() /* primary */ {
+      constructor(cycleGraphImpl: Impl) /* primary */ {
         super/*Any*/()
         /* <init>() */
 
         Companion.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = Companion.create(aProvider = <this>.#aProvider, aLazy = <this>.#aProvider, aLazyProvider = <this>.#aProvider))
-        Companion.setDelegate<Any>(delegateFactory = <this>.#provideObjectWithCycleProvider, delegate = Companion.create(instance = <this>, obj = <this>.#provideObjectWithCycleProvider))
+        Companion.setDelegate<Any>(delegateFactory = <this>.#provideObjectWithCycleProvider, delegate = Companion.create(instance = <this>.#cycleGraphImpl, obj = <this>.#provideObjectWithCycleProvider))
       }
 
       override val a: A
@@ -406,7 +409,7 @@ interface CycleGraph {
     }
 
     override fun childCycleGraph(): Factory {
-      return FactoryImpl(parentInstance = <this>.#thisGraphInstance)
+      return FactoryImpl(CycleGraphImpl = <this>.#thisGraphInstance)
     }
 
     override val objWithCycle: Any

@@ -271,11 +271,11 @@ interface AppGraph {
     private val thisGraphInstance: AppGraph
       field = <this>
 
-    private val commonAppHeadersInterceptorProvider: Provider<CommonAppHeadersInterceptor>
-      field = DelegateFactory<CommonAppHeadersInterceptor>()
-
     private val internalHeaderProvider: Provider<InternalHeader>
       field = Companion.create(key = Companion.create(instance = <this>.#thisGraphInstance))
+
+    private val commonAppHeadersInterceptorProvider: Provider<CommonAppHeadersInterceptor>
+      field = DelegateFactory<CommonAppHeadersInterceptor>()
 
     private constructor() /* primary */ {
       super/*Any*/()

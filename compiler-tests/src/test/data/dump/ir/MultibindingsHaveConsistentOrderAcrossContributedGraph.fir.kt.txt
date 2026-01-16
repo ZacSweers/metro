@@ -120,8 +120,11 @@ interface ExampleGraph : MetroContributionToAppScope {
       field = <this>
 
     @DependencyGraph(scope = Unit::class)
-    private inner class LoggedInGraphImpl : LoggedInGraph {
-      constructor() /* primary */ {
+    private class LoggedInGraphImpl : LoggedInGraph {
+      private val exampleGraphImpl: Impl
+        field = exampleGraphImpl
+
+      constructor(exampleGraphImpl: Impl) /* primary */ {
         super/*Any*/()
         /* <init>() */
 
@@ -131,8 +134,8 @@ interface ExampleGraph : MetroContributionToAppScope {
         private get(): Set<Task> {
           return { // BLOCK
             buildSet<Task>(capacity = 4, builderAction = local fun MutableSet<Task>.<anonymous>() {
-              $receiver.add(element = Companion.provide4(instance = <this>))
-              $receiver.add(element = Companion.provide3(instance = <this>))
+              $receiver.add(element = Companion.provide4(instance = <this>.#exampleGraphImpl))
+              $receiver.add(element = Companion.provide3(instance = <this>.#exampleGraphImpl))
               $receiver.add(element = TaskImpl1())
               $receiver.add(element = TaskImpl2())
             }
@@ -154,7 +157,7 @@ interface ExampleGraph : MetroContributionToAppScope {
     }
 
     override fun createLoggedInGraph(): LoggedInGraph {
-      return <this>.LoggedInGraphImpl()
+      return LoggedInGraphImpl(exampleGraphImpl = <this>)
     }
 
     private val setOfTask: Set<Task>
