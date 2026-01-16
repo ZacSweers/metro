@@ -11,7 +11,7 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
  * Used during sharding to determine which bindings belong to which shard and what dependencies
  * exist between shards (for constructor parameter ordering).
  */
-internal class ShardIndex {
+internal class ShardLookup {
   /** Maps each typeKey to the shard index that owns it. */
   private val bindingToShard = mutableMapOf<IrTypeKey, Int>()
 

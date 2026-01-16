@@ -69,6 +69,7 @@ internal class Symbols(
     const val EXTENDS = "Extends"
     const val FACTORY = "factory"
     const val GET = "get"
+    const val GRAPH = "graph"
     const val IGNORE_QUALIFIER = "ignoreQualifier"
     const val INCLUDES = "Includes"
     const val INJECT = "Inject"
@@ -204,6 +205,7 @@ internal class Symbols(
     val exclude = StringNames.EXCLUDE.asName()
     val excludes = StringNames.EXCLUDES.asName()
     val factory = StringNames.FACTORY.asName()
+    val graph = StringNames.GRAPH.asName()
     val ignoreQualifier = StringNames.IGNORE_QUALIFIER.asName()
     val includes = "includes".asName()
     val injectMembers = StringNames.INJECT_MEMBERS.asName()
