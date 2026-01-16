@@ -265,7 +265,6 @@ internal class IrGraphGenerator(
           val isDynamic = irParam.origin == Origins.DynamicContainerParam
           val isBindingContainer = creator.bindingContainersParameterIndices.isSet(i)
           if (isBindsInstance || isBindingContainer || isDynamic) {
-
             if (!isDynamic && param.typeKey in node.dynamicTypeKeys) {
               // Don't add it if there's a dynamic replacement
               continue

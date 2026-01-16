@@ -34,6 +34,7 @@ import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.traceNested
+import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
@@ -48,6 +49,7 @@ import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.defaultType
+import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -560,6 +562,17 @@ internal class IrBindingGraph(
   private fun onError(message: String, declaration: IrDeclaration) {
     hasErrors = true
     metroContext.reportCompat(declaration, MetroDiagnostics.METRO_ERROR, message)
+  }
+
+  private fun onError(message: String, element: IrElement) {
+    hasErrors = true
+    if (element is IrDeclaration) {
+      onError(message, element)
+    } else {
+      metroContext.diagnosticReporter
+        .at(element, node.metroGraphOrFail.file)
+        .report(MetroDiagnostics.METRO_ERROR, message)
+    }
   }
 
   private fun validateBindings(

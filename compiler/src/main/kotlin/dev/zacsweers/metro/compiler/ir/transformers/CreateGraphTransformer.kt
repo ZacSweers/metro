@@ -16,6 +16,7 @@ import dev.zacsweers.metro.compiler.ir.withIrBuilder
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import kotlin.math.exp
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irGetObject
@@ -166,6 +167,7 @@ internal class CreateGraphTransformer(
         isFactory = isFactory,
         context = context,
         containingFunction = nearestDeclaration,
+        sourceExpression = expression
       )
 
     // Replace with constructor call or factory creation
