@@ -22,6 +22,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.ir.remapTypes
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
@@ -29,11 +30,13 @@ import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.transformers.InjectConstructorTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.typeWithArguments
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
+import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 
@@ -629,19 +632,32 @@ internal class BindingGraphGenerator(
         val generatedInjectors =
           membersInjectorTransformer.getOrGenerateAllInjectorsFor(targetClass)
 
+        val remapper = targetClass.deepRemapperFor(paramType)
+
         val mergedMappedParameters =
           if (generatedInjectors.isEmpty()) {
               Parameters.empty()
             } else {
               generatedInjectors
-                .map { generatedInjector ->
-                  // Create a remapper for the target class type parameters
-                  val remapper = targetClass.deepRemapperFor(paramType)
-                  generatedInjector.mergedParameters(remapper)
-                }
+                .map { generatedInjector -> generatedInjector.mergedParameters(remapper) }
                 .reduce { current, next -> current.mergeValueParametersWith(next) }
             }
             .withCallableId(injector.callableId)
+
+        // Supertype injector keys: all injectors except the last one (which is the target class)
+        // that have @HasMemberInjections. The list is in base-to-derived order, so dropLast(1)
+        // gives us the supertypes.
+        val supertypeInjectorKeys =
+          if (generatedInjectors.size > 1) {
+            generatedInjectors
+              .dropLast(1)
+              .filter { it.sourceClass.hasAnnotation(Symbols.ClassIds.HasMemberInjections) }
+              .map { injectorClass ->
+                IrContextualTypeKey(injectorClass.typeKey.remapTypes(remapper))
+              }
+          } else {
+            emptyList()
+          }
 
         val binding =
           IrBinding.MembersInjected(
@@ -652,6 +668,7 @@ internal class BindingGraphGenerator(
             function = injector.ir,
             isFromInjectorFunction = true,
             targetClassId = targetClass.classIdOrFail,
+            supertypeMembersInjectorKeys = supertypeInjectorKeys,
           )
 
         // Cache in BindingLookup to avoid re-creating it later

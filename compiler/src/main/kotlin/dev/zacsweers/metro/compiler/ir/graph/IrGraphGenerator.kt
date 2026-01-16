@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.buildBlockBody
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.createMetroMetadata
+import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.doubleCheck
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.graph.expressions.BindingExpressionGenerator
@@ -43,7 +44,6 @@ import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.typeOrNullableAny
-import dev.zacsweers.metro.compiler.ir.typeRemapperFor
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.isSyntheticGeneratedGraph
@@ -785,18 +785,27 @@ internal class IrGraphGenerator(
             val wrappedType =
               typeKey.copy(typeKey.type.requireSimpleType(targetParam).arguments[0].typeOrFail)
 
+            val targetClass = pluginContext.referenceClass(binding.targetClassId)!!.owner
+
+            // Create a single deep remapper from the target class - this handles the entire
+            // type hierarchy correctly (e.g., ExampleClass<Int> -> Parent<Int, String> ->
+            // GrandParent<String, Int>)
+            val remapper =
+              if (typeKey.hasTypeArgs) {
+                targetClass.deepRemapperFor(wrappedType.type)
+              } else {
+                null
+              }
+
             for (type in
-              pluginContext
-                .referenceClass(binding.targetClassId)!!
-                .owner
-                .allSupertypesSequence(excludeSelf = false, excludeAny = true)) {
+              targetClass.allSupertypesSequence(excludeSelf = false, excludeAny = true)) {
+
               val clazz = type.rawType()
               val generatedInjector =
                 membersInjectorTransformer.getOrGenerateInjector(clazz) ?: continue
               for ((function, unmappedParams) in generatedInjector.declaredInjectFunctions) {
                 val parameters =
-                  if (typeKey.hasTypeArgs) {
-                    val remapper = clazz.typeRemapperFor(wrappedType.type)
+                  if (remapper != null) {
                     unmappedParams.remapTypes(remapper)
                   } else {
                     unmappedParams

@@ -28,6 +28,7 @@ import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
+import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -574,22 +575,25 @@ private constructor(
       if (
         binding is IrBinding.MembersInjected && function.regularParameters.size > paramsToMap.size
       ) {
-        // For MembersInjected, we need to look at the target class and its ancestors
+        // For MembersInjected, we need to look at the supertype bindings which have
+        // correctly remapped parameters. Using declaredInjectFunctions directly would
+        // give us unmapped type parameters (e.g., T, R instead of String, Int).
         val nameToParam = mutableMapOf<Name, Parameter>()
-        val targetClass = pluginContext.referenceClass(binding.targetClassId)?.owner
-        targetClass // Look for inject methods in the target class and its ancestors
-          ?.allSupertypesSequence(excludeSelf = false, excludeAny = true)
-          ?.forEach { type ->
-            val clazz = type.rawType()
-            membersInjectorTransformer
-              .getOrGenerateInjector(clazz)
-              ?.declaredInjectFunctions
-              ?.forEach { (_, params) ->
-                for (param in params.regularParameters) {
-                  nameToParam.putIfAbsent(param.name, param)
-                }
-              }
+
+        // First add this binding's own parameters
+        for (param in binding.parameters.regularParameters) {
+          nameToParam.putIfAbsent(param.name, param)
+        }
+
+        // Then add parameters from supertype MembersInjector bindings (which are remapped)
+        for (supertypeKey in binding.supertypeMembersInjectorKeys) {
+          val supertypeBinding = bindingGraph.findBinding(supertypeKey.typeKey)
+          if (supertypeBinding is IrBinding.MembersInjected) {
+            for (param in supertypeBinding.parameters.regularParameters) {
+              nameToParam.putIfAbsent(param.name, param)
+            }
           }
+        }
 
         // Construct the list of parameters in order determined by the function
         paramsToMap =
@@ -645,8 +649,14 @@ private constructor(
           }
         }
 
+        // When we need a provider (accessType == PROVIDER), look up by the provider-wrapped key
+        // to get the provider property (e.g., longInstanceProvider) instead of the scalar property
+        // (e.g., longInstance).
+        val lookupKey =
+          if (accessType == AccessType.PROVIDER) contextualTypeKey.wrapInProvider()
+          else contextualTypeKey
         val providerInstance =
-          bindingPropertyContext.get(contextualTypeKey)?.let { (property, _) ->
+          bindingPropertyContext.get(lookupKey)?.let { (property, _) ->
             // If it's in provider fields, invoke that field
             irGetProperty(irGet(thisReceiver), property)
           }
