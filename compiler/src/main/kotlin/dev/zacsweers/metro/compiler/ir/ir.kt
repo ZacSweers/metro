@@ -18,6 +18,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.isGraphImpl
 import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.mapToSet
+import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.singleOrError
@@ -1576,10 +1577,23 @@ internal fun IrClass.findInjectableConstructor(
   onlyUsePrimaryConstructor: Boolean,
   injectAnnotations: Set<ClassId>,
 ): IrConstructor? {
-  return if (onlyUsePrimaryConstructor || isAnnotatedWithAny(injectAnnotations)) {
+  val isClassAnnotatedInject by memoize { isAnnotatedWithAny(injectAnnotations) }
+  return if (onlyUsePrimaryConstructor && isClassAnnotatedInject) {
     primaryConstructor
   } else {
-    constructors.singleOrNull { constructor -> constructor.isAnnotatedWithAny(injectAnnotations) }
+    // Always check for an annotated constructor first even if the annotated. Otherwise something
+    // annotated with `@Contributes*` with contributesAsInject enabled may fall back to just using
+    // the primary constructor
+    constructors
+      .singleOrNull { constructor -> constructor.isAnnotatedWithAny(injectAnnotations) }
+      ?.let {
+        return it
+      }
+    if (isClassAnnotatedInject) {
+      primaryConstructor
+    } else {
+      null
+    }
   }
 }
 
