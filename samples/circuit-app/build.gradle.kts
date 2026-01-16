@@ -55,7 +55,7 @@ kotlin {
     }
     commonTest { dependencies { implementation(libs.kotlin.test) } }
     jvmMain { dependencies { implementation(compose.desktop.currentOs) } }
-    wasmJsMain { dependencies { implementation(libs.components.resources) } }
+    wasmJsMain { dependencies { implementation(libs.compose.components.resources) } }
   }
 }
 
