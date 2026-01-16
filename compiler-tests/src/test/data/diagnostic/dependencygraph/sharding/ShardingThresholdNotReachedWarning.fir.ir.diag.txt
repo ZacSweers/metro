@@ -1,1 +1,1 @@
-/ShardingThresholdNotReachedWarning.kt:(445,453): warning: Graph sharding is configured with keysPerGraphShard=5, but graph 'Impl' has only 1 bindings (threshold is 5), so sharding is not applied.
+/ShardingThresholdNotReachedWarning.kt:(446,454): warning: Graph sharding is configured with keysPerGraphShard=5, but graph 'Impl' has only 1 bindings (threshold is 5), so sharding is not applied.
