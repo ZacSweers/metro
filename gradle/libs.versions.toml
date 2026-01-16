@@ -23,7 +23,7 @@ circuit = "0.30.0"
 compose-jb = "1.10.0"
 jetbrains-lifecycle-navigation3 = "2.10.0-alpha07"
 jetbrains-navigation3 = "1.0.0-alpha06"
-dagger = "2.57.2"
+dagger = "2.58"
 gjf = "1.33.0"
 jdk = "24"
 robolectric = "4.16"
@@ -99,7 +99,7 @@ anvil-annotations = { module = "dev.zacsweers.anvil:annotations", version.ref = 
 anvil-annotations-optional = { module = "dev.zacsweers.anvil:annotations-optional", version.ref = "anvil" }
 anvil-kspCompiler = { module = "dev.zacsweers.anvil:compiler", version.ref = "anvil" }
 
-clikt = "com.github.ajalt.clikt:clikt:5.0.3"
+clikt = "com.github.ajalt.clikt:clikt:5.1.0"
 
 circuit-codegen = { module = "com.slack.circuit:circuit-codegen", version.ref = "circuit" }
 circuit-foundation = { module = "com.slack.circuit:circuit-foundation", version.ref = "circuit" }

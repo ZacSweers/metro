@@ -692,6 +692,12 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     val function: IrFunction?,
     val isFromInjectorFunction: Boolean,
     val targetClassId: ClassId,
+    /**
+     * MembersInjector typekeys for supertypes that also have member injections. This ensures the
+     * binding graph correctly tracks that injecting a subtype depends on injecting all its
+     * supertypes' members.
+     */
+    val supertypeMembersInjectorKeys: List<IrContextualTypeKey> = emptyList(),
   ) : IrBinding {
     override val typeKey: IrTypeKey = contextualTypeKey.typeKey
 
@@ -700,10 +706,13 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val isImplicitlyDeferrable: Boolean = true
 
     override val dependencies: List<IrContextualTypeKey> by memoize {
+      // Note: supertypeMembersInjectorKeys are NOT included here because they're handled
+      // specially by BindingPropertyCollector (only processed if they exist in the graph).
       parameters.nonDispatchParameters
         // Instance parameters are implicitly assisted in this scenario and marked as such in FIR
         .filterNot { it.isAssisted }
         .map { it.contextualTypeKey }
+        .plus(supertypeMembersInjectorKeys)
     }
 
     override val scope: IrAnnotation? = null

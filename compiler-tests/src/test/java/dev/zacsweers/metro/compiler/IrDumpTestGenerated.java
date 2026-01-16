@@ -396,6 +396,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("MultibindingInParentMemberInjectedClass.kt")
+    public void testMultibindingInParentMemberInjectedClass() {
+      runTest("compiler-tests/src/test/data/dump/ir/multibindings/MultibindingInParentMemberInjectedClass.kt");
+    }
+
+    @Test
     @TestMetadata("MultibindingProviderAccessPropagatesRefCount.kt")
     public void testMultibindingProviderAccessPropagatesRefCount() {
       runTest("compiler-tests/src/test/data/dump/ir/multibindings/MultibindingProviderAccessPropagatesRefCount.kt");
