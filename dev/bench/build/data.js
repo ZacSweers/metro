@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1768544621120,
+  "lastUpdate": 1768581912694,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -2184,6 +2184,62 @@ window.BENCHMARK_DATA = {
             "value": 19897.49,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -0.75%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Andrius Semionovas",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Andrius Semionovas",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "6b2635f4~1",
+          "message": "[before] Add repro for Multibinding in parent class causing",
+          "timestamp": "2026-01-16T16:07:25Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/6b2635f4b879f143cd7afd3b1fb7b1f6b437b1f3"
+        },
+        "date": 1768581912694,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19737.288,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Andrius Semionovas",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Andrius Semionovas",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "6b2635f4b879f143cd7afd3b1fb7b1f6b437b1f3",
+          "message": "[after] Add repro for Multibinding in parent class causing",
+          "timestamp": "2026-01-16T16:07:25Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/6b2635f4b879f143cd7afd3b1fb7b1f6b437b1f3"
+        },
+        "date": 1768581912695,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19512.788,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -1.14%"
           }
         ]
       }

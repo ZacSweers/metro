@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1768544620977,
+  "lastUpdate": 1768581912548,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -2184,6 +2184,62 @@ window.BENCHMARK_DATA = {
             "value": 0.21806336116806802,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: +1.68%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Andrius Semionovas",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Andrius Semionovas",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "6b2635f4~1",
+          "message": "[before] Add repro for Multibinding in parent class causing",
+          "timestamp": "2026-01-16T16:07:25Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/6b2635f4b879f143cd7afd3b1fb7b1f6b437b1f3"
+        },
+        "date": 1768581912548,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.22412392618116406,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Andrius Semionovas",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Andrius Semionovas",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "6b2635f4b879f143cd7afd3b1fb7b1f6b437b1f3",
+          "message": "[after] Add repro for Multibinding in parent class causing",
+          "timestamp": "2026-01-16T16:07:25Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/6b2635f4b879f143cd7afd3b1fb7b1f6b437b1f3"
+        },
+        "date": 1768581912549,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.21283068192132762,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: -5.04%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
