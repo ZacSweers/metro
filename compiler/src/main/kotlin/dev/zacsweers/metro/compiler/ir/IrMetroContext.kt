@@ -15,14 +15,10 @@ import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.tracer
 import java.io.File
 import java.nio.file.Path
-import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.appendText
-import kotlin.io.path.createDirectories
 import kotlin.io.path.createFile
 import kotlin.io.path.createParentDirectories
 import kotlin.io.path.deleteIfExists
-import kotlin.io.path.deleteRecursively
-import kotlin.io.path.exists
 import kotlin.io.path.writeText
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
@@ -180,7 +176,7 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
 
       override val lookupTracker: LookupTracker? =
         lookupTracker?.let {
-          if (options.reportsDestination != null) {
+          if (options.reportsEnabled) {
             RecordingLookupTracker(this, lookupTracker)
           } else {
             lookupTracker
@@ -188,7 +184,7 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
         }
 
       override val expectActualTracker: ExpectActualTracker =
-        if (options.reportsDestination != null) {
+        if (options.reportsEnabled) {
           RecordingExpectActualTracker(this, expectActualTracker)
         } else {
           expectActualTracker
@@ -199,15 +195,8 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
 
       private val loggerCache = mutableMapOf<MetroLogger.Type, MetroLogger>()
 
-      @OptIn(ExperimentalPathApi::class)
-      override val reportsDir: Path? by lazy {
-        options.reportsDestination?.run {
-          if (exists()) {
-            deleteRecursively()
-          }
-          createDirectories()
-        }
-      }
+      override val reportsDir: Path?
+        get() = options.reportsDir.value
 
       override val logFile: Path? by lazy {
         reportsDir?.let {

@@ -162,8 +162,8 @@ internal class MetroFirBuiltIns(
   }
 
   internal inline fun writeDiagnostic(fileName: () -> String, text: () -> String) {
-    if (session.isCli()) {
-      options.reportsDestination?.let { writeDiagnostic(it, fileName(), text()) }
+    if (session.isCli() && options.reportsEnabled) {
+      options.reportsDir.value?.let { writeDiagnostic(it, fileName(), text()) }
     }
   }
 
