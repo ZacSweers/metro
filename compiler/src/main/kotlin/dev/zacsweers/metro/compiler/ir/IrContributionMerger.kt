@@ -164,7 +164,11 @@ internal class IrContributionMerger(
     }
 
     if (unmatchedExclusions.isNotEmpty()) {
-      // TODO warn about unmatched exclusions
+      writeDiagnostic({
+        "merging-unmatched-exclusions-ir-${primaryScope.asFqNameString()}.txt"
+      }) {
+        unmatchedExclusions.map { it.asFqNameString() }.sorted().joinToString("\n")
+      }
     }
 
     // Process replacements from both regular contributions and binding containers.
@@ -235,12 +239,20 @@ internal class IrContributionMerger(
       }
 
       if (unmatchedRankReplacements.isNotEmpty()) {
-        // TODO warn about unmatched rank-based replacements
+        writeDiagnostic({
+          "merging-unmatched-rank-replacements-ir-${primaryScope.asFqNameString()}.txt"
+        }) {
+          unmatchedRankReplacements.map { it.asFqNameString() }.sorted().joinToString("\n")
+        }
       }
     }
 
     if (unmatchedReplacements.isNotEmpty()) {
-      // TODO warn about unmatched replacements
+      writeDiagnostic({
+        "merging-unmatched-replacements-ir-${primaryScope.asFqNameString()}.txt"
+      }) {
+        unmatchedReplacements.map { it.asFqNameString() }.sorted().joinToString("\n")
+      }
     }
 
     // Build and cache the result

@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.GuiceSymbols
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Objects
+import kotlin.contracts.contract
 import org.jetbrains.kotlin.GeneratedDeclarationKey
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.builtins.StandardNames
@@ -75,6 +76,7 @@ import org.jetbrains.kotlin.fir.expressions.unexpandedClassId
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension.TypeResolveService
 import org.jetbrains.kotlin.fir.extensions.NestedClassGenerationContext
 import org.jetbrains.kotlin.fir.extensions.QualifierPartBuilder
+import org.jetbrains.kotlin.fir.java.FirCliSession
 import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.references.impl.FirSimpleNamedReference
 import org.jetbrains.kotlin.fir.references.toResolvedPropertySymbol
@@ -1431,6 +1433,18 @@ internal fun FirFieldSymbol.hasMetroDefault(session: FirSession): Boolean {
     },
     hasDefaultValue = { this@hasMetroDefault.hasInitializer },
   )
+}
+
+@Suppress("NOTHING_TO_INLINE")
+internal inline fun FirSession.isCli(): Boolean {
+  contract { returns(true) implies (this@isCli is FirCliSession) }
+  return this is FirCliSession
+}
+
+@Suppress("NOTHING_TO_INLINE")
+internal inline fun FirSession.isIde(): Boolean {
+  contract { returns(true) implies (this@isIde !is FirCliSession) }
+  return this is FirCliSession
 }
 
 context(compatContext: CompatContext)

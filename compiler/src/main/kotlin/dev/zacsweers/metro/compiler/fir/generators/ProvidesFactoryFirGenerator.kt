@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.isCli
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
@@ -424,7 +425,7 @@ internal class ProvidesFactorySupertypeGenerator(session: FirSession) :
                 ${callable.fir.render()}
               """
                     .trimIndent()
-                if (session is FirCliSession) {
+                if (session.isCli()) {
                   reportCompilerBug(message)
                 } else {
                   // TODO TypeResolveService appears to be unimplemented in the IDE
@@ -478,7 +479,7 @@ internal class ProvidesFactorySupertypeGenerator(session: FirSession) :
     if (parameters.size != parametersWithNulls.size) {
       val message =
         "Could not resolve function type parameters for function type: ${typeRef.render()}"
-      if (session is FirCliSession) {
+      if (session.isCli()) {
         reportCompilerBug(message)
       } else {
         // TODO TypeResolveService appears to be unimplemented in the IDE

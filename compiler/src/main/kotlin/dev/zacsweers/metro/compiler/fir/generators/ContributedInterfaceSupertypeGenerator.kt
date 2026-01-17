@@ -444,7 +444,11 @@ internal class ContributedInterfaceSupertypeGenerator(
     }
 
     if (unmatchedExclusions.isNotEmpty()) {
-      // TODO warn?
+      session.metroFirBuiltIns.writeDiagnostic({
+        "merging-unmatched-exclusions-fir-${classLikeDeclaration.classId.asFqNameString()}.txt"
+      }) {
+        unmatchedExclusions.map { it.asFqNameString() }.sorted().joinToString("\n")
+      }
     }
 
     // Process replacements from native contributions
@@ -489,7 +493,11 @@ internal class ContributedInterfaceSupertypeGenerator(
     }
 
     if (unmatchedReplacements.isNotEmpty()) {
-      // TODO warn about unmatched replacements
+      session.metroFirBuiltIns.writeDiagnostic({
+        "merging-unmatched-replacements-fir-${classLikeDeclaration.classId.asFqNameString()}.txt"
+      }) {
+        unmatchedReplacements.map { it.asFqNameString() }.sorted().joinToString("\n")
+      }
     }
 
     if (session.metroFirBuiltIns.options.enableDaggerAnvilInterop) {
@@ -498,11 +506,15 @@ internal class ContributedInterfaceSupertypeGenerator(
         processRankBasedReplacements(scopes, contributions, typeResolver)
 
       pendingRankReplacements.distinct().forEach { replacedClassId ->
-        removeContribution(replacedClassId, unmatchedReplacements)
+        removeContribution(replacedClassId, unmatchedRankReplacements)
       }
 
       if (unmatchedRankReplacements.isNotEmpty()) {
-        // TODO warn about unmatched rank-based replacements
+        session.metroFirBuiltIns.writeDiagnostic({
+          "merging-unmatched-rank-replacements-fir-${classLikeDeclaration.classId.asFqNameString()}.txt"
+        }) {
+          unmatchedRankReplacements.map { it.asFqNameString() }.sorted().joinToString("\n")
+        }
       }
     }
 
