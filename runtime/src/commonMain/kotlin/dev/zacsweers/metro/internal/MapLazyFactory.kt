@@ -21,14 +21,14 @@ import dev.zacsweers.metro.Provider
  * A [Factory] implementation used to implement [Map] bindings. This factory returns a `Map<K,
  * Lazy<V>>` when calling [.get] (as specified by [Factory]).
  */
-public class MapLazyFactory<K : Any, V : Any> private constructor(map: MutableMap<K, Provider<V>>) :
+public class MapLazyFactory<K : Any, V : Any> private constructor(map: Map<K, Provider<V>>) :
   AbstractMapFactory<K, V, Lazy<V>>(map) {
   /**
    * Returns a `Map<K, Lazy<V>>` whose iteration order is that of the elements given by each of the
    * providers, which are invoked in the order given at creation.
    */
   override fun invoke(): Map<K, Lazy<V>> {
-    val result: MutableMap<K, Lazy<V>> = newLinkedHashMapWithExpectedSize(contributingMap().size)
+    val result = newLinkedHashMapWithExpectedSize<K, Lazy<V>>(contributingMap().size)
     for (entry in contributingMap().entries) {
       result[entry.key] = DoubleCheck.lazy<Provider<V>, V>(entry.value)
     }
@@ -53,18 +53,18 @@ public class MapLazyFactory<K : Any, V : Any> private constructor(map: MutableMa
   }
 
   public companion object {
-    private val EMPTY: Provider<MutableMap<Any, Any>> = InstanceFactory(mutableMapOf())
+    private val EMPTY: Provider<Map<Any, Any>> = InstanceFactory(mutableMapOf())
 
     /** Returns a new [Builder] */
     public fun <K : Any, V : Any> builder(size: Int): Builder<K, V> {
       return Builder(size)
     }
 
-    /** Returns a factory of an empty map. */
+    /** Returns a provider of an empty map. */
     // safe contravariant cast
-    public fun <K, V> emptyMapProvider(): Provider<MutableMap<K, Lazy<V>>> {
+    public fun <K, V> empty(): Provider<Map<K, Lazy<V>>> {
       @Suppress("UNCHECKED_CAST")
-      return EMPTY as Provider<MutableMap<K, Lazy<V>>>
+      return EMPTY as Provider<Map<K, Lazy<V>>>
     }
   }
 }
