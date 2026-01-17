@@ -264,8 +264,11 @@ internal class MultibindingExpressionGenerator(
     sourceBindings: List<IrBinding>,
     keyType: IrType,
     valueType: IrType,
-    originalValueContextKey: IrContextualTypeKey,
+    canonicalValueContextKey: IrContextualTypeKey,
     valueAccessType: AccessType,
+    wrapInLazy: Boolean,
+    wrapInProviderLazy: Boolean,
+    valueFrameworkSymbols: FrameworkSymbols,
     fieldInitKey: IrTypeKey?,
   ): IrExpression =
     with(scope) {
@@ -288,21 +291,56 @@ internal class MultibindingExpressionGenerator(
               // This is the mutable map receiver
               val functionReceiver = function.extensionReceiverParameterCompat!!
               for (binding in sourceBindings) {
+                // Build the context key for generating the binding argument
+                val bindingContextKey =
+                  if (wrapInLazy || wrapInProviderLazy) {
+                    // For lazy wrapping, we need Provider<canonical> with the correct provider type
+                    canonicalValueContextKey
+                      .wrapInProvider(valueFrameworkSymbols.canonicalProviderType.owner)
+                      .withIrTypeKey(binding.typeKey)
+                  } else {
+                    // For non-lazy, use the original context key
+                    canonicalValueContextKey.withIrTypeKey(binding.typeKey)
+                  }
+
+                var valueExpr =
+                  generateMultibindingArgument(
+                    binding,
+                    bindingContextKey,
+                    fieldInitKey,
+                    accessType = valueAccessType,
+                  )
+
+                // If we need to wrap in Lazy, convert Provider<V> to Lazy<V>
+                if (wrapInLazy) {
+                  // Use type converter to handle Provider -> Lazy conversion correctly
+                  // This handles framework-specific conversions (Metro, Dagger, etc.)
+                  // valueType is the wrapped type (e.g., Lazy<Int> or dagger.Lazy<Int>)
+                  val lazyTargetKey =
+                    valueType.asContextualTypeKey(
+                      null,
+                      hasDefault = false,
+                      patchMutableCollections = false,
+                      declaration = null,
+                    )
+                  valueExpr =
+                    with(metroSymbols.providerTypeConverter) { valueExpr.convertTo(lazyTargetKey) }
+                } else if (wrapInProviderLazy) {
+                  // For Provider<Lazy<V>>, use ProviderOfLazy.create(provider)
+                  // This wraps Provider<V> to produce Provider<Lazy<V>>
+                  // Use framework-specific version for Dagger interop
+                  valueExpr =
+                    irInvoke(
+                      callee = valueFrameworkSymbols.providerOfLazyCreate,
+                      typeHint = valueType, // Provider<Lazy<V>>
+                      args = listOf(valueExpr),
+                    )
+                }
+
                 +irInvoke(
                   dispatchReceiver = irGet(functionReceiver),
                   callee = metroSymbols.mutableMapPut.symbol,
-                  args =
-                    listOf(
-                      generateMapKeyLiteral(binding),
-                      generateMultibindingArgument(
-                        binding,
-                        // Use the same context but with this binding's type key (which will have
-                        // its MultibindingElement qualifier key)
-                        originalValueContextKey.withIrTypeKey(binding.typeKey),
-                        fieldInitKey,
-                        accessType = valueAccessType,
-                      ),
-                    ),
+                  args = listOf(generateMapKeyLiteral(binding), valueExpr),
                 )
               }
             }
@@ -453,6 +491,18 @@ internal class MultibindingExpressionGenerator(
         )
       val valueProviderSymbols = metroSymbols.providerSymbolsFor(originalValueType)
 
+      // For all map factories, put() takes Provider<V> where V is the canonical type.
+      // MapLazyFactory and MapProviderLazyFactory internally convert Provider<V> to Lazy<V>
+      // or Provider<Lazy<V>>. So we always use the canonical type for put() arguments.
+      val canonicalValueType = valueWrappedType.canonicalType()
+      val canonicalValueContextKey =
+        canonicalValueType.asContextualTypeKey(
+          null,
+          hasDefault = false,
+          patchMutableCollections = false,
+          declaration = binding.declaration,
+        )
+
       val valueType: IrType = rawValueTypeMetadata.typeKey.type
 
       val size = binding.sourceBindings.size
@@ -539,13 +589,32 @@ internal class MultibindingExpressionGenerator(
         if (accessType == AccessType.INSTANCE) {
           // Multiple elements but only needs a Map<Key, Value> type
           // Even if the value type is Provider<Value>, we'll denote it with `valueAccessType`
+
+          // - For Lazy/ProviderLazy maps, we need to get Provider<canonical> and wrap it
+          // - For Map<K, Lazy<V>> (pure Lazy, not Provider<Lazy>):
+          //   We need to get Provider<canonical> and wrap it in DoubleCheck.lazy()
+          // - For Map<K, Provider<Lazy<V>>>:
+          //   We need to get Provider<canonical> and wrap it in Provider { lazy(provider) }
+          // - For Map<K, Provider<V>> or Map<K, V>:
+          //   Use the original context key directly
+          val needsManualLazyWrap = valueIsWrappedInLazy
+          val needsAnyLazyWrap = needsManualLazyWrap || valueIsProviderLazy
           return generateMapBuilderExpression(
             sourceBindings = sourceBindings,
             keyType = keyType,
             valueType = valueWrappedType.toIrType(),
-            originalValueContextKey = originalValueContextKey,
+            canonicalValueContextKey =
+              if (needsAnyLazyWrap) canonicalValueContextKey else originalValueContextKey,
             valueAccessType =
-              if (valueIsWrappedInProvider) AccessType.PROVIDER else AccessType.INSTANCE,
+              when {
+                // For any lazy maps, we need Provider<canonical> to wrap
+                needsAnyLazyWrap -> AccessType.PROVIDER
+                valueIsWrappedInProvider -> AccessType.PROVIDER
+                else -> AccessType.INSTANCE
+              },
+            wrapInLazy = needsManualLazyWrap,
+            wrapInProviderLazy = valueIsProviderLazy,
+            valueFrameworkSymbols = valueProviderSymbols,
             fieldInitKey = fieldInitKey,
           )
         } else {
@@ -577,6 +646,7 @@ internal class MultibindingExpressionGenerator(
               valueIsWrappedInLazy -> valueProviderSymbols.mapLazyFactoryBuilderPutFunction
               else -> valueProviderSymbols.mapFactoryBuilderPutFunction
             }
+
           val putAllFunction =
             when {
               valueIsProviderLazy ->
@@ -644,7 +714,9 @@ internal class MultibindingExpressionGenerator(
                     generateMapKeyLiteral(sourceBinding),
                     generateMultibindingArgument(
                       sourceBinding,
-                      originalValueContextKey
+                      // Use canonical type - all map factories take Provider<V> where V is
+                      // canonical
+                      canonicalValueContextKey
                         .wrapInProvider(providerType)
                         .withIrTypeKey(sourceBinding.typeKey),
                       fieldInitKey,
