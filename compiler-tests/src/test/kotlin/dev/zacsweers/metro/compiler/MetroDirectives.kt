@@ -66,6 +66,10 @@ object MetroDirectives : SimpleDirectivesContainer() {
     enumDirective<MetroOptions.DiagnosticSeverity>(
       "Control diagnostic severity reporting of @Contributes*-annotated declarations that are non-public."
     )
+  val UNUSED_GRAPH_INPUTS_SEVERITY by
+    enumDirective<MetroOptions.DiagnosticSeverity>(
+      "Control diagnostic severity reporting of unused graph inputs (factory parameters that are not used by the graph)."
+    )
   val CONTRIBUTES_AS_INJECT by
     directive(
       "If enabled, treats `@Contributes*` annotations (except ContributesTo) as implicit `@Inject` annotations."

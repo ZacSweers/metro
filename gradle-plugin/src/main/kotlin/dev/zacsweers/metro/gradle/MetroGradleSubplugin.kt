@@ -330,6 +330,7 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
               extension.interopAnnotationsNamedArgSeverity,
             )
           )
+          add(lazyOption("unused-graph-inputs-severity", extension.unusedGraphInputsSeverity))
           add(
             lazyOption(
               "enable-top-level-function-injection",

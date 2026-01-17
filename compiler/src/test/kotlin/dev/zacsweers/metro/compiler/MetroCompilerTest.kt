@@ -130,6 +130,8 @@ abstract class MetroCompilerTest {
                 processor.option(entry.raw.cliOption, warnOnInjectAnnotationPlacement)
               MetroOption.INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY ->
                 processor.option(entry.raw.cliOption, interopAnnotationsNamedArgSeverity)
+              MetroOption.UNUSED_GRAPH_INPUTS_SEVERITY ->
+                processor.option(entry.raw.cliOption, unusedGraphInputsSeverity)
               MetroOption.LOGGING -> {
                 if (enabledLoggers.isEmpty()) continue
                 processor.option(entry.raw.cliOption, enabledLoggers.joinToString("|") { it.name })

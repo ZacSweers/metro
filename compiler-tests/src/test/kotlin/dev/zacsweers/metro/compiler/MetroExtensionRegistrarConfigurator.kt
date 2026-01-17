@@ -100,6 +100,9 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         module.directives.singleOrZeroValue(MetroDirectives.NON_PUBLIC_CONTRIBUTION_SEVERITY)?.let {
           nonPublicContributionSeverity = it
         }
+        module.directives.singleOrZeroValue(MetroDirectives.UNUSED_GRAPH_INPUTS_SEVERITY)?.let {
+          unusedGraphInputsSeverity = it
+        }
         module.directives.singleOrZeroValue(MetroDirectives.MAX_IR_ERRORS_COUNT)?.let {
           maxIrErrorsCount = it
         }

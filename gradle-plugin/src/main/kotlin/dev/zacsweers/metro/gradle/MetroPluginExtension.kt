@@ -248,6 +248,16 @@ constructor(
     objects.property(DiagnosticSeverity::class.javaObjectType).convention(DiagnosticSeverity.NONE)
 
   /**
+   * Configures the Metro compiler plugin to warn, error, or do nothing when it encounters unused
+   * graph inputs (graph factory parameters or directly included binding containers that are not
+   * used by the graph).
+   *
+   * Disabled by default.
+   */
+  public val unusedGraphInputsSeverity: Property<DiagnosticSeverity> =
+    objects.property(DiagnosticSeverity::class.javaObjectType).convention(DiagnosticSeverity.NONE)
+
+  /**
    * If enabled, treats `@Contributes*` annotations (except ContributesTo) as implicit `@Inject`
    * annotations.
    *

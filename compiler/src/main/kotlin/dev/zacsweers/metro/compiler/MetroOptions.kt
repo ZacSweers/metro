@@ -284,6 +284,18 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       valueMapper = { it },
     )
   ),
+  UNUSED_GRAPH_INPUTS_SEVERITY(
+    RawMetroOption(
+      name = "unused-graph-inputs-severity",
+      defaultValue = MetroOptions.DiagnosticSeverity.NONE.name,
+      valueDescription = "NONE|WARN|ERROR",
+      description =
+        "Control diagnostic severity reporting of unused graph inputs (factory parameters that are not used by the graph).",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it },
+    )
+  ),
   LOGGING(
     RawMetroOption(
       name = "logging",
@@ -787,6 +799,10 @@ public data class MetroOptions(
     MetroOption.INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY.raw.defaultValue.expectAs<String>().let {
       DiagnosticSeverity.valueOf(it)
     },
+  public val unusedGraphInputsSeverity: DiagnosticSeverity =
+    MetroOption.UNUSED_GRAPH_INPUTS_SEVERITY.raw.defaultValue.expectAs<String>().let {
+      DiagnosticSeverity.valueOf(it)
+    },
   public val enabledLoggers: Set<MetroLogger.Type> =
     if (debug) {
       // Debug enables _all_
@@ -902,6 +918,7 @@ public data class MetroOptions(
     public var warnOnInjectAnnotationPlacement: Boolean = base.warnOnInjectAnnotationPlacement
     public var interopAnnotationsNamedArgSeverity: DiagnosticSeverity =
       base.interopAnnotationsNamedArgSeverity
+    public var unusedGraphInputsSeverity: DiagnosticSeverity = base.unusedGraphInputsSeverity
     public var enabledLoggers: MutableSet<MetroLogger.Type> = base.enabledLoggers.toMutableSet()
     public var enableDaggerRuntimeInterop: Boolean = base.enableDaggerRuntimeInterop
     public var enableGuiceRuntimeInterop: Boolean = base.enableGuiceRuntimeInterop
@@ -1094,6 +1111,7 @@ public data class MetroOptions(
         optionalBindingBehavior = optionalBindingBehavior,
         warnOnInjectAnnotationPlacement = warnOnInjectAnnotationPlacement,
         interopAnnotationsNamedArgSeverity = interopAnnotationsNamedArgSeverity,
+        unusedGraphInputsSeverity = unusedGraphInputsSeverity,
         enabledLoggers = enabledLoggers,
         enableDaggerRuntimeInterop = enableDaggerRuntimeInterop,
         enableGuiceRuntimeInterop = enableGuiceRuntimeInterop,
@@ -1218,6 +1236,12 @@ public data class MetroOptions(
 
           MetroOption.INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY ->
             interopAnnotationsNamedArgSeverity =
+              configuration.getAsString(entry).let {
+                DiagnosticSeverity.valueOf(it.uppercase(Locale.US))
+              }
+
+          MetroOption.UNUSED_GRAPH_INPUTS_SEVERITY ->
+            unusedGraphInputsSeverity =
               configuration.getAsString(entry).let {
                 DiagnosticSeverity.valueOf(it.uppercase(Locale.US))
               }

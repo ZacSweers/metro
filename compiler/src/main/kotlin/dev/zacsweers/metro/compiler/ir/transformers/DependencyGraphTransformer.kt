@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.compiler.ExitProcessingException
 import dev.zacsweers.metro.compiler.MetroLogger
+import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
@@ -571,6 +572,17 @@ internal class DependencyGraphTransformer(
     bindingGraph: IrBindingGraph,
     graphDeclaration: IrClass,
   ) {
+    val severity = options.unusedGraphInputsSeverity
+    if (!severity.isEnabled) return
+
+    val diagnosticFactory =
+      when (severity) {
+        MetroOptions.DiagnosticSeverity.WARN -> MetroDiagnostics.METRO_WARNING
+        MetroOptions.DiagnosticSeverity.ERROR -> MetroDiagnostics.METRO_ERROR
+        // Already checked above, but for exhaustive when
+        MetroOptions.DiagnosticSeverity.NONE -> return
+      }
+
     if (unusedKeys.isNotEmpty()) {
       val unusedGraphInputs =
         unusedKeys.mapNotNull {
@@ -607,14 +619,12 @@ internal class DependencyGraphTransformer(
           }
         }
         unusedBinding.irElement?.let { irElement ->
-          diagnosticReporter
-            .at(irElement, graphDeclaration.file)
-            .report(MetroDiagnostics.METRO_WARNING, message)
+          diagnosticReporter.at(irElement, graphDeclaration.file).report(diagnosticFactory, message)
           continue
         }
         reportCompat(
           irDeclarations = sequenceOf(unusedBinding.reportableDeclaration, graphDeclaration),
-          factory = MetroDiagnostics.METRO_WARNING,
+          factory = diagnosticFactory,
           a = message,
         )
       }

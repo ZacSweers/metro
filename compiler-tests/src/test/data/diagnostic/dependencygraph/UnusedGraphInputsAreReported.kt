@@ -1,5 +1,6 @@
 // RUN_PIPELINE_TILL: BACKEND
 // RENDER_IR_DIAGNOSTICS_FULL_TEXT
+// UNUSED_GRAPH_INPUTS_SEVERITY: WARN
 
 // Transitively includes ones are not reported as they may be getting reused
 @BindingContainer class TransitiveUnused
