@@ -166,6 +166,7 @@ internal class CreateGraphTransformer(
         isFactory = isFactory,
         context = context,
         containingFunction = nearestDeclaration,
+        sourceExpression = expression,
       )
 
     // Replace with constructor call or factory creation
