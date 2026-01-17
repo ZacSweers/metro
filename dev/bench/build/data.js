@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1768605372436,
+  "lastUpdate": 1768611960619,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -2464,6 +2464,62 @@ window.BENCHMARK_DATA = {
             "value": 19040.456,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +0.38%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "f4d7c7d8~1",
+          "message": "[before] Improve dynamic graph handling for replaced keys a",
+          "timestamp": "2026-01-17T00:30:18Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/f4d7c7d861bd853b2c7ab20e167d4bc0e691d3c2"
+        },
+        "date": 1768611960619,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 21249.012,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "f4d7c7d861bd853b2c7ab20e167d4bc0e691d3c2",
+          "message": "[after] Improve dynamic graph handling for replaced keys a",
+          "timestamp": "2026-01-17T00:30:18Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/f4d7c7d861bd853b2c7ab20e167d4bc0e691d3c2"
+        },
+        "date": 1768611960620,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20423.036,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -3.89%"
           }
         ]
       }
