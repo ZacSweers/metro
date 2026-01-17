@@ -21,6 +21,7 @@ import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrFunction
@@ -51,6 +52,7 @@ internal data class DependencyGraphNode(
   val optionalKeys: Map<IrTypeKey, Set<BindsOptionalOfCallable>>,
   /** Binding containers that need a managed instance. */
   val bindingContainers: Set<IrClass>,
+  val annotationDeclaredBindingContainers: Map<IrTypeKey, IrElement>,
   // Set of all dynamic callables for each type key (allows tracking multiple dynamic bindings)
   val dynamicTypeKeys: Map<IrTypeKey, Set<IrBindingContainerCallable>>,
   /** Fake overrides of binds functions that need stubbing. */
@@ -138,6 +140,8 @@ internal data class DependencyGraphNode(
     abstract val function: IrFunction
     abstract val parameters: Parameters
     abstract val bindingContainersParameterIndices: BitField
+
+    val parametersByTypeKey by lazy { parameters.regularParameters.associateBy { it.typeKey } }
 
     val typeKey by memoize { IrTypeKey(type.typeWith()) }
 
