@@ -925,6 +925,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Reports">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#unmatched-exclusions-and-replacements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unmatched Exclusions and Replacements
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1454,6 +1471,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Reports">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#unmatched-exclusions-and-replacements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unmatched Exclusions and Replacements
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1533,6 +1567,17 @@
 <p class="admonition-title">Warning</p>
 <p>The Kotlin Gradle Plugin does <em>not</em> include file inputs like <code>reportsDestination</code> as build inputs, so you may need to compile with <code>--rerun</code> to force recompilation after adding this flag.</p>
 </div>
+<h3 id="unmatched-exclusions-and-replacements">Unmatched Exclusions and Replacements<a class="headerlink" href="#unmatched-exclusions-and-replacements" title="Permanent link">&para;</a></h3>
+<p>When <code>reportsDestination</code> is configured, Metro will report any unmatched exclusions or replacements during contribution merging. This can help identify cases where a graph excludes or replaces a class that isn&rsquo;t actually present in the merged contributions.</p>
+<p>Reports are written to files like:</p>
+<ul>
+<li><code>merging-unmatched-exclusions-fir-&lt;graph&gt;.txt</code></li>
+<li><code>merging-unmatched-replacements-fir-&lt;graph&gt;.txt</code></li>
+<li><code>merging-unmatched-rank-replacements-fir-&lt;graph&gt;.txt</code></li>
+<li><code>merging-unmatched-exclusions-ir-&lt;scope&gt;.txt</code></li>
+<li><code>merging-unmatched-replacements-ir-&lt;scope&gt;.txt</code></li>
+<li><code>merging-unmatched-rank-replacements-ir-&lt;scope&gt;.txt</code></li>
+</ul>
 <h2 id="graph-analysis-visualization">Graph Analysis &amp; Visualization<a class="headerlink" href="#graph-analysis-visualization" title="Permanent link">&para;</a></h2>
 <p>Metro provides Gradle tasks for generating interactive HTML visualizations of your dependency graphs. See <a href="../graph-analysis/">Graph Analysis</a> for full documentation on:</p>
 <ul>
