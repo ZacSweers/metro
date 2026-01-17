@@ -21,6 +21,8 @@ internal interface FrameworkSymbols {
   val canonicalProviderType: IrClassSymbol
   val doubleCheckCompanionObject: IrClassSymbol
   val doubleCheckProvider: IrSimpleFunctionSymbol
+  val doubleCheckLazy: IrSimpleFunctionSymbol
+  val providerOfLazyCreate: IrSimpleFunctionSymbol
   val setFactoryBuilder: IrClassSymbol
   val setFactoryBuilderFunction: IrSimpleFunctionSymbol
   val setFactoryBuilderAddProviderFunction: IrSimpleFunctionSymbol
@@ -64,6 +66,8 @@ internal abstract class BaseFrameworkSymbols : FrameworkSymbols {
   override val doubleCheckProvider by lazy {
     doubleCheckCompanionObject.requireSimpleFunction("provider")
   }
+  // Note: doubleCheckLazy is not implemented in base class - each subclass must implement it
+  // because Metro uses "lazy" while Dagger uses "lazyFromMetroProvider"
 
   override val setFactoryBuilder: IrClassSymbol by lazy {
     setFactory.owner.nestedClasses.first { it.name.asString() == "Builder" }.symbol
@@ -161,7 +165,21 @@ internal class MetroFrameworkSymbols(
     )!!
   }
 
-  val doubleCheckLazy by lazy { doubleCheckCompanionObject.requireSimpleFunction("lazy") }
+  override val doubleCheckLazy by lazy { doubleCheckCompanionObject.requireSimpleFunction("lazy") }
+
+  private val providerOfLazy: IrClassSymbol by lazy {
+    pluginContext.referenceClass(
+      ClassId(metroRuntimeInternal.packageFqName, "ProviderOfLazy".asName())
+    )!!
+  }
+
+  private val providerOfLazyCompanionObject by lazy {
+    providerOfLazy.owner.companionObject()!!.symbol
+  }
+
+  override val providerOfLazyCreate: IrSimpleFunctionSymbol by lazy {
+    providerOfLazyCompanionObject.requireSimpleFunction(Symbols.StringNames.CREATE)
+  }
 
   override val setFactory: IrClassSymbol by lazy {
     pluginContext.referenceClass(
@@ -470,6 +488,22 @@ internal class DaggerSymbols(
     pluginContext.referenceClass(
       ClassId(daggerInteropRuntimeInternal.packageFqName, "DaggerInteropDoubleCheck".asName())
     )!!
+  }
+
+  override val doubleCheckLazy by lazy {
+    // Use lazyFromDaggerProvider since the canonical provider type in Dagger mode is
+    // dagger.internal.Provider
+    doubleCheckCompanionObject.requireSimpleFunction("lazyFromDaggerProvider")
+  }
+
+  private val providerOfLazy: IrClassSymbol by lazy {
+    pluginContext.referenceClass(
+      ClassId(daggerRuntimeInternal.packageFqName, "ProviderOfLazy".asName())
+    )!!
+  }
+
+  override val providerOfLazyCreate: IrSimpleFunctionSymbol by lazy {
+    providerOfLazy.requireSimpleFunction(Symbols.StringNames.CREATE)
   }
 
   override val setFactory: IrClassSymbol by lazy {
