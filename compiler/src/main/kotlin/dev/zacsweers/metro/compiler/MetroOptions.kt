@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
-import dev.drewhamilton.poko.Poko
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.Locale
@@ -729,11 +728,10 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
   }
 }
 
-@Poko
-public class MetroOptions(
+public data class MetroOptions(
   public val debug: Boolean = MetroOption.DEBUG.raw.defaultValue.expectAs(),
   public val enabled: Boolean = MetroOption.ENABLED.raw.defaultValue.expectAs(),
-  private val reportsDestination: Path? =
+  private val rawReportsDestination: Path? =
     MetroOption.REPORTS_DESTINATION.raw.defaultValue
       .expectAs<String>()
       .takeUnless(String::isBlank)
@@ -868,11 +866,11 @@ public class MetroOptions(
 ) {
 
   public val reportsEnabled: Boolean
-    get() = reportsDestination != null
+    get() = rawReportsDestination != null
 
   @OptIn(ExperimentalPathApi::class)
   public val reportsDir: Lazy<Path?> = lazy {
-    reportsDestination?.apply {
+    rawReportsDestination?.apply {
       if (exists()) {
         deleteRecursively()
       }
@@ -885,7 +883,7 @@ public class MetroOptions(
   public class Builder(base: MetroOptions = MetroOptions()) {
     public var debug: Boolean = base.debug
     public var enabled: Boolean = base.enabled
-    public var reportsDestination: Path? = base.reportsDestination
+    public var reportsDestination: Path? = base.rawReportsDestination
     public var generateAssistedFactories: Boolean = base.generateAssistedFactories
     public var generateThrowsAnnotations: Boolean = base.generateThrowsAnnotations
     public var enableTopLevelFunctionInjection: Boolean = base.enableTopLevelFunctionInjection
@@ -1079,7 +1077,7 @@ public class MetroOptions(
       return MetroOptions(
         debug = debug,
         enabled = enabled,
-        reportsDestination = reportsDestination,
+        rawReportsDestination = reportsDestination,
         generateAssistedFactories = generateAssistedFactories,
         generateThrowsAnnotations = generateThrowsAnnotations,
         enableTopLevelFunctionInjection = enableTopLevelFunctionInjection,
