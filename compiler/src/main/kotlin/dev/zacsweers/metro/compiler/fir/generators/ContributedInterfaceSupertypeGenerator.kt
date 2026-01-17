@@ -30,6 +30,7 @@ import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.ir.IrRankedBindingProcessing
+import dev.zacsweers.metro.compiler.safePathString
 import dev.zacsweers.metro.compiler.singleOrError
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Optional
@@ -153,7 +154,7 @@ internal class ContributedInterfaceSupertypeGenerator(
         }
 
       session.metroFirBuiltIns.writeDiagnostic({
-        "discovered-hints-fir-${scopeClassId.asFqNameString()}.txt"
+        "discovered-hints-fir-${scopeClassId.safePathString}.txt"
       }) {
         val allFunctions =
           functionsInPackage
@@ -168,7 +169,7 @@ internal class ContributedInterfaceSupertypeGenerator(
             .joinToString("\n")
 
         val contributedIds =
-          contributingClasses.map { it.classId.asFqNameString() }.sorted().joinToString("\n")
+          contributingClasses.map { it.classId.safePathString }.sorted().joinToString("\n")
 
         buildString {
           appendLine("== All functions")
@@ -445,9 +446,9 @@ internal class ContributedInterfaceSupertypeGenerator(
 
     if (unmatchedExclusions.isNotEmpty()) {
       session.metroFirBuiltIns.writeDiagnostic({
-        "merging-unmatched-exclusions-fir-${classLikeDeclaration.classId.asFqNameString()}.txt"
+        "merging-unmatched-exclusions-fir-${classLikeDeclaration.classId.safePathString}.txt"
       }) {
-        unmatchedExclusions.map { it.asFqNameString() }.sorted().joinToString("\n")
+        unmatchedExclusions.map { it.safePathString }.sorted().joinToString("\n")
       }
     }
 
@@ -494,9 +495,9 @@ internal class ContributedInterfaceSupertypeGenerator(
 
     if (unmatchedReplacements.isNotEmpty()) {
       session.metroFirBuiltIns.writeDiagnostic({
-        "merging-unmatched-replacements-fir-${classLikeDeclaration.classId.asFqNameString()}.txt"
+        "merging-unmatched-replacements-fir-${classLikeDeclaration.classId.safePathString}.txt"
       }) {
-        unmatchedReplacements.map { it.asFqNameString() }.sorted().joinToString("\n")
+        unmatchedReplacements.map { it.safePathString }.sorted().joinToString("\n")
       }
     }
 
@@ -511,9 +512,9 @@ internal class ContributedInterfaceSupertypeGenerator(
 
       if (unmatchedRankReplacements.isNotEmpty()) {
         session.metroFirBuiltIns.writeDiagnostic({
-          "merging-unmatched-rank-replacements-fir-${classLikeDeclaration.classId.asFqNameString()}.txt"
+          "merging-unmatched-rank-replacements-fir-${classLikeDeclaration.classId.safePathString}.txt"
         }) {
-          unmatchedRankReplacements.map { it.asFqNameString() }.sorted().joinToString("\n")
+          unmatchedRankReplacements.map { it.safePathString }.sorted().joinToString("\n")
         }
       }
     }

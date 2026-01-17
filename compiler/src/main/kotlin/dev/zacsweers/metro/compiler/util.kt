@@ -268,3 +268,5 @@ internal fun <K, V> MutableMap<K, MutableSet<V>>.getOrInit(key: K): MutableSet<V
 internal fun <K, V> MutableMap<K, MutableList<V>>.getOrInit(key: K): MutableList<V> {
   return getOrPut(key, ::mutableListOf)
 }
+
+internal val ClassId.safePathString: String get() = asFqNameString().replace('.', '_')

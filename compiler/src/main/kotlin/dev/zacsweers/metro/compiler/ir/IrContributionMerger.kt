@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.coneTypeIfResolved
 import dev.zacsweers.metro.compiler.fir.replacesArgument
 import dev.zacsweers.metro.compiler.getAndAdd
+import dev.zacsweers.metro.compiler.safePathString
 import java.util.SortedMap
 import java.util.SortedSet
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
@@ -165,9 +166,9 @@ internal class IrContributionMerger(
 
     if (unmatchedExclusions.isNotEmpty()) {
       writeDiagnostic({
-        "merging-unmatched-exclusions-ir-${primaryScope.asFqNameString()}.txt"
+        "merging-unmatched-exclusions-ir-${primaryScope.safePathString}.txt"
       }) {
-        unmatchedExclusions.map { it.asFqNameString() }.sorted().joinToString("\n")
+        unmatchedExclusions.map { it.safePathString }.sorted().joinToString("\n")
       }
     }
 
@@ -240,18 +241,18 @@ internal class IrContributionMerger(
 
       if (unmatchedRankReplacements.isNotEmpty()) {
         writeDiagnostic({
-          "merging-unmatched-rank-replacements-ir-${primaryScope.asFqNameString()}.txt"
+          "merging-unmatched-rank-replacements-ir-${primaryScope.safePathString}.txt"
         }) {
-          unmatchedRankReplacements.map { it.asFqNameString() }.sorted().joinToString("\n")
+          unmatchedRankReplacements.map { it.safePathString }.sorted().joinToString("\n")
         }
       }
     }
 
     if (unmatchedReplacements.isNotEmpty()) {
       writeDiagnostic({
-        "merging-unmatched-replacements-ir-${primaryScope.asFqNameString()}.txt"
+        "merging-unmatched-replacements-ir-${primaryScope.safePathString}.txt"
       }) {
-        unmatchedReplacements.map { it.asFqNameString() }.sorted().joinToString("\n")
+        unmatchedReplacements.map { it.safePathString }.sorted().joinToString("\n")
       }
     }
 
