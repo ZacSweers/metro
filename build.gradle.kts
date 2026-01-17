@@ -209,7 +209,7 @@ subprojects {
   }
 
   plugins.withId("com.vanniktech.maven.publish") {
-    if (project.path != ":compiler") {
+    if (project.path != ":compiler" && !project.path.startsWith(":compiler-compat")) {
       apply(plugin = "org.jetbrains.dokka")
     }
     configure<MavenPublishBaseExtension> {
@@ -251,6 +251,12 @@ subprojects {
 dependencies {
   dokka(project(":gradle-plugin"))
   dokka(project(":interop-dagger"))
+  dokka(project(":interop-guice"))
+  dokka(project(":interop-jakarta"))
+  dokka(project(":interop-javax"))
+  dokka(project(":metrox-android"))
+  dokka(project(":metrox-viewmodel"))
+  dokka(project(":metrox-viewmodel-compose"))
   dokka(project(":runtime"))
 }
 

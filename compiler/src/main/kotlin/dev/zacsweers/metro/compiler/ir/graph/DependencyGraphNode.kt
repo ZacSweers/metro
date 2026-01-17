@@ -31,7 +31,7 @@ import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.kotlinFqName
-import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.name.ClassId
 
 // Represents an object graph's structure and relationships
@@ -96,7 +96,13 @@ internal data class DependencyGraphNode(
   val publicAccessors by memoize { accessors.mapToSet { it.contextKey.typeKey } }
 
   val reportableSourceGraphDeclaration by memoize {
-    generateSequence(sourceGraph) { it.parentAsClass }
+    if (this@DependencyGraphNode.metroGraph?.origin == Origins.GeneratedDynamicGraph) {
+      val source = metroGraph?.generatedDynamicGraphData?.sourceExpression
+      if (source != null) {
+        return@memoize source
+      }
+    }
+    generateSequence(sourceGraph) { it.parentClassOrNull }
       .firstOrNull {
         // Skip impl graphs
         it.sourceGraphIfMetroGraph == it && it.fileOrNull != null

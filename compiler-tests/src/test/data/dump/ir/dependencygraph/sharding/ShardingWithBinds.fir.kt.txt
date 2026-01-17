@@ -124,32 +124,29 @@ interface TestGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : TestGraph {
-    private val repositoryImplProvider: Provider<RepositoryImpl>
+    internal val shard1: Shard1
 
-    private val serviceProvider: Provider<Service>
+    internal val shard2: Shard2
 
-    private inner class Shard1 {
+    private class Shard1 {
+      internal val repositoryImplProvider: Provider<RepositoryImpl>
+
       constructor() /* primary */ {
         super/*Any*/()
-        /* <init>() */
-
-      }
-
-      fun initialize() {
         <this>.#repositoryImplProvider = Companion.provider<Provider<RepositoryImpl>, RepositoryImpl>(delegate = MetroFactory.create())
       }
 
     }
 
-    private inner class Shard2 {
-      constructor() /* primary */ {
+    private class Shard2 {
+      internal val serviceProvider: Provider<Service>
+
+      internal val graph: Impl
+
+      constructor(graph: Impl) /* primary */ {
         super/*Any*/()
-        /* <init>() */
-
-      }
-
-      fun initialize() {
-        <this>.#serviceProvider = Companion.provider<Provider<Service>, Service>(delegate = Companion.create(repo = <this>.#repositoryImplProvider))
+        <this>.#graph = graph
+        <this>.#serviceProvider = Companion.provider<Provider<Service>, Service>(delegate = Companion.create(repo = <this>.#graph.#shard1.#repositoryImplProvider))
       }
 
     }
@@ -158,18 +155,18 @@ interface TestGraph {
       super/*Any*/()
       /* <init>() */
 
-      <this>.Shard1().initialize()
-      <this>.Shard2().initialize()
+      <this>.#shard1 = Shard1()
+      <this>.#shard2 = Shard2(graph = <this>)
     }
 
     override val repository: Repository
       override get(): Repository {
-        return <this>.#repositoryImplProvider.invoke()
+        return <this>.#shard1.#repositoryImplProvider.invoke()
       }
 
     override val service: Service
       override get(): Service {
-        return <this>.#serviceProvider.invoke()
+        return <this>.#shard2.#serviceProvider.invoke()
       }
 
   }

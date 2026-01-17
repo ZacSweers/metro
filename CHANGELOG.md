@@ -4,12 +4,20 @@ Changelog
 **Unreleased**
 --------------
 
-### New
+### Behavior Changes
 
+- Enable `contributesAsInject` by default. See its docs for more details, but in short this means that `@Inject` is now optional on `@ContributesBinding`, `@ContributesIntoSet`, and `@ContributesIntoMap` annotated declarations.
+  ```kotlin
+  @ContributesBinding(AppScope::class)
+  // @Inject // <-- now implicit!
+  class TacoImpl(...) : Taco
+  ```
 - [Gradle / FIR] Enable FIR hint generation by default on Kotlin `2.3.20-Beta1` or later.
   - By extension, this resolves Metro's most subscribed issue ([#460](https://github.com/ZacSweers/metro/issues/460)) by enabling cross-module contribution/aggregation features in non-jvm/android compilations 🎉.
   - Note that there is a separate known kotlinc issue around qualifier annotations that affects native builds and is targeted for `2.3.20-Beta2`. Follow [#1556](https://github.com/ZacSweers/metro/issues/1556) for updates.
 - [Gradle / FIR] Enable top-level function injection by default on Kotlin `2.3.20-Beta1` or later.
+
+### New
 
 ### Enhancements
 
@@ -38,6 +46,8 @@ Changelog
   This is a known bug in the Kotlin compiler, follow https://github.com/ZacSweers/metro/issues/1556
   ```
 - [IR] Avoid generating unnecessary `Provider` refcounts for bindings only used by graph injector functions.
+- [IR] When reporting graph failures in dynamic graphs, report the original call location in error reporting.
+- [IR/Sharding] Rebalance shard groups after computing shard bindings.
 
 ### Fixes
 
@@ -48,21 +58,17 @@ Changelog
 - [IR] Check for `open` or `final` modality on classes first before searching for injectable constructors.
 - [IR] Mark all supertypes' member injections as dependencies of subtypes' member injections. That's a wordier way of saying that member-injecting a class `Dog` that extends `Animal` also depends on member-injected dependencies of `Animal`.
 - [IR/Native] Work around `Abstract function '___' is not implemented in non-abstract class 'Impl'` info warnings from native compilations.
+- [IR/Dynamic Graphs] Always check if a key is replaced by a dynamic type key when building binding graphs. Previously, some bindings would be added even if a dynamic key was available, resulting in unexpected `DuplicateBinding` errors.
 - [IC] Record lookups of contributed classes when looking up hints from IR. Previously Metro only recorded a lookup of the generated hint function, which appears to not be enough for Kotlin 2.3.20.
 - [IC] Link IR-generated hint function files back to source class via expect-actual tracker to link their compilations. This fixes an edge case where simply changing a contribution scope (or removing it) could leave behind a stale hint file that downstream compilations would incidentally read.
 
-### Changes
+### Misc Changes
 
-- Enable `contributesAsInject` by default. See its docs for more details, but in short this means that `@Inject` is now optional on `@ContributesBinding`, `@ContributesIntoSet`, and `@ContributesIntoMap` annotated declarations.
-  ```kotlin
-  @ContributesBinding(AppScope::class)
-  // @Inject // <-- now implicit!
-  class TacoImpl(...) : Taco
-  ```
 - [IR] Already mentioned above, but worth calling out again — creator-less scoped graph extensions _are no longer cached_ in their parent graphs. Accessors to this will always get new instances now.
 - [IR] Report log files reported from within graph generation now use snake-cased fully-qualified names of the impl graph as the file name suffix.
 - [IR] Do not report similar bindings when a missing binding has type `kotlin.Any`. In practice this reported all available bindings.
 - [interop-dagger] Update to Dagger `2.58`.
+- [Docs] Publish kdocs for guice/jakarta/javax interop and metrox artifacts to doc site.
 - Test Kotlin `2.3.20-Beta1`.
 
 ### Contributors
@@ -126,6 +132,8 @@ Happy new year!
 
 ### Changes
 
+- Generated graph extension impls are now static nested classes rather inner classes. This should be a non-functional change.
+- `DelegateFactory` property fields are now initialized in topological order rather just always first. This should be a non-functional change.
 - [FIR] Change `SUSPICIOUS_MEMBER_INJECT_FUNCTION` diagnostic to be a warning instead of an error.
 - Remove testing of 2.3.0 pre-releases. IntelliJ stable currently builds off Kotlin `2.3.2x` and Android Studio stable currently points to Kotlin `2.2.2x`.
 

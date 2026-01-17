@@ -5,391 +5,413 @@ package dev.zacsweers.metro.compiler.ir.graph.sharding
 import dev.zacsweers.metro.compiler.DEFAULT_KEYS_PER_GRAPH_SHARD
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
+import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
-import dev.zacsweers.metro.compiler.ir.buildBlockBody
-import dev.zacsweers.metro.compiler.ir.createIrBuilder
-import dev.zacsweers.metro.compiler.ir.generateDefaultConstructorBody
-import dev.zacsweers.metro.compiler.ir.graph.InitStatement
+import dev.zacsweers.metro.compiler.ir.graph.GraphPropertyData
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
-import dev.zacsweers.metro.compiler.ir.graph.PropertyInitializer
-import dev.zacsweers.metro.compiler.ir.irInvoke
+import dev.zacsweers.metro.compiler.ir.graph.ensureInitialized
+import dev.zacsweers.metro.compiler.ir.graph.graphPropertyData
 import dev.zacsweers.metro.compiler.ir.reportCompat
-import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
-import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
+import dev.zacsweers.metro.compiler.newName
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
-import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
-import org.jetbrains.kotlin.ir.builders.declarations.addFunction
+import org.jetbrains.kotlin.ir.builders.declarations.addProperty
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
-import org.jetbrains.kotlin.ir.builders.irBlockBody
-import org.jetbrains.kotlin.ir.builders.irCallConstructor
-import org.jetbrains.kotlin.ir.builders.irGet
-import org.jetbrains.kotlin.ir.builders.irSetField
 import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.declarations.IrProperty
-import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.declarations.IrValueParameter
-import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.expressions.IrGetValue
-import org.jetbrains.kotlin.ir.expressions.impl.IrGetValueImpl
 import org.jetbrains.kotlin.ir.util.addChild
-import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
+import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
-import org.jetbrains.kotlin.ir.util.primaryConstructor
-import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
-import org.jetbrains.kotlin.ir.visitors.IrVisitorVoid
-import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
 import org.jetbrains.kotlin.name.Name
-import org.jetbrains.kotlin.platform.jvm.isJvm
 
 /**
  * Generates IR for shard classes when graph sharding is enabled.
  *
  * When a dependency graph has many bindings, the generated class can exceed JVM class size limits.
- * Sharding moves initialization logic into inner shard classes while keeping provider fields on the
- * graph. Each shard exposes `initialize()` to set up a subset of providers. If a shard would exceed
- * the statement limit, its work is split into private `init1()`, `init2()`, etc.
+ * Sharding distributes provider properties across static nested shard classes. Each shard owns a
+ * subset of providers, the main graph class keeps field instances of each shard.
  *
- * Shards are inner classes so they have implicit access to the outer graph's `this` receiver,
- * allowing them to directly set backing fields without needing an explicit parameter.
+ * There are two modes of operation:
+ * 1. **Single shard (graph-as-shard)**: When the graph is small enough, properties are placed
+ *    directly on the graph class. The graph class acts as its own "shard" with no nested classes.
+ * 2. **Multiple shards**: When the graph exceeds the shard threshold, properties are distributed
+ *    across static nested shard classes. Each shard receives a reference to the main graph for
+ *    accessing bound instances and cross-shard dependencies.
  *
- * Example generated structure:
+ * Example generated structure (multiple shards):
  * ```kotlin
  * class AppGraph$Impl : AppGraph {
- *   // Provider fields for all bindings
- *   private val repoProvider: Provider<Repository>
- *   private val apiProvider: Provider<ApiService>
- *   // ... more providers ...
+ *   private val shard1 = Shard1(this)
+ *   private val shard2 = Shard2(this)
  *
- *   private inner class Shard1 {
- *     // When statements fit in one method:
- *     fun initialize() {
- *       repoProvider = provider { Repository.MetroFactory.create() }
- *       apiProvider = provider { ApiService.MetroFactory.create(repoProvider) }
- *       // ... more initializations ...
- *     }
+ *   private class Shard1(private val graph: AppGraph$Impl) {
+ *     val repoProvider: Provider<Repository> = Repository_Factory.create()
+ *     val apiProvider: Provider<ApiService> = ApiService_Factory.create(repoProvider)
  *   }
  *
- *   private inner class Shard2 {
- *     // When statements exceed statementsPerInitFun, they're chunked:
- *     private fun init1() { ... }
- *     private fun init2() { ... }
- *
- *     fun initialize() {
- *       init1()
- *       init2()
- *     }
- *   }
- *
- *   init {
- *     Shard1().initialize()
- *     Shard2().initialize()
+ *   private class Shard2(private val graph: AppGraph$Impl) {
+ *     val serviceProvider: Provider<Service> = Service_Factory.create(graph.shard1.repoProvider)
  *   }
  * }
  * ```
+ *
+ * @param graphClass The main graph implementation class
+ * @param shardBindings Bindings to be distributed across shards
+ * @param plannedGroups Pre-computed shard groups from topological sort (respects SCC boundaries)
+ * @param bindingGraph The binding graph for dependency lookups
+ * @param propertyNameAllocator Name allocator for properties on the graph class
  */
-internal class IrGraphShardGenerator(context: IrMetroContext) : IrMetroContext by context {
+internal class IrGraphShardGenerator(
+  context: IrMetroContext,
+  private val graphClass: IrClass,
+  private val bindingGraph: IrBindingGraph,
+  private val shardBindings: List<ShardBinding>,
+  private val plannedGroups: List<List<IrTypeKey>>?,
+  private val propertyNameAllocator: NameAllocator,
+) : IrMetroContext by context {
 
   /**
-   * Generates shard classes and initialization logic if sharding is needed.
+   * Generates shard classes (or graph-as-shard) and returns the result for the graph generator.
    *
-   * @param deferredInit A callback to append deferred initialization logic (e.g. setDelegate calls)
-   *   to the end of the initialization sequence.
-   * @return A list of initialization statements, or null if no sharding is needed.
+   * @param diagnosticTag Tag for diagnostic output files
+   * @return ShardResult with either multiple shards or graph-as-shard, null if no bindings
    */
-  fun generateShards(
-    graphClass: IrClass,
-    propertyBindings: List<PropertyBinding>,
-    plannedGroups: List<List<IrTypeKey>>?,
-    bindingGraph: IrBindingGraph,
-    diagnosticTag: String,
-    deferredInit: (MutableList<InitStatement>) -> Unit,
-  ): List<InitStatement>? {
-    val shardGroups = planShardGroups(propertyBindings, plannedGroups)
-    if (shardGroups.size <= 1) {
-      // Only warn if user explicitly customized keysPerGraphShard, as this suggests
-      // they expected sharding to occur but the graph is too small
-      if (options.keysPerGraphShard != DEFAULT_KEYS_PER_GRAPH_SHARD) {
-        reportCompat(
-          graphClass,
-          MetroDiagnostics.METRO_WARNING,
-          "Graph sharding is configured with keysPerGraphShard=${options.keysPerGraphShard}, " +
-            "but graph '${graphClass.name.asString()}' has only ${propertyBindings.size} bindings " +
-            "(threshold is ${options.keysPerGraphShard}), so sharding is not applied.",
-        )
-      }
+  context(context: IrMetroContext)
+  fun generateShards(diagnosticTag: String): ShardResult? {
+    if (shardBindings.isEmpty()) {
       return null
     }
 
-    // On JVM, we must relax backing field visibility from private to protected.
-    // Even though shards use the outer class's this receiver (via inner class implicit access),
-    // irSetField() generates direct field access bytecode. The Kotlin compiler only generates
-    // synthetic accessors for source code that the frontend analyzes - our IR is generated
-    // after that phase. Protected (package-private + subclass in JVM) is the minimum visibility
-    // that allows inner class access while avoiding full public exposure.
-    if (pluginContext.platform.isJvm()) {
-      for (binding in propertyBindings) {
-        binding.property.backingField?.visibility = DescriptorVisibilities.PROTECTED
-      }
-    }
-
-    val shardInfos = generateShards(graphClass, shardGroups)
-
-    writeDiagnostic("sharding-plan-${diagnosticTag}.txt") {
-      ShardingDiagnostics.generateShardingPlanReport(
-        graphClass = graphClass,
-        shardInfos = shardInfos,
-        initOrder = shardGroups.indices.toList(),
-        totalBindings = propertyBindings.size,
-        options = options,
-        bindingGraph = bindingGraph,
+    // If sharding is disabled, use graph-as-shard directly without computing shard groups
+    if (!context.options.enableGraphSharding) {
+      val shardLookup = ShardLookup()
+      return ShardResult(
+        shards = listOf(generateGraphAsShard(shardLookup)),
+        shardLookup = shardLookup,
+        isGraphAsShard = true,
       )
     }
 
-    return buildList {
-      // Instantiate each shard and call initialize() inline - no need to store shard instances
-      for (info in shardInfos) {
-        add { dispatchReceiver ->
-          irInvoke(
-            dispatchReceiver =
-              irCallConstructor(info.shardClass.primaryConstructor!!.symbol, emptyList()).apply {
-                this.dispatchReceiver = irGet(dispatchReceiver)
-              },
-            callee = info.initializeFunction.symbol,
-            args =
-              buildList {
-                for (outerParam in info.outerReceiverParams) {
-                  add(irGet(outerParam))
-                }
-              },
-          )
-        }
+    val shardGroups = planShardGroups()
+
+    // Determine if we need actual shard classes or just use the graph class
+    val useNestedShards = shardGroups.size > 1
+
+    // Only warn if user explicitly customized keysPerGraphShard, as this suggests
+    // they expected sharding to occur but the graph is too small
+    if (!useNestedShards && context.options.keysPerGraphShard != DEFAULT_KEYS_PER_GRAPH_SHARD) {
+      context.reportCompat(
+        graphClass,
+        MetroDiagnostics.METRO_WARNING,
+        "Graph sharding is configured with keysPerGraphShard=${context.options.keysPerGraphShard}, " +
+          "but graph '${graphClass.name.asString()}' has only ${shardBindings.size} bindings " +
+          "(threshold is ${context.options.keysPerGraphShard}), so sharding is not applied.",
+      )
+    }
+
+    // Track which shard owns each binding for cross-shard dependency analysis
+    val shardLookup = ShardLookup()
+
+    val shards =
+      if (useNestedShards) {
+        // Create nested shard classes
+        val shards = generateNestedShardClasses(shardGroups, shardLookup)
+        computeShardDependencies(shards, shardLookup)
+        generateShardConstructors(shards, shardLookup)
+        shards
+      } else {
+        // Use graph class as single shard
+        listOf(generateGraphAsShard(shardLookup))
       }
 
-      // Add deferred initialization (e.g., setDelegate calls) at the end
-      deferredInit(this)
+    if (useNestedShards) {
+      writeDiagnostic("sharding-plan-${diagnosticTag}.txt") {
+        ShardingDiagnostics.generateShardingPlanReport(
+          graphClass = graphClass,
+          shards = shards,
+          initOrder = shardGroups.indices.toList(),
+          totalBindings = shardBindings.size,
+          options = context.options,
+          bindingGraph = bindingGraph,
+        )
+      }
     }
+
+    return ShardResult(
+      shards = shards,
+      shardLookup = shardLookup,
+      isGraphAsShard = !useNestedShards,
+    )
   }
 
-  private fun planShardGroups(
-    propertyBindings: List<PropertyBinding>,
-    plannedGroups: List<List<IrTypeKey>>?,
-  ): List<List<PropertyBinding>> {
-    if (propertyBindings.isEmpty() || plannedGroups.isNullOrEmpty()) {
-      return listOf(propertyBindings)
+  private fun planShardGroups(): List<List<ShardBinding>> {
+    if (shardBindings.isEmpty() || plannedGroups.isNullOrEmpty()) {
+      return listOf(shardBindings)
     }
 
-    // Use remove() to both lookup and track which bindings have been assigned to groups.
-    // Any bindings remaining in the map after processing all planned groups are collected
-    // into a final "overflow" group.
-    val bindingsByKey = propertyBindings.associateBy { it.typeKey }.toMutableMap()
-    val groups =
+    // Use remove() to both lookup and track which bindings have been assigned to groups
+    val bindingsByKey = shardBindings.associateByTo(mutableMapOf()) { it.typeKey }
+    val filteredGroups =
       plannedGroups.mapNotNull { group ->
         group.mapNotNull(bindingsByKey::remove).takeIf { it.isNotEmpty() }
       }
 
-    return when {
-      groups.isEmpty() -> listOf(propertyBindings)
-      bindingsByKey.isEmpty() -> groups
-      else -> groups + listOf(bindingsByKey.values.toList())
+    // Add any remaining bindings not in planned groups
+    val allGroups =
+      if (bindingsByKey.isEmpty()) {
+        filteredGroups
+      } else {
+        filteredGroups + listOf(bindingsByKey.values.toList())
+      }
+
+    if (allGroups.isEmpty()) {
+      return listOf(shardBindings)
     }
+
+    // Rebalance: the original partitioning was based on all bindings, but after filtering
+    // to only ShardBindings, groups may be very uneven (e.g., 901/1/1 from 2000/2000/1529).
+    // Merge small groups together while preserving topological order and SCC constraints.
+    // Since original groups already respect SCC boundaries, merging preserves that constraint.
+    return rebalanceGroups(allGroups)
   }
 
-  private fun generateShards(
-    graphClass: IrClass,
-    shardGroups: List<List<PropertyBinding>>,
-  ): List<ShardInfo> {
-    val graphReceiver = graphClass.thisReceiverOrFail
+  /**
+   * Rebalances groups by merging small adjacent groups together.
+   *
+   * This preserves:
+   * - Topological order (groups are processed in order, bindings concatenated)
+   * - SCC constraints (original groups already keep SCCs together, we only merge, never split)
+   */
+  private fun rebalanceGroups(
+    groups: List<List<ShardBinding>>,
+    targetSize: Int = metroContext.options.keysPerGraphShard,
+  ): List<List<ShardBinding>> {
+    if (groups.size <= 1) return groups
+
+    // Pre-size to worst-case (no merging) to avoid resizing
+    val rebalanced = ArrayList<List<ShardBinding>>(groups.size)
+    var currentBatch: ArrayList<ShardBinding>? = null
+    var pending: List<ShardBinding>? = null
+
+    for (group in groups) {
+      val p = pending
+      if (p == null) {
+        pending = group
+        continue
+      }
+
+      if (p.size + group.size <= targetSize) {
+        // Merge needed.
+        // If we don't have a mutable batch yet, create one and copy the pending group into it.
+        var batch = currentBatch
+        if (batch == null) {
+          batch = ArrayList(targetSize)
+          batch.addAll(p)
+          currentBatch = batch
+          pending = batch
+        }
+        batch.addAll(group)
+      } else {
+        // Cannot merge, flush the pending group
+        rebalanced.add(p)
+        pending = group
+        currentBatch = null
+      }
+    }
+
+    if (pending != null) {
+      rebalanced.add(pending)
+    }
+
+    return rebalanced
+  }
+
+  /**
+   * Creates a [Shard] representing the graph class itself as a single shard. Properties are created
+   * directly on the graph class.
+   */
+  context(context: IrMetroContext)
+  private fun generateGraphAsShard(shardLookup: ShardLookup): Shard {
+    val properties = mutableMapOf<IrContextualTypeKey, ShardProperty>()
+
+    for (shardBinding in shardBindings) {
+      shardLookup.assignToShard(shardBinding.typeKey, 0)
+
+      val property =
+        graphClass
+          .addProperty {
+            name = propertyNameAllocator.newName(shardBinding.nameHint)
+            visibility = DescriptorVisibilities.PRIVATE
+          }
+          .apply {
+            graphPropertyData = GraphPropertyData(shardBinding.contextKey, shardBinding.irType)
+            shardBinding.contextKey.typeKey.qualifier?.ir?.let {
+              annotations += it.deepCopyWithSymbols()
+            }
+            ensureInitialized(shardBinding.propertyKind, shardBinding.irType)
+          }
+
+      properties[shardBinding.contextKey] =
+        ShardProperty(
+          property = property,
+          contextKey = shardBinding.contextKey,
+          shardBinding = shardBinding,
+        )
+    }
+
+    return Shard(
+      index = 0,
+      shardClass = graphClass,
+      bindings = shardBindings,
+      properties = properties,
+      graphParam = null, // Not needed for graph-as-shard
+      graphProperty = null, // Not needed for graph-as-shard
+      isGraphAsShard = true,
+      nameAllocator = propertyNameAllocator, // Use the graph's allocator for graph-as-shard
+    )
+  }
+
+  context(context: IrMetroContext)
+  private fun generateNestedShardClasses(
+    shardGroups: List<List<ShardBinding>>,
+    shardLookup: ShardLookup,
+  ): List<Shard> {
+    // Use a single shared allocator for all binding properties across all shards.
+    // Pre-allocate "graph" so binding properties can't collide with the graph field in shard
+    // classes.
+    val sharedNameAllocator =
+      NameAllocator(mode = NameAllocator.Mode.COUNT).apply { newName(Symbols.StringNames.GRAPH) }
+
     return shardGroups.mapIndexed { index, bindings ->
       val shardName = "Shard${index + 1}"
       val shardClass =
-        irFactory
+        context.irFactory
           .buildClass {
             name = Name.identifier(shardName)
             visibility = DescriptorVisibilities.PRIVATE
             modality = Modality.FINAL
-            isInner = true
           }
           .apply {
-            superTypes = listOf(irBuiltIns.anyType)
+            superTypes = listOf(context.irBuiltIns.anyType)
             createThisReceiverParameter()
             parent = graphClass
             graphClass.addChild(this)
           }
 
-      // Inner class constructor receives the outer this as dispatch receiver
-      shardClass
-        .addConstructor {
-          isPrimary = true
-          origin = Origins.Default
-        }
-        .apply {
-          setDispatchReceiver(graphReceiver.copyTo(this, type = graphClass.defaultType))
-          body = generateDefaultConstructorBody()
-        }
+      // Create properties inside the shard class
+      val properties = mutableMapOf<IrContextualTypeKey, ShardProperty>()
 
-      val initializeFunction =
-        shardClass.addFunction("initialize", irBuiltIns.unitType).apply {
-          val shardReceiver = shardClass.thisReceiverOrFail.copyTo(this)
-          setDispatchReceiver(shardReceiver)
-        }
+      for (shardBinding in bindings) {
+        shardLookup.assignToShard(shardBinding.typeKey, index)
 
-      // Use the outer graph's this receiver (available via inner class implicit accessor)
-      // instead of passing it as an explicit parameter
-      val outerThisParam = graphReceiver
-
-      // First pass: generate expressions and collect out-of-scope parameters
-      val inScopeParams = setOf(outerThisParam)
-      val collector = OuterReceiverCollector(inScopeParams)
-      val generatedExpressions = mutableListOf<Pair<PropertyBinding, IrExpression>>()
-
-      createIrBuilder(initializeFunction.symbol).run {
-        bindings.forEach { binding ->
-          val backingField = binding.property.backingField
-          if (backingField != null) {
-            val initValue = binding.initializer.invoke(this@run, outerThisParam, binding.typeKey)
-            initValue.acceptChildrenVoid(collector)
-            generatedExpressions.add(binding to initValue)
-          }
-        }
-      }
-
-      val outerReceiverParams = mutableListOf<IrValueParameter>()
-      val paramMapping = mutableMapOf<IrValueParameter, IrValueParameter>()
-
-      for (outerParam in collector.outOfScopeParams) {
-        val newParam =
-          initializeFunction.addValueParameter(
-            "outer_${outerParam.name.asString()}",
-            outerParam.type,
-          )
-        paramMapping[outerParam] = newParam
-        outerReceiverParams.add(outerParam)
-      }
-
-      val remapper = if (paramMapping.isNotEmpty()) ParameterRemapper(paramMapping) else null
-
-      // Prepare data for statements (backing field + remapped init value)
-      val statementData =
-        generatedExpressions.map { (binding, initValue) ->
-          binding.property.backingField!! to (remapper?.remap(initValue) ?: initValue)
-        }
-
-      // Chunk statements if needed to avoid method size limits
-      val mustChunk = options.chunkFieldInits && statementData.size > options.statementsPerInitFun
-
-      if (mustChunk) {
-        val functionNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
-        val chunks = statementData.chunked(options.statementsPerInitFun)
-
-        val chunkedFunctions =
-          chunks.map { chunk ->
-            val initName = functionNameAllocator.newName("init")
-            shardClass
-              .addFunction(
-                initName,
-                irBuiltIns.unitType,
-                visibility = DescriptorVisibilities.PRIVATE,
-              )
-              .apply {
-                val localShardReceiver = shardClass.thisReceiverOrFail.copyTo(this)
-                setDispatchReceiver(localShardReceiver)
-                buildBlockBody {
-                  chunk.forEach { (backingField, initValue) ->
-                    +irSetField(irGet(outerThisParam), backingField, initValue)
-                  }
-                }
-              }
-          }
-
-        initializeFunction.buildBlockBody {
-          chunkedFunctions.forEach { chunkedFn ->
-            +irInvoke(
-              dispatchReceiver = irGet(initializeFunction.dispatchReceiverParameter!!),
-              callee = chunkedFn.symbol,
-            )
-          }
-        }
-      } else {
-        initializeFunction.body =
-          createIrBuilder(initializeFunction.symbol).irBlockBody {
-            statementData.forEach { (backingField, initValue) ->
-              +irSetField(irGet(outerThisParam), backingField, initValue)
+        val property =
+          shardClass
+            .addProperty {
+              // Use internal visibility so other shards can access these fields
+              name = sharedNameAllocator.newName(shardBinding.nameHint)
+              visibility = DescriptorVisibilities.INTERNAL
             }
-          }
+            .apply {
+              graphPropertyData = GraphPropertyData(shardBinding.contextKey, shardBinding.irType)
+              shardBinding.contextKey.typeKey.qualifier?.ir?.let {
+                annotations += it.deepCopyWithSymbols()
+              }
+              ensureInitialized(shardBinding.propertyKind, shardBinding.irType)
+            }
+
+        properties[shardBinding.contextKey] =
+          ShardProperty(
+            property = property,
+            contextKey = shardBinding.contextKey,
+            shardBinding = shardBinding,
+          )
       }
 
-      ShardInfo(
+      Shard(
         index = index,
         shardClass = shardClass,
-        initializeFunction = initializeFunction,
         bindings = bindings,
-        outerReceiverParams = outerReceiverParams,
+        properties = properties,
+        // Will be set in generateShardConstructors
+        graphParam = null,
+        graphProperty = null,
+        isGraphAsShard = false,
+        nameAllocator = sharedNameAllocator,
       )
     }
   }
-}
 
-/** Property with its type key and initializer. */
-internal data class PropertyBinding(
-  val property: IrProperty,
-  val typeKey: IrTypeKey,
-  val initializer: PropertyInitializer,
-)
+  private fun computeShardDependencies(shards: List<Shard>, shardLookup: ShardLookup) {
+    for (shard in shards) {
+      val currentShardIndex = shard.index
 
-/** Generated shard class info with the initialize function. */
-internal data class ShardInfo(
-  val index: Int,
-  val shardClass: IrClass,
-  val initializeFunction: IrSimpleFunction,
-  val bindings: List<PropertyBinding>,
-  val outerReceiverParams: List<IrValueParameter>,
-)
+      for (contextKey in shard.properties.keys) {
+        val binding = bindingGraph.findBinding(contextKey.typeKey) ?: continue
+        val dependencies = binding.dependencies
 
-/**
- * Collects all [IrValueParameter] references from an expression that are not in the given scope.
- * Used to detect when binding code references parameters from outer class constructors.
- */
-private class OuterReceiverCollector(private val inScopeParams: Set<IrValueParameter>) :
-  IrVisitorVoid() {
-  val outOfScopeParams = mutableSetOf<IrValueParameter>()
-
-  override fun visitElement(element: IrElement) {
-    element.acceptChildrenVoid(this)
-  }
-
-  override fun visitGetValue(expression: IrGetValue) {
-    val owner = expression.symbol.owner
-    if (owner is IrValueParameter && owner !in inScopeParams) {
-      outOfScopeParams.add(owner)
+        for (dep in dependencies) {
+          val depShardIndex = shardLookup.getShardIndex(dep.typeKey)
+          when {
+            depShardIndex == null -> {
+              // Dependency is a bound instance on main graph (not in any shard)
+              // Shard needs graph access to reach it
+              shardLookup.markNeedsGraphAccess(currentShardIndex)
+            }
+            depShardIndex != currentShardIndex -> {
+              // Cross-shard dependency - needs graph access to reach other shard
+              shardLookup.addShardDependency(currentShardIndex, depShardIndex)
+              shardLookup.markNeedsGraphAccess(currentShardIndex)
+            }
+          }
+        }
+      }
     }
-    super.visitGetValue(expression)
-  }
-}
-
-/** Remaps [IrGetValue] nodes to use substituted parameters. */
-private class ParameterRemapper(private val mapping: Map<IrValueParameter, IrValueParameter>) :
-  IrElementTransformerVoid() {
-
-  fun remap(expression: IrExpression): IrExpression {
-    return expression.transform(this, null)
   }
 
-  override fun visitGetValue(expression: IrGetValue): IrExpression {
-    val owner = expression.symbol.owner
-    if (owner is IrValueParameter && owner in mapping) {
-      return IrGetValueImpl(
-        expression.startOffset,
-        expression.endOffset,
-        mapping.getValue(owner).symbol,
-      )
+  context(compatContext: CompatContext)
+  private fun generateShardConstructors(shards: List<Shard>, shardLookup: ShardLookup) =
+    with(compatContext) {
+      for (shard in shards) {
+        val shardClass = shard.shardClass
+        val needsGraphAccess = shardLookup.needsGraphAccess(shard.index)
+
+        val constructor =
+          shardClass.addConstructor {
+            isPrimary = true
+            origin = Origins.Default
+          }
+
+        if (needsGraphAccess) {
+          // Add graph property field to store the graph reference (needed for cross-shard access)
+          // Use INTERNAL visibility so other shards can access it
+          val graphProperty =
+            shardClass
+              .addProperty {
+                name = Name.identifier("graph")
+                visibility = DescriptorVisibilities.INTERNAL
+              }
+              .apply {
+                addBackingFieldCompat {
+                  type = graphClass.defaultType
+                  visibility = DescriptorVisibilities.INTERNAL
+                }
+              }
+          shard.graphProperty = graphProperty
+
+          // Add graph parameter (for accessing bound instances and cross-shard dependencies)
+          val graphParam = constructor.addValueParameter(graphProperty.name, graphClass.defaultType)
+          shard.graphParam = graphParam
+        }
+
+        // Constructor body will be generated by IrGraphGenerator after property expressions are
+        // ready
+      }
     }
-    return super.visitGetValue(expression)
-  }
 }

@@ -221,53 +221,50 @@ interface TestGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : TestGraph {
-    private val s1Provider: Provider<S1>
+    internal val shard1: Shard1
 
-    private val s2Provider: Provider<S2>
+    internal val shard2: Shard2
 
-    private val s3Provider: Provider<S3>
+    internal val shard3: Shard3
 
-    private val s4Provider: Provider<S4>
+    private class Shard1 {
+      internal val s1Provider: Provider<S1>
 
-    private val s5Provider: Provider<S5>
+      internal val s2Provider: Provider<S2>
 
-    private inner class Shard1 {
       constructor() /* primary */ {
         super/*Any*/()
-        /* <init>() */
-
-      }
-
-      fun initialize() {
         <this>.#s1Provider = Companion.provider<Provider<S1>, S1>(delegate = MetroFactory.create())
         <this>.#s2Provider = Companion.provider<Provider<S2>, S2>(delegate = MetroFactory.create())
       }
 
     }
 
-    private inner class Shard2 {
-      constructor() /* primary */ {
+    private class Shard2 {
+      internal val s3Provider: Provider<S3>
+
+      internal val s4Provider: Provider<S4>
+
+      internal val graph: Impl
+
+      constructor(graph: Impl) /* primary */ {
         super/*Any*/()
-        /* <init>() */
-
-      }
-
-      fun initialize() {
+        <this>.#graph = graph
         <this>.#s3Provider = Companion.provider<Provider<S3>, S3>(delegate = MetroFactory.create())
-        <this>.#s4Provider = Companion.provider<Provider<S4>, S4>(delegate = Companion.create(s1 = <this>.#s1Provider))
+        <this>.#s4Provider = Companion.provider<Provider<S4>, S4>(delegate = Companion.create(s1 = <this>.#graph.#shard1.#s1Provider))
       }
 
     }
 
-    private inner class Shard3 {
-      constructor() /* primary */ {
+    private class Shard3 {
+      internal val s5Provider: Provider<S5>
+
+      internal val graph: Impl
+
+      constructor(graph: Impl) /* primary */ {
         super/*Any*/()
-        /* <init>() */
-
-      }
-
-      fun initialize() {
-        <this>.#s5Provider = Companion.provider<Provider<S5>, S5>(delegate = Companion.create(s4 = <this>.#s4Provider))
+        <this>.#graph = graph
+        <this>.#s5Provider = Companion.provider<Provider<S5>, S5>(delegate = Companion.create(s4 = <this>.#graph.#shard2.#s4Provider))
       }
 
     }
@@ -276,34 +273,34 @@ interface TestGraph {
       super/*Any*/()
       /* <init>() */
 
-      <this>.Shard1().initialize()
-      <this>.Shard2().initialize()
-      <this>.Shard3().initialize()
+      <this>.#shard1 = Shard1()
+      <this>.#shard2 = Shard2(graph = <this>)
+      <this>.#shard3 = Shard3(graph = <this>)
     }
 
     override val s1: S1
       override get(): S1 {
-        return <this>.#s1Provider.invoke()
+        return <this>.#shard1.#s1Provider.invoke()
       }
 
     override val s2: S2
       override get(): S2 {
-        return <this>.#s2Provider.invoke()
+        return <this>.#shard1.#s2Provider.invoke()
       }
 
     override val s3: S3
       override get(): S3 {
-        return <this>.#s3Provider.invoke()
+        return <this>.#shard2.#s3Provider.invoke()
       }
 
     override val s4: S4
       override get(): S4 {
-        return <this>.#s4Provider.invoke()
+        return <this>.#shard2.#s4Provider.invoke()
       }
 
     override val s5: S5
       override get(): S5 {
-        return <this>.#s5Provider.invoke()
+        return <this>.#shard3.#s5Provider.invoke()
       }
 
   }

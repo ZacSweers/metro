@@ -301,6 +301,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       public void testCreateDynamicGraphCannotBeInLocalClasses() {
         runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/dynamic/CreateDynamicGraphCannotBeInLocalClasses.kt");
       }
+
+      @Test
+      @TestMetadata("DuplicateBindingsInDynamicGraphReportTheCallLocation.kt")
+      public void testDuplicateBindingsInDynamicGraphReportTheCallLocation() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/dynamic/DuplicateBindingsInDynamicGraphReportTheCallLocation.kt");
+      }
     }
 
     @Nested
@@ -408,6 +414,22 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       @TestMetadata("RequiredAnnotationResultsInMissingBindings.kt")
       public void testRequiredAnnotationResultsInMissingBindings() {
         runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/optional/RequiredAnnotationResultsInMissingBindings.kt");
+      }
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/diagnostic/dependencygraph/sharding")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Sharding {
+      @Test
+      public void testAllFilesPresentInSharding() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/dependencygraph/sharding"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      }
+
+      @Test
+      @TestMetadata("ShardingThresholdNotReachedWarning.kt")
+      public void testShardingThresholdNotReachedWarning() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/sharding/ShardingThresholdNotReachedWarning.kt");
       }
     }
   }

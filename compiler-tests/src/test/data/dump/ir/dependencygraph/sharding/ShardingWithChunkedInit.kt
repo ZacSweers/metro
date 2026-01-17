@@ -4,14 +4,14 @@
 // STATEMENTS_PER_INIT_FUN: 2
 
 /*
- * This test verifies that shard initialize() functions are chunked when they exceed
- * the statementsPerInitFun threshold.
+ * This test verifies that shard constructor initialization is chunked when
+ * property count exceeds the statementsPerInitFun threshold.
  *
  * With KEYS_PER_GRAPH_SHARD=4 and STATEMENTS_PER_INIT_FUN=2:
- * - Shard1 gets A, B, C, D (4 bindings) → chunked into init1(A,B) and init2(C,D)
- * - Shard2 gets E, F (2 bindings) → NOT chunked (fits in one function)
+ * - Shard1 gets A, B, C, D (4 bindings) → chunked into init(A,B) and init2(C,D)
+ * - Shard2 gets E, F (2 bindings) → NOT chunked (fits directly in constructor)
  *
- * Expected: Shard1.initialize() calls init1() and init2()
+ * Expected: Shard1 constructor calls init() and init2()
  */
 
 @SingleIn(AppScope::class) @Inject class A

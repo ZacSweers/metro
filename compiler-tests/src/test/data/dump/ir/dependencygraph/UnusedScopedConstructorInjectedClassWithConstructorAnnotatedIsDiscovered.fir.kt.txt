@@ -102,11 +102,14 @@ interface ExampleGraph : MetroContributionToAppScope {
       field = Companion.provider<Provider<Dependency>, Dependency>(delegate = MetroFactory.create())
 
     @DependencyGraph(scope = LoggedInScope::class)
-    private inner class LoggedInGraphImpl : LoggedInGraph {
-      private val childDependencyProvider: Provider<ChildDependency>
-        field = Companion.provider<Provider<ChildDependency>, ChildDependency>(delegate = Companion.create(dep = <this>.#dependencyProvider))
+    private class LoggedInGraphImpl : LoggedInGraph {
+      private val exampleGraphImpl: Impl
+        field = exampleGraphImpl
 
-      constructor() /* primary */ {
+      private val childDependencyProvider: Provider<ChildDependency>
+        field = Companion.provider<Provider<ChildDependency>, ChildDependency>(delegate = Companion.create(dep = <this>.#exampleGraphImpl.#dependencyProvider))
+
+      constructor(exampleGraphImpl: Impl) /* primary */ {
         super/*Any*/()
         /* <init>() */
 
@@ -126,7 +129,7 @@ interface ExampleGraph : MetroContributionToAppScope {
     }
 
     override fun createLoggedInGraph(): LoggedInGraph {
-      return <this>.LoggedInGraphImpl()
+      return LoggedInGraphImpl(exampleGraphImpl = <this>)
     }
 
   }

@@ -51,6 +51,8 @@ internal object Origins {
     IrDeclarationOrigin.GeneratedByPlugin(Keys.GeneratedDynamicGraph)
   val DynamicContainerParam: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.DynamicContainerParam)
+  val ParentGraphParam: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(Keys.ParentGraphParam)
 
   object FirstParty {
     // in 2.3.20, Kotlin changed the types of origins like IrDeclarationOrigin.DEFINED to
