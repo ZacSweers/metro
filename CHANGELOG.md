@@ -12,13 +12,12 @@ Changelog
   // @Inject // <-- now implicit!
   class TacoImpl(...) : Taco
   ```
-
-### New
-
 - [Gradle / FIR] Enable FIR hint generation by default on Kotlin `2.3.20-Beta1` or later.
   - By extension, this resolves Metro's most subscribed issue ([#460](https://github.com/ZacSweers/metro/issues/460)) by enabling cross-module contribution/aggregation features in non-jvm/android compilations 🎉.
   - Note that there is a separate known kotlinc issue around qualifier annotations that affects native builds and is targeted for `2.3.20-Beta2`. Follow [#1556](https://github.com/ZacSweers/metro/issues/1556) for updates.
 - [Gradle / FIR] Enable top-level function injection by default on Kotlin `2.3.20-Beta1` or later.
+
+### New
 
 ### Enhancements
 
