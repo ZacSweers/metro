@@ -89,6 +89,10 @@ internal class BindingLookup(
   // Cache for created optional bindings
   private val optionalBindingsCache = mutableMapOf<IrTypeKey, IrBinding.CustomWrapper>()
 
+  fun getAvailableKeys(): Set<IrTypeKey> {
+    return bindingsCache.keys
+  }
+
   /** Returns all bindings for similarity checking. */
   fun getAvailableBindings(): Map<IrTypeKey, IrBinding> {
     return bindingsCache.mapValues { it.value.first() }
