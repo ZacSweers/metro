@@ -62,6 +62,7 @@ Changelog
 - [IR] Already mentioned above, but worth calling out again — creator-less scoped graph extensions _are no longer cached_ in their parent graphs. Accessors to this will always get new instances now.
 - [IR] Report log files reported from within graph generation now use snake-cased fully-qualified names of the impl graph as the file name suffix.
 - [IR] Do not report similar bindings when a missing binding has type `kotlin.Any`. In practice this reported all available bindings.
+- [interop-dagger] Update to Dagger `2.58`.
 - Test Kotlin `2.3.20-Beta1`.
 
 ### Contributors
