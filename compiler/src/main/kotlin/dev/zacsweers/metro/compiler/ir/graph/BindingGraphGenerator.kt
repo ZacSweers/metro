@@ -490,11 +490,6 @@ internal class BindingGraphGenerator(
     for ((depNodeKey, depNode) in node.includedGraphNodes) {
       // Only add accessors for included types
       depNode.accessors.forEach { (contextualTypeKey, getter, _) ->
-        // Skip if there's a dynamic replacement for this binding
-        if (contextualTypeKey.typeKey in node.dynamicTypeKeys) {
-          return@forEach
-        }
-
         // Add a ref to the included graph if not already present
         if (depNodeKey !in graph) {
           graph.addBinding(
