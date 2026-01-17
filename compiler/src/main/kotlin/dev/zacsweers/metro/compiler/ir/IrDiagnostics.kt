@@ -115,8 +115,11 @@ internal fun <A : Any> IrMetroContext.reportCompat(
   } else {
     diagnosticReporter.at(irDeclaration).report(factory, a)
   }
-  // Log an error to MetroContext
-  onErrorReported()
+
+  if (factory.severity == Severity.ERROR) {
+    // Log an error to MetroContext
+    onErrorReported()
+  }
 }
 
 private fun reportDiagnosticToMessageCollector(
