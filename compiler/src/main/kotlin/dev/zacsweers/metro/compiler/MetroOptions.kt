@@ -5,11 +5,11 @@ package dev.zacsweers.metro.compiler
 import dev.drewhamilton.poko.Poko
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.util.Locale
 import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.createDirectories
 import kotlin.io.path.deleteRecursively
 import kotlin.io.path.exists
-import java.util.Locale
 import org.jetbrains.kotlin.compiler.plugin.CliOption
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.config.CompilerConfigurationKey
@@ -753,8 +753,10 @@ public class MetroOptions(
   public val shrinkUnusedBindings: Boolean =
     MetroOption.SHRINK_UNUSED_BINDINGS.raw.defaultValue.expectAs(),
   public val chunkFieldInits: Boolean = MetroOption.CHUNK_FIELD_INITS.raw.defaultValue.expectAs(),
-  public val statementsPerInitFun: Int = MetroOption.STATEMENTS_PER_INIT_FUN.raw.defaultValue.expectAs(),
-  public val enableGraphSharding: Boolean = MetroOption.ENABLE_GRAPH_SHARDING.raw.defaultValue.expectAs(),
+  public val statementsPerInitFun: Int =
+    MetroOption.STATEMENTS_PER_INIT_FUN.raw.defaultValue.expectAs(),
+  public val enableGraphSharding: Boolean =
+    MetroOption.ENABLE_GRAPH_SHARDING.raw.defaultValue.expectAs(),
   public val keysPerGraphShard: Int = MetroOption.KEYS_PER_GRAPH_SHARD.raw.defaultValue.expectAs(),
   public val publicProviderSeverity: DiagnosticSeverity =
     if (transformProvidersToPrivate) {
@@ -800,7 +802,8 @@ public class MetroOptions(
     MetroOption.ENABLE_GUICE_RUNTIME_INTEROP.raw.defaultValue.expectAs(),
   public val maxIrErrorsCount: Int = MetroOption.MAX_IR_ERRORS_COUNT.raw.defaultValue.expectAs(),
   // Intrinsics
-  public val customProviderTypes: Set<ClassId> = MetroOption.CUSTOM_PROVIDER.raw.defaultValue.expectAs(),
+  public val customProviderTypes: Set<ClassId> =
+    MetroOption.CUSTOM_PROVIDER.raw.defaultValue.expectAs(),
   public val customLazyTypes: Set<ClassId> = MetroOption.CUSTOM_LAZY.raw.defaultValue.expectAs(),
   // Custom annotations
   public val customAssistedAnnotations: Set<ClassId> =
@@ -809,7 +812,8 @@ public class MetroOptions(
     MetroOption.CUSTOM_ASSISTED_FACTORY.raw.defaultValue.expectAs(),
   public val customAssistedInjectAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_ASSISTED_INJECT.raw.defaultValue.expectAs(),
-  public val customBindsAnnotations: Set<ClassId> = MetroOption.CUSTOM_BINDS.raw.defaultValue.expectAs(),
+  public val customBindsAnnotations: Set<ClassId> =
+    MetroOption.CUSTOM_BINDS.raw.defaultValue.expectAs(),
   public val customContributesToAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_CONTRIBUTES_TO.raw.defaultValue.expectAs(),
   public val customContributesBindingAnnotations: Set<ClassId> =
@@ -826,7 +830,8 @@ public class MetroOptions(
     MetroOption.CUSTOM_DEPENDENCY_GRAPH.raw.defaultValue.expectAs(),
   public val customGraphFactoryAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_DEPENDENCY_GRAPH_FACTORY.raw.defaultValue.expectAs(),
-  public val customInjectAnnotations: Set<ClassId> = MetroOption.CUSTOM_INJECT.raw.defaultValue.expectAs(),
+  public val customInjectAnnotations: Set<ClassId> =
+    MetroOption.CUSTOM_INJECT.raw.defaultValue.expectAs(),
   public val customIntoMapAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_INTO_MAP.raw.defaultValue.expectAs(),
   public val customIntoSetAnnotations: Set<ClassId> =
@@ -839,7 +844,8 @@ public class MetroOptions(
     MetroOption.CUSTOM_PROVIDES.raw.defaultValue.expectAs(),
   public val customQualifierAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_QUALIFIER.raw.defaultValue.expectAs(),
-  public val customScopeAnnotations: Set<ClassId> = MetroOption.CUSTOM_SCOPE.raw.defaultValue.expectAs(),
+  public val customScopeAnnotations: Set<ClassId> =
+    MetroOption.CUSTOM_SCOPE.raw.defaultValue.expectAs(),
   public val customBindingContainerAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_BINDING_CONTAINER.raw.defaultValue.expectAs(),
   public val enableDaggerAnvilInterop: Boolean =
@@ -848,10 +854,12 @@ public class MetroOptions(
     MetroOption.ENABLE_FULL_BINDING_GRAPH_VALIDATION.raw.defaultValue.expectAs(),
   public val enableGraphImplClassAsReturnType: Boolean =
     MetroOption.ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE.raw.defaultValue.expectAs(),
-  public val customOriginAnnotations: Set<ClassId> = MetroOption.CUSTOM_ORIGIN.raw.defaultValue.expectAs(),
+  public val customOriginAnnotations: Set<ClassId> =
+    MetroOption.CUSTOM_ORIGIN.raw.defaultValue.expectAs(),
   public val customOptionalBindingAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_OPTIONAL_BINDING.raw.defaultValue.expectAs(),
-  public val contributesAsInject: Boolean = MetroOption.CONTRIBUTES_AS_INJECT.raw.defaultValue.expectAs(),
+  public val contributesAsInject: Boolean =
+    MetroOption.CONTRIBUTES_AS_INJECT.raw.defaultValue.expectAs(),
   public val pluginOrderSet: Boolean? =
     MetroOption.PLUGIN_ORDER_SET.raw.defaultValue
       .expectAs<String>()
@@ -859,7 +867,8 @@ public class MetroOptions(
       ?.toBooleanStrict(),
 ) {
 
-  public val reportsEnabled: Boolean get() = reportsDestination != null
+  public val reportsEnabled: Boolean
+    get() = reportsDestination != null
 
   @OptIn(ExperimentalPathApi::class)
   public val reportsDir: Lazy<Path?> = lazy {
