@@ -230,6 +230,8 @@ internal class BindingPropertyCollector(
         (hasFieldProperty ||
           node.factoryRefCount > 0 ||
           contextKey.isMapProvider ||
+          contextKey.isMapLazy ||
+          contextKey.isMapProviderLazy ||
           isMembersInjectedInFactoryPath)
 
     // Mark dependencies as factory accesses if:
