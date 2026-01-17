@@ -434,9 +434,13 @@ internal class MultibindingExpressionGenerator(
           declaration = binding.declaration,
         )
 
-      // TODO what about Map<String, Provider<Lazy<String>>>?
-      //  isDeferrable() but we need to be able to convert back to the middle type
+      // Determine the value type wrapping structure
+      // Can be: V, Provider<V>, Lazy<V>, or Provider<Lazy<V>>
       val valueIsWrappedInProvider: Boolean = valueWrappedType is WrappedType.Provider
+      val valueIsWrappedInLazy: Boolean = valueWrappedType is WrappedType.Lazy
+      val valueIsProviderLazy: Boolean =
+        valueWrappedType is WrappedType.Provider &&
+          (valueWrappedType as WrappedType.Provider<*>).innerType is WrappedType.Lazy
 
       // Used to unpack the right provider type
       val originalValueType = valueWrappedType.toIrType()
@@ -521,6 +525,8 @@ internal class MultibindingExpressionGenerator(
           rawValueType,
           mapProviderType,
           valueIsWrappedInProvider,
+          valueIsWrappedInLazy,
+          valueIsProviderLazy,
           valueProviderSymbols,
           accessType,
         )
@@ -544,38 +550,51 @@ internal class MultibindingExpressionGenerator(
           )
         } else {
           // Multiple elements and it's a Provider type
+          // Select the appropriate factory based on value type wrapping:
+          // - Map<K, V> -> MapFactory
+          // - Map<K, Provider<V>> -> MapProviderFactory
+          // - Map<K, Lazy<V>> -> MapLazyFactory
+          // - Map<K, Provider<Lazy<V>>> -> MapProviderLazyFactory
           val builderFunction =
-            if (valueIsWrappedInProvider) {
-              valueProviderSymbols.mapProviderFactoryBuilderFunction
-            } else {
-              valueProviderSymbols.mapFactoryBuilderFunction
+            when {
+              valueIsProviderLazy -> valueProviderSymbols.mapProviderLazyFactoryBuilderFunction
+              valueIsWrappedInProvider -> valueProviderSymbols.mapProviderFactoryBuilderFunction
+              valueIsWrappedInLazy -> valueProviderSymbols.mapLazyFactoryBuilderFunction
+              else -> valueProviderSymbols.mapFactoryBuilderFunction
             }
           val builderType =
-            if (valueIsWrappedInProvider) {
-              valueProviderSymbols.mapProviderFactoryBuilder
-            } else {
-              valueProviderSymbols.mapFactoryBuilder
+            when {
+              valueIsProviderLazy -> valueProviderSymbols.mapProviderLazyFactoryBuilder
+              valueIsWrappedInProvider -> valueProviderSymbols.mapProviderFactoryBuilder
+              valueIsWrappedInLazy -> valueProviderSymbols.mapLazyFactoryBuilder
+              else -> valueProviderSymbols.mapFactoryBuilder
             }
 
           val putFunction =
-            if (valueIsWrappedInProvider) {
-              valueProviderSymbols.mapProviderFactoryBuilderPutFunction
-            } else {
-              valueProviderSymbols.mapFactoryBuilderPutFunction
+            when {
+              valueIsProviderLazy -> valueProviderSymbols.mapProviderLazyFactoryBuilderPutFunction
+              valueIsWrappedInProvider -> valueProviderSymbols.mapProviderFactoryBuilderPutFunction
+              valueIsWrappedInLazy -> valueProviderSymbols.mapLazyFactoryBuilderPutFunction
+              else -> valueProviderSymbols.mapFactoryBuilderPutFunction
             }
           val putAllFunction =
-            if (valueIsWrappedInProvider) {
-              valueProviderSymbols.mapProviderFactoryBuilderPutAllFunction
-            } else {
-              valueProviderSymbols.mapFactoryBuilderPutAllFunction
+            when {
+              valueIsProviderLazy ->
+                valueProviderSymbols.mapProviderLazyFactoryBuilderPutAllFunction
+              valueIsWrappedInProvider ->
+                valueProviderSymbols.mapProviderFactoryBuilderPutAllFunction
+              valueIsWrappedInLazy -> valueProviderSymbols.mapLazyFactoryBuilderPutAllFunction
+              else -> valueProviderSymbols.mapFactoryBuilderPutAllFunction
             }
 
           // .build()
           val buildFunction =
-            if (valueIsWrappedInProvider) {
-              valueProviderSymbols.mapProviderFactoryBuilderBuildFunction
-            } else {
-              valueProviderSymbols.mapFactoryBuilderBuildFunction
+            when {
+              valueIsProviderLazy -> valueProviderSymbols.mapProviderLazyFactoryBuilderBuildFunction
+              valueIsWrappedInProvider ->
+                valueProviderSymbols.mapProviderFactoryBuilderBuildFunction
+              valueIsWrappedInLazy -> valueProviderSymbols.mapLazyFactoryBuilderBuildFunction
+              else -> valueProviderSymbols.mapFactoryBuilderBuildFunction
             }
 
           val resultType =
@@ -657,61 +676,75 @@ internal class MultibindingExpressionGenerator(
     rawValueType: IrType,
     mapProviderType: IrType,
     valueIsWrappedInProvider: Boolean,
+    valueIsWrappedInLazy: Boolean,
+    valueIsProviderLazy: Boolean,
     valueFrameworkSymbols: FrameworkSymbols,
     accessType: AccessType,
   ): IrExpression =
     with(scope) {
       val kvArgs = listOf(keyType, rawValueType)
+
       if (accessType == AccessType.INSTANCE) {
         // Type: Map<Key, Value>
         // Returns: emptyMap()
-        irInvoke(
+        return@with irInvoke(
           callee = metroSymbols.emptyMap,
           typeHint = irBuiltIns.mapClass.typeWith(keyType, rawValueType),
-          typeArgs = listOf(keyType, rawValueType),
+          typeArgs = kvArgs,
         )
-      } else if (valueIsWrappedInProvider) {
-        // Type: Map<Key, Provider<Value>>
+      }
 
-        // Returns:
-        //   - MapProviderFactory.empty() (if the API exists)
-        //   - MapProviderFactory.builder().build() (if no empty() API exists)
-        val emptyCallee = valueFrameworkSymbols.mapProviderFactoryEmptyFunction
-        if (emptyCallee != null) {
-          irInvoke(
-            callee = emptyCallee,
-            typeHint = emptyCallee.owner.returnType.rawType().typeWith(kvArgs),
-            typeArgs = kvArgs,
-          )
-        } else {
-          // Call builder().build()
-          irInvoke(
-            // build()
-            callee = valueFrameworkSymbols.mapProviderFactoryBuilderBuildFunction,
-            typeHint =
-              valueFrameworkSymbols.mapProviderFactoryBuilderBuildFunction.owner.returnType
-                .rawType()
-                .typeWith(kvArgs),
-            dispatchReceiver =
-              irInvoke(
-                // builder()
-                callee = valueFrameworkSymbols.mapProviderFactoryBuilderFunction,
-                typeHint = mapProviderType,
-                typeArgs = kvArgs,
-                args = listOf(irInt(0)),
-              ),
-          )
+      // Select the appropriate factory functions based on value type wrapping:
+      // - Map<K, Provider<Lazy<V>>> -> MapProviderLazyFactory
+      // - Map<K, Provider<V>> -> MapProviderFactory
+      // - Map<K, Lazy<V>> -> MapLazyFactory
+      // - Map<K, V> -> MapFactory
+      val (emptyFunction, builderFunction, buildFunction) =
+        when {
+          valueIsProviderLazy ->
+            Triple(
+              valueFrameworkSymbols.mapProviderLazyFactoryEmptyFunction,
+              valueFrameworkSymbols.mapProviderLazyFactoryBuilderFunction,
+              valueFrameworkSymbols.mapProviderLazyFactoryBuilderBuildFunction,
+            )
+          valueIsWrappedInProvider ->
+            Triple(
+              valueFrameworkSymbols.mapProviderFactoryEmptyFunction,
+              valueFrameworkSymbols.mapProviderFactoryBuilderFunction,
+              valueFrameworkSymbols.mapProviderFactoryBuilderBuildFunction,
+            )
+          valueIsWrappedInLazy ->
+            Triple(
+              valueFrameworkSymbols.mapLazyFactoryEmptyFunction,
+              valueFrameworkSymbols.mapLazyFactoryBuilderFunction,
+              valueFrameworkSymbols.mapLazyFactoryBuilderBuildFunction,
+            )
+          else ->
+            Triple(
+              valueFrameworkSymbols.mapFactoryEmptyFunction,
+              valueFrameworkSymbols.mapFactoryBuilderFunction,
+              valueFrameworkSymbols.mapFactoryBuilderBuildFunction,
+            )
         }
-      } else {
-        // Type: Provider<Map<Key, Value>>
-        // Returns: MapFactory.empty()
+
+      // Use empty() if available, otherwise fall back to builder(0).build()
+      if (emptyFunction != null) {
         irInvoke(
-          callee = valueFrameworkSymbols.mapFactoryEmptyFunction,
-          typeHint =
-            valueFrameworkSymbols.mapFactoryEmptyFunction.owner.returnType
-              .rawType()
-              .typeWith(kvArgs),
-          typeArgs = listOf(keyType, rawValueType),
+          callee = emptyFunction,
+          typeHint = emptyFunction.owner.returnType.rawType().typeWith(kvArgs),
+          typeArgs = kvArgs,
+        )
+      } else {
+        irInvoke(
+          callee = buildFunction,
+          typeHint = buildFunction.owner.returnType.rawType().typeWith(kvArgs),
+          dispatchReceiver =
+            irInvoke(
+              callee = builderFunction,
+              typeHint = mapProviderType,
+              typeArgs = kvArgs,
+              args = listOf(irInt(0)),
+            ),
         )
       }
     }
