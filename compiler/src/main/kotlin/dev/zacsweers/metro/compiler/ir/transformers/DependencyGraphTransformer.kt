@@ -36,12 +36,14 @@ import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
+import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireNestedClass
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
+import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -68,6 +70,7 @@ import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
+import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.isLocal
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -498,6 +501,8 @@ internal class DependencyGraphTransformer(
         }
       }
 
+    sealResult.reportUnusedInputs(bindingGraph, dependencyGraphDeclaration)
+
     // Build validation result (may have errors - caller will check)
     val validationResult =
       ValidationResult(
@@ -560,6 +565,60 @@ internal class DependencyGraphTransformer(
     }
 
     return validationResult
+  }
+
+  private fun IrBindingGraph.BindingGraphResult.reportUnusedInputs(
+    bindingGraph: IrBindingGraph,
+    graphDeclaration: IrClass,
+  ) {
+    if (unusedKeys.isNotEmpty()) {
+      val unusedGraphInputs =
+        unusedKeys.mapNotNull {
+          val binding = bindingGraph.findBinding(it)
+          if (binding is IrBinding.BoundInstance && binding.isGraphInput) {
+            binding
+          } else {
+            null
+          }
+        }
+
+      for (unusedBinding in unusedGraphInputs) {
+        val message = buildString {
+          appendLine("Graph input '${unusedBinding.typeKey}' is unused and can be removed.")
+
+          // Show a hint of what direct node is including this, if any
+          unusedBinding.typeKey.type.rawTypeOrNull()?.let { containerClass ->
+            // Safe to call here as it should be already cached
+            // TODO add a getCached?
+            val transitivelyIncluded =
+              bindingContainerTransformer
+                .resolveAllBindingContainersCached(setOf(containerClass))
+                .mapToSet { it.typeKey }
+            val transitivelyUsed =
+              sortedKeys.intersect(transitivelyIncluded).minus(unusedBinding.typeKey)
+            if (transitivelyUsed.isNotEmpty()) {
+              appendLine()
+              appendLine("(Hint)")
+              appendLine(
+                "The following binding containers *are* used and transitively included by '${unusedBinding.typeKey}'. Consider including them directly instead"
+              )
+              transitivelyUsed.sorted().joinTo(this, separator = "\n", postfix = "\n") { "- $it" }
+            }
+          }
+        }
+        unusedBinding.irElement?.let { irElement ->
+          diagnosticReporter
+            .at(irElement, graphDeclaration.file)
+            .report(MetroDiagnostics.METRO_WARNING, message)
+          continue
+        }
+        reportCompat(
+          irDeclarations = sequenceOf(unusedBinding.reportableDeclaration, graphDeclaration),
+          factory = MetroDiagnostics.METRO_WARNING,
+          a = message,
+        )
+      }
+    }
   }
 
   /**

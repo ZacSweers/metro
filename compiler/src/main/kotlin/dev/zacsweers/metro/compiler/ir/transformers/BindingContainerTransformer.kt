@@ -91,6 +91,7 @@ import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
+import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isFakeOverride
@@ -216,7 +217,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
       declaration.metroMetadata = metroMetadata
     }
 
-    return if (container.isEmpty()) {
+    return if (container.isEmpty() && bindingContainerAnnotation == null) {
       cache[declarationFqName] = Optional.empty()
       null
     } else {
@@ -999,6 +1000,8 @@ internal class BindingContainer(
   val providerFactories: Map<CallableId, ProviderFactory>,
   val bindsMirror: BindsMirror?,
 ) {
+  val typeKey by memoize { IrTypeKey(ir.defaultType) }
+
   private val classId = ir.classIdOrFail
 
   /**
