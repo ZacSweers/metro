@@ -62,6 +62,18 @@ abstract class BaseIncrementalCompilationTest {
       return dir.resolveSafe("discovered-hints-fir-$scopeFqName.txt").readText()
     }
 
+    fun unmatchedExclusionsIr(scopeFqName: String): String {
+      return dir.resolveSafe("merging-unmatched-exclusions-ir-$scopeFqName.txt").readText()
+    }
+
+    fun unmatchedReplacementsIr(scopeFqName: String): String {
+      return dir.resolveSafe("merging-unmatched-replacements-ir-$scopeFqName.txt").readText()
+    }
+
+    fun unmatchedRankReplacementsIr(scopeFqName: String): String {
+      return dir.resolveSafe("merging-unmatched-rank-replacements-ir-$scopeFqName.txt").readText()
+    }
+
     fun forGraph(simpleName: String, implFqName: String): GraphReports {
       return GraphReports(dir, simpleName, implFqName)
     }
@@ -117,6 +129,22 @@ abstract class BaseIncrementalCompilationTest {
       // /graph-metadata/graph-test-AppGraph.json"
       // /graph-metadata/graph-test-AppGraph2.json"
       TODO()
+    }
+
+    fun unmatchedExclusionsFir(graphFqName: String): String {
+      return reportsDir.resolveSafe("merging-unmatched-exclusions-fir-$graphFqName.txt").readText()
+    }
+
+    fun unmatchedReplacementsFir(graphFqName: String): String {
+      return reportsDir
+        .resolveSafe("merging-unmatched-replacements-fir-$graphFqName.txt")
+        .readText()
+    }
+
+    fun unmatchedRankReplacementsFir(graphFqName: String): String {
+      return reportsDir
+        .resolveSafe("merging-unmatched-rank-replacements-fir-$graphFqName.txt")
+        .readText()
     }
   }
 
