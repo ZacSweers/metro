@@ -19,6 +19,8 @@ Changelog
 
 ### New
 
+- Support `Map<K, Lazy<V>>` and `Map<K, Provider<Lazy<V>>` multibindings expressions.
+
 ### Enhancements
 
 - [IR] Restructure graph validation and generation to be separate phases, allowing for whole-graph validation before any code gen runs and better optimizing shared bindings across graph extension hierarchies.
