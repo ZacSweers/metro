@@ -2490,7 +2490,6 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     }
   }
 
-  @Ignore("TODO is this a case we want to support?")
   @Test
   fun `multibindings - map providers of lazy`() {
     compile(
