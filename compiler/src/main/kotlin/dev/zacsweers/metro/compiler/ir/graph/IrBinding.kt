@@ -35,6 +35,7 @@ import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.TreeSet
+import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationContainer
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
@@ -412,17 +413,27 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
    * @property token Token for accessing a parent graph's property. When non-null, this binding
    *   accesses a property from an ancestor graph. When null, this is a self-binding where the graph
    *   provides itself (use `thisReceiver` in code gen).
+   *     @property isGraphInput Indicates if this instance was passed as graph input (`@Provides`,
+   *       `@Includes`, etc).
    */
   data class BoundInstance(
     override val typeKey: IrTypeKey,
     override val nameHint: String,
     override val reportableDeclaration: IrDeclarationWithName?,
+    val irElement: IrElement? = null,
     val token: ParentContext.Token? = null,
+    val isGraphInput: Boolean = false,
   ) : IrBinding {
     constructor(
       parameter: Parameter,
       reportableLocation: IrDeclarationWithName,
-    ) : this(parameter.typeKey, "${parameter.name.asString()}Instance", reportableLocation)
+      isGraphInput: Boolean = false,
+    ) : this(
+      typeKey = parameter.typeKey,
+      nameHint = "${parameter.name.asString()}Instance",
+      reportableDeclaration = reportableLocation,
+      isGraphInput = isGraphInput,
+    )
 
     override val dependencies: List<IrContextualTypeKey> = emptyList()
     override val scope: IrAnnotation? = null

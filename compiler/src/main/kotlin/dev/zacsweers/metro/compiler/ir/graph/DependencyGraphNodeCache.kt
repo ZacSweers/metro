@@ -65,6 +65,7 @@ import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import java.util.EnumSet
 import org.jetbrains.kotlin.descriptors.Modality
+import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
@@ -175,6 +176,7 @@ internal class DependencyGraphNodeCache(
     private val graphContextKey = IrContextualTypeKey.create(graphTypeKey)
     private val bindingContainers = mutableSetOf<BindingContainer>()
     private val managedBindingContainers = mutableSetOf<IrClass>()
+    private val annotationDeclaredBindingContainers = mutableMapOf<IrTypeKey, IrElement>()
     private val dynamicBindingContainers = mutableSetOf<IrClass>()
     private val dynamicTypeKeys = mutableMapOf<IrTypeKey, MutableSet<IrBindingContainerCallable>>()
 
@@ -869,19 +871,29 @@ internal class DependencyGraphNodeCache(
       // (for both regular and generated graphs)
       // We compute transitives twice (heavily cached) as we want to process merging for all
       // transitively included containers
-      bindingContainers +=
-        dependencyGraphAnno
-          ?.bindingContainerClasses(includeModulesArg = options.enableDaggerRuntimeInterop)
-          .orEmpty()
-          .mapNotNullToSet { it.classType.rawTypeOrNull() }
-          .let(bindingContainerTransformer::resolveAllBindingContainersCached)
-          .onEach { container ->
-            linkDeclarationsInCompilation(graphDeclaration, container.ir)
-            // Annotation-included containers may need to be managed directly
-            if (container.canBeManaged) {
-              managedBindingContainers += container.ir
-            }
-          }
+      val directDeclaredContainers = buildSet {
+        val classRefs =
+          dependencyGraphAnno
+            ?.bindingContainerClasses(includeModulesArg = options.enableDaggerRuntimeInterop)
+            .orEmpty()
+
+        for (ref in classRefs) {
+          val rawClass = ref.classType.rawTypeOrNull() ?: continue
+          annotationDeclaredBindingContainers[IrTypeKey(rawClass)] = ref
+          add(rawClass)
+        }
+      }
+
+      val resolvedContainers =
+        bindingContainerTransformer.resolveAllBindingContainersCached(directDeclaredContainers)
+      bindingContainers += resolvedContainers
+      resolvedContainers.forEach { container ->
+        linkDeclarationsInCompilation(graphDeclaration, container.ir)
+        // Annotation-included containers may need to be managed directly
+        if (container.canBeManaged) {
+          managedBindingContainers += container.ir
+        }
+      }
 
       // For regular graphs (not generated extensions/dynamic), aggregate binding containers
       // from scopes using IrContributionMerger to handle merging. This can't be done in FIR
@@ -1008,6 +1020,7 @@ internal class DependencyGraphNodeCache(
           creator = creator,
           extendedGraphNodes = extendedGraphNodes,
           bindingContainers = managedBindingContainers,
+          annotationDeclaredBindingContainers = annotationDeclaredBindingContainers,
           dynamicTypeKeys = dynamicTypeKeys,
           typeKey = graphTypeKey,
         )
@@ -1144,6 +1157,7 @@ internal class DependencyGraphNodeCache(
           injectors = emptyList(),
           creator = null,
           bindingContainers = emptySet(),
+          annotationDeclaredBindingContainers = emptyMap(),
           bindsFunctions = emptyList(),
           dynamicTypeKeys = emptyMap(),
         )

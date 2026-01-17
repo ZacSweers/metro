@@ -313,7 +313,7 @@ internal class BindingGraphGenerator(
           // Only add the bound instance if there's no dynamic replacement
           graph.addBinding(
             paramTypeKey,
-            IrBinding.BoundInstance(creatorParam, creatorParam.ir!!),
+            IrBinding.BoundInstance(creatorParam, creatorParam.ir!!, isGraphInput = true),
             bindingStack,
           )
 
@@ -342,10 +342,20 @@ internal class BindingGraphGenerator(
       val hasDynamicReplacement = typeKey in node.dynamicTypeKeys
 
       if (!hasDynamicReplacement) {
+        val declaration = node.creator?.parametersByTypeKey?.get(typeKey)?.ir ?: it
+
+        val irElement = node.annotationDeclaredBindingContainers[typeKey]
+
         // Only add the bound instance if there's no dynamic replacement
         graph.addBinding(
           typeKey,
-          IrBinding.BoundInstance(typeKey, it.name.asString(), it),
+          IrBinding.BoundInstance(
+            typeKey = typeKey,
+            nameHint = it.name.asString(),
+            irElement = irElement,
+            reportableDeclaration = declaration,
+            isGraphInput = irElement != null,
+          ),
           bindingStack,
         )
       }
@@ -492,12 +502,16 @@ internal class BindingGraphGenerator(
       depNode.accessors.forEach { (contextualTypeKey, getter, _) ->
         // Add a ref to the included graph if not already present
         if (depNodeKey !in graph) {
+          val declaration =
+            node.creator?.parametersByTypeKey?.get(depNodeKey)?.ir ?: depNode.sourceGraph
+
           graph.addBinding(
             depNodeKey,
             IrBinding.BoundInstance(
               depNodeKey,
               "${depNode.sourceGraph.name}Provider",
-              depNode.sourceGraph,
+              declaration,
+              isGraphInput = true,
             ),
             bindingStack,
           )
