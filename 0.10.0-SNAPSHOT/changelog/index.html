@@ -3262,6 +3262,9 @@
 <li>[Gradle / FIR] Enable top-level function injection by default on Kotlin <code>2.3.20-Beta1</code> or later.</li>
 </ul>
 <h3 id="new">New<a class="headerlink" href="#new" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Support <code>Map&lt;K, Lazy&lt;V&gt;&gt;</code> and <code>Map&lt;K, Provider&lt;Lazy&lt;V&gt;&gt;</code> multibindings expressions.</li>
+</ul>
 <h3 id="enhancements">Enhancements<a class="headerlink" href="#enhancements" title="Permanent link">&para;</a></h3>
 <ul>
 <li>[IR] Restructure graph validation and generation to be separate phases, allowing for whole-graph validation before any code gen runs and better optimizing shared bindings across graph extension hierarchies.</li>
@@ -3307,6 +3310,7 @@ This is a known bug in the Kotlin compiler, follow https://github.com/ZacSweers/
 <li>[IR] Already mentioned above, but worth calling out again — creator-less scoped graph extensions <em>are no longer cached</em> in their parent graphs. Accessors to this will always get new instances now.</li>
 <li>[IR] Report log files reported from within graph generation now use snake-cased fully-qualified names of the impl graph as the file name suffix.</li>
 <li>[IR] Do not report similar bindings when a missing binding has type <code>kotlin.Any</code>. In practice this reported all available bindings.</li>
+<li>[interop-dagger] Update to Dagger <code>2.58</code>.</li>
 <li>[Docs] Publish kdocs for guice/jakarta/javax interop and metrox artifacts to doc site.</li>
 <li>Test Kotlin <code>2.3.20-Beta1</code>.</li>
 </ul>
