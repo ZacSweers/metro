@@ -12,6 +12,7 @@ import org.jetbrains.kotlin.test.services.assertions
 import org.jetbrains.kotlin.test.services.moduleStructure
 import org.jetbrains.kotlin.test.services.temporaryDirectoryManager
 import org.jetbrains.kotlin.test.utils.withExtension
+import org.opentest4j.AssertionFailedError
 
 /**
  * AfterAnalysisChecker that verifies Metro report outputs against expected files.
@@ -61,6 +62,8 @@ class MetroReportsChecker(testServices: TestServices) : AfterAnalysisChecker(tes
 
     val testDataFile = testServices.moduleStructure.originalTestDataFiles.first()
 
+    var generatedMissingFiles = false
+    var lastError: AssertionFailedError? = null
     for (reportName in reportNamesToCheck) {
       val reportFile = File(reportsDir, "$reportName.txt")
       val expectedFile = testDataFile.withExtension("$reportName.txt")
@@ -72,8 +75,22 @@ class MetroReportsChecker(testServices: TestServices) : AfterAnalysisChecker(tes
         }
       } else {
         val actualContent = reportFile.readText()
-        testServices.assertions.assertEqualsToFile(expectedFile, actualContent)
+        try {
+          testServices.assertions.assertEqualsToFile(expectedFile, actualContent)
+        } catch (e: AssertionFailedError) {
+          if (e.message?.contains("Generating: ") == true) {
+            // Don't fail eagerly
+            generatedMissingFiles = true
+            lastError = e
+            System.err.println(e.message)
+          } else {
+            throw e
+          }
+        }
       }
+    }
+    if (generatedMissingFiles) {
+      throw lastError!!
     }
   }
 }
