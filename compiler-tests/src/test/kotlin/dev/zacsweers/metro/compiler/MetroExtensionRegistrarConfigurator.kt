@@ -42,6 +42,7 @@ fun TestConfigurationBuilder.configurePlugin() {
   configureDaggerInterop()
   configureGuiceInterop()
   useAdditionalSourceProviders(::Ksp2AdditionalSourceProvider)
+  useAfterAnalysisCheckers(::MetroReportsChecker)
 }
 
 class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
@@ -102,7 +103,15 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         module.directives.singleOrZeroValue(MetroDirectives.MAX_IR_ERRORS_COUNT)?.let {
           maxIrErrorsCount = it
         }
-        module.directives.singleOrZeroValue(MetroDirectives.REPORTS_DESTINATION)?.let {
+        // Use explicit REPORTS_DESTINATION or default if CHECK_REPORTS is present
+        val reportsDir =
+          module.directives.singleOrZeroValue(MetroDirectives.REPORTS_DESTINATION)
+            ?: if (module.directives[MetroDirectives.CHECK_REPORTS].isNotEmpty()) {
+              MetroReportsChecker.DEFAULT_REPORTS_DIR
+            } else {
+              null
+            }
+        reportsDir?.let {
           reportsDestination =
             Path("${testServices.temporaryDirectoryManager.rootDir.absolutePath}/$it")
         }

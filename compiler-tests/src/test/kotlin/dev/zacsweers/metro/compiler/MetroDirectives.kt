@@ -119,6 +119,12 @@ object MetroDirectives : SimpleDirectivesContainer() {
     stringDirective(
       "Relative path to a directory to dump Metro reports information. Example: 'metro/reports'."
     )
+  val CHECK_REPORTS by
+    stringDirective(
+      "Specifies report file names to verify against expected files. Can be specified multiple times. " +
+        "Example: 'CHECK_REPORTS: merging-unmatched-exclusions-fir-test.AppGraph'. " +
+        "Expected files should be named '<testFile>.<reportName>.txt'."
+    )
 
   fun enableDaggerRuntime(directives: RegisteredDirectives): Boolean {
     return WITH_DAGGER in directives ||
