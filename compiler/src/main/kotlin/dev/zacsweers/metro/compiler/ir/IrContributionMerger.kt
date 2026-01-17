@@ -165,9 +165,7 @@ internal class IrContributionMerger(
     }
 
     if (unmatchedExclusions.isNotEmpty()) {
-      writeDiagnostic({
-        "merging-unmatched-exclusions-ir-${primaryScope.safePathString}.txt"
-      }) {
+      writeDiagnostic({ "merging-unmatched-exclusions-ir-${primaryScope.safePathString}.txt" }) {
         unmatchedExclusions.map { it.safePathString }.sorted().joinToString("\n")
       }
     }
@@ -249,9 +247,7 @@ internal class IrContributionMerger(
     }
 
     if (unmatchedReplacements.isNotEmpty()) {
-      writeDiagnostic({
-        "merging-unmatched-replacements-ir-${primaryScope.safePathString}.txt"
-      }) {
+      writeDiagnostic({ "merging-unmatched-replacements-ir-${primaryScope.safePathString}.txt" }) {
         unmatchedReplacements.map { it.safePathString }.sorted().joinToString("\n")
       }
     }

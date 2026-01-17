@@ -25,5 +25,7 @@ fun main() {
     AbstractFirDumpTest,
     AbstractIrDumpTest,
     AbstractReportsTest,
-  >(exclusionPattern)
+  >(
+    exclusionPattern
+  )
 }
