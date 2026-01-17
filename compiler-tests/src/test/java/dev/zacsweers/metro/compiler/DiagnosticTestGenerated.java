@@ -276,6 +276,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("UnusedGraphInputsAreReported.kt")
+    public void testUnusedGraphInputsAreReported() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/UnusedGraphInputsAreReported.kt");
+    }
+
+    @Test
     @TestMetadata("UsefulHintsForMissingImplDeps.kt")
     public void testUsefulHintsForMissingImplDeps() {
       runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/UsefulHintsForMissingImplDeps.kt");
