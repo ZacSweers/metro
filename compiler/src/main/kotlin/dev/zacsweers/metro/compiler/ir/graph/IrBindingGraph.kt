@@ -34,6 +34,7 @@ import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.traceNested
+import java.util.Collections.emptySortedSet
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
@@ -176,8 +177,21 @@ internal class IrBindingGraph(
     val deferredTypes: Set<IrTypeKey>,
     val reachableKeys: Set<IrTypeKey>,
     val shardGroups: List<List<IrTypeKey>>?,
+    val unusedKeys: Set<IrTypeKey>,
     val hasErrors: Boolean,
-  )
+  ) {
+    companion object {
+      val ERROR =
+        BindingGraphResult(
+          sortedKeys = emptyList(),
+          deferredTypes = emptySet(),
+          reachableKeys = emptySet(),
+          shardGroups = emptyList(),
+          unusedKeys = emptySet(),
+          hasErrors = true,
+        )
+    }
+  }
 
   data class GraphError(val declaration: IrDeclaration?, val message: String)
 
@@ -215,7 +229,7 @@ internal class IrBindingGraph(
     val reachableKeys = topologyResult.reachableKeys
 
     if (hasErrors) {
-      return BindingGraphResult(emptyList(), emptySet(), emptySet(), emptyList(), true)
+      return BindingGraphResult.ERROR
     }
 
     writeDiagnostic("keys-validated-${traceScope.tracer.diagnosticTag}.txt") {
@@ -226,9 +240,16 @@ internal class IrBindingGraph(
       deferredTypes.joinToString(separator = "\n")
     }
 
-    val unused = bindingsSnapshot().keys - reachableKeys
+    val allBindings = bindingsSnapshot().keys + bindingLookup.getAvailableKeys()
+    val unused =
+      (allBindings - reachableKeys).let {
+        if (it.isNotEmpty()) {
+          it.toSortedSet()
+        } else {
+          emptySortedSet()
+        }
+      }
     if (unused.isNotEmpty()) {
-      // TODO option to warn or fail? What about extensions that implicitly have many unused
       writeDiagnostic("keys-unused-${traceScope.tracer.diagnosticTag}.txt") {
         unused.joinToString(separator = "\n")
       }
@@ -251,7 +272,14 @@ internal class IrBindingGraph(
           null
         }
       }
-    return BindingGraphResult(sortedKeys, deferredTypes, reachableKeys, shardGroups, false)
+    return BindingGraphResult(
+      sortedKeys = sortedKeys,
+      deferredTypes = deferredTypes,
+      reachableKeys = reachableKeys,
+      shardGroups = shardGroups,
+      unusedKeys = unused,
+      hasErrors = false,
+    )
   }
 
   fun reportDuplicateBindings(
