@@ -28,6 +28,19 @@ metro {
 !!! warning
     The Kotlin Gradle Plugin does _not_ include file inputs like `reportsDestination` as build inputs, so you may need to compile with `--rerun` to force recompilation after adding this flag.
 
+### Unmatched Exclusions and Replacements
+
+When `reportsDestination` is configured, Metro will report any unmatched exclusions or replacements during contribution merging. This can help identify cases where a graph excludes or replaces a class that isn't actually present in the merged contributions.
+
+Reports are written to files like:
+
+- `merging-unmatched-exclusions-fir-<graph>.txt`
+- `merging-unmatched-replacements-fir-<graph>.txt`
+- `merging-unmatched-rank-replacements-fir-<graph>.txt`
+- `merging-unmatched-exclusions-ir-<scope>.txt`
+- `merging-unmatched-replacements-ir-<scope>.txt`
+- `merging-unmatched-rank-replacements-ir-<scope>.txt`
+
 ## Graph Analysis & Visualization
 
 Metro provides Gradle tasks for generating interactive HTML visualizations of your dependency graphs. See [Graph Analysis](graph-analysis.md) for full documentation on:

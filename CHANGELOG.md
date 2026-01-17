@@ -20,6 +20,7 @@ Changelog
 ### New
 
 - Support `Map<K, Lazy<V>>` and `Map<K, Provider<Lazy<V>>` multibindings expressions.
+- **[FIR/IR]** Report diagnostics for unmatched exclusions and replacements during contribution merging. These are written to `reportsDestination` if enabled, and should be used for debugging only.
 
 ### Enhancements
 
