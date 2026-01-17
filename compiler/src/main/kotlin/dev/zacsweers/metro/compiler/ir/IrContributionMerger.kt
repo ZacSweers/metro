@@ -141,19 +141,30 @@ internal class IrContributionMerger(
     // TODO do we exclude directly contributed ones or also include transitives?
 
     // Process excludes
+    val unmatchedExclusions = mutableSetOf<ClassId>()
     for (excludedClassId in excluded) {
       // Remove excluded binding containers - they won't contribute their bindings
-      mutableContributedBindingContainers.remove(excludedClassId)
+      val removedContainer = mutableContributedBindingContainers.remove(excludedClassId)
 
       // Remove contributions from excluded classes that have nested `MetroContribution` classes
       // (binding containers don't have these, so this only affects @ContributesBinding etc.)
-      mutableAllContributions.remove(excludedClassId)
+      val removedContribution = mutableAllContributions.remove(excludedClassId)
 
       // Remove contributions that have @Origin annotation pointing to the excluded class
-      originToContributions[excludedClassId]?.forEach { contributionId ->
+      val originContributions = originToContributions[excludedClassId]
+      originContributions?.forEach { contributionId ->
         mutableAllContributions.remove(contributionId)
         mutableContributedBindingContainers.remove(contributionId)
       }
+
+      // Track unmatched if nothing was removed
+      if (removedContainer == null && removedContribution == null && originContributions == null) {
+        unmatchedExclusions += excludedClassId
+      }
+    }
+
+    if (unmatchedExclusions.isNotEmpty()) {
+      // TODO warn about unmatched exclusions
     }
 
     // Process replacements from both regular contributions and binding containers.
@@ -190,23 +201,46 @@ internal class IrContributionMerger(
       collectReplacements(containerClass)
     }
 
-    for (replacedClassId in classesToReplace) {
-      mutableAllContributions.remove(replacedClassId)
-      mutableContributedBindingContainers.remove(replacedClassId)
+    val unmatchedReplacements = mutableSetOf<ClassId>()
+
+    fun removeReplacement(replacedClassId: ClassId) {
+      val removedContribution = mutableAllContributions.remove(replacedClassId)
+      val removedContainer = mutableContributedBindingContainers.remove(replacedClassId)
 
       // Remove contributions that have @Origin annotation pointing to the replaced class
-      originToContributions[replacedClassId]?.forEach { contributionId ->
+      val originContributions = originToContributions[replacedClassId]
+      originContributions?.forEach { contributionId ->
         mutableAllContributions.remove(contributionId)
         mutableContributedBindingContainers.remove(contributionId)
       }
+
+      // Track unmatched if nothing was removed
+      if (removedContribution == null && removedContainer == null && originContributions == null) {
+        unmatchedReplacements += replacedClassId
+      }
+    }
+
+    for (replacedClassId in classesToReplace) {
+      removeReplacement(replacedClassId)
     }
 
     // Process rank-based replacements if Dagger-Anvil interop is enabled
     if (options.enableDaggerAnvilInterop) {
+      val unmatchedRankReplacements = mutableSetOf<ClassId>()
       val rankReplacements = processRankBasedReplacements(allScopes, mutableAllContributions)
       for (replacedClassId in rankReplacements) {
-        mutableAllContributions.remove(replacedClassId)
+        if (mutableAllContributions.remove(replacedClassId) == null) {
+          unmatchedRankReplacements += replacedClassId
+        }
       }
+
+      if (unmatchedRankReplacements.isNotEmpty()) {
+        // TODO warn about unmatched rank-based replacements
+      }
+    }
+
+    if (unmatchedReplacements.isNotEmpty()) {
+      // TODO warn about unmatched replacements
     }
 
     // Build and cache the result

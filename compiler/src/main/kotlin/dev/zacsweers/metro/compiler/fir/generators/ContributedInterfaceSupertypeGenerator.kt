@@ -489,7 +489,7 @@ internal class ContributedInterfaceSupertypeGenerator(
     }
 
     if (unmatchedReplacements.isNotEmpty()) {
-      // TODO warn?
+      // TODO warn about unmatched replacements
     }
 
     if (session.metroFirBuiltIns.options.enableDaggerAnvilInterop) {
@@ -502,7 +502,7 @@ internal class ContributedInterfaceSupertypeGenerator(
       }
 
       if (unmatchedRankReplacements.isNotEmpty()) {
-        // TODO we could report all rank based replacements here
+        // TODO warn about unmatched rank-based replacements
       }
     }
 
