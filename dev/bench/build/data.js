@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1768611960619,
+  "lastUpdate": 1768618663895,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -2520,6 +2520,62 @@ window.BENCHMARK_DATA = {
             "value": 20423.036,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -3.89%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "567d8d83~1",
+          "message": "[before] Refactor graph sharding + make extension impls sta",
+          "timestamp": "2026-01-16T21:22:31-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/567d8d832e0292cca3c7b45707b7d85b2acd3ef8"
+        },
+        "date": 1768618663895,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20735.06,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "567d8d832e0292cca3c7b45707b7d85b2acd3ef8",
+          "message": "[after] Refactor graph sharding + make extension impls sta",
+          "timestamp": "2026-01-16T21:22:31-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/567d8d832e0292cca3c7b45707b7d85b2acd3ef8"
+        },
+        "date": 1768618663896,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20898.852000000003,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +0.79%"
           }
         ]
       }
