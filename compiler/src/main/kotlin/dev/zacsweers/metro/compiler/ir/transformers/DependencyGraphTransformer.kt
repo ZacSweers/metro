@@ -115,7 +115,7 @@ internal class DependencyGraphTransformer(
   private val contributionHintIrTransformer by memoize {
     ContributionHintIrTransformer(context, hintGenerator)
   }
-  private val bindingContainerResolver = IrBindingContainerResolver(metroSymbols)
+  private val bindingContainerResolver = IrBindingContainerResolver(bindingContainerTransformer)
   private val contributionMerger = IrContributionMerger(this, contributionData)
   private val dynamicGraphGenerator =
     IrDynamicGraphGenerator(this, bindingContainerResolver, contributionMerger)
@@ -126,7 +126,12 @@ internal class DependencyGraphTransformer(
     mutableMapOf<ClassId, IrBindingGraph.BindingGraphResult?>()
 
   private val dependencyGraphNodeCache =
-    DependencyGraphNodeCache(this, bindingContainerTransformer, contributionMerger)
+    DependencyGraphNodeCache(
+      this,
+      bindingContainerTransformer,
+      bindingContainerResolver,
+      contributionMerger,
+    )
 
   override val currentFileAccess: IrFile
     get() = currentFile
@@ -603,9 +608,7 @@ internal class DependencyGraphTransformer(
             // Safe to call here as it should be already cached
             // TODO add a getCached?
             val transitivelyIncluded =
-              bindingContainerTransformer
-                .resolveAllBindingContainersCached(setOf(containerClass))
-                .mapToSet { it.typeKey }
+              bindingContainerResolver.resolve(setOf(containerClass)).mapToSet { it.typeKey }
             val transitivelyUsed =
               sortedKeys.intersect(transitivelyIncluded).minus(unusedBinding.typeKey)
             if (transitivelyUsed.isNotEmpty()) {
