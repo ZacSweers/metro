@@ -313,6 +313,7 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
           add(lazyOption("statements-per-init-fun", extension.statementsPerInitFun))
           add(lazyOption("enable-graph-sharding", extension.enableGraphSharding))
           add(lazyOption("keys-per-graph-shard", extension.keysPerGraphShard))
+          add(lazyOption("enable-fast-init", extension.enableFastInit))
           add(lazyOption("optional-binding-behavior", extension.optionalBindingBehavior))
           add(lazyOption("public-provider-severity", extension.publicProviderSeverity))
           add(

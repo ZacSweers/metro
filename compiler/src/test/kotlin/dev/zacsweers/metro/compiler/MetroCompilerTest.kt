@@ -132,6 +132,7 @@ abstract class MetroCompilerTest {
                 processor.option(entry.raw.cliOption, interopAnnotationsNamedArgSeverity)
               MetroOption.UNUSED_GRAPH_INPUTS_SEVERITY ->
                 processor.option(entry.raw.cliOption, unusedGraphInputsSeverity)
+              MetroOption.ENABLE_FAST_INIT -> processor.option(entry.raw.cliOption, enableFastInit)
               MetroOption.LOGGING -> {
                 if (enabledLoggers.isEmpty()) continue
                 processor.option(entry.raw.cliOption, enabledLoggers.joinToString("|") { it.name })

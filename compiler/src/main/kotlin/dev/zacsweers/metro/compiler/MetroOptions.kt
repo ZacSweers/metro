@@ -237,6 +237,16 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       valueMapper = { it.toInt() },
     )
   ),
+  ENABLE_FAST_INIT(
+    RawMetroOption.boolean(
+      name = "enable-fast-init",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description = "Enable fastInit mode using SwitchingProviders for deferred class loading.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   PUBLIC_PROVIDER_SEVERITY(
     RawMetroOption(
       name = "public-provider-severity",
@@ -768,6 +778,7 @@ public data class MetroOptions(
   public val enableGraphSharding: Boolean =
     MetroOption.ENABLE_GRAPH_SHARDING.raw.defaultValue.expectAs(),
   public val keysPerGraphShard: Int = MetroOption.KEYS_PER_GRAPH_SHARD.raw.defaultValue.expectAs(),
+  public val enableFastInit: Boolean = MetroOption.ENABLE_FAST_INIT.raw.defaultValue.expectAs(),
   public val publicProviderSeverity: DiagnosticSeverity =
     if (transformProvidersToPrivate) {
       DiagnosticSeverity.NONE
@@ -911,6 +922,7 @@ public data class MetroOptions(
     public var statementsPerInitFun: Int = base.statementsPerInitFun
     public var enableGraphSharding: Boolean = base.enableGraphSharding
     public var keysPerGraphShard: Int = base.keysPerGraphShard
+    public var enableFastInit: Boolean = base.enableFastInit
     public var publicProviderSeverity: DiagnosticSeverity = base.publicProviderSeverity
     public var nonPublicContributionSeverity: DiagnosticSeverity =
       base.nonPublicContributionSeverity
@@ -1106,6 +1118,7 @@ public data class MetroOptions(
         statementsPerInitFun = statementsPerInitFun,
         enableGraphSharding = enableGraphSharding,
         keysPerGraphShard = keysPerGraphShard,
+        enableFastInit = enableFastInit,
         publicProviderSeverity = publicProviderSeverity,
         nonPublicContributionSeverity = nonPublicContributionSeverity,
         optionalBindingBehavior = optionalBindingBehavior,
@@ -1218,6 +1231,8 @@ public data class MetroOptions(
             enableGraphSharding = configuration.getAsBoolean(entry)
 
           MetroOption.KEYS_PER_GRAPH_SHARD -> keysPerGraphShard = configuration.getAsInt(entry)
+
+          MetroOption.ENABLE_FAST_INIT -> enableFastInit = configuration.getAsBoolean(entry)
 
           MetroOption.PUBLIC_PROVIDER_SEVERITY ->
             publicProviderSeverity =

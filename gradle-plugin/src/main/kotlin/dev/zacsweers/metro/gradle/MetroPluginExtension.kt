@@ -187,6 +187,15 @@ constructor(
     objects.property(Int::class.javaObjectType).convention(2000)
 
   /**
+   * Enable fastInit mode using SwitchingProviders for deferred class loading. This reduces graph
+   * initialization time by deferring binding creation until first access.
+   *
+   * Disabled by default.
+   */
+  public val enableFastInit: Property<Boolean> =
+    objects.property(Boolean::class.javaObjectType).convention(false)
+
+  /**
    * Controls the behavior of optional dependencies on a per-compilation basis. Default is
    * [OptionalBindingBehavior.DEFAULT] mode.
    */
