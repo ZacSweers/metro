@@ -918,8 +918,13 @@ internal class IrGraphGenerator(
     shardPropertiesToTypeKeys: MutableMap<IrProperty, IrTypeKey>,
     shardDeferredProperties: MutableList<Pair<IrTypeKey, IrProperty>>,
   ) {
+    // Pre-fetch all bindings to avoid repeated lookups in the loop
+    val bindingsMap = shard.properties.keys.associateWith { contextKey ->
+      bindingGraph.requireBinding(contextKey.typeKey)
+    }
+
     for ((contextKey, propertyInfo) in shard.properties) {
-      val binding = bindingGraph.requireBinding(contextKey.typeKey)
+      val binding = bindingsMap.getValue(contextKey)
       val shardBinding = propertyInfo.shardBinding
       val isProviderType = contextKey.isWrappedInProvider
       val isScoped = shardBinding.isScoped
