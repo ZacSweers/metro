@@ -144,7 +144,7 @@ internal class SwitchingProviderGenerator(
    * @return Triple of (constructor, graphProperty, idProperty)
    */
   private fun IrClass.addConstructorAndFields(): Triple<IrConstructor, IrProperty, IrProperty> {
-    // TODO switch to direct initializers?
+    // TODO switch to direct initializers? For some reason when I try, the fields are not set
     val graphProperty =
       addProperty {
           name = Name.identifier(Symbols.StringNames.GRAPH)

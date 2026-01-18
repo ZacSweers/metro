@@ -71,10 +71,6 @@ open class AbstractFastInitBoxTest : AbstractBoxTest() {
   override fun configure(builder: TestConfigurationBuilder) {
     super.configure(builder)
 
-    with(builder) {
-      defaultDirectives {
-        MetroDirectives.ENABLE_FAST_INIT.with(true)
-      }
-    }
+    with(builder) { defaultDirectives { MetroDirectives.ENABLE_FAST_INIT.with(true) } }
   }
 }

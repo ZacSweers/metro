@@ -20,8 +20,8 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
  * - All property access must go through [graphProperty] since SwitchingProvider is a nested class
  *   that holds a reference to the graph/shard, not the graph/shard itself.
  * - [currentShardIndex] should be set to [SWITCHING_PROVIDER_SHARD_INDEX] to indicate this.
- * - For SwitchingProvider inside a shard (not the main graph), [shardGraphProperty] must be set
- *   to provide the extra hop to reach the main graph for cross-shard access.
+ * - For SwitchingProvider inside a shard (not the main graph), [shardGraphProperty] must be set to
+ *   provide the extra hop to reach the main graph for cross-shard access.
  *
  * This context provides the receivers needed to generate correct property access paths.
  */
@@ -54,7 +54,6 @@ internal class ShardExpressionContext(
    * For SwitchingProvider inside a shard (not the main graph), this is the shard's graph property
    * that provides access to the main graph. This enables cross-shard access via the path:
    * `this.graph.shardGraphProperty.shardField.property`
-   *
    * - SwitchingProvider.graph -> Shard
    * - Shard.shardGraphProperty -> MainGraph
    * - MainGraph.shardField -> OtherShard

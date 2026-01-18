@@ -41,9 +41,7 @@ object MetroDirectives : SimpleDirectivesContainer() {
       it.toInt()
     }
   val ENABLE_FAST_INIT by
-    valueDirective(
-      "Enable fastInit mode using SwitchingProviders for deferred class loading."
-    ) {
+    valueDirective("Enable fastInit mode using SwitchingProviders for deferred class loading.") {
       it.toBoolean()
     }
   val ENABLE_FULL_BINDING_GRAPH_VALIDATION by
