@@ -237,12 +237,12 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       valueMapper = { it.toInt() },
     )
   ),
-  ENABLE_FAST_INIT(
+  ENABLE_SWITCHING_PROVIDERS(
     RawMetroOption.boolean(
-      name = "enable-fast-init",
+      name = "enable-switching-providers",
       defaultValue = false,
       valueDescription = "<true | false>",
-      description = "Enable fastInit mode using SwitchingProviders for deferred class loading.",
+      description = "Enable SwitchingProviders for deferred class loading.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -778,7 +778,8 @@ public data class MetroOptions(
   public val enableGraphSharding: Boolean =
     MetroOption.ENABLE_GRAPH_SHARDING.raw.defaultValue.expectAs(),
   public val keysPerGraphShard: Int = MetroOption.KEYS_PER_GRAPH_SHARD.raw.defaultValue.expectAs(),
-  public val enableFastInit: Boolean = MetroOption.ENABLE_FAST_INIT.raw.defaultValue.expectAs(),
+  public val enableSwitchingProviders: Boolean =
+    MetroOption.ENABLE_SWITCHING_PROVIDERS.raw.defaultValue.expectAs(),
   public val publicProviderSeverity: DiagnosticSeverity =
     if (transformProvidersToPrivate) {
       DiagnosticSeverity.NONE
@@ -922,7 +923,7 @@ public data class MetroOptions(
     public var statementsPerInitFun: Int = base.statementsPerInitFun
     public var enableGraphSharding: Boolean = base.enableGraphSharding
     public var keysPerGraphShard: Int = base.keysPerGraphShard
-    public var enableFastInit: Boolean = base.enableFastInit
+    public var enableFastInit: Boolean = base.enableSwitchingProviders
     public var publicProviderSeverity: DiagnosticSeverity = base.publicProviderSeverity
     public var nonPublicContributionSeverity: DiagnosticSeverity =
       base.nonPublicContributionSeverity
@@ -1118,7 +1119,7 @@ public data class MetroOptions(
         statementsPerInitFun = statementsPerInitFun,
         enableGraphSharding = enableGraphSharding,
         keysPerGraphShard = keysPerGraphShard,
-        enableFastInit = enableFastInit,
+        enableSwitchingProviders = enableFastInit,
         publicProviderSeverity = publicProviderSeverity,
         nonPublicContributionSeverity = nonPublicContributionSeverity,
         optionalBindingBehavior = optionalBindingBehavior,
@@ -1232,7 +1233,8 @@ public data class MetroOptions(
 
           MetroOption.KEYS_PER_GRAPH_SHARD -> keysPerGraphShard = configuration.getAsInt(entry)
 
-          MetroOption.ENABLE_FAST_INIT -> enableFastInit = configuration.getAsBoolean(entry)
+          MetroOption.ENABLE_SWITCHING_PROVIDERS ->
+            enableFastInit = configuration.getAsBoolean(entry)
 
           MetroOption.PUBLIC_PROVIDER_SEVERITY ->
             publicProviderSeverity =

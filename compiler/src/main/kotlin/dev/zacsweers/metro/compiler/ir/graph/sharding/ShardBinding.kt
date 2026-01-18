@@ -23,9 +23,9 @@ internal data class ShardBinding(
    */
   val isDeferred: Boolean = false,
   /**
-   * The switching ID for this binding when using fastInit mode. Only assigned for FIELD properties
-   * that are eligible for SwitchingProvider dispatch. Null means this binding does not use
-   * SwitchingProvider.
+   * The switching ID for this binding when using switching providers mode. Only assigned for FIELD
+   * properties that are eligible for SwitchingProvider dispatch. Null means this binding does not
+   * use SwitchingProvider.
    */
   val switchingId: Int? = null,
 )

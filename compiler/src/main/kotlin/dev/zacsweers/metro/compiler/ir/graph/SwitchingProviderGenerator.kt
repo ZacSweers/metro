@@ -58,7 +58,7 @@ import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.Name
 
 /**
- * Generates a SwitchingProvider nested class for fastInit mode.
+ * Generates a SwitchingProvider nested class for switching providers mode.
  *
  * SwitchingProvider consolidates provider instantiation into a single class with a switch
  * statement, reducing class loading time by deferring binding creation until first access.

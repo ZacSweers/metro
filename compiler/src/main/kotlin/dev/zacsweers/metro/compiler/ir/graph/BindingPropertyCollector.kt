@@ -48,9 +48,9 @@ internal class BindingPropertyCollector(
     // TODO replace with AccessType
     val isProviderType: Boolean = propertyKind == PropertyKind.FIELD,
     /**
-     * The switching ID for this property when using fastInit mode. Only assigned for FIELD
-     * properties that are eligible for SwitchingProvider dispatch. Null means this property does
-     * not use SwitchingProvider.
+     * The switching ID for this property when using switching providers mode. Only assigned for
+     * FIELD properties that are eligible for SwitchingProvider dispatch. Null means this property
+     * does not use SwitchingProvider.
      */
     val switchingId: Int? = null,
   )
@@ -85,7 +85,7 @@ internal class BindingPropertyCollector(
   /** Cache of alias type keys to their resolved non-alias target type keys. */
   private val resolvedAliasTargets = HashMap<IrTypeKey, IrTypeKey>()
 
-  /** Counter for assigning switching IDs in fastInit mode. */
+  /** Counter for assigning switching IDs in switching providers mode. */
   private var nextSwitchingId = 0
 
   /**
@@ -93,7 +93,7 @@ internal class BindingPropertyCollector(
    * properties that can be lazily instantiated via the switching provider pattern.
    */
   private fun shouldUseSwitchingProvider(binding: IrBinding, propertyKind: PropertyKind): Boolean {
-    if (!metroContext.options.enableFastInit) return false
+    if (!metroContext.options.enableSwitchingProviders) return false
     if (propertyKind != PropertyKind.FIELD) return false
 
     // Deferred types use DelegateFactory, not SwitchingProvider
@@ -224,7 +224,7 @@ internal class BindingPropertyCollector(
           // For multibindings with factory refs, the property returns a Provider type
           (binding is IrBinding.Multibinding && node.factoryRefCount > 0)
 
-      // Assign switching ID if eligible for fastInit
+      // Assign switching ID if eligible for switching providers
       val switchingId =
         if (shouldUseSwitchingProvider(binding, knownPropertyType)) {
           nextSwitchingId++
@@ -251,7 +251,7 @@ internal class BindingPropertyCollector(
         if (isGraphExtension) node.scalarRefCount + node.factoryRefCount else node.scalarRefCount
 
       if (useField) {
-        // Assign switching ID if eligible for fastInit
+        // Assign switching ID if eligible for switching providers
         val switchingId =
           if (shouldUseSwitchingProvider(binding, PropertyKind.FIELD)) nextSwitchingId++ else null
         keysWithBackingProperties[contextKey] =

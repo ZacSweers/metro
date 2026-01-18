@@ -880,9 +880,10 @@ internal class IrGraphGenerator(
         null
       }
 
-    // Generate SwitchingProvider class if fastInit is enabled and there are eligible bindings
+    // Generate SwitchingProvider class if switching providers enabled and there are eligible
+    // bindings
     val switchingProvider =
-      if (options.enableFastInit) {
+      if (options.enableSwitchingProviders) {
         val switchingBindings =
           shard.properties.values
             .filter { it.shardBinding.switchingId != null }
@@ -1040,7 +1041,6 @@ internal class IrGraphGenerator(
       } else {
         val initExpression: PropertyInitializer =
           if (switchingId != null && switchingProvider != null) {
-            // Use SwitchingProvider for fastInit mode
             val switchingProviderConstructor = switchingProvider.constructor
             { thisReceiver: IrValueParameter, _: IrTypeKey ->
               irCallConstructor(
@@ -1345,7 +1345,7 @@ internal class IrGraphGenerator(
 
   /**
    * Info for deferred properties that need setDelegate calls. Includes the switchingId so that
-   * deferred bindings can also use SwitchingProvider when fastInit is enabled.
+   * deferred bindings can also use SwitchingProvider when switching providers are enabled.
    */
   data class DeferredPropertyInfo(
     val typeKey: IrTypeKey,
@@ -1354,8 +1354,8 @@ internal class IrGraphGenerator(
   )
 
   /**
-   * Generates a provider expression that either uses SwitchingProvider (when fastInit is enabled
-   * and the binding is eligible) or falls back to direct provider generation.
+   * Generates a provider expression that either uses SwitchingProvider (when switching providers
+   * are enabled and the binding is eligible) or falls back to direct provider generation.
    *
    * This is used for both regular property initialization and setDelegate calls for deferred
    * bindings, ensuring consistent behavior between the two paths.

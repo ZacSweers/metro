@@ -174,7 +174,7 @@ constructor(
     objects.property(Int::class.javaObjectType).convention(25)
 
   /** Enable/disable graph sharding of binding graphs. Disabled by default. */
-  @DelicateMetroGradleApi("Sharding is not yet finished")
+  @DelicateMetroGradleApi("Sharding is an experimental feature")
   public val enableGraphSharding: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(false)
 
@@ -182,17 +182,18 @@ constructor(
    * Maximum number of binding keys per graph shard when sharding is enabled. Default is 2000, must
    * be > 0.
    */
-  @DelicateMetroGradleApi("Sharding is not yet finished")
+  @DelicateMetroGradleApi("Sharding is an experimental feature")
   public val keysPerGraphShard: Property<Int> =
     objects.property(Int::class.javaObjectType).convention(2000)
 
   /**
-   * Enable fastInit mode using SwitchingProviders for deferred class loading. This reduces graph
-   * initialization time by deferring binding creation until first access.
+   * Enables switching providers for deferred class loading. This reduces graph initialization time
+   * by deferring bindings' class init until it's actually requested.
    *
    * Disabled by default.
    */
-  public val enableFastInit: Property<Boolean> =
+  @DelicateMetroGradleApi("Switching providers are an experimental feature")
+  public val enableSwitchingProviders: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(false)
 
   /**
