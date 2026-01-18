@@ -903,7 +903,7 @@ internal class IrGraphGenerator(
     // Collect property initializers for this shard
     val shardPropertyInitializers = mutableListOf<Pair<IrProperty, PropertyInitializer>>()
     val shardPropertiesToTypeKeys = mutableMapOf<IrProperty, IrTypeKey>()
-    val shardDeferredProperties = mutableListOf<Pair<IrTypeKey, IrProperty>>()
+    val shardDeferredProperties = mutableListOf<DeferredPropertyInfo>()
 
     collectShardPropertyInitializers(
       shard = shard,
@@ -924,6 +924,7 @@ internal class IrGraphGenerator(
         shardPropertyInitializers = shardPropertyInitializers,
         shardPropertiesToTypeKeys = shardPropertiesToTypeKeys,
         shardDeferredProperties = shardDeferredProperties,
+        switchingProvider = switchingProvider,
         thisReceiverParameter = thisReceiverParameter,
         constructorStatements = constructorStatements,
       )
@@ -938,6 +939,7 @@ internal class IrGraphGenerator(
     if (shard.isGraphAsShard && shardDeferredProperties.isNotEmpty()) {
       addGraphAsShardDeferredStatements(
         shardDeferredProperties = shardDeferredProperties,
+        switchingProvider = switchingProvider,
         expressionGeneratorFactory = expressionGeneratorFactory,
         constructorStatements = constructorStatements,
       )
@@ -951,7 +953,7 @@ internal class IrGraphGenerator(
     expressionGeneratorFactory: GraphExpressionGenerator.Factory,
     shardPropertyInitializers: MutableList<Pair<IrProperty, PropertyInitializer>>,
     shardPropertiesToTypeKeys: MutableMap<IrProperty, IrTypeKey>,
-    shardDeferredProperties: MutableList<Pair<IrTypeKey, IrProperty>>,
+    shardDeferredProperties: MutableList<DeferredPropertyInfo>,
     switchingProvider: SwitchingProviderGenerator.SwitchingProvider?,
   ) {
     // Pre-fetch all bindings to avoid repeated lookups in the loop
@@ -1015,7 +1017,7 @@ internal class IrGraphGenerator(
       if (isDeferred) {
         // Deferred properties are initialized with empty DelegateFactory(),
         // then setDelegate is called after all properties in this shard are initialized
-        shardDeferredProperties += contextKey.typeKey to property
+        shardDeferredProperties += DeferredPropertyInfo(contextKey.typeKey, property, switchingId)
         val deferredType = contextKey.typeKey.type
         val init: PropertyInitializer = { _, _ ->
           irInvoke(
@@ -1066,7 +1068,8 @@ internal class IrGraphGenerator(
     expressionGeneratorFactory: GraphExpressionGenerator.Factory,
     shardPropertyInitializers: List<Pair<IrProperty, PropertyInitializer>>,
     shardPropertiesToTypeKeys: Map<IrProperty, IrTypeKey>,
-    shardDeferredProperties: List<Pair<IrTypeKey, IrProperty>>,
+    shardDeferredProperties: List<DeferredPropertyInfo>,
+    switchingProvider: SwitchingProviderGenerator.SwitchingProvider?,
     thisReceiverParameter: IrValueParameter,
     constructorStatements: MutableList<InitStatement>,
   ) {
@@ -1083,9 +1086,10 @@ internal class IrGraphGenerator(
 
     // Helper to generate setDelegate calls for deferred properties in this shard
     fun IrBuilderWithScope.generateDeferredSetDelegateCalls(
-      thisReceiver: IrValueParameter
+      thisReceiver: IrValueParameter,
+      switchingProvider: SwitchingProviderGenerator.SwitchingProvider?,
     ): List<IrStatement> = buildList {
-      for ((deferredTypeKey, deferredProperty) in shardDeferredProperties) {
+      for ((deferredTypeKey, deferredProperty, switchingId) in shardDeferredProperties) {
         val binding = bindingGraph.requireBinding(deferredTypeKey)
         add(
           irInvoke(
@@ -1095,15 +1099,17 @@ internal class IrGraphGenerator(
             args =
               listOf(
                 irGetProperty(irGet(thisReceiver), deferredProperty),
-                expressionGeneratorFactory
-                  .create(thisReceiver, shardContext = shardExprContext)
-                  .generateBindingCode(
-                    binding,
-                    contextualTypeKey = binding.contextualTypeKey.wrapInProvider(),
-                    accessType = BindingExpressionGenerator.AccessType.PROVIDER,
-                    fieldInitKey = deferredTypeKey,
-                  )
-                  .letIf(binding.isScoped()) { it.doubleCheck(metroSymbols, binding.typeKey) },
+                generateProviderExpression(
+                  binding = binding,
+                  contextKey = binding.contextualTypeKey.wrapInProvider(),
+                  switchingId = switchingId,
+                  switchingProvider = switchingProvider,
+                  thisReceiver = thisReceiver,
+                  shardExprContext = shardExprContext,
+                  expressionGeneratorFactory = expressionGeneratorFactory,
+                  fieldInitKey = deferredTypeKey,
+                  applyScoping = binding.isScoped(),
+                ),
               ),
           )
         )
@@ -1117,7 +1123,7 @@ internal class IrGraphGenerator(
         shardPropertyInitializers = shardPropertyInitializers,
         shardPropertiesToTypeKeys = shardPropertiesToTypeKeys,
         generateDeferredSetDelegateCalls = { thisReceiver ->
-          generateDeferredSetDelegateCalls(thisReceiver)
+          generateDeferredSetDelegateCalls(thisReceiver, switchingProvider)
         },
         constructorStatements = constructorStatements,
       )
@@ -1128,7 +1134,7 @@ internal class IrGraphGenerator(
         shardPropertiesToTypeKeys = shardPropertiesToTypeKeys,
         thisReceiverParameter = thisReceiverParameter,
         generateDeferredSetDelegateCalls = { thisReceiver ->
-          generateDeferredSetDelegateCalls(thisReceiver)
+          generateDeferredSetDelegateCalls(thisReceiver, switchingProvider)
         },
       )
     }
@@ -1246,12 +1252,13 @@ internal class IrGraphGenerator(
 
   /** Adds deferred setDelegate statements for graph-as-shard mode. */
   private fun addGraphAsShardDeferredStatements(
-    shardDeferredProperties: List<Pair<IrTypeKey, IrProperty>>,
+    shardDeferredProperties: List<DeferredPropertyInfo>,
+    switchingProvider: SwitchingProviderGenerator.SwitchingProvider?,
     expressionGeneratorFactory: GraphExpressionGenerator.Factory,
     constructorStatements: MutableList<InitStatement>,
   ) {
     constructorStatements +=
-      shardDeferredProperties.map { (deferredTypeKey, deferredProperty) ->
+      shardDeferredProperties.map { (deferredTypeKey, deferredProperty, switchingId) ->
         val initStatement: InitStatement = { thisReceiver ->
           val binding = bindingGraph.requireBinding(deferredTypeKey)
           irInvoke(
@@ -1261,15 +1268,17 @@ internal class IrGraphGenerator(
             args =
               listOf(
                 irGetProperty(irGet(thisReceiver), deferredProperty),
-                expressionGeneratorFactory
-                  .create(thisReceiver, shardContext = null)
-                  .generateBindingCode(
-                    binding,
-                    contextualTypeKey = binding.contextualTypeKey.wrapInProvider(),
-                    accessType = BindingExpressionGenerator.AccessType.PROVIDER,
-                    fieldInitKey = deferredTypeKey,
-                  )
-                  .letIf(binding.isScoped()) { it.doubleCheck(metroSymbols, binding.typeKey) },
+                generateProviderExpression(
+                  binding = binding,
+                  contextKey = binding.contextualTypeKey.wrapInProvider(),
+                  switchingId = switchingId,
+                  switchingProvider = switchingProvider,
+                  thisReceiver = thisReceiver,
+                  shardExprContext = null,
+                  expressionGeneratorFactory = expressionGeneratorFactory,
+                  fieldInitKey = deferredTypeKey,
+                  applyScoping = binding.isScoped(),
+                ),
               ),
           )
         }
@@ -1322,6 +1331,60 @@ internal class IrGraphGenerator(
     val isProviderType: Boolean,
     val isScoped: Boolean,
   )
+
+  /**
+   * Info for deferred properties that need setDelegate calls. Includes the switchingId so that
+   * deferred bindings can also use SwitchingProvider when fastInit is enabled.
+   */
+  data class DeferredPropertyInfo(
+    val typeKey: IrTypeKey,
+    val property: IrProperty,
+    val switchingId: Int?,
+  )
+
+  /**
+   * Generates a provider expression that either uses SwitchingProvider (when fastInit is enabled
+   * and the binding is eligible) or falls back to direct provider generation.
+   *
+   * This is used for both regular property initialization and setDelegate calls for deferred
+   * bindings, ensuring consistent behavior between the two paths.
+   */
+  context(scope: IrBuilderWithScope)
+  private fun generateProviderExpression(
+    binding: IrBinding,
+    contextKey: IrContextualTypeKey,
+    switchingId: Int?,
+    switchingProvider: SwitchingProviderGenerator.SwitchingProvider?,
+    thisReceiver: IrValueParameter,
+    shardExprContext: ShardExpressionContext?,
+    expressionGeneratorFactory: GraphExpressionGenerator.Factory,
+    fieldInitKey: IrTypeKey,
+    applyScoping: Boolean,
+  ): IrExpression = with(scope) {
+    val providerExpr =
+      if (switchingId != null && switchingProvider != null) {
+        irCallConstructor(switchingProvider.constructor.symbol, listOf(binding.typeKey.type))
+          .apply {
+            arguments[0] = irGet(thisReceiver)
+            arguments[1] = irInt(switchingId)
+          }
+      } else {
+        expressionGeneratorFactory
+          .create(thisReceiver, shardContext = shardExprContext)
+          .generateBindingCode(
+            binding = binding,
+            contextualTypeKey = contextKey,
+            accessType = BindingExpressionGenerator.AccessType.PROVIDER,
+            fieldInitKey = fieldInitKey,
+          )
+      }
+
+    return if (applyScoping) {
+      providerExpr.doubleCheck(metroSymbols, binding.typeKey)
+    } else {
+      providerExpr
+    }
+  }
 
   // TODO add asProvider support?
   private fun IrClass.addSimpleInstanceProperty(
