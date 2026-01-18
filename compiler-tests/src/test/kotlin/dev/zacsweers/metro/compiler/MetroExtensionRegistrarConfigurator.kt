@@ -76,6 +76,9 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         module.directives.singleOrZeroValue(MetroDirectives.KEYS_PER_GRAPH_SHARD)?.let {
           keysPerGraphShard = it
         }
+        module.directives.singleOrZeroValue(MetroDirectives.ENABLE_FAST_INIT)?.let {
+          enableFastInit = it
+        }
         enableFullBindingGraphValidation =
           MetroDirectives.ENABLE_FULL_BINDING_GRAPH_VALIDATION in module.directives
         enableGraphImplClassAsReturnType =

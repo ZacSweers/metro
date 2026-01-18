@@ -40,6 +40,12 @@ object MetroDirectives : SimpleDirectivesContainer() {
     valueDirective("Maximum number of binding keys per graph shard when sharding is enabled.") {
       it.toInt()
     }
+  val ENABLE_FAST_INIT by
+    valueDirective(
+      "Enable fastInit mode using SwitchingProviders for deferred class loading."
+    ) {
+      it.toBoolean()
+    }
   val ENABLE_FULL_BINDING_GRAPH_VALIDATION by
     directive(
       "Enable/disable full binding graph validation of binds and provides declarations even if they are unused."
