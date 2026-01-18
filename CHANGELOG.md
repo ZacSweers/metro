@@ -13,8 +13,8 @@ Changelog
   class TacoImpl(...) : Taco
   ```
 - **[Gradle / FIR]** Enable FIR hint generation by default on Kotlin `2.3.20-Beta1` or later.
-  - By extension, this resolves Metro's most subscribed issue ([#460](https://github.com/ZacSweers/metro/issues/460)) by enabling cross-module contribution/aggregation features in non-jvm/android compilations 🎉.
-  - Note that there is a separate known kotlinc issue around qualifier annotations that affects native builds and is targeted for `2.3.20-Beta2`. Follow [#1556](https://github.com/ZacSweers/metro/issues/1556) for updates.
+    - By extension, this resolves Metro's most subscribed issue ([#460](https://github.com/ZacSweers/metro/issues/460)) by enabling cross-module contribution/aggregation features in non-jvm/android compilations 🎉.
+    - Note that there is a separate known kotlinc issue around qualifier annotations that affects native builds and is targeted for `2.3.20-Beta2`. Follow [#1556](https://github.com/ZacSweers/metro/issues/1556) for updates.
 - **[Gradle / FIR]** Enable top-level function injection by default on Kotlin `2.3.20-Beta1` or later.
 
 ### New
@@ -22,35 +22,35 @@ Changelog
 - Support `Map<K, Lazy<V>>` and `Map<K, Provider<Lazy<V>>` multibindings expressions.
 - **[FIR/IR]** Report diagnostics for unmatched exclusions and replacements during contribution merging. These are written to `reportsDestination` if enabled, and should be used for debugging only.
 - **[IR]** Add an `unusedGraphInputsSeverity` option to report diagnostics for unused _direct_ graph inputs. This includes any `@Provides` or `@Includes` parameters to graph factories or managed binding containers declared via the `@DependencyGraph.includes` annotation.
-  - This is in addition to the existing `reportsDestination`-only diagnostic for unused bindings, but limited to bindings that we _know_ are not reused elsewhere and can thus safely soft-enforce at compile-time.
-  - This matches a similar feature in Dagger.
+    - This is in addition to the existing `reportsDestination`-only diagnostic for unused bindings, but limited to bindings that we _know_ are not reused elsewhere and can thus safely soft-enforce at compile-time.
+    - This matches a similar feature in Dagger.
 
 ### Enhancements
 
 - **[IR]** Restructure graph validation and generation to be separate phases, allowing for whole-graph validation before any code gen runs and better optimizing shared bindings across graph extension hierarchies.
 - **[IR]** Improve member injection error trace in graph validation.
-  - Previously it would show something like this
-    ```
-    dev.zacsweers.metro.MembersInjector<test.FeatureScreen> is requested at
-        [test.FeatureGraph] test.FeatureGraph#inject()
-    ```
-  - Now it will specify the injected type is being injected instead
-    ```
-    test.Dependency is requested at
-        [test.FeatureGraph] test.FeatureScreen.dependency
-    test.FeatureScreen is injected at
-        [test.FeatureGraph] test.FeatureGraph#inject()
-    ```
-  - It now also reports the location at the exact member injection callable declaration, rather than the graph.
+    - Previously it would show something like this
+      ```
+      dev.zacsweers.metro.MembersInjector<test.FeatureScreen> is requested at
+          [test.FeatureGraph] test.FeatureGraph#inject()
+      ```
+    - Now it will specify the injected type is being injected instead
+      ```
+      test.Dependency is requested at
+          [test.FeatureGraph] test.FeatureScreen.dependency
+      test.FeatureScreen is injected at
+          [test.FeatureGraph] test.FeatureGraph#inject()
+      ```
+    - It now also reports the location at the exact member injection callable declaration, rather than the graph.
 - **[IR]** Validate parameter type keys on native builds to help clarify encounters with [KT-83427](https://youtrack.jetbrains.com/issue/KT-83427). Example below:
-  ```
-  e: Mirror/create function parameter type mismatch:
-    - Source:         com.example.navigation.NavigationProviders.navigationSerializationModule
-    - Mirror param:   @com.example.app.navigation.NavigationSerializers kotlin.collections.Set<kotlinx.serialization.modules.SerializersModule>
-    - create() param: kotlin.collections.Set<kotlinx.serialization.modules.SerializersModule>
-
-  This is a known bug in the Kotlin compiler, follow https://github.com/ZacSweers/metro/issues/1556
-  ```
+    ```
+    e: Mirror/create function parameter type mismatch:
+      - Source:         com.example.navigation.NavigationProviders.navigationSerializationModule
+      - Mirror param:   @com.example.app.navigation.NavigationSerializers kotlin.collections.Set<kotlinx.serialization.modules.SerializersModule>
+      - create() param: kotlin.collections.Set<kotlinx.serialization.modules.SerializersModule>
+  
+    This is a known bug in the Kotlin compiler, follow https://github.com/ZacSweers/metro/issues/1556
+    ```
 - **[IR]** Avoid generating unnecessary `Provider` refcounts for bindings only used by graph injector functions.
 - **[IR]** When reporting graph failures in dynamic graphs, report the original call location in error reporting.
 - **[IR]** Optimize equals/hashCode in type keys. Benchmarks show a ~2% macro improvement.
