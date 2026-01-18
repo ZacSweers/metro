@@ -47,6 +47,12 @@ internal class BindingPropertyCollector(
      */
     // TODO replace with AccessType
     val isProviderType: Boolean = propertyKind == PropertyKind.FIELD,
+    /**
+     * The switching ID for this property when using fastInit mode. Only assigned for FIELD
+     * properties that are eligible for SwitchingProvider dispatch. Null means this property does
+     * not use SwitchingProvider.
+     */
+    val switchingId: Int? = null,
   )
 
   /**
@@ -78,6 +84,45 @@ internal class BindingPropertyCollector(
 
   /** Cache of alias type keys to their resolved non-alias target type keys. */
   private val resolvedAliasTargets = HashMap<IrTypeKey, IrTypeKey>()
+
+  /** Counter for assigning switching IDs in fastInit mode. */
+  private var nextSwitchingId = 0
+
+  /**
+   * Determines if a binding is eligible for SwitchingProvider dispatch. Returns true only for FIELD
+   * properties that can be lazily instantiated via the switching provider pattern.
+   */
+  private fun shouldUseSwitchingProvider(binding: IrBinding, propertyKind: PropertyKind): Boolean {
+    if (!metroContext.options.enableFastInit) return false
+    if (propertyKind != PropertyKind.FIELD) return false
+
+    // Deferred types use DelegateFactory, not SwitchingProvider
+    if (binding.typeKey in deferredTypes) return false
+
+    return when (binding) {
+      // These use specialized initialization, not SwitchingProvider
+      is IrBinding.BoundInstance,
+      is IrBinding.GraphDependency,
+      is IrBinding.Alias,
+      is IrBinding.Absent,
+      is IrBinding.Assisted,
+      is IrBinding.GraphExtension,
+      is IrBinding.MembersInjected,
+      is IrBinding.CustomWrapper,
+      // Multibindings use GETTER properties, never FIELD (this check is redundant but explicit)
+      is IrBinding.Multibinding,
+      // Object classes cannot be scoped and are never stored in provider fields
+      is IrBinding.ObjectClass,
+      is IrBinding.GraphExtensionFactory -> false
+
+      // Assisted inject factories have different lifecycle
+      is IrBinding.ConstructorInjected if binding.isAssisted -> false
+
+      // These can use SwitchingProvider
+      is IrBinding.ConstructorInjected,
+      is IrBinding.Provided -> true
+    }
+  }
 
   // Create getters for multi-use refcounts _unless_ they have no dependencies
   private fun IrBinding.isSimpleBinding(): Boolean {
@@ -178,8 +223,17 @@ internal class BindingPropertyCollector(
         (isField && !isAssistedInject) ||
           // For multibindings with factory refs, the property returns a Provider type
           (binding is IrBinding.Multibinding && node.factoryRefCount > 0)
+
+      // Assign switching ID if eligible for fastInit
+      val switchingId =
+        if (shouldUseSwitchingProvider(binding, knownPropertyType)) {
+          nextSwitchingId++
+        } else {
+          null
+        }
+
       keysWithBackingProperties[contextKey] =
-        CollectedProperty(binding, knownPropertyType, contextKey, isProviderType)
+        CollectedProperty(binding, knownPropertyType, contextKey, isProviderType, switchingId)
       // Still process dependencies even for known property types
     }
 
@@ -197,8 +251,11 @@ internal class BindingPropertyCollector(
         if (isGraphExtension) node.scalarRefCount + node.factoryRefCount else node.scalarRefCount
 
       if (useField) {
+        // Assign switching ID if eligible for fastInit
+        val switchingId =
+          if (shouldUseSwitchingProvider(binding, PropertyKind.FIELD)) nextSwitchingId++ else null
         keysWithBackingProperties[contextKey] =
-          CollectedProperty(binding, PropertyKind.FIELD, contextKey)
+          CollectedProperty(binding, PropertyKind.FIELD, contextKey, switchingId = switchingId)
       } else if (effectiveScalarRefCount > 1 && !node.binding.isSimpleBinding()) {
         keysWithBackingProperties[contextKey] =
           CollectedProperty(binding, PropertyKind.GETTER, contextKey)

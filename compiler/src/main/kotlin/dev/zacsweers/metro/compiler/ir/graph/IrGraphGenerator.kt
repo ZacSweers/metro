@@ -48,6 +48,7 @@ import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.typeOrNullableAny
+import dev.zacsweers.metro.compiler.ir.withIrBuilder
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.isSyntheticGeneratedGraph
@@ -70,6 +71,7 @@ import org.jetbrains.kotlin.ir.builders.irDelegatingConstructorCall
 import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetObject
+import org.jetbrains.kotlin.ir.builders.irInt
 import org.jetbrains.kotlin.ir.builders.irSetField
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
@@ -746,7 +748,8 @@ internal class IrGraphGenerator(
   /** Converts collected bindings to [ShardBinding] for the shard generator. */
   private fun List<BindingPropertyCollector.CollectedProperty>.mapToShardBindings():
     List<ShardBinding> = map { collectedProperty ->
-    val (binding, propertyType, collectedContextKey, collectedIsProviderType) = collectedProperty
+    val (binding, propertyType, collectedContextKey, collectedIsProviderType, switchingId) =
+      collectedProperty
     val isDeferred = binding.typeKey in sealResult.deferredTypes
     val metadata =
       computeBindingMetadata(binding, propertyType, collectedContextKey, collectedIsProviderType)
@@ -758,6 +761,7 @@ internal class IrGraphGenerator(
       nameHint = metadata.nameHint,
       isScoped = metadata.isScoped,
       isDeferred = isDeferred,
+      switchingId = switchingId,
     )
   }
 
@@ -866,6 +870,36 @@ internal class IrGraphGenerator(
         null
       }
 
+    // Generate SwitchingProvider class if fastInit is enabled and there are eligible bindings
+    val switchingProvider =
+      if (options.enableFastInit) {
+        val switchingBindings =
+          shard.properties.values
+            .filter { it.shardBinding.switchingId != null }
+            .map { propertyInfo ->
+              val binding = bindingGraph.requireBinding(propertyInfo.shardBinding.typeKey)
+              SwitchingProviderGenerator.SwitchingBinding(
+                id = propertyInfo.shardBinding.switchingId!!,
+                binding = binding,
+                contextKey = propertyInfo.shardBinding.contextKey,
+              )
+            }
+        if (switchingBindings.isNotEmpty()) {
+          SwitchingProviderGenerator(
+              metroContext = metroContext,
+              graphOrShardClass = shard.shardClass,
+              switchingBindings = switchingBindings,
+              expressionGeneratorFactory = expressionGeneratorFactory,
+              shardExprContext = shardExprContext,
+            )
+            .generate()
+        } else {
+          null
+        }
+      } else {
+        null
+      }
+
     // Collect property initializers for this shard
     val shardPropertyInitializers = mutableListOf<Pair<IrProperty, PropertyInitializer>>()
     val shardPropertiesToTypeKeys = mutableMapOf<IrProperty, IrTypeKey>()
@@ -878,6 +912,7 @@ internal class IrGraphGenerator(
       shardPropertyInitializers = shardPropertyInitializers,
       shardPropertiesToTypeKeys = shardPropertiesToTypeKeys,
       shardDeferredProperties = shardDeferredProperties,
+      switchingProvider = switchingProvider,
     )
 
     // Apply chunking logic to this shard's property initializers
@@ -917,6 +952,7 @@ internal class IrGraphGenerator(
     shardPropertyInitializers: MutableList<Pair<IrProperty, PropertyInitializer>>,
     shardPropertiesToTypeKeys: MutableMap<IrProperty, IrTypeKey>,
     shardDeferredProperties: MutableList<Pair<IrTypeKey, IrProperty>>,
+    switchingProvider: SwitchingProviderGenerator.SwitchingProvider?,
   ) {
     // Pre-fetch all bindings to avoid repeated lookups in the loop
     val bindingsMap =
@@ -930,6 +966,18 @@ internal class IrGraphGenerator(
       val isProviderType = contextKey.isWrappedInProvider
       val isScoped = shardBinding.isScoped
       val isDeferred = shardBinding.isDeferred
+      val switchingId = shardBinding.switchingId
+
+      val requiresDoubleCheck = isScoped && isProviderType
+
+      context(scope: IrBuilderWithScope)
+      fun IrExpression.applyScoping(): IrExpression {
+        return if (requiresDoubleCheck) {
+          doubleCheck(metroSymbols, binding.typeKey)
+        } else {
+          this
+        }
+      }
 
       val accessType =
         if (isProviderType) {
@@ -954,9 +1002,7 @@ internal class IrGraphGenerator(
                     accessType = accessType,
                     fieldInitKey = contextKey.typeKey,
                   )
-                  .letIf(isScoped && isProviderType) {
-                    it.doubleCheck(this@run, metroSymbols, binding.typeKey)
-                  }
+                  .applyScoping()
               irExprBodySafe(initExpr)
             }
         }
@@ -979,8 +1025,22 @@ internal class IrGraphGenerator(
         }
         shardPropertyInitializers += property to init
       } else {
-        shardPropertyInitializers +=
-          property to
+        val initExpression: PropertyInitializer =
+          if (switchingId != null && switchingProvider != null) {
+            // Use SwitchingProvider for fastInit mode
+            val switchingProviderConstructor = switchingProvider.constructor
+            { thisReceiver: IrValueParameter, _: IrTypeKey ->
+              irCallConstructor(
+                  switchingProviderConstructor.symbol,
+                  listOf(contextKey.typeKey.type),
+                )
+                .apply {
+                  arguments[0] = irGet(thisReceiver) // graph/shard reference
+                  arguments[1] = irInt(switchingId) // switching ID
+                }
+                .applyScoping()
+            }
+          } else {
             { thisReceiver: IrValueParameter, fieldInitKey: IrTypeKey ->
               expressionGeneratorFactory
                 .create(thisReceiver, shardContext = shardExprContext)
@@ -990,10 +1050,11 @@ internal class IrGraphGenerator(
                   accessType = accessType,
                   fieldInitKey = fieldInitKey,
                 )
-                .letIf(isScoped && isProviderType) {
-                  it.doubleCheck(this, metroSymbols, binding.typeKey)
-                }
+                .applyScoping()
             }
+          }
+
+        shardPropertyInitializers += property to initExpression
       }
     }
   }
@@ -1042,13 +1103,7 @@ internal class IrGraphGenerator(
                     accessType = BindingExpressionGenerator.AccessType.PROVIDER,
                     fieldInitKey = deferredTypeKey,
                   )
-                  .letIf(binding.isScoped()) {
-                    it.doubleCheck(
-                      this@generateDeferredSetDelegateCalls,
-                      metroSymbols,
-                      binding.typeKey,
-                    )
-                  },
+                  .letIf(binding.isScoped()) { it.doubleCheck(metroSymbols, binding.typeKey) },
               ),
           )
         )
@@ -1214,7 +1269,7 @@ internal class IrGraphGenerator(
                     accessType = BindingExpressionGenerator.AccessType.PROVIDER,
                     fieldInitKey = deferredTypeKey,
                   )
-                  .letIf(binding.isScoped()) { it.doubleCheck(this, metroSymbols, binding.typeKey) },
+                  .letIf(binding.isScoped()) { it.doubleCheck(metroSymbols, binding.typeKey) },
               ),
           )
         }
@@ -1303,12 +1358,7 @@ internal class IrGraphGenerator(
           declarationToFinalize.finalizeFakeOverride(graphClass.thisReceiverOrFail)
         }
         body =
-          createIrBuilder(symbol).run {
-            if (binding is IrBinding.Multibinding) {
-              // TODO if we have multiple accessors pointing at the same type, implement
-              //  one and make the rest call that one. Not multibinding specific. Maybe
-              //  groupBy { typekey }?
-            }
+          withIrBuilder(symbol) {
             irExprBodySafe(
               typeAsProviderArgument(
                 contextualTypeKey,
