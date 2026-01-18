@@ -3256,36 +3256,42 @@
 <span class="c1">// @Inject // &lt;-- now implicit!</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">TacoImpl</span><span class="p">(...)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">Taco</span>
 </code></pre></div></li>
-<li><strong>[Gradle / FIR]</strong> Enable FIR hint generation by default on Kotlin <code>2.3.20-Beta1</code> or later.</li>
+<li><strong>[Gradle / FIR]</strong> Enable FIR hint generation by default on Kotlin <code>2.3.20-Beta1</code> or later.<ul>
 <li>By extension, this resolves Metro&rsquo;s most subscribed issue (<a href="https://github.com/ZacSweers/metro/issues/460">#460</a>) by enabling cross-module contribution/aggregation features in non-jvm/android compilations 🎉.</li>
 <li>Note that there is a separate known kotlinc issue around qualifier annotations that affects native builds and is targeted for <code>2.3.20-Beta2</code>. Follow <a href="https://github.com/ZacSweers/metro/issues/1556">#1556</a> for updates.</li>
+</ul>
+</li>
 <li><strong>[Gradle / FIR]</strong> Enable top-level function injection by default on Kotlin <code>2.3.20-Beta1</code> or later.</li>
 </ul>
 <h3 id="new">New<a class="headerlink" href="#new" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Support <code>Map&lt;K, Lazy&lt;V&gt;&gt;</code> and <code>Map&lt;K, Provider&lt;Lazy&lt;V&gt;&gt;</code> multibindings expressions.</li>
 <li><strong>[FIR/IR]</strong> Report diagnostics for unmatched exclusions and replacements during contribution merging. These are written to <code>reportsDestination</code> if enabled, and should be used for debugging only.</li>
-<li><strong>[IR]</strong> Add an <code>unusedGraphInputsSeverity</code> option to report diagnostics for unused <em>direct</em> graph inputs. This includes any <code>@Provides</code> or <code>@Includes</code> parameters to graph factories or managed binding containers declared via the <code>@DependencyGraph.includes</code> annotation.</li>
+<li><strong>[IR]</strong> Add an <code>unusedGraphInputsSeverity</code> option to report diagnostics for unused <em>direct</em> graph inputs. This includes any <code>@Provides</code> or <code>@Includes</code> parameters to graph factories or managed binding containers declared via the <code>@DependencyGraph.includes</code> annotation.<ul>
 <li>This is in addition to the existing <code>reportsDestination</code>-only diagnostic for unused bindings, but limited to bindings that we <em>know</em> are not reused elsewhere and can thus safely soft-enforce at compile-time.</li>
 <li>This matches a similar feature in Dagger.</li>
+</ul>
+</li>
 </ul>
 <h3 id="enhancements">Enhancements<a class="headerlink" href="#enhancements" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>[IR]</strong> Restructure graph validation and generation to be separate phases, allowing for whole-graph validation before any code gen runs and better optimizing shared bindings across graph extension hierarchies.</li>
-<li><strong>[IR]</strong> Improve member injection error trace in graph validation.</li>
+<li><strong>[IR]</strong> Improve member injection error trace in graph validation.<ul>
 <li>Previously it would show something like this<br />
-    <div class="highlight"><pre><span></span><code>dev.zacsweers.metro.MembersInjector&lt;test.FeatureScreen&gt; is requested at
+  <div class="highlight"><pre><span></span><code>dev.zacsweers.metro.MembersInjector&lt;test.FeatureScreen&gt; is requested at
     [test.FeatureGraph] test.FeatureGraph#inject()
 </code></pre></div></li>
 <li>Now it will specify the injected type is being injected instead<br />
-    <div class="highlight"><pre><span></span><code>test.Dependency is requested at
+  <div class="highlight"><pre><span></span><code>test.Dependency is requested at
     [test.FeatureGraph] test.FeatureScreen.dependency
 test.FeatureScreen is injected at
     [test.FeatureGraph] test.FeatureGraph#inject()
 </code></pre></div></li>
 <li>It now also reports the location at the exact member injection callable declaration, rather than the graph.</li>
+</ul>
+</li>
 <li><strong>[IR]</strong> Validate parameter type keys on native builds to help clarify encounters with <a href="https://youtrack.jetbrains.com/issue/KT-83427">KT-83427</a>. Example below:<br />
-  <div class="highlight"><pre><span></span><code>e: Mirror/create function parameter type mismatch:
+    <div class="highlight"><pre><span></span><code>e: Mirror/create function parameter type mismatch:
   - Source:         com.example.navigation.NavigationProviders.navigationSerializationModule
   - Mirror param:   @com.example.app.navigation.NavigationSerializers kotlin.collections.Set&lt;kotlinx.serialization.modules.SerializersModule&gt;
   - create() param: kotlin.collections.Set&lt;kotlinx.serialization.modules.SerializersModule&gt;
