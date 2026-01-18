@@ -37,6 +37,11 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
   private val bindingContainerContributions = mutableMapOf<Scope, MutableSet<IrClass>>()
   private val externalBindingContainerContributions = mutableMapOf<Scope, Set<IrClass>>()
 
+  // Cache for findVisibleContributionClassesForScopeInHints results
+  // This avoids redundant lookups when both findExternalContributions and
+  // findExternalBindingContainerContributions are called for the same scope
+  private val visibleContributionClassesCache = mutableMapOf<Scope, Set<IrClass>>()
+
   fun addContribution(scope: Scope, contribution: IrType) {
     contributions.getAndAdd(scope, contribution)
   }
@@ -81,6 +86,20 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
     callingDeclaration: IrDeclaration,
     includeNonFriendInternals: Boolean = false,
   ): Set<IrClass> {
+    // Always track the lookup for incremental compilation
+    trackScopeHintLookup(scope, callingDeclaration)
+
+    // Check cache first (unless includeNonFriendInternals which changes the result)
+    if (!includeNonFriendInternals) {
+      visibleContributionClassesCache[scope]?.let { cached ->
+        // Still need to track class lookups for IC even on cache hit
+        for (irClass in cached) {
+          context(metroContext) { trackClassLookup(callingDeclaration, irClass) }
+        }
+        return cached
+      }
+    }
+
     val functionsInPackage = metroContext.referenceFunctions(scopeHintFor(scope))
 
     context(metroContext) {
@@ -89,8 +108,6 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
           "\n----\nCalled by:\n${callingDeclaration.expectAsOrNull<IrDeclarationWithName>()?.name}"
       }
     }
-
-    trackScopeHintLookup(scope, callingDeclaration)
 
     val contributingClasses =
       functionsInPackage
@@ -111,11 +128,18 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
             context(metroContext) { trackClassLookup(callingDeclaration, it) }
           }
         }
+
+    // Cache the result (only for the default case without includeNonFriendInternals)
+    if (!includeNonFriendInternals) {
+      visibleContributionClassesCache[scope] = contributingClasses
+    }
+
     return contributingClasses
   }
 
-  // TODO this may do multiple lookups of the same origin class if it contributes to multiple scopes
-  //  something we could possibly optimize in the future.
+  // Note: Origin classes may be looked up multiple times if they contribute to multiple scopes.
+  // findVisibleContributionClassesForScopeInHints is cached per scope, so redundant lookups
+  // within the same scope are avoided.
   private fun findExternalContributions(
     scope: Scope,
     callingDeclaration: IrDeclaration,
@@ -132,8 +156,9 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
     }
   }
 
-  // TODO this may do multiple lookups of the same origin class if it contributes to multiple scopes
-  //  something we could possibly optimize in the future.
+  // Note: Origin classes may be looked up multiple times if they contribute to multiple scopes.
+  // findVisibleContributionClassesForScopeInHints is cached per scope, so redundant lookups
+  // within the same scope are avoided.
   private fun findExternalBindingContainerContributions(
     scope: Scope,
     callingDeclaration: IrDeclaration,
