@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
-import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.graph.BaseContextualTypeKey
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
+import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
@@ -23,14 +23,19 @@ import org.jetbrains.kotlin.ir.util.render
 import org.jetbrains.kotlin.name.StandardClassIds
 
 /** A class that represents a type with contextual information. */
-@Poko
 internal class IrContextualTypeKey(
   override val typeKey: IrTypeKey,
   override val wrappedType: WrappedType<IrType>,
-  @Poko.Skip override val hasDefault: Boolean = false,
-  @Poko.Skip override val rawType: IrType? = null,
+  override val hasDefault: Boolean = false,
+  override val rawType: IrType? = null,
 ) : BaseContextualTypeKey<IrType, IrTypeKey, IrContextualTypeKey> {
-  override fun toString(): String = render(short = false)
+
+  private val cachedRender by memoize { render(short = false) }
+  private val cachedHashCode by memoize {
+    var result = typeKey.hashCode()
+    result = 31 * result + wrappedType.hashCode()
+    result
+  }
 
   context(metroContext: IrMetroContext)
   fun withIrTypeKey(typeKey: IrTypeKey, rawType: IrType? = null): IrContextualTypeKey {
@@ -87,6 +92,22 @@ internal class IrContextualTypeKey(
       }
     }
   }
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as IrContextualTypeKey
+
+    if (typeKey != other.typeKey) return false
+    if (wrappedType != other.wrappedType) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int = cachedHashCode
+
+  override fun toString(): String = cachedRender
 
   // TODO cache these in DependencyGraphTransformer or shared transformer data
   companion object {
