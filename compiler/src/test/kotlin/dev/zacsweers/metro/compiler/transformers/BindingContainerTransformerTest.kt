@@ -619,7 +619,6 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       assertDiagnostics(
         """
         w: Included Dagger module 'ExampleModule' declares a `subcomponents` parameter but this will be ignored by Metro in interop.
-        w: ExampleGraph.kt:6:39 Graph input 'ExampleModule' is unused and can be removed.
         """
           .trimIndent()
       )
