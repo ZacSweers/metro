@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1768700408548,
+  "lastUpdate": 1768706096637,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -2744,6 +2744,62 @@ window.BENCHMARK_DATA = {
             "value": 20509.046000000002,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +1.85%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "0994b42d~1",
+          "message": "[before] Consolidate BindingContainer resolver logic (#1683",
+          "timestamp": "2026-01-17T21:40:46-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/0994b42d773cfeaab7ce57d27790cee30c466ed6"
+        },
+        "date": 1768706096637,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20102.478,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "0994b42d773cfeaab7ce57d27790cee30c466ed6",
+          "message": "[after] Consolidate BindingContainer resolver logic (#1683",
+          "timestamp": "2026-01-17T21:40:46-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/0994b42d773cfeaab7ce57d27790cee30c466ed6"
+        },
+        "date": 1768706096638,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 21055.859999999997,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +4.74%"
           }
         ]
       }
