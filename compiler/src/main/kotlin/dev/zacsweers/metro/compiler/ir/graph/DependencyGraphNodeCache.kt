@@ -58,7 +58,6 @@ import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.isSyntheticGeneratedGraph
 import dev.zacsweers.metro.compiler.mapNotNullToSet
-import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -179,6 +178,7 @@ internal class DependencyGraphNodeCache(
     private val sourceGraphTypeKey = IrTypeKey(graphDeclaration.sourceGraphIfMetroGraph.typeWith())
     private val graphContextKey = IrContextualTypeKey.create(graphTypeKey)
     private val bindingContainers = mutableSetOf<BindingContainer>()
+    private val resolvedBindingContainers = mutableSetOf<BindingContainer>()
     private val managedBindingContainers = mutableSetOf<IrClass>()
     private val annotationDeclaredBindingContainers = mutableMapOf<IrTypeKey, IrElement>()
     private val dynamicBindingContainers = mutableSetOf<IrClass>()
@@ -309,8 +309,9 @@ internal class DependencyGraphNodeCache(
           val isContainer = isDynamicContainer || isRegularContainer
           if (isContainer) {
             // Include the container itself and all its transitively included containers
-            val allContainers = bindingContainerResolver.resolve(setOf(sourceGraph))
+            val allContainers = bindingContainerResolver.resolve(sourceGraph)
             bindingContainers += allContainers
+            resolvedBindingContainers += allContainers
             // Track which transitively included containers be managed
             for (container in allContainers) {
               if (container.ir == klass) {
@@ -889,6 +890,7 @@ internal class DependencyGraphNodeCache(
 
       val resolvedContainers = bindingContainerResolver.resolve(directDeclaredContainers)
       bindingContainers += resolvedContainers
+      resolvedBindingContainers += resolvedContainers
       resolvedContainers.forEach { container ->
         linkDeclarationsInCompilation(graphDeclaration, container.ir)
         // Annotation-included containers may need to be managed directly
@@ -937,8 +939,10 @@ internal class DependencyGraphNodeCache(
       }
 
       // Resolve transitive binding containers
-      val allMergedContainers =
-        bindingContainers.mapToSet { it.ir }.let { bindingContainerResolver.resolve(it) }
+      val unresolvedRoots =
+        bindingContainers.mapNotNullToSet { if (it in resolvedBindingContainers) null else it.ir }
+      val newlyResolved = bindingContainerResolver.resolve(unresolvedRoots)
+      val allMergedContainers = resolvedBindingContainers + newlyResolved
 
       for (container in allMergedContainers) {
         val isDynamicContainer = container.ir in dynamicBindingContainers
