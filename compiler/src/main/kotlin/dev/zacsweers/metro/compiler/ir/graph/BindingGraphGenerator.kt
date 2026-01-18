@@ -4,13 +4,15 @@ package dev.zacsweers.metro.compiler.ir.graph
 
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.Origins
-import dev.zacsweers.metro.compiler.flatMapToSet
+import dev.zacsweers.metro.compiler.ir.BindsCallable
 import dev.zacsweers.metro.compiler.ir.BindsLikeCallable
+import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.MultibindsCallable
 import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.deepRemapperFor
@@ -119,29 +121,11 @@ internal class BindingGraphGenerator(
       superTypeToAlias.putIfAbsent(superTypeKey, node.typeKey)
     }
 
-    // Flatten inherited provider factories from extended nodes
-    val inheritedProviderFactoryKeys = mutableSetOf<IrTypeKey>()
-    val inheritedProviderFactories =
-      node.allExtendedNodes
-        .asSequence()
-        .flatMap { (_, extendedNode) ->
-          extendedNode.providerFactories.entries.flatMap { (key, factories) ->
-            // Do not include scoped providers as these should _only_ come from this graph
-            // instance
-            factories.asSequence().filter { !it.annotations.isScoped }.map { key to it }
-          }
-        }
-        // Filter out inherited providers whose typeKey is already in the current node
-        .filterNot { (typeKey, _) -> typeKey in node.providerFactories }
-        .onEach { (typeKey, _) -> inheritedProviderFactoryKeys.add(typeKey) }
-        .toSet()
-
-    // Flatten inherited binds callables from extended nodes
-    val inheritedBindsCallableKeys =
-      node.allExtendedNodes.values
-        .flatMap { it.bindsCallables.entries.flatMap { (key, callables) -> callables.map { key } } }
-        // Filter out inherited binds callables whose typeKey is already in the current node
-        .filterNotTo(mutableSetOf()) { typeKey -> typeKey in node.bindsCallables }
+    // Collect all inherited data from extended nodes in a single pass
+    val inheritedData = collectInheritedData(node)
+    val inheritedProviderFactoryKeys = inheritedData.providerFactoryKeys
+    val inheritedProviderFactories = inheritedData.providerFactories
+    val inheritedBindsCallableKeys = inheritedData.bindsCallableKeys
 
     // Collect all provider factories to add (flatten from lists)
     val providerFactoriesToAdd = buildList {
@@ -214,12 +198,8 @@ internal class BindingGraphGenerator(
     // Collect all binds callables to add (flatten from lists)
     val bindsCallablesToAdd = buildList {
       node.bindsCallables.values.flatten().forEach { callable -> add(callable.typeKey to callable) }
-      // Add inherited from extended nodes
-      node.allExtendedNodes.values
-        .flatMap { it.bindsCallables.values.flatten() }
-        .asSequence()
-        .filter { it.typeKey !in node.bindsCallables }
-        .forEach { callable -> add(callable.typeKey to callable) }
+      // Add inherited from extended nodes (already collected in single pass)
+      addAll(inheritedData.bindsCallables)
     }
 
     for ((typeKey, bindsCallable) in bindsCallablesToAdd) {
@@ -334,7 +314,7 @@ internal class BindingGraphGenerator(
 
     val allManagedBindingContainerInstances = buildSet {
       addAll(node.bindingContainers)
-      addAll(node.allExtendedNodes.values.flatMapToSet { it.bindingContainers })
+      addAll(inheritedData.bindingContainers)
     }
     for (it in allManagedBindingContainerInstances) {
       val typeKey = IrTypeKey(it)
@@ -376,7 +356,7 @@ internal class BindingGraphGenerator(
 
     val allMultibindsCallables = buildList {
       addAll(node.multibindsCallables)
-      addAll(node.allExtendedNodes.values.flatMapToSet { it.multibindsCallables })
+      addAll(inheritedData.multibindsCallables)
     }
 
     allMultibindsCallables.forEach { multibindsCallable ->
@@ -397,9 +377,7 @@ internal class BindingGraphGenerator(
 
     val allOptionalKeys = buildMap {
       putAll(node.optionalKeys)
-      for ((_, extendedNode) in node.allExtendedNodes) {
-        putAll(extendedNode.optionalKeys)
-      }
+      putAll(inheritedData.optionalKeys)
     }
 
     // Register optional bindings for lazy creation (only when accessed)
@@ -409,19 +387,12 @@ internal class BindingGraphGenerator(
       }
     }
 
-    // Traverse all parent graph supertypes to create binding aliases as needed
-    // TODO since this is processed with the parent, is it still needed?
-    for ((typeKey, extendedNode) in node.allExtendedNodes) {
-      // If it's a contributed graph, add an alias for the parent types since that's what
-      // bindings will look for. i.e. LoggedInGraphImpl -> LoggedInGraph + supertypes
-      for (superType in extendedNode.supertypes) {
-        val parentTypeKey = IrTypeKey(superType)
-
-        // Ignore the graph declaration itself, handled separately
-        if (parentTypeKey == typeKey) continue
-
-        superTypeToAlias.putIfAbsent(parentTypeKey, typeKey)
-      }
+    // Traverse all parent graph supertypes to create binding aliases as needed.
+    // If it's a contributed graph, add an alias for the parent types since that's what
+    // bindings will look for. i.e. LoggedInGraphImpl -> LoggedInGraph + supertypes
+    // (Already collected in single pass via collectInheritedData)
+    for ((parentTypeKey, aliasedTypeKey) in inheritedData.supertypeAliases) {
+      superTypeToAlias.putIfAbsent(parentTypeKey, aliasedTypeKey)
     }
 
     // Now that we've processed all supertypes/aliases
@@ -439,12 +410,9 @@ internal class BindingGraphGenerator(
 
     val accessorsToAdd = buildList {
       addAll(node.accessors)
-      addAll(
-        node.allExtendedNodes.flatMap { (_, extendedNode) ->
-          // Pass down @Multibinds declarations in the same way we do for multibinding providers
-          extendedNode.accessors.filter { it.metroFunction.annotations.isMultibinds }
-        }
-      )
+      // Pass down @Multibinds declarations in the same way we do for multibinding providers
+      // (Already collected in single pass via collectInheritedData)
+      addAll(inheritedData.multibindingAccessors)
     }
 
     for ((contextualTypeKey, getter, _) in accessorsToAdd) {
@@ -726,4 +694,95 @@ internal class BindingGraphGenerator(
 
     return graph
   }
+
+  /** Collects all inherited data from extended nodes in a single pass. */
+  private fun collectInheritedData(node: DependencyGraphNode): InheritedGraphData {
+    val providerFactories = mutableSetOf<Pair<IrTypeKey, ProviderFactory>>()
+    val providerFactoryKeys = mutableSetOf<IrTypeKey>()
+    val bindsCallableKeys = mutableSetOf<IrTypeKey>()
+    val bindsCallables = mutableListOf<Pair<IrTypeKey, BindsCallable>>()
+    val bindingContainers = mutableSetOf<IrClass>()
+    val multibindsCallables = mutableSetOf<MultibindsCallable>()
+    val optionalKeys = mutableMapOf<IrTypeKey, MutableSet<BindsOptionalOfCallable>>()
+    val supertypeAliases = mutableMapOf<IrTypeKey, IrTypeKey>()
+    val multibindingAccessors = mutableListOf<GraphAccessor>()
+
+    for ((typeKey, extendedNode) in node.allExtendedNodes) {
+      // Collect provider factories (non-scoped, not already in current node)
+      for ((key, factories) in extendedNode.providerFactories) {
+        if (key !in node.providerFactories) {
+          for (factory in factories) {
+            if (!factory.annotations.isScoped) {
+              providerFactories.add(key to factory)
+              providerFactoryKeys.add(key)
+            }
+          }
+        }
+      }
+
+      // Collect binds callables (not already in current node)
+      for ((key, callables) in extendedNode.bindsCallables) {
+        if (key !in node.bindsCallables) {
+          bindsCallableKeys.add(key)
+          for (callable in callables) {
+            bindsCallables.add(key to callable)
+          }
+        }
+      }
+
+      // Collect binding containers
+      bindingContainers.addAll(extendedNode.bindingContainers)
+
+      // Collect multibinds callables
+      multibindsCallables.addAll(extendedNode.multibindsCallables)
+
+      // Collect optional keys
+      for ((optKey, callables) in extendedNode.optionalKeys) {
+        optionalKeys.getOrPut(optKey) { mutableSetOf() }.addAll(callables)
+      }
+
+      // Collect supertype aliases for parent graphs
+      for (superType in extendedNode.supertypes) {
+        val parentTypeKey = IrTypeKey(superType)
+        if (parentTypeKey != typeKey) {
+          supertypeAliases.putIfAbsent(parentTypeKey, typeKey)
+        }
+      }
+
+      // Collect multibinding accessors
+      for (accessor in extendedNode.accessors) {
+        if (accessor.metroFunction.annotations.isMultibinds) {
+          multibindingAccessors.add(accessor)
+        }
+      }
+    }
+
+    return InheritedGraphData(
+      providerFactories = providerFactories,
+      providerFactoryKeys = providerFactoryKeys,
+      bindsCallableKeys = bindsCallableKeys,
+      bindsCallables = bindsCallables,
+      bindingContainers = bindingContainers,
+      multibindsCallables = multibindsCallables,
+      optionalKeys = optionalKeys,
+      supertypeAliases = supertypeAliases,
+      multibindingAccessors = multibindingAccessors,
+    )
+  }
 }
+
+/**
+ * Data collected from extended (parent) nodes in a single pass. Avoids multiple iterations over
+ * allExtendedNodes.
+ */
+private data class InheritedGraphData(
+  val providerFactories: Set<Pair<IrTypeKey, ProviderFactory>>,
+  val providerFactoryKeys: Set<IrTypeKey>,
+  val bindsCallableKeys: Set<IrTypeKey>,
+  val bindsCallables: List<Pair<IrTypeKey, BindsCallable>>,
+  val bindingContainers: Set<IrClass>,
+  val multibindsCallables: Set<MultibindsCallable>,
+  val optionalKeys: Map<IrTypeKey, Set<BindsOptionalOfCallable>>,
+  val supertypeAliases: Map<IrTypeKey, IrTypeKey>,
+  val multibindingAccessors: List<GraphAccessor>,
+)
