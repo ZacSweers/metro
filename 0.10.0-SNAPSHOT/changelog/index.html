@@ -3294,6 +3294,7 @@ This is a known bug in the Kotlin compiler, follow https://github.com/ZacSweers/
 </code></pre></div></li>
 <li><strong>[IR]</strong> Avoid generating unnecessary <code>Provider</code> refcounts for bindings only used by graph injector functions.</li>
 <li><strong>[IR]</strong> When reporting graph failures in dynamic graphs, report the original call location in error reporting.</li>
+<li><strong>[IR]</strong> Optimize equals/hashCode in type keys. Benchmarks show a ~2% macro improvement.</li>
 <li><strong>[IR/Sharding]</strong> Rebalance shard groups after computing shard bindings.</li>
 </ul>
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
