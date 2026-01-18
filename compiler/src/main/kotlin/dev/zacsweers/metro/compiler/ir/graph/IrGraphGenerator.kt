@@ -89,6 +89,7 @@ import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.kotlinFqName
+import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
@@ -125,6 +126,14 @@ internal class IrGraphGenerator(
       // Preallocate any existing property and field names in this graph
       for (property in node.metroGraphOrFail.properties) {
         newName(property.name.asString())
+      }
+    }
+
+  private val classNameAllocator =
+    NameAllocator(mode = NameAllocator.Mode.COUNT).apply {
+      // Preallocate any existing nested class names in this graph
+      for (declaration in graphClass.nestedClasses) {
+        newName(declaration.name.asString())
       }
     }
 
@@ -264,6 +273,7 @@ internal class IrGraphGenerator(
             plannedGroups = sealResult.shardGroups,
             bindingGraph = bindingGraph,
             propertyNameAllocator = propertyNameAllocator,
+            classNameAllocator = classNameAllocator,
           )
           .generateShards(diagnosticTag = tracer.diagnosticTag)
 
@@ -891,6 +901,7 @@ internal class IrGraphGenerator(
               switchingBindings = switchingBindings,
               expressionGeneratorFactory = expressionGeneratorFactory,
               shardExprContext = shardExprContext,
+              classNameAllocator = shard.classNameAllocator,
             )
             .generate()
         } else {
@@ -1360,31 +1371,32 @@ internal class IrGraphGenerator(
     expressionGeneratorFactory: GraphExpressionGenerator.Factory,
     fieldInitKey: IrTypeKey,
     applyScoping: Boolean,
-  ): IrExpression = with(scope) {
-    val providerExpr =
-      if (switchingId != null && switchingProvider != null) {
-        irCallConstructor(switchingProvider.constructor.symbol, listOf(binding.typeKey.type))
-          .apply {
-            arguments[0] = irGet(thisReceiver)
-            arguments[1] = irInt(switchingId)
-          }
-      } else {
-        expressionGeneratorFactory
-          .create(thisReceiver, shardContext = shardExprContext)
-          .generateBindingCode(
-            binding = binding,
-            contextualTypeKey = contextKey,
-            accessType = BindingExpressionGenerator.AccessType.PROVIDER,
-            fieldInitKey = fieldInitKey,
-          )
-      }
+  ): IrExpression =
+    with(scope) {
+      val providerExpr =
+        if (switchingId != null && switchingProvider != null) {
+          irCallConstructor(switchingProvider.constructor.symbol, listOf(binding.typeKey.type))
+            .apply {
+              arguments[0] = irGet(thisReceiver)
+              arguments[1] = irInt(switchingId)
+            }
+        } else {
+          expressionGeneratorFactory
+            .create(thisReceiver, shardContext = shardExprContext)
+            .generateBindingCode(
+              binding = binding,
+              contextualTypeKey = contextKey,
+              accessType = BindingExpressionGenerator.AccessType.PROVIDER,
+              fieldInitKey = fieldInitKey,
+            )
+        }
 
-    return if (applyScoping) {
-      providerExpr.doubleCheck(metroSymbols, binding.typeKey)
-    } else {
-      providerExpr
+      return if (applyScoping) {
+        providerExpr.doubleCheck(metroSymbols, binding.typeKey)
+      } else {
+        providerExpr
+      }
     }
-  }
 
   // TODO add asProvider support?
   private fun IrClass.addSimpleInstanceProperty(

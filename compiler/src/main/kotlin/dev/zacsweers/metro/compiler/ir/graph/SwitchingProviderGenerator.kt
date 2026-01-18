@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
+import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -82,6 +83,7 @@ internal class SwitchingProviderGenerator(
   private val switchingBindings: List<SwitchingBinding>,
   private val expressionGeneratorFactory: GraphExpressionGenerator.Factory,
   private val shardExprContext: ShardExpressionContext?,
+  private val classNameAllocator: NameAllocator,
 ) : IrMetroContext by metroContext {
 
   /**
@@ -112,8 +114,7 @@ internal class SwitchingProviderGenerator(
     val switchingClass =
       irFactory
         .buildClass {
-          // TODO nameallocator
-          name = "SwitchingProvider".asName()
+          name = classNameAllocator.newName("SwitchingProvider").asName()
           visibility = DescriptorVisibilities.PRIVATE
         }
         .apply {

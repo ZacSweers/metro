@@ -26,4 +26,6 @@ internal data class Shard(
   val isGraphAsShard: Boolean,
   /** Name allocator for properties in this shard. Each shard has its own allocator. */
   val nameAllocator: NameAllocator,
+  /** Name allocator for nested classes in this shard (e.g., SwitchingProvider). */
+  val classNameAllocator: NameAllocator,
 )

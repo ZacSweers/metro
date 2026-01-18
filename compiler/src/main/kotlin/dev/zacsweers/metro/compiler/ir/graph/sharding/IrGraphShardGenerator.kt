@@ -16,6 +16,7 @@ import dev.zacsweers.metro.compiler.ir.graph.ensureInitialized
 import dev.zacsweers.metro.compiler.ir.graph.graphPropertyData
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
+import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.newName
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
@@ -75,6 +76,7 @@ internal class IrGraphShardGenerator(
   private val shardBindings: List<ShardBinding>,
   private val plannedGroups: List<List<IrTypeKey>>?,
   private val propertyNameAllocator: NameAllocator,
+  private val classNameAllocator: NameAllocator,
 ) : IrMetroContext by context {
 
   /**
@@ -275,6 +277,7 @@ internal class IrGraphShardGenerator(
       graphProperty = null, // Not needed for graph-as-shard
       isGraphAsShard = true,
       nameAllocator = propertyNameAllocator, // Use the graph's allocator for graph-as-shard
+      classNameAllocator = classNameAllocator, // Use the graph's allocator for graph-as-shard
     )
   }
 
@@ -290,11 +293,11 @@ internal class IrGraphShardGenerator(
       NameAllocator(mode = NameAllocator.Mode.COUNT).apply { newName(Symbols.StringNames.GRAPH) }
 
     return shardGroups.mapIndexed { index, bindings ->
-      val shardName = "Shard${index + 1}"
+      val shardName = classNameAllocator.newName("Shard${index + 1}").asName()
       val shardClass =
         context.irFactory
           .buildClass {
-            name = Name.identifier(shardName)
+            name = shardName
             visibility = DescriptorVisibilities.PRIVATE
             modality = Modality.FINAL
           }
@@ -344,6 +347,8 @@ internal class IrGraphShardGenerator(
         graphProperty = null,
         isGraphAsShard = false,
         nameAllocator = sharedNameAllocator,
+        // Each shard gets its own class name allocator for nested classes (e.g., SwitchingProvider)
+        classNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT),
       )
     }
   }
