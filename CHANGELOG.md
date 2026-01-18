@@ -78,6 +78,7 @@ Changelog
 - **[interop-dagger]** Update to Dagger `2.58`.
 - **[Docs]** Publish kdocs for guice/jakarta/javax interop and metrox artifacts to doc site.
 - Test Kotlin `2.3.20-Beta1`.
+- Switch `2.3.20-dev-5437` support/testing to `2.3.20-dev-4962`. This is necessary to avoid ephemeral dev build artifacts and stick to persistent ones.
 
 ### Contributors
 
