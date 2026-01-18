@@ -23,8 +23,6 @@ internal class IrBindingContainerResolver(private val transformer: BindingContai
    * caching and cycle detection to build the transitive closure of all included binding containers.
    */
   fun resolve(roots: Set<IrClass>): Set<BindingContainer> {
-    if (roots.isEmpty()) return emptySet()
-
     val result = mutableSetOf<BindingContainer>()
     // Path tracking for cycle detection within the current traversal stack
     val path = mutableSetOf<ClassId>()
@@ -34,6 +32,14 @@ internal class IrBindingContainerResolver(private val transformer: BindingContai
     }
 
     return result
+  }
+
+  fun resolve(root: IrClass): Set<BindingContainer> {
+    return getOrComputeClosure(root, mutableSetOf())
+  }
+
+  fun getCached(irClass: IrClass): Set<BindingContainer>? {
+    return transitiveBindingContainerCache[irClass.classIdOrFail]
   }
 
   /**
