@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1768716995930,
+  "lastUpdate": 1768852248669,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -2968,6 +2968,62 @@ window.BENCHMARK_DATA = {
             "value": 20635.061999999998,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +5.81%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "de5f25d7~1",
+          "message": "[before] Add switching providers support (#1688)",
+          "timestamp": "2026-01-19T14:15:03-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/de5f25d72646b86909b47bf5e8e32ee632f57507"
+        },
+        "date": 1768852248669,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19607.088,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "de5f25d72646b86909b47bf5e8e32ee632f57507",
+          "message": "[after] Add switching providers support (#1688)",
+          "timestamp": "2026-01-19T14:15:03-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/de5f25d72646b86909b47bf5e8e32ee632f57507"
+        },
+        "date": 1768852248670,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20477.994,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +4.44%"
           }
         ]
       }
