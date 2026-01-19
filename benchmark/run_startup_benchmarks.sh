@@ -39,8 +39,6 @@ MULTIPLATFORM_TARGET="all"
 # Feature flags for Metro (empty string means use default/auto)
 ENABLE_GRAPH_SHARDING=""
 ENABLE_SWITCHING_PROVIDERS=""
-# Feature comparison mode (compares baseline vs with-features in single run)
-FEATURE_COMPARE=false
 
 # Script-specific print functions (styles differ from run_benchmarks.sh)
 print_header() {
@@ -105,7 +103,6 @@ show_usage() {
     echo "  all           Run all benchmarks (default)"
     echo "  single        Run benchmarks on a single git ref or Metro version"
     echo "  compare       Compare benchmarks across two refs (git refs or Metro versions)"
-    echo "  feature-compare Compare Metro with and without experimental features (sharding/switching)"
     echo "  summary       Regenerate summary from existing results (use with --timestamp)"
     echo "  help          Show this help message"
     echo ""
@@ -186,19 +183,14 @@ show_usage() {
     echo "  $0 compare --ref1 1.0.0 --ref2 1.1.0  # Compare two released versions"
     echo "  $0 compare --ref1 1.0.0 --ref2 main   # Compare release to git branch"
     echo ""
-    echo "  # Compare Metro feature configurations:"
-    echo "  $0 feature-compare                    # Compare sharding/switching on current branch"
-    echo "  $0 feature-compare --benchmark jvm    # JVM benchmarks only"
     echo "  $0 jvm --enable-switching-providers   # Single run with switching providers enabled"
     echo ""
     echo "Results will be saved to: $RESULTS_DIR/"
 }
 
 # Parse mode string to generator arguments
-# Optional second argument for feature flags override (for feature-compare mode)
 get_generator_args() {
     local mode="$1"
-    local feature_override="${2:-}"
     local args=""
 
     case "$mode" in
@@ -222,57 +214,20 @@ get_generator_args() {
 
     # Add feature flags for Metro mode
     if [ "$mode" = "metro" ]; then
-        # Use feature_override if provided, otherwise use global flags
-        local sharding="${ENABLE_GRAPH_SHARDING}"
-        local switching="${ENABLE_SWITCHING_PROVIDERS}"
-
-        if [ -n "$feature_override" ]; then
-            case "$feature_override" in
-                baseline)
-                    sharding="false"
-                    switching="false"
-                    ;;
-                sharding)
-                    sharding="true"
-                    switching="false"
-                    ;;
-                switching)
-                    sharding="false"
-                    switching="true"
-                    ;;
-                both)
-                    sharding="true"
-                    switching="true"
-                    ;;
-            esac
-        fi
-
-        if [ "$sharding" = "true" ]; then
+        if [ "$ENABLE_GRAPH_SHARDING" = "true" ]; then
             args="$args --enable-graph-sharding"
-        elif [ "$sharding" = "false" ]; then
+        elif [ "$ENABLE_GRAPH_SHARDING" = "false" ]; then
             args="$args --no-enable-graph-sharding"
         fi
 
-        if [ "$switching" = "true" ]; then
+        if [ "$ENABLE_SWITCHING_PROVIDERS" = "true" ]; then
             args="$args --enable-switching-providers"
         fi
     fi
 
     # Add switching providers flag for Dagger modes (Dagger calls this fastInit)
     if [[ "$mode" == dagger-* ]]; then
-        local enable_switching="false"
-        if [ -n "$feature_override" ]; then
-            case "$feature_override" in
-                switching|both)
-                    enable_switching="true"
-                    ;;
-            esac
-        elif [ "$ENABLE_SWITCHING_PROVIDERS" = "true" ]; then
-            # When switching providers is globally enabled, also enable for Dagger
-            enable_switching="true"
-        fi
-
-        if [ "$enable_switching" = "true" ]; then
+        if [ "$ENABLE_SWITCHING_PROVIDERS" = "true" ]; then
             args="$args --enable-switching-providers"
         fi
     fi
@@ -556,24 +511,16 @@ run_diffuse_diff() {
 }
 
 # Setup project for a specific mode (clean and generate)
-# Optional second argument for feature flags override (for feature-compare mode)
 setup_for_mode() {
     local mode="$1"
-    local feature_override="${2:-}"
     clean_build_artifacts
 
-    local feature_desc=""
-    if [ -n "$feature_override" ]; then
-        feature_desc=" (features: $feature_override)"
-    fi
-
-    print_step "Generating project for $mode$feature_desc..."
-    local gen_args=$(get_generator_args "$mode" "$feature_override")
+    print_step "Generating project for $mode..."
+    local gen_args=$(get_generator_args "$mode")
     kotlin generate-projects.main.kts $gen_args --count "$MODULE_COUNT" > /dev/null
 }
 
 # Run JMH benchmark only (no clean/generate)
-# Optional second argument for output suffix (for feature-compare mode)
 run_jvm_benchmark_only() {
     local mode="$1"
     local output_suffix="${2:-$mode}"
@@ -636,7 +583,6 @@ run_jvm_benchmark() {
 }
 
 # Run JMH R8 benchmark only (no clean/generate)
-# Optional second argument for output suffix (for feature-compare mode)
 run_jvm_r8_benchmark_only() {
     local mode="${1:-metro}"
     local output_suffix="${2:-$mode}"
@@ -4457,200 +4403,6 @@ run_compare() {
     # Restore will happen via trap (if set)
 }
 
-# Run feature comparison benchmarks (Metro only)
-# Compares performance with different feature configurations:
-# - baseline: no sharding, no switching
-# - sharding: graph sharding enabled
-# - switching: switching providers enabled
-# - both: sharding + switching enabled
-run_feature_compare() {
-    local benchmark_type="${COMPARE_BENCHMARK_TYPE:-jvm}"
-
-    print_header "Metro Feature Comparison Benchmarks"
-    print_info "Module count: $MODULE_COUNT"
-    print_info "Benchmark type: $benchmark_type"
-    print_info ""
-    print_info "Configurations to compare:"
-    print_info "  - baseline: no sharding, no switching"
-    print_info "  - sharding: graph sharding enabled"
-    print_info "  - switching: switching providers enabled"
-    print_info "  - both: sharding + switching enabled"
-
-    local feature_configs=("baseline" "sharding" "switching" "both")
-
-    for config in "${feature_configs[@]}"; do
-        print_header "Running benchmarks for Metro ($config)"
-
-        setup_for_mode "metro" "$config"
-
-        case "$benchmark_type" in
-            jvm)
-                run_jvm_benchmark_only "metro" "metro-$config" || true
-                ;;
-            jvm-r8)
-                run_jvm_r8_benchmark_only "metro" "metro-$config" || true
-                ;;
-            all)
-                run_jvm_benchmark_only "metro" "metro-$config" || true
-                run_jvm_r8_benchmark_only "metro" "metro-$config" || true
-                ;;
-            *)
-                print_error "Unsupported benchmark type for feature-compare: $benchmark_type"
-                print_info "Supported types: jvm, jvm-r8, all"
-                exit 1
-                ;;
-        esac
-    done
-
-    # Generate feature comparison summary
-    generate_feature_comparison_summary "$benchmark_type"
-
-    print_final_results "$RESULTS_DIR/${TIMESTAMP}"
-}
-
-# Generate feature comparison summary
-generate_feature_comparison_summary() {
-    local benchmark_type="$1"
-    local summary_file="$RESULTS_DIR/${TIMESTAMP}/feature-comparison-summary.md"
-
-    print_header "Generating Feature Comparison Summary"
-
-    cat > "$summary_file" << EOF
-# Metro Feature Comparison
-
-**Date:** $(date)
-**Module Count:** $MODULE_COUNT
-**Benchmark Type:** $benchmark_type
-
-## Configurations
-
-| Config | Graph Sharding | Switching Providers |
-|--------|----------------|---------------------|
-| baseline | disabled | disabled |
-| sharding | enabled | disabled |
-| switching | disabled | enabled |
-| both | enabled | enabled |
-
-EOF
-
-    if [ "$benchmark_type" = "jvm" ] || [ "$benchmark_type" = "all" ]; then
-        cat >> "$summary_file" << EOF
-## JVM Benchmarks (JMH)
-
-Graph creation and initialization time (lower is better):
-
-| Configuration | Time (ms) | vs Baseline | Allocation (bytes) |
-|---------------|-----------|-------------|-------------------|
-EOF
-
-        local baseline_score=""
-        for config in baseline sharding switching both; do
-            local results_dir="$RESULTS_DIR/${TIMESTAMP}/jvm_metro-$config"
-            local score=""
-            local alloc=""
-
-            if [ -f "$results_dir/results.json" ]; then
-                score=$(extract_jmh_score "$results_dir/results.json")
-                alloc=$(extract_jmh_alloc "$results_dir/results.json")
-            fi
-
-            if [ "$config" = "baseline" ]; then
-                baseline_score="$score"
-            fi
-
-            local display_score="${score:-N/A}"
-            local display_alloc="${alloc:-N/A}"
-            local vs_baseline="—"
-
-            if [ -n "$score" ]; then
-                display_score=$(printf "%.3f" "$score")
-                if [ "$config" = "baseline" ]; then
-                    vs_baseline="baseline"
-                elif [ -n "$baseline_score" ] && [ "$baseline_score" != "0" ]; then
-                    vs_baseline=$(format_pct_diff "$score" "$baseline_score" 2)
-                fi
-            fi
-
-            if [ -n "$alloc" ]; then
-                display_alloc=$(printf "%.0f" "$alloc")
-            fi
-
-            echo "| $config | $display_score | $vs_baseline | $display_alloc |" >> "$summary_file"
-        done
-
-        echo "" >> "$summary_file"
-    fi
-
-    if [ "$benchmark_type" = "jvm-r8" ] || [ "$benchmark_type" = "all" ]; then
-        cat >> "$summary_file" << EOF
-## JVM R8 Benchmarks (JMH with R8 minification)
-
-Graph creation and initialization time (lower is better):
-
-| Configuration | Time (ms) | vs Baseline | JAR Size (KB) |
-|---------------|-----------|-------------|---------------|
-EOF
-
-        local baseline_r8_score=""
-        for config in baseline sharding switching both; do
-            local results_dir="$RESULTS_DIR/${TIMESTAMP}/jvm-r8_metro-$config"
-            local score=""
-            local jar_size=""
-
-            if [ -f "$results_dir/results.json" ]; then
-                score=$(extract_jmh_score "$results_dir/results.json")
-            fi
-
-            if [ -f "$results_dir/jar-metrics.json" ]; then
-                jar_size=$(jq -r '.size_bytes' "$results_dir/jar-metrics.json" 2>/dev/null || echo "")
-            fi
-
-            if [ "$config" = "baseline" ]; then
-                baseline_r8_score="$score"
-            fi
-
-            local display_score="${score:-N/A}"
-            local display_jar="${jar_size:-N/A}"
-            local vs_baseline="—"
-
-            if [ -n "$score" ]; then
-                display_score=$(printf "%.3f" "$score")
-                if [ "$config" = "baseline" ]; then
-                    vs_baseline="baseline"
-                elif [ -n "$baseline_r8_score" ] && [ "$baseline_r8_score" != "0" ]; then
-                    vs_baseline=$(format_pct_diff "$score" "$baseline_r8_score" 2)
-                fi
-            fi
-
-            if [ -n "$jar_size" ] && [ "$jar_size" != "0" ]; then
-                display_jar=$(echo "scale=1; $jar_size / 1024" | bc)
-            fi
-
-            echo "| $config | $display_score | $vs_baseline | $display_jar |" >> "$summary_file"
-        done
-
-        echo "" >> "$summary_file"
-    fi
-
-    cat >> "$summary_file" << EOF
-## Raw Results
-
-Results are stored in: \`$RESULTS_DIR/${TIMESTAMP}/\`
-
-- \`jvm_metro-baseline/\` - Baseline Metro (no features)
-- \`jvm_metro-sharding/\` - Metro with graph sharding
-- \`jvm_metro-switching/\` - Metro with switching providers
-- \`jvm_metro-both/\` - Metro with both features
-
----
-*Generated by run_startup_benchmarks.sh feature-compare*
-EOF
-
-    print_success "Feature comparison summary saved to $(pwd)/$summary_file"
-    echo ""
-    cat "$summary_file"
-}
-
 # Default benchmark type for single/compare commands
 COMPARE_BENCHMARK_TYPE="all"
 
@@ -4717,10 +4469,6 @@ main() {
                 ENABLE_SWITCHING_PROVIDERS="true"
                 shift
                 ;;
-            --feature-compare)
-                FEATURE_COMPARE=true
-                shift
-                ;;
             *)
                 print_error "Unknown option: $1"
                 show_usage
@@ -4773,9 +4521,6 @@ main() {
             ;;
         compare)
             run_compare
-            ;;
-        feature-compare)
-            run_feature_compare
             ;;
         help|--help|-h)
             show_usage
