@@ -34,6 +34,7 @@ import dev.zacsweers.metro.compiler.ir.graph.generatedGraphExtensionData
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
+import dev.zacsweers.metro.compiler.ir.isCompanionObject
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
@@ -203,7 +204,11 @@ internal class DependencyGraphTransformer(
     membersInjectorTransformer.visitClass(declaration)
     injectConstructorTransformer.visitClass(declaration)
     assistedFactoryTransformer.visitClass(declaration)
-    bindingContainerTransformer.findContainer(declaration)
+
+    if (!declaration.isCompanionObject) {
+      // Companion objects are only processed in the context of their parent classes
+      bindingContainerTransformer.findContainer(declaration)
+    }
 
     val dependencyGraphAnno =
       declaration.annotationsIn(metroSymbols.dependencyGraphAnnotations).singleOrNull()
