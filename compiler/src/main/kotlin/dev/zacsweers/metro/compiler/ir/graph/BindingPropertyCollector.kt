@@ -91,13 +91,14 @@ internal class BindingPropertyCollector(
   /**
    * Determines if a binding is eligible for SwitchingProvider dispatch. Returns true only for FIELD
    * properties that can be lazily instantiated via the switching provider pattern.
+   *
+   * Note: Deferred types (used for cycle-breaking) are eligible for SwitchingProvider. While they
+   * use DelegateFactory for the initial field value, the setDelegate call will use
+   * SwitchingProvider when a switchingId is assigned.
    */
   private fun shouldUseSwitchingProvider(binding: IrBinding, propertyKind: PropertyKind): Boolean {
     if (!metroContext.options.enableSwitchingProviders) return false
     if (propertyKind != PropertyKind.FIELD) return false
-
-    // Deferred types use DelegateFactory, not SwitchingProvider
-    if (binding.typeKey in deferredTypes) return false
 
     return when (binding) {
       // These use specialized initialization, not SwitchingProvider
