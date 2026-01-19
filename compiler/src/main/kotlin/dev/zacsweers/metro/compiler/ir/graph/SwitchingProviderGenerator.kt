@@ -2,24 +2,26 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
+import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.buildBlockBody
-import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.graph.expressions.BindingExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.expressions.GraphExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.sharding.ShardExpressionContext
+import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irGetProperty
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
+import dev.zacsweers.metro.compiler.ir.withIrBuilder
+import dev.zacsweers.metro.compiler.newName
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.backend.common.lower.irThrow
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
-import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
@@ -27,7 +29,6 @@ import org.jetbrains.kotlin.ir.builders.declarations.addProperty
 import org.jetbrains.kotlin.ir.builders.declarations.addTypeParameter
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
-import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irBranch
 import org.jetbrains.kotlin.ir.builders.irConcat
 import org.jetbrains.kotlin.ir.builders.irDelegatingConstructorCall
@@ -36,13 +37,13 @@ import org.jetbrains.kotlin.ir.builders.irEquals
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irImplicitCast
 import org.jetbrains.kotlin.ir.builders.irInt
-import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.builders.irSetField
 import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.builders.irWhen
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrProperty
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrBranch
@@ -193,50 +194,153 @@ internal class SwitchingProviderGenerator(
     return Triple(constructor, graphProperty, idProperty)
   }
 
-  /** Adds the `invoke(): T` function that implements Provider<T>. */
+  /**
+   * Adds the `invoke(): T` function that implements Provider<T>.
+   *
+   * If there are more bindings than [MetroOptions.statementsPerInitFun], the switch branches are
+   * chunked across multiple private helper functions to avoid JVM method size limits.
+   */
   private fun IrClass.addInvokeFunction(
     typeParam: IrTypeParameter,
     graphProperty: IrProperty,
     idProperty: IrProperty,
   ) {
+    val chunkSize = options.statementsPerInitFun
+    val bindingChunks = switchingBindings.chunked(chunkSize)
+
+    // Create helper functions for overflow chunks (in reverse order to wire up else -> calls)
+    val chunkFunctions = ArrayList<IrSimpleFunction>(bindingChunks.size)
+    val invokeNameAllocator =
+      NameAllocator(mode = NameAllocator.Mode.COUNT).apply {
+        // reserve the initial invoke() function name that we'll override
+        newName(Symbols.StringNames.INVOKE)
+      }
+
+    for (chunkIndex in (1 until bindingChunks.size).reversed()) {
+      val chunk = bindingChunks[chunkIndex]
+      val isLast = chunkIndex == bindingChunks.lastIndex
+      val nextFunction = chunkFunctions.firstOrNull()
+
+      val chunkFunction =
+        addInvokeChunkFunction(
+          chunk = chunk,
+          typeParam = typeParam,
+          graphProperty = graphProperty,
+          idProperty = idProperty,
+          isLast = isLast,
+          nextFunction = nextFunction,
+          nameAllocator = invokeNameAllocator,
+        )
+      chunkFunctions.add(0, chunkFunction)
+    }
+
+    // Create main invoke function with first chunk
+    addMainInvokeFunction(
+      firstChunk = bindingChunks.first(),
+      typeParam = typeParam,
+      graphProperty = graphProperty,
+      idProperty = idProperty,
+      nextFunction = chunkFunctions.firstOrNull(),
+      isOnly = bindingChunks.size == 1,
+    )
+  }
+
+  /** Adds the main `invoke(): T` function with the first chunk of bindings. */
+  private fun IrClass.addMainInvokeFunction(
+    firstChunk: List<SwitchingBinding>,
+    typeParam: IrTypeParameter,
+    graphProperty: IrProperty,
+    idProperty: IrProperty,
+    nextFunction: IrSimpleFunction?,
+    isOnly: Boolean,
+  ) {
     addFunction {
         name = Symbols.Names.invoke
         returnType = typeParam.defaultType
-        modality = Modality.OPEN
       }
       .apply {
         // Pass explicit type to avoid type parameter remapping (class has T, function has none)
         val localDispatchReceiver =
-          this@addInvokeFunction.thisReceiverOrFail.copyTo(
+          this@addMainInvokeFunction.thisReceiverOrFail.copyTo(
             this,
-            type = this@addInvokeFunction.defaultType,
+            type = this@addMainInvokeFunction.defaultType,
           )
         setDispatchReceiver(localDispatchReceiver)
         overriddenSymbols = listOf(metroSymbols.providerInvoke)
 
         body =
-          createIrBuilder(symbol).run {
-            // Generate: when (id) { 0 -> ..., 1 -> ..., else -> first branch result (fallback) }
-            val whenExpr =
-              generateWhenExpression(
+          withIrBuilder(symbol) {
+            irExprBodySafe(
+              generateChunkedWhenExpression(
+                bindings = firstChunk,
                 switchingProviderThisReceiver = localDispatchReceiver,
                 graphProperty = graphProperty,
                 idProperty = idProperty,
                 typeParam = typeParam,
+                isLast = isOnly,
+                nextFunction = nextFunction,
               )
-
-            irBlockBody { +irReturn(whenExpr) }
+            )
           }
       }
   }
 
-  /** Generates the `when` expression that dispatches based on the ID. */
+  /** Adds a private helper function for a chunk of bindings beyond the first. */
+  private fun IrClass.addInvokeChunkFunction(
+    chunk: List<SwitchingBinding>,
+    typeParam: IrTypeParameter,
+    graphProperty: IrProperty,
+    idProperty: IrProperty,
+    isLast: Boolean,
+    nextFunction: IrSimpleFunction?,
+    nameAllocator: NameAllocator,
+  ): IrSimpleFunction {
+    return addFunction {
+        name = nameAllocator.newName(Symbols.Names.invoke)
+        returnType = typeParam.defaultType
+        visibility = DescriptorVisibilities.PRIVATE
+      }
+      .apply {
+        val localDispatchReceiver =
+          this@addInvokeChunkFunction.thisReceiverOrFail.copyTo(
+            this,
+            type = this@addInvokeChunkFunction.defaultType,
+          )
+        setDispatchReceiver(localDispatchReceiver)
+
+        body =
+          withIrBuilder(symbol) {
+            irExprBodySafe(
+              generateChunkedWhenExpression(
+                bindings = chunk,
+                switchingProviderThisReceiver = localDispatchReceiver,
+                graphProperty = graphProperty,
+                idProperty = idProperty,
+                typeParam = typeParam,
+                isLast = isLast,
+                nextFunction = nextFunction,
+              )
+            )
+          }
+      }
+  }
+
+  /**
+   * Generates a `when` expression for a chunk of bindings.
+   *
+   * @param bindings The bindings to include in this chunk
+   * @param isLast If true, the else branch throws an error; otherwise it calls [nextFunction]
+   * @param nextFunction The function to call in the else branch (only used if [isLast] is false)
+   */
   context(scope: IrBuilderWithScope)
-  private fun generateWhenExpression(
+  private fun generateChunkedWhenExpression(
+    bindings: List<SwitchingBinding>,
     switchingProviderThisReceiver: IrValueParameter,
     graphProperty: IrProperty,
     idProperty: IrProperty,
     typeParam: IrTypeParameter,
+    isLast: Boolean,
+    nextFunction: IrSimpleFunction?,
   ): IrExpression =
     with(scope) {
       // Create a ShardExpressionContext for SwitchingProvider that ensures all property access
@@ -256,11 +360,11 @@ internal class SwitchingProviderGenerator(
           parentShardIndex = shardExprContext?.currentShardIndex,
         )
 
-      // Build branches for each switching binding
-      val branches = ArrayList<IrBranch>(switchingBindings.size + 1)
+      // Build branches for each switching binding in this chunk
+      val branches = ArrayList<IrBranch>(bindings.size + 1)
 
       branches +=
-        switchingBindings.map { switchingBinding ->
+        bindings.map { switchingBinding ->
           val condition =
             irEquals(
               irGetProperty(irGet(switchingProviderThisReceiver), idProperty),
@@ -278,16 +382,22 @@ internal class SwitchingProviderGenerator(
           irBranch(condition, result)
         }
 
-      // For the else branch, throw an Assertion. This should never be reached since IDs are
-      // assigned
-      // sequentially and all valid IDs have explicit branches
-      val errorString = irConcat()
-      errorString.addArgument(irString("Unexpected SwitchingProvider id: "))
-      errorString.addArgument(irGetProperty(irGet(switchingProviderThisReceiver), idProperty))
-      branches +=
-        irElseBranch(
+      // For the else branch: either call the next chunk function or throw an error
+      val elseBranchExpr =
+        if (isLast) {
+          // Last chunk: throw an error for unexpected IDs
+          val errorString = irConcat()
+          errorString.addArgument(irString("Unexpected SwitchingProvider id: "))
+          errorString.addArgument(irGetProperty(irGet(switchingProviderThisReceiver), idProperty))
           irThrow(irInvoke(callee = metroSymbols.stdlibErrorFunction, args = listOf(errorString)))
-        )
+        } else {
+          // Not the last chunk: call the next function
+          irInvoke(
+            dispatchReceiver = irGet(switchingProviderThisReceiver),
+            callee = nextFunction!!.symbol,
+          )
+        }
+      branches += irElseBranch(elseBranchExpr)
 
       return irWhen(typeParam.defaultType, branches)
     }
