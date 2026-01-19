@@ -3269,6 +3269,7 @@
 <li><strong>[FIR/IR]</strong> Report diagnostics for unmatched exclusions and replacements during contribution merging. These are written to <code>reportsDestination</code> if enabled, and should be used for debugging only.</li>
 <li><strong>[IR / Gradle]</strong> Add new experimental <code>enableSwitchingProviders</code> option. If enabled, this changes code generation to use &ldquo;switching providers&rdquo; to defer classloading until a giving binding is actually requested.</li>
 <li>This is analogous to Dagger&rsquo;s <code>fastInit</code> feature.</li>
+<li>You should really only use this if you&rsquo;ve benchmarked it and measured a meaningful difference, as it comes with the same tradeoffs (always holding a graph instance ref, etc.)</li>
 <li><strong>[IR / Gradle]</strong> Add an <code>unusedGraphInputsSeverity</code> option to report diagnostics for unused <em>direct</em> graph inputs. This includes any <code>@Provides</code> or <code>@Includes</code> parameters to graph factories or managed binding containers declared via the <code>@DependencyGraph.includes</code> annotation.<ul>
 <li>This is in addition to the existing <code>reportsDestination</code>-only diagnostic for unused bindings, but limited to bindings that we <em>know</em> are not reused elsewhere and can thus safely soft-enforce at compile-time.</li>
 <li>This matches a similar feature in Dagger.</li>
@@ -3304,6 +3305,7 @@ This is a known bug in the Kotlin compiler, follow https://github.com/ZacSweers/
 <li><strong>[IR]</strong> When reporting graph failures in dynamic graphs, report the original call location in error reporting.</li>
 <li><strong>[IR]</strong> Optimize equals/hashCode in type keys. Benchmarks show a ~2% macro improvement.</li>
 <li><strong>[IR/Sharding]</strong> Rebalance shard groups after computing shard bindings.</li>
+<li><strong>[Gradle]</strong> Generalize support for sourcing default values from gradle/system properties + document.</li>
 </ul>
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
 <ul>
@@ -3326,6 +3328,7 @@ This is a known bug in the Kotlin compiler, follow https://github.com/ZacSweers/
 <li><strong>[IR]</strong> Do not report similar bindings when a missing binding has type <code>kotlin.Any</code>. In practice this reported all available bindings.</li>
 <li><strong>[interop-dagger]</strong> Update to Dagger <code>2.58</code>.</li>
 <li><strong>[Docs]</strong> Publish kdocs for guice/jakarta/javax interop and metrox artifacts to doc site.</li>
+<li><strong>[Docs]</strong> Expand IDE support docs.</li>
 <li>Test Kotlin <code>2.3.10-RC</code>.</li>
 <li>Test Kotlin <code>2.3.20-Beta1</code>.</li>
 </ul>
@@ -4380,6 +4383,8 @@ Possible fixes:
             </div>
           
           
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
 <script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
         </div>
         
@@ -4416,7 +4421,7 @@ Possible fixes:
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.copy", "content.code.select", "content.action.edit", "content.action.view"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.copy", "content.code.select", "content.action.edit", "content.action.view", "content.tabs.link"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
       <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>

@@ -867,10 +867,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#dead-binding-elimination" class="md-nav__link">
+  <a href="#unused-binding-elimination" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Dead binding elimination
+        Unused binding elimination
       
     </span>
   </a>
@@ -904,6 +904,17 @@
     <span class="md-ellipsis">
       
         Sharding
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#switching-providers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Switching Providers
       
     </span>
   </a>
@@ -2049,10 +2060,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#dead-binding-elimination" class="md-nav__link">
+  <a href="#unused-binding-elimination" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Dead binding elimination
+        Unused binding elimination
       
     </span>
   </a>
@@ -2086,6 +2097,17 @@
     <span class="md-ellipsis">
       
         Sharding
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#switching-providers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Switching Providers
       
     </span>
   </a>
@@ -2573,7 +2595,7 @@
 </ul>
 <h3 id="optimizations">Optimizations<a class="headerlink" href="#optimizations" title="Permanent link">&para;</a></h3>
 <p>Metro applies several optimizations to generated graph code to reduce class size and improve runtime performance.</p>
-<h4 id="dead-binding-elimination">Dead binding elimination<a class="headerlink" href="#dead-binding-elimination" title="Permanent link">&para;</a></h4>
+<h4 id="unused-binding-elimination">Unused binding elimination<a class="headerlink" href="#unused-binding-elimination" title="Permanent link">&para;</a></h4>
 <p>By default, Metro removes bindings that are not reachable from any accessor or member injector function. This reduces the size of generated code and avoids unnecessary initialization work.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
@@ -2619,11 +2641,33 @@
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>Configuration options:</p>
-<ul>
-<li><code>metro.chunkFieldInits</code> - Enable/disable chunking (default: <code>true</code>)</li>
-<li><code>metro.statementsPerInitFun</code> - Max statements per init function (default: <code>25</code>)</li>
-</ul>
+<div class="admonition configuration">
+<p class="admonition-title">Configuration</p>
+<table>
+<thead>
+<tr>
+<th>Gradle Extension Property</th>
+<th>Gradle/System Property</th>
+<th>Compiler Option</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>chunkFieldInits</td>
+<td><code>metro.chunkFieldInits</code></td>
+<td><code>chunk-field-inits</code></td>
+<td>Enable/disable chunking (default: <code>true</code>)</td>
+</tr>
+<tr>
+<td>statementsPerInitFun</td>
+<td><code>metro.statementsPerInitFun</code></td>
+<td><code>statements-per-init-fun</code></td>
+<td>Max statements per init function (default: <code>25</code>)</td>
+</tr>
+</tbody>
+</table>
+</div>
 <h4 id="sharding">Sharding<a class="headerlink" href="#sharding" title="Permanent link">&para;</a></h4>
 <p>For very large graphs, even chunking may not be enough — the class itself can exceed JVM&rsquo;s class file size limits. Sharding moves initialization logic into inner shard classes, distributing the code across multiple class files while keeping provider fields on the main graph class.</p>
 <div class="highlight"><pre><span></span><code><span class="c1">// Generated structure with sharding:</span>
@@ -2654,11 +2698,85 @@
 <span class="p">}</span>
 </code></pre></div>
 <p>Sharding respects required binding initialization order and keeps strongly connected components (valid cycles broken by <code>Provider</code>/<code>Lazy</code>) together in the same shard.</p>
-<p>Configuration options:</p>
-<ul>
-<li><code>metro.enableGraphSharding</code> - Enable/disable sharding (default: <code>false</code>)</li>
-<li><code>metro.keysPerGraphShard</code> - Max bindings per shard (default: <code>2000</code>)</li>
-</ul>
+<p>This feature is disabled by default but will likely be enabled by default in the future.</p>
+<div class="admonition configuration">
+<p class="admonition-title">Configuration</p>
+<table>
+<thead>
+<tr>
+<th>Gradle Extension Property</th>
+<th>Gradle/System Property</th>
+<th>Compiler Option</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>enableGraphSharding</td>
+<td><code>metro.enableGraphSharding</code></td>
+<td><code>enable-graph-sharding</code></td>
+<td>Enable/disable sharding (default: <code>false</code>)</td>
+</tr>
+<tr>
+<td>keysPerGraphShard</td>
+<td><code>metro.keysPerGraphShard</code></td>
+<td><code>keys-per-graph-shard</code></td>
+<td>Max bindings per shard (default: <code>2000</code>)</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h4 id="switching-providers">Switching Providers<a class="headerlink" href="#switching-providers" title="Permanent link">&para;</a></h4>
+<p>Switching providers are an optimization in graph generation that defers class loading. This can reduce graph initialization time by deferring bindings&rsquo; class init until it&rsquo;s actually requested.</p>
+<p>This is analogous to Dagger&rsquo;s <code>fastInit</code> option.</p>
+<p>You should really <em>only</em> use this if you&rsquo;ve benchmarked it and measured a meaningful difference, as it comes with the same tradeoffs (always holding a graph instance ref, etc.)</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// The graph</span>
+<span class="nd">@DependencyGraph</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="nd">@SingleIn</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideString</span><span class="p">():</span><span class="w"> </span><span class="kt">String</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Hello, world!&quot;</span>
+<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="nd">@SingleIn</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideInt</span><span class="p">(</span><span class="n">string</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">):</span><span class="w"> </span><span class="kt">Int</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">string</span><span class="p">.</span><span class="na">length</span>
+
+<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">stringLength</span><span class="p">:</span><span class="w"> </span><span class="kt">Int</span>
+<span class="p">}</span>
+
+<span class="c1">// Generated structure for a graph with switching providers</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">AppGraph</span><span class="err">$</span><span class="n">Impl</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">AppGraph</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">private</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">provider1</span><span class="p">:</span><span class="w"> </span><span class="n">Provider</span><span class="o">&lt;</span><span class="kt">String</span><span class="o">&gt;</span><span class="w"> </span><span class="n">DoubleCheck</span><span class="p">.</span><span class="na">provider</span><span class="p">(</span><span class="n">SwitchingProvider</span><span class="o">&lt;</span><span class="kt">String</span><span class="o">&gt;</span><span class="p">(</span><span class="k">this</span><span class="p">,</span><span class="w"> </span><span class="m">0</span><span class="p">))</span>
+<span class="w">  </span><span class="kd">private</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">provider2</span><span class="p">:</span><span class="w"> </span><span class="n">Provider</span><span class="o">&lt;</span><span class="kt">Int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">DoubleCheck</span><span class="p">.</span><span class="na">provider</span><span class="p">(</span><span class="n">SwitchingProvider</span><span class="o">&lt;</span><span class="kt">Int</span><span class="o">&gt;</span><span class="p">(</span><span class="k">this</span><span class="p">,</span><span class="w"> </span><span class="m">1</span><span class="p">))</span>
+
+<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span>
+
+<span class="w">  </span><span class="kd">private</span><span class="w"> </span><span class="kd">class</span><span class="w"> </span><span class="nc">SwitchingProvider</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">(</span><span class="kd">private</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">graph</span><span class="p">:</span><span class="w"> </span><span class="n">Impl</span><span class="p">,</span><span class="w"> </span><span class="kd">private</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">id</span><span class="p">:</span><span class="w"> </span><span class="kt">Int</span><span class="p">)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">Provider</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">override</span><span class="w"> </span><span class="kd">operator</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">invoke</span><span class="p">():</span><span class="w"> </span><span class="n">T</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="k">when</span><span class="w"> </span><span class="p">(</span><span class="n">id</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="m">0</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">StringFactory</span><span class="p">.</span><span class="na">newInstance</span><span class="p">(...)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">T</span>
+<span class="w">        </span><span class="m">1</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">IntFactory</span><span class="p">.</span><span class="na">newInstance</span><span class="p">(</span><span class="n">graph</span><span class="p">.</span><span class="na">provider1</span><span class="p">())</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">T</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<div class="admonition configuration">
+<p class="admonition-title">Configuration</p>
+<table>
+<thead>
+<tr>
+<th>Gradle Extension Property</th>
+<th>Gradle/System Property</th>
+<th>Compiler Option</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>enableSwitchingProviders</td>
+<td><code>metro.enableSwitchingProviders</code></td>
+<td><code>enable-switching-providers</code></td>
+<td>Enable/disable switching providers (default: <code>false</code>)</td>
+</tr>
+</tbody>
+</table>
+</div>
 
 
 
@@ -2676,6 +2794,8 @@
             </div>
           
           
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
 <script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
         </div>
         
@@ -2712,7 +2832,7 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.copy", "content.code.select", "content.action.edit", "content.action.view"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.copy", "content.code.select", "content.action.edit", "content.action.view", "content.tabs.link"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
       <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
