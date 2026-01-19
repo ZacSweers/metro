@@ -3262,6 +3262,8 @@
 </ul>
 </li>
 <li><strong>[Gradle / FIR]</strong> Enable top-level function injection by default on Kotlin <code>2.3.20-Beta1</code> or later.</li>
+<li><strong>[Gradle / FIR]</strong> Disable automatic transformation of providers to private + deprecate the option, as this results in less efficient code generation and somewhat unclear error messages. It&rsquo;s recommended to write a lint check in another static analysis tool if you want this, for example <a href="https://github.com/slackhq/slack-lints/blob/main/slack-lint-checks/src/main/java/slack/lint/DoNotCallProvidersDetector.kt">this implementation from slack-lints</a>.</li>
+<li>Metro <em>may</em> add an option for the inverse in the future. i.e., allow writing a private provider in source but then transform it to <code>internal</code> at compile-time.</li>
 </ul>
 <h3 id="new">New<a class="headerlink" href="#new" title="Permanent link">&para;</a></h3>
 <ul>
@@ -3316,6 +3318,7 @@ This is a known bug in the Kotlin compiler, follow https://github.com/ZacSweers/
 <li><strong>[IR]</strong> Don&rsquo;t cache creator-less scoped graph extension impls in their parent graphs. This was initially implemented this way due to a misunderstanding to how Dagger generated subcomponents! Getters for graph extensions now always return new instances.</li>
 <li><strong>[IR]</strong> Check for <code>open</code> or <code>final</code> modality on classes first before searching for injectable constructors.</li>
 <li><strong>[IR]</strong> Mark all supertypes&rsquo; member injections as dependencies of subtypes&rsquo; member injections. That&rsquo;s a wordier way of saying that member-injecting a class <code>Dog</code> that extends <code>Animal</code> also depends on member-injected dependencies of <code>Animal</code>.</li>
+<li><strong>[IR]</strong> Don&rsquo;t process companion objects of graphs or binding containers independently of their parent classes.</li>
 <li><strong>[IR/Native]</strong> Work around <code>Abstract function '___' is not implemented in non-abstract class 'Impl'</code> info warnings from native compilations.</li>
 <li><strong>[IR/Dynamic Graphs]</strong> Always check if a key is replaced by a dynamic type key when building binding graphs. Previously, some bindings would be added even if a dynamic key was available, resulting in unexpected <code>DuplicateBinding</code> errors.</li>
 <li><strong>[IC]</strong> Record lookups of contributed classes when looking up hints from IR. Previously Metro only recorded a lookup of the generated hint function, which appears to not be enough for Kotlin 2.3.20.</li>

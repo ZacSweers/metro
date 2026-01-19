@@ -1501,7 +1501,7 @@
 <span class="nd">@DependencyGraph</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">NetworkProviders</span>
 </code></pre></div>
-<p>Provider <em>functions</em> should be <code>private</code> by default and are <em>automatically</em> transformed to be private by the Metro compiler. This means you can write a provider function with no explicit (or public) visibility and it will be made private by Metro at compile-time.</p>
+<p>Provider <em>functions</em> can be <code>private</code> but, as of <code>0.10.0</code>, are no longer <em>automatically</em> transformed to be private by the Metro compiler. Prior to <code>0.10.0</code>, they were. However, this resulted in less efficient generated code so it was disabled. See the CHANGELOG for more details.</p>
 <p>Provider <em>properties</em> cannot be private yet due to <a href="https://youtrack.jetbrains.com/issue/KT-76257/">KT-76257</a>, but may be supported in the future.</p>
 <p>Providers may also be declared in <a href="../dependency-graphs/#binding-containers">binding Containers</a>.</p>
 <div class="admonition tip">
