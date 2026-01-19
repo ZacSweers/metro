@@ -338,6 +338,52 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
         runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/sharding/ThreeShardsWithOrder.kt");
       }
     }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/dump/ir/dependencygraph/switchingproviders")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Switchingproviders {
+      @Test
+      public void testAllFilesPresentInSwitchingproviders() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph/switchingproviders"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      }
+
+      @Test
+      @TestMetadata("SimpleSwitchingProvider.kt")
+      public void testSimpleSwitchingProvider() {
+        runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/switchingproviders/SimpleSwitchingProvider.kt");
+      }
+
+      @Test
+      @TestMetadata("SimpleSwitchingProviderWithShards.kt")
+      public void testSimpleSwitchingProviderWithShards() {
+        runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/switchingproviders/SimpleSwitchingProviderWithShards.kt");
+      }
+
+      @Test
+      @TestMetadata("SwitchingProvidersAcrossExtensions.kt")
+      public void testSwitchingProvidersAcrossExtensions() {
+        runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/switchingproviders/SwitchingProvidersAcrossExtensions.kt");
+      }
+
+      @Test
+      @TestMetadata("SwitchingProvidersWithBindsOptional.kt")
+      public void testSwitchingProvidersWithBindsOptional() {
+        runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/switchingproviders/SwitchingProvidersWithBindsOptional.kt");
+      }
+
+      @Test
+      @TestMetadata("SwitchingProvidersWithCycles.kt")
+      public void testSwitchingProvidersWithCycles() {
+        runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/switchingproviders/SwitchingProvidersWithCycles.kt");
+      }
+
+      @Test
+      @TestMetadata("SwitchingProvidersWithMembersInjectProvider.kt")
+      public void testSwitchingProvidersWithMembersInjectProvider() {
+        runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/switchingproviders/SwitchingProvidersWithMembersInjectProvider.kt");
+      }
+    }
   }
 
   @Nested

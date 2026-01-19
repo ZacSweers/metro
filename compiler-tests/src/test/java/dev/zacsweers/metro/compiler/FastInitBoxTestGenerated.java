@@ -1,3 +1,5 @@
+
+
 package dev.zacsweers.metro.compiler;
 
 import com.intellij.testFramework.TestDataPath;
@@ -437,6 +439,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     @Test
     public void testAllFilesPresentInCycles() {
       KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/cycles"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    }
+
+    @Test
+    @TestMetadata("AnotherSimpleCycle.kt")
+    public void testAnotherSimpleCycle() {
+      runTest("compiler-tests/src/test/data/box/cycles/AnotherSimpleCycle.kt");
     }
 
     @Test
