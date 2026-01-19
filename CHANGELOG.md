@@ -23,6 +23,7 @@ Changelog
 - **[FIR/IR]** Report diagnostics for unmatched exclusions and replacements during contribution merging. These are written to `reportsDestination` if enabled, and should be used for debugging only.
 - **[IR / Gradle]** Add new experimental `enableSwitchingProviders` option. If enabled, this changes code generation to use "switching providers" to defer classloading until a giving binding is actually requested.
   - This is analogous to Dagger's `fastInit` feature.
+  - You should really only use this if you've benchmarked it and measured a meaningful difference, as it comes with the same tradeoffs (always holding a graph instance ref, etc.)
 - **[IR / Gradle]** Add an `unusedGraphInputsSeverity` option to report diagnostics for unused _direct_ graph inputs. This includes any `@Provides` or `@Includes` parameters to graph factories or managed binding containers declared via the `@DependencyGraph.includes` annotation.
     - This is in addition to the existing `reportsDestination`-only diagnostic for unused bindings, but limited to bindings that we _know_ are not reused elsewhere and can thus safely soft-enforce at compile-time.
     - This matches a similar feature in Dagger.
@@ -57,6 +58,7 @@ Changelog
 - **[IR]** When reporting graph failures in dynamic graphs, report the original call location in error reporting.
 - **[IR]** Optimize equals/hashCode in type keys. Benchmarks show a ~2% macro improvement.
 - **[IR/Sharding]** Rebalance shard groups after computing shard bindings.
+- **[Gradle]** Generalize support for sourcing default values from gradle/system properties + document.
 
 ### Fixes
 
@@ -79,6 +81,7 @@ Changelog
 - **[IR]** Do not report similar bindings when a missing binding has type `kotlin.Any`. In practice this reported all available bindings.
 - **[interop-dagger]** Update to Dagger `2.58`.
 - **[Docs]** Publish kdocs for guice/jakarta/javax interop and metrox artifacts to doc site.
+- **[Docs]** Expand IDE support docs.
 - Test Kotlin `2.3.10-RC`.
 - Test Kotlin `2.3.20-Beta1`.
 

@@ -46,6 +46,7 @@ theme:
     - content.code.select
     - content.action.edit
     - content.action.view
+    - content.tabs.link
   # Custom dir for theme overrides (eg. custom 404 page)
   # - https://squidfunk.github.io/mkdocs-material/customization/
   custom_dir: 'docs/site-assets/overrides'
@@ -87,6 +88,9 @@ markdown_extensions:
   - pymdownx.details
   - pymdownx.tabbed:
       alternate_style: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
   - tables
   - admonition
   - attr_list
