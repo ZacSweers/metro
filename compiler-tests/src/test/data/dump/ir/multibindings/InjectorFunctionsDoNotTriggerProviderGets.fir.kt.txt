@@ -86,7 +86,7 @@ interface Bindings {
   @IntKey(value = 1)
   @Provides
   @IntoMap
-  private fun provideString(): String {
+  fun provideString(): String {
     return "hello"
   }
 
@@ -343,3 +343,4 @@ interface TestGraph5 : Bindings {
     abstract get
 
 }
+

@@ -1,3 +1,5 @@
+// TRANSFORM_PROVIDERS_TO_PRIVATE: true
+
 interface ExampleProviders {
   @Provides
   fun shouldBePrivate(): String = "hello"

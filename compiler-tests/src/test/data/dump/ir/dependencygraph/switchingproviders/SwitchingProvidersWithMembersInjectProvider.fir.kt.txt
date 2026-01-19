@@ -130,7 +130,7 @@ interface AppGraph {
 
       override fun invoke(): T {
         return when {
-          EQEQ(arg0 = <this>.#id, arg1 = 2) -> Companion.provideString(instance = <this>.#graph.#thisGraphInstance) /*as T */
+          EQEQ(arg0 = <this>.#id, arg1 = 2) -> <this>.#graph.#thisGraphInstance.provideString() /*as T */
           EQEQ(arg0 = <this>.#id, arg1 = 1) -> Companion.create(string = <this>.#graph.#provideStringProvider) /*as T */
           EQEQ(arg0 = <this>.#id, arg1 = 0) -> ScopedClass(injectable = <this>.#graph.#injectableMembersInjectorProvider.invoke(), injectable2 = <this>.#graph.#injectableMembersInjectorProvider.invoke()) /*as T */
           else -> throw error(message = "Unexpected SwitchingProvider id: " + <this>.#id)
@@ -206,7 +206,7 @@ interface AppGraph {
 
   @SingleIn(scope = AppScope::class)
   @Provides
-  private fun provideString(): String {
+  fun provideString(): String {
     return "Hello"
   }
 
@@ -214,3 +214,4 @@ interface AppGraph {
     abstract get
 
 }
+

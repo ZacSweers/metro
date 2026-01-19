@@ -45,17 +45,17 @@ interface AppGraph {
 
     private val setOfDouble: Set<Double>
       private get(): Set<Double> {
-        return setOf<Double>(element = Companion.bindDouble(instance = <this>.#thisGraphInstance, int = Companion.provideInt(instance = <this>.#thisGraphInstance)))
+        return setOf<Double>(element = <this>.#thisGraphInstance.bindDouble(int = <this>.#thisGraphInstance.provideInt()))
       }
 
     private val setOfInt: Set<Int>
       private get(): Set<Int> {
-        return setOf<Int>(element = Companion.provideInt(instance = <this>.#thisGraphInstance))
+        return setOf<Int>(element = <this>.#thisGraphInstance.provideInt())
       }
 
     private val setOfLong: Set<Long>
       private get(): Set<Long> {
-        return setOf<Long>(element = Companion.bindLong(instance = <this>.#thisGraphInstance, int = Companion.provideInt(instance = <this>.#thisGraphInstance)))
+        return setOf<Long>(element = <this>.#thisGraphInstance.bindLong(int = <this>.#thisGraphInstance.provideInt()))
       }
 
   }
@@ -191,7 +191,7 @@ interface AppGraph {
 
   @Provides
   @IntoSet
-  private fun bindDouble(int: Int): Double {
+  fun bindDouble(int: Int): Double {
     return int.toDouble()
   }
 
@@ -204,12 +204,12 @@ interface AppGraph {
 
   @Provides
   @IntoSet
-  private fun bindLong(int: Int): Long {
+  fun bindLong(int: Int): Long {
     return int.toLong()
   }
 
   @Provides
-  private fun provideInt(): Int {
+  fun provideInt(): Int {
     return 3
   }
 

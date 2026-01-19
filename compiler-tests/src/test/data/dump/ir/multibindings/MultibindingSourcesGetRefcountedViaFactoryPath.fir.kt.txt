@@ -379,19 +379,19 @@ interface TestGraph {
   }
 
   @Provides
-  private fun provideBase(): Base {
+  fun provideBase(): Base {
     return Base()
   }
 
   @Provides
   @IntoSet
-  private fun provideInt1(base: Base): Int {
+  fun provideInt1(base: Base): Int {
     return 1
   }
 
   @Provides
   @IntoSet
-  private fun provideInt2(base: Base): Int {
+  fun provideInt2(base: Base): Int {
     return 2
   }
 

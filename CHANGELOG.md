@@ -69,6 +69,7 @@ Changelog
 - **[IR]** Don't cache creator-less scoped graph extension impls in their parent graphs. This was initially implemented this way due to a misunderstanding to how Dagger generated subcomponents! Getters for graph extensions now always return new instances.
 - **[IR]** Check for `open` or `final` modality on classes first before searching for injectable constructors.
 - **[IR]** Mark all supertypes' member injections as dependencies of subtypes' member injections. That's a wordier way of saying that member-injecting a class `Dog` that extends `Animal` also depends on member-injected dependencies of `Animal`.
+- **[IR]** Don't process companion objects of graphs or binding containers independently of their parent classes.
 - **[IR/Native]** Work around `Abstract function '___' is not implemented in non-abstract class 'Impl'` info warnings from native compilations.
 - **[IR/Dynamic Graphs]** Always check if a key is replaced by a dynamic type key when building binding graphs. Previously, some bindings would be added even if a dynamic key was available, resulting in unexpected `DuplicateBinding` errors.
 - **[IC]** Record lookups of contributed classes when looking up hints from IR. Previously Metro only recorded a lookup of the generated hint function, which appears to not be enough for Kotlin 2.3.20.

@@ -116,7 +116,7 @@ interface AppGraph {
   @Provides
   @IntoMap
   @IntKey(value = 3)
-  private fun provideInt(): Int {
+  fun provideInt(): Int {
     return 3
   }
 

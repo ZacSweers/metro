@@ -216,8 +216,6 @@ internal class DependencyGraphTransformer(
 
     tryProcessDependencyGraph(declaration, dependencyGraphAnno)
 
-    // TODO dump option to detect unused
-
     return super.visitClassNew(declaration)
   }
 

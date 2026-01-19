@@ -100,12 +100,12 @@ interface AppGraph {
 
     override val double: Double
       override get(): Double {
-        return Companion.provideDouble(instance = <this>.#thisGraphInstance, long = <this>.<get-provideLong>(), long2 = <this>.<get-provideLong>())
+        return <this>.#thisGraphInstance.provideDouble(long = <this>.<get-provideLong>(), long2 = <this>.<get-provideLong>())
       }
 
     private val provideLong: Long
       private get(): Long {
-        return Companion.provideLong(instance = <this>.#thisGraphInstance, int = Companion.provideInt(instance = <this>.#thisGraphInstance), int2 = Companion.provideInt(instance = <this>.#thisGraphInstance))
+        return <this>.#thisGraphInstance.provideLong(int = <this>.#thisGraphInstance.provideInt(), int2 = <this>.#thisGraphInstance.provideInt())
       }
 
     override val reused: Reused
@@ -255,17 +255,17 @@ interface AppGraph {
   }
 
   @Provides
-  private fun provideDouble(long: Long, long2: Long): Double {
+  fun provideDouble(long: Long, long2: Long): Double {
     return long.plus(other = long2).toDouble()
   }
 
   @Provides
-  private fun provideInt(): Int {
+  fun provideInt(): Int {
     return 3
   }
 
   @Provides
-  private fun provideLong(int: Int, int2: Int): Long {
+  fun provideLong(int: Int, int2: Int): Long {
     return int.plus(other = int2).toLong()
   }
 

@@ -126,7 +126,7 @@ interface AppGraph : MetroContributionToAppScope {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideInt1", propertyName = "", startOffset = 303, endOffset = 359, newInstanceName = "provideInt1")
+  @CallableMetadata(callableName = "provideInt1", propertyName = "", startOffset = 260, endOffset = 316, newInstanceName = "provideInt1")
   class ProvideInt1MetroFactory : Factory<Int> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
@@ -165,7 +165,7 @@ interface AppGraph : MetroContributionToAppScope {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideInt2", propertyName = "", startOffset = 362, endOffset = 418, newInstanceName = "provideInt2")
+  @CallableMetadata(callableName = "provideInt2", propertyName = "", startOffset = 319, endOffset = 375, newInstanceName = "provideInt2")
   class ProvideInt2MetroFactory : Factory<Int> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {

@@ -1,6 +1,5 @@
 // RENDER_DIAGNOSTICS_FULL_TEXT
 // PUBLIC_PROVIDER_SEVERITY: WARN
-// DISABLE_TRANSFORM_PROVIDERS_TO_PRIVATE
 
 abstract class ExampleGraph {
   @Provides val provideInt: Int = 0
