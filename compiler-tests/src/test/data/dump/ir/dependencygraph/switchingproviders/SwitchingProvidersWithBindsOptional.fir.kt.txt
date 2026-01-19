@@ -1,0 +1,143 @@
+@DependencyGraph(scope = AppScope::class, bindingContainers = [Bindings::class])
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val thisGraphInstance: AppGraph
+      field = <this>
+
+    private val provideIntProvider: Provider<Int>
+      field = Companion.provider<Provider<Int>, Int>(delegate = SwitchingProvider<Int>(graph = <this>, id = 1))
+
+    private val optionalIntProvider: Provider<Optional<Int>>
+      field = SwitchingProvider<Optional<Int>>(graph = <this>, id = 0)
+
+    private class SwitchingProvider<T : Any?> : Provider<T> {
+      private val graph: Impl
+
+      private val id: Int
+
+      constructor(graph: Impl, id: Int) /* primary */ {
+        super/*Any*/()
+        <this>.#graph = graph
+        <this>.#id = id
+      }
+
+      override fun invoke(): T {
+        return when {
+          EQEQ(arg0 = <this>.#id, arg1 = 1) -> Companion.provideInt(instance = <this>.#graph.#thisGraphInstance) /*as T */
+          EQEQ(arg0 = <this>.#id, arg1 = 0) -> of<Int>(p0 = <this>.#graph.#provideIntProvider.invoke()) /*as T */
+          else -> throw error(message = "Unexpected SwitchingProvider id: " + <this>.#id)
+        }
+      }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val int: Provider<Optional<Int>>
+      override get(): Provider<Optional<Int>> {
+        return <this>.#optionalIntProvider
+      }
+
+    override val int2: Provider<Optional<Int>>
+      override get(): Provider<Optional<Int>> {
+        return <this>.#optionalIntProvider
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 401, endOffset = 467, newInstanceName = "provideInt")
+  class ProvideIntMetroFactory : Factory<Int> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(instance: AppGraph): Factory<Int> {
+        return ProvideIntMetroFactory(instance = instance)
+      }
+
+      fun provideInt(instance: AppGraph): Int {
+        return instance.provideInt()
+      }
+
+    }
+
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): Int {
+      return Companion.provideInt(instance = <this>.#instance)
+    }
+
+    @SingleIn(scope = AppScope::class)
+    fun mirrorFunction(): Int {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @SingleIn(scope = AppScope::class)
+  @Provides
+  private fun provideInt(): Int {
+    return 3
+  }
+
+  abstract val int: Provider<Optional<Int>>
+    abstract get
+
+  abstract val int2: Provider<Optional<Int>>
+    abstract get
+
+}
+
+@BindingContainer
+interface Bindings {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @ComptimeOnly
+  abstract class BindsMirror {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @BindsOptionalOf
+    @CallableMetadata(callableName = "optionalInt", propertyName = "", startOffset = 207, endOffset = 229)
+    abstract fun optionalInt_opt(): Int
+
+  }
+
+  @BindsOptionalOf
+  @ComptimeOnly
+  abstract fun optionalInt(): Int {
+    return error(message = "Never called")
+  }
+
+}
