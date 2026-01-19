@@ -1769,13 +1769,14 @@
 <p>Contributions may be <code>object</code> classes. In this event, Metro will automatically provide the object instance in its binding.</p>
 </div>
 <h3 id="implicitly-injected-contributesbinding-types">Implicitly-injected <code>@ContributesBinding</code> types<a class="headerlink" href="#implicitly-injected-contributesbinding-types" title="Permanent link">&para;</a></h3>
-<p>Up to version <code>0.7.0</code>, Metro has always required you to use <code>@Inject</code> on most <code>@Contributes*</code> annotated types. However, this can feel a bit repetitive and tedious. Starting in <code>0.7.0</code>, there is a new <code>contributesAsInject</code> Gradle DSL option that can be enabled that will treat all <code>@Contributes*</code> annotated types as <code>@Inject</code> by default. You can still use <code>@Inject</code> on classes to be explicit, and if you have multiple constructors you must still use <code>@Inject</code> on the constructor you want to be used.</p>
-<p><em>The only exception to this is <code>@ContributesTo</code>, which isn&rsquo;t applicable to injected types.</em></p>
-<p>This is disabled by default to start but will likely become the default in a future release.</p>
+<p>Unlike Anvil, Metro does not require <code>@Inject</code> on <code>@Contributes*</code> annotated types. The <code>@Contributes*</code> annotation itself is sufficient to indicate that the type should be injected.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@ContributesBinding</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
 <span class="c1">// @Inject // &lt;-- now implicit!</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">TacoImpl</span><span class="p">(...)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">Taco</span>
 </code></pre></div>
+<p>You can still use <code>@Inject</code> on classes to be explicit, and if you have multiple constructors you must use <code>@Inject</code> on the constructor you want to be used.</p>
+<p><em>The only exception to this is <code>@ContributesTo</code>, which isn&rsquo;t applicable to injected types.</em></p>
+<p>This behavior can be disabled via the <code>contributesAsInject</code> Gradle DSL option if you prefer to require explicit <code>@Inject</code> annotations.</p>
 <h2 id="contributesintosetcontributesintomap">@ContributesIntoSet/@ContributesIntoMap<a class="headerlink" href="#contributesintosetcontributesintomap" title="Permanent link">&para;</a></h2>
 <p>To contribute into a multibinding, use the <code>@ContributesIntoSet</code> or <code>@ContributesIntoMap</code> annotations as needed.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@ContributesIntoSet</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
