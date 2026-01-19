@@ -349,6 +349,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
       }
 
       @Test
+      @TestMetadata("ChunkedSwitchingProvider.kt")
+      public void testChunkedSwitchingProvider() {
+        runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/switchingproviders/ChunkedSwitchingProvider.kt");
+      }
+
+      @Test
       @TestMetadata("SimpleSwitchingProvider.kt")
       public void testSimpleSwitchingProvider() {
         runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/switchingproviders/SimpleSwitchingProvider.kt");
