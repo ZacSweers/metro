@@ -79,6 +79,7 @@ Changelog
 - **[IR]** Do not report similar bindings when a missing binding has type `kotlin.Any`. In practice this reported all available bindings.
 - **[interop-dagger]** Update to Dagger `2.58`.
 - **[Docs]** Publish kdocs for guice/jakarta/javax interop and metrox artifacts to doc site.
+- Test Kotlin `2.3.10-RC`.
 - Test Kotlin `2.3.20-Beta1`.
 
 ### Contributors
