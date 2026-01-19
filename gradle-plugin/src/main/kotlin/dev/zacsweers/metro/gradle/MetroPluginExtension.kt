@@ -206,8 +206,11 @@ constructor(
       .convention(OptionalBindingBehavior.DEFAULT)
 
   /** Enable/disable automatic transformation of providers to be private. Enabled by default. */
+  @Deprecated(
+    "Transforming providers to private is deprecated as it results in less efficient code generation"
+  )
   public val transformProvidersToPrivate: Property<Boolean> =
-    objects.property(Boolean::class.javaObjectType).convention(true)
+    objects.property(Boolean::class.javaObjectType).convention(false)
 
   /**
    * Configures the Metro compiler plugin to warn, error, or do nothing when it encounters `public`

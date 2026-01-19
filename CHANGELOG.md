@@ -16,6 +16,8 @@ Changelog
     - By extension, this resolves Metro's most subscribed issue ([#460](https://github.com/ZacSweers/metro/issues/460)) by enabling cross-module contribution/aggregation features in non-jvm/android compilations 🎉.
     - Note that there is a separate known kotlinc issue around qualifier annotations that affects native builds and is targeted for `2.3.20-Beta2`. Follow [#1556](https://github.com/ZacSweers/metro/issues/1556) for updates.
 - **[Gradle / FIR]** Enable top-level function injection by default on Kotlin `2.3.20-Beta1` or later.
+- **[Gradle / FIR]** Disable automatic transformation of providers to private + deprecate the option, as this results in less efficient code generation and somewhat unclear error messages. It's recommended to write a lint check in another static analysis tool if you want this, for example [this implementation from slack-lints](https://github.com/slackhq/slack-lints/blob/main/slack-lint-checks/src/main/java/slack/lint/DoNotCallProvidersDetector.kt).
+  - Metro _may_ add an option for the inverse in the future. i.e., allow writing a private provider in source but then transform it to `internal` at compile-time.
 
 ### New
 

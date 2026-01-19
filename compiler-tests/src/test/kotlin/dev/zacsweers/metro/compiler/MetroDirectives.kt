@@ -18,8 +18,10 @@ object MetroDirectives : SimpleDirectivesContainer() {
     directive("Generate custom test data files per compiler version")
   val GENERATE_ASSISTED_FACTORIES by directive("Enable assisted factories generation.")
   val ENABLE_TOP_LEVEL_FUNCTION_INJECTION by directive("Enable top-level function injection.")
-  val DISABLE_TRANSFORM_PROVIDERS_TO_PRIVATE by
-    directive("Disables automatic transformation of providers to be private.")
+  val TRANSFORM_PROVIDERS_TO_PRIVATE by
+    valueDirective("Controls automatic transformation of providers to be private.") {
+      it.toBoolean()
+    }
   val GENERATE_CONTRIBUTION_HINTS by
     valueDirective("Enable/disable generation of contribution hint generation.") { it.toBoolean() }
   val GENERATE_CONTRIBUTION_HINTS_IN_FIR by

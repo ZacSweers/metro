@@ -176,7 +176,7 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
   TRANSFORM_PROVIDERS_TO_PRIVATE(
     RawMetroOption.boolean(
       name = "transform-providers-to-private",
-      defaultValue = true,
+      defaultValue = false,
       valueDescription = "<true | false>",
       description = "Enable/disable automatic transformation of providers to be private.",
       required = false,
