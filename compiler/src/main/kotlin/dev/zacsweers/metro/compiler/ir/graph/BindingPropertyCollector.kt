@@ -107,8 +107,6 @@ internal class BindingPropertyCollector(
       is IrBinding.Absent,
       is IrBinding.Assisted,
       is IrBinding.GraphExtension,
-      is IrBinding.MembersInjected,
-      is IrBinding.CustomWrapper,
       // Multibindings use GETTER properties, never FIELD (this check is redundant but explicit)
       is IrBinding.Multibinding,
       // Object classes cannot be scoped and are never stored in provider fields
@@ -119,6 +117,8 @@ internal class BindingPropertyCollector(
       is IrBinding.ConstructorInjected if binding.isAssisted -> false
 
       // These can use SwitchingProvider
+      is IrBinding.MembersInjected,
+      is IrBinding.CustomWrapper,
       is IrBinding.ConstructorInjected,
       is IrBinding.Provided -> true
     }
