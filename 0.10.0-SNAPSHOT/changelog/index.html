@@ -3267,7 +3267,9 @@
 <ul>
 <li>Support <code>Map&lt;K, Lazy&lt;V&gt;&gt;</code> and <code>Map&lt;K, Provider&lt;Lazy&lt;V&gt;&gt;</code> multibindings expressions.</li>
 <li><strong>[FIR/IR]</strong> Report diagnostics for unmatched exclusions and replacements during contribution merging. These are written to <code>reportsDestination</code> if enabled, and should be used for debugging only.</li>
-<li><strong>[IR]</strong> Add an <code>unusedGraphInputsSeverity</code> option to report diagnostics for unused <em>direct</em> graph inputs. This includes any <code>@Provides</code> or <code>@Includes</code> parameters to graph factories or managed binding containers declared via the <code>@DependencyGraph.includes</code> annotation.<ul>
+<li><strong>[IR / Gradle]</strong> Add new experimental <code>enableSwitchingProviders</code> option. If enabled, this changes code generation to use &ldquo;switching providers&rdquo; to defer classloading until a giving binding is actually requested.</li>
+<li>This is analogous to Dagger&rsquo;s <code>fastInit</code> feature.</li>
+<li><strong>[IR / Gradle]</strong> Add an <code>unusedGraphInputsSeverity</code> option to report diagnostics for unused <em>direct</em> graph inputs. This includes any <code>@Provides</code> or <code>@Includes</code> parameters to graph factories or managed binding containers declared via the <code>@DependencyGraph.includes</code> annotation.<ul>
 <li>This is in addition to the existing <code>reportsDestination</code>-only diagnostic for unused bindings, but limited to bindings that we <em>know</em> are not reused elsewhere and can thus safely soft-enforce at compile-time.</li>
 <li>This matches a similar feature in Dagger.</li>
 </ul>
