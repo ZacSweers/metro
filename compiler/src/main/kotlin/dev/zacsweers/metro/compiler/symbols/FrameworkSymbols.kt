@@ -21,6 +21,8 @@ internal interface FrameworkSymbols {
   val canonicalProviderType: IrClassSymbol
   val doubleCheckCompanionObject: IrClassSymbol
   val doubleCheckProvider: IrSimpleFunctionSymbol
+  val doubleCheckLazy: IrSimpleFunctionSymbol
+  val providerOfLazyCreate: IrSimpleFunctionSymbol
   val setFactoryBuilder: IrClassSymbol
   val setFactoryBuilderFunction: IrSimpleFunctionSymbol
   val setFactoryBuilderAddProviderFunction: IrSimpleFunctionSymbol
@@ -38,6 +40,18 @@ internal interface FrameworkSymbols {
   val mapProviderFactoryBuilderPutFunction: IrSimpleFunctionSymbol
   val mapProviderFactoryBuilderPutAllFunction: IrSimpleFunctionSymbol
   val mapProviderFactoryBuilderBuildFunction: IrSimpleFunctionSymbol
+  val mapLazyFactoryBuilder: IrClassSymbol
+  val mapLazyFactoryBuilderFunction: IrSimpleFunctionSymbol
+  val mapLazyFactoryEmptyFunction: IrSimpleFunctionSymbol?
+  val mapLazyFactoryBuilderPutFunction: IrSimpleFunctionSymbol
+  val mapLazyFactoryBuilderPutAllFunction: IrSimpleFunctionSymbol
+  val mapLazyFactoryBuilderBuildFunction: IrSimpleFunctionSymbol
+  val mapProviderLazyFactoryBuilder: IrClassSymbol
+  val mapProviderLazyFactoryBuilderFunction: IrSimpleFunctionSymbol
+  val mapProviderLazyFactoryEmptyFunction: IrSimpleFunctionSymbol?
+  val mapProviderLazyFactoryBuilderPutFunction: IrSimpleFunctionSymbol
+  val mapProviderLazyFactoryBuilderPutAllFunction: IrSimpleFunctionSymbol
+  val mapProviderLazyFactoryBuilderBuildFunction: IrSimpleFunctionSymbol
 }
 
 internal abstract class BaseFrameworkSymbols : FrameworkSymbols {
@@ -45,11 +59,15 @@ internal abstract class BaseFrameworkSymbols : FrameworkSymbols {
   protected abstract val setFactory: IrClassSymbol
   protected abstract val mapFactory: IrClassSymbol
   protected abstract val mapProviderFactory: IrClassSymbol
+  protected abstract val mapLazyFactory: IrClassSymbol
+  protected abstract val mapProviderLazyFactory: IrClassSymbol
 
   override val doubleCheckCompanionObject by lazy { doubleCheck.owner.companionObject()!!.symbol }
   override val doubleCheckProvider by lazy {
     doubleCheckCompanionObject.requireSimpleFunction("provider")
   }
+  // Note: doubleCheckLazy is not implemented in base class - each subclass must implement it
+  // because Metro uses "lazy" while Dagger uses "lazyFromMetroProvider"
 
   override val setFactoryBuilder: IrClassSymbol by lazy {
     setFactory.owner.nestedClasses.first { it.name.asString() == "Builder" }.symbol
@@ -98,6 +116,38 @@ internal abstract class BaseFrameworkSymbols : FrameworkSymbols {
   override val mapProviderFactoryBuilderBuildFunction: IrSimpleFunctionSymbol by lazy {
     mapProviderFactoryBuilder.requireSimpleFunction("build")
   }
+
+  override val mapLazyFactoryBuilder: IrClassSymbol by lazy {
+    mapLazyFactory.owner.nestedClasses.first { it.name.asString() == "Builder" }.symbol
+  }
+
+  override val mapLazyFactoryBuilderPutFunction: IrSimpleFunctionSymbol by lazy {
+    mapLazyFactoryBuilder.requireSimpleFunction("put")
+  }
+
+  override val mapLazyFactoryBuilderPutAllFunction: IrSimpleFunctionSymbol by lazy {
+    mapLazyFactoryBuilder.requireSimpleFunction("putAll")
+  }
+
+  override val mapLazyFactoryBuilderBuildFunction: IrSimpleFunctionSymbol by lazy {
+    mapLazyFactoryBuilder.requireSimpleFunction("build")
+  }
+
+  override val mapProviderLazyFactoryBuilder: IrClassSymbol by lazy {
+    mapProviderLazyFactory.owner.nestedClasses.first { it.name.asString() == "Builder" }.symbol
+  }
+
+  override val mapProviderLazyFactoryBuilderPutFunction: IrSimpleFunctionSymbol by lazy {
+    mapProviderLazyFactoryBuilder.requireSimpleFunction("put")
+  }
+
+  override val mapProviderLazyFactoryBuilderPutAllFunction: IrSimpleFunctionSymbol by lazy {
+    mapProviderLazyFactoryBuilder.requireSimpleFunction("putAll")
+  }
+
+  override val mapProviderLazyFactoryBuilderBuildFunction: IrSimpleFunctionSymbol by lazy {
+    mapProviderLazyFactoryBuilder.requireSimpleFunction("build")
+  }
 }
 
 internal class MetroFrameworkSymbols(
@@ -115,7 +165,21 @@ internal class MetroFrameworkSymbols(
     )!!
   }
 
-  val doubleCheckLazy by lazy { doubleCheckCompanionObject.requireSimpleFunction("lazy") }
+  override val doubleCheckLazy by lazy { doubleCheckCompanionObject.requireSimpleFunction("lazy") }
+
+  private val providerOfLazy: IrClassSymbol by lazy {
+    pluginContext.referenceClass(
+      ClassId(metroRuntimeInternal.packageFqName, "ProviderOfLazy".asName())
+    )!!
+  }
+
+  private val providerOfLazyCompanionObject by lazy {
+    providerOfLazy.owner.companionObject()!!.symbol
+  }
+
+  override val providerOfLazyCreate: IrSimpleFunctionSymbol by lazy {
+    providerOfLazyCompanionObject.requireSimpleFunction(Symbols.StringNames.CREATE)
+  }
 
   override val setFactory: IrClassSymbol by lazy {
     pluginContext.referenceClass(
@@ -165,6 +229,42 @@ internal class MetroFrameworkSymbols(
 
   override val mapProviderFactoryEmptyFunction: IrSimpleFunctionSymbol by lazy {
     mapProviderFactoryCompanionObject.requireSimpleFunction("empty")
+  }
+
+  override val mapLazyFactory: IrClassSymbol by lazy {
+    pluginContext.referenceClass(
+      ClassId(metroRuntimeInternal.packageFqName, "MapLazyFactory".asName())
+    )!!
+  }
+
+  private val mapLazyFactoryCompanionObject: IrClassSymbol by lazy {
+    mapLazyFactory.owner.companionObject()!!.symbol
+  }
+
+  override val mapLazyFactoryBuilderFunction: IrSimpleFunctionSymbol by lazy {
+    mapLazyFactoryCompanionObject.requireSimpleFunction("builder")
+  }
+
+  override val mapLazyFactoryEmptyFunction: IrSimpleFunctionSymbol by lazy {
+    mapLazyFactoryCompanionObject.requireSimpleFunction("empty")
+  }
+
+  override val mapProviderLazyFactory: IrClassSymbol by lazy {
+    pluginContext.referenceClass(
+      ClassId(metroRuntimeInternal.packageFqName, "MapProviderLazyFactory".asName())
+    )!!
+  }
+
+  private val mapProviderLazyFactoryCompanionObject: IrClassSymbol by lazy {
+    mapProviderLazyFactory.owner.companionObject()!!.symbol
+  }
+
+  override val mapProviderLazyFactoryBuilderFunction: IrSimpleFunctionSymbol by lazy {
+    mapProviderLazyFactoryCompanionObject.requireSimpleFunction("builder")
+  }
+
+  override val mapProviderLazyFactoryEmptyFunction: IrSimpleFunctionSymbol by lazy {
+    mapProviderLazyFactoryCompanionObject.requireSimpleFunction("empty")
   }
 }
 
@@ -390,6 +490,22 @@ internal class DaggerSymbols(
     )!!
   }
 
+  override val doubleCheckLazy by lazy {
+    // Use lazyFromDaggerProvider since the canonical provider type in Dagger mode is
+    // dagger.internal.Provider
+    doubleCheckCompanionObject.requireSimpleFunction("lazyFromDaggerProvider")
+  }
+
+  private val providerOfLazy: IrClassSymbol by lazy {
+    pluginContext.referenceClass(
+      ClassId(daggerRuntimeInternal.packageFqName, "ProviderOfLazy".asName())
+    )!!
+  }
+
+  override val providerOfLazyCreate: IrSimpleFunctionSymbol by lazy {
+    providerOfLazy.requireSimpleFunction(Symbols.StringNames.CREATE)
+  }
+
   override val setFactory: IrClassSymbol by lazy {
     pluginContext.referenceClass(
       ClassId(daggerRuntimeInternal.packageFqName, "SetFactory".asName())
@@ -435,6 +551,34 @@ internal class DaggerSymbols(
   }
 
   override val mapProviderFactoryEmptyFunction: IrSimpleFunctionSymbol? = null
+
+  override val mapLazyFactory: IrClassSymbol by lazy {
+    pluginContext.referenceClass(
+      ClassId(daggerRuntimeInternal.packageFqName, "MapLazyFactory".asName())
+    )!!
+  }
+
+  override val mapLazyFactoryBuilderFunction: IrSimpleFunctionSymbol by lazy {
+    mapLazyFactory.requireSimpleFunction("builder")
+  }
+
+  override val mapLazyFactoryEmptyFunction: IrSimpleFunctionSymbol by lazy {
+    mapLazyFactory.requireSimpleFunction("empty")
+  }
+
+  override val mapProviderLazyFactory: IrClassSymbol by lazy {
+    pluginContext.referenceClass(
+      ClassId(daggerRuntimeInternal.packageFqName, "MapProviderLazyFactory".asName())
+    )!!
+  }
+
+  override val mapProviderLazyFactoryBuilderFunction: IrSimpleFunctionSymbol by lazy {
+    mapProviderLazyFactory.requireSimpleFunction("builder")
+  }
+
+  override val mapProviderLazyFactoryEmptyFunction: IrSimpleFunctionSymbol by lazy {
+    mapProviderLazyFactory.requireSimpleFunction("empty")
+  }
 
   val daggerLazy: IrClassSymbol by lazy {
     pluginContext.referenceClass(ClassIds.DAGGER_LAZY_CLASS_ID)!!
@@ -484,6 +628,7 @@ internal class DaggerSymbols(
     val DAGGER_BINDS = ClassId(daggerRuntimePackageFqName, "Binds".asName())
     val DAGGER_REUSABLE_CLASS_ID = ClassId(daggerRuntimePackageFqName, "Reusable".asName())
     val DAGGER_BINDS_OPTIONAL_OF = ClassId(daggerRuntimePackageFqName, "BindsOptionalOf".asName())
+    val DAGGER_MEMBERS_INJECTOR = ClassId(daggerRuntimePackageFqName, "MembersInjector".asName())
     val DAGGER_INTERNAL_PROVIDER_CLASS_ID =
       ClassId(daggerInternalPackageFqName, Symbols.Names.ProviderClass)
     val DAGGER_INTERNAL_SET_FACTORY_CLASS_ID =

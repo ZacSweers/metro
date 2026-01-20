@@ -161,11 +161,11 @@ public class MetroFirExtensionRegistrar(
 
   private fun loggerFor(type: MetroLogger.Type, tag: String): MetroLogger {
     return if (type in options.enabledLoggers) {
-      val reportsDir = options.reportsDestination
+      val reportsDir = options.reportsDir
       val output: (String) -> Unit =
-        if (reportsDir != null) {
+        if (options.reportsEnabled) {
           val outputFile =
-            reportsDir.resolve("fir-${type.name.lowercase()}-$tag.txt").apply {
+            reportsDir.value!!.resolve("fir-${type.name.lowercase()}-$tag.txt").apply {
               deleteIfExists()
               createParentDirectories()
               createFile()

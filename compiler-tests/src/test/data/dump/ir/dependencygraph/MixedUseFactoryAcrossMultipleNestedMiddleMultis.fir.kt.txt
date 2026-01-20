@@ -212,7 +212,7 @@ interface AppGraph {
   }
 
   @Provides
-  private fun provideInt(): Int {
+  fun provideInt(): Int {
     return 3
   }
 
@@ -223,3 +223,4 @@ interface AppGraph {
     abstract get
 
 }
+

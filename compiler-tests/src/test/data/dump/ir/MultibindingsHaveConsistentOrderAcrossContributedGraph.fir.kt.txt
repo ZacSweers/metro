@@ -120,8 +120,11 @@ interface ExampleGraph : MetroContributionToAppScope {
       field = <this>
 
     @DependencyGraph(scope = Unit::class)
-    private inner class LoggedInGraphImpl : LoggedInGraph {
-      constructor() /* primary */ {
+    private class LoggedInGraphImpl : LoggedInGraph {
+      private val exampleGraphImpl: Impl
+        field = exampleGraphImpl
+
+      constructor(exampleGraphImpl: Impl) /* primary */ {
         super/*Any*/()
         /* <init>() */
 
@@ -131,8 +134,8 @@ interface ExampleGraph : MetroContributionToAppScope {
         private get(): Set<Task> {
           return { // BLOCK
             buildSet<Task>(capacity = 4, builderAction = local fun MutableSet<Task>.<anonymous>() {
-              $receiver.add(element = Companion.provide4(instance = <this>))
-              $receiver.add(element = Companion.provide3(instance = <this>))
+              $receiver.add(element = <this>.#exampleGraphImpl.provide4())
+              $receiver.add(element = <this>.#exampleGraphImpl.provide3())
               $receiver.add(element = TaskImpl1())
               $receiver.add(element = TaskImpl2())
             }
@@ -154,15 +157,15 @@ interface ExampleGraph : MetroContributionToAppScope {
     }
 
     override fun createLoggedInGraph(): LoggedInGraph {
-      return <this>.LoggedInGraphImpl()
+      return LoggedInGraphImpl(exampleGraphImpl = <this>)
     }
 
     private val setOfTask: Set<Task>
       private get(): Set<Task> {
         return { // BLOCK
           buildSet<Task>(capacity = 4, builderAction = local fun MutableSet<Task>.<anonymous>() {
-            $receiver.add(element = Companion.provide4(instance = <this>.#thisGraphInstance))
-            $receiver.add(element = Companion.provide3(instance = <this>.#thisGraphInstance))
+            $receiver.add(element = <this>.#thisGraphInstance.provide4())
+            $receiver.add(element = <this>.#thisGraphInstance.provide3())
             $receiver.add(element = TaskImpl1())
             $receiver.add(element = TaskImpl2())
           }
@@ -269,13 +272,13 @@ interface ExampleGraph : MetroContributionToAppScope {
 
   @IntoSet
   @Provides
-  private fun provide3(): Task {
+  fun provide3(): Task {
     return TaskImpl3()
   }
 
   @IntoSet
   @Provides
-  private fun provide4(): Task {
+  fun provide4(): Task {
     return TaskImpl4()
   }
 

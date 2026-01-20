@@ -44,14 +44,11 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
   override fun apply(target: Project) {
     val toolingVersion = target.kotlinToolingVersion
 
-    val baseToolingVersion =
-      KotlinToolingVersion(toolingVersion.major, toolingVersion.minor, toolingVersion.patch, null)
-
     val extension =
       target.extensions.create(
         "metro",
         MetroPluginExtension::class.java,
-        baseToolingVersion,
+        toolingVersion,
         target.layout,
       )
 
@@ -277,6 +274,7 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
           add(lazyOption("max-ir-errors-count", extension.maxIrErrors))
           add(lazyOption("debug", extension.debug))
           add(lazyOption("generate-assisted-factories", extension.generateAssistedFactories))
+          add(lazyOption("generate-throws-annotations", extension.generateThrowsAnnotations))
           add(
             lazyOption(
               "generate-contribution-hints",
@@ -309,12 +307,14 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
               extension.enableGraphImplClassAsReturnType.orElse(false),
             )
           )
+          @Suppress("DEPRECATION")
           add(lazyOption("transform-providers-to-private", extension.transformProvidersToPrivate))
           add(lazyOption("shrink-unused-bindings", extension.shrinkUnusedBindings))
           add(lazyOption("chunk-field-inits", extension.chunkFieldInits))
           add(lazyOption("statements-per-init-fun", extension.statementsPerInitFun))
           add(lazyOption("enable-graph-sharding", extension.enableGraphSharding))
           add(lazyOption("keys-per-graph-shard", extension.keysPerGraphShard))
+          add(lazyOption("enable-switching-providers", extension.enableSwitchingProviders))
           add(lazyOption("optional-binding-behavior", extension.optionalBindingBehavior))
           add(lazyOption("public-provider-severity", extension.publicProviderSeverity))
           add(
@@ -332,6 +332,7 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
               extension.interopAnnotationsNamedArgSeverity,
             )
           )
+          add(lazyOption("unused-graph-inputs-severity", extension.unusedGraphInputsSeverity))
           add(
             lazyOption(
               "enable-top-level-function-injection",

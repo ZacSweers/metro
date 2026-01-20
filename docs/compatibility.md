@@ -55,6 +55,42 @@ The following Kotlin versions are tested via CI:
 
 | Kotlin Version  |
 |-----------------|
+| 2.3.20-dev-7791 |
+| 2.3.20-dev-5437 |
+| 2.3.20-Beta1    |
+| 2.3.10-RC       |
+| 2.3.0           |
+| 2.2.21          |
+| 2.2.20          |
+
+!!! note
+    Versions without dedicated compiler-compat modules will use the nearest available implementation _below_ that version. See [`compiler-compat/version-aliases.txt`](https://github.com/ZacSweers/metro/blob/main/compiler-compat/version-aliases.txt) for the full list.
+
+## IDE Support
+
+IDEs have their own compatibility story with Kotlin versions. The Kotlin IDE plugin embeds Kotlin versions built from source, so Metro's IDE support selects the nearest compatible version and tries to support the latest stable IntelliJ and Android Studio releases + the next IntelliJ EAP release.
+
+!!! note "IntelliJ's unusual Kotlin tags"
+
+    IntelliJ sometimes publishes releases that do not use published Kotlin repo tags. For example, usually it uses a `2.3.20-dev-1234` version that exists on GitHub and is published to the Kotlin dev maven repo. However, sometimes it uses something like a `2.3.20-ij253-45` that (at the time of writing) doesn't appear to correspond to any public tag.
+    
+    While these do have artifacts in a known maven repository, it's unclear what git sha in the Kotlin repo these are from and thus unclear where they are in the _order_ of dev builds. For now, Metro handles this by selecting the highest available `-dev-***` build for this base version (i.e. `2.3.20`), before then falling back to the other types (stable, beta, etc.)
+
+    Please star this issue: https://youtrack.jetbrains.com/issue/KTIJ-37076
+
+!!! note "Android Studio's custom versions"
+
+    Android Studio uses a custom version of the Kotlin compiler that does not necessarily correspond to any real published Kotlin version. For example, Android Studio Otter 2 (at the time of writing) declares `2.2.255-dev-255`, which isn't a real version. Android Studio Panda canaries declare `2.3.255-dev-255`. Similar to the mystery `ij` tags for IntelliJ versions above, metro best-effort supports this by just picking the nearest available compat context that is lower that Studio's declared version.
+
+    Please star this issue: https://issuetracker.google.com/issues/474940910
+
+
+[![CI](https://github.com/ZacSweers/metro/actions/workflows/ci.yml/badge.svg)](https://github.com/ZacSweers/metro/actions/workflows/ci.yml)
+
+The following Kotlin versions are tested via CI:
+
+| Kotlin Version  |
+|-----------------|
 | 2.3.20-dev-5437 |
 | 2.3.0           |
 | 2.2.21          |

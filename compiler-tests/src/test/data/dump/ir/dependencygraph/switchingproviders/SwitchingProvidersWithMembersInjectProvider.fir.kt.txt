@@ -1,0 +1,217 @@
+class Injectable {
+  lateinit var string: String
+    get
+    set
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroMembersInjector : MembersInjector<Injectable> {
+    private /* final field */ val string: Provider<String> = string
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(string: Provider<String>): MembersInjector<Injectable> {
+        return MetroMembersInjector(string = string)
+      }
+
+      fun injectString(@Assisted instance: Injectable, string: String) {
+        return instance.#string = string
+      }
+
+    }
+
+    private constructor(string: Provider<String>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override fun injectMembers(instance: Injectable) {
+      Companion.injectString(instance = instance, string = <this>.#string.invoke())
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+@SingleIn(scope = AppScope::class)
+class ScopedClass {
+  val injectable: MembersInjector<Injectable>
+    field = injectable
+    get
+
+  val injectable2: MembersInjector<Injectable>
+    field = injectable2
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<ScopedClass> {
+    private /* final field */ val injectable: Provider<MembersInjector<Injectable>> = injectable
+    private /* final field */ val injectable2: Provider<MembersInjector<Injectable>> = injectable2
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(injectable: Provider<MembersInjector<Injectable>>, injectable2: Provider<MembersInjector<Injectable>>): Factory<ScopedClass> {
+        return MetroFactory(injectable = injectable, injectable2 = injectable2)
+      }
+
+      fun newInstance(injectable: MembersInjector<Injectable>, injectable2: MembersInjector<Injectable>): ScopedClass {
+        return ScopedClass(injectable = injectable, injectable2 = injectable2)
+      }
+
+    }
+
+    private constructor(injectable: Provider<MembersInjector<Injectable>>, injectable2: Provider<MembersInjector<Injectable>>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): ScopedClass {
+      return Companion.newInstance(injectable = <this>.#injectable.invoke(), injectable2 = <this>.#injectable2.invoke())
+    }
+
+    @SingleIn(scope = AppScope::class)
+    fun mirrorFunction(injectable: MembersInjector<Injectable>, injectable2: MembersInjector<Injectable>): ScopedClass {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(injectable: MembersInjector<Injectable>, injectable2: MembersInjector<Injectable>) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@DependencyGraph(scope = AppScope::class)
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val thisGraphInstance: AppGraph
+      field = <this>
+
+    private val provideStringProvider: Provider<String>
+      field = Companion.provider<Provider<String>, String>(delegate = SwitchingProvider<String>(graph = <this>, id = 2))
+
+    private val injectableMembersInjectorProvider: Provider<MembersInjector<Injectable>>
+      field = SwitchingProvider<MembersInjector<Injectable>>(graph = <this>, id = 1)
+
+    private val scopedClassProvider: Provider<ScopedClass>
+      field = Companion.provider<Provider<ScopedClass>, ScopedClass>(delegate = SwitchingProvider<ScopedClass>(graph = <this>, id = 0))
+
+    private class SwitchingProvider<T : Any?> : Provider<T> {
+      private val graph: Impl
+
+      private val id: Int
+
+      constructor(graph: Impl, id: Int) /* primary */ {
+        super/*Any*/()
+        <this>.#graph = graph
+        <this>.#id = id
+      }
+
+      override fun invoke(): T {
+        return when {
+          EQEQ(arg0 = <this>.#id, arg1 = 2) -> <this>.#graph.#thisGraphInstance.provideString() /*as T */
+          EQEQ(arg0 = <this>.#id, arg1 = 1) -> Companion.create(string = <this>.#graph.#provideStringProvider) /*as T */
+          EQEQ(arg0 = <this>.#id, arg1 = 0) -> ScopedClass(injectable = <this>.#graph.#injectableMembersInjectorProvider.invoke(), injectable2 = <this>.#graph.#injectableMembersInjectorProvider.invoke()) /*as T */
+          else -> throw error(message = "Unexpected SwitchingProvider id: " + <this>.#id)
+        }
+      }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val scopedClass: ScopedClass
+      override get(): ScopedClass {
+        return <this>.#scopedClassProvider.invoke()
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 155, endOffset = 233, newInstanceName = "provideString")
+  class ProvideStringMetroFactory : Factory<String> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(instance: AppGraph): Factory<String> {
+        return ProvideStringMetroFactory(instance = instance)
+      }
+
+      fun provideString(instance: AppGraph): String {
+        return instance.provideString()
+      }
+
+    }
+
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): String {
+      return Companion.provideString(instance = <this>.#instance)
+    }
+
+    @SingleIn(scope = AppScope::class)
+    fun mirrorFunction(): String {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @SingleIn(scope = AppScope::class)
+  @Provides
+  fun provideString(): String {
+    return "Hello"
+  }
+
+  abstract val scopedClass: ScopedClass
+    abstract get
+
+}
+

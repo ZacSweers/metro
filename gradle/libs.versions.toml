@@ -20,10 +20,10 @@ annotation = "1.9.1"
 anvil = "0.5.2"
 atomicfu = "0.29.0"
 circuit = "0.30.0"
-compose-jb = "1.9.3"
+compose-jb = "1.10.0"
 jetbrains-lifecycle-navigation3 = "2.10.0-alpha07"
 jetbrains-navigation3 = "1.0.0-alpha06"
-dagger = "2.57.2"
+dagger = "2.58"
 gjf = "1.33.0"
 jdk = "24"
 robolectric = "4.16"
@@ -31,7 +31,7 @@ jvmTarget = "11"
 kct = "0.12.1"
 kotlin = "2.2.20"
 kotlinInject = "0.9.0"
-metro = "0.9.4"
+metro = "0.10.0"
 kotlinInject-anvil = "0.1.6"
 kotlinx-benchmark = "0.4.15"
 kotlinx-coroutines = "1.10.2"
@@ -99,7 +99,7 @@ anvil-annotations = { module = "dev.zacsweers.anvil:annotations", version.ref = 
 anvil-annotations-optional = { module = "dev.zacsweers.anvil:annotations-optional", version.ref = "anvil" }
 anvil-kspCompiler = { module = "dev.zacsweers.anvil:compiler", version.ref = "anvil" }
 
-clikt = "com.github.ajalt.clikt:clikt:5.0.3"
+clikt = "com.github.ajalt.clikt:clikt:5.1.0"
 
 circuit-codegen = { module = "com.slack.circuit:circuit-codegen", version.ref = "circuit" }
 circuit-foundation = { module = "com.slack.circuit:circuit-foundation", version.ref = "circuit" }
@@ -110,6 +110,9 @@ compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", v
 compose-materialIcons = { module = "org.jetbrains.compose.material:material-icons-core", version = "1.7.3" }
 compose-material3 = { module = "org.jetbrains.compose.material3:material3", version = "1.9.0" }
 compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "compose-jb" }
+compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "compose-jb" }
+compose-ui-test = { module = "org.jetbrains.compose.ui:ui-test", version.ref = "compose-jb" }
+compose-ui-test-junit4 = { module = "org.jetbrains.compose.ui:ui-test-junit4", version.ref = "compose-jb" }
 
 coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }

@@ -35,11 +35,13 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension {
 	public final fun getEnableGraphImplClassAsReturnType ()Lorg/gradle/api/provider/Property;
 	public final fun getEnableGraphSharding ()Lorg/gradle/api/provider/Property;
 	public final fun getEnableKotlinVersionCompatibilityChecks ()Lorg/gradle/api/provider/Property;
+	public final fun getEnableSwitchingProviders ()Lorg/gradle/api/provider/Property;
 	public final fun getEnableTopLevelFunctionInjection ()Lorg/gradle/api/provider/Property;
 	public final fun getEnabled ()Lorg/gradle/api/provider/Property;
 	public final fun getGenerateAssistedFactories ()Lorg/gradle/api/provider/Property;
 	public final fun getGenerateContributionHints ()Lorg/gradle/api/provider/Property;
 	public final fun getGenerateContributionHintsInFir ()Lorg/gradle/api/provider/Property;
+	public final fun getGenerateThrowsAnnotations ()Lorg/gradle/api/provider/Property;
 	public final fun getInterop ()Ldev/zacsweers/metro/gradle/MetroPluginExtension$InteropHandler;
 	public final fun getInteropAnnotationsNamedArgSeverity ()Lorg/gradle/api/provider/Property;
 	public final fun getKeysPerGraphShard ()Lorg/gradle/api/provider/Property;
@@ -52,6 +54,7 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension {
 	public final fun getStatementsPerInitFun ()Lorg/gradle/api/provider/Property;
 	public final fun getSupportedHintContributionPlatforms ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getTransformProvidersToPrivate ()Lorg/gradle/api/provider/Property;
+	public final fun getUnusedGraphInputsSeverity ()Lorg/gradle/api/provider/Property;
 	public final fun getWarnOnInjectAnnotationPlacement ()Lorg/gradle/api/provider/Property;
 	public final fun interop (Lorg/gradle/api/Action;)V
 }

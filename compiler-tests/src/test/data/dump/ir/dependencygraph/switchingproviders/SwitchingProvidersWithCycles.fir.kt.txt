@@ -1,0 +1,213 @@
+@DependencyGraph(scope = AppScope::class)
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val thisGraphInstance: AppGraph
+      field = <this>
+
+    private val provideIntProvider: Provider<Int>
+      field = SwitchingProvider<Int>(graph = <this>, id = 3)
+
+    private val provideStringProvider: Provider<String>
+      field = DelegateFactory<String>()
+
+    private val provideLongProvider: Provider<Long>
+      field = Companion.provider<Provider<Long>, Long>(delegate = SwitchingProvider<Long>(graph = <this>, id = 1))
+
+    private class SwitchingProvider<T : Any?> : Provider<T> {
+      private val graph: Impl
+
+      private val id: Int
+
+      constructor(graph: Impl, id: Int) /* primary */ {
+        super/*Any*/()
+        <this>.#graph = graph
+        <this>.#id = id
+      }
+
+      override fun invoke(): T {
+        return when {
+          EQEQ(arg0 = <this>.#id, arg1 = 3) -> <this>.#graph.#thisGraphInstance.provideInt() /*as T */
+          EQEQ(arg0 = <this>.#id, arg1 = 2) -> <this>.#graph.#thisGraphInstance.provideString(int = <this>.#graph.#provideIntProvider.invoke(), long = Companion.lazy<Lazy<Long>, Long>(provider = Companion.lazy<Provider<Long>, Long>(provider = <this>.#graph.#provideLongProvider))) /*as T */
+          EQEQ(arg0 = <this>.#id, arg1 = 1) -> <this>.#graph.#thisGraphInstance.provideLong(string = <this>.#graph.#provideStringProvider.invoke()) /*as T */
+          else -> throw error(message = "Unexpected SwitchingProvider id: " + <this>.#id)
+        }
+      }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+      Companion.setDelegate<String>(delegateFactory = <this>.#provideStringProvider, delegate = Companion.provider<Provider<String>, String>(delegate = SwitchingProvider<String>(graph = <this>, id = 2)))
+    }
+
+    override val long: Long
+      override get(): Long {
+        return <this>.#provideLongProvider.invoke()
+      }
+
+    override val string: String
+      override get(): String {
+        return <this>.#provideStringProvider.invoke()
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 162, endOffset = 261, newInstanceName = "provideInt")
+  class ProvideIntMetroFactory : Factory<Int> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(instance: AppGraph): Factory<Int> {
+        return ProvideIntMetroFactory(instance = instance)
+      }
+
+      fun provideInt(instance: AppGraph): Int {
+        return instance.provideInt()
+      }
+
+    }
+
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): Int {
+      return Companion.provideInt(instance = <this>.#instance)
+    }
+
+    fun mirrorFunction(): Int {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideLong", propertyName = "", startOffset = 265, endOffset = 361, newInstanceName = "provideLong")
+  class ProvideLongMetroFactory : Factory<Long> {
+    private /* final field */ val instance: AppGraph = instance
+    private /* final field */ val string: Provider<String> = string
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(instance: AppGraph, string: Provider<String>): Factory<Long> {
+        return ProvideLongMetroFactory(instance = instance, string = string)
+      }
+
+      fun provideLong(instance: AppGraph, string: String): Long {
+        return instance.provideLong(string = string)
+      }
+
+    }
+
+    private constructor(instance: AppGraph, string: Provider<String>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): Long {
+      return Companion.provideLong(instance = <this>.#instance, string = <this>.#string.invoke())
+    }
+
+    @SingleIn(scope = AppScope::class)
+    fun mirrorFunction(string: String): Long {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 365, endOffset = 541, newInstanceName = "provideString")
+  class ProvideStringMetroFactory : Factory<String> {
+    private /* final field */ val instance: AppGraph = instance
+    private /* final field */ val int: Provider<Int> = int
+    private /* final field */ val long: Provider<Long> = long
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(instance: AppGraph, int: Provider<Int>, long: Provider<Long>): Factory<String> {
+        return ProvideStringMetroFactory(instance = instance, int = int, long = long)
+      }
+
+      fun provideString(instance: AppGraph, int: Int, long: Lazy<Long>): String {
+        return instance.provideString(int = int, long = long)
+      }
+
+    }
+
+    private constructor(instance: AppGraph, int: Provider<Int>, long: Provider<Long>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): String {
+      return Companion.provideString(instance = <this>.#instance, int = <this>.#int.invoke(), long = Companion.lazy<Provider<Long>, Long>(provider = <this>.#long))
+    }
+
+    @SingleIn(scope = AppScope::class)
+    fun mirrorFunction(int: Int, long: Lazy<Long>): String {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Provides
+  fun provideInt(): Int {
+    return 42
+  }
+
+  @SingleIn(scope = AppScope::class)
+  @Provides
+  fun provideLong(string: String): Long {
+    return toLong(/* <this> = string */)
+  }
+
+  @SingleIn(scope = AppScope::class)
+  @Provides
+  fun provideString(int: Int, long: Lazy<Long>): String {
+    return int.toString()
+  }
+
+  abstract val long: Long
+    abstract get
+
+  abstract val string: String
+    abstract get
+
+}
+

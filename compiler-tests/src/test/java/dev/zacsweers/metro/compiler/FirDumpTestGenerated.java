@@ -23,6 +23,12 @@ public class FirDumpTestGenerated extends AbstractFirDumpTest {
   }
 
   @Test
+  @TestMetadata("InjectCtorAlwaysUsedEvenIfClassAnnotated.kt")
+  public void testInjectCtorAlwaysUsedEvenIfClassAnnotated() {
+    runTest("compiler-tests/src/test/data/dump/fir/InjectCtorAlwaysUsedEvenIfClassAnnotated.kt");
+  }
+
+  @Test
   @TestMetadata("scratch.kt")
   public void testScratch() {
     runTest("compiler-tests/src/test/data/dump/fir/scratch.kt");

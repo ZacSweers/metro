@@ -4,7 +4,6 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 plugins {
   alias(libs.plugins.kotlin.jvm)
-  alias(libs.plugins.dokka)
   alias(libs.plugins.mavenPublish)
   alias(libs.plugins.poko)
   alias(libs.plugins.buildConfig)
@@ -40,6 +39,9 @@ buildConfig {
       providers.gradleProperty("VERSION_NAME").map { "\"$it\"" },
     )
     buildConfigField("String", "PLUGIN_ID", libs.versions.pluginId.map { "\"$it\"" })
+    // Metadata version for compatibility checking. Increment when making breaking changes to
+    // metro_metadata.proto
+    buildConfigField("Int", "METADATA_VERSION", 1)
   }
   sourceSets.named("test") {
     buildConfigField("String", "JVM_TARGET", libs.versions.jvmTarget.map { "\"$it\"" })

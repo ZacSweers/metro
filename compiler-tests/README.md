@@ -10,6 +10,15 @@ Essentially, you can have different kinds of categories of tests and then each t
 
 3. Box: When run, the file will be compiled and the `box()` function will be executed, expecting `"OK"` as the output. You have access to `kotlin.test.assert*` functions to validate behavior. These tests will run the entire compiler, so helpful to test IR changes as well.
 
+4. Reports: Create a `.kt` file under `test/src/data/dump/reports`. These tests verify Metro's diagnostic report outputs (like unmatched exclusions/replacements during contribution merging). Use the `CHECK_REPORTS` directive to specify which report files to verify. The test runs through the full compilation pipeline (FIR + IR) and compares generated reports against golden files. Example:
+   ```kotlin
+   // CHECK_REPORTS: merging-unmatched-replacements-fir-dev_zacsweers_metro_AppScope
+
+   @DependencyGraph(AppScope::class)
+   interface AppGraph
+   ```
+   Expected files are named `<testFile>.<reportName>.txt` (e.g., `MyTest.merging-unmatched-replacements-fir-AppGraph.txt`).
+
 In all of these tests, the biggest way you will modify their behavior is through [directives](https://github.com/JetBrains/kotlin/tree/master/compiler/test-infrastructure#directives). You can create your own - I've done so with `GENERATE_ASSISTED_FACTORIES` to enable that plugin option - or you can use many of the [existing directives](https://github.com/JetBrains/kotlin/tree/master/compiler/tests-common-new/tests/org/jetbrains/kotlin/test/directives). They are specified as line comments and can be simple boolean flags like `RENDER_DIAGNOSTICS_FULL_TEXT` or be more complex like disabling to rendering of certain diagnostics with `DIAGNOSTICS: -PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE`. In each of the base tests, you can also configure default directives that you want with `defaultDirectives`. For example, the dump tests are basically diagnostics tests but with the `FIR_DUMP` diagnostic always enabled.
 
 Strongly recommend installing this plugin in IntelliJ: https://github.com/JetBrains/kotlin-compiler-devkit

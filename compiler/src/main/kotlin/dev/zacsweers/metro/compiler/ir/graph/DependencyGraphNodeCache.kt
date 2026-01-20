@@ -15,6 +15,7 @@ import dev.zacsweers.metro.compiler.ir.BindsCallable
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrBindingContainerCallable
+import dev.zacsweers.metro.compiler.ir.IrBindingContainerResolver
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrContributionMerger
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -57,7 +58,6 @@ import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.isSyntheticGeneratedGraph
 import dev.zacsweers.metro.compiler.mapNotNullToSet
-import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -65,8 +65,10 @@ import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import java.util.EnumSet
 import org.jetbrains.kotlin.descriptors.Modality
+import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
@@ -96,10 +98,12 @@ import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.platform.konan.isNative
 
 internal class DependencyGraphNodeCache(
   metroContext: IrMetroContext,
   private val bindingContainerTransformer: BindingContainerTransformer,
+  private val bindingContainerResolver: IrBindingContainerResolver,
   private val contributionMerger: IrContributionMerger,
 ) : IrMetroContext by metroContext {
 
@@ -136,6 +140,7 @@ internal class DependencyGraphNodeCache(
         Builder(
             this,
             this@DependencyGraphNodeCache,
+            bindingContainerResolver,
             graphDeclaration,
             bindingStack,
             metroGraph,
@@ -149,6 +154,7 @@ internal class DependencyGraphNodeCache(
   private class Builder(
     traceScope: TraceScope,
     private val nodeCache: DependencyGraphNodeCache,
+    private val bindingContainerResolver: IrBindingContainerResolver,
     private val graphDeclaration: IrClass,
     private val bindingStack: IrBindingStack,
     metroGraph: IrClass? = null,
@@ -172,7 +178,9 @@ internal class DependencyGraphNodeCache(
     private val sourceGraphTypeKey = IrTypeKey(graphDeclaration.sourceGraphIfMetroGraph.typeWith())
     private val graphContextKey = IrContextualTypeKey.create(graphTypeKey)
     private val bindingContainers = mutableSetOf<BindingContainer>()
+    private val resolvedBindingContainers = mutableSetOf<BindingContainer>()
     private val managedBindingContainers = mutableSetOf<IrClass>()
+    private val annotationDeclaredBindingContainers = mutableMapOf<IrTypeKey, IrElement>()
     private val dynamicBindingContainers = mutableSetOf<IrClass>()
     private val dynamicTypeKeys = mutableMapOf<IrTypeKey, MutableSet<IrBindingContainerCallable>>()
 
@@ -275,6 +283,13 @@ internal class DependencyGraphNodeCache(
 
       creator?.let { nonNullCreator ->
         for ((i, parameter) in nonNullCreator.parameters.regularParameters.withIndex()) {
+          // Skip parent graph parameters (used by extension graphs as static nested classes)
+          if (
+            creator.function is IrConstructor && parameter.ir?.origin == Origins.ParentGraphParam
+          ) {
+            continue
+          }
+
           if (parameter.isBindsInstance) continue
 
           // It's an `@Includes` parameter
@@ -294,9 +309,9 @@ internal class DependencyGraphNodeCache(
           val isContainer = isDynamicContainer || isRegularContainer
           if (isContainer) {
             // Include the container itself and all its transitively included containers
-            val allContainers =
-              bindingContainerTransformer.resolveAllBindingContainersCached(setOf(sourceGraph))
+            val allContainers = bindingContainerResolver.resolve(sourceGraph)
             bindingContainers += allContainers
+            resolvedBindingContainers += allContainers
             // Track which transitively included containers be managed
             for (container in allContainers) {
               if (container.ir == klass) {
@@ -433,8 +448,7 @@ internal class DependencyGraphNodeCache(
       val inheritedScopes = (scopes - declaredScopes).map { it.ir }
       if (graphDeclaration.origin.isSyntheticGeneratedGraph) {
         // If it's a contributed/dynamic graph, just add it directly as these are not visible to
-        // metadata
-        // anyway
+        // metadata anyway
         graphDeclaration.annotations += inheritedScopes
       } else {
         pluginContext.metadataDeclarationRegistrar.addMetadataVisibleAnnotationsToElement(
@@ -452,6 +466,14 @@ internal class DependencyGraphNodeCache(
         }
         val annotations = metroAnnotationsOf(declaration)
         if (annotations.isProvides) continue
+
+        // TODO it appears that on native compilations, which appear to complain if you don't
+        //  implement fake overrides even if they have a default impl
+        //  https://youtrack.jetbrains.com/issue/KT-83666
+        val isBindsLike =
+          annotations.isBinds || annotations.isMultibinds || annotations.isBindsOptionalOf
+        val canDeferToDefaultImpl = !isBindsLike || !platform.isNative()
+
         when (declaration) {
           is IrSimpleFunction -> {
             // Could be an injector, accessor, or graph extension
@@ -466,69 +488,71 @@ internal class DependencyGraphNodeCache(
 
             // Single pass through overridden symbols
             for (overridden in declaration.overriddenSymbolsSequence()) {
-              if (overridden.owner.modality == Modality.OPEN || overridden.owner.body != null) {
-                if (!isOptionalBinding) {
-                  isOptionalBinding =
-                    metroAnnotationsOf(
-                        overridden.owner,
-                        EnumSet.of(MetroAnnotations.Kind.OptionalBinding),
-                      )
-                      .isOptionalBinding
+              if (canDeferToDefaultImpl) {
+                if (overridden.owner.modality == Modality.OPEN || overridden.owner.body != null) {
+                  if (!isOptionalBinding) {
+                    isOptionalBinding =
+                      metroAnnotationsOf(
+                          overridden.owner,
+                          EnumSet.of(MetroAnnotations.Kind.OptionalBinding),
+                        )
+                        .isOptionalBinding
+                  }
+                  hasDefaultImplementation = true
+                  break
                 }
-                hasDefaultImplementation = true
-                break
-              }
 
-              // Check for graph extension patterns
-              val overriddenParentClass = overridden.owner.parentClassOrNull ?: continue
-              val isGraphExtensionFactory =
-                overriddenParentClass.isAnnotatedWithAny(
-                  metroSymbols.classIds.graphExtensionFactoryAnnotations
-                )
-
-              if (isGraphExtensionFactory) {
-                isGraphExtension = true
-                // Only continue because we may ignore this if it has a default body in a parent
-                continue
-              }
-
-              // Check if return type is a @GraphExtension itself (i.e. no factory)
-              val returnType = overridden.owner.returnType
-              val returnClass = returnType.classOrNull?.owner
-              if (returnClass != null) {
-                val returnsExtensionOrExtensionFactory =
-                  returnClass.isAnnotatedWithAny(
-                    metroSymbols.classIds.allGraphExtensionAndFactoryAnnotations
+                // Check for graph extension patterns
+                val overriddenParentClass = overridden.owner.parentClassOrNull ?: continue
+                val isGraphExtensionFactory =
+                  overriddenParentClass.isAnnotatedWithAny(
+                    metroSymbols.classIds.graphExtensionFactoryAnnotations
                   )
-                if (returnsExtensionOrExtensionFactory) {
+
+                if (isGraphExtensionFactory) {
                   isGraphExtension = true
                   // Only continue because we may ignore this if it has a default body in a parent
                   continue
                 }
-              }
 
-              // Check qualifier consistency for injectors and non-binds accessors
-              if (qualifierMismatchData == null && !isGraphExtension && !annotations.isBinds) {
-                val overriddenQualifier =
-                  if (isInjectorCandidate) {
-                    overridden.owner.regularParameters[0].qualifierAnnotation()
-                  } else {
-                    overridden.owner.metroAnnotations(metroSymbols.classIds).qualifier
+                // Check if return type is a @GraphExtension itself (i.e. no factory)
+                val returnType = overridden.owner.returnType
+                val returnClass = returnType.classOrNull?.owner
+                if (returnClass != null) {
+                  val returnsExtensionOrExtensionFactory =
+                    returnClass.isAnnotatedWithAny(
+                      metroSymbols.classIds.allGraphExtensionAndFactoryAnnotations
+                    )
+                  if (returnsExtensionOrExtensionFactory) {
+                    isGraphExtension = true
+                    // Only continue because we may ignore this if it has a default body in a parent
+                    continue
                   }
+                }
 
-                if (overriddenQualifier != null) {
-                  val expectedQualifier =
+                // Check qualifier consistency for injectors and non-binds accessors
+                if (qualifierMismatchData == null && !isGraphExtension && !annotations.isBinds) {
+                  val overriddenQualifier =
                     if (isInjectorCandidate) {
-                      // For injectors, get the qualifier from the first parameter
-                      declaration.regularParameters[0].qualifierAnnotation()
+                      overridden.owner.regularParameters[0].qualifierAnnotation()
                     } else {
-                      // For accessors, get it from the function's annotations
-                      metroAnnotationsOf(declaration).qualifier
+                      overridden.owner.metroAnnotations(metroSymbols.classIds).qualifier
                     }
 
-                  if (overriddenQualifier != expectedQualifier) {
-                    qualifierMismatchData =
-                      Triple(expectedQualifier, overriddenQualifier, overridden.owner)
+                  if (overriddenQualifier != null) {
+                    val expectedQualifier =
+                      if (isInjectorCandidate) {
+                        // For injectors, get the qualifier from the first parameter
+                        declaration.regularParameters[0].qualifierAnnotation()
+                      } else {
+                        // For accessors, get it from the function's annotations
+                        metroAnnotationsOf(declaration).qualifier
+                      }
+
+                    if (overriddenQualifier != expectedQualifier) {
+                      qualifierMismatchData =
+                        Triple(expectedQualifier, overriddenQualifier, overridden.owner)
+                    }
                   }
                 }
               }
@@ -690,20 +714,22 @@ internal class DependencyGraphNodeCache(
             // Single pass through overridden symbols
             if (!isGraphExtensionFactory) {
               for (overridden in declaration.overriddenSymbolsSequence()) {
-                if (
-                  overridden.owner.getter?.modality == Modality.OPEN ||
-                    overridden.owner.getter?.body != null
-                ) {
-                  if (!isOptionalBinding) {
-                    isOptionalBinding =
-                      metroAnnotationsOf(
-                          overridden.owner,
-                          EnumSet.of(MetroAnnotations.Kind.OptionalBinding),
-                        )
-                        .isOptionalBinding
+                if (canDeferToDefaultImpl) {
+                  if (
+                    overridden.owner.getter?.modality == Modality.OPEN ||
+                      overridden.owner.getter?.body != null
+                  ) {
+                    if (!isOptionalBinding) {
+                      isOptionalBinding =
+                        metroAnnotationsOf(
+                            overridden.owner,
+                            EnumSet.of(MetroAnnotations.Kind.OptionalBinding),
+                          )
+                          .isOptionalBinding
+                    }
+                    hasDefaultImplementation = true
+                    break
                   }
-                  hasDefaultImplementation = true
-                  break
                 }
 
                 // Check if return type is a @GraphExtension or its factory
@@ -849,19 +875,29 @@ internal class DependencyGraphNodeCache(
       // (for both regular and generated graphs)
       // We compute transitives twice (heavily cached) as we want to process merging for all
       // transitively included containers
-      bindingContainers +=
-        dependencyGraphAnno
-          ?.bindingContainerClasses(includeModulesArg = options.enableDaggerRuntimeInterop)
-          .orEmpty()
-          .mapNotNullToSet { it.classType.rawTypeOrNull() }
-          .let(bindingContainerTransformer::resolveAllBindingContainersCached)
-          .onEach { container ->
-            linkDeclarationsInCompilation(graphDeclaration, container.ir)
-            // Annotation-included containers may need to be managed directly
-            if (container.canBeManaged) {
-              managedBindingContainers += container.ir
-            }
-          }
+      val directDeclaredContainers = buildSet {
+        val classRefs =
+          dependencyGraphAnno
+            ?.bindingContainerClasses(includeModulesArg = options.enableDaggerRuntimeInterop)
+            .orEmpty()
+
+        for (ref in classRefs) {
+          val rawClass = ref.classType.rawTypeOrNull() ?: continue
+          annotationDeclaredBindingContainers[IrTypeKey(rawClass)] = ref
+          add(rawClass)
+        }
+      }
+
+      val resolvedContainers = bindingContainerResolver.resolve(directDeclaredContainers)
+      bindingContainers += resolvedContainers
+      resolvedBindingContainers += resolvedContainers
+      resolvedContainers.forEach { container ->
+        linkDeclarationsInCompilation(graphDeclaration, container.ir)
+        // Annotation-included containers may need to be managed directly
+        if (container.canBeManaged) {
+          managedBindingContainers += container.ir
+        }
+      }
 
       // For regular graphs (not generated extensions/dynamic), aggregate binding containers
       // from scopes using IrContributionMerger to handle merging. This can't be done in FIR
@@ -903,10 +939,10 @@ internal class DependencyGraphNodeCache(
       }
 
       // Resolve transitive binding containers
-      val allMergedContainers =
-        bindingContainers
-          .mapToSet { it.ir }
-          .let { bindingContainerTransformer.resolveAllBindingContainersCached(it) }
+      val unresolvedRoots =
+        bindingContainers.mapNotNullToSet { if (it in resolvedBindingContainers) null else it.ir }
+      val newlyResolved = bindingContainerResolver.resolve(unresolvedRoots)
+      val allMergedContainers = resolvedBindingContainers + newlyResolved
 
       for (container in allMergedContainers) {
         val isDynamicContainer = container.ir in dynamicBindingContainers
@@ -988,6 +1024,7 @@ internal class DependencyGraphNodeCache(
           creator = creator,
           extendedGraphNodes = extendedGraphNodes,
           bindingContainers = managedBindingContainers,
+          annotationDeclaredBindingContainers = annotationDeclaredBindingContainers,
           dynamicTypeKeys = dynamicTypeKeys,
           typeKey = graphTypeKey,
         )
@@ -1124,6 +1161,7 @@ internal class DependencyGraphNodeCache(
           injectors = emptyList(),
           creator = null,
           bindingContainers = emptySet(),
+          annotationDeclaredBindingContainers = emptyMap(),
           bindsFunctions = emptyList(),
           dynamicTypeKeys = emptyMap(),
         )

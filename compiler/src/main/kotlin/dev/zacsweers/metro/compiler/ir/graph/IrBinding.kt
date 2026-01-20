@@ -35,6 +35,7 @@ import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.TreeSet
+import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationContainer
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
@@ -412,17 +413,27 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
    * @property token Token for accessing a parent graph's property. When non-null, this binding
    *   accesses a property from an ancestor graph. When null, this is a self-binding where the graph
    *   provides itself (use `thisReceiver` in code gen).
+   *     @property isGraphInput Indicates if this instance was passed as graph input (`@Provides`,
+   *       `@Includes`, etc).
    */
   data class BoundInstance(
     override val typeKey: IrTypeKey,
     override val nameHint: String,
     override val reportableDeclaration: IrDeclarationWithName?,
+    val irElement: IrElement? = null,
     val token: ParentContext.Token? = null,
+    val isGraphInput: Boolean = false,
   ) : IrBinding {
     constructor(
       parameter: Parameter,
       reportableLocation: IrDeclarationWithName,
-    ) : this(parameter.typeKey, "${parameter.name.asString()}Instance", reportableLocation)
+      isGraphInput: Boolean = false,
+    ) : this(
+      typeKey = parameter.typeKey,
+      nameHint = "${parameter.name.asString()}Instance",
+      reportableDeclaration = reportableLocation,
+      isGraphInput = isGraphInput,
+    )
 
     override val dependencies: List<IrContextualTypeKey> = emptyList()
     override val scope: IrAnnotation? = null
@@ -692,6 +703,12 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     val function: IrFunction?,
     val isFromInjectorFunction: Boolean,
     val targetClassId: ClassId,
+    /**
+     * MembersInjector typekeys for supertypes that also have member injections. This ensures the
+     * binding graph correctly tracks that injecting a subtype depends on injecting all its
+     * supertypes' members.
+     */
+    val supertypeMembersInjectorKeys: List<IrContextualTypeKey> = emptyList(),
   ) : IrBinding {
     override val typeKey: IrTypeKey = contextualTypeKey.typeKey
 
@@ -700,15 +717,25 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val isImplicitlyDeferrable: Boolean = true
 
     override val dependencies: List<IrContextualTypeKey> by memoize {
+      // Note: supertypeMembersInjectorKeys are NOT included here because they're handled
+      // specially by BindingPropertyCollector (only processed if they exist in the graph).
       parameters.nonDispatchParameters
         // Instance parameters are implicitly assisted in this scenario and marked as such in FIR
         .filterNot { it.isAssisted }
         .map { it.contextualTypeKey }
+        .plus(supertypeMembersInjectorKeys)
     }
 
     override val scope: IrAnnotation? = null
 
     override val nameHint: String by memoize { "${targetClassId.shortClassName}MembersInjector" }
+
+    /**
+     * Returns the [Parameter] for the given [typeKey], or null if not found. This is used to trace
+     * which injected member (property/function) requires a specific dependency.
+     */
+    fun parameterFor(typeKey: IrTypeKey): Parameter? =
+      parameters.nonDispatchParameters.find { it.typeKey == typeKey }
 
     override fun renderDescriptionDiagnostic(short: Boolean, underlineTypeKey: Boolean) =
       buildString {

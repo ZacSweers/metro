@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
-import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.BaseTypeKey
 import dev.zacsweers.metro.compiler.memoize
@@ -16,29 +15,22 @@ import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.defaultType
 
-@Poko
 internal class IrTypeKey
 private constructor(
   override val type: IrType,
   override val qualifier: IrAnnotation?,
   // TODO these extra properties are awkward. Should we make this a sealed class?
-  @Poko.Skip val multibindingKeyData: MultibindingKeyData? = null,
+  val multibindingKeyData: MultibindingKeyData? = null,
 ) : BaseTypeKey<IrType, IrAnnotation, IrTypeKey> {
-  data class MultibindingKeyData(
-    /**
-     * For multibinding contributions, this is the original multibinding type key (Set<T> or Map<K,
-     * V>) that this contribution belongs to. Used to implicitly create the multibinding when
-     * processing parent graph contributions.
-     */
-    val multibindingTypeKey: IrTypeKey? = null,
-    /** The original @MapKey annotation for multibinding map contributions. */
-    val mapKey: IrAnnotation? = null,
-    val isElementsIntoSet: Boolean = false,
-  )
-
-  private val cachedRender by memoize { render(short = false, includeQualifier = true) }
 
   val classId by memoize { type.rawTypeOrNull()?.classId }
+
+  private val cachedRender by memoize { render(short = false, includeQualifier = true) }
+  private val cachedHashCode by memoize {
+    var result = type.hashCode()
+    result = 31 * result + (qualifier?.hashCode() ?: 0)
+    result
+  }
 
   val hasTypeArgs: Boolean
     get() = type is IrSimpleType && type.arguments.isNotEmpty()
@@ -67,24 +59,14 @@ private constructor(
     @Suppress("UNCHECKED_CAST") (qualifierIr.arguments[1] as? IrConst)?.value?.expectAs<String>()
   }
 
-  override fun copy(type: IrType, qualifier: IrAnnotation?): IrTypeKey {
-    return IrTypeKey(type, qualifier, multibindingKeyData)
-  }
+  override fun copy(type: IrType, qualifier: IrAnnotation?): IrTypeKey =
+    IrTypeKey(type, qualifier, multibindingKeyData)
 
   fun copy(
     type: IrType = this.type,
     qualifier: IrAnnotation? = this.qualifier,
     multibindingKeyData: MultibindingKeyData? = this.multibindingKeyData,
-  ): IrTypeKey {
-    return IrTypeKey(type, qualifier, multibindingKeyData)
-  }
-
-  override fun toString(): String = cachedRender
-
-  override fun compareTo(other: IrTypeKey): Int {
-    if (this == other) return 0
-    return cachedRender.compareTo(other.cachedRender)
-  }
+  ): IrTypeKey = IrTypeKey(type, qualifier, multibindingKeyData)
 
   override fun render(short: Boolean, includeQualifier: Boolean): String = buildString {
     if (includeQualifier) {
@@ -95,6 +77,43 @@ private constructor(
     }
     type.renderTo(this, short)
   }
+
+  override fun toString(): String = cachedRender
+
+  // Optimized comparison that just uses natural sorting based on the cached render
+  override fun compareTo(other: IrTypeKey): Int {
+    if (this === other) return 0
+    return cachedRender.compareTo(other.cachedRender)
+  }
+
+  // Optimized equals: Fast-fail with hashCode, authoritative check with cachedRender
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as IrTypeKey
+
+    // Fast fail: If hash codes differ, they are definitely not equal
+    if (cachedHashCode != other.cachedHashCode) return false
+
+    // Slow(er) authoritative check
+    return cachedRender == other.cachedRender
+  }
+
+  // Optimized hashCode that uses a cached hashCode
+  override fun hashCode() = cachedHashCode
+
+  data class MultibindingKeyData(
+    /**
+     * For multibinding contributions, this is the original multibinding type key (Set<T> or Map<K,
+     * V>) that this contribution belongs to. Used to implicitly create the multibinding when
+     * processing parent graph contributions.
+     */
+    val multibindingTypeKey: IrTypeKey? = null,
+    /** The original @MapKey annotation for multibinding map contributions. */
+    val mapKey: IrAnnotation? = null,
+    val isElementsIntoSet: Boolean = false,
+  )
 
   companion object {
     context(context: IrMetroContext)

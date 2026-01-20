@@ -1,6 +1,6 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-@file:DependsOn("com.github.ajalt.clikt:clikt-jvm:5.0.3")
+@file:DependsOn("com.github.ajalt.clikt:clikt-jvm:5.1.0")
 
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.Context
@@ -27,7 +27,7 @@ class GenerateProjectsCommand : CliktCommand() {
     option("--count", "-c", help = "Total number of modules to generate").int().default(500)
 
   private val enableSharding
-    get() = totalModules >= 500
+    get() = if (graphShardingExplicitlySet) enableGraphShardingFlag else totalModules >= 500
 
   private val processor by
     option("--processor", "-p", help = "Annotation processor: ksp or kapt (dagger mode only)")
@@ -55,6 +55,27 @@ class GenerateProjectsCommand : CliktCommand() {
 
   private val enableReports by
     option("--enable-reports", help = "Enable Metro graph reports for debugging (Metro mode only).")
+      .flag(default = false)
+
+  private val enableGraphShardingFlag by
+    option(
+        "--enable-graph-sharding",
+        help =
+          "Enable graph sharding (Metro mode only). By default, sharding is automatically enabled for 500+ modules.",
+      )
+      .flag("--no-enable-graph-sharding", default = false, defaultForHelp = "auto (500+ modules)")
+
+  private val graphShardingExplicitlySet by lazy {
+    // Check if the flag was explicitly provided on the command line
+    "--enable-graph-sharding" in args || "--no-enable-graph-sharding" in args
+  }
+
+  private val enableSwitchingProviders by
+    option(
+        "--enable-switching-providers",
+        help =
+          "Enable switching providers for deferred class loading (Metro mode only). Reduces graph initialization time by deferring bindings' class init until requested.",
+      )
       .flag(default = false)
 
   override fun run() {
@@ -278,9 +299,18 @@ class GenerateProjectsCommand : CliktCommand() {
     echo("Build mode: $buildMode")
     if (buildMode == BuildMode.DAGGER) {
       echo("Processor: $processor")
+      if (enableSwitchingProviders) {
+        echo("Fast init: enabled (deferred class loading)")
+      }
     }
     if (providerMultibindings) {
       println("Provider multibindings: enabled (using Provider<Set<E>> instead of Set<E>)")
+    }
+    if (buildMode == BuildMode.METRO) {
+      echo("Graph sharding: ${if (enableSharding) "enabled" else "disabled"}")
+      if (enableSwitchingProviders) {
+        echo("Switching providers: enabled (deferred class loading)")
+      }
     }
 
     echo("Modules by layer:")
@@ -499,6 +529,7 @@ anvil {
     componentMerging = true,
   )
 }
+${daggerKspFastInit()}
 """
               .trimIndent()
 
@@ -527,10 +558,31 @@ anvil {
     componentMerging = true,
   )
 }
+${daggerKaptFastInit()}
 """
               .trimIndent()
         }
     }
+  }
+
+  fun daggerKspFastInit(): String {
+    return if (enableSwitchingProviders) {
+      """
+ksp {
+  arg("dagger.fastInit", "enabled")
+}"""
+    } else ""
+  }
+
+  fun daggerKaptFastInit(): String {
+    return if (enableSwitchingProviders) {
+      """
+kapt {
+  arguments {
+    arg("dagger.fastInit", "enabled")
+  }
+}"""
+    } else ""
   }
 
   fun generateSourceCode(module: ModuleSpec): String {
@@ -1111,6 +1163,7 @@ class PlainDataProcessor {
       mutableListOf<String>().apply {
         if (!transformProvidersToPrivate) add("  transformProvidersToPrivate.set(false)")
         if (enableSharding) add("  enableGraphSharding.set(true)")
+        if (enableSwitchingProviders) add("  enableSwitchingProviders.set(true)")
         if (enableReports)
           add("  reportsDestination.set(layout.buildDirectory.dir(\"metro-reports\"))")
       }
@@ -1303,7 +1356,7 @@ anvil {
     componentMerging = true,
   )
 }
-
+${daggerKspFastInit()}
 application {
   mainClass = "dev.zacsweers.metro.benchmark.app.component.AppComponentKt"
 }
@@ -1336,7 +1389,7 @@ anvil {
     componentMerging = true,
   )
 }
-
+${daggerKaptFastInit()}
 application {
   mainClass = "dev.zacsweers.metro.benchmark.app.component.AppComponentKt"
 }

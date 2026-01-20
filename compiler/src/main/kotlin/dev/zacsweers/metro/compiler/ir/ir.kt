@@ -18,6 +18,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.isGraphImpl
 import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.mapToSet
+import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.singleOrError
@@ -37,6 +38,7 @@ import org.jetbrains.kotlin.backend.jvm.ir.isWithFlexibleNullability
 import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
+import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.DescriptorVisibility
 import org.jetbrains.kotlin.descriptors.Modality
@@ -124,6 +126,7 @@ import org.jetbrains.kotlin.ir.types.classifierOrNull
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.impl.buildSimpleType
 import org.jetbrains.kotlin.ir.types.impl.makeTypeProjection
+import org.jetbrains.kotlin.ir.types.isAny
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.makeNotNull
 import org.jetbrains.kotlin.ir.types.mergeNullability
@@ -725,12 +728,9 @@ internal fun IrBuilderWithScope.dispatchReceiverFor(function: IrFunction): IrExp
 internal val IrClass.thisReceiverOrFail: IrValueParameter
   get() = this.thisReceiver ?: reportCompilerBug("No thisReceiver for $classId")
 
-internal fun IrExpression.doubleCheck(
-  irBuilder: IrBuilderWithScope,
-  symbols: Symbols,
-  typeKey: IrTypeKey,
-): IrExpression =
-  with(irBuilder) {
+context(scope: IrBuilderWithScope)
+internal fun IrExpression.doubleCheck(symbols: Symbols, typeKey: IrTypeKey): IrExpression =
+  with(scope) {
     val providerType = typeKey.type.wrapInProvider(symbols.metroProvider)
     irInvoke(
       dispatchReceiver = irGetObject(symbols.doubleCheckCompanionObject),
@@ -1219,12 +1219,39 @@ internal val IrClass.sourceGraphIfMetroGraph: IrClass
         origin.isGraphImpl
       }
     return if (isGeneratedGraph) {
-      superTypes.firstOrNull()?.rawTypeOrNull()
+      // Filter out Any which is always added as the first supertype for classes
+      // Previously we didn't need to filter Any when these were inner classes,
+      // but now we do!
+      superTypes.filterNot { it.isAny() }.firstOrNull()?.rawTypeOrNull()
         ?: reportCompilerBug("No super type found for $kotlinFqName")
     } else {
       this
     }
   }
+
+// Adds `@Throws` annotations to relevant functions with stubbed expression bodies for native
+// linking that requires it
+context(context: IrMetroContext)
+internal fun IrSimpleFunction.addThrowsAnnotation(addToMetadata: Boolean) {
+  if (!context.options.generateThrowsAnnotations) return
+
+  val throwsConstructor = context.metroSymbols.throwsAnnotationConstructor ?: return
+  val newAnnotation =
+    buildAnnotation(symbol, throwsConstructor) {
+      it.arguments[0] =
+        irVararg(
+          context.irBuiltIns.kClassClass.typeWithArguments(
+            listOf(makeTypeProjection(context.irBuiltIns.nothingType, Variance.OUT_VARIANCE))
+          ),
+          listOf(kClassReference(context.metroSymbols.illegalStateExceptionClassSymbol)),
+        )
+    }
+  if (addToMetadata) {
+    context.metadataDeclarationRegistrar.addMetadataVisibleAnnotationsToElement(this, newAnnotation)
+  } else {
+    annotations += newAnnotation
+  }
+}
 
 // Adapted from compose-compiler
 // https://github.com/JetBrains/kotlin/blob/d36a97bb4b935c719c44b76dc8de952579404f91/plugins/compose/compiler-hosted/src/main/java/androidx/compose/compiler/plugins/kotlin/lower/AbstractComposeLowering.kt#L1608
@@ -1527,8 +1554,10 @@ private fun List<IrConstructorCall>?.annotationsAnnotatedWith(
 
 context(context: IrMetroContext)
 internal fun IrClass.findInjectableConstructor(onlyUsePrimaryConstructor: Boolean): IrConstructor? {
-  if (kind.isObject) {
+  if (kind != ClassKind.CLASS) {
     // No constructor for this one but can be annotated with Contributes*
+    return null
+  } else if (modality != Modality.FINAL && modality != Modality.OPEN) {
     return null
   }
   return findInjectableConstructor(
@@ -1545,10 +1574,23 @@ internal fun IrClass.findInjectableConstructor(
   onlyUsePrimaryConstructor: Boolean,
   injectAnnotations: Set<ClassId>,
 ): IrConstructor? {
-  return if (onlyUsePrimaryConstructor || isAnnotatedWithAny(injectAnnotations)) {
+  val isClassAnnotatedInject by memoize { isAnnotatedWithAny(injectAnnotations) }
+  return if (onlyUsePrimaryConstructor && isClassAnnotatedInject) {
     primaryConstructor
   } else {
-    constructors.singleOrNull { constructor -> constructor.isAnnotatedWithAny(injectAnnotations) }
+    // Always check for an annotated constructor first even if the annotated. Otherwise something
+    // annotated with `@Contributes*` with contributesAsInject enabled may fall back to just using
+    // the primary constructor
+    constructors
+      .singleOrNull { constructor -> constructor.isAnnotatedWithAny(injectAnnotations) }
+      ?.let {
+        return it
+      }
+    if (isClassAnnotatedInject) {
+      primaryConstructor
+    } else {
+      null
+    }
   }
 }
 

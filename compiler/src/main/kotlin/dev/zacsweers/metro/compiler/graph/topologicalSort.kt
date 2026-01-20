@@ -189,12 +189,9 @@ internal fun <V : Comparable<V>> topologicalSort(
   val deferredTypes = mutableSetOf<V>()
 
   // Collapse the graph into strongly‑connected components
-  val (components, componentOf) =
+  // Also builds reachable adjacency in the same pass (avoiding separate filter)
+  val (components, componentOf, reachableKeys) =
     traceNested("Compute SCCs") { fullAdjacency.computeStronglyConnectedComponents(roots) }
-
-  // Only vertices visited by SCC will be in componentOf
-  // TODO single pass this
-  val reachableKeys = fullAdjacency.filterKeys { it in componentOf }.toSortedMap()
 
   // Check for cycles
   traceNested("Check for cycles") {
@@ -275,71 +272,56 @@ private fun <V : Comparable<V>> findMinimalDeferralSet(
   isDeferrable: (V, V) -> Boolean,
   isImplicitlyDeferrable: (V) -> Boolean,
 ): Set<V> {
-  // Collect all potential candidates for deferral
+  // Build the SCC-internal adjacency and deferrable edges ONCE upfront
+  // This avoids rebuilding these structures for each candidate test
+  val sccAdjacency = mutableMapOf<V, MutableSet<V>>()
+  val deferrableEdgesFrom = mutableMapOf<V, MutableSet<V>>()
   val potentialCandidates = mutableSetOf<V>()
 
   for (from in vertices) {
+    val targets = mutableSetOf<V>()
     for (to in fullAdjacency[from].orEmpty()) {
-      if (componentOf[to] == componentId && isDeferrable(from, to)) {
-        // Add the source as a candidate (original behavior)
-        potentialCandidates.add(from)
+      // Only consider edges that stay inside the SCC
+      if (componentOf[to] == componentId) {
+        targets.add(to)
+        if (isDeferrable(from, to)) {
+          // Track deferrable edges and candidates
+          deferrableEdgesFrom.getOrPut(from) { mutableSetOf() }.add(to)
+          potentialCandidates.add(from)
+        }
       }
     }
+    sccAdjacency[from] = targets
   }
 
   if (potentialCandidates.isEmpty()) {
     return emptySet()
   }
 
+  // Create reusable cycle checker that can mask edges dynamically
+  val cycleChecker = ReusableCycleChecker(vertices, sccAdjacency, deferrableEdgesFrom)
+
   // TODO this is... ugly? It's like we want a hierarchy of deferrable types (whole-node or just
   //  edge)
   // Prefer implicitly deferrable types (i.e. assisted factories) over regular types
-  val implicitlyDeferrableCandidates = potentialCandidates.filter(isImplicitlyDeferrable)
-
-  // Try implicitly deferrable candidates first
-  for (candidate in implicitlyDeferrableCandidates.sorted()) {
-    if (
-      wouldBreakAllCycles(
-        setOf(candidate),
-        vertices,
-        fullAdjacency,
-        componentOf,
-        componentId,
-        isDeferrable,
+  // Sort candidates once upfront instead of sorting in each loop
+  val sortedCandidates =
+    potentialCandidates.sortedWith(
+      compareBy(
+        { !isImplicitlyDeferrable(it) }, // implicitly deferrable first (false < true)
+        { it }, // then by natural order
       )
-    ) {
-      return setOf(candidate)
-    }
-  }
+    )
 
-  // Then try regular candidates
-  val regularCandidates = potentialCandidates.filterNot(isImplicitlyDeferrable)
-  for (candidate in regularCandidates.sorted()) {
-    if (
-      wouldBreakAllCycles(
-        setOf(candidate),
-        vertices,
-        fullAdjacency,
-        componentOf,
-        componentId,
-        isDeferrable,
-      )
-    ) {
+  // Try each candidate
+  for (candidate in sortedCandidates) {
+    if (cycleChecker.isAcyclicWith(setOf(candidate))) {
       return setOf(candidate)
     }
   }
 
   // If no single candidate works, try all candidates together
-  val wouldBreakAllCycles =
-    wouldBreakAllCycles(
-      potentialCandidates,
-      vertices,
-      fullAdjacency,
-      componentOf,
-      componentId,
-      isDeferrable,
-    )
-  if (wouldBreakAllCycles) {
+  if (cycleChecker.isAcyclicWith(potentialCandidates)) {
     return potentialCandidates
   }
 
@@ -347,46 +329,36 @@ private fun <V : Comparable<V>> findMinimalDeferralSet(
   return emptySet()
 }
 
-/** Checks if deferring the given set of nodes breaks all cycles in the SCC. */
-private fun <V> wouldBreakAllCycles(
-  deferredNodes: Set<V>,
-  vertices: List<V>,
-  fullAdjacency: SortedMap<V, SortedSet<V>>,
-  componentOf: Map<V, Int>,
-  componentId: Int,
-  isDeferrable: (V, V) -> Boolean,
-): Boolean {
-  // Build a reduced adjacency list without edges involving deferred nodes
-  val reducedAdjacency = mutableMapOf<V, MutableSet<V>>()
+/**
+ * Reusable cycle checker that avoids rebuilding adjacency maps for each candidate test. Instead, it
+ * masks deferrable edges dynamically during DFS traversal.
+ */
+private class ReusableCycleChecker<V>(
+  private val vertices: List<V>,
+  private val sccAdjacency: Map<V, Set<V>>,
+  private val deferrableEdgesFrom: Map<V, Set<V>>,
+) {
+  // Reuse these sets across checks to reduce allocations
+  private val visited = mutableSetOf<V>()
+  private val inStack = mutableSetOf<V>()
 
-  for (from in vertices) {
-    val targets = mutableSetOf<V>()
-    for (to in fullAdjacency[from].orEmpty()) {
-      // stays inside SCC
-      if (componentOf[to] == componentId) {
-        /**
-         * Skip deferrable edges where the source is deferred This matches what [sortVerticesInSCC]
-         * will do
-         */
-        if (isDeferrable(from, to) && from in deferredNodes) continue
-        targets.add(to)
+  /**
+   * Checks if the graph would be acyclic if we defer the given nodes. When a node is deferred, its
+   * deferrable outgoing edges are skipped.
+   */
+  fun isAcyclicWith(deferredNodes: Set<V>): Boolean {
+    visited.clear()
+    inStack.clear()
+
+    for (node in vertices) {
+      if (node !in visited && !dfs(node, deferredNodes)) {
+        return false
       }
     }
-    // Always add the node to the adjacency, even if it has no targets
-    // This ensures all vertices are checked for cycles
-    reducedAdjacency[from] = targets
+    return true
   }
 
-  // Check if the reduced graph is acyclic
-  return isAcyclic(reducedAdjacency)
-}
-
-/** Checks if the given adjacency list represents an acyclic graph using DFS. */
-private fun <V> isAcyclic(adjacency: Map<V, Set<V>>): Boolean {
-  val visited = mutableSetOf<V>()
-  val inStack = mutableSetOf<V>()
-
-  fun dfs(node: V): Boolean {
+  private fun dfs(node: V, deferredNodes: Set<V>): Boolean {
     if (node in inStack) {
       // Cycle found
       return false
@@ -398,21 +370,23 @@ private fun <V> isAcyclic(adjacency: Map<V, Set<V>>): Boolean {
     visited.add(node)
     inStack.add(node)
 
-    for (neighbor in adjacency[node].orEmpty()) {
-      if (!dfs(neighbor)) return false
+    val neighbors = sccAdjacency[node].orEmpty()
+    val deferrableFromThis =
+      if (node in deferredNodes) {
+        deferrableEdgesFrom[node]
+      } else {
+        null
+      }
+
+    for (neighbor in neighbors) {
+      // Skip deferrable edges from deferred nodes (this matches what sortVerticesInSCC will do)
+      if (deferrableFromThis != null && neighbor in deferrableFromThis) continue
+      if (!dfs(neighbor, deferredNodes)) return false
     }
 
     inStack.remove(node)
     return true
   }
-
-  for (node in adjacency.keys) {
-    if (node !in visited && !dfs(node)) {
-      return false
-    }
-  }
-
-  return true
 }
 
 /**
@@ -496,6 +470,8 @@ internal data class Component<V>(val id: Int, val vertices: MutableList<V> = mut
 internal data class TarjanResult<V : Comparable<V>>(
   val components: List<Component<V>>,
   val componentOf: Map<V, Int>,
+  /** Adjacency map filtered to only reachable vertices (built during SCC traversal). */
+  val reachableAdjacency: SortedMap<V, SortedSet<V>>,
 )
 
 /**
@@ -536,6 +512,9 @@ internal fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConne
   val componentOf = mutableMapOf<V, Int>()
   val components = mutableListOf<Component<V>>()
 
+  // Build reachable adjacency during traversal (avoids separate filtering pass)
+  val reachableAdjacency = sortedMapOf<V, SortedSet<V>>()
+
   fun strongConnect(v: V) {
     // Set the depth index for v to the smallest unused index
     indexMap[v] = nextIndex
@@ -545,7 +524,10 @@ internal fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConne
     stack += v
     onStack += v
 
-    for (w in this[v].orEmpty()) {
+    // Get the edges for this vertex
+    val edges = this[v].orEmpty()
+
+    for (w in edges) {
       if (w !in indexMap) {
         // Successor w has not yet been visited; recurse on it
         strongConnect(w)
@@ -583,7 +565,20 @@ internal fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConne
     }
   }
 
-  return TarjanResult(components, componentOf)
+  // Build reachable adjacency after traversal (we now know which vertices are reachable)
+  // This is done after traversal because we need to filter edges to only reachable targets
+  for (v in indexMap.keys) {
+    val edges = this[v]
+    if (edges != null) {
+      // Filter edges to only include reachable targets
+      val reachableEdges = edges.filterTo(sortedSetOf()) { it in indexMap }
+      reachableAdjacency[v] = reachableEdges
+    } else {
+      reachableAdjacency[v] = sortedSetOf()
+    }
+  }
+
+  return TarjanResult(components, componentOf, reachableAdjacency)
 }
 
 /**
@@ -634,7 +629,12 @@ private fun <V> buildComponentDag(
  */
 private fun topologicallySortComponentDag(dag: Map<Int, Set<Int>>, componentCount: Int): List<Int> {
   val inDegree = IntArray(componentCount)
-  dag.values.flatten().forEach { inDegree[it]++ }
+  // Avoid temporary list allocation from flatten()
+  for (children in dag.values) {
+    for (child in children) {
+      inDegree[child]++
+    }
+  }
 
   /**
    * Why a [PriorityQueue] instead of a FIFO queue like [ArrayDeque]?

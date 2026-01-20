@@ -31,5 +31,14 @@ internal interface BaseContextualTypeKey<
   val isMapProvider: Boolean
     get() = wrappedType.findMapValueType() is WrappedType.Provider
 
+  val isMapLazy: Boolean
+    get() = wrappedType.findMapValueType() is WrappedType.Lazy
+
+  val isMapProviderLazy: Boolean
+    get() {
+      val valueType = wrappedType.findMapValueType()
+      return valueType is WrappedType.Provider && valueType.innerType is WrappedType.Lazy
+    }
+
   fun render(short: Boolean, includeQualifier: Boolean = true): String
 }

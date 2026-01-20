@@ -7,14 +7,17 @@ interface AppGraph : Factory {
       field = <this>
 
     @DependencyGraph
-    private inner class LoggedInGraphImpl : LoggedInGraph {
+    private class LoggedInGraphImpl : LoggedInGraph {
+      private val appGraphImpl: Impl
+        field = appGraphImpl
+
       private val idInstance: String
         field = id
 
       private val idInstanceProvider: Provider<String>
         field = Companion.invoke<String>(value = <this>.#idInstance)
 
-      constructor(@Provides id: String) /* primary */ {
+      constructor(appGraphImpl: Impl, @Provides id: String) /* primary */ {
         super/*Any*/()
         /* <init>() */
 
@@ -22,7 +25,7 @@ interface AppGraph : Factory {
 
       override val count: Int
         override get(): Int {
-          return Companion.provideCount(instance = <this>)
+          return <this>.#appGraphImpl.provideCount()
         }
 
       override val id: String
@@ -39,7 +42,7 @@ interface AppGraph : Factory {
     }
 
     override fun createLoggedInGraph(@Provides id: String): LoggedInGraph {
-      return <this>.LoggedInGraphImpl(id = id)
+      return LoggedInGraphImpl(appGraphImpl = <this>, id = id)
     }
 
   }
@@ -96,7 +99,7 @@ interface AppGraph : Factory {
   }
 
   @Provides
-  private fun provideCount(): Int {
+  fun provideCount(): Int {
     return 3
   }
 

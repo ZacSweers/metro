@@ -33,22 +33,22 @@ kotlin {
 
   // Native targets supported by lifecycle-viewmodel
   // Tier 1
-  linuxX64()
-  macosX64()
-  macosArm64()
+  iosArm64()
   iosSimulatorArm64()
   iosX64()
+  linuxX64()
+  macosArm64()
+  macosX64()
 
   // Tier 2
   linuxArm64()
-  watchosSimulatorArm64()
-  watchosX64()
-  watchosArm32()
-  watchosArm64()
+  tvosArm64()
   tvosSimulatorArm64()
   tvosX64()
-  tvosArm64()
-  iosArm64()
+  watchosArm32()
+  watchosArm64()
+  watchosSimulatorArm64()
+  watchosX64()
 
   sourceSets {
     commonMain {

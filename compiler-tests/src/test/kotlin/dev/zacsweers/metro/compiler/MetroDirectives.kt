@@ -18,8 +18,10 @@ object MetroDirectives : SimpleDirectivesContainer() {
     directive("Generate custom test data files per compiler version")
   val GENERATE_ASSISTED_FACTORIES by directive("Enable assisted factories generation.")
   val ENABLE_TOP_LEVEL_FUNCTION_INJECTION by directive("Enable top-level function injection.")
-  val DISABLE_TRANSFORM_PROVIDERS_TO_PRIVATE by
-    directive("Disables automatic transformation of providers to be private.")
+  val TRANSFORM_PROVIDERS_TO_PRIVATE by
+    valueDirective("Controls automatic transformation of providers to be private.") {
+      it.toBoolean()
+    }
   val GENERATE_CONTRIBUTION_HINTS by
     valueDirective("Enable/disable generation of contribution hint generation.") { it.toBoolean() }
   val GENERATE_CONTRIBUTION_HINTS_IN_FIR by
@@ -40,6 +42,8 @@ object MetroDirectives : SimpleDirectivesContainer() {
     valueDirective("Maximum number of binding keys per graph shard when sharding is enabled.") {
       it.toInt()
     }
+  val ENABLE_SWITCHING_PROVIDERS by
+    valueDirective("Enable SwitchingProviders for deferred class loading.") { it.toBoolean() }
   val ENABLE_FULL_BINDING_GRAPH_VALIDATION by
     directive(
       "Enable/disable full binding graph validation of binds and provides declarations even if they are unused."
@@ -65,6 +69,10 @@ object MetroDirectives : SimpleDirectivesContainer() {
   val NON_PUBLIC_CONTRIBUTION_SEVERITY by
     enumDirective<MetroOptions.DiagnosticSeverity>(
       "Control diagnostic severity reporting of @Contributes*-annotated declarations that are non-public."
+    )
+  val UNUSED_GRAPH_INPUTS_SEVERITY by
+    enumDirective<MetroOptions.DiagnosticSeverity>(
+      "Control diagnostic severity reporting of unused graph inputs (factory parameters that are not used by the graph)."
     )
   val CONTRIBUTES_AS_INJECT by
     directive(
@@ -118,6 +126,12 @@ object MetroDirectives : SimpleDirectivesContainer() {
   val REPORTS_DESTINATION by
     stringDirective(
       "Relative path to a directory to dump Metro reports information. Example: 'metro/reports'."
+    )
+  val CHECK_REPORTS by
+    stringDirective(
+      "Specifies report file names to verify against expected files. Can be specified multiple times. " +
+        "Example: 'CHECK_REPORTS: merging-unmatched-exclusions-fir-test.AppGraph'. " +
+        "Expected files should be named '<testFile>.<reportName>.txt'."
     )
 
   fun enableDaggerRuntime(directives: RegisteredDirectives): Boolean {

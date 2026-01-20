@@ -28,6 +28,7 @@ import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
+import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
@@ -136,6 +137,7 @@ internal class InjectConstructorTransformer(
             // Validate qualifiers due to https://github.com/ZacSweers/metro/issues/1556
             val createFunctionParams =
               factoryCls
+                .requireStaticIshDeclarationContainer()
                 .requireSimpleFunction(Symbols.StringNames.CREATE)
                 .owner
                 .parameters()
@@ -143,13 +145,20 @@ internal class InjectConstructorTransformer(
             for ((i, mirrorP) in parameters.allParameters.withIndex()) {
               val createP = createFunctionParams[i]
               if (createP.typeKey != mirrorP.typeKey) {
-                reportCompilerBug(
+                reportCompat(
+                  parameters.ir,
+                  MetroDiagnostics.KNOWN_KOTLINC_BUG_ERROR,
                   """
-                Mirror/create function parameter type mismatch: ${mirrorP.typeKey} != ${createP.typeKey}
-                Source: ${externalTargetConstructor?.kotlinFqName ?: declaration.kotlinFqName}
+                Mirror/create function parameter type mismatch:
+                  - Source:         ${parameters.ir?.kotlinFqName?.asString()}
+                  - Mirror param:   ${mirrorP.typeKey}
+                  - create() param: ${createP.typeKey}
+
+                This is a known bug in the Kotlin compiler, follow https://github.com/ZacSweers/metro/issues/1556
               """
-                    .trimIndent()
+                    .trimIndent(),
                 )
+                return null
               }
             }
           }

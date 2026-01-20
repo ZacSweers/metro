@@ -5,12 +5,10 @@ package dev.zacsweers.metro.compiler.symbols
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
-import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.joinSimpleNames
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols.FqNames.kotlinCollectionsPackageFqn
-import kotlin.lazy
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.declarations.IrEnumEntry
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
@@ -71,6 +69,7 @@ internal class Symbols(
     const val EXTENDS = "Extends"
     const val FACTORY = "factory"
     const val GET = "get"
+    const val GRAPH = "graph"
     const val IGNORE_QUALIFIER = "ignoreQualifier"
     const val INCLUDES = "Includes"
     const val INJECT = "Inject"
@@ -146,6 +145,9 @@ internal class Symbols(
       ClassId(FqNames.metroRuntimeInternalPackage, StringNames.CALLABLE_METADATA.asName())
     val ComptimeOnly = ClassId(FqNames.metroRuntimeInternalPackage, "ComptimeOnly".asName())
     val Stable = ClassId(FqNames.composeRuntime, StringNames.STABLE.asName())
+    val Throws = ClassId(StandardClassIds.BASE_KOTLIN_PACKAGE, "Throws".asName())
+    val IllegalStateException =
+      ClassId(StandardClassIds.BASE_KOTLIN_PACKAGE, "IllegalStateException".asName())
     val graphExtension = ClassId(FqNames.metroRuntimePackage, "GraphExtension".asName())
     val graphExtensionFactory = graphExtension.createNestedClassId(Names.FactoryClass)
     val metroAssisted = ClassId(FqNames.metroRuntimePackage, StringNames.ASSISTED.asName())
@@ -203,6 +205,7 @@ internal class Symbols(
     val exclude = StringNames.EXCLUDE.asName()
     val excludes = StringNames.EXCLUDES.asName()
     val factory = StringNames.FACTORY.asName()
+    val graph = StringNames.GRAPH.asName()
     val ignoreQualifier = StringNames.IGNORE_QUALIFIER.asName()
     val includes = "includes".asName()
     val injectMembers = StringNames.INJECT_MEMBERS.asName()
@@ -388,6 +391,15 @@ internal class Symbols(
 
   val comptimeOnlyAnnotationConstructor: IrConstructorSymbol by lazy {
     pluginContext.referenceClass(ClassIds.ComptimeOnly)?.constructors?.first()!!
+  }
+
+  val throwsAnnotationConstructor: IrConstructorSymbol? by lazy {
+    // For some reason this isn't visible until 2.3.0?
+    pluginContext.referenceClass(ClassIds.Throws)?.constructors?.first()
+  }
+
+  val illegalStateExceptionClassSymbol: IrClassSymbol by lazy {
+    pluginContext.referenceClass(ClassIds.IllegalStateException)!!
   }
 
   val metroProvider: IrClassSymbol by lazy {

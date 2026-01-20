@@ -95,10 +95,12 @@ abstract class MetroCompilerTest {
               MetroOption.REPORTS_DESTINATION ->
                 processor.option(
                   entry.raw.cliOption,
-                  reportsDestination?.absolutePathString().orEmpty(),
+                  reportsDir.value?.absolutePathString().orEmpty(),
                 )
               MetroOption.GENERATE_ASSISTED_FACTORIES ->
                 processor.option(entry.raw.cliOption, generateAssistedFactories)
+              MetroOption.GENERATE_THROWS_ANNOTATIONS ->
+                processor.option(entry.raw.cliOption, generateThrowsAnnotations)
               MetroOption.ENABLE_TOP_LEVEL_FUNCTION_INJECTION ->
                 processor.option(entry.raw.cliOption, enableTopLevelFunctionInjection)
               MetroOption.GENERATE_CONTRIBUTION_HINTS ->
@@ -128,6 +130,10 @@ abstract class MetroCompilerTest {
                 processor.option(entry.raw.cliOption, warnOnInjectAnnotationPlacement)
               MetroOption.INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY ->
                 processor.option(entry.raw.cliOption, interopAnnotationsNamedArgSeverity)
+              MetroOption.UNUSED_GRAPH_INPUTS_SEVERITY ->
+                processor.option(entry.raw.cliOption, unusedGraphInputsSeverity)
+              MetroOption.ENABLE_SWITCHING_PROVIDERS ->
+                processor.option(entry.raw.cliOption, enableSwitchingProviders)
               MetroOption.LOGGING -> {
                 if (enabledLoggers.isEmpty()) continue
                 processor.option(entry.raw.cliOption, enabledLoggers.joinToString("|") { it.name })

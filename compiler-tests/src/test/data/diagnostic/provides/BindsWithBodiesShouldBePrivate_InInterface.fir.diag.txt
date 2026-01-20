@@ -1,1 +1,1 @@
-/BindsWithBodiesShouldBePrivate_InInterface.kt:(247,260): warning: `@Binds` declarations should be private.
+/BindsWithBodiesShouldBePrivate_InInterface.kt:(205,218): warning: `@Binds` declarations should be private.

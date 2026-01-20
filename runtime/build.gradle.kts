@@ -25,9 +25,7 @@ plugins {
  *       |   |-- apple
  *       |   |   |-- iosArm64
  *       |   |   |-- iosX64
- *       |   |   |-- macosX64
  *       |   |   |-- tvosArm64
- *       |   |   |-- tvosX64
  *       |   |   |-- watchosArm32
  *       |   |   |-- watchosArm64
  *       |   |   '-- watchosX86
@@ -113,30 +111,30 @@ kotlin {
 // Sourced from https://kotlinlang.org/docs/native-target-support.html
 fun KotlinMultiplatformExtension.configureOrCreateNativePlatforms() {
   // Tier 1
-  linuxX64()
-  macosX64()
-  macosArm64()
+  iosArm64()
   iosSimulatorArm64()
-  iosX64()
+  macosArm64()
 
   // Tier 2
   linuxArm64()
-  watchosSimulatorArm64()
-  watchosX64()
+  linuxX64()
+  tvosArm64()
+  tvosSimulatorArm64()
   watchosArm32()
   watchosArm64()
-  tvosSimulatorArm64()
-  tvosX64()
-  tvosArm64()
-  iosArm64()
+  watchosSimulatorArm64()
 
   // Tier 3
   androidNativeArm32()
   androidNativeArm64()
-  androidNativeX86()
   androidNativeX64()
+  androidNativeX86()
+  iosX64()
+  macosX64()
   mingwX64()
+  tvosX64()
   watchosDeviceArm64()
+  watchosX64()
 }
 
 tasks.withType<Test>().configureEach {

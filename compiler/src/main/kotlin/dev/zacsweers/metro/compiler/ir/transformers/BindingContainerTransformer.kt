@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
-import dev.zacsweers.metro.compiler.METRO_VERSION
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.capitalizeUS
@@ -22,10 +21,12 @@ import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
+import dev.zacsweers.metro.compiler.ir.createMetroMetadata
 import dev.zacsweers.metro.compiler.ir.dispatchReceiverFor
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.findAnnotations
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
+import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.includedClasses
 import dev.zacsweers.metro.compiler.ir.irCallableMetadata
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
@@ -59,7 +60,6 @@ import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
-import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -92,6 +92,7 @@ import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
+import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isFakeOverride
@@ -120,13 +121,6 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
    */
   private val cache = mutableMapOf<FqName, Optional<BindingContainer>>()
 
-  /**
-   * Cache for transitive closure of all included binding containers. Maps [ClassId] ->
-   * [Set<BindingContainer>][BindingContainer] where the values represent all transitively included
-   * binding containers starting from the given [ClassId].
-   */
-  private val transitiveBindingContainerCache = mutableMapOf<ClassId, Set<BindingContainer>>()
-
   private val bindsMirrorClassTransformer = BindsMirrorClassTransformer(context)
 
   fun findContainer(
@@ -146,6 +140,14 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     }
 
     val providerFactories = mutableMapOf<CallableId, ProviderFactory>()
+
+    val graphAnnotation =
+      declaration.annotationsIn(metroSymbols.classIds.graphLikeAnnotations).firstOrNull()
+    val isContributedGraph =
+      (graphAnnotation?.annotationClass?.classId in
+        metroSymbols.classIds.graphExtensionAnnotations) &&
+        declaration.isAnnotatedWithAny(metroSymbols.classIds.contributesToAnnotations)
+    val isGraph = graphAnnotation != null
 
     declaration.declarations
       .asSequence()
@@ -170,7 +172,10 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
                 visitFunction(nestedDeclaration, metroFunction)
             }
           }
-          is IrClass if (nestedDeclaration.isCompanionObject) -> {
+          is IrClass if
+            (nestedDeclaration.isCompanionObject &&
+              !(isGraph && nestedDeclaration.implements(declaration.classIdOrFail)))
+           -> {
             // Include companion object refs
             findContainer(nestedDeclaration)?.providerFactories?.let {
               providerFactories.putAll(it.values.associateBy { it.callableId })
@@ -188,13 +193,6 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
 
     val bindsMirror = bindsMirrorClassTransformer.getOrComputeBindsMirror(declaration)
 
-    val graphAnnotation =
-      declaration.annotationsIn(metroSymbols.classIds.graphLikeAnnotations).firstOrNull()
-    val isContributedGraph =
-      (graphAnnotation?.annotationClass?.classId in
-        metroSymbols.classIds.graphExtensionAnnotations) &&
-        declaration.isAnnotatedWithAny(metroSymbols.classIds.contributesToAnnotations)
-    val isGraph = graphAnnotation != null
     val container =
       BindingContainer(
         isGraph = isGraph,
@@ -213,11 +211,11 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
       bindingContainerAnnotation != null || isContributedGraph || !container.isEmpty()
 
     if (shouldGenerateMetadata) {
-      val metroMetadata = MetroMetadata(METRO_VERSION, dependency_graph = container.toProto())
+      val metroMetadata = createMetroMetadata(dependency_graph = container.toProto())
       declaration.metroMetadata = metroMetadata
     }
 
-    return if (container.isEmpty()) {
+    return if (container.isEmpty() && bindingContainerAnnotation == null) {
       cache[declarationFqName] = Optional.empty()
       null
     } else {
@@ -634,135 +632,6 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     }
   }
 
-  /**
-   * Resolves all binding containers transitively starting from the given roots. This method handles
-   * caching and cycle detection to build the transitive closure of all included binding containers.
-   */
-  fun resolveAllBindingContainersCached(roots: Set<IrClass>): Set<BindingContainer> {
-    val result = mutableSetOf<BindingContainer>()
-    val visitedClasses = mutableSetOf<ClassId>()
-
-    for (root in roots) {
-      val classId = root.classIdOrFail
-
-      // Check if we already have this in cache
-      transitiveBindingContainerCache[classId]?.let { cachedResult ->
-        result.addAll(cachedResult)
-        continue
-      }
-
-      // Compute transitive closure for this root
-      val rootTransitiveClosure = computeTransitiveBindingContainers(root, visitedClasses)
-
-      // Cache the result
-      transitiveBindingContainerCache[classId] = rootTransitiveClosure
-      result.addAll(rootTransitiveClosure)
-    }
-
-    return result
-  }
-
-  private fun computeTransitiveBindingContainers(
-    root: IrClass,
-    globalVisited: MutableSet<ClassId>,
-  ): Set<BindingContainer> {
-    val result = mutableSetOf<BindingContainer>()
-    val localVisited = mutableSetOf<ClassId>()
-    val queue = ArrayDeque<IrClass>()
-
-    // Map to track direct containers (before computing transitive closure)
-    val directContainers = mutableMapOf<ClassId, BindingContainer?>()
-
-    queue += root
-
-    // First pass: collect all direct binding containers
-    while (queue.isNotEmpty()) {
-      val bindingContainerClass = queue.removeFirst()
-      val classId = bindingContainerClass.classIdOrFail
-
-      // Skip if we've already processed this class locally
-      if (classId in localVisited) continue
-      localVisited += classId
-
-      // Check if we already have the transitive closure cached
-      if (classId in globalVisited) {
-        transitiveBindingContainerCache[classId]?.let { cachedResult -> result += cachedResult }
-        continue
-      }
-
-      globalVisited += classId
-
-      // Check if already cached (shouldn't happen but be defensive)
-      transitiveBindingContainerCache[classId]?.let { cachedResult ->
-        result += cachedResult
-        continue
-      }
-
-      // Find the direct container for this class
-      val bindingContainer = findContainer(bindingContainerClass)
-      directContainers[classId] = bindingContainer
-
-      // Add included binding containers to the queue for processing
-      bindingContainer?.includes?.forEach { includedClassId ->
-        pluginContext.referenceClass(includedClassId)?.owner?.let { includedClass ->
-          if (includedClassId !in localVisited && includedClassId !in globalVisited) {
-            queue += includedClass
-          }
-        }
-      }
-    }
-
-    // Second pass: compute transitive closures with proper caching
-    fun computeTransitiveClosure(
-      classId: ClassId,
-      visited: MutableSet<ClassId> = mutableSetOf(),
-    ): Set<BindingContainer> {
-      // Check cache first
-      transitiveBindingContainerCache[classId]?.let {
-        return it
-      }
-
-      // Prevent cycles
-      if (classId in visited) return emptySet()
-
-      visited += classId
-
-      val transitiveClosure = mutableSetOf<BindingContainer>()
-
-      // Add the direct container if it exists
-      directContainers[classId]?.let { container ->
-        transitiveClosure += container
-
-        // Recursively add transitive closures of includes
-        container.includes.forEach { includedClassId ->
-          // First check if we have it in the cache
-          val includedClosure =
-            transitiveBindingContainerCache[includedClassId]
-              ?: if (includedClassId in directContainers.keys) {
-                // We have the direct container, compute its closure
-                computeTransitiveClosure(includedClassId, visited)
-              } else {
-                // Not in our local processing, might be cached from global
-                emptySet()
-              }
-          transitiveClosure += includedClosure
-        }
-      }
-
-      // Cache the result
-      transitiveBindingContainerCache[classId] = transitiveClosure
-      return transitiveClosure
-    }
-
-    // Compute transitive closures for all processed containers
-    for (classId in directContainers.keys) {
-      val closure = computeTransitiveClosure(classId)
-      result += closure
-    }
-
-    return result
-  }
-
   private fun externalProviderFactoryFor(factoryCls: IrClass): ProviderFactory.Metro {
     // Extract IrTypeKey from Factory supertype
     // Qualifier will be populated in ProviderFactory construction
@@ -1000,6 +869,8 @@ internal class BindingContainer(
   val providerFactories: Map<CallableId, ProviderFactory>,
   val bindsMirror: BindsMirror?,
 ) {
+  val typeKey by memoize { IrTypeKey(ir.defaultType) }
+
   private val classId = ir.classIdOrFail
 
   /**

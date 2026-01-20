@@ -30,6 +30,8 @@ internal class BindingPropertyCollector(
   private val graph: IrBindingGraph,
   private val sortedKeys: List<IrTypeKey>,
   private val roots: List<IrContextualTypeKey> = emptyList(),
+  /** Injector function roots specifically, these don't create MembersInjector instances. */
+  private val injectorRoots: Set<IrContextualTypeKey> = emptySet(),
   private val extraKeeps: Collection<IrContextualTypeKey> = emptyList(),
   private val deferredTypes: Set<IrTypeKey> = emptySet(),
 ) {
@@ -45,6 +47,12 @@ internal class BindingPropertyCollector(
      */
     // TODO replace with AccessType
     val isProviderType: Boolean = propertyKind == PropertyKind.FIELD,
+    /**
+     * The switching ID for this property when using switching providers mode. Only assigned for
+     * FIELD properties that are eligible for SwitchingProvider dispatch. Null means this property
+     * does not use SwitchingProvider.
+     */
+    val switchingId: Int? = null,
   )
 
   /**
@@ -76,6 +84,46 @@ internal class BindingPropertyCollector(
 
   /** Cache of alias type keys to their resolved non-alias target type keys. */
   private val resolvedAliasTargets = HashMap<IrTypeKey, IrTypeKey>()
+
+  /** Counter for assigning switching IDs in switching providers mode. */
+  private var nextSwitchingId = 0
+
+  /**
+   * Determines if a binding is eligible for SwitchingProvider dispatch. Returns true only for FIELD
+   * properties that can be lazily instantiated via the switching provider pattern.
+   *
+   * Note: Deferred types (used for cycle-breaking) are eligible for SwitchingProvider. While they
+   * use DelegateFactory for the initial field value, the setDelegate call will use
+   * SwitchingProvider when a switchingId is assigned.
+   */
+  private fun shouldUseSwitchingProvider(binding: IrBinding, propertyKind: PropertyKind): Boolean {
+    if (!metroContext.options.enableSwitchingProviders) return false
+    if (propertyKind != PropertyKind.FIELD) return false
+
+    return when (binding) {
+      // These use specialized initialization, not SwitchingProvider
+      is IrBinding.BoundInstance,
+      is IrBinding.GraphDependency,
+      is IrBinding.Alias,
+      is IrBinding.Absent,
+      is IrBinding.Assisted,
+      is IrBinding.GraphExtension,
+      // Multibindings use GETTER properties, never FIELD (this check is redundant but explicit)
+      is IrBinding.Multibinding,
+      // Object classes cannot be scoped and are never stored in provider fields
+      is IrBinding.ObjectClass,
+      is IrBinding.GraphExtensionFactory -> false
+
+      // Assisted inject factories have different lifecycle
+      is IrBinding.ConstructorInjected if binding.isAssisted -> false
+
+      // These can use SwitchingProvider
+      is IrBinding.MembersInjected,
+      is IrBinding.CustomWrapper,
+      is IrBinding.ConstructorInjected,
+      is IrBinding.Provided -> true
+    }
+  }
 
   // Create getters for multi-use refcounts _unless_ they have no dependencies
   private fun IrBinding.isSimpleBinding(): Boolean {
@@ -176,8 +224,17 @@ internal class BindingPropertyCollector(
         (isField && !isAssistedInject) ||
           // For multibindings with factory refs, the property returns a Provider type
           (binding is IrBinding.Multibinding && node.factoryRefCount > 0)
+
+      // Assign switching ID if eligible for switching providers
+      val switchingId =
+        if (shouldUseSwitchingProvider(binding, knownPropertyType)) {
+          nextSwitchingId++
+        } else {
+          null
+        }
+
       keysWithBackingProperties[contextKey] =
-        CollectedProperty(binding, knownPropertyType, contextKey, isProviderType)
+        CollectedProperty(binding, knownPropertyType, contextKey, isProviderType, switchingId)
       // Still process dependencies even for known property types
     }
 
@@ -195,8 +252,11 @@ internal class BindingPropertyCollector(
         if (isGraphExtension) node.scalarRefCount + node.factoryRefCount else node.scalarRefCount
 
       if (useField) {
+        // Assign switching ID if eligible for switching providers
+        val switchingId =
+          if (shouldUseSwitchingProvider(binding, PropertyKind.FIELD)) nextSwitchingId++ else null
         keysWithBackingProperties[contextKey] =
-          CollectedProperty(binding, PropertyKind.FIELD, contextKey)
+          CollectedProperty(binding, PropertyKind.FIELD, contextKey, switchingId = switchingId)
       } else if (effectiveScalarRefCount > 1 && !node.binding.isSimpleBinding()) {
         keysWithBackingProperties[contextKey] =
           CollectedProperty(binding, PropertyKind.GETTER, contextKey)
@@ -214,13 +274,23 @@ internal class BindingPropertyCollector(
     // are accessed as scalar values. If Provider access is needed for the extension itself,
     // the getter call is wrapped in InstanceFactory at the call site.
     val hasFieldProperty = keysWithBackingProperties[contextKey]?.propertyKind == PropertyKind.FIELD
+
+    // MembersInjected bindings that are injector function roots (like `fun inject(target: T)`)
+    // don't create MembersInjector instances - they call static inject methods directly, so their
+    // dependencies are scalar accesses. Accessor roots (like `val foo: MembersInjector<T>`) DO
+    // create MembersInjector instances, so they remain in factory path.
+    val isInjectorFunctionRoot = binding is IrBinding.MembersInjected && contextKey in injectorRoots
+    val isMembersInjectedInFactoryPath =
+      binding is IrBinding.MembersInjected && !isInjectorFunctionRoot
+
     val inFactoryPath =
       !isGraphExtension &&
         (hasFieldProperty ||
           node.factoryRefCount > 0 ||
           contextKey.isMapProvider ||
-          // MembersInjector instances can only be factory forms
-          binding is IrBinding.MembersInjected)
+          contextKey.isMapLazy ||
+          contextKey.isMapProviderLazy ||
+          isMembersInjectedInFactoryPath)
 
     // Mark dependencies as factory accesses if:
     // - Explicitly Provider<T> or Lazy<T>

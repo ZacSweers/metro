@@ -30,6 +30,7 @@ import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.ir.IrRankedBindingProcessing
+import dev.zacsweers.metro.compiler.safePathString
 import dev.zacsweers.metro.compiler.singleOrError
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Optional
@@ -153,7 +154,7 @@ internal class ContributedInterfaceSupertypeGenerator(
         }
 
       session.metroFirBuiltIns.writeDiagnostic({
-        "discovered-hints-fir-${scopeClassId.asFqNameString()}.txt"
+        "discovered-hints-fir-${scopeClassId.safePathString}.txt"
       }) {
         val allFunctions =
           functionsInPackage
@@ -168,7 +169,7 @@ internal class ContributedInterfaceSupertypeGenerator(
             .joinToString("\n")
 
         val contributedIds =
-          contributingClasses.map { it.classId.asFqNameString() }.sorted().joinToString("\n")
+          contributingClasses.map { it.classId.safePathString }.sorted().joinToString("\n")
 
         buildString {
           appendLine("== All functions")
@@ -444,7 +445,11 @@ internal class ContributedInterfaceSupertypeGenerator(
     }
 
     if (unmatchedExclusions.isNotEmpty()) {
-      // TODO warn?
+      session.metroFirBuiltIns.writeDiagnostic({
+        "merging-unmatched-exclusions-fir-${classLikeDeclaration.classId.safePathString}.txt"
+      }) {
+        unmatchedExclusions.map { it.safePathString }.sorted().joinToString("\n")
+      }
     }
 
     // Process replacements from native contributions
@@ -489,7 +494,11 @@ internal class ContributedInterfaceSupertypeGenerator(
     }
 
     if (unmatchedReplacements.isNotEmpty()) {
-      // TODO warn?
+      session.metroFirBuiltIns.writeDiagnostic({
+        "merging-unmatched-replacements-fir-${classLikeDeclaration.classId.safePathString}.txt"
+      }) {
+        unmatchedReplacements.map { it.safePathString }.sorted().joinToString("\n")
+      }
     }
 
     if (session.metroFirBuiltIns.options.enableDaggerAnvilInterop) {
@@ -498,11 +507,15 @@ internal class ContributedInterfaceSupertypeGenerator(
         processRankBasedReplacements(scopes, contributions, typeResolver)
 
       pendingRankReplacements.distinct().forEach { replacedClassId ->
-        removeContribution(replacedClassId, unmatchedReplacements)
+        removeContribution(replacedClassId, unmatchedRankReplacements)
       }
 
       if (unmatchedRankReplacements.isNotEmpty()) {
-        // TODO we could report all rank based replacements here
+        session.metroFirBuiltIns.writeDiagnostic({
+          "merging-unmatched-rank-replacements-fir-${classLikeDeclaration.classId.safePathString}.txt"
+        }) {
+          unmatchedRankReplacements.map { it.safePathString }.sorted().joinToString("\n")
+        }
       }
     }
 

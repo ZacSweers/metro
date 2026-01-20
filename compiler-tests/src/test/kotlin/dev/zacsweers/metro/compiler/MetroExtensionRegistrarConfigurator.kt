@@ -42,6 +42,7 @@ fun TestConfigurationBuilder.configurePlugin() {
   configureDaggerInterop()
   configureGuiceInterop()
   useAdditionalSourceProviders(::Ksp2AdditionalSourceProvider)
+  useAfterAnalysisCheckers(::MetroReportsChecker)
 }
 
 class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
@@ -56,8 +57,9 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         // Set non-annotation properties (only when directive is present or value is non-default)
         enabled = MetroDirectives.DISABLE_METRO !in module.directives
         generateAssistedFactories = MetroDirectives.GENERATE_ASSISTED_FACTORIES in module.directives
-        transformProvidersToPrivate =
-          MetroDirectives.DISABLE_TRANSFORM_PROVIDERS_TO_PRIVATE !in module.directives
+        module.directives.singleOrZeroValue(MetroDirectives.TRANSFORM_PROVIDERS_TO_PRIVATE)?.let {
+          transformProvidersToPrivate = it
+        }
         enableTopLevelFunctionInjection =
           MetroDirectives.ENABLE_TOP_LEVEL_FUNCTION_INJECTION in module.directives
         module.directives.singleOrZeroValue(MetroDirectives.SHRINK_UNUSED_BINDINGS)?.let {
@@ -74,6 +76,9 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         }
         module.directives.singleOrZeroValue(MetroDirectives.KEYS_PER_GRAPH_SHARD)?.let {
           keysPerGraphShard = it
+        }
+        module.directives.singleOrZeroValue(MetroDirectives.ENABLE_SWITCHING_PROVIDERS)?.let {
+          enableFastInit = it
         }
         enableFullBindingGraphValidation =
           MetroDirectives.ENABLE_FULL_BINDING_GRAPH_VALIDATION in module.directives
@@ -99,10 +104,21 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         module.directives.singleOrZeroValue(MetroDirectives.NON_PUBLIC_CONTRIBUTION_SEVERITY)?.let {
           nonPublicContributionSeverity = it
         }
+        module.directives.singleOrZeroValue(MetroDirectives.UNUSED_GRAPH_INPUTS_SEVERITY)?.let {
+          unusedGraphInputsSeverity = it
+        }
         module.directives.singleOrZeroValue(MetroDirectives.MAX_IR_ERRORS_COUNT)?.let {
           maxIrErrorsCount = it
         }
-        module.directives.singleOrZeroValue(MetroDirectives.REPORTS_DESTINATION)?.let {
+        // Use explicit REPORTS_DESTINATION or default if CHECK_REPORTS is present
+        val reportsDir =
+          module.directives.singleOrZeroValue(MetroDirectives.REPORTS_DESTINATION)
+            ?: if (module.directives[MetroDirectives.CHECK_REPORTS].isNotEmpty()) {
+              MetroReportsChecker.DEFAULT_REPORTS_DIR
+            } else {
+              null
+            }
+        reportsDir?.let {
           reportsDestination =
             Path("${testServices.temporaryDirectoryManager.rootDir.absolutePath}/$it")
         }

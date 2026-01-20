@@ -133,9 +133,9 @@ allprojects {
         "**/AbstractMapFactory.kt",
         "**/Assisted.kt",
         "**/AssistedFactory.kt",
+        "**/BaseDoubleCheck.kt",
         "**/ClassKey.kt",
         "**/DelegateFactory.kt",
-        "**/BaseDoubleCheck.kt",
         "**/DoubleCheck.kt",
         "**/DoubleCheckTest.kt",
         "**/ElementsIntoSet.kt",
@@ -148,21 +148,23 @@ allprojects {
         "**/LongKey.kt",
         "**/MapFactory.kt",
         "**/MapKey.kt",
+        "**/MapLazyFactory.kt",
         "**/MapProviderFactory.kt",
         "**/MapProviderFactoryTest.kt",
+        "**/MapProviderLazyFactory.kt",
         "**/MembersInjector.kt",
+        "**/MemoizedSequence.kt",
         "**/Multibinds.kt",
         "**/NameAllocator.kt",
         "**/NameAllocatorTest.kt",
-        "**/MemoizedSequence.kt",
         "**/ProviderOfLazy.kt",
         "**/SetFactory.kt",
         "**/SetFactoryTest.kt",
         "**/StringKey.kt",
-        "**/topologicalSort.kt",
         "**/TopologicalSortTest.kt",
-        "**/ir/cache/*.kt",
         "**/collectionUtil.kt",
+        "**/ir/cache/*.kt",
+        "**/topologicalSort.kt",
       )
     }
     format("licenseJava") {
@@ -207,7 +209,7 @@ subprojects {
   }
 
   plugins.withId("com.vanniktech.maven.publish") {
-    if (project.path != ":compiler") {
+    if (project.path != ":compiler" && !project.path.startsWith(":compiler-compat")) {
       apply(plugin = "org.jetbrains.dokka")
     }
     configure<MavenPublishBaseExtension> {
@@ -249,6 +251,12 @@ subprojects {
 dependencies {
   dokka(project(":gradle-plugin"))
   dokka(project(":interop-dagger"))
+  dokka(project(":interop-guice"))
+  dokka(project(":interop-jakarta"))
+  dokka(project(":interop-javax"))
+  dokka(project(":metrox-android"))
+  dokka(project(":metrox-viewmodel"))
+  dokka(project(":metrox-viewmodel-compose"))
   dokka(project(":runtime"))
 }
 

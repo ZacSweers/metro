@@ -166,12 +166,12 @@ tasks.withType<Test> {
 
   // Inspo from https://youtrack.jetbrains.com/issue/KT-83440
   minHeapSize = "512m"
-  maxHeapSize = "2g"
+  maxHeapSize = if (enableShardTest) "4g" else "2g"
   jvmArgs(
     "-ea",
     "-XX:+UseCodeCacheFlushing",
     "-XX:ReservedCodeCacheSize=256m",
-    "-XX:MaxMetaspaceSize=512m",
+    "-XX:MaxMetaspaceSize=${if (enableShardTest) "512m" else "1g"}",
     "-XX:CICompilerCount=2",
     "-Djna.nosys=true",
   )

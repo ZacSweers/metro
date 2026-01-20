@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.coneTypeIfResolved
 import dev.zacsweers.metro.compiler.fir.replacesArgument
 import dev.zacsweers.metro.compiler.getAndAdd
+import dev.zacsweers.metro.compiler.safePathString
 import java.util.SortedMap
 import java.util.SortedSet
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
@@ -133,35 +134,58 @@ internal class IrContributionMerger(
         ScopedContributions(allContributions, bindingContainers, originToContributions)
       }
 
-    // Make mutable copies for processing exclusions and replacements
-    val mutableAllContributions = scopedContributions.allContributions.toMutableMap()
-    val mutableContributedBindingContainers = scopedContributions.bindingContainers.toMutableMap()
     val originToContributions = scopedContributions.originToContributions
 
-    // TODO do we exclude directly contributed ones or also include transitives?
+    // Start with copies of the contributions maps (we'll modify these)
+    val mutableAllContributions = scopedContributions.allContributions.toMutableMap()
+    val mutableContributedBindingContainers = scopedContributions.bindingContainers.toMutableMap()
 
-    // Process excludes
-    for (excludedClassId in excluded) {
-      // Remove excluded binding containers - they won't contribute their bindings
-      mutableContributedBindingContainers.remove(excludedClassId)
+    // Process excludes FIRST - excluded classes should not have their `replaces` effect applied
+    if (excluded.isNotEmpty()) {
+      val unmatchedExclusions = mutableSetOf<ClassId>()
+      for (excludedClassId in excluded) {
+        // Remove excluded binding containers - they won't contribute their bindings
+        val removedContainer = mutableContributedBindingContainers.remove(excludedClassId)
 
-      // Remove contributions from excluded classes that have nested `MetroContribution` classes
-      // (binding containers don't have these, so this only affects @ContributesBinding etc.)
-      mutableAllContributions.remove(excludedClassId)
+        // Remove contributions from excluded classes that have nested `MetroContribution` classes
+        // (binding containers don't have these, so this only affects @ContributesBinding etc.)
+        val removedContribution = mutableAllContributions.remove(excludedClassId)
 
-      // Remove contributions that have @Origin annotation pointing to the excluded class
-      originToContributions[excludedClassId]?.forEach { contributionId ->
-        mutableAllContributions.remove(contributionId)
-        mutableContributedBindingContainers.remove(contributionId)
+        // Remove contributions that have @Origin annotation pointing to the excluded class
+        val originContributions = originToContributions[excludedClassId]
+        originContributions?.forEach { contributionId ->
+          mutableAllContributions.remove(contributionId)
+          mutableContributedBindingContainers.remove(contributionId)
+        }
+
+        // Track unmatched if nothing was removed
+        if (
+          removedContainer == null && removedContribution == null && originContributions == null
+        ) {
+          unmatchedExclusions += excludedClassId
+        }
+      }
+
+      if (unmatchedExclusions.isNotEmpty()) {
+        writeDiagnostic({ "merging-unmatched-exclusions-ir-${primaryScope.safePathString}.txt" }) {
+          unmatchedExclusions.map { it.safePathString }.sorted().joinToString("\n")
+        }
       }
     }
 
-    // Process replacements from both regular contributions and binding containers.
-    // Iterate over the mutable collections (post-exclusion) to avoid processing
-    // excluded items.
+    // Collect replacements AFTER exclusions - only from remaining (non-excluded) contributions
+    // This ensures excluded classes don't have their `replaces` effect applied
     val classesToReplace = mutableSetOf<ClassId>()
+    val allClassesToScan = sequence {
+      // Parent classes of regular contributions (only remaining ones after exclusions)
+      for (contributions in mutableAllContributions.values) {
+        contributions.firstOrNull()?.rawTypeOrNull()?.parentAsClass?.let { yield(it) }
+      }
+      // Binding containers (only remaining ones after exclusions)
+      yieldAll(mutableContributedBindingContainers.values)
+    }
 
-    fun collectReplacements(irClass: IrClass) {
+    for (irClass in allClassesToScan) {
       val replacedClasses =
         irClass.repeatableAnnotationsIn(
           metroSymbols.classIds.allContributesAnnotationsWithContainers,
@@ -176,36 +200,57 @@ internal class IrContributionMerger(
               .mapNotNull { it.expectAsOrNull<FirGetClassCall>()?.coneTypeIfResolved()?.classId }
           },
         )
-
       classesToReplace.addAll(replacedClasses)
     }
 
-    // Scan parent classes of regular contributions (e.g., @Contributes* classes)
-    for (contributions in mutableAllContributions.values) {
-      contributions.firstOrNull()?.rawTypeOrNull()?.parentAsClass?.let { collectReplacements(it) }
-    }
+    // Process replacements
+    if (classesToReplace.isNotEmpty()) {
+      val unmatchedReplacements = mutableSetOf<ClassId>()
 
-    // Scan binding containers
-    for (containerClass in mutableContributedBindingContainers.values) {
-      collectReplacements(containerClass)
-    }
+      for (replacedClassId in classesToReplace) {
+        val removedContribution = mutableAllContributions.remove(replacedClassId)
+        val removedContainer = mutableContributedBindingContainers.remove(replacedClassId)
 
-    for (replacedClassId in classesToReplace) {
-      mutableAllContributions.remove(replacedClassId)
-      mutableContributedBindingContainers.remove(replacedClassId)
+        // Remove contributions that have @Origin annotation pointing to the replaced class
+        val originContributions = originToContributions[replacedClassId]
+        originContributions?.forEach { contributionId ->
+          mutableAllContributions.remove(contributionId)
+          mutableContributedBindingContainers.remove(contributionId)
+        }
 
-      // Remove contributions that have @Origin annotation pointing to the replaced class
-      originToContributions[replacedClassId]?.forEach { contributionId ->
-        mutableAllContributions.remove(contributionId)
-        mutableContributedBindingContainers.remove(contributionId)
+        // Track unmatched if nothing was removed
+        if (
+          removedContribution == null && removedContainer == null && originContributions == null
+        ) {
+          unmatchedReplacements += replacedClassId
+        }
+      }
+
+      if (unmatchedReplacements.isNotEmpty()) {
+        writeDiagnostic({
+          "merging-unmatched-replacements-ir-${primaryScope.safePathString}.txt"
+        }) {
+          unmatchedReplacements.map { it.safePathString }.sorted().joinToString("\n")
+        }
       }
     }
 
     // Process rank-based replacements if Dagger-Anvil interop is enabled
     if (options.enableDaggerAnvilInterop) {
+      val unmatchedRankReplacements = mutableSetOf<ClassId>()
       val rankReplacements = processRankBasedReplacements(allScopes, mutableAllContributions)
       for (replacedClassId in rankReplacements) {
-        mutableAllContributions.remove(replacedClassId)
+        if (mutableAllContributions.remove(replacedClassId) == null) {
+          unmatchedRankReplacements += replacedClassId
+        }
+      }
+
+      if (unmatchedRankReplacements.isNotEmpty()) {
+        writeDiagnostic({
+          "merging-unmatched-rank-replacements-ir-${primaryScope.safePathString}.txt"
+        }) {
+          unmatchedRankReplacements.map { it.safePathString }.sorted().joinToString("\n")
+        }
       }
     }
 

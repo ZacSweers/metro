@@ -54,12 +54,12 @@ interface AppGraph {
 
     override val long: Long
       override get(): Long {
-        return Companion.provideLong(instance = <this>.#thisGraphInstance, holder = IntHolder())
+        return <this>.#thisGraphInstance.provideLong(holder = IntHolder())
       }
 
     override val string: String
       override get(): String {
-        return Companion.provideString(instance = <this>.#thisGraphInstance, holder = IntHolder())
+        return <this>.#thisGraphInstance.provideString(holder = IntHolder())
       }
 
   }
@@ -155,12 +155,12 @@ interface AppGraph {
   }
 
   @Provides
-  private fun provideLong(holder: IntHolder): Long {
+  fun provideLong(holder: IntHolder): Long {
     return holder.<get-int>().toLong()
   }
 
   @Provides
-  private fun provideString(holder: IntHolder): String {
+  fun provideString(holder: IntHolder): String {
     return holder.<get-int>().toString()
   }
 

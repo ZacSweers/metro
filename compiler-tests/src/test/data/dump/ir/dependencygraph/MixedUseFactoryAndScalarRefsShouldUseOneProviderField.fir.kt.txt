@@ -122,12 +122,12 @@ interface AppGraph {
   }
 
   @Provides
-  private fun provideInt(): Int {
+  fun provideInt(): Int {
     return 3
   }
 
   @Provides
-  private fun provideString(int: Int): String {
+  fun provideString(int: Int): String {
     return int.toString()
   }
 
@@ -141,3 +141,4 @@ interface AppGraph {
     abstract get
 
 }
+

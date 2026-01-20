@@ -442,6 +442,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("AnotherSimpleCycle.kt")
+    public void testAnotherSimpleCycle() {
+      runTest("compiler-tests/src/test/data/box/cycles/AnotherSimpleCycle.kt");
+    }
+
+    @Test
     @TestMetadata("AssistedFactoryCycle.kt")
     public void testAssistedFactoryCycle() {
       runTest("compiler-tests/src/test/data/box/cycles/AssistedFactoryCycle.kt");
@@ -756,6 +762,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("DynamicGraphWithGraphExtension.kt")
       public void testDynamicGraphWithGraphExtension() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/dynamic/DynamicGraphWithGraphExtension.kt");
+      }
+
+      @Test
+      @TestMetadata("DynamicKeysReplaceContributedKeys.kt")
+      public void testDynamicKeysReplaceContributedKeys() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/dynamic/DynamicKeysReplaceContributedKeys.kt");
       }
 
       @Test
@@ -1509,6 +1521,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("MapMultibindingLazyWithDaggerInterop.kt")
+      public void testMapMultibindingLazyWithDaggerInterop() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/MapMultibindingLazyWithDaggerInterop.kt");
+      }
+
+      @Test
       @TestMetadata("MapMultibindingWithProvidesAndDaggerInterop.kt")
       public void testMapMultibindingWithProvidesAndDaggerInterop() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/MapMultibindingWithProvidesAndDaggerInterop.kt");
@@ -1748,15 +1766,33 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("EmptyMapLazyTypes.kt")
+    public void testEmptyMapLazyTypes() {
+      runTest("compiler-tests/src/test/data/box/multibindings/EmptyMapLazyTypes.kt");
+    }
+
+    @Test
     @TestMetadata("LazyMemberInjectedBindings.kt")
     public void testLazyMemberInjectedBindings() {
       runTest("compiler-tests/src/test/data/box/multibindings/LazyMemberInjectedBindings.kt");
     }
 
     @Test
+    @TestMetadata("MapLazyValues.kt")
+    public void testMapLazyValues() {
+      runTest("compiler-tests/src/test/data/box/multibindings/MapLazyValues.kt");
+    }
+
+    @Test
     @TestMetadata("MapProviderAccessor.kt")
     public void testMapProviderAccessor() {
       runTest("compiler-tests/src/test/data/box/multibindings/MapProviderAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("MapProviderLazyValues.kt")
+    public void testMapProviderLazyValues() {
+      runTest("compiler-tests/src/test/data/box/multibindings/MapProviderLazyValues.kt");
     }
 
     @Test

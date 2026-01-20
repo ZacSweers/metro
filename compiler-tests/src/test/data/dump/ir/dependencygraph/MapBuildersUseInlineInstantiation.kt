@@ -1,5 +1,3 @@
-// DISABLE_TRANSFORM_PROVIDERS_TO_PRIVATE
-
 interface IntHolder
 
 @Inject

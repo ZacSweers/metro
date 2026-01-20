@@ -89,6 +89,10 @@ internal class BindingLookup(
   // Cache for created optional bindings
   private val optionalBindingsCache = mutableMapOf<IrTypeKey, IrBinding.CustomWrapper>()
 
+  fun getAvailableKeys(): Set<IrTypeKey> {
+    return bindingsCache.keys
+  }
+
   /** Returns all bindings for similarity checking. */
   fun getAvailableBindings(): Map<IrTypeKey, IrBinding> {
     return bindingsCache.mapValues { it.value.first() }
@@ -393,34 +397,50 @@ internal class BindingLookup(
     remapper: TypeRemapper
   ): Set<IrBinding.MembersInjected> {
     val bindings = mutableSetOf<IrBinding.MembersInjected>()
+
+    // Track supertype injector keys as we iterate. The list from findMemberInjectors is in
+    // base-to-derived order, so we accumulate previous entries as supertypes for later ones.
+    val supertypeInjectorKeys = mutableListOf<IrContextualTypeKey>()
+
     for (generatedInjector in findMemberInjectors(this)) {
       val mappedTypeKey = generatedInjector.typeKey.remapTypes(remapper)
-      // Get or create cached binding for this type key
-      val binding =
-        membersInjectorBindingsCache.getOrPut(mappedTypeKey) {
-          val remappedParameters = generatedInjector.mergedParameters(remapper)
-          val contextKey = IrContextualTypeKey(mappedTypeKey)
+      val contextKey = IrContextualTypeKey(mappedTypeKey)
 
-          IrBinding.MembersInjected(
-            contextKey,
-            // Need to look up the injector class and gather all params
-            parameters = remappedParameters,
-            reportableDeclaration = this,
-            function = null,
-            // Bindings created here are from class-based lookup, not injector functions
-            // (injector function bindings are cached in BindingGraphGenerator)
-            isFromInjectorFunction = false,
-            // Unpack the target class from the type
-            targetClassId =
-              mappedTypeKey.type
-                .requireSimpleType(this)
-                .arguments[0]
-                .typeOrFail
-                .rawType()
-                .classIdOrFail,
-          )
-        }
+      // Copy the current supertype keys before adding this one
+      val currentSupertypeKeys = supertypeInjectorKeys.toList()
+
+      // Create binding with remapped parameters
+      // Note: We don't cache by mappedTypeKey alone because the same mapped type can be reached
+      // via different remapper contexts (e.g., looking up MembersInjector<Parent<Int,String>>
+      // directly vs looking up ExampleClass<Int>), and the parameters need to use the correct
+      // remapper for the current context.
+      val remappedParameters = generatedInjector.mergedParameters(remapper)
+
+      val binding =
+        IrBinding.MembersInjected(
+          contextKey,
+          // Need to look up the injector class and gather all params
+          parameters = remappedParameters,
+          reportableDeclaration = this,
+          function = null,
+          // Bindings created here are from class-based lookup, not injector functions
+          // (injector function bindings are cached in BindingGraphGenerator)
+          isFromInjectorFunction = false,
+          // Unpack the target class from the type
+          targetClassId =
+            mappedTypeKey.type
+              .requireSimpleType(this)
+              .arguments[0]
+              .typeOrFail
+              .rawType()
+              .classIdOrFail,
+          supertypeMembersInjectorKeys = currentSupertypeKeys,
+        )
+
       bindings += binding
+
+      // Add this injector's key as a supertype for subsequent iterations
+      supertypeInjectorKeys += contextKey
     }
     return bindings
   }

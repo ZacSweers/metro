@@ -60,6 +60,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     public void testNonPublicContributionWarning() {
       runTest("compiler-tests/src/test/data/diagnostic/aggregation/NonPublicContributionWarning.kt");
     }
+
+    @Test
+    @TestMetadata("SimilarBindingsNotReportedWhenMissingBindingTypeIsAny.kt")
+    public void testSimilarBindingsNotReportedWhenMissingBindingTypeIsAny() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/SimilarBindingsNotReportedWhenMissingBindingTypeIsAny.kt");
+    }
   }
 
   @Nested
@@ -270,6 +276,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("UnusedGraphInputsAreReported.kt")
+    public void testUnusedGraphInputsAreReported() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/UnusedGraphInputsAreReported.kt");
+    }
+
+    @Test
     @TestMetadata("UsefulHintsForMissingImplDeps.kt")
     public void testUsefulHintsForMissingImplDeps() {
       runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/UsefulHintsForMissingImplDeps.kt");
@@ -294,6 +306,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       @TestMetadata("CreateDynamicGraphCannotBeInLocalClasses.kt")
       public void testCreateDynamicGraphCannotBeInLocalClasses() {
         runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/dynamic/CreateDynamicGraphCannotBeInLocalClasses.kt");
+      }
+
+      @Test
+      @TestMetadata("DuplicateBindingsInDynamicGraphReportTheCallLocation.kt")
+      public void testDuplicateBindingsInDynamicGraphReportTheCallLocation() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/dynamic/DuplicateBindingsInDynamicGraphReportTheCallLocation.kt");
       }
     }
 
@@ -402,6 +420,22 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       @TestMetadata("RequiredAnnotationResultsInMissingBindings.kt")
       public void testRequiredAnnotationResultsInMissingBindings() {
         runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/optional/RequiredAnnotationResultsInMissingBindings.kt");
+      }
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/diagnostic/dependencygraph/sharding")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Sharding {
+      @Test
+      public void testAllFilesPresentInSharding() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/dependencygraph/sharding"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      }
+
+      @Test
+      @TestMetadata("ShardingThresholdNotReachedWarning.kt")
+      public void testShardingThresholdNotReachedWarning() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/sharding/ShardingThresholdNotReachedWarning.kt");
       }
     }
   }
@@ -636,6 +670,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       @TestMetadata("HasMemberInjectionDiagnostics.kt")
       public void testHasMemberInjectionDiagnostics() {
         runTest("compiler-tests/src/test/data/diagnostic/inject/member/HasMemberInjectionDiagnostics.kt");
+      }
+
+      @Test
+      @TestMetadata("MemberInjectedShowsInjectFunctionInTrace.kt")
+      public void testMemberInjectedShowsInjectFunctionInTrace() {
+        runTest("compiler-tests/src/test/data/diagnostic/inject/member/MemberInjectedShowsInjectFunctionInTrace.kt");
       }
 
       @Test

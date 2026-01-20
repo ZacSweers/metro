@@ -203,7 +203,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.output)
       .contains(
         """
-        AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceB
+        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceB
 
             test.InterfaceB is injected at
                 [test.AppGraph] test.Target(…, b)
@@ -296,7 +296,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.output)
       .contains(
         """
-        AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
+        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
 
             test.InterfaceA is injected at
                 [test.AppGraph] test.Target(…, a)
@@ -450,7 +450,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.output)
       .contains(
         """
-        AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
+        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
 
             test.InterfaceA is injected at
                 [test.AppGraph] test.Target(…, a)
@@ -720,7 +720,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.output)
       .contains(
         """
-        AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
+        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
 
             test.InterfaceA is injected at
                 [test.AppGraph.Impl.FeatureGraphImpl] test.Target(…, a)
@@ -820,7 +820,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.output)
       .contains(
         """
-        AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
+        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
 
             test.InterfaceA is injected at
                 [test.AppGraph] test.Target(…, a)
@@ -919,7 +919,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.output)
       .contains(
         """
-        AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
             kotlin.String is injected at
                 [test.AppGraph] test.Target(…, string)
@@ -1035,7 +1035,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     assertThat(thirdBuildResult.output)
       .contains(
         """
-        AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
+        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
 
             test.InterfaceA is injected at
                 [test.AppGraph] test.Target(…, a)
@@ -1170,7 +1170,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     assertThat(thirdBuildResult.output)
       .contains(
         """
-        AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
+        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
 
             test.InterfaceA is injected at
                 [test.AppGraph] test.Target(…, a)
@@ -1302,7 +1302,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     assertThat(thirdBuildResult.output)
       .contains(
         """
-        AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceB
+        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceB
 
             test.InterfaceB is injected at
                 [test.AppGraph] test.Target(…, b)
@@ -1419,7 +1419,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.output)
       .contains(
         """
-        AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceC
+        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceC
 
             test.InterfaceC is injected at
                 [test.AppGraph] test.Target(…, c)
@@ -1508,7 +1508,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.output)
       .contains(
         """
-        AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.collections.Set<kotlin.String>
+        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.collections.Set<kotlin.String>
 
             kotlin.collections.Set<kotlin.String> is injected at
                 [test.AppGraph] test.Target(…, strings)
@@ -1655,7 +1655,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.output)
       .contains(
         """
-        AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.collections.Set<kotlin.String>
+        [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.collections.Set<kotlin.String>
 
             kotlin.collections.Set<kotlin.String> is injected at
                 [test.AppGraph] test.Target(…, strings)
@@ -2051,5 +2051,160 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     val thirdBuildResult = project.compileKotlin()
     assertThat(thirdBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
     assertThat(project.invokeMain<String>()).isEqualTo("[AppMultibinding]")
+  }
+
+  @Test
+  fun contributionScopeChangeInMultiModuleProject() {
+    val fixture =
+      object : MetroProject() {
+        val appGraph =
+          source(
+            """
+            @DependencyGraph(AppScope::class)
+            interface AppGraph {
+              val target: Target
+            }
+
+            @Inject
+            class Target(val string: String)
+            """
+              .trimIndent()
+          )
+
+        val bindingContainer =
+          source(
+            """
+            @BindingContainer
+            @ContributesTo(AppScope::class)
+            class StringModule {
+              @Provides
+              fun provideString(): String = "test"
+            }
+            """
+              .trimIndent()
+          )
+
+        val changedContribution =
+          """
+          class AnotherScope
+
+          @BindingContainer
+          @ContributesTo(AnotherScope::class)
+          class StringModule {
+            @Provides
+            fun provideString(): String = "test"
+          }
+          """
+            .trimIndent()
+
+        override fun sources() = error("Provided via gradleProject")
+
+        override val gradleProject: GradleProject
+          get() =
+            newGradleProjectBuilder(DslKind.KOTLIN)
+              .withRootProject {
+                withBuildScript {
+                  sources = listOf(appGraph)
+                  applyMetroDefault()
+                  dependencies(Dependency.implementation(":lib"))
+                }
+
+                withMetroSettings()
+              }
+              .withSubproject("lib") {
+                sources.add(bindingContainer)
+                withBuildScript { applyMetroDefault() }
+              }
+              .write()
+      }
+
+    val project = fixture.gradleProject
+    val libProject = project.subprojects.first { it.name == "lib" }
+
+    // First build succeed and caches hint about StringModule
+    val firstBuildResult = project.compileKotlin()
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    // Change contribution target scope, which should stop contributing to AppGraph
+    libProject.modify(project.rootDir, fixture.bindingContainer, fixture.changedContribution)
+
+    // Build is expected to fail, because module is contributed to wrong scope
+    project.compileKotlinAndFail()
+  }
+
+  @Test
+  fun contributionWasRemovedInMultiModuleProject() {
+    val fixture =
+      object : MetroProject() {
+        val appGraph =
+          source(
+            """
+            @DependencyGraph(AppScope::class)
+            interface AppGraph {
+              val target: Target
+            }
+
+            @Inject
+            class Target(val string: String)
+            """
+              .trimIndent()
+          )
+
+        val bindingContainer =
+          source(
+            """
+            @BindingContainer
+            @ContributesTo(AppScope::class)
+            class StringModule {
+              @Provides
+              fun provideString(): String = "test"
+            }
+            """
+              .trimIndent()
+          )
+
+        val removedContribution =
+          """
+          @BindingContainer
+          class StringModule {
+            @Provides
+            fun provideString(): String = "test"
+          }
+          """
+            .trimIndent()
+
+        override fun sources() = error("Provided via gradleProject")
+
+        override val gradleProject: GradleProject
+          get() =
+            newGradleProjectBuilder(DslKind.KOTLIN)
+              .withRootProject {
+                withBuildScript {
+                  sources = listOf(appGraph)
+                  applyMetroDefault()
+                  dependencies(Dependency.implementation(":lib"))
+                }
+
+                withMetroSettings()
+              }
+              .withSubproject("lib") {
+                sources.add(bindingContainer)
+                withBuildScript { applyMetroDefault() }
+              }
+              .write()
+      }
+
+    val project = fixture.gradleProject
+    val libProject = project.subprojects.first { it.name == "lib" }
+
+    // First build succeed and caches hint about StringModule
+    val firstBuildResult = project.compileKotlin()
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    // Remove contribution
+    libProject.modify(project.rootDir, fixture.bindingContainer, fixture.removedContribution)
+
+    // Build is expected to fail due to missing contribution
+    project.compileKotlinAndFail()
   }
 }
