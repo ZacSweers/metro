@@ -6,7 +6,7 @@ import dev.zacsweers.metro.compiler.BitField
 import dev.zacsweers.metro.compiler.METADATA_VERSION
 import dev.zacsweers.metro.compiler.PLUGIN_ID
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
-import dev.zacsweers.metro.compiler.ir.graph.DependencyGraphNode
+import dev.zacsweers.metro.compiler.ir.graph.GraphNode
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
@@ -76,7 +76,7 @@ internal var IrClass.metroMetadata: MetroMetadata?
     context.metadataDeclarationRegistrar.addCustomMetadataExtension(this, PLUGIN_ID, value.encode())
   }
 
-internal fun DependencyGraphNode.toProto(bindingGraph: IrBindingGraph): DependencyGraphProto {
+internal fun GraphNode.toProto(bindingGraph: IrBindingGraph): DependencyGraphProto {
   var multibindingAccessors = BitField()
   val accessorNames =
     accessors

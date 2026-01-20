@@ -35,11 +35,11 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.name.ClassId
 
-// Represents an object graph's structure and relationships
-internal data class DependencyGraphNode(
+// Represents a dependency graph's structure and relationships
+internal data class GraphNode(
   val sourceGraph: IrClass,
   val supertypes: List<IrType>,
-  val includedGraphNodes: Map<IrTypeKey, DependencyGraphNode>,
+  val includedGraphNodes: Map<IrTypeKey, GraphNode>,
   val graphExtensions: Map<IrTypeKey, List<GraphExtensionAccessor>>,
   val scopes: Set<IrAnnotation>,
   val aggregationScopes: Set<ClassId>,
@@ -61,7 +61,7 @@ internal data class DependencyGraphNode(
   val injectors: List<InjectorFunction>,
   val isExternal: Boolean,
   val creator: Creator?,
-  val parentGraph: DependencyGraphNode?,
+  val parentGraph: GraphNode?,
   val typeKey: IrTypeKey = IrTypeKey(sourceGraph.typeWith()),
   // TODO not ideal that this is mutable/lateinit but welp
   //  maybe we track these protos separately somewhere?
@@ -98,7 +98,7 @@ internal data class DependencyGraphNode(
   val publicAccessors by memoize { accessors.mapToSet { it.contextKey.typeKey } }
 
   val reportableSourceGraphDeclaration by memoize {
-    if (this@DependencyGraphNode.metroGraph?.origin == Origins.GeneratedDynamicGraph) {
+    if (this@GraphNode.metroGraph?.origin == Origins.GeneratedDynamicGraph) {
       val source = metroGraph?.generatedDynamicGraphData?.sourceExpression
       if (source != null) {
         return@memoize source
@@ -161,8 +161,8 @@ internal data class DependencyGraphNode(
   }
 }
 
-private fun DependencyGraphNode.recurseIncludedNodes(
-  builder: MutableMap<IrTypeKey, DependencyGraphNode>
+private fun GraphNode.recurseIncludedNodes(
+  builder: MutableMap<IrTypeKey, GraphNode>
 ) {
   for ((key, node) in includedGraphNodes) {
     if (key !in builder) {
@@ -178,8 +178,8 @@ private fun DependencyGraphNode.recurseIncludedNodes(
   }
 }
 
-private fun DependencyGraphNode.recurseParents(
-  builder: MutableMap<IrTypeKey, DependencyGraphNode>
+private fun GraphNode.recurseParents(
+  builder: MutableMap<IrTypeKey, GraphNode>
 ) {
   parentGraph?.let { parent ->
     builder[parent.typeKey] = parent

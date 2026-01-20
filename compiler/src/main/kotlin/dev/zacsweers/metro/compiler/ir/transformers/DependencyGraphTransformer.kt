@@ -22,8 +22,8 @@ import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.graph.BindingGraphGenerator
 import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyContext
-import dev.zacsweers.metro.compiler.ir.graph.DependencyGraphNode
-import dev.zacsweers.metro.compiler.ir.graph.DependencyGraphNodeCache
+import dev.zacsweers.metro.compiler.ir.graph.GraphNode
+import dev.zacsweers.metro.compiler.ir.graph.GraphNodes
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingStack
@@ -86,7 +86,7 @@ import org.jetbrains.kotlin.name.ClassId
  */
 internal data class ValidationResult(
   val graphClassId: ClassId,
-  val node: DependencyGraphNode,
+  val node: GraphNode,
   val bindingGraph: IrBindingGraph,
   val sealResult: IrBindingGraph.BindingGraphResult,
   val graphExtensionGenerator: IrGraphExtensionGenerator,
@@ -126,8 +126,8 @@ internal class DependencyGraphTransformer(
   private val processedMetroDependencyGraphsByClass =
     mutableMapOf<ClassId, IrBindingGraph.BindingGraphResult?>()
 
-  private val dependencyGraphNodeCache =
-    DependencyGraphNodeCache(
+  private val graphNodes =
+    GraphNodes(
       this,
       bindingContainerTransformer,
       bindingContainerResolver,
@@ -323,7 +323,7 @@ internal class DependencyGraphTransformer(
     parentContext: ParentContext?,
   ): ValidationResult {
     val node =
-      dependencyGraphNodeCache.getOrComputeDependencyGraphNode(
+      graphNodes.getOrComputeNode(
         dependencyGraphDeclaration,
         IrBindingStack(
           dependencyGraphDeclaration,
@@ -558,7 +558,7 @@ internal class DependencyGraphTransformer(
         if (needsToGenerateParent) {
           visitClass(parent.sourceGraph)
           proto =
-            dependencyGraphNodeCache
+            graphNodes
               .requirePreviouslyComputed(parent.sourceGraph.classIdOrFail)
               .proto
         }
@@ -665,7 +665,7 @@ internal class DependencyGraphTransformer(
           IrGraphGenerator(
               metroContext = metroContext,
               traceScope = this,
-              dependencyGraphNodesByClass = dependencyGraphNodeCache::get,
+              graphNodesByClass = graphNodes::get,
               node = node,
               graphClass = metroGraph,
               bindingGraph = validationResult.bindingGraph,
@@ -747,13 +747,13 @@ internal class DependencyGraphTransformer(
 
   private fun implementCreatorFunctions(
     sourceGraph: IrClass,
-    creator: DependencyGraphNode.Creator?,
+    creator: GraphNode.Creator?,
     metroGraph: IrClass,
   ) {
     // NOTE: may not have a companion object if this graph is a contributed graph, which has no
     // static creators
     val companionObject = sourceGraph.companionObject() ?: return
-    val factoryCreator = creator?.expectAsOrNull<DependencyGraphNode.Creator.Factory>()
+    val factoryCreator = creator?.expectAsOrNull<GraphNode.Creator.Factory>()
     if (factoryCreator != null) {
       // TODO would be nice if we could just class delegate to the `Impl` object
       val implementFactoryFunction: IrClass.() -> Unit = {

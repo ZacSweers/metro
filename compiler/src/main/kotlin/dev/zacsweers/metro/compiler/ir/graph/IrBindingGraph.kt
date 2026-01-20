@@ -58,7 +58,7 @@ import org.jetbrains.kotlin.ir.util.nestedClasses
 
 internal class IrBindingGraph(
   metroContext: IrMetroContext,
-  private val node: DependencyGraphNode,
+  private val node: GraphNode,
   private val newBindingStack: () -> IrBindingStack,
   private val bindingLookup: BindingLookup,
   private val contributionData: IrContributionData,

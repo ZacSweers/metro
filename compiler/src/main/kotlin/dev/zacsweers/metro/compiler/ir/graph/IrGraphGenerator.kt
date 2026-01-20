@@ -107,8 +107,8 @@ internal typealias InitStatement =
 internal class IrGraphGenerator(
   metroContext: IrMetroContext,
   traceScope: TraceScope,
-  private val dependencyGraphNodesByClass: (ClassId) -> DependencyGraphNode?,
-  private val node: DependencyGraphNode,
+  private val graphNodesByClass: (ClassId) -> GraphNode?,
+  private val node: GraphNode,
   private val graphClass: IrClass,
   private val bindingGraph: IrBindingGraph,
   private val sealResult: IrBindingGraph.BindingGraphResult,
@@ -325,7 +325,7 @@ internal class IrGraphGenerator(
           // Write the metadata to the metroGraph class, as that's what downstream readers are
           // looking at and is the most complete view
           graphClass.metroMetadata = metroMetadata
-          dependencyGraphNodesByClass(node.sourceGraph.classIdOrFail)?.let { it.proto = graphProto }
+          graphNodesByClass(node.sourceGraph.classIdOrFail)?.let { it.proto = graphProto }
         }
       }
     }
@@ -379,7 +379,7 @@ internal class IrGraphGenerator(
    * Builds the ancestor graph properties map for shard expression context.
    *
    * Maps ancestor graph type key -> list of properties to chain through to access it. The key must
-   * match DependencyGraphNode.typeKey construction:
+   * match GraphNode.typeKey construction:
    * - For synthetic graphs (extensions, dynamic): uses the impl type key
    * - For non-synthetic graphs: uses the interface type key (via sourceGraphIfMetroGraph)
    *
@@ -397,7 +397,7 @@ internal class IrGraphGenerator(
 
     return buildMap {
         if (parentImplClass != null) {
-          // Use the same key construction as DependencyGraphNode.typeKey:
+          // Use the same key construction as GraphNode.typeKey:
           // - Synthetic graphs use the impl
           // - Non-synthetic graphs use sourceGraphIfMetroGraph (the interface)
           val keyClass =
@@ -1411,7 +1411,7 @@ internal class IrGraphGenerator(
       .apply { this.addBackingFieldCompat { this.type = typeKey.type } }
       .initFinal { initializerExpression() }
 
-  private fun DependencyGraphNode.implementOverrides(
+  private fun GraphNode.implementOverrides(
     expressionGeneratorFactory: GraphExpressionGenerator.Factory
   ) {
     // Implement abstract getters for accessors

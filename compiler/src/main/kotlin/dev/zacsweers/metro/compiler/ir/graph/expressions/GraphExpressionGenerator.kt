@@ -8,7 +8,7 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyContext
-import dev.zacsweers.metro.compiler.ir.graph.DependencyGraphNode
+import dev.zacsweers.metro.compiler.ir.graph.GraphNode
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
 import dev.zacsweers.metro.compiler.ir.graph.IrGraphExtensionGenerator
@@ -56,7 +56,7 @@ internal class GraphExpressionGenerator
 private constructor(
   context: IrMetroContext,
   traceScope: TraceScope,
-  private val node: DependencyGraphNode,
+  private val node: GraphNode,
   override val thisReceiver: IrValueParameter,
   private val bindingPropertyContext: BindingPropertyContext,
   override val bindingGraph: IrBindingGraph,
@@ -76,7 +76,7 @@ private constructor(
   class Factory(
     private val context: IrMetroContext,
     private val traceScope: TraceScope,
-    private val node: DependencyGraphNode,
+    private val node: GraphNode,
     private val bindingPropertyContext: BindingPropertyContext,
     private val bindingGraph: IrBindingGraph,
     private val bindingContainerTransformer: BindingContainerTransformer,
