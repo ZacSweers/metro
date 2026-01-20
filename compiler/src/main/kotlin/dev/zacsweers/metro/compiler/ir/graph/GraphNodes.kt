@@ -124,12 +124,7 @@ internal class GraphNodes(
     if (!graphDeclaration.origin.isSyntheticGeneratedGraph) {
       val sourceGraph = graphDeclaration.sourceGraphIfMetroGraph
       if (sourceGraph != graphDeclaration) {
-        return getOrComputeNode(
-          sourceGraph,
-          bindingStack,
-          metroGraph,
-          dependencyGraphAnno,
-        )
+        return getOrComputeNode(sourceGraph, bindingStack, metroGraph, dependencyGraphAnno)
       }
     }
 
@@ -272,12 +267,7 @@ internal class GraphNodes(
               val createFunction = factory.singleAbstractFunction()
               val parameters = createFunction.parameters()
               populateBindingContainerFields(parameters)
-              GraphNode.Creator.Factory(
-                factory,
-                createFunction,
-                parameters,
-                bindingContainerFields,
-              )
+              GraphNode.Creator.Factory(factory, createFunction, parameters, bindingContainerFields)
             }
         }
 

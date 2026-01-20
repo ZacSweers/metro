@@ -127,12 +127,7 @@ internal class DependencyGraphTransformer(
     mutableMapOf<ClassId, IrBindingGraph.BindingGraphResult?>()
 
   private val graphNodes =
-    GraphNodes(
-      this,
-      bindingContainerTransformer,
-      bindingContainerResolver,
-      contributionMerger,
-    )
+    GraphNodes(this, bindingContainerTransformer, bindingContainerResolver, contributionMerger)
 
   override val currentFileAccess: IrFile
     get() = currentFile

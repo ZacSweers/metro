@@ -681,10 +681,8 @@ internal class IrBindingGraph(
         val sourceGraphFqName = node.sourceGraph.sourceGraphIfMetroGraph.kotlinFqName
         val receivingGraphFqName =
           // Find the actual parent/receiving graph
-          node.parentGraph
-            ?.sourceGraph
-            ?.sourceGraphIfMetroGraph
-            ?.kotlinFqName ?: declarationToReport.sourceGraphIfMetroGraph.kotlinFqName
+          node.parentGraph?.sourceGraph?.sourceGraphIfMetroGraph?.kotlinFqName
+            ?: declarationToReport.sourceGraphIfMetroGraph.kotlinFqName
 
         // Only show the hint if the source and receiving graphs are actually different
         if (sourceGraphFqName != receivingGraphFqName) {
