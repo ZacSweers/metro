@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1768860291850,
+  "lastUpdate": 1768885243022,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -3080,6 +3080,62 @@ window.BENCHMARK_DATA = {
             "value": 19918.91,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -1.82%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "b382bf95~1",
+          "message": "[before] Refactory graph node modeling (#1695)",
+          "timestamp": "2026-01-20T04:27:18Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/b382bf95a7d92a9d6f2d5ae003448a032eec55de"
+        },
+        "date": 1768885243022,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19631.468,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "b382bf95a7d92a9d6f2d5ae003448a032eec55de",
+          "message": "[after] Refactory graph node modeling (#1695)",
+          "timestamp": "2026-01-20T04:27:18Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/b382bf95a7d92a9d6f2d5ae003448a032eec55de"
+        },
+        "date": 1768885243023,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19276.1,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -1.81%"
           }
         ]
       }
