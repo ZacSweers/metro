@@ -55,7 +55,7 @@ internal sealed class GraphNode {
 
   val publicAccessors: Set<IrTypeKey> by memoize { accessors.mapToSet { it.contextKey.typeKey } }
 
-  val contextKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
+  val contextKey: IrContextualTypeKey by memoize { IrContextualTypeKey(typeKey) }
 
   // For quick lookups
   val supertypeClassIds: Set<ClassId> by memoize {
