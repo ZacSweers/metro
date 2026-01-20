@@ -48,7 +48,7 @@ import org.jetbrains.kotlin.ir.util.propertyIfAccessor
  */
 internal class BindingGraphGenerator(
   metroContext: IrMetroContext,
-  private val node: GraphNode,
+  private val node: GraphNode.Local,
   // TODO preprocess these instead and just lookup via irAttribute
   private val injectConstructorTransformer: InjectConstructorTransformer,
   private val membersInjectorTransformer: MembersInjectorTransformer,
@@ -695,8 +695,8 @@ internal class BindingGraphGenerator(
     return graph
   }
 
-  /** Collects all inherited data from extended nodes in a single pass. */
-  private fun collectInheritedData(node: GraphNode): InheritedGraphData {
+  /** Collects all inherited data from parent nodes in a single pass. */
+  private fun collectInheritedData(node: GraphNode.Local): InheritedGraphData {
     val providerFactories = mutableSetOf<Pair<IrTypeKey, ProviderFactory>>()
     val providerFactoryKeys = mutableSetOf<IrTypeKey>()
     val bindsCallableKeys = mutableSetOf<IrTypeKey>()
@@ -730,8 +730,10 @@ internal class BindingGraphGenerator(
         }
       }
 
-      // Collect binding containers
-      bindingContainers.addAll(extendedNode.bindingContainers)
+      // Collect binding containers (only from Local nodes)
+      if (extendedNode is GraphNode.Local) {
+        bindingContainers.addAll(extendedNode.bindingContainers)
+      }
 
       // Collect multibinds callables
       multibindsCallables.addAll(extendedNode.multibindsCallables)

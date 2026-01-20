@@ -35,50 +35,36 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.name.ClassId
 
-// Represents a dependency graph's structure and relationships
-internal data class GraphNode(
-  val sourceGraph: IrClass,
-  val supertypes: List<IrType>,
-  val includedGraphNodes: Map<IrTypeKey, GraphNode>,
-  val graphExtensions: Map<IrTypeKey, List<GraphExtensionAccessor>>,
-  val scopes: Set<IrAnnotation>,
-  val aggregationScopes: Set<ClassId>,
-  val providerFactories: Map<IrTypeKey, List<ProviderFactory>>,
-  // Types accessible via this graph (includes inherited)
-  // Dagger calls these "provision methods", but that's a bit vague IMO
-  val accessors: List<GraphAccessor>,
-  val bindsCallables: Map<IrTypeKey, List<BindsCallable>>,
-  val multibindsCallables: Set<MultibindsCallable>,
-  val optionalKeys: Map<IrTypeKey, Set<BindsOptionalOfCallable>>,
-  /** Binding containers that need a managed instance. */
-  val bindingContainers: Set<IrClass>,
-  val annotationDeclaredBindingContainers: Map<IrTypeKey, IrElement>,
-  // Set of all dynamic callables for each type key (allows tracking multiple dynamic bindings)
-  val dynamicTypeKeys: Map<IrTypeKey, Set<IrBindingContainerCallable>>,
-  /** Fake overrides of binds functions that need stubbing. */
-  val bindsFunctions: List<MetroSimpleFunction>,
-  // TypeKey key is the injected type wrapped in MembersInjector
-  val injectors: List<InjectorFunction>,
-  val isExternal: Boolean,
-  val creator: Creator?,
-  val parentGraph: GraphNode?,
-  val typeKey: IrTypeKey = IrTypeKey(sourceGraph.typeWith()),
-  // TODO not ideal that this is mutable/lateinit but welp
-  //  maybe we track these protos separately somewhere?
-  var proto: DependencyGraphProto? = null,
-) {
-  val contextKey = IrContextualTypeKey(typeKey)
+/** Represents a dependency graph's structure and relationships. */
+internal sealed class GraphNode {
+  abstract val sourceGraph: IrClass
+  abstract val supertypes: List<IrType>
+  abstract val includedGraphNodes: Map<IrTypeKey, GraphNode>
+  abstract val scopes: Set<IrAnnotation>
+  abstract val aggregationScopes: Set<ClassId>
+  abstract val providerFactories: Map<IrTypeKey, List<ProviderFactory>>
+  /**
+   * Types accessible via this graph (includes inherited). Dagger calls these "provision methods".
+   */
+  abstract val accessors: List<GraphAccessor>
+  abstract val bindsCallables: Map<IrTypeKey, List<BindsCallable>>
+  abstract val multibindsCallables: Set<MultibindsCallable>
+  abstract val optionalKeys: Map<IrTypeKey, Set<BindsOptionalOfCallable>>
+  abstract val parentGraph: GraphNode?
+  abstract val typeKey: IrTypeKey
+
+  val publicAccessors: Set<IrTypeKey> by memoize { accessors.mapToSet { it.contextKey.typeKey } }
+
+  val contextKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
 
   // For quick lookups
   val supertypeClassIds: Set<ClassId> by memoize {
     supertypes.mapNotNullToSet { it.classOrNull?.owner?.classId }
   }
 
-  val hasExtensions = graphExtensions.isNotEmpty()
+  val metroGraph: IrClass? by memoize { sourceGraph.metroGraphOrNull }
 
-  val metroGraph by memoize { sourceGraph.metroGraphOrNull }
-
-  val metroGraphOrFail by memoize {
+  val metroGraphOrFail: IrClass by memoize {
     metroGraph ?: reportCompilerBug("No generated MetroGraph found: ${sourceGraph.kotlinFqName}")
   }
 
@@ -91,20 +77,17 @@ internal data class GraphNode(
     }
   }
 
-  /** [contributedGraphTypeKey] if not null, otherwise [typeKey]. */
-  val originalTypeKey
-    get() = contributedGraphTypeKey ?: typeKey
+  /** [contributedGraphTypeKey] if not null, otherwise [GraphNode.typeKey]. */
+  val originalTypeKey: IrTypeKey by memoize { contributedGraphTypeKey ?: typeKey }
 
-  val publicAccessors by memoize { accessors.mapToSet { it.contextKey.typeKey } }
-
-  val reportableSourceGraphDeclaration by memoize {
-    if (this@GraphNode.metroGraph?.origin == Origins.GeneratedDynamicGraph) {
+  val reportableSourceGraphDeclaration: IrElement by memoize {
+    if (metroGraph?.origin == Origins.GeneratedDynamicGraph) {
       val source = metroGraph?.generatedDynamicGraphData?.sourceExpression
       if (source != null) {
         return@memoize source
       }
     }
-    generateSequence(sourceGraph) { it.parentClassOrNull }
+    return@memoize generateSequence(sourceGraph) { it.parentClassOrNull }
       .firstOrNull {
         // Skip impl graphs
         it.sourceGraphIfMetroGraph == it && it.fileOrNull != null
@@ -114,26 +97,83 @@ internal data class GraphNode(
       )
   }
 
-  val multibindingAccessors by memoize {
-    proto
-      ?.let {
-        val bitfield = BitField.fromIntList(it.multibinding_accessor_indices)
-        val multibindingCallableIds =
-          it.accessor_callable_names.filterIndexedTo(mutableSetOf()) { index, _ ->
-            bitfield.isSet(index)
-          }
-        accessors
-          .filter { it.metroFunction.ir.name.asString() in multibindingCallableIds }
-          .mapToSet { it.metroFunction }
-      }
-      .orEmpty()
+  val allIncludedNodes: Set<GraphNode> by memoize {
+    buildMap(::recurseIncludedNodes).values.toSet()
   }
 
-  val allIncludedNodes by lazy { buildMap(::recurseIncludedNodes).values.toSet() }
+  val allParentGraphs: Map<IrTypeKey, GraphNode> by memoize { buildMap(::recurseParents) }
 
-  val allParentGraphs by lazy { buildMap(::recurseParents) }
+  private fun recurseIncludedNodes(builder: MutableMap<IrTypeKey, GraphNode>) {
+    for ((key, includedNode) in includedGraphNodes) {
+      if (key !in builder) {
+        builder[key] = includedNode
+        includedNode.recurseIncludedNodes(builder)
+      }
+    }
+    // Propagate included nodes from parent graph
+    parentGraph?.let { parent ->
+      for (includedFromParent in parent.allIncludedNodes) {
+        builder[includedFromParent.typeKey] = includedFromParent
+      }
+    }
+  }
 
-  override fun toString(): String = typeKey.render(short = true)
+  private fun recurseParents(builder: MutableMap<IrTypeKey, GraphNode>) {
+    parentGraph?.let { parent ->
+      builder[parent.typeKey] = parent
+      parent.recurseParents(builder)
+    }
+  }
+
+  final override fun toString(): String = typeKey.render(short = true)
+
+  /** A graph node for a precompiled/external dependency graph. */
+  data class External(
+    override val sourceGraph: IrClass,
+    override val supertypes: List<IrType>,
+    override val includedGraphNodes: Map<IrTypeKey, GraphNode>,
+    override val scopes: Set<IrAnnotation>,
+    override val aggregationScopes: Set<ClassId>,
+    override val providerFactories: Map<IrTypeKey, List<ProviderFactory>>,
+    override val accessors: List<GraphAccessor>,
+    override val bindsCallables: Map<IrTypeKey, List<BindsCallable>>,
+    override val multibindsCallables: Set<MultibindsCallable>,
+    override val optionalKeys: Map<IrTypeKey, Set<BindsOptionalOfCallable>>,
+    override val parentGraph: GraphNode?,
+    override val typeKey: IrTypeKey = IrTypeKey(sourceGraph.typeWith()),
+  ) : GraphNode()
+
+  /** A graph node for a graph being compiled in the current compilation unit. */
+  data class Local(
+    override val sourceGraph: IrClass,
+    override val supertypes: List<IrType>,
+    override val includedGraphNodes: Map<IrTypeKey, GraphNode>,
+    val graphExtensions: Map<IrTypeKey, List<GraphExtensionAccessor>>,
+    override val scopes: Set<IrAnnotation>,
+    override val aggregationScopes: Set<ClassId>,
+    override val providerFactories: Map<IrTypeKey, List<ProviderFactory>>,
+    override val accessors: List<GraphAccessor>,
+    override val bindsCallables: Map<IrTypeKey, List<BindsCallable>>,
+    override val multibindsCallables: Set<MultibindsCallable>,
+    override val optionalKeys: Map<IrTypeKey, Set<BindsOptionalOfCallable>>,
+    /** Binding containers that need a managed instance. */
+    val bindingContainers: Set<IrClass>,
+    val annotationDeclaredBindingContainers: Map<IrTypeKey, IrElement>,
+    /**
+     * Set of all dynamic callables for each type key (allows tracking multiple dynamic bindings).
+     */
+    val dynamicTypeKeys: Map<IrTypeKey, Set<IrBindingContainerCallable>>,
+    /** Fake overrides of binds functions that need stubbing. */
+    val bindsFunctions: List<MetroSimpleFunction>,
+    /** TypeKey key is the injected type wrapped in MembersInjector. */
+    val injectors: List<InjectorFunction>,
+    val creator: Creator?,
+    override val parentGraph: GraphNode?,
+    override val typeKey: IrTypeKey = IrTypeKey(sourceGraph.typeWith()),
+    var proto: DependencyGraphProto? = null,
+  ) : GraphNode() {
+    val hasExtensions = graphExtensions.isNotEmpty()
+  }
 
   sealed class Creator {
     abstract val type: IrClass
@@ -141,7 +181,7 @@ internal data class GraphNode(
     abstract val parameters: Parameters
     abstract val bindingContainersParameterIndices: BitField
 
-    val parametersByTypeKey by lazy { parameters.regularParameters.associateBy { it.typeKey } }
+    val parametersByTypeKey by memoize { parameters.regularParameters.associateBy { it.typeKey } }
 
     val typeKey by memoize { IrTypeKey(type.typeWith()) }
 
@@ -158,32 +198,6 @@ internal data class GraphNode(
       override val parameters: Parameters,
       override val bindingContainersParameterIndices: BitField,
     ) : Creator()
-  }
-}
-
-private fun GraphNode.recurseIncludedNodes(
-  builder: MutableMap<IrTypeKey, GraphNode>
-) {
-  for ((key, node) in includedGraphNodes) {
-    if (key !in builder) {
-      builder[key] = node
-      node.recurseIncludedNodes(builder)
-    }
-  }
-  // Propagate included nodes from parent graph
-  parentGraph?.let { parent ->
-    for (includedFromParent in parent.allIncludedNodes) {
-      builder[includedFromParent.typeKey] = includedFromParent
-    }
-  }
-}
-
-private fun GraphNode.recurseParents(
-  builder: MutableMap<IrTypeKey, GraphNode>
-) {
-  parentGraph?.let { parent ->
-    builder[parent.typeKey] = parent
-    parent.recurseParents(builder)
   }
 }
 

@@ -866,8 +866,10 @@ internal class GraphNodes(
 
         // Propagate dynamic type keys from parent graph to this graph extension
         // This ensures dynamic bindings from createDynamicGraph are available to child extensions
-        for ((key, callables) in node.dynamicTypeKeys) {
-          dynamicTypeKeys.getOrInit(key).addAll(callables)
+        if (node is GraphNode.Local) {
+          for ((key, callables) in node.dynamicTypeKeys) {
+            dynamicTypeKeys.getOrInit(key).addAll(callables)
+          }
         }
       }
 
@@ -1006,7 +1008,7 @@ internal class GraphNodes(
       }
 
       val graphNode =
-        GraphNode(
+        GraphNode.Local(
           sourceGraph = graphDeclaration,
           supertypes = supertypes.toList(),
           includedGraphNodes = includedGraphNodes,
@@ -1020,7 +1022,6 @@ internal class GraphNodes(
           providerFactories = providerFactories,
           accessors = accessors,
           injectors = injectors,
-          isExternal = false,
           creator = creator,
           parentGraph = parentGraph,
           bindingContainers = managedBindingContainers,
@@ -1140,9 +1141,8 @@ internal class GraphNodes(
         }
       }
 
-      // TODO split GraphNode into sealed interface with external/internal variants?
       val dependentNode =
-        GraphNode(
+        GraphNode.External(
           sourceGraph = graphDeclaration,
           supertypes = supertypes.toList(),
           includedGraphNodes = includedGraphNodes,
@@ -1153,17 +1153,7 @@ internal class GraphNodes(
           bindsCallables = bindsCallables,
           multibindsCallables = multibindsCallables,
           optionalKeys = optionalKeys,
-          isExternal = true,
-          proto = null,
           parentGraph = parentGraph,
-          // Following aren't necessary to see in external graphs
-          graphExtensions = emptyMap(),
-          injectors = emptyList(),
-          creator = null,
-          bindingContainers = emptySet(),
-          annotationDeclaredBindingContainers = emptyMap(),
-          bindsFunctions = emptyList(),
-          dynamicTypeKeys = emptyMap(),
         )
 
       return dependentNode

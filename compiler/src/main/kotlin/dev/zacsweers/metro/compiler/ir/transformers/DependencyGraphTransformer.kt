@@ -86,7 +86,7 @@ import org.jetbrains.kotlin.name.ClassId
  */
 internal data class ValidationResult(
   val graphClassId: ClassId,
-  val node: GraphNode,
+  val node: GraphNode.Local,
   val bindingGraph: IrBindingGraph,
   val sealResult: IrBindingGraph.BindingGraphResult,
   val graphExtensionGenerator: IrGraphExtensionGenerator,
@@ -331,7 +331,7 @@ internal class DependencyGraphTransformer(
         ),
         metroGraph,
         dependencyGraphAnno,
-      )
+      ) as GraphNode.Local
 
     // Generate creator functions
     traceNested("Implement creator functions") {
@@ -550,6 +550,10 @@ internal class DependencyGraphTransformer(
     // Check if any parents haven't been generated yet. If so, generate them now
     if (dependencyGraphDeclaration.origin != Origins.GeneratedGraphExtension) {
       for (parent in node.allParentGraphs.values) {
+        // External nodes are valid by construction (metadata loaded from annotation)
+        if (parent is GraphNode.External) continue
+
+        parent as GraphNode.Local
         var proto = parent.proto
         val needsToGenerateParent =
           proto == null &&
@@ -558,8 +562,8 @@ internal class DependencyGraphTransformer(
         if (needsToGenerateParent) {
           visitClass(parent.sourceGraph)
           proto =
-            graphNodes
-              .requirePreviouslyComputed(parent.sourceGraph.classIdOrFail)
+            (graphNodes.requirePreviouslyComputed(parent.sourceGraph.classIdOrFail)
+                as GraphNode.Local)
               .proto
         }
         if (proto == null) {

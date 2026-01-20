@@ -30,7 +30,7 @@ internal class GraphMetadataReporter(
   },
 ) {
 
-  fun write(node: GraphNode, bindingGraph: IrBindingGraph) {
+  fun write(node: GraphNode.Local, bindingGraph: IrBindingGraph) {
     val reportsDir = context.reportsDir ?: return
     val outputDir = reportsDir.resolve("graph-metadata")
     outputDir.createDirectories()

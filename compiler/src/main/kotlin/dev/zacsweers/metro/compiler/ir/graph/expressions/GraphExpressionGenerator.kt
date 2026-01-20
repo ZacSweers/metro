@@ -56,7 +56,7 @@ internal class GraphExpressionGenerator
 private constructor(
   context: IrMetroContext,
   traceScope: TraceScope,
-  private val node: GraphNode,
+  private val node: GraphNode.Local,
   override val thisReceiver: IrValueParameter,
   private val bindingPropertyContext: BindingPropertyContext,
   override val bindingGraph: IrBindingGraph,
@@ -76,7 +76,7 @@ private constructor(
   class Factory(
     private val context: IrMetroContext,
     private val traceScope: TraceScope,
-    private val node: GraphNode,
+    private val node: GraphNode.Local,
     private val bindingPropertyContext: BindingPropertyContext,
     private val bindingGraph: IrBindingGraph,
     private val bindingContainerTransformer: BindingContainerTransformer,

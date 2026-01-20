@@ -42,7 +42,7 @@ class TracingTest : MetroCompilerTest() {
         .isEqualTo(
           """
           main,Transform contributions
-          ExampleGraph,Build DependencyGraphNode
+          ExampleGraph,Build GraphNode
           ExampleGraph,Implement creator functions
           ExampleGraph,Build binding graph
           ExampleGraph,Populate bindings
@@ -82,8 +82,8 @@ class TracingTest : MetroCompilerTest() {
             ▶ Core transformers
               ▶ [ExampleGraph] Transform dependency graph
                 ▶ Prepare and validate
-                  ▶ Build DependencyGraphNode
-                  ◀ Build DependencyGraphNode (xx ms)
+                  ▶ Build GraphNode
+                  ◀ Build GraphNode (xx ms)
                   ▶ Implement creator functions
                   ◀ Implement creator functions (xx ms)
                   ▶ Build binding graph
@@ -174,11 +174,11 @@ class TracingTest : MetroCompilerTest() {
         .isEqualTo(
           """
           main,Transform contributions
-          ExampleGraph,Build DependencyGraphNode
+          ExampleGraph,Build GraphNode
           ExampleGraph,Implement creator functions
           ExampleGraph,Build binding graph
           ExampleGraph,Generate graph extension ChildGraph
-          ChildGraphImpl,Build DependencyGraphNode
+          ChildGraphImpl,Build GraphNode
           ChildGraphImpl,Implement creator functions
           ChildGraphImpl,Build binding graph
           ChildGraphImpl,Populate bindings
@@ -236,8 +236,8 @@ class TracingTest : MetroCompilerTest() {
             ▶ Core transformers
               ▶ [ExampleGraph] Transform dependency graph
                 ▶ Prepare and validate
-                  ▶ Build DependencyGraphNode
-                  ◀ Build DependencyGraphNode (xx ms)
+                  ▶ Build GraphNode
+                  ◀ Build GraphNode (xx ms)
                   ▶ Implement creator functions
                   ◀ Implement creator functions (xx ms)
                   ▶ Build binding graph
@@ -245,8 +245,8 @@ class TracingTest : MetroCompilerTest() {
                   ▶ Generate graph extension ChildGraph
                   ◀ Generate graph extension ChildGraph (xx ms)
                   ▶ [ChildGraphImpl] Validate child graph
-                    ▶ Build DependencyGraphNode
-                    ◀ Build DependencyGraphNode (xx ms)
+                    ▶ Build GraphNode
+                    ◀ Build GraphNode (xx ms)
                     ▶ Implement creator functions
                     ◀ Implement creator functions (xx ms)
                     ▶ Build binding graph
@@ -372,11 +372,11 @@ class TracingTest : MetroCompilerTest() {
         .isEqualTo(
           """
           main,Transform contributions
-          ExampleGraph,Build DependencyGraphNode
+          ExampleGraph,Build GraphNode
           ExampleGraph,Implement creator functions
           ExampleGraph,Build binding graph
           ExampleGraph,Generate graph extension ChildGraph
-          ChildGraphImpl,Build DependencyGraphNode
+          ChildGraphImpl,Build GraphNode
           ChildGraphImpl,Implement creator functions
           ChildGraphImpl,Build binding graph
           ChildGraphImpl,Populate bindings
@@ -434,8 +434,8 @@ class TracingTest : MetroCompilerTest() {
             ▶ Core transformers
               ▶ [ExampleGraph] Transform dependency graph
                 ▶ Prepare and validate
-                  ▶ Build DependencyGraphNode
-                  ◀ Build DependencyGraphNode (xx ms)
+                  ▶ Build GraphNode
+                  ◀ Build GraphNode (xx ms)
                   ▶ Implement creator functions
                   ◀ Implement creator functions (xx ms)
                   ▶ Build binding graph
@@ -443,8 +443,8 @@ class TracingTest : MetroCompilerTest() {
                   ▶ Generate graph extension ChildGraph
                   ◀ Generate graph extension ChildGraph (xx ms)
                   ▶ [ChildGraphImpl] Validate child graph
-                    ▶ Build DependencyGraphNode
-                    ◀ Build DependencyGraphNode (xx ms)
+                    ▶ Build GraphNode
+                    ◀ Build GraphNode (xx ms)
                     ▶ Implement creator functions
                     ◀ Implement creator functions (xx ms)
                     ▶ Build binding graph

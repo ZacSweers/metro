@@ -108,7 +108,7 @@ internal class IrGraphGenerator(
   metroContext: IrMetroContext,
   traceScope: TraceScope,
   private val graphNodesByClass: (ClassId) -> GraphNode?,
-  private val node: GraphNode,
+  private val node: GraphNode.Local,
   private val graphClass: IrClass,
   private val bindingGraph: IrBindingGraph,
   private val sealResult: IrBindingGraph.BindingGraphResult,
@@ -325,7 +325,9 @@ internal class IrGraphGenerator(
           // Write the metadata to the metroGraph class, as that's what downstream readers are
           // looking at and is the most complete view
           graphClass.metroMetadata = metroMetadata
-          graphNodesByClass(node.sourceGraph.classIdOrFail)?.let { it.proto = graphProto }
+          (graphNodesByClass(node.sourceGraph.classIdOrFail) as? GraphNode.Local)?.let {
+            it.proto = graphProto
+          }
         }
       }
     }
@@ -596,7 +598,7 @@ internal class IrGraphGenerator(
       bindingPropertyContext.put(IrContextualTypeKey(graphDep.typeKey), providerWrapperProperty)
     }
 
-    if (graphDep.hasExtensions) {
+    if (graphDep is GraphNode.Local && graphDep.hasExtensions) {
       val depMetroGraph = graphDep.sourceGraph.metroGraphOrFail
       val paramName = depMetroGraph.sourceGraphIfMetroGraph.name
       addBoundInstanceProperty(param.typeKey, paramName, thisReceiverParameter) { _, _ ->
@@ -614,7 +616,11 @@ internal class IrGraphGenerator(
   private fun IrClass.processBindingContainers(thisReceiverParameter: IrValueParameter) {
     val allBindingContainers = buildSet {
       addAll(node.bindingContainers)
-      addAll(node.allParentGraphs.values.flatMap { it.bindingContainers })
+      addAll(
+        node.allParentGraphs.values.flatMap {
+          (it as? GraphNode.Local)?.bindingContainers.orEmpty()
+        }
+      )
     }
     allBindingContainers
       .sortedBy { it.kotlinFqName.asString() }
@@ -1411,7 +1417,7 @@ internal class IrGraphGenerator(
       .apply { this.addBackingFieldCompat { this.type = typeKey.type } }
       .initFinal { initializerExpression() }
 
-  private fun GraphNode.implementOverrides(
+  private fun GraphNode.Local.implementOverrides(
     expressionGeneratorFactory: GraphExpressionGenerator.Factory
   ) {
     // Implement abstract getters for accessors
