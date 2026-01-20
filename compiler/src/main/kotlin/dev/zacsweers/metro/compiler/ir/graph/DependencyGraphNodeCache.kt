@@ -170,7 +170,7 @@ internal class DependencyGraphNodeCache(
     private val optionalKeys = mutableMapOf<IrTypeKey, MutableSet<BindsOptionalOfCallable>>()
     private val scopes = mutableSetOf<IrAnnotation>()
     private val providerFactories = mutableMapOf<IrTypeKey, MutableList<ProviderFactory>>()
-    private val extendedGraphNodes = mutableMapOf<IrTypeKey, DependencyGraphNode>()
+    private var parentGraph: DependencyGraphNode? = null
     private val graphExtensions = mutableMapOf<IrTypeKey, MutableList<GraphExtensionAccessor>>()
     private val injectors = mutableListOf<InjectorFunction>()
     private val includedGraphNodes = mutableMapOf<IrTypeKey, DependencyGraphNode>()
@@ -846,9 +846,9 @@ internal class DependencyGraphNodeCache(
 
       val creator = buildCreator()
 
-      // Add extended node if it's a generated graph extension
+      // Add parent node if it's a generated graph extension
       if (graphDeclaration.origin == Origins.GeneratedGraphExtension) {
-        val parentGraph = graphDeclaration.parentAsClass
+        val parentGraphClass = graphDeclaration.parentAsClass
         val graphTypeKey = graphDeclaration.generatedGraphExtensionData!!.typeKey
         checkGraphSelfCycle(graphDeclaration, graphTypeKey, bindingStack)
 
@@ -857,12 +857,12 @@ internal class DependencyGraphNodeCache(
           bindingStack.withEntry(
             IrBindingStack.Entry.generatedExtensionAt(
               IrContextualTypeKey(graphTypeKey),
-              parentGraph.kotlinFqName.asString(),
+              parentGraphClass.kotlinFqName.asString(),
             )
           ) {
-            nodeCache.getOrComputeDependencyGraphNode(parentGraph, bindingStack)
+            nodeCache.getOrComputeDependencyGraphNode(parentGraphClass, bindingStack)
           }
-        extendedGraphNodes[node.typeKey] = node
+        parentGraph = node
 
         // Propagate dynamic type keys from parent graph to this graph extension
         // This ensures dynamic bindings from createDynamicGraph are available to child extensions
@@ -1022,7 +1022,7 @@ internal class DependencyGraphNodeCache(
           injectors = injectors,
           isExternal = false,
           creator = creator,
-          extendedGraphNodes = extendedGraphNodes,
+          parentGraph = parentGraph,
           bindingContainers = managedBindingContainers,
           annotationDeclaredBindingContainers = annotationDeclaredBindingContainers,
           dynamicTypeKeys = dynamicTypeKeys,
@@ -1031,7 +1031,7 @@ internal class DependencyGraphNodeCache(
 
       // Check after creating a node for access to recursive allDependencies
       val overlapErrors = mutableSetOf<String>()
-      for (depNode in dependencyGraphNode.allExtendedNodes.values) {
+      for (depNode in dependencyGraphNode.allParentGraphs.values) {
         // If any intersect, report an error to onError with the intersecting types (including
         // which parent it is coming from)
         val overlaps = scopes.intersect(depNode.scopes)
@@ -1155,7 +1155,7 @@ internal class DependencyGraphNodeCache(
           optionalKeys = optionalKeys,
           isExternal = true,
           proto = null,
-          extendedGraphNodes = extendedGraphNodes,
+          parentGraph = parentGraph,
           // Following aren't necessary to see in external graphs
           graphExtensions = emptyMap(),
           injectors = emptyList(),

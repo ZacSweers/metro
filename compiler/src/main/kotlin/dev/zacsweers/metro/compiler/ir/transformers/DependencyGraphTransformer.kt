@@ -549,7 +549,7 @@ internal class DependencyGraphTransformer(
 
     // Check if any parents haven't been generated yet. If so, generate them now
     if (dependencyGraphDeclaration.origin != Origins.GeneratedGraphExtension) {
-      for (parent in node.allExtendedNodes.values) {
+      for (parent in node.allParentGraphs.values) {
         var proto = parent.proto
         val needsToGenerateParent =
           proto == null &&

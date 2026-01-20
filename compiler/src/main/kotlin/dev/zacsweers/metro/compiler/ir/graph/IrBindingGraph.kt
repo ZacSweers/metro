@@ -680,9 +680,8 @@ internal class IrBindingGraph(
       if (node.sourceGraph.origin == Origins.GeneratedGraphExtension) {
         val sourceGraphFqName = node.sourceGraph.sourceGraphIfMetroGraph.kotlinFqName
         val receivingGraphFqName =
-          // Find the actual parent/receiving graph - it should be in extendedGraphNodes
-          node.extendedGraphNodes.values
-            .firstOrNull()
+          // Find the actual parent/receiving graph
+          node.parentGraph
             ?.sourceGraph
             ?.sourceGraphIfMetroGraph
             ?.kotlinFqName ?: declarationToReport.sourceGraphIfMetroGraph.kotlinFqName

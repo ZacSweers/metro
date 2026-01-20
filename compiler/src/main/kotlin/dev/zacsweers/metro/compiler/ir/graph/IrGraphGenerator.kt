@@ -614,7 +614,7 @@ internal class IrGraphGenerator(
   private fun IrClass.processBindingContainers(thisReceiverParameter: IrValueParameter) {
     val allBindingContainers = buildSet {
       addAll(node.bindingContainers)
-      addAll(node.allExtendedNodes.values.flatMap { it.bindingContainers })
+      addAll(node.allParentGraphs.values.flatMap { it.bindingContainers })
     }
     allBindingContainers
       .sortedBy { it.kotlinFqName.asString() }

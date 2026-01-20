@@ -525,7 +525,7 @@ internal class BindingGraphGenerator(
       }
 
       val parentKeysByClass = mutableMapOf<IrClass, IrTypeKey>()
-      for ((parentKey, parentNode) in node.allExtendedNodes) {
+      for ((parentKey, parentNode) in node.allParentGraphs) {
         val parentNodeClass = parentNode.sourceGraph.metroGraphOrFail
 
         parentKeysByClass[parentNodeClass] = parentKey
@@ -707,7 +707,7 @@ internal class BindingGraphGenerator(
     val supertypeAliases = mutableMapOf<IrTypeKey, IrTypeKey>()
     val multibindingAccessors = mutableListOf<GraphAccessor>()
 
-    for ((typeKey, extendedNode) in node.allExtendedNodes) {
+    for ((typeKey, extendedNode) in node.allParentGraphs) {
       // Collect provider factories (non-scoped, not already in current node)
       for ((key, factories) in extendedNode.providerFactories) {
         if (key !in node.providerFactories) {
@@ -772,8 +772,8 @@ internal class BindingGraphGenerator(
 }
 
 /**
- * Data collected from extended (parent) nodes in a single pass. Avoids multiple iterations over
- * allExtendedNodes.
+ * Data collected from parent nodes in a single pass. Avoids multiple iterations over
+ * allParentGraphs.
  */
 private data class InheritedGraphData(
   val providerFactories: Set<Pair<IrTypeKey, ProviderFactory>>,

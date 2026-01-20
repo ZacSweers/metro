@@ -61,7 +61,7 @@ internal data class DependencyGraphNode(
   val injectors: List<InjectorFunction>,
   val isExternal: Boolean,
   val creator: Creator?,
-  val extendedGraphNodes: Map<IrTypeKey, DependencyGraphNode>,
+  val parentGraph: DependencyGraphNode?,
   val typeKey: IrTypeKey = IrTypeKey(sourceGraph.typeWith()),
   // TODO not ideal that this is mutable/lateinit but welp
   //  maybe we track these protos separately somewhere?
@@ -129,9 +129,9 @@ internal data class DependencyGraphNode(
       .orEmpty()
   }
 
-  val allIncludedNodes by lazy { buildMap { recurseIncludedNodes(this) }.values.toSet() }
+  val allIncludedNodes by lazy { buildMap(::recurseIncludedNodes).values.toSet() }
 
-  val allExtendedNodes by lazy { buildMap { recurseParents(this) } }
+  val allParentGraphs by lazy { buildMap(::recurseParents) }
 
   override fun toString(): String = typeKey.render(short = true)
 
@@ -170,9 +170,9 @@ private fun DependencyGraphNode.recurseIncludedNodes(
       node.recurseIncludedNodes(builder)
     }
   }
-  // Propagate included nodes from parent graphs
-  for (node in extendedGraphNodes.values) {
-    for (includedFromParent in node.allIncludedNodes) {
+  // Propagate included nodes from parent graph
+  parentGraph?.let { parent ->
+    for (includedFromParent in parent.allIncludedNodes) {
       builder[includedFromParent.typeKey] = includedFromParent
     }
   }
@@ -181,9 +181,9 @@ private fun DependencyGraphNode.recurseIncludedNodes(
 private fun DependencyGraphNode.recurseParents(
   builder: MutableMap<IrTypeKey, DependencyGraphNode>
 ) {
-  for ((key, value) in extendedGraphNodes) {
-    builder[key] = value
-    value.recurseParents(builder)
+  parentGraph?.let { parent ->
+    builder[parent.typeKey] = parent
+    parent.recurseParents(builder)
   }
 }
 
