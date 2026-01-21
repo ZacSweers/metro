@@ -6,7 +6,6 @@ import dev.zacsweers.metro.compiler.ExitProcessingException
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Origins
-import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
@@ -67,7 +66,6 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTo
@@ -121,10 +119,6 @@ internal class DependencyGraphTransformer(
   private val dynamicGraphGenerator =
     IrDynamicGraphGenerator(this, bindingContainerResolver, contributionMerger)
   private val createGraphTransformer = CreateGraphTransformer(this, dynamicGraphGenerator)
-
-  // Keyed by the source declaration
-  private val processedMetroDependencyGraphsByClass =
-    mutableMapOf<ClassId, IrBindingGraph.BindingGraphResult?>()
 
   private val graphNodes =
     GraphNodes(this, bindingContainerTransformer, bindingContainerResolver, contributionMerger)
@@ -257,12 +251,9 @@ internal class DependencyGraphTransformer(
     parentContext: ParentContext?,
   ): IrBindingGraph.BindingGraphResult? {
     val graphClassId = dependencyGraphDeclaration.classIdOrFail
-    processedMetroDependencyGraphsByClass[graphClassId]?.let {
-      return it
-    }
+
     if (dependencyGraphDeclaration.isExternalParent) {
       // Externally compiled, just use its generated class
-      processedMetroDependencyGraphsByClass[graphClassId] = null
       return null
     }
 
@@ -282,7 +273,6 @@ internal class DependencyGraphTransformer(
         }
       if (validationResult.sealResult.hasErrors) {
         val result = validationResult.sealResult
-        processedMetroDependencyGraphsByClass[graphClassId] = result
         return result
       }
 
@@ -291,7 +281,6 @@ internal class DependencyGraphTransformer(
         generateDependencyGraph(validationResult, parentBindingContext = null)
       }
 
-      processedMetroDependencyGraphsByClass[graphClassId] = validationResult.sealResult
       return validationResult.sealResult
     }
   }
@@ -542,36 +531,6 @@ internal class DependencyGraphTransformer(
       bindingGraph.dumpGraph(node.sourceGraph.kotlinFqName.asString(), short = false)
     }
 
-    // Check if any parents haven't been generated yet. If so, generate them now
-    if (dependencyGraphDeclaration.origin != Origins.GeneratedGraphExtension) {
-      for (parent in node.allParentGraphs.values) {
-        // External nodes are valid by construction (metadata loaded from annotation)
-        if (parent is GraphNode.External) continue
-
-        parent as GraphNode.Local
-        var proto = parent.proto
-        val needsToGenerateParent =
-          proto == null &&
-            parent.sourceGraph.classId !in processedMetroDependencyGraphsByClass &&
-            !parent.sourceGraph.isExternalParent
-        if (needsToGenerateParent) {
-          visitClass(parent.sourceGraph)
-          proto =
-            (graphNodes.requirePreviouslyComputed(parent.sourceGraph.classIdOrFail)
-                as GraphNode.Local)
-              .proto
-        }
-        if (proto == null) {
-          reportCompat(
-            parent.sourceGraph,
-            MetroDiagnostics.METRO_ERROR,
-            "Extended parent graph ${parent.sourceGraph.kotlinFqName} is missing Metro metadata. Was it compiled by the Metro compiler?",
-          )
-          exitProcessing()
-        }
-      }
-    }
-
     return validationResult
   }
 
@@ -584,8 +543,8 @@ internal class DependencyGraphTransformer(
 
     val diagnosticFactory =
       when (severity) {
-        MetroOptions.DiagnosticSeverity.WARN -> MetroDiagnostics.METRO_WARNING
-        MetroOptions.DiagnosticSeverity.ERROR -> MetroDiagnostics.METRO_ERROR
+        MetroOptions.DiagnosticSeverity.WARN -> MetroDiagnostics.UNUSED_GRAPH_INPUT_WARNING
+        MetroOptions.DiagnosticSeverity.ERROR -> MetroDiagnostics.UNUSED_GRAPH_INPUT_ERROR
         // Already checked above, but for exhaustive when
         MetroOptions.DiagnosticSeverity.NONE -> return
       }
@@ -676,9 +635,6 @@ internal class DependencyGraphTransformer(
               parentBindingContext = parentBindingContext,
             )
             .generate()
-
-        processedMetroDependencyGraphsByClass[validationResult.graphClassId] =
-          validationResult.sealResult
 
         // Generate child graphs with this graph's binding context as their parent
         for (childResult in validationResult.childValidationResults) {

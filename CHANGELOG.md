@@ -4,6 +4,10 @@ Changelog
 **Unreleased**
 --------------
 
+### Enhancements
+
+- **[IR]** Add a dedicated `UNUSED_GRAPH_INPUT` diagnostic for `unusedGraphInputsSeverity` option.
+
 0.10.0
 ------
 
