@@ -56,7 +56,6 @@ internal class BindingLookup(
 
   // Single cache for all bindings, storing lists to track duplicates naturally
   private val bindingsCache = mutableMapOf<IrTypeKey, MutableList<IrBinding>>()
-  private val membersInjectorBindingsCache = mutableMapOf<IrTypeKey, IrBinding.MembersInjected>()
   private val classBindingsCache = mutableMapOf<IrContextualTypeKey, Set<IrBinding>>()
 
   private data class ParentGraphDepKey(val owner: IrClass, val typeKey: IrTypeKey)
@@ -140,6 +139,8 @@ internal class BindingLookup(
   fun addLazyParentKey(typeKey: IrTypeKey, bindingFactory: () -> IrBinding) {
     lazyParentKeys[typeKey] = memoize(bindingFactory)
   }
+
+  val parentKeys: Set<IrTypeKey> get() = lazyParentKeys.keys
 
   /**
    * Computes the multibinding type key (Set<T> or Map<K, V>) from the annotations of a contributor.

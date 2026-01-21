@@ -240,7 +240,10 @@ internal class IrBindingGraph(
       deferredTypes.joinToString(separator = "\n")
     }
 
-    val allBindings = bindingsSnapshot().keys + bindingLookup.getAvailableKeys()
+    // Don't include parent binding keys when reporting unused, as that ends up being a huge
+    // superset and sorta irrelevant to this
+    val allBindings =
+      (bindingsSnapshot().keys + bindingLookup.getAvailableKeys()) - bindingLookup.parentKeys
     val unused =
       (allBindings - reachableKeys).let {
         if (it.isNotEmpty()) {
