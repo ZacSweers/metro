@@ -166,7 +166,7 @@ private val RESERVED_KEYWORDS = KEYWORDS + CROSS_PLATFORM_RESERVED_KEYWORDS
 // TODO change to Name?
 internal class NameAllocator
 private constructor(
-  private val allocatedNames: MutableSet<String>,
+  allocatedNames: Set<String>,
   private val tagToName: MutableMap<Any, String>,
   private val mode: Mode,
 ) {
@@ -201,7 +201,7 @@ private constructor(
   ) : this(
     allocatedNames =
       if (preallocateKeywords) {
-        RESERVED_KEYWORDS.toMutableSet()
+        RESERVED_KEYWORDS
       } else {
         mutableSetOf()
       },
@@ -209,11 +209,14 @@ private constructor(
     mode = mode,
   )
 
+  // TODO use explicit backing field in 2.3.0+
+  private val allocatedNames: MutableSet<String> = allocatedNames.toMutableSet()
+
+  fun allocatedNames(): Set<String> = allocatedNames
+
   fun reserveName(suggestedName: String, tag: Any = Uuid.random().toString()) {
-    val reserved = newName(suggestedName, tag)
-    if (reserved != suggestedName) {
-      error("Duplicate reserved for $suggestedName")
-    }
+    @Suppress("RETURN_VALUE_NOT_USED")
+    newNameImpl(suggestedName, tag, generateNewIfExisting = false)
   }
 
   /**
@@ -222,11 +225,21 @@ private constructor(
    * [NameAllocator.get].
    */
   fun newName(suggestion: String, tag: Any = Uuid.random().toString()): String {
+    return newNameImpl(suggestion, tag, generateNewIfExisting = true)
+  }
+
+  /**
+   * Return a new name using [suggestion] that will not be a Java identifier or clash with other
+   * names. The returned value can be queried multiple times by passing `tag` to
+   * [NameAllocator.get].
+   */
+  private fun newNameImpl(suggestion: String, tag: Any, generateNewIfExisting: Boolean): String {
     val cleanedSuggestion = toSafeIdentifier(suggestion)
     val result = buildString {
       append(cleanedSuggestion)
       var count = 1
       while (!allocatedNames.add(toString())) {
+        if (!generateNewIfExisting) break
         when (mode) {
           UNDERSCORE -> append('_')
           COUNT -> {

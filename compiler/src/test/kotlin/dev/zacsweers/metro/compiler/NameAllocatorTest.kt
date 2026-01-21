@@ -150,4 +150,14 @@ class NameAllocatorTest {
     assertThat(innerAllocator2.newName("foo", 2)).isEqualTo("foo_")
     assertThat(innerAllocator2.newName("bar", 3)).isEqualTo("bar")
   }
+
+  @Test
+  fun reserveNameDoesNothingIfPresent() {
+    val nameAllocator = NameAllocator(mode = Mode.COUNT)
+    nameAllocator.reserveName("foo", 1)
+    nameAllocator.reserveName("foo", 2)
+    assertThat(nameAllocator[1]).isEqualTo("foo")
+    assertThat(nameAllocator[2]).isEqualTo("foo")
+    assertThat(nameAllocator.allocatedNames()).doesNotContain("foo1")
+  }
 }
