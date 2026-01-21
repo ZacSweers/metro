@@ -73,9 +73,10 @@ internal class IrBindingGraph(
       }
       field = value
     }
-  private val bindingLookup get() = _bindingLookup ?: reportCompilerBug(
-    "Tried to access bindingLookup after it's been cleared!"
-  )
+
+  private val bindingLookup
+    get() =
+      _bindingLookup ?: reportCompilerBug("Tried to access bindingLookup after it's been cleared!")
 
   private val realGraph =
     MutableBindingGraph(

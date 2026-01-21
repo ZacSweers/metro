@@ -63,11 +63,9 @@ internal open class MutableBindingGraph<
     },
   private val onError: (String, BindingStack) -> Unit = { message, _ -> error(message) },
   private val onHardError: (String, BindingStack) -> Nothing = { message, _ -> error(message) },
-  private val missingBindingHints:
-    (key: TypeKey) -> MissingBindingHints<Type, TypeKey> =
-    {
-      MissingBindingHints()
-    },
+  private val missingBindingHints: (key: TypeKey) -> MissingBindingHints<Type, TypeKey> = {
+    MissingBindingHints()
+  },
 ) : BindingGraph<Type, TypeKey, ContextualTypeKey, Binding, BindingStackEntry, BindingStack> {
   // Populated by initial graph setup and later seal()
   override val bindings = mutableMapOf<TypeKey, Binding>()

@@ -153,7 +153,8 @@ internal class BindingLookup(
     lazyParentKeys[typeKey] = memoize(bindingFactory)
   }
 
-  val parentKeys: Set<IrTypeKey> get() = lazyParentKeys.keys
+  val parentKeys: Set<IrTypeKey>
+    get() = lazyParentKeys.keys
 
   /**
    * Computes the multibinding type key (Set<T> or Map<K, V>) from the annotations of a contributor.
