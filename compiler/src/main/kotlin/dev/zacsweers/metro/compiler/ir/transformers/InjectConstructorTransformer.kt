@@ -78,6 +78,7 @@ internal class InjectConstructorTransformer(
     val injectableConstructor =
       declaration.findInjectableConstructor(onlyUsePrimaryConstructor = false)
     if (injectableConstructor != null) {
+      @Suppress("RETURN_VALUE_NOT_USED")
       getOrGenerateFactory(declaration, injectableConstructor, doNotErrorOnMissing = false)
     }
   }
@@ -588,6 +589,7 @@ internal class InjectConstructorTransformer(
       allParameters.reduce { current, next -> current.mergeValueParametersWithUntyped(next) }
 
     // Generate create()
+    @Suppress("RETURN_VALUE_NOT_USED")
     generateStaticCreateFunction(
       parentClass = classToGenerateCreatorsIn,
       targetClass = factoryCls,

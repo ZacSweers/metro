@@ -24,6 +24,7 @@ import dev.zacsweers.metro.compiler.fir.requireContainingClassSymbol
 import dev.zacsweers.metro.compiler.mapToArray
 import dev.zacsweers.metro.compiler.newName
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.reserveName
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Visibilities
@@ -204,7 +205,7 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
       // reserve names for existing nested class names
       val nameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
       for (nested in context.nestedClasses()) {
-        nameAllocator.newName(nested.name)
+        nameAllocator.reserveName(nested.name)
         if (nested.isCompanion) {
           hasCompanion = true
         }

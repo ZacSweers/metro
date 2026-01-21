@@ -290,7 +290,9 @@ internal class IrGraphShardGenerator(
     // Pre-allocate "graph" so binding properties can't collide with the graph field in shard
     // classes.
     val sharedNameAllocator =
-      NameAllocator(mode = NameAllocator.Mode.COUNT).apply { newName(Symbols.StringNames.GRAPH) }
+      NameAllocator(mode = NameAllocator.Mode.COUNT).apply {
+        reserveName(Symbols.StringNames.GRAPH)
+      }
 
     return shardGroups.mapIndexed { index, bindings ->
       val shardName = classNameAllocator.newName("Shard${index + 1}").asName()

@@ -149,6 +149,7 @@ internal class IrDynamicGraphGenerator(
       GeneratedDynamicGraphData(factoryImpl = factoryImpl, sourceExpression = sourceExpression)
 
     // Process the new graph
+    @Suppress("RETURN_VALUE_NOT_USED")
     dependencyGraphTransformer.processDependencyGraph(graphImpl, newGraphAnno, graphImpl, null)
 
     return graphImpl

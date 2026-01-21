@@ -119,7 +119,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
   private val injectorParamsByClass = mutableMapOf<ClassId, List<Parameters>>()
 
   fun visitClass(declaration: IrClass) {
-    getOrGenerateInjector(declaration)
+    @Suppress("RETURN_VALUE_NOT_USED") getOrGenerateInjector(declaration)
   }
 
   private fun requireInjector(declaration: IrClass): MemberInjectClass {
@@ -274,6 +274,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
       }
 
     // Static create()
+    @Suppress("RETURN_VALUE_NOT_USED")
     generateStaticCreateFunction(
       parentClass = companionObject,
       targetClass = injectorClass,

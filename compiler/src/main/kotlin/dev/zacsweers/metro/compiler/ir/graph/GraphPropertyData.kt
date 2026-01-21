@@ -23,6 +23,7 @@ internal enum class PropertyKind {
  * inits, but we always mark them as `val` anyway because the IR code gen will just set the field
  * directly in those cases.
  */
+@IgnorableReturnValue
 context(context: IrMetroContext)
 internal fun IrProperty.ensureInitialized(
   propertyKind: PropertyKind,

@@ -287,7 +287,7 @@ internal class BindingLookup(
   fun getAvailableMultibindings(): Map<IrTypeKey, IrBinding.Multibinding> {
     // Ensure all @Multibinds declarations have their multibindings created
     for (key in multibindsDeclarations.keys) {
-      getOrCreateMultibindingIfNeeded(key)
+      @Suppress("RETURN_VALUE_NOT_USED") getOrCreateMultibindingIfNeeded(key)
     }
     return multibindingsCache
   }
@@ -635,7 +635,7 @@ internal class BindingLookup(
       } else {
         // It's a regular class, not injected, not assisted. Initialize member injections still just
         // in case
-        membersInjectBindings.value
+        @Suppress("RETURN_VALUE_NOT_USED") membersInjectBindings.value
       }
       bindings
     }

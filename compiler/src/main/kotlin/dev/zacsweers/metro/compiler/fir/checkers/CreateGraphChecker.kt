@@ -128,6 +128,7 @@ internal object CreateGraphChecker : FirFunctionCallChecker(MppCheckerKind.Commo
        * > If a named argument is passed to a `vararg` parameter, [arguments] will contain a single
        * > [FirSpreadArgumentExpression] with [FirSpreadArgumentExpression.isNamed] set to `true`.
        */
+      @IgnorableReturnValue
       fun checkAndReportSpread(arg: FirExpression): Boolean {
         if (arg is FirSpreadArgumentExpression) {
           val message =

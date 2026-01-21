@@ -125,7 +125,7 @@ internal class IrGraphGenerator(
     NameAllocator(mode = NameAllocator.Mode.COUNT).apply {
       // Preallocate any existing property and field names in this graph
       for (property in node.metroGraphOrFail.properties) {
-        newName(property.name.asString())
+        reserveName(property.name.asString())
       }
     }
 
@@ -133,7 +133,7 @@ internal class IrGraphGenerator(
     NameAllocator(mode = NameAllocator.Mode.COUNT).apply {
       // Preallocate any existing nested class names in this graph
       for (declaration in graphClass.nestedClasses) {
-        newName(declaration.name.asString())
+        reserveName(declaration.name.asString())
       }
     }
 
@@ -144,7 +144,7 @@ internal class IrGraphGenerator(
       if (!_functionNameAllocatorInitialized) {
         // pre-allocate existing function names
         for (function in graphClass.functions) {
-          _functionNameAllocator.newName(function.name.asString())
+          _functionNameAllocator.reserveName(function.name.asString())
         }
         _functionNameAllocatorInitialized = true
       }
@@ -167,6 +167,7 @@ internal class IrGraphGenerator(
 
   private val graphMetadataReporter = GraphMetadataReporter(this)
 
+  @IgnorableReturnValue
   fun IrProperty.withInit(typeKey: IrTypeKey, init: PropertyInitializer): IrProperty = apply {
     // Only necessary for fields
     if (backingField != null) {
@@ -180,6 +181,7 @@ internal class IrGraphGenerator(
     }
   }
 
+  @IgnorableReturnValue
   fun IrProperty.initFinal(body: IrBuilderWithScope.() -> IrExpression): IrProperty = apply {
     backingField?.apply {
       isFinal = true

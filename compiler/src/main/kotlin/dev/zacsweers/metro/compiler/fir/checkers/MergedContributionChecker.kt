@@ -35,11 +35,9 @@ internal object MergedContributionChecker : FirClassChecker(MppCheckerKind.Commo
     val classIds = session.classIds
 
     val dependencyGraphAnno =
-      declaration.annotationsIn(session, classIds.graphLikeAnnotations).firstOrNull()
+      declaration.annotationsIn(session, classIds.graphLikeAnnotations).firstOrNull() ?: return
 
-    if (dependencyGraphAnno == null) return
-
-    dependencyGraphAnno.allScopeClassIds().ifEmpty {
+    if (dependencyGraphAnno.allScopeClassIds().isEmpty()) {
       return
     }
 

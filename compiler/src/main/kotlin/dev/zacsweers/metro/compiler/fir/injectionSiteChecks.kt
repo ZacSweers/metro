@@ -92,6 +92,7 @@ internal fun FirBasedSymbol<*>.validateBindingSource(
  * @param source The source element for error reporting
  * @return true if validation fails (error was reported), false if validation passes
  */
+@IgnorableReturnValue
 context(context: CheckerContext, reporter: DiagnosticReporter)
 internal fun validateInjectionSiteType(
   session: FirSession,
@@ -162,6 +163,7 @@ internal fun validateInjectionSiteType(
   }
 
   if (!isAccessor && (isOptionalBinding || hasDefault)) {
+    @IgnorableReturnValue
     fun ensureHasDefault(): Boolean {
       return if (!hasDefault) {
         reporter.reportOn(

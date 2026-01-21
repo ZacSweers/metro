@@ -65,6 +65,7 @@ import org.jetbrains.kotlin.name.Name
 internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModuleFragment) :
   IrMetroContext by context {
 
+  @IgnorableReturnValue
   fun generateHint(sourceClass: IrClass, hintName: Name): IrSimpleFunction {
     val function =
       pluginContext.irFactory

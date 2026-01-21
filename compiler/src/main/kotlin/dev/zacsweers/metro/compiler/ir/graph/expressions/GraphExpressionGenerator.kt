@@ -613,7 +613,7 @@ private constructor(
 
         // First add this binding's own parameters
         for (param in binding.parameters.regularParameters) {
-          nameToParam.putIfAbsent(param.name, param)
+          @Suppress("RETURN_VALUE_NOT_USED") nameToParam.putIfAbsent(param.name, param)
         }
 
         // Then add parameters from supertype MembersInjector bindings (which are remapped)
@@ -621,7 +621,7 @@ private constructor(
           val supertypeBinding = bindingGraph.findBinding(supertypeKey.typeKey)
           if (supertypeBinding is IrBinding.MembersInjected) {
             for (param in supertypeBinding.parameters.regularParameters) {
-              nameToParam.putIfAbsent(param.name, param)
+              @Suppress("RETURN_VALUE_NOT_USED") nameToParam.putIfAbsent(param.name, param)
             }
           }
         }

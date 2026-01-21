@@ -72,6 +72,7 @@ private class SimpleTracer(
     SimpleTracer(tag, description, level + 1, log, onFinished)
 }
 
+@IgnorableReturnValue
 context(scope: TraceScope)
 internal inline fun <T> traceNested(
   description: String,
@@ -82,12 +83,14 @@ internal inline fun <T> traceNested(
   return scope.tracer.nested(description, tag).trace(block)
 }
 
+@IgnorableReturnValue
 context(scope: TraceScope)
 internal inline fun <T> trace(block: TraceScope.() -> T): T {
   contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
   return scope.tracer.trace(block)
 }
 
+@IgnorableReturnValue
 internal inline fun <T> Tracer.trace(block: TraceScope.() -> T): T {
   contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
   start()

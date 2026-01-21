@@ -209,6 +209,13 @@ private constructor(
     mode = mode,
   )
 
+  fun reserveName(suggestedName: String, tag: Any = Uuid.random().toString()) {
+    val reserved = newName(suggestedName, tag)
+    if (reserved != suggestedName) {
+      error("Duplicate reserved for $suggestedName")
+    }
+  }
+
   /**
    * Return a new name using [suggestion] that will not be a Java identifier or clash with other
    * names. The returned value can be queried multiple times by passing `tag` to
@@ -321,4 +328,8 @@ internal fun toSafeIdentifier(suggestion: String) = buildString {
 
 internal fun NameAllocator.newName(suggestion: Name, tag: Any = Uuid.random().toString()): Name {
   return newName(suggestion.asString(), tag).asName()
+}
+
+internal fun NameAllocator.reserveName(suggestion: Name, tag: Any = Uuid.random().toString()) {
+  return reserveName(suggestion.asString(), tag)
 }

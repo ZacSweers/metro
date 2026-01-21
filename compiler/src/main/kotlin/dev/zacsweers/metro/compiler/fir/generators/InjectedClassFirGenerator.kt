@@ -181,7 +181,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
 
     init {
       // preallocate constructor param names
-      constructorParameters.forEach { parameterNameAllocator.newName(it.name.asString()) }
+      constructorParameters.forEach { parameterNameAllocator.reserveName(it.name.asString()) }
     }
 
     val assistedParameters: List<MetroFirValueParameter> by memoize {

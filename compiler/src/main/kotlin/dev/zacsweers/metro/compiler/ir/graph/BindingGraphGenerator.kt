@@ -118,7 +118,7 @@ internal class BindingGraphGenerator(
     // TODO dedupe supertype iteration
     node.supertypes.forEach { superType ->
       val superTypeKey = IrTypeKey(superType)
-      superTypeToAlias.putIfAbsent(superTypeKey, node.typeKey)
+      @Suppress("RETURN_VALUE_NOT_USED") superTypeToAlias.putIfAbsent(superTypeKey, node.typeKey)
     }
 
     // Collect all inherited data from extended nodes in a single pass
@@ -306,7 +306,7 @@ internal class BindingGraphGenerator(
                 creatorParam.type.requireSimpleType(creatorParam.ir).arguments
               )
             val typeKey = IrTypeKey(keyType)
-            superTypeToAlias.putIfAbsent(typeKey, paramTypeKey)
+            @Suppress("RETURN_VALUE_NOT_USED") superTypeToAlias.putIfAbsent(typeKey, paramTypeKey)
           }
         }
       }
@@ -392,7 +392,7 @@ internal class BindingGraphGenerator(
     // bindings will look for. i.e. LoggedInGraphImpl -> LoggedInGraph + supertypes
     // (Already collected in single pass via collectInheritedData)
     for ((parentTypeKey, aliasedTypeKey) in inheritedData.supertypeAliases) {
-      superTypeToAlias.putIfAbsent(parentTypeKey, aliasedTypeKey)
+      @Suppress("RETURN_VALUE_NOT_USED") superTypeToAlias.putIfAbsent(parentTypeKey, aliasedTypeKey)
     }
 
     // Now that we've processed all supertypes/aliases
@@ -553,7 +553,7 @@ internal class BindingGraphGenerator(
               parentNode.typeKey.type.requireSimpleType().arguments
             )
           val typeKey = IrTypeKey(keyType)
-          superTypeToAlias.putIfAbsent(typeKey, parentKey)
+          @Suppress("RETURN_VALUE_NOT_USED") superTypeToAlias.putIfAbsent(typeKey, parentKey)
         }
       }
 
@@ -747,7 +747,7 @@ internal class BindingGraphGenerator(
       for (superType in extendedNode.supertypes) {
         val parentTypeKey = IrTypeKey(superType)
         if (parentTypeKey != typeKey) {
-          supertypeAliases.putIfAbsent(parentTypeKey, typeKey)
+          @Suppress("RETURN_VALUE_NOT_USED") supertypeAliases.putIfAbsent(parentTypeKey, typeKey)
         }
       }
 

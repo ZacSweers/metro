@@ -253,6 +253,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     // Note the parent may be just a package if this is a Dagger-generated module provider
     val parent = binding.providerFactory.factoryClass.parent
     if (parent is IrClass) {
+      @Suppress("RETURN_VALUE_NOT_USED")
       findContainer(binding.providerFactory.factoryClass.parentAsClass)
     }
 
@@ -513,6 +514,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
       }
 
     // Generate create()
+    @Suppress("RETURN_VALUE_NOT_USED")
     generateStaticCreateFunction(
       parentClass = classToGenerateCreatorsIn,
       targetClass = factoryCls,

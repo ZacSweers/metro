@@ -213,7 +213,7 @@ internal class SwitchingProviderGenerator(
     val invokeNameAllocator =
       NameAllocator(mode = NameAllocator.Mode.COUNT).apply {
         // reserve the initial invoke() function name that we'll override
-        newName(Symbols.StringNames.INVOKE)
+        reserveName(Symbols.StringNames.INVOKE)
       }
 
     for (chunkIndex in (1 until bindingChunks.size).reversed()) {

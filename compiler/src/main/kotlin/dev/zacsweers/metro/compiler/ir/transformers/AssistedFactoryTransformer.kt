@@ -86,7 +86,7 @@ internal class AssistedFactoryTransformer(
   fun visitClass(declaration: IrClass) {
     val isAssistedFactory = declaration.isAnnotatedWithAny(metroSymbols.assistedFactoryAnnotations)
     if (isAssistedFactory) {
-      getOrGenerateImplClass(declaration)
+      @Suppress("RETURN_VALUE_NOT_USED") getOrGenerateImplClass(declaration)
     }
   }
 
