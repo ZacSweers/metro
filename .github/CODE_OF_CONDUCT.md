@@ -34,6 +34,8 @@ Examples of unacceptable behavior include:
 * Public or private harassment
 * Publishing others' private information, such as a physical or email
   address, without their explicit permission
+* Submitting AI-generated walls of text as your own comments. AI use is fine, but making others to interpret your AI output without asking isn't
+* Ignoring repo maintainers' requests to move comments/questions to more appropriate avenues
 * Other conduct which could reasonably be considered inappropriate in a
   professional setting
 
