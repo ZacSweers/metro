@@ -455,7 +455,7 @@ internal fun bindingStackEntryForDependency(
   targetKey: IrTypeKey,
 ): Entry {
   return when (callingBinding) {
-    is IrBinding.ConstructorInjected -> {
+    is ConstructorInjected -> {
       Entry.injectedAt(
         contextKey,
         callingBinding.classFactory.function,
@@ -464,10 +464,10 @@ internal fun bindingStackEntryForDependency(
         isMirrorFunction = true,
       )
     }
-    is IrBinding.CustomWrapper -> {
+    is CustomWrapper -> {
       Entry.injectedAt(contextKey, callingBinding.declaration, displayTypeKey = targetKey)
     }
-    is IrBinding.Alias -> {
+    is Alias -> {
       Entry.injectedAt(
         contextKey,
         callingBinding.ir,
@@ -475,7 +475,7 @@ internal fun bindingStackEntryForDependency(
         displayTypeKey = targetKey,
       )
     }
-    is IrBinding.Provided -> {
+    is Provided -> {
       Entry.injectedAt(
         contextKey,
         callingBinding.providerFactory.function,
@@ -484,10 +484,10 @@ internal fun bindingStackEntryForDependency(
         isMirrorFunction = false,
       )
     }
-    is IrBinding.Assisted -> {
+    is Assisted -> {
       Entry.injectedAt(contextKey, callingBinding.function, displayTypeKey = targetKey)
     }
-    is IrBinding.MembersInjected -> {
+    is MembersInjected -> {
       // Try to find the specific member (property/function) that requires this dependency
       val param = callingBinding.parameterFor(targetKey)
       if (param != null && param.isMember && param.ir != null) {
@@ -532,28 +532,28 @@ internal fun bindingStackEntryForDependency(
         Entry.injectedAt(contextKey, callingBinding.function, displayTypeKey = targetKey)
       }
     }
-    is IrBinding.Multibinding -> {
+    is Multibinding -> {
       Entry.contributedToMultibinding(callingBinding.contextualTypeKey, callingBinding.declaration)
     }
-    is IrBinding.ObjectClass -> TODO()
-    is IrBinding.BoundInstance -> TODO()
-    is IrBinding.GraphDependency -> {
+    is ObjectClass -> TODO()
+    is BoundInstance -> TODO()
+    is GraphDependency -> {
       Entry.injectedAt(contextKey, callingBinding.getter, displayTypeKey = targetKey)
     }
-    is IrBinding.GraphExtension -> {
+    is GraphExtension -> {
       Entry.generatedExtensionAt(
         contextKey,
         parent = callingBinding.parent.kotlinFqName.asString(),
         callingBinding.accessor,
       )
     }
-    is IrBinding.GraphExtensionFactory -> {
+    is GraphExtensionFactory -> {
       Entry.generatedExtensionAt(
         contextKey,
         parent = callingBinding.parent.kotlinFqName.asString(),
         callingBinding.accessor,
       )
     }
-    is IrBinding.Absent -> reportCompilerBug("Should never happen")
+    is Absent -> reportCompilerBug("Should never happen")
   }
 }

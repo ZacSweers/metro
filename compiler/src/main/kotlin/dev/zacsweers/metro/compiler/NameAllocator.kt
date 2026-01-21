@@ -228,8 +228,8 @@ private constructor(
       var count = 1
       while (!allocatedNames.add(toString())) {
         when (mode) {
-          Mode.UNDERSCORE -> append('_')
-          Mode.COUNT -> {
+          UNDERSCORE -> append('_')
+          COUNT -> {
             deleteRange(cleanedSuggestion.length, length)
             append(++count)
           }

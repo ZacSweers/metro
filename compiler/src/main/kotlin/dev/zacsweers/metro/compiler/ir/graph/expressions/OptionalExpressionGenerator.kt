@@ -46,7 +46,7 @@ internal object IrOptionalExpressionGenerator : IrWrappedTypeGenerator {
     val callee: IrFunctionSymbol
     val typeHint: IrType
     when (kind) {
-      OptionalKind.JAVA -> {
+      JAVA -> {
         callee = context.metroSymbols.javaOptionalEmpty
         typeHint = context.metroSymbols.javaOptional.typeWith(type)
       }
@@ -64,7 +64,7 @@ internal object IrOptionalExpressionGenerator : IrWrappedTypeGenerator {
     val callee: IrFunctionSymbol
     val typeHint: IrType
     when (kind) {
-      OptionalKind.JAVA -> {
+      JAVA -> {
         callee = context.metroSymbols.javaOptionalOf
         typeHint = context.metroSymbols.javaOptional.typeWith(type)
       }

@@ -173,8 +173,8 @@ internal class BindingGraphGenerator(
         val existingAreDynamic =
           existingBindings.getOrNull(0)?.let { binding ->
             when (binding) {
-              is IrBinding.Provided -> binding.providerFactory.isDynamic
-              is IrBinding.Alias -> binding.bindsCallable?.isDynamic == true
+              is Provided -> binding.providerFactory.isDynamic
+              is Alias -> binding.bindsCallable?.isDynamic == true
               else -> false
             }
           } ?: false
@@ -253,8 +253,8 @@ internal class BindingGraphGenerator(
         val existingAreDynamic =
           existingBindings.firstOrNull()?.let { binding ->
             when (binding) {
-              is IrBinding.Provided -> binding.providerFactory.isDynamic
-              is IrBinding.Alias -> binding.bindsCallable?.isDynamic == true
+              is Provided -> binding.providerFactory.isDynamic
+              is Alias -> binding.bindsCallable?.isDynamic == true
               else -> false
             }
           } ?: false

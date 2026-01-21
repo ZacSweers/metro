@@ -113,9 +113,9 @@ internal class BindingLookup(
     if (binding is IrBinding.BindingWithAnnotations && binding.annotations.isIntoMultibinding) {
       val (qualifier, valueType) =
         when (binding) {
-          is IrBinding.Provided ->
+          is Provided ->
             binding.providerFactory.rawTypeKey.qualifier to binding.contextualTypeKey.typeKey.type
-          is IrBinding.Alias ->
+          is Alias ->
             binding.bindsCallable?.callableMetadata?.annotations?.qualifier to
               binding.contextualTypeKey.typeKey.type
           else -> null to null

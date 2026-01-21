@@ -48,8 +48,8 @@ internal class FirContextualTypeKey(
 
   fun originalType(session: FirSession): ConeKotlinType {
     return when (val wt = wrappedType) {
-      is WrappedType.Canonical -> wt.type
-      is WrappedType.Provider -> {
+      is Canonical -> wt.type
+      is Provider -> {
         val innerType =
           FirContextualTypeKey(typeKey, wt.innerType, hasDefault, isDeferrable)
             .originalType(session)
@@ -146,7 +146,7 @@ internal fun ConeKotlinType.asFirContextualTypeKey(
   val typeKey =
     FirTypeKey(
       when (wrappedType) {
-        is WrappedType.Canonical -> wrappedType.type
+        is Canonical -> wrappedType.type
         // For Map types, we keep the original type in the TypeKey
         is WrappedType.Map -> declaredType
         else -> wrappedType.canonicalType()

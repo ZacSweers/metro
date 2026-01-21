@@ -239,11 +239,9 @@ internal object BindingContainerCallableChecker :
         val message = "`@$kind` declarations should be private."
         val diagnosticFactory =
           when (session.metroFirBuiltIns.options.publicProviderSeverity) {
-            MetroOptions.DiagnosticSeverity.NONE -> reportCompilerBug("Not possible")
-            MetroOptions.DiagnosticSeverity.WARN ->
-              MetroDiagnostics.PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_WARNING
-            MetroOptions.DiagnosticSeverity.ERROR ->
-              MetroDiagnostics.PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_ERROR
+            NONE -> reportCompilerBug("Not possible")
+            WARN -> MetroDiagnostics.PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_WARNING
+            ERROR -> MetroDiagnostics.PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_ERROR
           }
         reporter.reportOn(source, diagnosticFactory, message)
       }

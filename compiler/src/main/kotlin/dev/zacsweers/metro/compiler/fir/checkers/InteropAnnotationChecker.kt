@@ -80,9 +80,9 @@ internal object InteropAnnotationChecker : FirAnnotationChecker(MppCheckerKind.C
       if (arg !is FirNamedArgumentExpression) {
         val factory =
           when (severity) {
-            MetroOptions.DiagnosticSeverity.ERROR -> INTEROP_ANNOTATION_ARGS_ERROR
-            MetroOptions.DiagnosticSeverity.WARN -> INTEROP_ANNOTATION_ARGS_WARNING
-            MetroOptions.DiagnosticSeverity.NONE -> return
+            ERROR -> INTEROP_ANNOTATION_ARGS_ERROR
+            WARN -> INTEROP_ANNOTATION_ARGS_WARNING
+            NONE -> return
           }
         reporter.reportOn(
           arg.source ?: source,

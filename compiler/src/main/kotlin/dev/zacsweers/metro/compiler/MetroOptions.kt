@@ -1193,177 +1193,164 @@ public data class MetroOptions(
     internal fun load(configuration: CompilerConfiguration): MetroOptions = buildOptions {
       for (entry in MetroOption.entries) {
         when (entry) {
-          MetroOption.DEBUG -> debug = configuration.getAsBoolean(entry)
+          DEBUG -> debug = configuration.getAsBoolean(entry)
 
-          MetroOption.ENABLED -> enabled = configuration.getAsBoolean(entry)
+          ENABLED -> enabled = configuration.getAsBoolean(entry)
 
-          MetroOption.REPORTS_DESTINATION -> {
+          REPORTS_DESTINATION -> {
             reportsDestination =
               configuration.getAsString(entry).takeUnless(String::isBlank)?.let(Paths::get)
           }
 
-          MetroOption.GENERATE_ASSISTED_FACTORIES ->
+          GENERATE_ASSISTED_FACTORIES ->
             generateAssistedFactories = configuration.getAsBoolean(entry)
 
-          MetroOption.GENERATE_THROWS_ANNOTATIONS ->
+          GENERATE_THROWS_ANNOTATIONS ->
             generateThrowsAnnotations = configuration.getAsBoolean(entry)
 
-          MetroOption.ENABLE_TOP_LEVEL_FUNCTION_INJECTION ->
+          ENABLE_TOP_LEVEL_FUNCTION_INJECTION ->
             enableTopLevelFunctionInjection = configuration.getAsBoolean(entry)
 
-          MetroOption.GENERATE_CONTRIBUTION_HINTS ->
+          GENERATE_CONTRIBUTION_HINTS ->
             generateContributionHints = configuration.getAsBoolean(entry)
 
-          MetroOption.GENERATE_CONTRIBUTION_HINTS_IN_FIR ->
+          GENERATE_CONTRIBUTION_HINTS_IN_FIR ->
             generateContributionHintsInFir = configuration.getAsBoolean(entry)
 
-          MetroOption.TRANSFORM_PROVIDERS_TO_PRIVATE ->
+          TRANSFORM_PROVIDERS_TO_PRIVATE ->
             transformProvidersToPrivate = configuration.getAsBoolean(entry)
 
-          MetroOption.SHRINK_UNUSED_BINDINGS ->
-            shrinkUnusedBindings = configuration.getAsBoolean(entry)
+          SHRINK_UNUSED_BINDINGS -> shrinkUnusedBindings = configuration.getAsBoolean(entry)
 
-          MetroOption.CHUNK_FIELD_INITS -> chunkFieldInits = configuration.getAsBoolean(entry)
+          CHUNK_FIELD_INITS -> chunkFieldInits = configuration.getAsBoolean(entry)
 
-          MetroOption.STATEMENTS_PER_INIT_FUN ->
-            statementsPerInitFun = configuration.getAsInt(entry)
+          STATEMENTS_PER_INIT_FUN -> statementsPerInitFun = configuration.getAsInt(entry)
 
-          MetroOption.ENABLE_GRAPH_SHARDING ->
-            enableGraphSharding = configuration.getAsBoolean(entry)
+          ENABLE_GRAPH_SHARDING -> enableGraphSharding = configuration.getAsBoolean(entry)
 
-          MetroOption.KEYS_PER_GRAPH_SHARD -> keysPerGraphShard = configuration.getAsInt(entry)
+          KEYS_PER_GRAPH_SHARD -> keysPerGraphShard = configuration.getAsInt(entry)
 
-          MetroOption.ENABLE_SWITCHING_PROVIDERS ->
-            enableFastInit = configuration.getAsBoolean(entry)
+          ENABLE_SWITCHING_PROVIDERS -> enableFastInit = configuration.getAsBoolean(entry)
 
-          MetroOption.PUBLIC_PROVIDER_SEVERITY ->
+          PUBLIC_PROVIDER_SEVERITY ->
             publicProviderSeverity =
               configuration.getAsString(entry).let {
                 DiagnosticSeverity.valueOf(it.uppercase(Locale.US))
               }
 
-          MetroOption.NON_PUBLIC_CONTRIBUTION_SEVERITY ->
+          NON_PUBLIC_CONTRIBUTION_SEVERITY ->
             nonPublicContributionSeverity =
               configuration.getAsString(entry).let {
                 DiagnosticSeverity.valueOf(it.uppercase(Locale.US))
               }
 
-          MetroOption.WARN_ON_INJECT_ANNOTATION_PLACEMENT ->
+          WARN_ON_INJECT_ANNOTATION_PLACEMENT ->
             warnOnInjectAnnotationPlacement = configuration.getAsBoolean(entry)
 
-          MetroOption.INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY ->
+          INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY ->
             interopAnnotationsNamedArgSeverity =
               configuration.getAsString(entry).let {
                 DiagnosticSeverity.valueOf(it.uppercase(Locale.US))
               }
 
-          MetroOption.UNUSED_GRAPH_INPUTS_SEVERITY ->
+          UNUSED_GRAPH_INPUTS_SEVERITY ->
             unusedGraphInputsSeverity =
               configuration.getAsString(entry).let {
                 DiagnosticSeverity.valueOf(it.uppercase(Locale.US))
               }
 
-          MetroOption.LOGGING -> {
+          LOGGING -> {
             enabledLoggers +=
               configuration.get(entry.raw.key)?.expectAs<Set<MetroLogger.Type>>().orEmpty()
           }
 
-          MetroOption.ENABLE_DAGGER_RUNTIME_INTEROP ->
+          ENABLE_DAGGER_RUNTIME_INTEROP ->
             enableDaggerRuntimeInterop = configuration.getAsBoolean(entry)
 
-          MetroOption.ENABLE_GUICE_RUNTIME_INTEROP ->
+          ENABLE_GUICE_RUNTIME_INTEROP ->
             enableGuiceRuntimeInterop = configuration.getAsBoolean(entry)
 
-          MetroOption.MAX_IR_ERRORS_COUNT -> maxIrErrorsCount = configuration.getAsInt(entry)
+          MAX_IR_ERRORS_COUNT -> maxIrErrorsCount = configuration.getAsInt(entry)
 
           // Intrinsics
-          MetroOption.CUSTOM_PROVIDER -> customProviderTypes.addAll(configuration.getAsSet(entry))
-          MetroOption.CUSTOM_LAZY -> customLazyTypes.addAll(configuration.getAsSet(entry))
+          CUSTOM_PROVIDER -> customProviderTypes.addAll(configuration.getAsSet(entry))
+          CUSTOM_LAZY -> customLazyTypes.addAll(configuration.getAsSet(entry))
 
           // Custom annotations
-          MetroOption.CUSTOM_ASSISTED ->
-            customAssistedAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.CUSTOM_ASSISTED_FACTORY ->
+          CUSTOM_ASSISTED -> customAssistedAnnotations.addAll(configuration.getAsSet(entry))
+          CUSTOM_ASSISTED_FACTORY ->
             customAssistedFactoryAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.CUSTOM_ASSISTED_INJECT ->
+          CUSTOM_ASSISTED_INJECT ->
             customAssistedInjectAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.CUSTOM_BINDS -> customBindsAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.CUSTOM_CONTRIBUTES_TO ->
+          CUSTOM_BINDS -> customBindsAnnotations.addAll(configuration.getAsSet(entry))
+          CUSTOM_CONTRIBUTES_TO ->
             customContributesToAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.CUSTOM_CONTRIBUTES_BINDING ->
+          CUSTOM_CONTRIBUTES_BINDING ->
             customContributesBindingAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.CUSTOM_GRAPH_EXTENSION ->
+          CUSTOM_GRAPH_EXTENSION ->
             customGraphExtensionAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.CUSTOM_GRAPH_EXTENSION_FACTORY ->
+          CUSTOM_GRAPH_EXTENSION_FACTORY ->
             customGraphExtensionFactoryAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.CUSTOM_ELEMENTS_INTO_SET ->
+          CUSTOM_ELEMENTS_INTO_SET ->
             customElementsIntoSetAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.CUSTOM_DEPENDENCY_GRAPH ->
-            customGraphAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.CUSTOM_DEPENDENCY_GRAPH_FACTORY ->
+          CUSTOM_DEPENDENCY_GRAPH -> customGraphAnnotations.addAll(configuration.getAsSet(entry))
+          CUSTOM_DEPENDENCY_GRAPH_FACTORY ->
             customGraphFactoryAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.CUSTOM_INJECT -> customInjectAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.CUSTOM_INTO_MAP ->
-            customIntoMapAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.CUSTOM_INTO_SET ->
-            customIntoSetAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.CUSTOM_MAP_KEY ->
-            customMapKeyAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.CUSTOM_MULTIBINDS ->
-            customMultibindsAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.CUSTOM_PROVIDES ->
-            customProvidesAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.CUSTOM_QUALIFIER ->
-            customQualifierAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.CUSTOM_SCOPE -> customScopeAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.CUSTOM_BINDING_CONTAINER ->
+          CUSTOM_INJECT -> customInjectAnnotations.addAll(configuration.getAsSet(entry))
+          CUSTOM_INTO_MAP -> customIntoMapAnnotations.addAll(configuration.getAsSet(entry))
+          CUSTOM_INTO_SET -> customIntoSetAnnotations.addAll(configuration.getAsSet(entry))
+          CUSTOM_MAP_KEY -> customMapKeyAnnotations.addAll(configuration.getAsSet(entry))
+          CUSTOM_MULTIBINDS -> customMultibindsAnnotations.addAll(configuration.getAsSet(entry))
+          CUSTOM_PROVIDES -> customProvidesAnnotations.addAll(configuration.getAsSet(entry))
+          CUSTOM_QUALIFIER -> customQualifierAnnotations.addAll(configuration.getAsSet(entry))
+          CUSTOM_SCOPE -> customScopeAnnotations.addAll(configuration.getAsSet(entry))
+          CUSTOM_BINDING_CONTAINER ->
             customBindingContainerAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.CUSTOM_CONTRIBUTES_INTO_SET ->
+          CUSTOM_CONTRIBUTES_INTO_SET ->
             customContributesIntoSetAnnotations.addAll(configuration.getAsSet(entry))
 
-          MetroOption.ENABLE_DAGGER_ANVIL_INTEROP ->
+          ENABLE_DAGGER_ANVIL_INTEROP ->
             enableDaggerAnvilInterop = configuration.getAsBoolean(entry)
 
-          MetroOption.ENABLE_FULL_BINDING_GRAPH_VALIDATION ->
+          ENABLE_FULL_BINDING_GRAPH_VALIDATION ->
             enableFullBindingGraphValidation = configuration.getAsBoolean(entry)
 
-          MetroOption.ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE ->
+          ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE ->
             enableGraphImplClassAsReturnType = configuration.getAsBoolean(entry)
 
-          MetroOption.CUSTOM_ORIGIN -> customOriginAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.CUSTOM_OPTIONAL_BINDING ->
+          CUSTOM_ORIGIN -> customOriginAnnotations.addAll(configuration.getAsSet(entry))
+          CUSTOM_OPTIONAL_BINDING ->
             customOptionalBindingAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.OPTIONAL_BINDING_BEHAVIOR ->
+          OPTIONAL_BINDING_BEHAVIOR ->
             optionalBindingBehavior =
               configuration.getAsString(entry).let {
                 OptionalBindingBehavior.valueOf(it.uppercase(Locale.US))
               }
 
-          MetroOption.CONTRIBUTES_AS_INJECT ->
-            contributesAsInject = configuration.getAsBoolean(entry)
+          CONTRIBUTES_AS_INJECT -> contributesAsInject = configuration.getAsBoolean(entry)
 
-          MetroOption.INTEROP_INCLUDE_JAVAX_ANNOTATIONS -> {
+          INTEROP_INCLUDE_JAVAX_ANNOTATIONS -> {
             if (configuration.getAsBoolean(entry)) includeJavaxAnnotations()
           }
-          MetroOption.INTEROP_INCLUDE_JAKARTA_ANNOTATIONS -> {
+          INTEROP_INCLUDE_JAKARTA_ANNOTATIONS -> {
             if (configuration.getAsBoolean(entry)) includeJakartaAnnotations()
           }
-          MetroOption.INTEROP_INCLUDE_DAGGER_ANNOTATIONS -> {
+          INTEROP_INCLUDE_DAGGER_ANNOTATIONS -> {
             if (configuration.getAsBoolean(entry)) includeDaggerAnnotations()
           }
-          MetroOption.INTEROP_INCLUDE_KOTLIN_INJECT_ANNOTATIONS -> {
+          INTEROP_INCLUDE_KOTLIN_INJECT_ANNOTATIONS -> {
             if (configuration.getAsBoolean(entry)) includeKotlinInjectAnnotations()
           }
-          MetroOption.INTEROP_INCLUDE_ANVIL_ANNOTATIONS -> {
+          INTEROP_INCLUDE_ANVIL_ANNOTATIONS -> {
             if (configuration.getAsBoolean(entry)) includeAnvilAnnotations()
           }
-          MetroOption.INTEROP_INCLUDE_KOTLIN_INJECT_ANVIL_ANNOTATIONS -> {
+          INTEROP_INCLUDE_KOTLIN_INJECT_ANVIL_ANNOTATIONS -> {
             if (configuration.getAsBoolean(entry)) includeKotlinInjectAnvilAnnotations()
           }
-          MetroOption.INTEROP_INCLUDE_GUICE_ANNOTATIONS -> {
+          INTEROP_INCLUDE_GUICE_ANNOTATIONS -> {
             if (configuration.getAsBoolean(entry)) includeGuiceAnnotations()
           }
-          MetroOption.PLUGIN_ORDER_SET -> {
+          PLUGIN_ORDER_SET -> {
             pluginOrderSet =
               configuration.getAsString(entry).takeUnless(String::isBlank)?.toBooleanStrict()
           }

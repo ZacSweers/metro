@@ -433,9 +433,9 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
 
     val diagnosticFactory =
       when (severity) {
-        MetroOptions.DiagnosticSeverity.ERROR -> MetroDiagnostics.NON_PUBLIC_CONTRIBUTION_ERROR
-        MetroOptions.DiagnosticSeverity.WARN -> MetroDiagnostics.NON_PUBLIC_CONTRIBUTION_WARNING
-        MetroOptions.DiagnosticSeverity.NONE -> return
+        ERROR -> MetroDiagnostics.NON_PUBLIC_CONTRIBUTION_ERROR
+        WARN -> MetroDiagnostics.NON_PUBLIC_CONTRIBUTION_WARNING
+        NONE -> return
       }
     reporter.reportOn(declaration.source, diagnosticFactory, message)
   }

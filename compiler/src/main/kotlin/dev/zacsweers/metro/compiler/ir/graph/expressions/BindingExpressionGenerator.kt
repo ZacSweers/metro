@@ -104,7 +104,7 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
     val accessTransformed =
       when (requested) {
         actual -> this
-        AccessType.PROVIDER -> {
+        PROVIDER -> {
           if (useInstanceFactory) {
             // actual is an instance, wrap it
             wrapInInstanceFactory(contextualTypeKey.typeKey.type, allowPropertyGetter)
@@ -112,7 +112,7 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
             scope.wrapInProviderFunction(contextualTypeKey.typeKey.type) { this@toTargetType }
           }
         }
-        AccessType.INSTANCE -> {
+        INSTANCE -> {
           // actual is a provider but we want instance
           unwrapProvider(contextualTypeKey.typeKey.type)
         }

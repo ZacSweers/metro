@@ -978,12 +978,12 @@ internal fun IrType.renderTo(
             is IrStarProjection -> appendable.append("*")
             is IrTypeProjection -> {
               when (typeArg.variance) {
-                Variance.INVARIANT -> {
+                INVARIANT -> {
                   // do nothing
                 }
 
-                Variance.IN_VARIANCE -> appendable.append("in ")
-                Variance.OUT_VARIANCE -> appendable.append("out ")
+                IN_VARIANCE -> appendable.append("in ")
+                OUT_VARIANCE -> appendable.append("out ")
               }
               typeArg.type.renderTo(appendable, short)
             }

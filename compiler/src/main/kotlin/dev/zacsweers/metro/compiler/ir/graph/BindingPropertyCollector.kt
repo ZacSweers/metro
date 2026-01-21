@@ -102,26 +102,26 @@ internal class BindingPropertyCollector(
 
     return when (binding) {
       // These use specialized initialization, not SwitchingProvider
-      is IrBinding.BoundInstance,
-      is IrBinding.GraphDependency,
-      is IrBinding.Alias,
-      is IrBinding.Absent,
-      is IrBinding.Assisted,
-      is IrBinding.GraphExtension,
+      is BoundInstance,
+      is GraphDependency,
+      is Alias,
+      is Absent,
+      is Assisted,
+      is GraphExtension,
       // Multibindings use GETTER properties, never FIELD (this check is redundant but explicit)
-      is IrBinding.Multibinding,
+      is Multibinding,
       // Object classes cannot be scoped and are never stored in provider fields
-      is IrBinding.ObjectClass,
-      is IrBinding.GraphExtensionFactory -> false
+      is ObjectClass,
+      is GraphExtensionFactory -> false
 
       // Assisted inject factories have different lifecycle
-      is IrBinding.ConstructorInjected if binding.isAssisted -> false
+      is ConstructorInjected if binding.isAssisted -> false
 
       // These can use SwitchingProvider
-      is IrBinding.MembersInjected,
-      is IrBinding.CustomWrapper,
-      is IrBinding.ConstructorInjected,
-      is IrBinding.Provided -> true
+      is MembersInjected,
+      is CustomWrapper,
+      is ConstructorInjected,
+      is Provided -> true
     }
   }
 
@@ -133,8 +133,8 @@ internal class BindingPropertyCollector(
       // This is cases like a simple graph dependency or provides declaration.
       1 -> {
         when (this) {
-          is IrBinding.GraphDependency -> true
-          !is IrBinding.Provided -> false
+          is GraphDependency -> true
+          !is Provided -> false
           else -> parameters.dispatchReceiverParameter != null
         }
       }
@@ -315,19 +315,19 @@ internal class BindingPropertyCollector(
 
     return when (binding) {
       // Graph dependencies always need fields, unless it's accessing a parent's property
-      is IrBinding.GraphDependency if (binding.token == null) -> PropertyKind.FIELD
+      is GraphDependency if (binding.token == null) -> PropertyKind.FIELD
       // Assisted types always need to be a single field to ensure use of the same provider
-      is IrBinding.Assisted -> PropertyKind.FIELD
+      is Assisted -> PropertyKind.FIELD
       // Assisted inject factories use factory path
-      is IrBinding.ConstructorInjected if binding.isAssisted -> PropertyKind.FIELD
+      is ConstructorInjected if binding.isAssisted -> PropertyKind.FIELD
       // Non-empty multibindings get a getter
-      is IrBinding.Multibinding if binding.sourceBindings.isNotEmpty() -> {
+      is Multibinding if binding.sourceBindings.isNotEmpty() -> {
         PropertyKind.GETTER
       }
       // Graph extensions used by child graphs need getter properties so children can resolve
       // their property access tokens. Graph extensions are "simple" bindings (0 dependencies)
       // so they wouldn't otherwise get properties via refcount logic.
-      is IrBinding.GraphExtension if graph.hasReservedKey(key) -> PropertyKind.GETTER
+      is GraphExtension if graph.hasReservedKey(key) -> PropertyKind.GETTER
       else -> null
     }
   }

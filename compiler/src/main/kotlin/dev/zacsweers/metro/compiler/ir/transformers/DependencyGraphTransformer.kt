@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.compiler.ExitProcessingException
 import dev.zacsweers.metro.compiler.MetroLogger
-import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
@@ -544,10 +543,10 @@ internal class DependencyGraphTransformer(
 
     val diagnosticFactory =
       when (severity) {
-        MetroOptions.DiagnosticSeverity.WARN -> MetroDiagnostics.UNUSED_GRAPH_INPUT_WARNING
-        MetroOptions.DiagnosticSeverity.ERROR -> MetroDiagnostics.UNUSED_GRAPH_INPUT_ERROR
+        WARN -> MetroDiagnostics.UNUSED_GRAPH_INPUT_WARNING
+        ERROR -> MetroDiagnostics.UNUSED_GRAPH_INPUT_ERROR
         // Already checked above, but for exhaustive when
-        MetroOptions.DiagnosticSeverity.NONE -> return
+        NONE -> return
       }
 
     if (unusedKeys.isNotEmpty()) {

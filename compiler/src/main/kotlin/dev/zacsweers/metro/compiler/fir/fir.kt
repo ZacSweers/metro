@@ -540,10 +540,10 @@ internal fun FirClass.validateInjectedClass(
   }
 
   when (classKind) {
-    ClassKind.CLASS -> {
+    CLASS -> {
       when (modality) {
-        Modality.FINAL,
-        Modality.OPEN -> {
+        FINAL,
+        OPEN -> {
           // final/open This is fine
         }
 
@@ -558,7 +558,7 @@ internal fun FirClass.validateInjectedClass(
       }
     }
     // This is fine for @Contributes* injection cases but errors
-    ClassKind.OBJECT if (classInjectAnnotations.isEmpty()) -> {
+    OBJECT if (classInjectAnnotations.isEmpty()) -> {
       // If we hit here, it's because the class has a `@Contributes*` annotation implying its
       // injectability but no regular `@Inject` annotations. So, report nothing
     }
@@ -605,10 +605,10 @@ internal inline fun FirClass.validateApiDeclaration(
   }
 
   when (classKind) {
-    ClassKind.INTERFACE -> {
+    INTERFACE -> {
       // This is fine
       when (modality) {
-        Modality.SEALED -> {
+        SEALED -> {
           reporter.reportOn(
             source,
             MetroDiagnostics.METRO_DECLARATION_ERROR,
@@ -623,9 +623,9 @@ internal inline fun FirClass.validateApiDeclaration(
       }
     }
 
-    ClassKind.CLASS -> {
+    CLASS -> {
       when (modality) {
-        Modality.ABSTRACT -> {
+        ABSTRACT -> {
           // This is fine
         }
 
@@ -1456,12 +1456,12 @@ internal fun FirCallableSymbol<*>.isEffectivelyOpen(): Boolean =
     val containingClass = getContainingClassSymbol() ?: return false
     val containingClassKind = containingClass.classKind ?: return false
     return when (containingClassKind) {
-      ClassKind.INTERFACE -> true
-      ClassKind.CLASS -> !containingClass.isFinal && (isOpen || isAbstract)
-      ClassKind.ENUM_CLASS,
-      ClassKind.ENUM_ENTRY,
-      ClassKind.ANNOTATION_CLASS,
-      ClassKind.OBJECT -> false
+      INTERFACE -> true
+      CLASS -> !containingClass.isFinal && (isOpen || isAbstract)
+      ENUM_CLASS,
+      ENUM_ENTRY,
+      ANNOTATION_CLASS,
+      OBJECT -> false
     }
   }
 

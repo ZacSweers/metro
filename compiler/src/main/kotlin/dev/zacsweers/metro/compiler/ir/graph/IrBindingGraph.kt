@@ -573,7 +573,7 @@ internal class IrBindingGraph(
         // Need to check if the parent is a fakeOverride function or property setter
         val parent = parent.expectAs<IrFunction>()
         val originalParent = parent.originalDeclarationIfOverride()
-        return originalParent.parameters[index] as T
+        originalParent.parameters[index] as T
       }
       is IrSimpleFunction if isFakeOverride -> {
         overriddenSymbolsSequence().last().owner as T

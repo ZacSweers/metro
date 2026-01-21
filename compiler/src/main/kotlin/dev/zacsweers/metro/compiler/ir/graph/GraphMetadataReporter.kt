@@ -91,11 +91,11 @@ internal class GraphMetadataReporter(
               put("declaration", JsonPrimitive(declaration.name.asString()))
             }
             when (binding) {
-              is IrBinding.Multibinding -> put("multibinding", binding.toJson())
+              is Multibinding -> put("multibinding", binding.toJson())
               else -> put("multibinding", JsonNull)
             }
             when (binding) {
-              is IrBinding.CustomWrapper -> put("optionalWrapper", binding.toJson())
+              is CustomWrapper -> put("optionalWrapper", binding.toJson())
               else -> put("optionalWrapper", JsonNull)
             }
             if (binding is IrBinding.Alias) {
@@ -227,7 +227,7 @@ internal class GraphMetadataReporter(
             // Check if this dependency is from an assisted parameter
             val isAssisted =
               when (binding) {
-                is IrBinding.Assisted -> {
+                is Assisted -> {
                   // Assisted factories have their target as a dependency, which is the assisted
                   // type
                   dependency == binding.target
@@ -244,8 +244,8 @@ internal class GraphMetadataReporter(
   /** Returns the wrapper type name (e.g., "Provider", "Lazy") or null if not wrapped. */
   private fun <T : Any> WrappedType<T>.wrapperTypeName(): String? =
     when (this) {
-      is WrappedType.Canonical -> null
-      is WrappedType.Provider -> "Provider"
+      is Canonical -> null
+      is Provider -> "Provider"
       is WrappedType.Lazy -> "Lazy"
       is WrappedType.Map -> valueType.wrapperTypeName()
     }

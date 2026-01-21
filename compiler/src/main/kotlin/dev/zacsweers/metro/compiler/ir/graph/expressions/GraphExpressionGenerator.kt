@@ -157,7 +157,7 @@ private constructor(
       }
 
       return when (binding) {
-        is IrBinding.ConstructorInjected -> {
+        is ConstructorInjected -> {
           val classFactory = binding.classFactory
           val isAssistedInject = classFactory.isAssistedInject
           // Optimization: Skip factory instantiation when possible
@@ -225,7 +225,7 @@ private constructor(
           }
         }
 
-        is IrBinding.CustomWrapper -> {
+        is CustomWrapper -> {
           val generator =
             wrappedTypeGenerators[binding.wrapperKey]
               ?: reportCompilerBug("No generator found for wrapper key: ${binding.wrapperKey}")
@@ -254,12 +254,12 @@ private constructor(
             )
         }
 
-        is IrBinding.ObjectClass -> {
+        is ObjectClass -> {
           irGetObject(binding.type.symbol)
             .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
         }
 
-        is IrBinding.Alias -> {
+        is Alias -> {
           // TODO cache the aliases (or retrieve from binding property collector?)
           // For binds functions, just use the backing type
           val aliasedBinding = binding.aliasedBinding(bindingGraph)
@@ -272,7 +272,7 @@ private constructor(
           )
         }
 
-        is IrBinding.Provided -> {
+        is Provided -> {
           val providerFactory =
             bindingContainerTransformer.getOrLookupProviderFactory(binding)
               ?: reportCompilerBug(
@@ -336,7 +336,7 @@ private constructor(
           }
         }
 
-        is IrBinding.Assisted -> {
+        is Assisted -> {
           // Example9_Factory_Impl.create(example9Provider);
           val factoryImpl = assistedFactoryTransformer.getOrGenerateImplClass(binding.type)
 
@@ -359,7 +359,7 @@ private constructor(
           )
         }
 
-        is IrBinding.Multibinding -> {
+        is Multibinding -> {
           multibindingExpressionGenerator.generateBindingCode(
             binding,
             contextualTypeKey,
@@ -368,7 +368,7 @@ private constructor(
           )
         }
 
-        is IrBinding.MembersInjected -> {
+        is MembersInjected -> {
           val injectedClass = referenceClass(binding.targetClassId)!!.owner
           val injectedType = injectedClass.defaultType
 
@@ -411,12 +411,12 @@ private constructor(
           }
         }
 
-        is IrBinding.Absent -> {
+        is Absent -> {
           // Should never happen, this should be checked before function/constructor injections.
           reportCompilerBug("Unable to generate code for unexpected Absent binding: $binding")
         }
 
-        is IrBinding.BoundInstance -> {
+        is BoundInstance -> {
           // BoundInstance represents either:
           // 1. Self-binding (token == null): graph provides itself via thisReceiver
           // 2. Parent/ancestor graph binding (token != null): accessed via property chain
@@ -440,8 +440,8 @@ private constructor(
               irGet(thisReceiver)
             }
           when (accessType) {
-            AccessType.INSTANCE -> instanceExpr
-            AccessType.PROVIDER -> {
+            INSTANCE -> instanceExpr
+            PROVIDER -> {
               instanceExpr.toTargetType(
                 actual = AccessType.INSTANCE,
                 contextualTypeKey = contextualTypeKey,
@@ -450,7 +450,7 @@ private constructor(
           }
         }
 
-        is IrBinding.GraphExtension -> {
+        is GraphExtension -> {
           // Generate graph extension instance
           val extensionImpl =
             graphExtensionGenerator.getOrBuildGraphExtensionImpl(
@@ -482,7 +482,7 @@ private constructor(
             .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
         }
 
-        is IrBinding.GraphExtensionFactory -> {
+        is GraphExtensionFactory -> {
           // Get the pre-generated extension implementation that should contain the factory
           val extensionImpl =
             graphExtensionGenerator.getOrBuildGraphExtensionImpl(
@@ -518,7 +518,7 @@ private constructor(
             .toTargetType(contextualTypeKey = contextualTypeKey, actual = AccessType.INSTANCE)
         }
 
-        is IrBinding.GraphDependency -> {
+        is GraphDependency -> {
           val ownerKey = binding.ownerKey
           // When propertyAccessToken is set, resolve it and check if the property returns a
           // Provider or scalar
