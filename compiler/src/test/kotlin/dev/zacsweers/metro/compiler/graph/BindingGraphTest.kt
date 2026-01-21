@@ -357,7 +357,9 @@ private fun StringTypeKey.toBinding(vararg dependencies: StringTypeKey): StringB
 private fun newStringBindingGraph(
   graph: String = "AppGraph",
   computeBinding:
-    (StringContextualTypeKey, ScatterMap<StringTypeKey, *>, StringBindingStack) -> Set<StringBinding> =
+    (StringContextualTypeKey, ScatterMap<StringTypeKey, *>, StringBindingStack) -> Set<
+        StringBinding
+      > =
     { _, _, _ ->
       emptySet()
     },

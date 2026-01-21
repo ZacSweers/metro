@@ -92,11 +92,17 @@ internal inline fun <K, V> ScatterMap<K, V>.getValue(key: K): V =
   get(key) ?: throw NoSuchElementException("Key $key is missing in the map.")
 
 @Suppress("NOTHING_TO_INLINE")
-internal inline fun <K, V> MutableScatterMap<K, MutableSet<V>>.getAndAdd(key: K, value: V): MutableSet<V> {
+internal inline fun <K, V> MutableScatterMap<K, MutableSet<V>>.getAndAdd(
+  key: K,
+  value: V,
+): MutableSet<V> {
   return getOrPut(key, ::mutableSetOf).also { it.add(value) }
 }
 
 @Suppress("NOTHING_TO_INLINE")
-internal inline fun <K, V> MutableScatterMap<K, MutableScatterSet<V>>.getAndAdd(key: K, value: V): MutableScatterSet<V> {
+internal inline fun <K, V> MutableScatterMap<K, MutableScatterSet<V>>.getAndAdd(
+  key: K,
+  value: V,
+): MutableScatterSet<V> {
   return getOrPut(key, ::MutableScatterSet).also { it.add(value) }
 }

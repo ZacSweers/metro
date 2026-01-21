@@ -58,9 +58,11 @@ internal open class MutableBindingGraph<
    * returns a set.
    */
   private val computeBindings:
-    (contextKey: ContextualTypeKey, currentBindings: ScatterMap<TypeKey, Binding>, stack: BindingStack) -> Set<
-        Binding
-      > =
+    (
+      contextKey: ContextualTypeKey,
+      currentBindings: ScatterMap<TypeKey, Binding>,
+      stack: BindingStack,
+    ) -> Set<Binding> =
     { _, _, _ ->
       emptySet()
     },
@@ -211,9 +213,7 @@ internal open class MutableBindingGraph<
     // are computed (i.e., constructor-injected types) as they are used. We do this upfront
     // so that the graph is fully populated before we start validating it and avoid mutating
     // it while we're validating it.
-    val bindingQueue = ArrayDeque<Binding>().apply {
-      bindings.forEachValue(::add)
-    }
+    val bindingQueue = ArrayDeque<Binding>().apply { bindings.forEachValue(::add) }
 
     traceNested("Populate bindings") {
       while (bindingQueue.isNotEmpty()) {
