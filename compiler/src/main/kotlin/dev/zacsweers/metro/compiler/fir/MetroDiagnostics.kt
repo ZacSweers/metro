@@ -103,6 +103,8 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   // DependencyGraph errors
   val DEPENDENCY_GRAPH_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val SUSPICIOUS_MEMBER_INJECT_FUNCTION by warning1<KtElement, String>(NAME_IDENTIFIER)
+  val UNUSED_GRAPH_INPUT_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val UNUSED_GRAPH_INPUT_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
 
   // Inject constructor errors
   val SUGGEST_CLASS_INJECTION by warning0<KtElement>(NAME_IDENTIFIER)

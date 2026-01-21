@@ -16,16 +16,16 @@ interface SomeIncludedType {
   val long: Long
 }
 
-@DependencyGraph(bindingContainers = [<!METRO_WARNING!>ManagedContainer::class<!>])
+@DependencyGraph(bindingContainers = [<!UNUSED_GRAPH_INPUT_WARNING!>ManagedContainer::class<!>])
 interface AppGraph {
   val string: String
 
   @DependencyGraph.Factory
   interface Factory {
     fun create(
-      <!METRO_WARNING!>@Provides int: Int<!>,
-      <!METRO_WARNING!>@Includes included: SomeIncludedType<!>,
-      <!METRO_WARNING!>@Includes includedContainer: IncludedContainer<!>,
+      <!UNUSED_GRAPH_INPUT_WARNING!>@Provides int: Int<!>,
+      <!UNUSED_GRAPH_INPUT_WARNING!>@Includes included: SomeIncludedType<!>,
+      <!UNUSED_GRAPH_INPUT_WARNING!>@Includes includedContainer: IncludedContainer<!>,
     ): AppGraph
   }
 }

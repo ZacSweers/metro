@@ -584,8 +584,8 @@ internal class DependencyGraphTransformer(
 
     val diagnosticFactory =
       when (severity) {
-        MetroOptions.DiagnosticSeverity.WARN -> MetroDiagnostics.METRO_WARNING
-        MetroOptions.DiagnosticSeverity.ERROR -> MetroDiagnostics.METRO_ERROR
+        MetroOptions.DiagnosticSeverity.WARN -> MetroDiagnostics.UNUSED_GRAPH_INPUT_WARNING
+        MetroOptions.DiagnosticSeverity.ERROR -> MetroDiagnostics.UNUSED_GRAPH_INPUT_ERROR
         // Already checked above, but for exhaustive when
         MetroOptions.DiagnosticSeverity.NONE -> return
       }
