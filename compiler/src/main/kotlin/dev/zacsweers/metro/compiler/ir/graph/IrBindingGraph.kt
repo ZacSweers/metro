@@ -60,10 +60,23 @@ internal class IrBindingGraph(
   metroContext: IrMetroContext,
   private val node: GraphNode.Local,
   private val newBindingStack: () -> IrBindingStack,
-  private val bindingLookup: BindingLookup,
+  // TODO improve this cleanup
+  bindingLookup: BindingLookup,
   private val contributionData: IrContributionData,
 ) : IrMetroContext by metroContext {
   private var hasErrors = false
+
+  private var _bindingLookup: BindingLookup? = bindingLookup
+    set(value) {
+      if (value == null) {
+        field?.clear()
+      }
+      field = value
+    }
+  private val bindingLookup get() = _bindingLookup ?: reportCompilerBug(
+    "Tried to access bindingLookup after it's been cleared!"
+  )
+
   private val realGraph =
     MutableBindingGraph(
       newBindingStack = newBindingStack,
@@ -75,7 +88,7 @@ internal class IrBindingGraph(
         }
       },
       computeBindings = { contextKey, currentBindings, stack ->
-        bindingLookup.lookup(contextKey, currentBindings, stack) { key, bindings ->
+        this.bindingLookup.lookup(contextKey, currentBindings, stack) { key, bindings ->
           reportDuplicateBindings(key, bindings, stack)
         }
       },
@@ -84,9 +97,9 @@ internal class IrBindingGraph(
         onError(message, stack)
         exitProcessing()
       },
-      missingBindingHints = { key, stack ->
+      missingBindingHints = { key ->
         MissingBindingHints(
-          missingBindingHints(key, stack),
+          missingBindingHints(key),
           findSimilarBindings(key).mapValues { it.value.render(short = true) },
         )
       },
@@ -229,6 +242,8 @@ internal class IrBindingGraph(
     val reachableKeys = topologyResult.reachableKeys
 
     if (hasErrors) {
+      // Clear out the binding lookup now that we're done
+      _bindingLookup = null
       return BindingGraphResult.ERROR
     }
 
@@ -275,6 +290,10 @@ internal class IrBindingGraph(
           null
         }
       }
+
+    // Clear out the binding lookup now that we're done
+    _bindingLookup = null
+
     return BindingGraphResult(
       sortedKeys = sortedKeys,
       deferredTypes = deferredTypes,
@@ -394,7 +413,7 @@ internal class IrBindingGraph(
     }
   }
 
-  private fun missingBindingHints(key: IrTypeKey, stack: IrBindingStack): List<String> {
+  private fun missingBindingHints(key: IrTypeKey): List<String> {
     return buildList {
       if (key.type.hasErrorTypes()) {
         add(

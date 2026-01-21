@@ -136,6 +136,19 @@ internal class BindingLookup(
     bindingsCache.remove(typeKey)
   }
 
+  // Nukes all the caches and declarations here
+  fun clear() {
+    bindingsCache.clear()
+    classBindingsCache.clear()
+    parentGraphDepCache.clear()
+    lazyParentKeys.clear()
+    multibindingsCache.clear()
+    multibindingsByBindingId.clear()
+    multibindsDeclarations.clear()
+    optionalBindingDeclarations.clear()
+    optionalBindingsCache.clear()
+  }
+
   fun addLazyParentKey(typeKey: IrTypeKey, bindingFactory: () -> IrBinding) {
     lazyParentKeys[typeKey] = memoize(bindingFactory)
   }

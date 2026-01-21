@@ -64,8 +64,8 @@ internal open class MutableBindingGraph<
   private val onError: (String, BindingStack) -> Unit = { message, _ -> error(message) },
   private val onHardError: (String, BindingStack) -> Nothing = { message, _ -> error(message) },
   private val missingBindingHints:
-    (key: TypeKey, stack: BindingStack) -> MissingBindingHints<Type, TypeKey> =
-    { _, _ ->
+    (key: TypeKey) -> MissingBindingHints<Type, TypeKey> =
+    {
       MissingBindingHints()
     },
 ) : BindingGraph<Type, TypeKey, ContextualTypeKey, Binding, BindingStackEntry, BindingStack> {
@@ -447,7 +447,7 @@ internal open class MutableBindingGraph<
         appendLine(typeKey.render(short = false))
         appendLine()
         appendBindingStack(bindingStack, short = false)
-        val hints = missingBindingHints(typeKey, bindingStack)
+        val hints = missingBindingHints(typeKey)
         val messages = hints.messages
         val similarBindings = hints.similarBindings
 
