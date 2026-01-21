@@ -261,12 +261,12 @@ internal class IrBindingGraph(
 
     // Don't include parent binding keys when reporting unused, as that ends up being a huge
     // superset and sorta irrelevant to this
-    val allBindings = buildSet {
-      bindingsSnapshot().forEachKey(::add)
-      addAll(bindingLookup.getAvailableKeys())
-      minus(bindingLookup.parentKeys)
-    }
-    val unused = allBindings - reachableKeys
+    //    val allBindings = buildSet {
+    //      bindingsSnapshot().forEachKey(::add)
+    //      addAll(bindingLookup.getAvailableKeys())
+    //      minus(bindingLookup.parentKeys)
+    //    }
+    val unused = emptySet<IrTypeKey>()
     if (unused.isNotEmpty()) {
       writeDiagnostic("keys-unused-${traceScope.tracer.diagnosticTag}.txt") {
         unused.sorted().joinToString(separator = "\n")
