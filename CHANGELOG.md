@@ -10,6 +10,7 @@ Changelog
 
 ### Fixes
 
+- **[IR/Native]** Fix parameter type equality check in native compilations in constructor-injected class factories.
 - **[IR/Compat]** Fix compatibiltiy for source-less diagnostics in Kotlin `2.3.20-Beta1`.
 
 0.10.0
