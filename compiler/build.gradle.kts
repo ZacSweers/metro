@@ -21,9 +21,9 @@ kotlin {
       "-Xreturn-value-checker=full",
       "-Xcontext-sensitive-resolution",
       "-Xdata-flow-based-exhaustiveness",
-      "-Xallow-contracts-on-more-functions",
-      "-Xallow-condition-implies-returns-contracts",
-      "-Xallow-holdsin-contract",
+      //  "-Xallow-contracts-on-more-functions",
+      //  "-Xallow-condition-implies-returns-contracts",
+      //  "-Xallow-holdsin-contract",
       // TODO next minor release
       //  "-Xwhen-expressions=indy",
       // TODO Kotlin 2.3.0

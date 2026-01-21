@@ -86,7 +86,7 @@ internal inline fun <T> T.letIf(condition: Boolean, block: (T) -> T): T {
   @Suppress("RETURN_VALUE_NOT_USED")
   contract {
     callsInPlace(block, InvocationKind.AT_MOST_ONCE)
-    condition holdsIn block
+    //    condition holdsIn block
   }
   return if (condition) block(this) else this
 }
@@ -95,7 +95,7 @@ internal inline fun <T> T.runIf(condition: Boolean, block: T.() -> T): T {
   @Suppress("RETURN_VALUE_NOT_USED")
   contract {
     callsInPlace(block, InvocationKind.AT_MOST_ONCE)
-    condition holdsIn block
+    //    condition holdsIn block
   }
   return if (condition) block(this) else this
 }
@@ -105,7 +105,7 @@ internal inline fun <T> T.alsoIf(condition: Boolean, block: (T) -> Unit): T {
   contract {
     callsInPlace(block, InvocationKind.AT_MOST_ONCE)
     // Declares that the condition is assumed to be true inside the lambda
-    condition holdsIn block
+    //    condition holdsIn block
   }
   if (condition) block(this)
   return this
@@ -116,7 +116,7 @@ internal inline fun <T> T.applyIf(condition: Boolean, block: T.() -> Unit): T {
   contract {
     callsInPlace(block, InvocationKind.AT_MOST_ONCE)
     // Declares that the condition is assumed to be true inside the lambda
-    condition holdsIn block
+    //    condition holdsIn block
   }
   if (condition) block(this)
   return this
