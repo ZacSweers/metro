@@ -14,7 +14,15 @@ plugins {
 
 kotlin {
   compilerOptions {
-    freeCompilerArgs.add("-Xcontext-parameters")
+    freeCompilerArgs.addAll(
+      "-Xcontext-parameters",
+      "-Xreturn-value-checker=full",
+      "-Xcontext-sensitive-resolution",
+      // "-Xallow-contracts-on-more-functions",
+      // "-Xallow-condition-implies-returns-contracts",
+      // "-Xallow-holdsin-contract",
+      // "-Xexplicit-backing-fields",
+    )
     optIn.addAll(
       "kotlin.contracts.ExperimentalContracts",
       "org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi",
