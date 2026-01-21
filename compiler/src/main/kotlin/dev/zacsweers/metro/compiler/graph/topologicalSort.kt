@@ -16,13 +16,17 @@
 
 package dev.zacsweers.metro.compiler.graph
 
+import androidx.collection.MutableScatterMap
+import androidx.collection.ScatterMap
 import dev.zacsweers.metro.compiler.filterToSet
 import dev.zacsweers.metro.compiler.getAndAdd
+import dev.zacsweers.metro.compiler.getValue
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import java.util.PriorityQueue
 import java.util.SortedMap
 import java.util.SortedSet
+import org.jetbrains.annotations.TestOnly
 
 /**
  * Returns a new list where each element is preceded by its results in [sourceToTarget]. The first
@@ -40,6 +44,7 @@ import java.util.SortedSet
  *   https://github.com/cashapp/zipline/blob/30ca7c9d782758737e9d20e8d9505930178d1992/zipline/src/hostMain/kotlin/app/cash/zipline/internal/topologicalSort.kt">Adapted
  *   from Zipline's implementation</a>
  */
+@TestOnly
 context(traceScope: TraceScope)
 internal fun <T : Comparable<T>> Iterable<T>.topologicalSort(
   sourceToTarget: (T) -> Iterable<T>,
@@ -61,7 +66,14 @@ internal fun <T : Comparable<T>> Iterable<T>.topologicalSort(
     throw IllegalArgumentException("No element for $missing found for $source")
   },
 ): List<T> {
-  val fullAdjacency = buildFullAdjacency(sourceToTarget, onMissing)
+  // TODO this is really just here for tests
+  val fakeMap =
+    MutableScatterMap<T, Any>().apply {
+      for (key in this@topologicalSort) {
+        put(key, Any())
+      }
+    }
+  val fullAdjacency = fakeMap.buildFullAdjacency(sourceToTarget, onMissing)
   val (sortedKeys, _) = topologicalSort(fullAdjacency, isDeferrable, onCycle)
   return sortedKeys
 }
@@ -75,22 +87,24 @@ internal fun <T> List<T>.isTopologicallySorted(sourceToTarget: (T) -> Iterable<T
   return true
 }
 
-internal fun <T : Comparable<T>> Iterable<T>.buildFullAdjacency(
+@JvmName("buildFullAdjacencyReceiver")
+internal fun <T : Comparable<T>> ScatterMap<T, *>.buildFullAdjacency(
   sourceToTarget: (T) -> Iterable<T>,
   onMissing: (source: T, missing: T) -> Unit,
 ): SortedMap<T, SortedSet<T>> {
-  val set = toSet()
+  val map = this
+
   /**
    * Sort our map keys and list values here for better performance later (avoiding needing to
    * defensively sort in [computeStronglyConnectedComponents]).
    */
   val adjacency = sortedMapOf<T, SortedSet<T>>()
 
-  for (key in set) {
+  forEachKey { key ->
     val dependencies = adjacency.getOrPut(key, ::sortedSetOf)
 
     for (targetKey in sourceToTarget(key)) {
-      if (targetKey !in set) {
+      if (targetKey !in map) {
         // may throw, or silently allow
         onMissing(key, targetKey)
         // If we got here, this missing target is allowable (i.e. a default value). Just ignore it
@@ -107,12 +121,12 @@ internal fun <T : Comparable<T>> Iterable<T>.buildFullAdjacency(
  * * Keeps all edges (strict _and_ deferrable).
  * * Prunes edges whose target isn't in [bindings], delegating the decision to [onMissing].
  */
-internal fun <TypeKey : Comparable<TypeKey>, Binding> buildFullAdjacency(
-  bindings: Map<TypeKey, Binding>,
+internal fun <TypeKey : Comparable<TypeKey>, Binding : Any> buildFullAdjacency(
+  bindings: ScatterMap<TypeKey, Binding>,
   dependenciesOf: (Binding) -> Iterable<TypeKey>,
   onMissing: (source: TypeKey, missing: TypeKey) -> Unit,
 ): SortedMap<TypeKey, SortedSet<TypeKey>> {
-  return bindings.keys.buildFullAdjacency(
+  return bindings.buildFullAdjacency(
     sourceToTarget = { key -> dependenciesOf(bindings.getValue(key)) },
     onMissing = onMissing,
   )

@@ -681,7 +681,7 @@ internal class BindingGraphGenerator(
         val extraBindings =
           bindingLookup.lookup(
             IrContextualTypeKey.from(param),
-            graph.bindingsSnapshot().keys,
+            graph.bindingsSnapshot(),
             bindingStack,
           ) { _, _ ->
             // Duplicates will be reported later during graph seal

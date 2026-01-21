@@ -15,6 +15,10 @@
  */
 package dev.zacsweers.metro.compiler
 
+import androidx.collection.MutableScatterMap
+import androidx.collection.MutableScatterSet
+import androidx.collection.ScatterMap
+
 internal fun <T> Iterable<T>.filterToSet(predicate: (T) -> Boolean): Set<T> {
   return filterTo(mutableSetOf(), predicate)
 }
@@ -81,4 +85,18 @@ internal fun <T> List<T>.allElementsAreEqual(): Boolean {
     if (get(i) != firstElement) return false
   }
   return true
+}
+
+@Suppress("NOTHING_TO_INLINE")
+internal inline fun <K, V> ScatterMap<K, V>.getValue(key: K): V =
+  get(key) ?: throw NoSuchElementException("Key $key is missing in the map.")
+
+@Suppress("NOTHING_TO_INLINE")
+internal inline fun <K, V> MutableScatterMap<K, MutableSet<V>>.getAndAdd(key: K, value: V): MutableSet<V> {
+  return getOrPut(key, ::mutableSetOf).also { it.add(value) }
+}
+
+@Suppress("NOTHING_TO_INLINE")
+internal inline fun <K, V> MutableScatterMap<K, MutableScatterSet<V>>.getAndAdd(key: K, value: V): MutableScatterSet<V> {
+  return getOrPut(key, ::MutableScatterSet).also { it.add(value) }
 }

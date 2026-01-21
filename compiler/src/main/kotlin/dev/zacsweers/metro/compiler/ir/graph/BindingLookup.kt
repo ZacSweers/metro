@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
+import androidx.collection.ScatterMap
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
@@ -466,7 +467,7 @@ internal class BindingLookup(
    */
   internal fun lookup(
     contextKey: IrContextualTypeKey,
-    currentBindings: Set<IrTypeKey>,
+    currentBindings: ScatterMap<IrTypeKey, IrBinding>,
     stack: IrBindingStack,
     onDuplicateBindings: (IrTypeKey, List<IrBinding>) -> Unit,
   ): Set<IrBinding> =
@@ -552,7 +553,7 @@ internal class BindingLookup(
   context(context: IrMetroContext)
   private fun lookupClassBinding(
     contextKey: IrContextualTypeKey,
-    currentBindings: Set<IrTypeKey>,
+    currentBindings: ScatterMap<IrTypeKey, IrBinding>,
     stack: IrBindingStack,
   ): Set<IrBinding> {
     return classBindingsCache.getOrPut(contextKey) {

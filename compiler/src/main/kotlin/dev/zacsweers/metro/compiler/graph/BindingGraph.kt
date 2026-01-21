@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
+import androidx.collection.MutableScatterMap
+import androidx.collection.ScatterMap
 import dev.zacsweers.metro.compiler.allElementsAreEqual
+import dev.zacsweers.metro.compiler.getValue
 import dev.zacsweers.metro.compiler.ir.graph.appendBindingStack
 import dev.zacsweers.metro.compiler.ir.graph.appendBindingStackEntries
 import dev.zacsweers.metro.compiler.ir.graph.withEntry
@@ -23,7 +26,7 @@ internal interface BindingGraph<
   BindingStackEntry : BaseBindingStack.BaseEntry<Type, TypeKey, ContextualTypeKey>,
   BindingStack : BaseBindingStack<*, Type, TypeKey, BindingStackEntry, BindingStack>,
 > {
-  val bindings: Map<TypeKey, Binding>
+  val bindings: ScatterMap<TypeKey, Binding>
 
   operator fun get(key: TypeKey): Binding?
 
@@ -55,7 +58,7 @@ internal open class MutableBindingGraph<
    * returns a set.
    */
   private val computeBindings:
-    (contextKey: ContextualTypeKey, currentBindings: Set<TypeKey>, stack: BindingStack) -> Set<
+    (contextKey: ContextualTypeKey, currentBindings: ScatterMap<TypeKey, Binding>, stack: BindingStack) -> Set<
         Binding
       > =
     { _, _, _ ->
@@ -68,7 +71,7 @@ internal open class MutableBindingGraph<
   },
 ) : BindingGraph<Type, TypeKey, ContextualTypeKey, Binding, BindingStackEntry, BindingStack> {
   // Populated by initial graph setup and later seal()
-  override val bindings = mutableMapOf<TypeKey, Binding>()
+  override val bindings = MutableScatterMap<TypeKey, Binding>()
   private val bindingIndices = mutableMapOf<TypeKey, Int>()
   private val reportedMissingKeys = mutableSetOf<TypeKey>()
 
@@ -108,7 +111,7 @@ internal open class MutableBindingGraph<
     onSortedCycle: (List<TypeKey>) -> Unit = {},
     validateBindings:
       (
-        bindings: Map<TypeKey, Binding>,
+        bindings: ScatterMap<TypeKey, Binding>,
         stack: BindingStack,
         roots: Map<ContextualTypeKey, BindingStackEntry>,
         adjacency: Map<TypeKey, Set<TypeKey>>,
@@ -193,7 +196,7 @@ internal open class MutableBindingGraph<
     val missingBindings = mutableMapOf<TypeKey, BindingStack>()
     for ((contextKey, entry) in roots) {
       if (contextKey.typeKey !in bindings) {
-        val bindings = computeBindings(contextKey, bindings.keys, stack)
+        val bindings = computeBindings(contextKey, bindings, stack)
         if (bindings.isNotEmpty()) {
           for (binding in bindings) {
             tryPut(binding, stack, binding.typeKey)
@@ -208,7 +211,9 @@ internal open class MutableBindingGraph<
     // are computed (i.e., constructor-injected types) as they are used. We do this upfront
     // so that the graph is fully populated before we start validating it and avoid mutating
     // it while we're validating it.
-    val bindingQueue = ArrayDeque<Binding>().also { it.addAll(bindings.values) }
+    val bindingQueue = ArrayDeque<Binding>().apply {
+      bindings.forEachValue(::add)
+    }
 
     traceNested("Populate bindings") {
       while (bindingQueue.isNotEmpty()) {
@@ -222,7 +227,7 @@ internal open class MutableBindingGraph<
             val typeKey = depKey.typeKey
             if (typeKey !in bindings) {
               // If the binding isn't present, we'll report it later
-              val bindings = computeBindings(depKey, bindings.keys, stack)
+              val bindings = computeBindings(depKey, bindings, stack)
               if (bindings.isNotEmpty()) {
                 for (binding in bindings) {
                   bindingQueue.addLast(binding)

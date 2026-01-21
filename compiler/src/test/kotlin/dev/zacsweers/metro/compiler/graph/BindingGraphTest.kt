@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
+import androidx.collection.ScatterMap
 import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.Tracer
@@ -356,7 +357,7 @@ private fun StringTypeKey.toBinding(vararg dependencies: StringTypeKey): StringB
 private fun newStringBindingGraph(
   graph: String = "AppGraph",
   computeBinding:
-    (StringContextualTypeKey, Set<StringTypeKey>, StringBindingStack) -> Set<StringBinding> =
+    (StringContextualTypeKey, ScatterMap<StringTypeKey, *>, StringBindingStack) -> Set<StringBinding> =
     { _, _, _ ->
       emptySet()
     },
