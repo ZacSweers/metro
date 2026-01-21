@@ -307,6 +307,7 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
               extension.enableGraphImplClassAsReturnType.orElse(false),
             )
           )
+          @Suppress("DEPRECATION")
           add(lazyOption("transform-providers-to-private", extension.transformProvidersToPrivate))
           add(lazyOption("shrink-unused-bindings", extension.shrinkUnusedBindings))
           add(lazyOption("chunk-field-inits", extension.chunkFieldInits))

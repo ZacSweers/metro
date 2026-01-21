@@ -100,7 +100,7 @@ import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.platform.konan.isNative
 
-internal class DependencyGraphNodeCache(
+internal class GraphNodes(
   metroContext: IrMetroContext,
   private val bindingContainerTransformer: BindingContainerTransformer,
   private val bindingContainerResolver: IrBindingContainerResolver,
@@ -108,38 +108,33 @@ internal class DependencyGraphNodeCache(
 ) : IrMetroContext by metroContext {
 
   // Keyed by the source declaration
-  private val dependencyGraphNodesByClass = mutableMapOf<ClassId, DependencyGraphNode>()
+  private val graphNodesByClass = mutableMapOf<ClassId, GraphNode>()
 
-  operator fun get(classId: ClassId) = dependencyGraphNodesByClass[classId]
+  operator fun get(classId: ClassId) = graphNodesByClass[classId]
 
-  fun requirePreviouslyComputed(classId: ClassId) = dependencyGraphNodesByClass.getValue(classId)
+  fun requirePreviouslyComputed(classId: ClassId) = graphNodesByClass.getValue(classId)
 
   context(traceScope: TraceScope)
-  fun getOrComputeDependencyGraphNode(
+  fun getOrComputeNode(
     graphDeclaration: IrClass,
     bindingStack: IrBindingStack,
     metroGraph: IrClass? = null,
     dependencyGraphAnno: IrConstructorCall? = null,
-  ): DependencyGraphNode {
+  ): GraphNode {
     if (!graphDeclaration.origin.isSyntheticGeneratedGraph) {
       val sourceGraph = graphDeclaration.sourceGraphIfMetroGraph
       if (sourceGraph != graphDeclaration) {
-        return getOrComputeDependencyGraphNode(
-          sourceGraph,
-          bindingStack,
-          metroGraph,
-          dependencyGraphAnno,
-        )
+        return getOrComputeNode(sourceGraph, bindingStack, metroGraph, dependencyGraphAnno)
       }
     }
 
     val graphClassId = graphDeclaration.classIdOrFail
 
-    return dependencyGraphNodesByClass.getOrPut(graphClassId) {
-      traceNested("Build DependencyGraphNode") {
+    return graphNodesByClass.getOrPut(graphClassId) {
+      traceNested("Build GraphNode") {
         Builder(
             this,
-            this@DependencyGraphNodeCache,
+            this@GraphNodes,
             bindingContainerResolver,
             graphDeclaration,
             bindingStack,
@@ -153,7 +148,7 @@ internal class DependencyGraphNodeCache(
 
   private class Builder(
     traceScope: TraceScope,
-    private val nodeCache: DependencyGraphNodeCache,
+    private val nodeCache: GraphNodes,
     private val bindingContainerResolver: IrBindingContainerResolver,
     private val graphDeclaration: IrClass,
     private val bindingStack: IrBindingStack,
@@ -170,10 +165,10 @@ internal class DependencyGraphNodeCache(
     private val optionalKeys = mutableMapOf<IrTypeKey, MutableSet<BindsOptionalOfCallable>>()
     private val scopes = mutableSetOf<IrAnnotation>()
     private val providerFactories = mutableMapOf<IrTypeKey, MutableList<ProviderFactory>>()
-    private val extendedGraphNodes = mutableMapOf<IrTypeKey, DependencyGraphNode>()
+    private var parentGraph: GraphNode? = null
     private val graphExtensions = mutableMapOf<IrTypeKey, MutableList<GraphExtensionAccessor>>()
     private val injectors = mutableListOf<InjectorFunction>()
-    private val includedGraphNodes = mutableMapOf<IrTypeKey, DependencyGraphNode>()
+    private val includedGraphNodes = mutableMapOf<IrTypeKey, GraphNode>()
     private val graphTypeKey = IrTypeKey(graphDeclaration.typeWith())
     private val sourceGraphTypeKey = IrTypeKey(graphDeclaration.sourceGraphIfMetroGraph.typeWith())
     private val graphContextKey = IrContextualTypeKey.create(graphTypeKey)
@@ -232,7 +227,7 @@ internal class DependencyGraphNodeCache(
       }
     }
 
-    private fun buildCreator(): DependencyGraphNode.Creator? {
+    private fun buildCreator(): GraphNode.Creator? {
       var bindingContainerFields = BitField()
       fun populateBindingContainerFields(parameters: Parameters) {
         for ((i, parameter) in parameters.regularParameters.withIndex()) {
@@ -254,7 +249,7 @@ internal class DependencyGraphNodeCache(
           val ctor = graphDeclaration.primaryConstructor!!
           val ctorParams = ctor.parameters()
           populateBindingContainerFields(ctorParams)
-          DependencyGraphNode.Creator.Constructor(
+          GraphNode.Creator.Constructor(
             graphDeclaration,
             graphDeclaration.primaryConstructor!!,
             ctorParams,
@@ -272,12 +267,7 @@ internal class DependencyGraphNodeCache(
               val createFunction = factory.singleAbstractFunction()
               val parameters = createFunction.parameters()
               populateBindingContainerFields(parameters)
-              DependencyGraphNode.Creator.Factory(
-                factory,
-                createFunction,
-                parameters,
-                bindingContainerFields,
-              )
+              GraphNode.Creator.Factory(factory, createFunction, parameters, bindingContainerFields)
             }
         }
 
@@ -336,7 +326,7 @@ internal class DependencyGraphNodeCache(
                 } else {
                   sourceGraph
                 }
-              nodeCache.getOrComputeDependencyGraphNode(nodeKey, bindingStack)
+              nodeCache.getOrComputeNode(nodeKey, bindingStack)
             }
 
           // Still tie to the parameter key because that's what gets the instance binding
@@ -418,7 +408,7 @@ internal class DependencyGraphNodeCache(
       hasErrors = true
     }
 
-    fun build(): DependencyGraphNode {
+    fun build(): GraphNode {
       if (graphDeclaration.isExternalParent || !isGraph) {
         return buildExternalGraphOrBindingContainer()
       }
@@ -846,9 +836,9 @@ internal class DependencyGraphNodeCache(
 
       val creator = buildCreator()
 
-      // Add extended node if it's a generated graph extension
+      // Add parent node if it's a generated graph extension
       if (graphDeclaration.origin == Origins.GeneratedGraphExtension) {
-        val parentGraph = graphDeclaration.parentAsClass
+        val parentGraphClass = graphDeclaration.parentAsClass
         val graphTypeKey = graphDeclaration.generatedGraphExtensionData!!.typeKey
         checkGraphSelfCycle(graphDeclaration, graphTypeKey, bindingStack)
 
@@ -857,17 +847,19 @@ internal class DependencyGraphNodeCache(
           bindingStack.withEntry(
             IrBindingStack.Entry.generatedExtensionAt(
               IrContextualTypeKey(graphTypeKey),
-              parentGraph.kotlinFqName.asString(),
+              parentGraphClass.kotlinFqName.asString(),
             )
           ) {
-            nodeCache.getOrComputeDependencyGraphNode(parentGraph, bindingStack)
+            nodeCache.getOrComputeNode(parentGraphClass, bindingStack)
           }
-        extendedGraphNodes[node.typeKey] = node
+        parentGraph = node
 
         // Propagate dynamic type keys from parent graph to this graph extension
         // This ensures dynamic bindings from createDynamicGraph are available to child extensions
-        for ((key, callables) in node.dynamicTypeKeys) {
-          dynamicTypeKeys.getOrInit(key).addAll(callables)
+        if (node is GraphNode.Local) {
+          for ((key, callables) in node.dynamicTypeKeys) {
+            dynamicTypeKeys.getOrInit(key).addAll(callables)
+          }
         }
       }
 
@@ -1005,8 +997,8 @@ internal class DependencyGraphNodeCache(
         allMergedContainers.joinToString("\n") { it.ir.classId.toString() }
       }
 
-      val dependencyGraphNode =
-        DependencyGraphNode(
+      val graphNode =
+        GraphNode.Local(
           sourceGraph = graphDeclaration,
           supertypes = supertypes.toList(),
           includedGraphNodes = includedGraphNodes,
@@ -1020,9 +1012,8 @@ internal class DependencyGraphNodeCache(
           providerFactories = providerFactories,
           accessors = accessors,
           injectors = injectors,
-          isExternal = false,
           creator = creator,
-          extendedGraphNodes = extendedGraphNodes,
+          parentGraph = parentGraph,
           bindingContainers = managedBindingContainers,
           annotationDeclaredBindingContainers = annotationDeclaredBindingContainers,
           dynamicTypeKeys = dynamicTypeKeys,
@@ -1031,7 +1022,7 @@ internal class DependencyGraphNodeCache(
 
       // Check after creating a node for access to recursive allDependencies
       val overlapErrors = mutableSetOf<String>()
-      for (depNode in dependencyGraphNode.allExtendedNodes.values) {
+      for (depNode in graphNode.allParentGraphs.values) {
         // If any intersect, report an error to onError with the intersecting types (including
         // which parent it is coming from)
         val overlaps = scopes.intersect(depNode.scopes)
@@ -1048,7 +1039,7 @@ internal class DependencyGraphNodeCache(
           MetroDiagnostics.METRO_ERROR,
           buildString {
             appendLine(
-              "Graph extension '${dependencyGraphNode.sourceGraph.sourceGraphIfMetroGraph.kotlinFqName}' has overlapping scope annotations with ancestor graphs':"
+              "Graph extension '${graphNode.sourceGraph.sourceGraphIfMetroGraph.kotlinFqName}' has overlapping scope annotations with ancestor graphs':"
             )
             for (overlap in overlapErrors) {
               appendLine(overlap)
@@ -1063,12 +1054,12 @@ internal class DependencyGraphNodeCache(
         exitProcessing()
       }
 
-      return dependencyGraphNode
+      return graphNode
     }
 
-    private fun buildExternalGraphOrBindingContainer(): DependencyGraphNode {
+    private fun buildExternalGraphOrBindingContainer(): GraphNode {
       // Read metadata if this is an extendable graph
-      val includedGraphNodes = mutableMapOf<IrTypeKey, DependencyGraphNode>()
+      val includedGraphNodes = mutableMapOf<IrTypeKey, GraphNode>()
       val accessorsToCheck =
         if (isGraph) {
           // It's just an external graph, just read the declared types from it
@@ -1140,9 +1131,8 @@ internal class DependencyGraphNodeCache(
         }
       }
 
-      // TODO split DependencyGraphNode into sealed interface with external/internal variants?
       val dependentNode =
-        DependencyGraphNode(
+        GraphNode.External(
           sourceGraph = graphDeclaration,
           supertypes = supertypes.toList(),
           includedGraphNodes = includedGraphNodes,
@@ -1153,17 +1143,7 @@ internal class DependencyGraphNodeCache(
           bindsCallables = bindsCallables,
           multibindsCallables = multibindsCallables,
           optionalKeys = optionalKeys,
-          isExternal = true,
-          proto = null,
-          extendedGraphNodes = extendedGraphNodes,
-          // Following aren't necessary to see in external graphs
-          graphExtensions = emptyMap(),
-          injectors = emptyList(),
-          creator = null,
-          bindingContainers = emptySet(),
-          annotationDeclaredBindingContainers = emptyMap(),
-          bindsFunctions = emptyList(),
-          dynamicTypeKeys = emptyMap(),
+          parentGraph = parentGraph,
         )
 
       return dependentNode

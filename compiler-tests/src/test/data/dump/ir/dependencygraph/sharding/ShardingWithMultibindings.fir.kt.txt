@@ -266,7 +266,7 @@ object Module1 {
   @Provides
   @IntoSet
   @SingleIn(scope = AppScope::class)
-  private fun provideService1(s1: Service1): Any {
+  fun provideService1(s1: Service1): Any {
     return s1
   }
 
@@ -323,7 +323,7 @@ object Module2 {
   @Provides
   @IntoSet
   @SingleIn(scope = AppScope::class)
-  private fun provideService2(s2: Service2): Any {
+  fun provideService2(s2: Service2): Any {
     return s2
   }
 

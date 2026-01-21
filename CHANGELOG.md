@@ -4,6 +4,15 @@ Changelog
 **Unreleased**
 --------------
 
+### Enhancements
+
+- **[IR]** Add a dedicated `UNUSED_GRAPH_INPUT` diagnostic for `unusedGraphInputsSeverity` option.
+
+0.10.0
+------
+
+_2026-01-19_
+
 ### Behavior Changes
 
 - Enable `contributesAsInject` by default. See its docs for more details, but in short this means that `@Inject` is now optional on `@ContributesBinding`, `@ContributesIntoSet`, and `@ContributesIntoMap` annotated declarations.
@@ -16,6 +25,8 @@ Changelog
     - By extension, this resolves Metro's most subscribed issue ([#460](https://github.com/ZacSweers/metro/issues/460)) by enabling cross-module contribution/aggregation features in non-jvm/android compilations 🎉.
     - Note that there is a separate known kotlinc issue around qualifier annotations that affects native builds and is targeted for `2.3.20-Beta2`. Follow [#1556](https://github.com/ZacSweers/metro/issues/1556) for updates.
 - **[Gradle / FIR]** Enable top-level function injection by default on Kotlin `2.3.20-Beta1` or later.
+- **[Gradle / FIR]** Disable automatic transformation of providers to private + deprecate the option, as this results in less efficient code generation and somewhat unclear error messages. It's recommended to write a lint check in another static analysis tool if you want this, for example [this implementation from slack-lints](https://github.com/slackhq/slack-lints/blob/main/slack-lint-checks/src/main/java/slack/lint/DoNotCallProvidersDetector.kt).
+  - Metro _may_ add an option for the inverse in the future. i.e., allow writing a private provider in source but then transform it to `internal` at compile-time.
 
 ### New
 
@@ -23,6 +34,7 @@ Changelog
 - **[FIR/IR]** Report diagnostics for unmatched exclusions and replacements during contribution merging. These are written to `reportsDestination` if enabled, and should be used for debugging only.
 - **[IR / Gradle]** Add new experimental `enableSwitchingProviders` option. If enabled, this changes code generation to use "switching providers" to defer classloading until a giving binding is actually requested.
   - This is analogous to Dagger's `fastInit` feature.
+  - You should really only use this if you've benchmarked it and measured a meaningful difference, as it comes with the same tradeoffs (always holding a graph instance ref, etc.)
 - **[IR / Gradle]** Add an `unusedGraphInputsSeverity` option to report diagnostics for unused _direct_ graph inputs. This includes any `@Provides` or `@Includes` parameters to graph factories or managed binding containers declared via the `@DependencyGraph.includes` annotation.
     - This is in addition to the existing `reportsDestination`-only diagnostic for unused bindings, but limited to bindings that we _know_ are not reused elsewhere and can thus safely soft-enforce at compile-time.
     - This matches a similar feature in Dagger.
@@ -57,6 +69,7 @@ Changelog
 - **[IR]** When reporting graph failures in dynamic graphs, report the original call location in error reporting.
 - **[IR]** Optimize equals/hashCode in type keys. Benchmarks show a ~2% macro improvement.
 - **[IR/Sharding]** Rebalance shard groups after computing shard bindings.
+- **[Gradle]** Generalize support for sourcing default values from gradle/system properties + document.
 
 ### Fixes
 
@@ -67,6 +80,7 @@ Changelog
 - **[IR]** Don't cache creator-less scoped graph extension impls in their parent graphs. This was initially implemented this way due to a misunderstanding to how Dagger generated subcomponents! Getters for graph extensions now always return new instances.
 - **[IR]** Check for `open` or `final` modality on classes first before searching for injectable constructors.
 - **[IR]** Mark all supertypes' member injections as dependencies of subtypes' member injections. That's a wordier way of saying that member-injecting a class `Dog` that extends `Animal` also depends on member-injected dependencies of `Animal`.
+- **[IR]** Don't process companion objects of graphs or binding containers independently of their parent classes.
 - **[IR/Native]** Work around `Abstract function '___' is not implemented in non-abstract class 'Impl'` info warnings from native compilations.
 - **[IR/Dynamic Graphs]** Always check if a key is replaced by a dynamic type key when building binding graphs. Previously, some bindings would be added even if a dynamic key was available, resulting in unexpected `DuplicateBinding` errors.
 - **[IC]** Record lookups of contributed classes when looking up hints from IR. Previously Metro only recorded a lookup of the generated hint function, which appears to not be enough for Kotlin 2.3.20.
@@ -79,9 +93,18 @@ Changelog
 - **[IR]** Do not report similar bindings when a missing binding has type `kotlin.Any`. In practice this reported all available bindings.
 - **[interop-dagger]** Update to Dagger `2.58`.
 - **[Docs]** Publish kdocs for guice/jakarta/javax interop and metrox artifacts to doc site.
+- **[Docs]** Expand IDE support docs.
+- **[Docs]** Update `adoption.md` docs about subcomponents interop.
+- Test Kotlin `2.3.10-RC`.
 - Test Kotlin `2.3.20-Beta1`.
 
 ### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@neworld](https://github.com/neworld)
+- [@JoelWilcox](https://github.com/JoelWilcox)
+- [@C2H6O](https://github.com/C2H6O)
 
 0.9.4
 -----

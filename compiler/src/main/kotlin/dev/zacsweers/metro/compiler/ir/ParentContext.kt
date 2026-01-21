@@ -4,7 +4,7 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyCollector
-import dev.zacsweers.metro.compiler.ir.graph.DependencyGraphNode
+import dev.zacsweers.metro.compiler.ir.graph.GraphNode
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
@@ -92,7 +92,7 @@ internal class ParentContext(private val metroContext: IrMetroContext) {
   }
 
   private data class Level(
-    val node: DependencyGraphNode,
+    val node: GraphNode,
     val deltaProvided: MutableSet<IrTypeKey> = mutableSetOf(),
     /** Tracks which contextual keys were used (preserving instance vs provider distinction) */
     val usedContextKeys: MutableSet<IrContextualTypeKey> = mutableSetOf(),
@@ -201,7 +201,7 @@ internal class ParentContext(private val metroContext: IrMetroContext) {
     }
   }
 
-  fun pushParentGraph(node: DependencyGraphNode) {
+  fun pushParentGraph(node: GraphNode) {
     val idx = levels.size
     val level = Level(node)
     levels.addLast(level)

@@ -134,8 +134,8 @@ interface ExampleGraph : MetroContributionToAppScope {
         private get(): Set<Task> {
           return { // BLOCK
             buildSet<Task>(capacity = 4, builderAction = local fun MutableSet<Task>.<anonymous>() {
-              $receiver.add(element = Companion.provide4(instance = <this>.#exampleGraphImpl))
-              $receiver.add(element = Companion.provide3(instance = <this>.#exampleGraphImpl))
+              $receiver.add(element = <this>.#exampleGraphImpl.provide4())
+              $receiver.add(element = <this>.#exampleGraphImpl.provide3())
               $receiver.add(element = TaskImpl1())
               $receiver.add(element = TaskImpl2())
             }
@@ -164,8 +164,8 @@ interface ExampleGraph : MetroContributionToAppScope {
       private get(): Set<Task> {
         return { // BLOCK
           buildSet<Task>(capacity = 4, builderAction = local fun MutableSet<Task>.<anonymous>() {
-            $receiver.add(element = Companion.provide4(instance = <this>.#thisGraphInstance))
-            $receiver.add(element = Companion.provide3(instance = <this>.#thisGraphInstance))
+            $receiver.add(element = <this>.#thisGraphInstance.provide4())
+            $receiver.add(element = <this>.#thisGraphInstance.provide3())
             $receiver.add(element = TaskImpl1())
             $receiver.add(element = TaskImpl2())
           }
@@ -272,13 +272,13 @@ interface ExampleGraph : MetroContributionToAppScope {
 
   @IntoSet
   @Provides
-  private fun provide3(): Task {
+  fun provide3(): Task {
     return TaskImpl3()
   }
 
   @IntoSet
   @Provides
-  private fun provide4(): Task {
+  fun provide4(): Task {
     return TaskImpl4()
   }
 

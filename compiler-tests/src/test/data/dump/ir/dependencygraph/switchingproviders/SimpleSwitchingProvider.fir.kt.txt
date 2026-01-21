@@ -67,8 +67,8 @@ interface AppGraph {
       override fun invoke(): T {
         return when {
           EQEQ(arg0 = <this>.#id, arg1 = 2) -> ScopedClass() /*as T */
-          EQEQ(arg0 = <this>.#id, arg1 = 1) -> Companion.provideReusedInt(instance = <this>.#graph.#thisGraphInstance) /*as T */
-          EQEQ(arg0 = <this>.#id, arg1 = 0) -> Companion.provideString(instance = <this>.#graph.#thisGraphInstance) /*as T */
+          EQEQ(arg0 = <this>.#id, arg1 = 1) -> <this>.#graph.#thisGraphInstance.provideReusedInt() /*as T */
+          EQEQ(arg0 = <this>.#id, arg1 = 0) -> <this>.#graph.#thisGraphInstance.provideString() /*as T */
           else -> throw error(message = "Unexpected SwitchingProvider id: " + <this>.#id)
         }
       }
@@ -193,13 +193,13 @@ interface AppGraph {
   }
 
   @Provides
-  private fun provideReusedInt(): Int {
+  fun provideReusedInt(): Int {
     return 3
   }
 
   @SingleIn(scope = AppScope::class)
   @Provides
-  private fun provideString(): String {
+  fun provideString(): String {
     return "Hello"
   }
 
@@ -216,3 +216,4 @@ interface AppGraph {
     abstract get
 
 }
+

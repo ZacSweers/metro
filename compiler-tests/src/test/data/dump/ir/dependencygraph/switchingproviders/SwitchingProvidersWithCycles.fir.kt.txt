@@ -28,9 +28,9 @@ interface AppGraph {
 
       override fun invoke(): T {
         return when {
-          EQEQ(arg0 = <this>.#id, arg1 = 3) -> Companion.provideInt(instance = <this>.#graph.#thisGraphInstance) /*as T */
-          EQEQ(arg0 = <this>.#id, arg1 = 2) -> Companion.provideString(instance = <this>.#graph.#thisGraphInstance, int = <this>.#graph.#provideIntProvider.invoke(), long = Companion.lazy<Lazy<Long>, Long>(provider = Companion.lazy<Provider<Long>, Long>(provider = <this>.#graph.#provideLongProvider))) /*as T */
-          EQEQ(arg0 = <this>.#id, arg1 = 1) -> Companion.provideLong(instance = <this>.#graph.#thisGraphInstance, string = <this>.#graph.#provideStringProvider.invoke()) /*as T */
+          EQEQ(arg0 = <this>.#id, arg1 = 3) -> <this>.#graph.#thisGraphInstance.provideInt() /*as T */
+          EQEQ(arg0 = <this>.#id, arg1 = 2) -> <this>.#graph.#thisGraphInstance.provideString(int = <this>.#graph.#provideIntProvider.invoke(), long = Companion.lazy<Lazy<Long>, Long>(provider = Companion.lazy<Provider<Long>, Long>(provider = <this>.#graph.#provideLongProvider))) /*as T */
+          EQEQ(arg0 = <this>.#id, arg1 = 1) -> <this>.#graph.#thisGraphInstance.provideLong(string = <this>.#graph.#provideStringProvider.invoke()) /*as T */
           else -> throw error(message = "Unexpected SwitchingProvider id: " + <this>.#id)
         }
       }
@@ -187,19 +187,19 @@ interface AppGraph {
   }
 
   @Provides
-  private fun provideInt(): Int {
+  fun provideInt(): Int {
     return 42
   }
 
   @SingleIn(scope = AppScope::class)
   @Provides
-  private fun provideLong(string: String): Long {
+  fun provideLong(string: String): Long {
     return toLong(/* <this> = string */)
   }
 
   @SingleIn(scope = AppScope::class)
   @Provides
-  private fun provideString(int: Int, long: Lazy<Long>): String {
+  fun provideString(int: Int, long: Lazy<Long>): String {
     return int.toString()
   }
 
@@ -210,3 +210,4 @@ interface AppGraph {
     abstract get
 
 }
+

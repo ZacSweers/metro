@@ -58,7 +58,7 @@ import org.jetbrains.kotlin.ir.util.nestedClasses
 
 internal class IrBindingGraph(
   metroContext: IrMetroContext,
-  private val node: DependencyGraphNode,
+  private val node: GraphNode.Local,
   private val newBindingStack: () -> IrBindingStack,
   private val bindingLookup: BindingLookup,
   private val contributionData: IrContributionData,
@@ -680,12 +680,9 @@ internal class IrBindingGraph(
       if (node.sourceGraph.origin == Origins.GeneratedGraphExtension) {
         val sourceGraphFqName = node.sourceGraph.sourceGraphIfMetroGraph.kotlinFqName
         val receivingGraphFqName =
-          // Find the actual parent/receiving graph - it should be in extendedGraphNodes
-          node.extendedGraphNodes.values
-            .firstOrNull()
-            ?.sourceGraph
-            ?.sourceGraphIfMetroGraph
-            ?.kotlinFqName ?: declarationToReport.sourceGraphIfMetroGraph.kotlinFqName
+          // Find the actual parent/receiving graph
+          node.parentGraph?.sourceGraph?.sourceGraphIfMetroGraph?.kotlinFqName
+            ?: declarationToReport.sourceGraphIfMetroGraph.kotlinFqName
 
         // Only show the hint if the source and receiving graphs are actually different
         if (sourceGraphFqName != receivingGraphFqName) {

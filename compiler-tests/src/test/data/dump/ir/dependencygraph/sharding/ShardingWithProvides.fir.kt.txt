@@ -237,7 +237,7 @@ object AppModule {
 
   @Provides
   @SingleIn(scope = AppScope::class)
-  private fun provideService2(s1: Service1): Service2 {
+  fun provideService2(s1: Service1): Service2 {
     return Service2(s1 = s1)
   }
 

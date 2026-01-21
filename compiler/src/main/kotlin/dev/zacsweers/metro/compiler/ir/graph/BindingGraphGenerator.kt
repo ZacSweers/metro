@@ -48,7 +48,7 @@ import org.jetbrains.kotlin.ir.util.propertyIfAccessor
  */
 internal class BindingGraphGenerator(
   metroContext: IrMetroContext,
-  private val node: DependencyGraphNode,
+  private val node: GraphNode.Local,
   // TODO preprocess these instead and just lookup via irAttribute
   private val injectConstructorTransformer: InjectConstructorTransformer,
   private val membersInjectorTransformer: MembersInjectorTransformer,
@@ -525,7 +525,7 @@ internal class BindingGraphGenerator(
       }
 
       val parentKeysByClass = mutableMapOf<IrClass, IrTypeKey>()
-      for ((parentKey, parentNode) in node.allExtendedNodes) {
+      for ((parentKey, parentNode) in node.allParentGraphs) {
         val parentNodeClass = parentNode.sourceGraph.metroGraphOrFail
 
         parentKeysByClass[parentNodeClass] = parentKey
@@ -695,8 +695,8 @@ internal class BindingGraphGenerator(
     return graph
   }
 
-  /** Collects all inherited data from extended nodes in a single pass. */
-  private fun collectInheritedData(node: DependencyGraphNode): InheritedGraphData {
+  /** Collects all inherited data from parent nodes in a single pass. */
+  private fun collectInheritedData(node: GraphNode.Local): InheritedGraphData {
     val providerFactories = mutableSetOf<Pair<IrTypeKey, ProviderFactory>>()
     val providerFactoryKeys = mutableSetOf<IrTypeKey>()
     val bindsCallableKeys = mutableSetOf<IrTypeKey>()
@@ -707,7 +707,7 @@ internal class BindingGraphGenerator(
     val supertypeAliases = mutableMapOf<IrTypeKey, IrTypeKey>()
     val multibindingAccessors = mutableListOf<GraphAccessor>()
 
-    for ((typeKey, extendedNode) in node.allExtendedNodes) {
+    for ((typeKey, extendedNode) in node.allParentGraphs) {
       // Collect provider factories (non-scoped, not already in current node)
       for ((key, factories) in extendedNode.providerFactories) {
         if (key !in node.providerFactories) {
@@ -730,8 +730,10 @@ internal class BindingGraphGenerator(
         }
       }
 
-      // Collect binding containers
-      bindingContainers.addAll(extendedNode.bindingContainers)
+      // Collect binding containers (only from Local nodes)
+      if (extendedNode is GraphNode.Local) {
+        bindingContainers.addAll(extendedNode.bindingContainers)
+      }
 
       // Collect multibinds callables
       multibindsCallables.addAll(extendedNode.multibindsCallables)
@@ -772,8 +774,8 @@ internal class BindingGraphGenerator(
 }
 
 /**
- * Data collected from extended (parent) nodes in a single pass. Avoids multiple iterations over
- * allExtendedNodes.
+ * Data collected from parent nodes in a single pass. Avoids multiple iterations over
+ * allParentGraphs.
  */
 private data class InheritedGraphData(
   val providerFactories: Set<Pair<IrTypeKey, ProviderFactory>>,
