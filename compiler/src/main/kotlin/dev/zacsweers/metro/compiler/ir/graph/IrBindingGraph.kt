@@ -36,8 +36,6 @@ import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.traceNested
-import java.util.Collections.emptySortedSet
-import java.util.TreeSet
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
@@ -227,9 +225,9 @@ internal class IrBindingGraph(
           shrinkUnusedBindings = metroContext.options.shrinkUnusedBindings,
           onPopulated = {
             writeDiagnostic("keys-populated-${traceScope.tracer.diagnosticTag}.txt") {
-              val keys = TreeSet<IrTypeKey>()
+              val keys = mutableListOf<IrTypeKey>()
               realGraph.bindings.forEachKey(keys::add)
-              keys.joinToString("\n")
+              keys.sorted().joinToString("\n")
             }
           },
           onSortedCycle = { elementsInCycle ->
@@ -268,17 +266,10 @@ internal class IrBindingGraph(
       addAll(bindingLookup.getAvailableKeys())
       minus(bindingLookup.parentKeys)
     }
-    val unused =
-      (allBindings - reachableKeys).let {
-        if (it.isNotEmpty()) {
-          it.toSortedSet()
-        } else {
-          emptySortedSet()
-        }
-      }
+    val unused = allBindings - reachableKeys
     if (unused.isNotEmpty()) {
       writeDiagnostic("keys-unused-${traceScope.tracer.diagnosticTag}.txt") {
-        unused.joinToString(separator = "\n")
+        unused.sorted().joinToString(separator = "\n")
       }
     }
 
