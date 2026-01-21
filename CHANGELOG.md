@@ -8,6 +8,10 @@ Changelog
 
 - **[IR]** Add a dedicated `UNUSED_GRAPH_INPUT` diagnostic for `unusedGraphInputsSeverity` option.
 
+### Fixes
+
+- **[IR/Compat]** Fix compatibiltiy for source-less diagnostics in Kotlin `2.3.20-Beta1`.
+
 0.10.0
 ------
 
