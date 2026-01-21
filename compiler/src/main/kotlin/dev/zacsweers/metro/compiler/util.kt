@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler
 
 import java.util.Locale
+import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
@@ -82,7 +83,45 @@ internal inline fun <T, Buffer : Appendable> Buffer.appendIterableWith(
 }
 
 internal inline fun <T> T.letIf(condition: Boolean, block: (T) -> T): T {
+  @Suppress("RETURN_VALUE_NOT_USED")
+  contract {
+    callsInPlace(block, InvocationKind.AT_MOST_ONCE)
+    condition holdsIn block
+  }
   return if (condition) block(this) else this
+}
+
+internal inline fun <T> T.runIf(condition: Boolean, block: T.() -> T): T {
+  @Suppress("RETURN_VALUE_NOT_USED")
+  contract {
+    callsInPlace(block, InvocationKind.AT_MOST_ONCE)
+    condition holdsIn block
+  }
+  return if (condition) block(this) else this
+}
+
+internal inline fun <T> T.alsoIf(condition: Boolean, block: (T) -> Unit): T {
+  @Suppress("RETURN_VALUE_NOT_USED")
+  contract {
+    // Declares that the lambda runs at most once
+    callsInPlace(block, InvocationKind.AT_MOST_ONCE)
+    // Declares that the condition is assumed to be true inside the lambda
+    condition holdsIn block
+  }
+  if (condition) block(this)
+  return this
+}
+
+internal inline fun <T> T.applyIf(condition: Boolean, block: T.() -> Unit): T {
+  @Suppress("RETURN_VALUE_NOT_USED")
+  contract {
+    // Declares that the lambda runs at most once
+    callsInPlace(block, InvocationKind.AT_MOST_ONCE)
+    // Declares that the condition is assumed to be true inside the lambda
+    condition holdsIn block
+  }
+  if (condition) block(this)
+  return this
 }
 
 internal inline fun <T> T?.escapeIfNull(block: () -> Nothing): T {
