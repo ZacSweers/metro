@@ -709,6 +709,11 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
      * supertypes' members.
      */
     val supertypeMembersInjectorKeys: List<IrContextualTypeKey> = emptyList(),
+    /**
+     * Dependencies inherited from supertype member injectors. Used by BindingPropertyCollector to
+     * avoid double-counting when processing the hierarchy.
+     */
+    val supertypeDependencies: Set<IrContextualTypeKey> = emptySet(),
   ) : IrBinding {
     override val typeKey: IrTypeKey = contextualTypeKey.typeKey
 

@@ -444,8 +444,10 @@ internal class DependencyGraphTransformer(
               accessor = accessor.ir,
               parentGraphKey = node.typeKey,
             )
+
           // Replace the binding with the updated version
           bindingGraph.addBinding(contributedGraphKey, binding, IrBindingStack.empty())
+
           // Necessary since we don't treat graph extensions as part of roots
           bindingGraph.keep(
             binding.contextualTypeKey,

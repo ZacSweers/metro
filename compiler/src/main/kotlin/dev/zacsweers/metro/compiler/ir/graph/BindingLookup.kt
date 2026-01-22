@@ -19,6 +19,7 @@ import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.graph.expressions.IrOptionalExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.expressions.optionalType
 import dev.zacsweers.metro.compiler.ir.mapKeyType
+import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.rawType
@@ -47,6 +48,7 @@ import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.isObject
+import org.jetbrains.kotlin.name.CallableId
 
 internal class BindingLookup(
   private val metroContext: IrMetroContext,
@@ -92,6 +94,15 @@ internal class BindingLookup(
   // Keys explicitly declared in this graph (for unused key reporting)
   private val locallyDeclaredKeys = mutableSetOf<IrTypeKey>()
 
+  /** Information about a registered injector function for MembersInjected binding creation. */
+  private data class InjectorFunctionInfo(
+    val function: IrSimpleFunction,
+    val callableId: CallableId,
+  )
+
+  // Registered injector functions - binding creation deferred to computeMembersInjectorBindings
+  private val registeredInjectorFunctions = mutableMapOf<IrTypeKey, InjectorFunctionInfo>()
+
   fun getAvailableKeys(): Set<IrTypeKey> {
     return bindingsCache.keys
   }
@@ -124,24 +135,36 @@ internal class BindingLookup(
     }
 
     // If this is a multibinding contributor, register it
-    if (binding is IrBinding.BindingWithAnnotations && binding.annotations.isIntoMultibinding) {
-      val (qualifier, valueType) =
-        when (binding) {
-          is IrBinding.Provided ->
-            binding.providerFactory.rawTypeKey.qualifier to binding.contextualTypeKey.typeKey.type
-          is IrBinding.Alias ->
-            binding.bindsCallable?.callableMetadata?.annotations?.qualifier to
-              binding.contextualTypeKey.typeKey.type
-          else -> null to null
+    when (binding) {
+      is IrBinding.BindingWithAnnotations if binding.annotations.isIntoMultibinding -> {
+        val (qualifier, valueType) =
+          when (binding) {
+            is IrBinding.Provided ->
+              binding.providerFactory.rawTypeKey.qualifier to binding.contextualTypeKey.typeKey.type
+
+            is IrBinding.Alias ->
+              binding.bindsCallable?.callableMetadata?.annotations?.qualifier to
+                binding.contextualTypeKey.typeKey.type
+
+            else -> null to null
+          }
+        if (valueType != null) {
+          val multibindingTypeKey =
+            computeMultibindingTypeKey(
+              annotations = binding.annotations,
+              valueType = valueType,
+              qualifier = qualifier,
+            )
+          registerMultibindingContribution(multibindingTypeKey, binding.typeKey)
         }
-      if (valueType != null) {
-        val multibindingTypeKey =
-          computeMultibindingTypeKey(
-            annotations = binding.annotations,
-            valueType = valueType,
-            qualifier = qualifier,
-          )
-        registerMultibindingContribution(multibindingTypeKey, binding.typeKey)
+      }
+
+      is IrBinding.MembersInjected -> {
+        hydrateMemberInjectionAncestors(binding.typeKey)
+      }
+
+      else -> {
+        // Nothing
       }
     }
   }
@@ -163,10 +186,25 @@ internal class BindingLookup(
     optionalBindingDeclarations.clear()
     optionalBindingsCache.clear()
     locallyDeclaredKeys.clear()
+    registeredInjectorFunctions.clear()
   }
 
   fun addLazyParentKey(typeKey: IrTypeKey, bindingFactory: () -> IrBinding) {
     lazyParentKeys[typeKey] = memoize(bindingFactory)
+  }
+
+  /**
+   * Registers an injector function for deferred MembersInjected binding creation. The actual
+   * binding will be created in [computeMembersInjectorBindings] when the type is looked up.
+   */
+  fun registerInjectorFunction(
+    typeKey: IrTypeKey,
+    function: IrSimpleFunction,
+    callableId: CallableId,
+  ) {
+    registeredInjectorFunctions[typeKey] = InjectorFunctionInfo(function, callableId)
+    // Track as locally declared for unused key reporting
+    locallyDeclaredKeys += typeKey
   }
 
   /** Keys explicitly declared in this graph (used for unused key reporting). */
@@ -431,37 +469,71 @@ internal class BindingLookup(
   context(context: IrMetroContext)
   private fun IrClass.computeMembersInjectorBindings(
     remapper: TypeRemapper
-  ): Set<IrBinding.MembersInjected> {
-    val bindings = mutableSetOf<IrBinding.MembersInjected>()
+  ): LinkedHashSet<IrBinding.MembersInjected> {
+    val bindings = LinkedHashSet<IrBinding.MembersInjected>()
 
     // Track supertype injector keys as we iterate. The list from findMemberInjectors is in
     // base-to-derived order, so we accumulate previous entries as supertypes for later ones.
     val supertypeInjectorKeys = mutableListOf<IrContextualTypeKey>()
 
+    // Accumulate parameters and dependencies from all ancestors as we iterate (base-to-derived
+    // order)
+    var accumulatedParameters = Parameters.empty()
+    var accumulatedDeps = emptySet<IrContextualTypeKey>()
+
     for (generatedInjector in findMemberInjectors(this)) {
       val mappedTypeKey = generatedInjector.typeKey.remapTypes(remapper)
+
+      // Get this injector's parameters and compute its dependencies
+      val remappedParameters = generatedInjector.mergedParameters(remapper)
+      val thisDeps =
+        remappedParameters.nonDispatchParameters
+          .filterNot { it.isAssisted }
+          .mapToSet { it.contextualTypeKey }
+
+      // Save current accumulated deps as supertype deps for this binding, then add this level's
+      // deps
+      val supertypeDeps = accumulatedDeps
+      accumulatedDeps = accumulatedDeps + thisDeps
+
+      // Accumulate parameters
+      accumulatedParameters = accumulatedParameters.mergeValueParametersWith(remappedParameters)
+
+      bindingsCache[mappedTypeKey]?.let {
+        for (cached in it) {
+          if (cached is IrBinding.MembersInjected) {
+            bindings += cached
+          } else {
+            reportCompilerBug(
+              "Found cached binding for $mappedTypeKey but wasn't a member injector! $cached"
+            )
+          }
+        }
+        supertypeInjectorKeys += IrContextualTypeKey(mappedTypeKey)
+        continue
+      }
+
       val contextKey = IrContextualTypeKey(mappedTypeKey)
 
       // Copy the current supertype keys before adding this one
       val currentSupertypeKeys = supertypeInjectorKeys.toList()
 
-      // Create binding with remapped parameters
-      // Note: We don't cache by mappedTypeKey alone because the same mapped type can be reached
-      // via different remapper contexts (e.g., looking up MembersInjector<Parent<Int,String>>
-      // directly vs looking up ExampleClass<Int>), and the parameters need to use the correct
-      // remapper for the current context.
-      val remappedParameters = generatedInjector.mergedParameters(remapper)
+      // Check if there's a registered injector function for this type
+      val injectorInfo = registeredInjectorFunctions[mappedTypeKey]
 
       val binding =
         IrBinding.MembersInjected(
           contextKey,
-          // Need to look up the injector class and gather all params
-          parameters = remappedParameters,
-          reportableDeclaration = this,
-          function = null,
-          // Bindings created here are from class-based lookup, not injector functions
-          // (injector function bindings are cached in BindingGraphGenerator)
-          isFromInjectorFunction = false,
+          // Use accumulated parameters from all ancestors
+          parameters =
+            if (injectorInfo != null) {
+              accumulatedParameters.withCallableId(injectorInfo.callableId)
+            } else {
+              accumulatedParameters
+            },
+          reportableDeclaration = injectorInfo?.function ?: this,
+          function = injectorInfo?.function,
+          isFromInjectorFunction = injectorInfo != null,
           // Unpack the target class from the type
           targetClassId =
             mappedTypeKey.type
@@ -471,12 +543,15 @@ internal class BindingLookup(
               .rawType()
               .classIdOrFail,
           supertypeMembersInjectorKeys = currentSupertypeKeys,
+          supertypeDependencies = supertypeDeps,
         )
 
       bindings += binding
 
       // Add this injector's key as a supertype for subsequent iterations
       supertypeInjectorKeys += contextKey
+
+      bindingsCache.getAndAdd(mappedTypeKey, binding)
     }
     return bindings
   }
@@ -571,6 +646,58 @@ internal class BindingLookup(
   }
 
   context(context: IrMetroContext)
+  private fun hydrateMemberInjectionAncestors(key: IrTypeKey): Set<IrBinding.MembersInjected> {
+    val targetType = key.type.requireSimpleType().arguments.first().typeOrFail
+    val targetClass = targetType.rawType()
+    val remapper = targetClass.deepRemapperFor(targetType)
+    val bindings = targetClass.computeMembersInjectorBindings(remapper)
+
+    // Check if we have a binding for this exact key (cached by computeMembersInjectorBindings)
+    if (key in bindingsCache) {
+      return bindings
+    }
+
+    // No exact match - this happens with wildcard types like Base<*>
+    // Check if there's a registered injector function for this key
+    val injectorInfo = registeredInjectorFunctions[key] ?: return bindings
+
+    if (bindings.isEmpty()) {
+      // No member injectors exist, create a minimal binding for the injector function
+      val binding =
+        IrBinding.MembersInjected(
+          IrContextualTypeKey(key),
+          parameters = Parameters.empty().withCallableId(injectorInfo.callableId),
+          reportableDeclaration = injectorInfo.function,
+          function = injectorInfo.function,
+          isFromInjectorFunction = true,
+          targetClassId = targetClass.classIdOrFail,
+          supertypeMembersInjectorKeys = emptyList(),
+          supertypeDependencies = emptySet(),
+        )
+      bindingsCache.getAndAdd(key, binding)
+      return bindings + binding
+    }
+
+    // Use the most derived binding's data but with the wildcard lookup key
+    val mostDerivedBinding = bindings.removeLast()
+    val supertypeKeys = bindings.map { it.contextualTypeKey }
+
+    val binding =
+      IrBinding.MembersInjected(
+        IrContextualTypeKey(key),
+        parameters = mostDerivedBinding.parameters.withCallableId(injectorInfo.callableId),
+        reportableDeclaration = injectorInfo.function,
+        function = injectorInfo.function,
+        isFromInjectorFunction = true,
+        targetClassId = targetClass.classIdOrFail,
+        supertypeMembersInjectorKeys = supertypeKeys,
+        supertypeDependencies = mostDerivedBinding.supertypeDependencies,
+      )
+    bindingsCache.getAndAdd(key, binding)
+    return bindings + binding
+  }
+
+  context(context: IrMetroContext)
   private fun lookupClassBinding(
     contextKey: IrContextualTypeKey,
     currentBindings: ScatterMap<IrTypeKey, IrBinding>,
@@ -581,14 +708,7 @@ internal class BindingLookup(
       val irClass = key.type.rawType()
 
       if (irClass.classId == context.metroSymbols.metroMembersInjector.owner.classId) {
-        // It's a members injector, just look up its bindings and return them
-        val targetType = key.type.requireSimpleType().arguments.first().typeOrFail
-        val targetClass = targetType.rawType()
-        val remapper = targetClass.deepRemapperFor(targetType)
-        // Filter out bindings that already exist to avoid duplicates
-        return targetClass.computeMembersInjectorBindings(remapper).filterTo(mutableSetOf()) {
-          it.typeKey !in currentBindings
-        }
+        return hydrateMemberInjectionAncestors(key)
       }
 
       val classAnnotations = irClass.metroAnnotations(context.metroSymbols.classIds)

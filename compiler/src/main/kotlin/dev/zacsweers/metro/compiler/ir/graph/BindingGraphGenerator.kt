@@ -15,7 +15,6 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.MultibindsCallable
 import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
-import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.isBindingContainer
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
@@ -24,7 +23,6 @@ import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
-import dev.zacsweers.metro.compiler.ir.remapTypes
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
@@ -32,14 +30,11 @@ import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.transformers.InjectConstructorTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import dev.zacsweers.metro.compiler.reportCompilerBug
-import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.irAttribute
 import org.jetbrains.kotlin.ir.types.typeWithArguments
-import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 
@@ -120,6 +115,32 @@ internal class BindingGraphGenerator(
     node.supertypes.forEach { superType ->
       val superTypeKey = IrTypeKey(superType)
       superTypeToAlias.putIfAbsent(superTypeKey, node.typeKey)
+    }
+
+    // Register MembersInjector functions for deferred binding creation
+    // The actual bindings are created in BindingLookup.computeMembersInjectorBindings
+    for ((contextKey, injector) in node.injectors) {
+      val param = injector.ir.regularParameters.single()
+      val paramType = param.type
+      // Show the target class being injected, not the MembersInjector<T> type
+      val entry =
+        IrBindingStack.Entry.injectedAt(
+          contextKey = contextKey,
+          function = injector.ir,
+          displayTypeKey = IrTypeKey(paramType),
+        )
+
+      graph.addInjector(contextKey, entry)
+      if (contextKey.typeKey in graph) {
+        // Injectors may be requested multiple times, don't double-register
+        continue
+      }
+      // Skip if there's a dynamic replacement for this injector type
+      if (contextKey.typeKey in node.dynamicTypeKeys) {
+        continue
+      }
+      // Register the injector function - binding will be created lazily in BindingLookup
+      bindingLookup.registerInjectorFunction(contextKey.typeKey, injector.ir, injector.callableId)
     }
 
     // Collect all inherited data from extended nodes in a single pass
@@ -612,95 +633,6 @@ internal class BindingGraphGenerator(
               typeKey = key,
             )
           }
-        }
-      }
-    }
-
-    // Add MembersInjector bindings defined on injector functions
-    for ((contextKey, injector) in node.injectors) {
-      val param = injector.ir.regularParameters.single()
-      val paramType = param.type
-      // Show the target class being injected, not the MembersInjector<T> type
-      val entry =
-        IrBindingStack.Entry.injectedAt(
-          contextKey = contextKey,
-          function = injector.ir,
-          displayTypeKey = IrTypeKey(paramType),
-        )
-
-      graph.addInjector(contextKey, entry)
-      if (contextKey.typeKey in graph) {
-        // Injectors may be requested multiple times, don't double-add a binding
-        continue
-      }
-      // Skip if there's a dynamic replacement for this injector type
-      if (contextKey.typeKey in node.dynamicTypeKeys) {
-        continue
-      }
-      bindingStack.withEntry(entry) {
-        val targetClass = paramType.rawType()
-        // Don't return null on missing because it's legal to inject a class with no member
-        // injections
-        // TODO warn on this?
-        val generatedInjectors =
-          membersInjectorTransformer.getOrGenerateAllInjectorsFor(targetClass)
-
-        val remapper = targetClass.deepRemapperFor(paramType)
-
-        val mergedMappedParameters =
-          if (generatedInjectors.isEmpty()) {
-              Parameters.empty()
-            } else {
-              generatedInjectors
-                .map { generatedInjector -> generatedInjector.mergedParameters(remapper) }
-                .reduce { current, next -> current.mergeValueParametersWith(next) }
-            }
-            .withCallableId(injector.callableId)
-
-        // Supertype injector keys: all injectors except the last one (which is the target class)
-        // that have @HasMemberInjections. The list is in base-to-derived order, so dropLast(1)
-        // gives us the supertypes.
-        val supertypeInjectorKeys =
-          if (generatedInjectors.size > 1) {
-            generatedInjectors
-              .dropLast(1)
-              .filter { it.sourceClass.hasAnnotation(Symbols.ClassIds.HasMemberInjections) }
-              .map { injectorClass ->
-                IrContextualTypeKey(injectorClass.typeKey.remapTypes(remapper))
-              }
-          } else {
-            emptyList()
-          }
-
-        val binding =
-          IrBinding.MembersInjected(
-            contextKey,
-            // Need to look up the injector class and gather all params
-            parameters = mergedMappedParameters,
-            reportableDeclaration = injector.ir,
-            function = injector.ir,
-            isFromInjectorFunction = true,
-            targetClassId = targetClass.classIdOrFail,
-            supertypeMembersInjectorKeys = supertypeInjectorKeys,
-          )
-
-        // Cache in BindingLookup to avoid re-creating it later
-        bindingLookup.putBinding(binding, isLocallyDeclared = true)
-
-        graph.addBinding(contextKey.typeKey, binding, bindingStack)
-
-        // Ensure that we traverse the target class's superclasses and lookup relevant bindings for
-        // them too, namely ancestor member injectors
-        val extraBindings =
-          bindingLookup.lookup(
-            IrContextualTypeKey.from(param),
-            graph.bindingsSnapshot(),
-            bindingStack,
-          ) { _, _ ->
-            // Duplicates will be reported later during graph seal
-          }
-        for (extraBinding in extraBindings) {
-          graph.addBinding(extraBinding.typeKey, extraBinding, bindingStack)
         }
       }
     }
