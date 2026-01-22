@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
+import androidx.collection.MutableObjectIntMap
 import androidx.collection.MutableScatterMap
 import androidx.collection.ScatterMap
 import dev.zacsweers.metro.compiler.allElementsAreEqual
@@ -73,8 +74,8 @@ internal open class MutableBindingGraph<
   },
 ) : BindingGraph<Type, TypeKey, ContextualTypeKey, Binding, BindingStackEntry, BindingStack> {
   // Populated by initial graph setup and later seal()
-  override val bindings = MutableScatterMap<TypeKey, Binding>()
-  private val bindingIndices = mutableMapOf<TypeKey, Int>()
+  override val bindings = MutableScatterMap<TypeKey, Binding>(256)
+  private val bindingIndices = MutableObjectIntMap<TypeKey>()
   private val reportedMissingKeys = mutableSetOf<TypeKey>()
 
   var sealed = false
@@ -181,7 +182,9 @@ internal open class MutableBindingGraph<
       // must be deferred. This is how we handle cycles that are broken by deferrable
       // types like Provider/Lazy/...
       // O(1) “does A depend on B?”
-      bindingIndices.putAll(topo.sortedKeys.withIndex().associate { it.value to it.index })
+      for ((i, key) in topo.sortedKeys.withIndex()) {
+        bindingIndices.put(key, i)
+      }
     }
 
     return topo
@@ -434,7 +437,7 @@ internal open class MutableBindingGraph<
 
   // O(1) after seal()
   override fun TypeKey.dependsOn(other: TypeKey): Boolean {
-    return bindingIndices.getValue(this) >= bindingIndices.getValue(other)
+    return bindingIndices[this] >= bindingIndices[other]
   }
 
   fun reportMissingBinding(
