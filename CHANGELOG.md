@@ -7,6 +7,7 @@ Changelog
 ### Enhancements
 
 - **[IR]** Add a dedicated `UNUSED_GRAPH_INPUT` diagnostic for `unusedGraphInputsSeverity` option.
+- **[IR]** Reduce memory usage when processing long graph extension chains.
 
 ### Fixes
 
