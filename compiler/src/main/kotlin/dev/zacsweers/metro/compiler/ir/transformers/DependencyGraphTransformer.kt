@@ -33,6 +33,7 @@ import dev.zacsweers.metro.compiler.ir.graph.generatedGraphExtensionData
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
+import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isCompanionObject
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
@@ -44,6 +45,7 @@ import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
+import dev.zacsweers.metro.compiler.isGraphImpl
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -71,6 +73,7 @@ import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.file
+import org.jetbrains.kotlin.ir.util.getAllSuperclasses
 import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.isLocal
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -585,8 +588,19 @@ internal class DependencyGraphTransformer(
           diagnosticReporter.at(irElement, graphDeclaration.file).report(diagnosticFactory, message)
           continue
         }
+
+        val graphDeclarationSource =
+          if (graphDeclaration.origin.isGraphImpl) {
+            graphDeclaration.getAllSuperclasses().find {
+              it.isAnnotatedWithAny(metroSymbols.classIds.graphExtensionAnnotations)
+            }
+          } else {
+            graphDeclaration
+          }
         reportCompat(
-          irDeclarations = sequenceOf(unusedBinding.reportableDeclaration, graphDeclaration),
+          // TODO: unusedBinding.reportableDeclaration is pointing to the graph extension impl, we
+          //  need the declaration pointing to the source.
+          irDeclarations = sequenceOf(unusedBinding.reportableDeclaration, graphDeclarationSource),
           factory = diagnosticFactory,
           a = message,
         )
