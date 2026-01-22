@@ -808,14 +808,10 @@ private data class InheritedGraphData(
   val multibindingAccessors: List<GraphAccessor>,
 )
 
-/**
- * Cached [IrBinding.Alias] binding for this binds callable's mirror function.
- */
+/** Cached [IrBinding.Alias] binding for this binds callable's mirror function. */
 internal var IrSimpleFunction.cachedAliasBinding: IrBinding.Alias? by
   irAttribute(copyByDefault = false)
 
-/**
- * Cached [IrBinding.Provided] binding for this provider factory class.
- */
+/** Cached [IrBinding.Provided] binding for this provider factory class. */
 internal var IrClass.cachedProvidedBinding: IrBinding.Provided? by
   irAttribute(copyByDefault = false)
