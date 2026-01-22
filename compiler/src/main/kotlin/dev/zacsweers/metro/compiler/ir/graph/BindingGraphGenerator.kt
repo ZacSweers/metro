@@ -104,7 +104,7 @@ internal class BindingGraphGenerator(
         reportableDeclaration = node.sourceGraph,
         token = null, // indicates self-binding, code gen uses thisReceiver
       )
-    graph.addBinding(node.typeKey, graphInstanceBinding, bindingStack)
+    bindingLookup.putBinding(graphInstanceBinding, isLocallyDeclared = false)
 
     // Mapping of supertypes to aliased bindings
     // We populate this for the current graph type first and then
@@ -301,10 +301,9 @@ internal class BindingGraphGenerator(
 
         if (isDynamic || !hasDynamicReplacement) {
           // Only add the bound instance if there's no dynamic replacement
-          graph.addBinding(
-            paramTypeKey,
+          bindingLookup.putBinding(
             IrBinding.BoundInstance(creatorParam, creatorParam.ir!!, isGraphInput = true),
-            bindingStack,
+            isLocallyDeclared = true,
           )
           // Track as locally declared for unused key reporting
           bindingLookup.trackDeclaredKey(paramTypeKey)
@@ -340,8 +339,7 @@ internal class BindingGraphGenerator(
         val isGraphInput = irElement != null
 
         // Only add the bound instance if there's no dynamic replacement
-        graph.addBinding(
-          typeKey,
+        bindingLookup.putBinding(
           IrBinding.BoundInstance(
             typeKey = typeKey,
             nameHint = it.name.asString(),
@@ -349,7 +347,7 @@ internal class BindingGraphGenerator(
             reportableDeclaration = declaration,
             isGraphInput = isGraphInput,
           ),
-          bindingStack,
+          isLocallyDeclared = isGraphInput,
         )
         // Track as locally declared for unused key reporting (only if it's a graph input)
         if (isGraphInput) {
@@ -415,12 +413,12 @@ internal class BindingGraphGenerator(
     // Now that we've processed all supertypes/aliases
     for ((superTypeKey, aliasedType) in superTypeToAlias) {
       // We may have already added a `@Binds` declaration explicitly, this is ok!
+      // We don't double-add if it's already in the lookup, which can be the case for graph nodes
       // TODO warning?
-      if (superTypeKey !in graph && superTypeKey !in node.dynamicTypeKeys) {
-        graph.addBinding(
-          superTypeKey,
+      if (superTypeKey !in bindingLookup && superTypeKey !in node.dynamicTypeKeys) {
+        bindingLookup.putBinding(
           IrBinding.Alias(superTypeKey, aliasedType, null, Parameters.empty()),
-          bindingStack,
+          isLocallyDeclared = false,
         )
       }
     }
@@ -455,23 +453,22 @@ internal class BindingGraphGenerator(
         val shouldAddBinding =
           accessor.isFactory &&
             // It's allowed to specify multiple accessors for the same factory
-            accessor.key.typeKey !in graph &&
+            accessor.key.typeKey !in bindingLookup &&
             // Don't add a binding if the graph itself implements the factory
             accessor.key.typeKey.classId !in node.supertypeClassIds &&
             // Don't add a binding if there's a dynamic replacement
             accessor.key.typeKey !in node.dynamicTypeKeys
 
         if (shouldAddBinding) {
-          graph.addBinding(
-            accessor.key.typeKey,
+          bindingLookup.putBinding(
             IrBinding.GraphExtensionFactory(
               typeKey = accessor.key.typeKey,
               extensionTypeKey = key,
               parent = node.metroGraph!!,
-              parentKey = node.typeKey,
+              parentKey = IrTypeKey(node.metroGraph!!),
               accessor = accessor.accessor.ir,
             ),
-            bindingStack,
+            false,
           )
         }
       }
@@ -486,19 +483,18 @@ internal class BindingGraphGenerator(
       // Only add accessors for included types
       depNode.accessors.forEach { (contextualTypeKey, getter, _) ->
         // Add a ref to the included graph if not already present
-        if (depNodeKey !in graph) {
+        if (depNodeKey !in bindingLookup) {
           val declaration =
             node.creator?.parametersByTypeKey?.get(depNodeKey)?.ir ?: depNode.sourceGraph
 
-          graph.addBinding(
-            depNodeKey,
+          bindingLookup.putBinding(
             IrBinding.BoundInstance(
               depNodeKey,
               "${depNode.sourceGraph.name}Provider",
               declaration,
               isGraphInput = true,
             ),
-            bindingStack,
+            isLocallyDeclared = true,
           )
           // Track as locally declared for unused key reporting
           bindingLookup.trackDeclaredKey(depNodeKey)
@@ -519,15 +515,14 @@ internal class BindingGraphGenerator(
             irGetter
           }
 
-        graph.addBinding(
-          contextualTypeKey.typeKey,
+        bindingLookup.putBinding(
           IrBinding.GraphDependency(
             ownerKey = depNodeKey,
             graph = depNode.sourceGraph,
             getter = getterToUse,
             typeKey = contextualTypeKey.typeKey,
           ),
-          bindingStack,
+          isLocallyDeclared = true,
         )
         // Record a lookup for IC
         trackFunctionCall(node.sourceGraph, irGetter)
@@ -553,15 +548,14 @@ internal class BindingGraphGenerator(
         // TODO it would be nice if we could do this lazily with addLazyParentKey
         val token =
           parentContext.mark(parentKey) ?: reportCompilerBug("Missing parent key $parentKey")
-        graph.addBinding(
-          parentKey,
+        bindingLookup.putBinding(
           IrBinding.BoundInstance(
             typeKey = parentKey,
             nameHint = "parent",
             reportableDeclaration = parentNode.sourceGraph,
             token = token,
           ),
-          bindingStack,
+          isLocallyDeclared = false,
         )
 
         // Add the original type too as an alias

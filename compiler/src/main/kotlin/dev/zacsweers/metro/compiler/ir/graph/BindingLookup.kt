@@ -107,6 +107,8 @@ internal class BindingLookup(
   /** Returns the first binding for a given type key, or null if none exist. */
   fun getBinding(typeKey: IrTypeKey): IrBinding? = bindingsCache[typeKey]?.firstOrNull()
 
+  operator fun contains(typeKey: IrTypeKey): Boolean = typeKey in bindingsCache
+
   /**
    * Adds a binding to the cache. Multiple bindings for the same key are tracked as duplicates.
    *

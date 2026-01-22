@@ -194,7 +194,8 @@ internal class IrBindingGraph(
     val deferredTypes: Set<IrTypeKey>,
     val reachableKeys: Set<IrTypeKey>,
     val shardGroups: List<List<IrTypeKey>>?,
-    val unusedKeys: Set<IrTypeKey>,
+    // Map of unused keys to graph inputs, if available
+    val unusedKeys: Map<IrTypeKey, IrBinding.BoundInstance?>,
     val hasErrors: Boolean,
   ) {
     companion object {
@@ -204,7 +205,7 @@ internal class IrBindingGraph(
           deferredTypes = emptySet(),
           reachableKeys = emptySet(),
           shardGroups = emptyList(),
-          unusedKeys = emptySet(),
+          unusedKeys = emptyMap(),
           hasErrors = true,
         )
     }
@@ -290,6 +291,16 @@ internal class IrBindingGraph(
         }
       }
 
+    val unusedKeys: Map<IrTypeKey, IrBinding.BoundInstance?> =
+      unused.associateWith { key ->
+        val binding = bindingLookup.getBindings(key)?.getOrNull(0)
+        if (binding is IrBinding.BoundInstance && binding.isGraphInput) {
+          binding
+        } else {
+          null
+        }
+      }
+
     // Clear out the binding lookup now that we're done
     _bindingLookup = null
 
@@ -298,7 +309,7 @@ internal class IrBindingGraph(
       deferredTypes = deferredTypes,
       reachableKeys = reachableKeys,
       shardGroups = shardGroups,
-      unusedKeys = unused,
+      unusedKeys = unusedKeys,
       hasErrors = false,
     )
   }

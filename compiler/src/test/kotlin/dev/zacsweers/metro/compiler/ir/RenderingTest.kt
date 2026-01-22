@@ -102,7 +102,6 @@ class RenderingTest : MetroCompilerTest() {
           kotlin.coroutines.SuspendFunction3<kotlin.String, kotlin.Int, kotlin.String, kotlin.String>
           kotlin.coroutines.SuspendFunction3<kotlin.String?, kotlin.Int?, kotlin.coroutines.SuspendFunction1<kotlin.String, kotlin.Function1<kotlin.Unit, kotlin.String?>>, kotlin.String>
           test.ExampleGraph
-          test.ExampleGraph.Impl
           """
             .trimIndent()
         )
