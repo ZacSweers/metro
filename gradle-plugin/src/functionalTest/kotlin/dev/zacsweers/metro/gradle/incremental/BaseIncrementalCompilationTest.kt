@@ -36,7 +36,7 @@ abstract class BaseIncrementalCompilationTest {
     get() = reports("main")
 
   protected val MetroGradleProject.appGraphReports: GraphReports
-    get() = mainReports.forGraph("AppGraph", "test_AppGraph_Impl")
+    get() = mainReports.forGraph("test_AppGraph_Impl")
 
   class Reports(val dir: File) {
     val expectActualReports
@@ -74,13 +74,13 @@ abstract class BaseIncrementalCompilationTest {
       return dir.resolveSafe("merging-unmatched-rank-replacements-ir-$scopeFqName.txt").readText()
     }
 
-    fun forGraph(simpleName: String, implFqName: String): GraphReports {
-      return GraphReports(dir, simpleName, implFqName)
+    fun forGraph(implFqName: String): GraphReports {
+      return GraphReports(dir, implFqName)
     }
   }
 
   // TODO shared model?
-  class GraphReports(val reportsDir: File, val simpleName: String, val implFqName: String) {
+  class GraphReports(val reportsDir: File, val implFqName: String) {
     private fun readFileLines(path: String, extension: String = "txt"): List<String> {
       return reportsDir.resolveSafe("$path.$extension").readLines()
     }
@@ -90,7 +90,7 @@ abstract class BaseIncrementalCompilationTest {
     }
 
     val keysPopulated
-      get() = readFileLines("keys-populated-$simpleName")
+      get() = readFileLines("keys-populated-$implFqName")
 
     val providerPropertyKeys
       get() = readFileLines("keys-providerProperties-$implFqName")
@@ -99,7 +99,7 @@ abstract class BaseIncrementalCompilationTest {
       get() = readFileLines("keys-scopedProviderProperties-$implFqName")
 
     val deferred
-      get() = readFileLines("keys-deferred-$simpleName")
+      get() = readFileLines("keys-deferred-$implFqName")
 
     val dumpKotlinLike
       get() = readFile("graph-dumpKotlin-$implFqName.kt")
@@ -111,19 +111,19 @@ abstract class BaseIncrementalCompilationTest {
       get() = readFileLines("graph-dump-$implFqName")
 
     val keysValidated
-      get() = readFileLines("keys-validated-$simpleName")
+      get() = readFileLines("keys-validated-$implFqName")
 
     val keysUnused
-      get() = readFileLines("keys-unused-$simpleName")
+      get() = readFileLines("keys-unused-$implFqName")
 
     val metadata
       get() = readFile("graph-metadata-$implFqName.kt")
 
     val parentUsedKeysAll
-      get() = readFile("parent-keys-used-all-$simpleName")
+      get() = readFile("parent-keys-used-all-$implFqName")
 
     fun parentKeysUsedBy(extension: String) =
-      readFileLines("parent-keys-used-$simpleName-by-$extension.txt")
+      readFileLines("parent-keys-used-$implFqName-by-$extension.txt")
 
     fun graphMetadata() {
       // /graph-metadata/graph-test-AppGraph.json"

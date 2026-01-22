@@ -32,9 +32,9 @@ import dev.zacsweers.metro.compiler.ir.requireMapValueType
 import dev.zacsweers.metro.compiler.ir.requireSetElementType
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
-import dev.zacsweers.metro.compiler.joinSimpleNames
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.safePathString
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.ir.IrElement
@@ -227,7 +227,7 @@ internal class IrBindingGraph(
           shrinkUnusedBindings = metroContext.options.shrinkUnusedBindings,
           onPopulated = {
             writeDiagnostic(
-              "keys-populated-${node.metroGraphOrFail.classIdOrFail.joinSimpleNames().shortClassName}.txt"
+              "keys-populated-${node.metroGraphOrFail.classIdOrFail.safePathString}.txt"
             ) {
               val keys = mutableListOf<IrTypeKey>()
               realGraph.bindings.forEachKey(keys::add)
@@ -236,7 +236,7 @@ internal class IrBindingGraph(
           },
           onSortedCycle = { elementsInCycle ->
             writeDiagnostic(
-              "cycle-${node.metroGraphOrFail.classIdOrFail.joinSimpleNames().shortClassName}-${elementsInCycle[0].render(short = true, includeQualifier = false)}.txt"
+              "cycle-${node.metroGraphOrFail.classIdOrFail.safePathString}-${elementsInCycle[0].render(short = true, includeQualifier = false)}.txt"
             ) {
               elementsInCycle.plus(elementsInCycle[0]).joinToString("\n")
             }
@@ -255,15 +255,11 @@ internal class IrBindingGraph(
       return BindingGraphResult.ERROR
     }
 
-    writeDiagnostic(
-      "keys-validated-${node.metroGraphOrFail.classIdOrFail.joinSimpleNames().shortClassName}.txt"
-    ) {
+    writeDiagnostic("keys-validated-${node.metroGraphOrFail.classIdOrFail.safePathString}.txt") {
       sortedKeys.joinToString(separator = "\n")
     }
 
-    writeDiagnostic(
-      "keys-deferred-${node.metroGraphOrFail.classIdOrFail.joinSimpleNames().shortClassName}.txt"
-    ) {
+    writeDiagnostic("keys-deferred-${node.metroGraphOrFail.classIdOrFail.safePathString}.txt") {
       deferredTypes.joinToString(separator = "\n")
     }
 
@@ -271,9 +267,7 @@ internal class IrBindingGraph(
     val declaredKeys = bindingLookup.getDeclaredKeys()
     val unused = declaredKeys - reachableKeys
     if (unused.isNotEmpty()) {
-      writeDiagnostic(
-        "keys-unused-${node.metroGraphOrFail.classIdOrFail.joinSimpleNames().shortClassName}.txt"
-      ) {
+      writeDiagnostic("keys-unused-${node.metroGraphOrFail.classIdOrFail.safePathString}.txt") {
         unused.sorted().joinToString(separator = "\n")
       }
     }
