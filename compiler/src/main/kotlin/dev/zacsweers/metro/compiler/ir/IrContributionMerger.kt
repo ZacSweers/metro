@@ -67,7 +67,7 @@ internal class IrContributionMerger(
       return computeContributions(
         scope,
         allScopes,
-        excluded + parentExcludes(callingDeclaration),
+        excluded + parentExcluded(callingDeclaration),
         callingDeclaration,
       )
     } else {
@@ -75,7 +75,7 @@ internal class IrContributionMerger(
     }
   }
 
-  private fun parentExcludes(callingDeclaration: IrDeclaration): Set<ClassId> =
+  private fun parentExcluded(callingDeclaration: IrDeclaration): Set<ClassId> =
     generateSequence(callingDeclaration as? IrClass) {
         it.takeIf { it.origin == Origins.GeneratedGraphExtension }?.parentAsClass
       }
