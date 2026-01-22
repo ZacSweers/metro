@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.coneTypeIfResolved
 import dev.zacsweers.metro.compiler.fir.replacesArgument
@@ -63,12 +64,31 @@ internal class IrContributionMerger(
           }
         }
 
-      val excluded = graphLikeAnnotation.excludedClasses().mapToClassIds()
-      return computeContributions(scope, allScopes, excluded, callingDeclaration)
+      return computeContributions(
+        scope,
+        allScopes,
+        allExcludes(callingDeclaration),
+        callingDeclaration,
+      )
     } else {
       return null
     }
   }
+
+  private fun allExcludes(callingDeclaration: IrDeclaration): Set<ClassId> =
+    generateSequence(callingDeclaration as? IrClass) {
+        it.takeIf { it.origin == Origins.GeneratedGraphExtension }?.parentAsClass
+      }
+      .flatMap { clazz -> sequenceOf(clazz) + clazz.supertypes().mapNotNull { it.rawTypeOrNull() } }
+      .mapNotNull {
+        it
+          .annotationsIn(metroSymbols.classIds.graphLikeAnnotations)
+          .firstOrNull()
+          ?.excludedClasses()
+          ?.mapToClassIds()
+      }
+      .flatten()
+      .toSet()
 
   fun computeContributions(
     primaryScope: ClassId,
