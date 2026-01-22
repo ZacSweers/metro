@@ -63,11 +63,11 @@ internal class IrContributionMerger(
             addAll(additionalScopes)
           }
         }
-
+      val excluded = graphLikeAnnotation.excludedClasses().mapToClassIds()
       return computeContributions(
         scope,
         allScopes,
-        allExcludes(callingDeclaration),
+        excluded + parentExcludes(callingDeclaration),
         callingDeclaration,
       )
     } else {
@@ -75,7 +75,7 @@ internal class IrContributionMerger(
     }
   }
 
-  private fun allExcludes(callingDeclaration: IrDeclaration): Set<ClassId> =
+  private fun parentExcludes(callingDeclaration: IrDeclaration): Set<ClassId> =
     generateSequence(callingDeclaration as? IrClass) {
         it.takeIf { it.origin == Origins.GeneratedGraphExtension }?.parentAsClass
       }
