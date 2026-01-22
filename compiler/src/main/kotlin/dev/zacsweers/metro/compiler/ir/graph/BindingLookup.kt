@@ -88,6 +88,8 @@ internal class BindingLookup(
     mutableMapOf<IrTypeKey, MutableSet<BindsOptionalOfCallable>>()
   // Cache for created optional bindings
   private val optionalBindingsCache = mutableMapOf<IrTypeKey, IrBinding.CustomWrapper>()
+  // Keys explicitly declared in this graph (for unused key reporting)
+  private val locallyDeclaredKeys = mutableSetOf<IrTypeKey>()
 
   fun getAvailableKeys(): Set<IrTypeKey> {
     return bindingsCache.keys
@@ -104,10 +106,19 @@ internal class BindingLookup(
   /** Returns the first binding for a given type key, or null if none exist. */
   fun getBinding(typeKey: IrTypeKey): IrBinding? = bindingsCache[typeKey]?.firstOrNull()
 
-  /** Adds a binding to the cache. Multiple bindings for the same key are tracked as duplicates. */
+  /**
+   * Adds a binding to the cache. Multiple bindings for the same key are tracked as duplicates.
+   *
+   * @param isLocallyDeclared If true, this binding is declared in the current graph (not inherited
+   *   from parents). Used for unused key reporting.
+   */
   context(context: IrMetroContext)
-  fun putBinding(binding: IrBinding) {
+  fun putBinding(binding: IrBinding, isLocallyDeclared: Boolean = false) {
     bindingsCache.getAndAdd(binding.typeKey, binding)
+
+    if (isLocallyDeclared) {
+      locallyDeclaredKeys += binding.typeKey
+    }
 
     // If this is a multibinding contributor, register it
     if (binding is IrBinding.BindingWithAnnotations && binding.annotations.isIntoMultibinding) {
@@ -148,14 +159,20 @@ internal class BindingLookup(
     multibindsDeclarations.clear()
     optionalBindingDeclarations.clear()
     optionalBindingsCache.clear()
+    locallyDeclaredKeys.clear()
   }
 
   fun addLazyParentKey(typeKey: IrTypeKey, bindingFactory: () -> IrBinding) {
     lazyParentKeys[typeKey] = memoize(bindingFactory)
   }
 
-  val parentKeys: Set<IrTypeKey>
-    get() = lazyParentKeys.keys
+  /** Keys explicitly declared in this graph (used for unused key reporting). */
+  fun getDeclaredKeys(): Set<IrTypeKey> = locallyDeclaredKeys
+
+  /** Tracks a key as locally declared without adding a binding to the cache. */
+  fun trackDeclaredKey(typeKey: IrTypeKey) {
+    locallyDeclaredKeys += typeKey
+  }
 
   /**
    * Computes the multibinding type key (Set<T> or Map<K, V>) from the annotations of a contributor.

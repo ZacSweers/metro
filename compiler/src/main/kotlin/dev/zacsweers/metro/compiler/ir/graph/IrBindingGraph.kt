@@ -32,6 +32,7 @@ import dev.zacsweers.metro.compiler.ir.requireMapValueType
 import dev.zacsweers.metro.compiler.ir.requireSetElementType
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
+import dev.zacsweers.metro.compiler.joinSimpleNames
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.TraceScope
@@ -50,6 +51,7 @@ import org.jetbrains.kotlin.ir.types.makeNullable
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classId
+import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
@@ -224,7 +226,9 @@ internal class IrBindingGraph(
           keep = extraKeeps,
           shrinkUnusedBindings = metroContext.options.shrinkUnusedBindings,
           onPopulated = {
-            writeDiagnostic("keys-populated-${traceScope.tracer.diagnosticTag}.txt") {
+            writeDiagnostic(
+              "keys-populated-${node.metroGraphOrFail.classIdOrFail.joinSimpleNames().shortClassName}.txt"
+            ) {
               val keys = mutableListOf<IrTypeKey>()
               realGraph.bindings.forEachKey(keys::add)
               keys.sorted().joinToString("\n")
@@ -232,7 +236,7 @@ internal class IrBindingGraph(
           },
           onSortedCycle = { elementsInCycle ->
             writeDiagnostic(
-              "cycle-${traceScope.tracer.diagnosticTag}-${elementsInCycle[0].render(short = true, includeQualifier = false)}.txt"
+              "cycle-${node.metroGraphOrFail.classIdOrFail.joinSimpleNames().shortClassName}-${elementsInCycle[0].render(short = true, includeQualifier = false)}.txt"
             ) {
               elementsInCycle.plus(elementsInCycle[0]).joinToString("\n")
             }
@@ -251,24 +255,25 @@ internal class IrBindingGraph(
       return BindingGraphResult.ERROR
     }
 
-    writeDiagnostic("keys-validated-${traceScope.tracer.diagnosticTag}.txt") {
+    writeDiagnostic(
+      "keys-validated-${node.metroGraphOrFail.classIdOrFail.joinSimpleNames().shortClassName}.txt"
+    ) {
       sortedKeys.joinToString(separator = "\n")
     }
 
-    writeDiagnostic("keys-deferred-${traceScope.tracer.diagnosticTag}.txt") {
+    writeDiagnostic(
+      "keys-deferred-${node.metroGraphOrFail.classIdOrFail.joinSimpleNames().shortClassName}.txt"
+    ) {
       deferredTypes.joinToString(separator = "\n")
     }
 
-    // Don't include parent binding keys when reporting unused, as that ends up being a huge
-    // superset and sorta irrelevant to this
-    //    val allBindings = buildSet {
-    //      bindingsSnapshot().forEachKey(::add)
-    //      addAll(bindingLookup.getAvailableKeys())
-    //      minus(bindingLookup.parentKeys)
-    //    }
-    val unused = emptySet<IrTypeKey>()
+    // Only report unused keys that were explicitly declared in this graph
+    val declaredKeys = bindingLookup.getDeclaredKeys()
+    val unused = declaredKeys - reachableKeys
     if (unused.isNotEmpty()) {
-      writeDiagnostic("keys-unused-${traceScope.tracer.diagnosticTag}.txt") {
+      writeDiagnostic(
+        "keys-unused-${node.metroGraphOrFail.classIdOrFail.joinSimpleNames().shortClassName}.txt"
+      ) {
         unused.sorted().joinToString(separator = "\n")
       }
     }

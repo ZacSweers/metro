@@ -186,7 +186,7 @@ internal class BindingGraphGenerator(
       }
 
       // Add the binding to the lookup (duplicates tracked as lists)
-      bindingLookup.putBinding(binding)
+      bindingLookup.putBinding(binding, isLocallyDeclared = !isInherited)
 
       if (options.enableFullBindingGraphValidation) {
         graph.addBinding(binding.typeKey, binding, bindingStack)
@@ -265,7 +265,7 @@ internal class BindingGraphGenerator(
       }
 
       // Add the binding to the lookup (duplicates tracked as lists)
-      bindingLookup.putBinding(binding)
+      bindingLookup.putBinding(binding, isLocallyDeclared = !isInherited)
 
       if (options.enableFullBindingGraphValidation) {
         graph.addBinding(binding.typeKey, binding, bindingStack)
@@ -296,6 +296,8 @@ internal class BindingGraphGenerator(
             IrBinding.BoundInstance(creatorParam, creatorParam.ir!!, isGraphInput = true),
             bindingStack,
           )
+          // Track as locally declared for unused key reporting
+          bindingLookup.trackDeclaredKey(paramTypeKey)
 
           val rawType = creatorParam.type.rawType()
           // Add the original type too as an alias
@@ -325,6 +327,7 @@ internal class BindingGraphGenerator(
         val declaration = node.creator?.parametersByTypeKey?.get(typeKey)?.ir ?: it
 
         val irElement = node.annotationDeclaredBindingContainers[typeKey]
+        val isGraphInput = irElement != null
 
         // Only add the bound instance if there's no dynamic replacement
         graph.addBinding(
@@ -334,10 +337,14 @@ internal class BindingGraphGenerator(
             nameHint = it.name.asString(),
             irElement = irElement,
             reportableDeclaration = declaration,
-            isGraphInput = irElement != null,
+            isGraphInput = isGraphInput,
           ),
           bindingStack,
         )
+        // Track as locally declared for unused key reporting (only if it's a graph input)
+        if (isGraphInput) {
+          bindingLookup.trackDeclaredKey(typeKey)
+        }
       }
     }
 
@@ -483,6 +490,8 @@ internal class BindingGraphGenerator(
             ),
             bindingStack,
           )
+          // Track as locally declared for unused key reporting
+          bindingLookup.trackDeclaredKey(depNodeKey)
         }
 
         val irGetter = getter.ir
@@ -672,7 +681,7 @@ internal class BindingGraphGenerator(
           )
 
         // Cache in BindingLookup to avoid re-creating it later
-        bindingLookup.putBinding(binding)
+        bindingLookup.putBinding(binding, isLocallyDeclared = true)
 
         graph.addBinding(contextKey.typeKey, binding, bindingStack)
 
