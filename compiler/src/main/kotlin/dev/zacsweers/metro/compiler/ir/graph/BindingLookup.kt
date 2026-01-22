@@ -36,6 +36,7 @@ import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.irAttribute
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.typeOrFail
@@ -634,14 +635,17 @@ internal class BindingLookup(
         }
 
         val binding =
-          IrBinding.ConstructorInjected(
-            type = irClass,
-            classFactory = mappedFactory,
-            annotations = classAnnotations,
-            typeKey = key,
-            injectedMembers =
-              membersInjectBindings.value.mapToSet { binding -> binding.contextualTypeKey },
-          )
+          irClass.cachedConstructorInjectedBinding
+            ?: IrBinding.ConstructorInjected(
+                type = irClass,
+                classFactory = mappedFactory,
+                annotations = classAnnotations,
+                typeKey = key,
+                injectedMembers =
+                  membersInjectBindings.value.mapToSet { binding -> binding.contextualTypeKey },
+              )
+              .also { irClass.cachedConstructorInjectedBinding = it }
+
         bindings += binding
 
         // Record a lookup of the class in case its kind changes
@@ -655,14 +659,16 @@ internal class BindingLookup(
         // inherently deferrable
         val targetContextualTypeKey = IrContextualTypeKey.from(function, wrapInProvider = true)
         bindings +=
-          IrBinding.Assisted(
-            type = irClass,
-            function = function,
-            annotations = classAnnotations,
-            typeKey = key,
-            parameters = function.parameters(),
-            target = targetContextualTypeKey,
-          )
+          irClass.cacheAssistedBinding
+            ?: IrBinding.Assisted(
+                type = irClass,
+                function = function,
+                annotations = classAnnotations,
+                typeKey = key,
+                parameters = function.parameters(),
+                target = targetContextualTypeKey,
+              )
+              .also { irClass.cacheAssistedBinding = it }
       } else if (contextKey.hasDefault) {
         bindings += IrBinding.Absent(key)
       } else {
@@ -674,3 +680,10 @@ internal class BindingLookup(
     }
   }
 }
+
+/** Cached [IrBinding.ConstructorInjected] binding for this class factory. */
+internal var IrClass.cachedConstructorInjectedBinding: IrBinding.ConstructorInjected? by
+  irAttribute(copyByDefault = false)
+
+/** Cached [IrBinding.ConstructorInjected] binding for this class factory. */
+internal var IrClass.cacheAssistedBinding: IrBinding.Assisted? by irAttribute(copyByDefault = false)

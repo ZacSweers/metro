@@ -35,6 +35,7 @@ import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.irAttribute
 import org.jetbrains.kotlin.ir.types.typeWithArguments
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
@@ -154,16 +155,6 @@ internal class BindingGraphGenerator(
 
       // typeKey is already the transformed multibinding key
       val targetTypeKey = providerFactory.typeKey
-      val contextKey = IrContextualTypeKey(targetTypeKey)
-
-      val binding =
-        IrBinding.Provided(
-          providerFactory = providerFactory,
-          contextualTypeKey = contextKey,
-          parameters = providerFactory.parameters,
-          annotations = providerFactory.annotations,
-        )
-
       val isDynamic = providerFactory.isDynamic
       val existingBindings = bindingLookup.getBindings(targetTypeKey)
 
@@ -184,6 +175,19 @@ internal class BindingGraphGenerator(
           bindingLookup.clearBindings(targetTypeKey)
         }
       }
+
+      val contextKey = IrContextualTypeKey(targetTypeKey)
+
+      // Use cached binding if available, otherwise create and cache
+      val binding =
+        providerFactory.factoryClass.cachedProvidedBinding
+          ?: IrBinding.Provided(
+              providerFactory = providerFactory,
+              contextualTypeKey = contextKey,
+              parameters = providerFactory.parameters,
+              annotations = providerFactory.annotations,
+            )
+            .also { providerFactory.factoryClass.cachedProvidedBinding = it }
 
       // Add the binding to the lookup (duplicates tracked as lists)
       bindingLookup.putBinding(binding, isLocallyDeclared = !isInherited)
@@ -229,21 +233,6 @@ internal class BindingGraphGenerator(
 
       // typeKey is already the transformed multibinding key
       val targetTypeKey = bindsCallable.typeKey
-      val parameters = bindsCallable.function.parameters()
-      val bindsImplType =
-        parameters.extensionOrFirstParameter?.contextualTypeKey
-          ?: reportCompilerBug(
-            "Missing receiver parameter for @Binds function: ${bindsCallable.function}"
-          )
-
-      val binding =
-        IrBinding.Alias(
-          typeKey = targetTypeKey,
-          aliasedType = bindsImplType.typeKey,
-          bindsCallable = bindsCallable,
-          parameters = parameters,
-        )
-
       val isDynamic = bindsCallable.isDynamic
       val existingBindings = bindingLookup.getBindings(targetTypeKey)
 
@@ -263,6 +252,27 @@ internal class BindingGraphGenerator(
           bindingLookup.clearBindings(targetTypeKey)
         }
       }
+
+      val mirrorFunction = bindsCallable.callableMetadata.mirrorFunction
+
+      // Use cached binding if available, otherwise create and cache
+      val binding =
+        mirrorFunction.cachedAliasBinding
+          ?: run {
+            val parameters = bindsCallable.function.parameters()
+            val bindsImplType =
+              parameters.extensionOrFirstParameter?.contextualTypeKey
+                ?: reportCompilerBug(
+                  "Missing receiver parameter for @Binds function: ${bindsCallable.function}"
+                )
+            IrBinding.Alias(
+                typeKey = targetTypeKey,
+                aliasedType = bindsImplType.typeKey,
+                bindsCallable = bindsCallable,
+                parameters = parameters,
+              )
+              .also { mirrorFunction.cachedAliasBinding = it }
+          }
 
       // Add the binding to the lookup (duplicates tracked as lists)
       bindingLookup.putBinding(binding, isLocallyDeclared = !isInherited)
@@ -797,3 +807,15 @@ private data class InheritedGraphData(
   val supertypeAliases: Map<IrTypeKey, IrTypeKey>,
   val multibindingAccessors: List<GraphAccessor>,
 )
+
+/**
+ * Cached [IrBinding.Alias] binding for this binds callable's mirror function.
+ */
+internal var IrSimpleFunction.cachedAliasBinding: IrBinding.Alias? by
+  irAttribute(copyByDefault = false)
+
+/**
+ * Cached [IrBinding.Provided] binding for this provider factory class.
+ */
+internal var IrClass.cachedProvidedBinding: IrBinding.Provided? by
+  irAttribute(copyByDefault = false)
