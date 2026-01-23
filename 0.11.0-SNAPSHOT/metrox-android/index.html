@@ -1166,6 +1166,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#injecting-android-app-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Injecting Android app components
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#advanced" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1448,6 +1459,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#injecting-android-app-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Injecting Android app components
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#advanced" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1516,6 +1538,15 @@
 </code></pre></div></p>
 </li>
 </ol>
+<h2 id="injecting-android-app-components">Injecting Android app components<a class="headerlink" href="#injecting-android-app-components" title="Permanent link">&para;</a></h2>
+<p>To constructor inject Android app components (<code>Activity</code>, <code>Service</code>, etc), annotate them with the corresponding map key and contribute them into the maps used by <code>MetroAppComponentFactory</code>.</p>
+<p>For example, use <code>@ActivityKey</code> for an injected <code>Activity</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@ContributesIntoMap</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">,</span><span class="w"> </span><span class="n">binding</span><span class="o">&lt;</span><span class="n">Activity</span><span class="o">&gt;</span><span class="p">())</span>
+<span class="nd">@ActivityKey</span><span class="p">(</span><span class="n">MainActivity</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">MainActivity</span><span class="p">(</span><span class="kd">private</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">fragmentFactory</span><span class="p">:</span><span class="w"> </span><span class="n">FragmentFactory</span><span class="p">):</span><span class="w"> </span><span class="n">AppCompatActivity</span><span class="p">()</span>
+</code></pre></div>
+<p>For other types of components, use <code>@BroadcastReceiverKey</code>, <code>@ContentProviderKey</code>, and <code>@ServiceKey</code> the same way.</p>
+<p>Note that the built-in <code>MetroAppComponentFactory</code> uses the base <code>Activity</code>, <code>Service</code>, etc types. If you want to use your own bases (<code>ComponentActivity</code>, etc), you&rsquo;ll need to create your own <code>AppComponentFactory</code> + relevant multibindings typed to the key you need.</p>
 <h2 id="advanced">Advanced<a class="headerlink" href="#advanced" title="Permanent link">&para;</a></h2>
 <p>If you have your own custom <code>AppComponentFactory</code>, you will need to exclude the MetroX implementation in your <code>AndroidManifest.xml</code> via <code>tools:replace</code> attribute.</p>
 <div class="highlight"><pre><span></span><code><span class="cp">&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;</span>
