@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769132051851,
+  "lastUpdate": 1769134224030,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -3360,6 +3360,62 @@ window.BENCHMARK_DATA = {
             "value": 20101.474,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -1.54%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jon Amireh",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Jon Amireh",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "fffbb349~1",
+          "message": "[before] Collect exclusions from parent DependencyGraphs (#",
+          "timestamp": "2026-01-23T01:35:34Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/fffbb349b382a859dccb70420e1c09c5b4964817"
+        },
+        "date": 1769134224030,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19290.624,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Jon Amireh",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Jon Amireh",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "fffbb349b382a859dccb70420e1c09c5b4964817",
+          "message": "[after] Collect exclusions from parent DependencyGraphs (#",
+          "timestamp": "2026-01-23T01:35:34Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/fffbb349b382a859dccb70420e1c09c5b4964817"
+        },
+        "date": 1769134224031,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19678.134,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +2.01%"
           }
         ]
       }
