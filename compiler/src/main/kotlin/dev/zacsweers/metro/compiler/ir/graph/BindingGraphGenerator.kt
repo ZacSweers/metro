@@ -15,7 +15,6 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.MultibindsCallable
 import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
-import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.isBindingContainer
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
@@ -24,7 +23,6 @@ import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
-import dev.zacsweers.metro.compiler.ir.remapTypes
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
@@ -32,13 +30,11 @@ import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.transformers.InjectConstructorTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import dev.zacsweers.metro.compiler.reportCompilerBug
-import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.irAttribute
 import org.jetbrains.kotlin.ir.types.typeWithArguments
-import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 
@@ -95,6 +91,14 @@ internal class BindingGraphGenerator(
         metroContext.loggerFor(MetroLogger.Type.BindingGraphConstruction),
       )
 
+    fun putBinding(typeKey: IrTypeKey, isLocallyDeclared: Boolean, binding: IrBinding) {
+      bindingLookup.putBinding(binding, isLocallyDeclared = isLocallyDeclared)
+
+      if (options.enableFullBindingGraphValidation) {
+        graph.addBinding(typeKey, binding, bindingStack)
+      }
+    }
+
     // Add instance parameters
     val graphInstanceBinding =
       IrBinding.BoundInstance(
@@ -103,7 +107,7 @@ internal class BindingGraphGenerator(
         reportableDeclaration = node.sourceGraph,
         token = null, // indicates self-binding, code gen uses thisReceiver
       )
-    graph.addBinding(node.typeKey, graphInstanceBinding, bindingStack)
+    putBinding(graphInstanceBinding.typeKey, isLocallyDeclared = false, graphInstanceBinding)
 
     // Mapping of supertypes to aliased bindings
     // We populate this for the current graph type first and then
@@ -119,6 +123,32 @@ internal class BindingGraphGenerator(
     node.supertypes.forEach { superType ->
       val superTypeKey = IrTypeKey(superType)
       superTypeToAlias.putIfAbsent(superTypeKey, node.typeKey)
+    }
+
+    // Register MembersInjector functions for deferred binding creation
+    // The actual bindings are created in BindingLookup.computeMembersInjectorBindings
+    for ((contextKey, injector) in node.injectors) {
+      val param = injector.ir.regularParameters.single()
+      val paramType = param.type
+      // Show the target class being injected, not the MembersInjector<T> type
+      val entry =
+        IrBindingStack.Entry.injectedAt(
+          contextKey = contextKey,
+          function = injector.ir,
+          displayTypeKey = IrTypeKey(paramType),
+        )
+
+      graph.addInjector(contextKey, entry)
+      if (contextKey.typeKey in graph) {
+        // Injectors may be requested multiple times, don't double-register
+        continue
+      }
+      // Skip if there's a dynamic replacement for this injector type
+      if (contextKey.typeKey in node.dynamicTypeKeys) {
+        continue
+      }
+      // Register the injector function - binding will be created lazily in BindingLookup
+      bindingLookup.registerInjectorFunction(contextKey.typeKey, injector.ir, injector.callableId)
     }
 
     // Collect all inherited data from extended nodes in a single pass
@@ -154,30 +184,18 @@ internal class BindingGraphGenerator(
 
       // typeKey is already the transformed multibinding key
       val targetTypeKey = providerFactory.typeKey
-      val contextKey = IrContextualTypeKey(targetTypeKey)
-
-      val binding =
-        IrBinding.Provided(
-          providerFactory = providerFactory,
-          contextualTypeKey = contextKey,
-          parameters = providerFactory.parameters,
-          annotations = providerFactory.annotations,
-        )
-
       val isDynamic = providerFactory.isDynamic
-      val existingBindings = bindingLookup.getBindings(targetTypeKey)
+      val existingBinding = bindingLookup.getBindings(targetTypeKey)
 
-      if (isDynamic && existingBindings != null) {
+      if (isDynamic && existingBinding != null) {
         // Only clear existing if they are not dynamic
         // If existing bindings are also dynamic, keep them both for duplicate detection
         val existingAreDynamic =
-          existingBindings.getOrNull(0)?.let { binding ->
-            when (binding) {
-              is IrBinding.Provided -> binding.providerFactory.isDynamic
-              is IrBinding.Alias -> binding.bindsCallable?.isDynamic == true
-              else -> false
-            }
-          } ?: false
+          when (existingBinding) {
+            is IrBinding.Provided -> existingBinding.providerFactory.isDynamic
+            is IrBinding.Alias -> existingBinding.bindsCallable?.isDynamic == true
+            else -> false
+          }
 
         if (!existingAreDynamic) {
           // Dynamic binding replaces non-dynamic existing bindings
@@ -185,14 +203,21 @@ internal class BindingGraphGenerator(
         }
       }
 
-      // Add the binding to the lookup (duplicates tracked as lists)
-      bindingLookup.putBinding(binding)
+      val contextKey = IrContextualTypeKey(targetTypeKey)
 
-      if (options.enableFullBindingGraphValidation) {
-        graph.addBinding(binding.typeKey, binding, bindingStack)
-      } else {
-        // The actual binding will be added lazily via BindingLookup when needed
-      }
+      // Use cached binding if available, otherwise create and cache
+      val binding =
+        providerFactory.factoryClass.cachedProvidedBinding
+          ?: IrBinding.Provided(
+              providerFactory = providerFactory,
+              contextualTypeKey = contextKey,
+              parameters = providerFactory.parameters,
+              annotations = providerFactory.annotations,
+            )
+            .also { providerFactory.factoryClass.cachedProvidedBinding = it }
+
+      // Add the binding to the lookup (duplicates tracked as lists)
+      putBinding(binding.typeKey, isLocallyDeclared = !isInherited, binding)
     }
 
     // Collect all binds callables to add (flatten from lists)
@@ -229,49 +254,47 @@ internal class BindingGraphGenerator(
 
       // typeKey is already the transformed multibinding key
       val targetTypeKey = bindsCallable.typeKey
-      val parameters = bindsCallable.function.parameters()
-      val bindsImplType =
-        parameters.extensionOrFirstParameter?.contextualTypeKey
-          ?: reportCompilerBug(
-            "Missing receiver parameter for @Binds function: ${bindsCallable.function}"
-          )
-
-      val binding =
-        IrBinding.Alias(
-          typeKey = targetTypeKey,
-          aliasedType = bindsImplType.typeKey,
-          bindsCallable = bindsCallable,
-          parameters = parameters,
-        )
-
       val isDynamic = bindsCallable.isDynamic
-      val existingBindings = bindingLookup.getBindings(targetTypeKey)
+      val existingBinding = bindingLookup.getBindings(targetTypeKey)
 
-      if (isDynamic && existingBindings != null) {
+      if (isDynamic && existingBinding != null) {
         // Only clear existing if they are NOT dynamic
         // If existing bindings are also dynamic, keep them for duplicate detection
         val existingAreDynamic =
-          existingBindings.firstOrNull()?.let { binding ->
-            when (binding) {
-              is IrBinding.Provided -> binding.providerFactory.isDynamic
-              is IrBinding.Alias -> binding.bindsCallable?.isDynamic == true
-              else -> false
-            }
-          } ?: false
+          when (existingBinding) {
+            is IrBinding.Provided -> existingBinding.providerFactory.isDynamic
+            is IrBinding.Alias -> existingBinding.bindsCallable?.isDynamic == true
+            else -> false
+          }
         if (!existingAreDynamic) {
           // Dynamic binding replaces non-dynamic existing bindings
           bindingLookup.clearBindings(targetTypeKey)
         }
       }
 
-      // Add the binding to the lookup (duplicates tracked as lists)
-      bindingLookup.putBinding(binding)
+      val mirrorFunction = bindsCallable.callableMetadata.mirrorFunction
 
-      if (options.enableFullBindingGraphValidation) {
-        graph.addBinding(binding.typeKey, binding, bindingStack)
-      } else {
-        // The actual binding will be added lazily via BindingLookup when needed
-      }
+      // Use cached binding if available, otherwise create and cache
+      val binding =
+        mirrorFunction.cachedAliasBinding
+          ?: run {
+            val parameters = bindsCallable.function.parameters()
+            val bindsImplType =
+              parameters.extensionOrFirstParameter?.contextualTypeKey
+                ?: reportCompilerBug(
+                  "Missing receiver parameter for @Binds function: ${bindsCallable.function}"
+                )
+            IrBinding.Alias(
+                typeKey = targetTypeKey,
+                aliasedType = bindsImplType.typeKey,
+                bindsCallable = bindsCallable,
+                parameters = parameters,
+              )
+              .also { mirrorFunction.cachedAliasBinding = it }
+          }
+
+      // Add the binding to the lookup (duplicates tracked as lists)
+      putBinding(binding.typeKey, isLocallyDeclared = !isInherited, binding)
     }
 
     node.creator?.parameters?.regularParameters.orEmpty().forEach { creatorParam ->
@@ -291,11 +314,11 @@ internal class BindingGraphGenerator(
 
         if (isDynamic || !hasDynamicReplacement) {
           // Only add the bound instance if there's no dynamic replacement
-          graph.addBinding(
-            paramTypeKey,
-            IrBinding.BoundInstance(creatorParam, creatorParam.ir!!, isGraphInput = true),
-            bindingStack,
-          )
+          val binding =
+            IrBinding.BoundInstance(creatorParam, creatorParam.ir!!, isGraphInput = true)
+          putBinding(binding.typeKey, isLocallyDeclared = true, binding)
+          // Track as locally declared for unused key reporting
+          bindingLookup.trackDeclaredKey(paramTypeKey)
 
           val rawType = creatorParam.type.rawType()
           // Add the original type too as an alias
@@ -325,19 +348,22 @@ internal class BindingGraphGenerator(
         val declaration = node.creator?.parametersByTypeKey?.get(typeKey)?.ir ?: it
 
         val irElement = node.annotationDeclaredBindingContainers[typeKey]
+        val isGraphInput = irElement != null
 
         // Only add the bound instance if there's no dynamic replacement
-        graph.addBinding(
-          typeKey,
+        val binding =
           IrBinding.BoundInstance(
             typeKey = typeKey,
             nameHint = it.name.asString(),
             irElement = irElement,
             reportableDeclaration = declaration,
-            isGraphInput = irElement != null,
-          ),
-          bindingStack,
-        )
+            isGraphInput = isGraphInput,
+          )
+        putBinding(binding.typeKey, isLocallyDeclared = isGraphInput, binding)
+        // Track as locally declared for unused key reporting (only if it's a graph input)
+        if (isGraphInput) {
+          bindingLookup.trackDeclaredKey(typeKey)
+        }
       }
     }
 
@@ -398,13 +424,11 @@ internal class BindingGraphGenerator(
     // Now that we've processed all supertypes/aliases
     for ((superTypeKey, aliasedType) in superTypeToAlias) {
       // We may have already added a `@Binds` declaration explicitly, this is ok!
+      // We don't double-add if it's already in the lookup, which can be the case for graph nodes
       // TODO warning?
-      if (superTypeKey !in graph && superTypeKey !in node.dynamicTypeKeys) {
-        graph.addBinding(
-          superTypeKey,
-          IrBinding.Alias(superTypeKey, aliasedType, null, Parameters.empty()),
-          bindingStack,
-        )
+      if (superTypeKey !in bindingLookup && superTypeKey !in node.dynamicTypeKeys) {
+        val binding = IrBinding.Alias(superTypeKey, aliasedType, null, Parameters.empty())
+        putBinding(binding.typeKey, isLocallyDeclared = false, binding)
       }
     }
 
@@ -438,24 +462,22 @@ internal class BindingGraphGenerator(
         val shouldAddBinding =
           accessor.isFactory &&
             // It's allowed to specify multiple accessors for the same factory
-            accessor.key.typeKey !in graph &&
+            accessor.key.typeKey !in bindingLookup &&
             // Don't add a binding if the graph itself implements the factory
             accessor.key.typeKey.classId !in node.supertypeClassIds &&
             // Don't add a binding if there's a dynamic replacement
             accessor.key.typeKey !in node.dynamicTypeKeys
 
         if (shouldAddBinding) {
-          graph.addBinding(
-            accessor.key.typeKey,
+          val binding =
             IrBinding.GraphExtensionFactory(
               typeKey = accessor.key.typeKey,
               extensionTypeKey = key,
               parent = node.metroGraph!!,
-              parentKey = node.typeKey,
+              parentKey = IrTypeKey(node.metroGraph!!),
               accessor = accessor.accessor.ir,
-            ),
-            bindingStack,
-          )
+            )
+          putBinding(binding.typeKey, false, binding)
         }
       }
     }
@@ -469,20 +491,20 @@ internal class BindingGraphGenerator(
       // Only add accessors for included types
       depNode.accessors.forEach { (contextualTypeKey, getter, _) ->
         // Add a ref to the included graph if not already present
-        if (depNodeKey !in graph) {
+        if (depNodeKey !in bindingLookup) {
           val declaration =
             node.creator?.parametersByTypeKey?.get(depNodeKey)?.ir ?: depNode.sourceGraph
 
-          graph.addBinding(
-            depNodeKey,
+          val binding =
             IrBinding.BoundInstance(
               depNodeKey,
               "${depNode.sourceGraph.name}Provider",
               declaration,
               isGraphInput = true,
-            ),
-            bindingStack,
-          )
+            )
+          putBinding(binding.typeKey, isLocallyDeclared = true, binding)
+          // Track as locally declared for unused key reporting
+          bindingLookup.trackDeclaredKey(depNodeKey)
         }
 
         val irGetter = getter.ir
@@ -500,16 +522,14 @@ internal class BindingGraphGenerator(
             irGetter
           }
 
-        graph.addBinding(
-          contextualTypeKey.typeKey,
+        val binding =
           IrBinding.GraphDependency(
             ownerKey = depNodeKey,
             graph = depNode.sourceGraph,
             getter = getterToUse,
             typeKey = contextualTypeKey.typeKey,
-          ),
-          bindingStack,
-        )
+          )
+        putBinding(binding.typeKey, isLocallyDeclared = true, binding)
         // Record a lookup for IC
         trackFunctionCall(node.sourceGraph, irGetter)
         trackFunctionCall(node.sourceGraph, getterToUse)
@@ -534,16 +554,14 @@ internal class BindingGraphGenerator(
         // TODO it would be nice if we could do this lazily with addLazyParentKey
         val token =
           parentContext.mark(parentKey) ?: reportCompilerBug("Missing parent key $parentKey")
-        graph.addBinding(
-          parentKey,
+        val binding =
           IrBinding.BoundInstance(
             typeKey = parentKey,
             nameHint = "parent",
             reportableDeclaration = parentNode.sourceGraph,
             token = token,
-          ),
-          bindingStack,
-        )
+          )
+        putBinding(binding.typeKey, isLocallyDeclared = false, binding)
 
         // Add the original type too as an alias
         val regularGraph = parentNode.sourceGraph.sourceGraphIfMetroGraph
@@ -599,95 +617,6 @@ internal class BindingGraphGenerator(
               typeKey = key,
             )
           }
-        }
-      }
-    }
-
-    // Add MembersInjector bindings defined on injector functions
-    for ((contextKey, injector) in node.injectors) {
-      val param = injector.ir.regularParameters.single()
-      val paramType = param.type
-      // Show the target class being injected, not the MembersInjector<T> type
-      val entry =
-        IrBindingStack.Entry.injectedAt(
-          contextKey = contextKey,
-          function = injector.ir,
-          displayTypeKey = IrTypeKey(paramType),
-        )
-
-      graph.addInjector(contextKey, entry)
-      if (contextKey.typeKey in graph) {
-        // Injectors may be requested multiple times, don't double-add a binding
-        continue
-      }
-      // Skip if there's a dynamic replacement for this injector type
-      if (contextKey.typeKey in node.dynamicTypeKeys) {
-        continue
-      }
-      bindingStack.withEntry(entry) {
-        val targetClass = paramType.rawType()
-        // Don't return null on missing because it's legal to inject a class with no member
-        // injections
-        // TODO warn on this?
-        val generatedInjectors =
-          membersInjectorTransformer.getOrGenerateAllInjectorsFor(targetClass)
-
-        val remapper = targetClass.deepRemapperFor(paramType)
-
-        val mergedMappedParameters =
-          if (generatedInjectors.isEmpty()) {
-              Parameters.empty()
-            } else {
-              generatedInjectors
-                .map { generatedInjector -> generatedInjector.mergedParameters(remapper) }
-                .reduce { current, next -> current.mergeValueParametersWith(next) }
-            }
-            .withCallableId(injector.callableId)
-
-        // Supertype injector keys: all injectors except the last one (which is the target class)
-        // that have @HasMemberInjections. The list is in base-to-derived order, so dropLast(1)
-        // gives us the supertypes.
-        val supertypeInjectorKeys =
-          if (generatedInjectors.size > 1) {
-            generatedInjectors
-              .dropLast(1)
-              .filter { it.sourceClass.hasAnnotation(Symbols.ClassIds.HasMemberInjections) }
-              .map { injectorClass ->
-                IrContextualTypeKey(injectorClass.typeKey.remapTypes(remapper))
-              }
-          } else {
-            emptyList()
-          }
-
-        val binding =
-          IrBinding.MembersInjected(
-            contextKey,
-            // Need to look up the injector class and gather all params
-            parameters = mergedMappedParameters,
-            reportableDeclaration = injector.ir,
-            function = injector.ir,
-            isFromInjectorFunction = true,
-            targetClassId = targetClass.classIdOrFail,
-            supertypeMembersInjectorKeys = supertypeInjectorKeys,
-          )
-
-        // Cache in BindingLookup to avoid re-creating it later
-        bindingLookup.putBinding(binding)
-
-        graph.addBinding(contextKey.typeKey, binding, bindingStack)
-
-        // Ensure that we traverse the target class's superclasses and lookup relevant bindings for
-        // them too, namely ancestor member injectors
-        val extraBindings =
-          bindingLookup.lookup(
-            IrContextualTypeKey.from(param),
-            graph.bindingsSnapshot().keys,
-            bindingStack,
-          ) { _, _ ->
-            // Duplicates will be reported later during graph seal
-          }
-        for (extraBinding in extraBindings) {
-          graph.addBinding(extraBinding.typeKey, extraBinding, bindingStack)
         }
       }
     }
@@ -788,3 +717,11 @@ private data class InheritedGraphData(
   val supertypeAliases: Map<IrTypeKey, IrTypeKey>,
   val multibindingAccessors: List<GraphAccessor>,
 )
+
+/** Cached [IrBinding.Alias] binding for this binds callable's mirror function. */
+internal var IrSimpleFunction.cachedAliasBinding: IrBinding.Alias? by
+  irAttribute(copyByDefault = false)
+
+/** Cached [IrBinding.Provided] binding for this provider factory class. */
+internal var IrClass.cachedProvidedBinding: IrBinding.Provided? by
+  irAttribute(copyByDefault = false)

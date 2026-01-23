@@ -444,8 +444,10 @@ internal class DependencyGraphTransformer(
               accessor = accessor.ir,
               parentGraphKey = node.typeKey,
             )
+
           // Replace the binding with the updated version
           bindingGraph.addBinding(contributedGraphKey, binding, IrBindingStack.empty())
+
           // Necessary since we don't treat graph extensions as part of roots
           bindingGraph.keep(
             binding.contextualTypeKey,
@@ -494,7 +496,7 @@ internal class DependencyGraphTransformer(
         }
       }
 
-    sealResult.reportUnusedInputs(bindingGraph, dependencyGraphDeclaration)
+    sealResult.reportUnusedInputs(dependencyGraphDeclaration)
 
     // Build validation result (may have errors - caller will check)
     val validationResult =
@@ -534,10 +536,7 @@ internal class DependencyGraphTransformer(
     return validationResult
   }
 
-  private fun IrBindingGraph.BindingGraphResult.reportUnusedInputs(
-    bindingGraph: IrBindingGraph,
-    graphDeclaration: IrClass,
-  ) {
+  private fun IrBindingGraph.BindingGraphResult.reportUnusedInputs(graphDeclaration: IrClass) {
     val severity = options.unusedGraphInputsSeverity
     if (!severity.isEnabled) return
 
@@ -550,15 +549,7 @@ internal class DependencyGraphTransformer(
       }
 
     if (unusedKeys.isNotEmpty()) {
-      val unusedGraphInputs =
-        unusedKeys.mapNotNull {
-          val binding = bindingGraph.findBinding(it)
-          if (binding is IrBinding.BoundInstance && binding.isGraphInput) {
-            binding
-          } else {
-            null
-          }
-        }
+      val unusedGraphInputs = unusedKeys.values.filterNotNull().sortedBy { it.typeKey }
 
       for (unusedBinding in unusedGraphInputs) {
         val message = buildString {
