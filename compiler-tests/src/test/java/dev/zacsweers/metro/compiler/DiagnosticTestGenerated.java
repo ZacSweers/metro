@@ -715,6 +715,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("MultipleSubtypesWithCommonParentMemberInjectionsDoNotWarnAboutDupes.kt")
+      public void testMultipleSubtypesWithCommonParentMemberInjectionsDoNotWarnAboutDupes() {
+        runTest("compiler-tests/src/test/data/diagnostic/inject/member/MultipleSubtypesWithCommonParentMemberInjectionsDoNotWarnAboutDupes.kt");
+      }
+
+      @Test
       @TestMetadata("UnnecessaryMemberInjectShouldError.kt")
       public void testUnnecessaryMemberInjectShouldError() {
         runTest("compiler-tests/src/test/data/diagnostic/inject/member/UnnecessaryMemberInjectShouldError.kt");

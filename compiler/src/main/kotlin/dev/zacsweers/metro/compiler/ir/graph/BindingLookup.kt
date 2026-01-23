@@ -612,7 +612,13 @@ internal class BindingLookup(
       }
 
       // Finally, fall back to class-based lookup and cache the result
-      val classBindings = lookupClassBinding(contextKey, currentBindings, stack)
+      val classBindings: Set<IrBinding> =
+        lookupClassBinding(contextKey, currentBindings, stack)
+          // Filter out previously-seen ancestor member injectors as we don't need to re-add them
+          // but may come with the lookup if there are multiple injected subclasses
+          .filterNotTo(mutableSetOf()) {
+            it is IrBinding.MembersInjected && it.typeKey in currentBindings
+          }
 
       // Check if this class binding is available from parent and is scoped
       if (parentContext != null) {
