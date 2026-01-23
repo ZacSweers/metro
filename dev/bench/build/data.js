@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769153183622,
+  "lastUpdate": 1769207321885,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -3584,6 +3584,62 @@ window.BENCHMARK_DATA = {
             "value": 21423.9,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +0.11%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "26ef52c7~1",
+          "message": "[before] Fix duplicate additions of existing ancestor membe",
+          "timestamp": "2026-01-23T16:54:31-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/26ef52c7a0fcaf0c3d73dbdaf3eef6b7b9ebe9d4"
+        },
+        "date": 1769207321885,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18783.095999999998,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "26ef52c7a0fcaf0c3d73dbdaf3eef6b7b9ebe9d4",
+          "message": "[after] Fix duplicate additions of existing ancestor membe",
+          "timestamp": "2026-01-23T16:54:31-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/26ef52c7a0fcaf0c3d73dbdaf3eef6b7b9ebe9d4"
+        },
+        "date": 1769207321886,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18146.35,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -3.39%"
           }
         ]
       }
