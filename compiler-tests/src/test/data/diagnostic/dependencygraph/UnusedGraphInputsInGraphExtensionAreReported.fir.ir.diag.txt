@@ -1,6 +1,9 @@
 /UnusedGraphInputsInGraphExtensionAreReported.kt:(741,759): warning: Graph input 'kotlin.Int' is unused and can be removed.
 
 
+/UnusedGraphInputsInGraphExtensionAreReported.kt:(767,803): warning: Graph input 'SomeIncludedType' is unused and can be removed.
+
+
 /UnusedGraphInputsInGraphExtensionAreReported.kt:(811,857): warning: Graph input 'IncludedContainer' is unused and can be removed.
 
 (Hint)
