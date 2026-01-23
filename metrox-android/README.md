@@ -28,9 +28,9 @@ For simple cases, all you need to do is
     }
     ```
 
-## Injecting components
+## Injecting Android app components
 
-To inject values into them, mark your components with the appropriate key and contribute them into the maps used by `MetroAppComponentFactory`.
+To constructor inject Android app components (`Activity`, `Service`, etc), annotate them with the corresponding map key and contribute them into the maps used by `MetroAppComponentFactory`.
 
 For example, use `@ActivityKey` for an injected `Activity`:
 
@@ -41,6 +41,8 @@ class MainActivity(private val fragmentFactory: FragmentFactory): AppCompatActiv
 ```
 
 For other types of components, use `@BroadcastReceiverKey`, `@ContentProviderKey`, and `@ServiceKey` the same way.
+
+Note that the built-in `MetroAppComponentFactory` uses the base `Activity`, `Service`, etc types. If you want to use your own bases (`ComponentActivity`, etc), you'll need to create your own `AppComponentFactory` + relevant multibindings typed to the key you need.
 
 ## Advanced
 
