@@ -297,6 +297,10 @@ internal class BindingGraphGenerator(
       putBinding(binding.typeKey, isLocallyDeclared = !isInherited, binding)
     }
 
+    // For graph extensions, use the original factory creator to reference source parameter
+    // declarations
+    val originalCreator = node.originalCreator ?: node.creator
+
     node.creator?.parameters?.regularParameters.orEmpty().forEach { creatorParam ->
       // Only expose the binding if it's a bound instance, extended graph, or target is a binding
       // container
@@ -313,9 +317,17 @@ internal class BindingGraphGenerator(
         val isDynamic = creatorParam.ir?.origin == Origins.DynamicContainerParam
 
         if (isDynamic || !hasDynamicReplacement) {
+          val declaration =
+            originalCreator?.parametersByTypeKey?.get(paramTypeKey)?.ir ?: creatorParam.ir!!
+
           // Only add the bound instance if there's no dynamic replacement
           val binding =
-            IrBinding.BoundInstance(creatorParam, creatorParam.ir!!, isGraphInput = true)
+            IrBinding.BoundInstance(
+              parameter = creatorParam,
+              reportableLocation = declaration,
+              isGraphInput = true,
+            )
+
           putBinding(binding.typeKey, isLocallyDeclared = true, binding)
           // Track as locally declared for unused key reporting
           bindingLookup.trackDeclaredKey(paramTypeKey)
@@ -339,13 +351,14 @@ internal class BindingGraphGenerator(
       addAll(node.bindingContainers)
       addAll(inheritedData.bindingContainers)
     }
-    for (it in allManagedBindingContainerInstances) {
-      val typeKey = IrTypeKey(it)
+
+    for (bindingContainer in allManagedBindingContainerInstances) {
+      val typeKey = IrTypeKey(bindingContainer)
 
       val hasDynamicReplacement = typeKey in node.dynamicTypeKeys
 
       if (!hasDynamicReplacement) {
-        val declaration = node.creator?.parametersByTypeKey?.get(typeKey)?.ir ?: it
+        val declaration = originalCreator?.parametersByTypeKey?.get(typeKey)?.ir ?: bindingContainer
 
         val irElement = node.annotationDeclaredBindingContainers[typeKey]
         val isGraphInput = irElement != null
@@ -354,7 +367,7 @@ internal class BindingGraphGenerator(
         val binding =
           IrBinding.BoundInstance(
             typeKey = typeKey,
-            nameHint = it.name.asString(),
+            nameHint = bindingContainer.name.asString(),
             irElement = irElement,
             reportableDeclaration = declaration,
             isGraphInput = isGraphInput,
@@ -493,7 +506,7 @@ internal class BindingGraphGenerator(
         // Add a ref to the included graph if not already present
         if (depNodeKey !in bindingLookup) {
           val declaration =
-            node.creator?.parametersByTypeKey?.get(depNodeKey)?.ir ?: depNode.sourceGraph
+            originalCreator?.parametersByTypeKey?.get(depNodeKey)?.ir ?: depNode.sourceGraph
 
           val binding =
             IrBinding.BoundInstance(

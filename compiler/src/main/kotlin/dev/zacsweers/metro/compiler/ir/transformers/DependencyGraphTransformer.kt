@@ -543,6 +543,8 @@ internal class DependencyGraphTransformer(
     val severity = options.unusedGraphInputsSeverity
     if (!severity.isEnabled) return
 
+    if (unusedKeys.isEmpty()) return
+
     val diagnosticFactory =
       when (severity) {
         MetroOptions.DiagnosticSeverity.WARN -> MetroDiagnostics.UNUSED_GRAPH_INPUT_WARNING
@@ -551,51 +553,48 @@ internal class DependencyGraphTransformer(
         MetroOptions.DiagnosticSeverity.NONE -> return
       }
 
-    if (unusedKeys.isNotEmpty()) {
-      val unusedGraphInputs = unusedKeys.values.filterNotNull().sortedBy { it.typeKey }
+    val unusedGraphInputs = unusedKeys.values.filterNotNull().sortedBy { it.typeKey }
 
-      for (unusedBinding in unusedGraphInputs) {
-        val message = buildString {
-          appendLine("Graph input '${unusedBinding.typeKey}' is unused and can be removed.")
+    for (unusedBinding in unusedGraphInputs) {
+      val message = buildString {
+        appendLine("Graph input '${unusedBinding.typeKey}' is unused and can be removed.")
 
-          // Show a hint of what direct node is including this, if any
-          unusedBinding.typeKey.type.rawTypeOrNull()?.let { containerClass ->
-            // Efficient to call here as it should be already cached
-            val transitivelyIncluded =
-              bindingContainerResolver.getCached(containerClass)?.mapToSet { it.typeKey }.orEmpty()
-            val transitivelyUsed =
-              sortedKeys.intersect(transitivelyIncluded).minus(unusedBinding.typeKey)
-            if (transitivelyUsed.isNotEmpty()) {
-              appendLine()
-              appendLine("(Hint)")
-              appendLine(
-                "The following binding containers *are* used and transitively included by '${unusedBinding.typeKey}'. Consider including them directly instead"
-              )
-              transitivelyUsed.sorted().joinTo(this, separator = "\n", postfix = "\n") { "- $it" }
-            }
+        // Show a hint of what direct node is including this, if any
+        unusedBinding.typeKey.type.rawTypeOrNull()?.let { containerClass ->
+          // Efficient to call here as it should be already cached
+          val transitivelyIncluded =
+            bindingContainerResolver.getCached(containerClass)?.mapToSet { it.typeKey }.orEmpty()
+          val transitivelyUsed =
+            sortedKeys.intersect(transitivelyIncluded).minus(unusedBinding.typeKey)
+          if (transitivelyUsed.isNotEmpty()) {
+            appendLine()
+            appendLine("(Hint)")
+            appendLine(
+              "The following binding containers *are* used and transitively included by '${unusedBinding.typeKey}'. Consider including them directly instead"
+            )
+            transitivelyUsed.sorted().joinTo(this, separator = "\n", postfix = "\n") { "- $it" }
           }
         }
-        unusedBinding.irElement?.let { irElement ->
-          diagnosticReporter.at(irElement, graphDeclaration.file).report(diagnosticFactory, message)
-          continue
-        }
-
-        val graphDeclarationSource =
-          if (graphDeclaration.origin.isGraphImpl) {
-            graphDeclaration.getAllSuperclasses().find {
-              it.isAnnotatedWithAny(metroSymbols.classIds.graphExtensionAnnotations)
-            }
-          } else {
-            graphDeclaration
-          }
-        reportCompat(
-          // TODO: unusedBinding.reportableDeclaration is pointing to the graph extension impl, we
-          //  need the declaration pointing to the source.
-          irDeclarations = sequenceOf(unusedBinding.reportableDeclaration, graphDeclarationSource),
-          factory = diagnosticFactory,
-          a = message,
-        )
       }
+      unusedBinding.irElement?.let { irElement ->
+        diagnosticReporter.at(irElement, graphDeclaration.file).report(diagnosticFactory, message)
+        continue
+      }
+
+      val graphDeclarationSource =
+        if (graphDeclaration.origin.isGraphImpl) {
+          graphDeclaration.getAllSuperclasses().find {
+            it.isAnnotatedWithAny(metroSymbols.classIds.graphExtensionAnnotations)
+          }
+        } else {
+          graphDeclaration
+        }
+
+      reportCompat(
+        irDeclarations = sequenceOf(unusedBinding.reportableDeclaration, graphDeclarationSource),
+        factory = diagnosticFactory,
+        a = message,
+      )
     }
   }
 

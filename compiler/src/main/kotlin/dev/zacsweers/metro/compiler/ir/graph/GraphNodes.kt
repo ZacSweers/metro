@@ -852,6 +852,44 @@ internal class GraphNodes(
 
       val creator = buildCreator()
 
+      // For synthetic graph extensions, also track the original factory creator
+      // This allows referencing original parameter declarations for reporting unused inputs
+      val originalCreator =
+        if (graphDeclaration.origin.isSyntheticGeneratedGraph) {
+          // Find the original factory interface in the parent graph
+          graphDeclaration.sourceGraphIfMetroGraph.nestedClasses
+            .singleOrNull { klass ->
+              klass.isAnnotatedWithAny(metroSymbols.classIds.graphExtensionFactoryAnnotations)
+            }
+            ?.let { factory ->
+              // Use cached creator if available, otherwise create and cache
+              factory.cachedFactoryCreator
+                ?: run {
+                  val createFunction = factory.singleAbstractFunction()
+                  val parameters = createFunction.parameters()
+                  // Compute binding container fields similar to buildCreator
+                  var bindingContainerFields = BitField()
+                  for ((i, parameter) in parameters.regularParameters.withIndex()) {
+                    if (parameter.isIncludes) {
+                      val parameterClass = parameter.typeKey.type.classOrNull?.owner ?: continue
+                      if (parameterClass.isBindingContainer()) {
+                        bindingContainerFields = bindingContainerFields.withSet(i)
+                      }
+                    }
+                  }
+                  GraphNode.Creator.Factory(
+                      factory,
+                      createFunction,
+                      parameters,
+                      bindingContainerFields,
+                    )
+                    .also { factory.cachedFactoryCreator = it }
+                }
+            }
+        } else {
+          null
+        }
+
       // Add parent node if it's a generated graph extension
       if (graphDeclaration.origin == Origins.GeneratedGraphExtension) {
         val parentGraphClass = graphDeclaration.parentAsClass
@@ -1029,6 +1067,7 @@ internal class GraphNodes(
           accessors = accessors,
           injectors = injectors,
           creator = creator,
+          originalCreator = originalCreator,
           parentGraph = parentGraph,
           bindingContainers = managedBindingContainers,
           annotationDeclaredBindingContainers = annotationDeclaredBindingContainers,
