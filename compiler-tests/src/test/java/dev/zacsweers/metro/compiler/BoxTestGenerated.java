@@ -86,6 +86,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ContributedGraphBindingContainerExcludedFromParent.kt")
+    public void testContributedGraphBindingContainerExcludedFromParent() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ContributedGraphBindingContainerExcludedFromParent.kt");
+    }
+
+    @Test
     @TestMetadata("ContributesBindingScopeArgumentOrder.kt")
     public void testContributesBindingScopeArgumentOrder() {
       runTest("compiler-tests/src/test/data/box/aggregation/ContributesBindingScopeArgumentOrder.kt");
