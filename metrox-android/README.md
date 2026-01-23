@@ -28,6 +28,21 @@ For simple cases, all you need to do is
     }
     ```
 
+## Injecting components
+
+To inject values into them, mark your components with the appropriate key and contribute them into the maps used by `MetroAppComponentFactory`.
+
+For example, use `@ActivityKey` for an injected `Activity`:
+
+```kotlin
+@ContributesIntoMap(AppScope::class, binding<Activity>())
+@ActivityKey(MainActivity::class)
+@Inject
+class MainActivity(private val fragmentFactory: FragmentFactory): AppCompatActivity()
+```
+
+For other types of components, use `@BroadcastReceiverKey`, `@ContentProviderKey`, and `@ServiceKey` the same way.
+
 ## Advanced
 
 If you have your own custom `AppComponentFactory`, you will need to exclude the MetroX implementation in your `AndroidManifest.xml` via `tools:replace` attribute.
