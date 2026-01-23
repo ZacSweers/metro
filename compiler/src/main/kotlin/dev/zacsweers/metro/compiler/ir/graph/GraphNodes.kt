@@ -698,7 +698,10 @@ internal class GraphNodes(
               val contextKey =
                 IrContextualTypeKey.from(declaration, hasDefaultOverride = isOptionalBinding)
               if (metroFunction.annotations.isBinds) {
-                bindsFunctions += (metroFunction to contextKey)
+                // Only needed for native platform workarounds now
+                if (metroContext.platform.isNative()) {
+                  bindsFunctions += (metroFunction to contextKey)
+                }
               } else {
                 accessors += GraphAccessor(contextKey, metroFunction, isOptionalBinding)
               }
@@ -841,7 +844,10 @@ internal class GraphNodes(
               hasGraphExtensions = true
             } else {
               if (metroFunction.annotations.isBinds) {
-                bindsFunctions += (metroFunction to contextKey)
+                // Only needed for native platform workarounds now
+                if (metroContext.platform.isNative()) {
+                  bindsFunctions += (metroFunction to contextKey)
+                }
               } else {
                 accessors += GraphAccessor(contextKey, metroFunction, isOptionalBinding)
               }
