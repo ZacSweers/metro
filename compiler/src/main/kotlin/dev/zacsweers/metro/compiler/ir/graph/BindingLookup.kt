@@ -43,7 +43,6 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.irAttribute
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
-import org.jetbrains.kotlin.ir.types.IrTypeArgument
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
@@ -53,7 +52,6 @@ import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.name.CallableId
-import java.util.Objects
 
 internal class BindingLookup(
   private val metroContext: IrMetroContext,
@@ -774,7 +772,8 @@ internal class BindingLookup(
           irClass.cachedConstructorInjectedBinding.takeIf {
             // Allow use of cached instances if no generics
             remapper == NOOP_TYPE_REMAPPER
-          } ?: IrBinding.ConstructorInjected(
+          }
+            ?: IrBinding.ConstructorInjected(
                 type = irClass,
                 classFactory = mappedFactory,
                 annotations = classAnnotations,
@@ -782,7 +781,9 @@ internal class BindingLookup(
                 injectedMembers =
                   membersInjectBindings.value.mapToSet { binding -> binding.contextualTypeKey },
               )
-              .alsoIf(remapper == NOOP_TYPE_REMAPPER) { irClass.cachedConstructorInjectedBinding = it }
+              .alsoIf(remapper == NOOP_TYPE_REMAPPER) {
+                irClass.cachedConstructorInjectedBinding = it
+              }
 
         bindings += binding
 
@@ -799,7 +800,8 @@ internal class BindingLookup(
         bindings +=
           irClass.cacheAssistedBinding.takeIf {
             // Allow use of cached instances if no generics
-            remapper == NOOP_TYPE_REMAPPER }
+            remapper == NOOP_TYPE_REMAPPER
+          }
             ?: IrBinding.Assisted(
                 type = irClass,
                 function = function,
