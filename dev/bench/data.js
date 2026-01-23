@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769152762964,
+  "lastUpdate": 1769153183479,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -3528,6 +3528,62 @@ window.BENCHMARK_DATA = {
             "value": 0.21527822234759836,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: +0.19%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "de8caf75~1",
+          "message": "[before] Do not cache bindings with generics in the Binding",
+          "timestamp": "2026-01-23T06:46:43Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/de8caf75a14716abd9d5fde7d639e758dbf4399e"
+        },
+        "date": 1769153183479,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2184902781114617,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "de8caf75a14716abd9d5fde7d639e758dbf4399e",
+          "message": "[after] Do not cache bindings with generics in the Binding",
+          "timestamp": "2026-01-23T06:46:43Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/de8caf75a14716abd9d5fde7d639e758dbf4399e"
+        },
+        "date": 1769153183480,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.22113661242837415,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +1.21%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }

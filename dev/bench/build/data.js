@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769152763110,
+  "lastUpdate": 1769153183622,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -3528,6 +3528,62 @@ window.BENCHMARK_DATA = {
             "value": 20924.058,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +0.02%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "de8caf75~1",
+          "message": "[before] Do not cache bindings with generics in the Binding",
+          "timestamp": "2026-01-23T06:46:43Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/de8caf75a14716abd9d5fde7d639e758dbf4399e"
+        },
+        "date": 1769153183622,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 21401.218,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "de8caf75a14716abd9d5fde7d639e758dbf4399e",
+          "message": "[after] Do not cache bindings with generics in the Binding",
+          "timestamp": "2026-01-23T06:46:43Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/de8caf75a14716abd9d5fde7d639e758dbf4399e"
+        },
+        "date": 1769153183623,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 21423.9,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +0.11%"
           }
         ]
       }
