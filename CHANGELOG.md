@@ -16,7 +16,8 @@ Changelog
 
 ### Fixes
 
-- **[IR]** Fix exclusions not inherited from parent graphs
+- **[IR]** Fix exclusions not inherited from parent graphs.
+- **[IR]** When reporting unused graph inputs on graph extensions, report the diagnostic on the original source declaration if possible.
 - **[IR/Native]** Fix parameter type equality check in native compilations in constructor-injected class factories.
 - **[IR/Compat]** Fix compatibiltiy for source-less diagnostics in Kotlin `2.3.20-Beta1`.
 

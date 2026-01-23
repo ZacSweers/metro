@@ -1,0 +1,8 @@
+/UnusedGraphInputsInGraphExtensionAreReported.kt:(741,759): warning: Graph input 'kotlin.Int' is unused and can be removed.
+
+
+/UnusedGraphInputsInGraphExtensionAreReported.kt:(811,857): warning: Graph input 'IncludedContainer' is unused and can be removed.
+
+(Hint)
+The following binding containers *are* used and transitively included by 'IncludedContainer'. Consider including them directly instead
+- TransitiveUsed
