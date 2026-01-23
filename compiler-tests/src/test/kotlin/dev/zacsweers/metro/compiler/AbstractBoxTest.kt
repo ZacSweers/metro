@@ -66,3 +66,11 @@ open class AbstractBoxTest : AbstractFirLightTreeBlackBoxCodegenTest() {
     }
   }
 }
+
+open class AbstractFastInitBoxTest : AbstractBoxTest() {
+  override fun configure(builder: TestConfigurationBuilder) {
+    super.configure(builder)
+
+    with(builder) { defaultDirectives { MetroDirectives.ENABLE_SWITCHING_PROVIDERS.with(true) } }
+  }
+}

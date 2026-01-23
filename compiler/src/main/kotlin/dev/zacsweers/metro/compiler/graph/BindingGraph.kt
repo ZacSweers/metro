@@ -2,7 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
+import androidx.collection.MutableObjectIntMap
+import androidx.collection.MutableScatterMap
+import androidx.collection.ScatterMap
 import dev.zacsweers.metro.compiler.allElementsAreEqual
+import dev.zacsweers.metro.compiler.getValue
 import dev.zacsweers.metro.compiler.ir.graph.appendBindingStack
 import dev.zacsweers.metro.compiler.ir.graph.appendBindingStackEntries
 import dev.zacsweers.metro.compiler.ir.graph.withEntry
@@ -23,7 +27,7 @@ internal interface BindingGraph<
   BindingStackEntry : BaseBindingStack.BaseEntry<Type, TypeKey, ContextualTypeKey>,
   BindingStack : BaseBindingStack<*, Type, TypeKey, BindingStackEntry, BindingStack>,
 > {
-  val bindings: Map<TypeKey, Binding>
+  val bindings: ScatterMap<TypeKey, Binding>
 
   operator fun get(key: TypeKey): Binding?
 
@@ -55,23 +59,23 @@ internal open class MutableBindingGraph<
    * returns a set.
    */
   private val computeBindings:
-    (contextKey: ContextualTypeKey, currentBindings: Set<TypeKey>, stack: BindingStack) -> Set<
-        Binding
-      > =
+    (
+      contextKey: ContextualTypeKey,
+      currentBindings: ScatterMap<TypeKey, Binding>,
+      stack: BindingStack,
+    ) -> Set<Binding> =
     { _, _, _ ->
       emptySet()
     },
   private val onError: (String, BindingStack) -> Unit = { message, _ -> error(message) },
   private val onHardError: (String, BindingStack) -> Nothing = { message, _ -> error(message) },
-  private val missingBindingHints:
-    (key: TypeKey, stack: BindingStack) -> MissingBindingHints<Type, TypeKey> =
-    { _, _ ->
-      MissingBindingHints()
-    },
+  private val missingBindingHints: (key: TypeKey) -> MissingBindingHints<Type, TypeKey> = {
+    MissingBindingHints()
+  },
 ) : BindingGraph<Type, TypeKey, ContextualTypeKey, Binding, BindingStackEntry, BindingStack> {
   // Populated by initial graph setup and later seal()
-  override val bindings = mutableMapOf<TypeKey, Binding>()
-  private val bindingIndices = mutableMapOf<TypeKey, Int>()
+  override val bindings = MutableScatterMap<TypeKey, Binding>(256)
+  private val bindingIndices = MutableObjectIntMap<TypeKey>()
   private val reportedMissingKeys = mutableSetOf<TypeKey>()
 
   var sealed = false
@@ -110,7 +114,7 @@ internal open class MutableBindingGraph<
     onSortedCycle: (List<TypeKey>) -> Unit = {},
     validateBindings:
       (
-        bindings: Map<TypeKey, Binding>,
+        bindings: ScatterMap<TypeKey, Binding>,
         stack: BindingStack,
         roots: Map<ContextualTypeKey, BindingStackEntry>,
         adjacency: Map<TypeKey, Set<TypeKey>>,
@@ -178,7 +182,9 @@ internal open class MutableBindingGraph<
       // must be deferred. This is how we handle cycles that are broken by deferrable
       // types like Provider/Lazy/...
       // O(1) “does A depend on B?”
-      bindingIndices.putAll(topo.sortedKeys.withIndex().associate { it.value to it.index })
+      for ((i, key) in topo.sortedKeys.withIndex()) {
+        bindingIndices.put(key, i)
+      }
     }
 
     return topo
@@ -195,7 +201,7 @@ internal open class MutableBindingGraph<
     val missingBindings = mutableMapOf<TypeKey, BindingStack>()
     for ((contextKey, entry) in roots) {
       if (contextKey.typeKey !in bindings) {
-        val bindings = computeBindings(contextKey, bindings.keys, stack)
+        val bindings = computeBindings(contextKey, bindings, stack)
         if (bindings.isNotEmpty()) {
           for (binding in bindings) {
             tryPut(binding, stack, binding.typeKey)
@@ -210,7 +216,7 @@ internal open class MutableBindingGraph<
     // are computed (i.e., constructor-injected types) as they are used. We do this upfront
     // so that the graph is fully populated before we start validating it and avoid mutating
     // it while we're validating it.
-    val bindingQueue = ArrayDeque<Binding>().also { it.addAll(bindings.values) }
+    val bindingQueue = ArrayDeque<Binding>().apply { bindings.forEachValue(::add) }
 
     traceNested("Populate bindings") {
       while (bindingQueue.isNotEmpty()) {
@@ -224,7 +230,7 @@ internal open class MutableBindingGraph<
             val typeKey = depKey.typeKey
             if (typeKey !in bindings) {
               // If the binding isn't present, we'll report it later
-              val bindings = computeBindings(depKey, bindings.keys, stack)
+              val bindings = computeBindings(depKey, bindings, stack)
               if (bindings.isNotEmpty()) {
                 for (binding in bindings) {
                   bindingQueue.addLast(binding)
@@ -431,7 +437,7 @@ internal open class MutableBindingGraph<
 
   // O(1) after seal()
   override fun TypeKey.dependsOn(other: TypeKey): Boolean {
-    return bindingIndices.getValue(this) >= bindingIndices.getValue(other)
+    return bindingIndices[this] >= bindingIndices[other]
   }
 
   fun reportMissingBinding(
@@ -447,7 +453,7 @@ internal open class MutableBindingGraph<
         appendLine(typeKey.render(short = false))
         appendLine()
         appendBindingStack(bindingStack, short = false)
-        val hints = missingBindingHints(typeKey, bindingStack)
+        val hints = missingBindingHints(typeKey)
         val messages = hints.messages
         val similarBindings = hints.similarBindings
 

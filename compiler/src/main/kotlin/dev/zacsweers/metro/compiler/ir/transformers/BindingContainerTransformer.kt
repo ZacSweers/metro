@@ -26,6 +26,7 @@ import dev.zacsweers.metro.compiler.ir.dispatchReceiverFor
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.findAnnotations
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
+import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.includedClasses
 import dev.zacsweers.metro.compiler.ir.irCallableMetadata
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
@@ -140,6 +141,14 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
 
     val providerFactories = mutableMapOf<CallableId, ProviderFactory>()
 
+    val graphAnnotation =
+      declaration.annotationsIn(metroSymbols.classIds.graphLikeAnnotations).firstOrNull()
+    val isContributedGraph =
+      (graphAnnotation?.annotationClass?.classId in
+        metroSymbols.classIds.graphExtensionAnnotations) &&
+        declaration.isAnnotatedWithAny(metroSymbols.classIds.contributesToAnnotations)
+    val isGraph = graphAnnotation != null
+
     declaration.declarations
       .asSequence()
       // Skip (fake) overrides, we care only about the original declaration because those have
@@ -163,7 +172,10 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
                 visitFunction(nestedDeclaration, metroFunction)
             }
           }
-          is IrClass if (nestedDeclaration.isCompanionObject) -> {
+          is IrClass if
+            (nestedDeclaration.isCompanionObject &&
+              !(isGraph && nestedDeclaration.implements(declaration.classIdOrFail)))
+           -> {
             // Include companion object refs
             findContainer(nestedDeclaration)?.providerFactories?.let {
               providerFactories.putAll(it.values.associateBy { it.callableId })
@@ -181,13 +193,6 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
 
     val bindsMirror = bindsMirrorClassTransformer.getOrComputeBindsMirror(declaration)
 
-    val graphAnnotation =
-      declaration.annotationsIn(metroSymbols.classIds.graphLikeAnnotations).firstOrNull()
-    val isContributedGraph =
-      (graphAnnotation?.annotationClass?.classId in
-        metroSymbols.classIds.graphExtensionAnnotations) &&
-        declaration.isAnnotatedWithAny(metroSymbols.classIds.contributesToAnnotations)
-    val isGraph = graphAnnotation != null
     val container =
       BindingContainer(
         isGraph = isGraph,

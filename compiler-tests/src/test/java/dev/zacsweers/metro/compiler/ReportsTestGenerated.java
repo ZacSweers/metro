@@ -21,6 +21,12 @@ public class ReportsTestGenerated extends AbstractReportsTest {
   }
 
   @Test
+  @TestMetadata("BasicKeysUnusedReport.kt")
+  public void testBasicKeysUnusedReport() {
+    runTest("compiler-tests/src/test/data/dump/reports/BasicKeysUnusedReport.kt");
+  }
+
+  @Test
   @TestMetadata("UnmatchedReplacement.kt")
   public void testUnmatchedReplacement() {
     runTest("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement.kt");

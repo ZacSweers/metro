@@ -1,0 +1,182 @@
+@Inject
+@SingleIn(scope = AppScope::class)
+class ScopedClass {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<ScopedClass> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    fun create(): Factory<ScopedClass> {
+      return MetroFactory
+    }
+
+    fun newInstance(): ScopedClass {
+      return ScopedClass()
+    }
+
+    override operator fun invoke(): ScopedClass {
+      return MetroFactory.newInstance()
+    }
+
+    @SingleIn(scope = AppScope::class)
+    fun mirrorFunction(): ScopedClass {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@DependencyGraph(scope = AppScope::class)
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val thisGraphInstance: AppGraph
+      field = <this>
+
+    private val scopedClassProvider: Provider<ScopedClass>
+      field = Companion.provider<Provider<ScopedClass>, ScopedClass>(delegate = SwitchingProvider<ScopedClass>(graph = <this>, id = 1))
+
+    private val provideStringProvider: Provider<String>
+      field = Companion.provider<Provider<String>, String>(delegate = SwitchingProvider<String>(graph = <this>, id = 0))
+
+    private class SwitchingProvider<T : Any?> : Provider<T> {
+      private val graph: Impl
+
+      private val id: Int
+
+      constructor(graph: Impl, id: Int) /* primary */ {
+        super/*Any*/()
+        <this>.#graph = graph
+        <this>.#id = id
+      }
+
+      override fun invoke(): T {
+        return when {
+          EQEQ(arg0 = <this>.#id, arg1 = 1) -> ScopedClass() /*as T */
+          EQEQ(arg0 = <this>.#id, arg1 = 0) -> <this>.#graph.#thisGraphInstance.provideString() /*as T */
+          else -> throw error(message = "Unexpected SwitchingProvider id: " + <this>.#id)
+        }
+      }
+
+    }
+
+    @DependencyGraph
+    private class ChildGraphImpl : ChildGraph {
+      private val appGraphImpl: Impl
+        field = appGraphImpl
+
+      constructor(appGraphImpl: Impl) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      override val scopedClass: ScopedClass
+        override get(): ScopedClass {
+          return <this>.#appGraphImpl.#scopedClassProvider.invoke()
+        }
+
+      override val string: String
+        override get(): String {
+          return <this>.#appGraphImpl.#provideStringProvider.invoke()
+        }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val childGraph: ChildGraph
+      override get(): ChildGraph {
+        return ChildGraphImpl(appGraphImpl = <this>)
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 153, endOffset = 231, newInstanceName = "provideString")
+  class ProvideStringMetroFactory : Factory<String> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(instance: AppGraph): Factory<String> {
+        return ProvideStringMetroFactory(instance = instance)
+      }
+
+      fun provideString(instance: AppGraph): String {
+        return instance.provideString()
+      }
+
+    }
+
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): String {
+      return Companion.provideString(instance = <this>.#instance)
+    }
+
+    @SingleIn(scope = AppScope::class)
+    fun mirrorFunction(): String {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @SingleIn(scope = AppScope::class)
+  @Provides
+  fun provideString(): String {
+    return "Hello"
+  }
+
+  abstract val childGraph: ChildGraph
+    abstract get
+
+}
+
+@GraphExtension
+interface ChildGraph {
+  abstract val scopedClass: ScopedClass
+    abstract get
+
+  abstract val string: String
+    abstract get
+
+}
+

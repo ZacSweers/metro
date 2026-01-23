@@ -12,7 +12,7 @@ interface NetworkProviders {
 interface AppGraph : NetworkProviders
 ```
 
-Provider _functions_ should be `private` by default and are _automatically_ transformed to be private by the Metro compiler. This means you can write a provider function with no explicit (or public) visibility and it will be made private by Metro at compile-time.
+Provider _functions_ can be `private` but, as of `0.10.0`, are no longer _automatically_ transformed to be private by the Metro compiler. Prior to `0.10.0`, they were. However, this resulted in less efficient generated code so it was disabled. See the CHANGELOG for more details.
 
 Provider _properties_ cannot be private yet due to [KT-76257](https://youtrack.jetbrains.com/issue/KT-76257/), but may be supported in the future.
 

@@ -8,7 +8,7 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyContext
-import dev.zacsweers.metro.compiler.ir.graph.DependencyGraphNode
+import dev.zacsweers.metro.compiler.ir.graph.GraphNode
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
 import dev.zacsweers.metro.compiler.ir.graph.IrGraphExtensionGenerator
@@ -56,7 +56,7 @@ internal class GraphExpressionGenerator
 private constructor(
   context: IrMetroContext,
   traceScope: TraceScope,
-  private val node: DependencyGraphNode,
+  private val node: GraphNode.Local,
   override val thisReceiver: IrValueParameter,
   private val bindingPropertyContext: BindingPropertyContext,
   override val bindingGraph: IrBindingGraph,
@@ -76,7 +76,7 @@ private constructor(
   class Factory(
     private val context: IrMetroContext,
     private val traceScope: TraceScope,
-    private val node: DependencyGraphNode,
+    private val node: GraphNode.Local,
     private val bindingPropertyContext: BindingPropertyContext,
     private val bindingGraph: IrBindingGraph,
     private val bindingContainerTransformer: BindingContainerTransformer,
@@ -689,9 +689,19 @@ private constructor(
           else contextualTypeKey
         val providerInstance =
           bindingPropertyContext.get(lookupKey)?.let { bindingProperty ->
-            val (property, _, shardProperty, shardIndex) = bindingProperty
+            val (property, storedKey, shardProperty, shardIndex) = bindingProperty
             // If it's in provider fields, invoke that field
-            generatePropertyAccess(property, shardProperty, shardIndex)
+            val propertyAccess = generatePropertyAccess(property, shardProperty, shardIndex)
+
+            // If we wanted an instance but got a provider property, invoke it to get the instance
+            if (accessType == AccessType.INSTANCE && storedKey.isWrappedInProvider) {
+              propertyAccess.toTargetType(
+                actual = AccessType.PROVIDER,
+                contextualTypeKey = contextualTypeKey,
+              )
+            } else {
+              propertyAccess
+            }
           }
             ?: run {
               // Generate binding code for each param
@@ -744,9 +754,23 @@ private constructor(
         )
 
     // Get ancestor chain - use shard context's map if available, otherwise use class-level map
-    val ancestorChain =
+    val baseAncestorChain =
       shardContext?.ancestorGraphProperties?.get(token.ownerGraphKey)
         ?: ancestorGraphProperties[token.ownerGraphKey]
+
+    // For SwitchingProvider inside a shard (shardGraphProperty is set), we need to prepend
+    // the shard's graph property to the ancestor chain. The chain becomes:
+    //   SwitchingProvider.graph -> Shard -> Shard.graph -> MainGraph -> ancestorChain -> ancestor
+    // Without this, we'd skip the Shard -> MainGraph hop.
+    val ancestorChain =
+      if (shardContext?.isSwitchingProvider == true && shardContext.shardGraphProperty != null) {
+        buildList {
+          add(shardContext.shardGraphProperty)
+          baseAncestorChain?.let(::addAll)
+        }
+      } else {
+        baseAncestorChain
+      }
 
     // Use the storedKey to determine if the property returns a Provider type,
     // not the token's contextKey. The parent may have upgraded the property to a
@@ -781,7 +805,7 @@ private constructor(
     shardIndex: Int?,
   ): IrExpression =
     with(scope) {
-      // Helper to get the graph reference from the shard's graph property field
+      // Helper to get the graph reference from the shard's/SwitchingProvider's graph property field
       // Use thisReceiver (the function's dispatch receiver) not shardThisReceiver (class's
       // thisReceiver)
       fun graphAccess(): IrExpression {
@@ -803,6 +827,46 @@ private constructor(
           } else {
             // Non-sharded property: this.property
             irGetProperty(irGet(thisReceiver), property)
+          }
+        }
+        shardContext.isSwitchingProvider -> {
+          // SwitchingProvider context: all property access must go through `this.graph`
+          // The SwitchingProvider is a nested class with a reference to the graph/shard
+          //
+          // For SwitchingProvider inside a shard (shardGraphProperty != null):
+          //   `this.graph` -> Shard, `this.graph.shardGraphProperty` -> MainGraph
+          // For SwitchingProvider in main graph (shardGraphProperty == null):
+          //   `this.graph` -> MainGraph
+          fun mainGraphAccess(): IrExpression {
+            val base = graphAccess()
+            return shardContext.shardGraphProperty?.let { irGetProperty(base, it) } ?: base
+          }
+
+          // Check if this is same-shard access (property is in the same shard as the
+          // SwitchingProvider's parent)
+          val isSameShardAccess =
+            shardContext.parentShardIndex != null && shardIndex == shardContext.parentShardIndex
+
+          when {
+            isSameShardAccess -> {
+              // Same-shard access: this.graph.property (graph points to the parent shard)
+              irGetProperty(graphAccess(), property)
+            }
+            shardProperty != null -> {
+              // Property is in a shard: this.graph[.shardGraphProperty].shardField.property
+              irGetProperty(irGetProperty(mainGraphAccess(), shardProperty), property)
+            }
+            shardIndex != null && shardIndex >= 0 -> {
+              // Property is in a different shard
+              val shardField =
+                shardContext.shardFields[shardIndex]
+                  ?: reportCompilerBug("Missing shard field for shard $shardIndex")
+              irGetProperty(irGetProperty(mainGraphAccess(), shardField), property)
+            }
+            else -> {
+              // Non-sharded property on the graph: this.graph[.shardGraphProperty].property
+              irGetProperty(mainGraphAccess(), property)
+            }
           }
         }
         shardIndex == null -> {

@@ -24,7 +24,7 @@ interface AppGraph {
     override val intProvider: Provider<Optional<Int>>
       override get(): Provider<Optional<Int>> {
         return provider<Optional<Int>>(provider = local fun <anonymous>(): Optional<Int> {
-          return of<Int>(p0 = Companion.provideInt(instance = <this>.#thisGraphInstance))
+          return of<Int>(p0 = <this>.#thisGraphInstance.provideInt())
         }
 )
       }
@@ -131,13 +131,13 @@ interface AppGraph {
   }
 
   @Provides
-  private fun provideInt(): Int {
+  fun provideInt(): Int {
     return 3
   }
 
   @Provides
   @SingleIn(scope = AppScope::class)
-  private fun provideString(): String {
+  fun provideString(): String {
     return "Hello"
   }
 

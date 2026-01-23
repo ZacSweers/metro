@@ -64,6 +64,8 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SOURCELESS_METRO_WARNIN
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUGGEST_CLASS_INJECTION
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_MEMBER_INJECT_FUNCTION
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_OBJECT_INJECTION_WARNING
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.UNUSED_GRAPH_INPUT_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.UNUSED_GRAPH_INPUT_WARNING
 import org.jetbrains.kotlin.diagnostics.AbstractKtDiagnosticFactory
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactoryToRendererMap
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticRenderers.TO_STRING
@@ -103,6 +105,8 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   // DependencyGraph errors
   val DEPENDENCY_GRAPH_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val SUSPICIOUS_MEMBER_INJECT_FUNCTION by warning1<KtElement, String>(NAME_IDENTIFIER)
+  val UNUSED_GRAPH_INPUT_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val UNUSED_GRAPH_INPUT_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
 
   // Inject constructor errors
   val SUGGEST_CLASS_INJECTION by warning0<KtElement>(NAME_IDENTIFIER)
@@ -208,6 +212,8 @@ private object FirMetroErrorMessages : BaseDiagnosticRendererFactory() {
         // DependencyGraph errors
         put(DEPENDENCY_GRAPH_ERROR, "{0}", STRING)
         put(SUSPICIOUS_MEMBER_INJECT_FUNCTION, "{0}", STRING)
+        put(UNUSED_GRAPH_INPUT_ERROR, "{0}", STRING)
+        put(UNUSED_GRAPH_INPUT_WARNING, "{0}", STRING)
 
         // Inject Constructor errors
         put(

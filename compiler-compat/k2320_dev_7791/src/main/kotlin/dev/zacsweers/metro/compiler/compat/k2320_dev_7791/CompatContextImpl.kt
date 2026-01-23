@@ -3,7 +3,7 @@
 package dev.zacsweers.metro.compiler.compat.k2320_dev_7791
 
 import dev.zacsweers.metro.compiler.compat.CompatContext
-import dev.zacsweers.metro.compiler.compat.k2320_dev_5437.CompatContextImpl as DelegateType
+import dev.zacsweers.metro.compiler.compat.k2320_beta1.CompatContextImpl as DelegateType
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.diagnostics.DiagnosticContext
@@ -14,7 +14,6 @@ import org.jetbrains.kotlin.ir.IrDiagnosticReporter
 
 public class CompatContextImpl : CompatContext by DelegateType() {
   override val supportsExternalRepeatableAnnotations: Boolean = true
-  override val supportsSourcelessIrDiagnostics: Boolean = true
 
   override fun KtSourcelessDiagnosticFactory.createCompat(
     message: String,

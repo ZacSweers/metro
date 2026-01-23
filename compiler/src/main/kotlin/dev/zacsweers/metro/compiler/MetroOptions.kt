@@ -176,7 +176,7 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
   TRANSFORM_PROVIDERS_TO_PRIVATE(
     RawMetroOption.boolean(
       name = "transform-providers-to-private",
-      defaultValue = true,
+      defaultValue = false,
       valueDescription = "<true | false>",
       description = "Enable/disable automatic transformation of providers to be private.",
       required = false,
@@ -235,6 +235,16 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it.toInt() },
+    )
+  ),
+  ENABLE_SWITCHING_PROVIDERS(
+    RawMetroOption.boolean(
+      name = "enable-switching-providers",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description = "Enable SwitchingProviders for deferred class loading.",
+      required = false,
+      allowMultipleOccurrences = false,
     )
   ),
   PUBLIC_PROVIDER_SEVERITY(
@@ -768,6 +778,8 @@ public data class MetroOptions(
   public val enableGraphSharding: Boolean =
     MetroOption.ENABLE_GRAPH_SHARDING.raw.defaultValue.expectAs(),
   public val keysPerGraphShard: Int = MetroOption.KEYS_PER_GRAPH_SHARD.raw.defaultValue.expectAs(),
+  public val enableSwitchingProviders: Boolean =
+    MetroOption.ENABLE_SWITCHING_PROVIDERS.raw.defaultValue.expectAs(),
   public val publicProviderSeverity: DiagnosticSeverity =
     if (transformProvidersToPrivate) {
       DiagnosticSeverity.NONE
@@ -911,6 +923,7 @@ public data class MetroOptions(
     public var statementsPerInitFun: Int = base.statementsPerInitFun
     public var enableGraphSharding: Boolean = base.enableGraphSharding
     public var keysPerGraphShard: Int = base.keysPerGraphShard
+    public var enableFastInit: Boolean = base.enableSwitchingProviders
     public var publicProviderSeverity: DiagnosticSeverity = base.publicProviderSeverity
     public var nonPublicContributionSeverity: DiagnosticSeverity =
       base.nonPublicContributionSeverity
@@ -1106,6 +1119,7 @@ public data class MetroOptions(
         statementsPerInitFun = statementsPerInitFun,
         enableGraphSharding = enableGraphSharding,
         keysPerGraphShard = keysPerGraphShard,
+        enableSwitchingProviders = enableFastInit,
         publicProviderSeverity = publicProviderSeverity,
         nonPublicContributionSeverity = nonPublicContributionSeverity,
         optionalBindingBehavior = optionalBindingBehavior,
@@ -1218,6 +1232,9 @@ public data class MetroOptions(
             enableGraphSharding = configuration.getAsBoolean(entry)
 
           MetroOption.KEYS_PER_GRAPH_SHARD -> keysPerGraphShard = configuration.getAsInt(entry)
+
+          MetroOption.ENABLE_SWITCHING_PROVIDERS ->
+            enableFastInit = configuration.getAsBoolean(entry)
 
           MetroOption.PUBLIC_PROVIDER_SEVERITY ->
             publicProviderSeverity =

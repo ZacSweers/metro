@@ -21,6 +21,7 @@ fun main() {
 
   generateTests<
     AbstractBoxTest,
+    AbstractFastInitBoxTest,
     AbstractDiagnosticTest,
     AbstractFirDumpTest,
     AbstractIrDumpTest,

@@ -6,7 +6,6 @@ import dev.zacsweers.metro.compiler.ExitProcessingException
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Origins
-import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
@@ -22,8 +21,8 @@ import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.graph.BindingGraphGenerator
 import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyContext
-import dev.zacsweers.metro.compiler.ir.graph.DependencyGraphNode
-import dev.zacsweers.metro.compiler.ir.graph.DependencyGraphNodeCache
+import dev.zacsweers.metro.compiler.ir.graph.GraphNode
+import dev.zacsweers.metro.compiler.ir.graph.GraphNodes
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingStack
@@ -34,6 +33,8 @@ import dev.zacsweers.metro.compiler.ir.graph.generatedGraphExtensionData
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
+import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.ir.isCompanionObject
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
@@ -44,6 +45,7 @@ import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
+import dev.zacsweers.metro.compiler.isGraphImpl
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -66,12 +68,12 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.file
+import org.jetbrains.kotlin.ir.util.getAllSuperclasses
 import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.isLocal
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -85,7 +87,7 @@ import org.jetbrains.kotlin.name.ClassId
  */
 internal data class ValidationResult(
   val graphClassId: ClassId,
-  val node: DependencyGraphNode,
+  val node: GraphNode.Local,
   val bindingGraph: IrBindingGraph,
   val sealResult: IrBindingGraph.BindingGraphResult,
   val graphExtensionGenerator: IrGraphExtensionGenerator,
@@ -121,17 +123,8 @@ internal class DependencyGraphTransformer(
     IrDynamicGraphGenerator(this, bindingContainerResolver, contributionMerger)
   private val createGraphTransformer = CreateGraphTransformer(this, dynamicGraphGenerator)
 
-  // Keyed by the source declaration
-  private val processedMetroDependencyGraphsByClass =
-    mutableMapOf<ClassId, IrBindingGraph.BindingGraphResult?>()
-
-  private val dependencyGraphNodeCache =
-    DependencyGraphNodeCache(
-      this,
-      bindingContainerTransformer,
-      bindingContainerResolver,
-      contributionMerger,
-    )
+  private val graphNodes =
+    GraphNodes(this, bindingContainerTransformer, bindingContainerResolver, contributionMerger)
 
   override val currentFileAccess: IrFile
     get() = currentFile
@@ -203,15 +196,17 @@ internal class DependencyGraphTransformer(
     membersInjectorTransformer.visitClass(declaration)
     injectConstructorTransformer.visitClass(declaration)
     assistedFactoryTransformer.visitClass(declaration)
-    bindingContainerTransformer.findContainer(declaration)
+
+    if (!declaration.isCompanionObject) {
+      // Companion objects are only processed in the context of their parent classes
+      bindingContainerTransformer.findContainer(declaration)
+    }
 
     val dependencyGraphAnno =
       declaration.annotationsIn(metroSymbols.dependencyGraphAnnotations).singleOrNull()
         ?: return super.visitClassNew(declaration)
 
     tryProcessDependencyGraph(declaration, dependencyGraphAnno)
-
-    // TODO dump option to detect unused
 
     return super.visitClassNew(declaration)
   }
@@ -259,12 +254,9 @@ internal class DependencyGraphTransformer(
     parentContext: ParentContext?,
   ): IrBindingGraph.BindingGraphResult? {
     val graphClassId = dependencyGraphDeclaration.classIdOrFail
-    processedMetroDependencyGraphsByClass[graphClassId]?.let {
-      return it
-    }
+
     if (dependencyGraphDeclaration.isExternalParent) {
       // Externally compiled, just use its generated class
-      processedMetroDependencyGraphsByClass[graphClassId] = null
       return null
     }
 
@@ -284,7 +276,6 @@ internal class DependencyGraphTransformer(
         }
       if (validationResult.sealResult.hasErrors) {
         val result = validationResult.sealResult
-        processedMetroDependencyGraphsByClass[graphClassId] = result
         return result
       }
 
@@ -293,7 +284,6 @@ internal class DependencyGraphTransformer(
         generateDependencyGraph(validationResult, parentBindingContext = null)
       }
 
-      processedMetroDependencyGraphsByClass[graphClassId] = validationResult.sealResult
       return validationResult.sealResult
     }
   }
@@ -320,7 +310,7 @@ internal class DependencyGraphTransformer(
     parentContext: ParentContext?,
   ): ValidationResult {
     val node =
-      dependencyGraphNodeCache.getOrComputeDependencyGraphNode(
+      graphNodes.getOrComputeNode(
         dependencyGraphDeclaration,
         IrBindingStack(
           dependencyGraphDeclaration,
@@ -328,7 +318,7 @@ internal class DependencyGraphTransformer(
         ),
         metroGraph,
         dependencyGraphAnno,
-      )
+      ) as GraphNode.Local
 
     // Generate creator functions
     traceNested("Implement creator functions") {
@@ -457,8 +447,10 @@ internal class DependencyGraphTransformer(
               accessor = accessor.ir,
               parentGraphKey = node.typeKey,
             )
+
           // Replace the binding with the updated version
           bindingGraph.addBinding(contributedGraphKey, binding, IrBindingStack.empty())
+
           // Necessary since we don't treat graph extensions as part of roots
           bindingGraph.keep(
             binding.contextualTypeKey,
@@ -507,7 +499,7 @@ internal class DependencyGraphTransformer(
         }
       }
 
-    sealResult.reportUnusedInputs(bindingGraph, dependencyGraphDeclaration)
+    sealResult.reportUnusedInputs(dependencyGraphDeclaration)
 
     // Build validation result (may have errors - caller will check)
     val validationResult =
@@ -544,92 +536,65 @@ internal class DependencyGraphTransformer(
       bindingGraph.dumpGraph(node.sourceGraph.kotlinFqName.asString(), short = false)
     }
 
-    // Check if any parents haven't been generated yet. If so, generate them now
-    if (dependencyGraphDeclaration.origin != Origins.GeneratedGraphExtension) {
-      for (parent in node.allExtendedNodes.values) {
-        var proto = parent.proto
-        val needsToGenerateParent =
-          proto == null &&
-            parent.sourceGraph.classId !in processedMetroDependencyGraphsByClass &&
-            !parent.sourceGraph.isExternalParent
-        if (needsToGenerateParent) {
-          visitClass(parent.sourceGraph)
-          proto =
-            dependencyGraphNodeCache
-              .requirePreviouslyComputed(parent.sourceGraph.classIdOrFail)
-              .proto
-        }
-        if (proto == null) {
-          reportCompat(
-            parent.sourceGraph,
-            MetroDiagnostics.METRO_ERROR,
-            "Extended parent graph ${parent.sourceGraph.kotlinFqName} is missing Metro metadata. Was it compiled by the Metro compiler?",
-          )
-          exitProcessing()
-        }
-      }
-    }
-
     return validationResult
   }
 
-  private fun IrBindingGraph.BindingGraphResult.reportUnusedInputs(
-    bindingGraph: IrBindingGraph,
-    graphDeclaration: IrClass,
-  ) {
+  private fun IrBindingGraph.BindingGraphResult.reportUnusedInputs(graphDeclaration: IrClass) {
     val severity = options.unusedGraphInputsSeverity
     if (!severity.isEnabled) return
 
+    if (unusedKeys.isEmpty()) return
+
     val diagnosticFactory =
       when (severity) {
-        MetroOptions.DiagnosticSeverity.WARN -> MetroDiagnostics.METRO_WARNING
-        MetroOptions.DiagnosticSeverity.ERROR -> MetroDiagnostics.METRO_ERROR
+        MetroOptions.DiagnosticSeverity.WARN -> MetroDiagnostics.UNUSED_GRAPH_INPUT_WARNING
+        MetroOptions.DiagnosticSeverity.ERROR -> MetroDiagnostics.UNUSED_GRAPH_INPUT_ERROR
         // Already checked above, but for exhaustive when
         MetroOptions.DiagnosticSeverity.NONE -> return
       }
 
-    if (unusedKeys.isNotEmpty()) {
-      val unusedGraphInputs =
-        unusedKeys.mapNotNull {
-          val binding = bindingGraph.findBinding(it)
-          if (binding is IrBinding.BoundInstance && binding.isGraphInput) {
-            binding
-          } else {
-            null
+    val unusedGraphInputs = unusedKeys.values.filterNotNull().sortedBy { it.typeKey }
+
+    for (unusedBinding in unusedGraphInputs) {
+      val message = buildString {
+        appendLine("Graph input '${unusedBinding.typeKey}' is unused and can be removed.")
+
+        // Show a hint of what direct node is including this, if any
+        unusedBinding.typeKey.type.rawTypeOrNull()?.let { containerClass ->
+          // Efficient to call here as it should be already cached
+          val transitivelyIncluded =
+            bindingContainerResolver.getCached(containerClass)?.mapToSet { it.typeKey }.orEmpty()
+          val transitivelyUsed =
+            sortedKeys.intersect(transitivelyIncluded).minus(unusedBinding.typeKey)
+          if (transitivelyUsed.isNotEmpty()) {
+            appendLine()
+            appendLine("(Hint)")
+            appendLine(
+              "The following binding containers *are* used and transitively included by '${unusedBinding.typeKey}'. Consider including them directly instead"
+            )
+            transitivelyUsed.sorted().joinTo(this, separator = "\n", postfix = "\n") { "- $it" }
           }
         }
-
-      for (unusedBinding in unusedGraphInputs) {
-        val message = buildString {
-          appendLine("Graph input '${unusedBinding.typeKey}' is unused and can be removed.")
-
-          // Show a hint of what direct node is including this, if any
-          unusedBinding.typeKey.type.rawTypeOrNull()?.let { containerClass ->
-            // Efficient to call here as it should be already cached
-            val transitivelyIncluded =
-              bindingContainerResolver.getCached(containerClass)?.mapToSet { it.typeKey }.orEmpty()
-            val transitivelyUsed =
-              sortedKeys.intersect(transitivelyIncluded).minus(unusedBinding.typeKey)
-            if (transitivelyUsed.isNotEmpty()) {
-              appendLine()
-              appendLine("(Hint)")
-              appendLine(
-                "The following binding containers *are* used and transitively included by '${unusedBinding.typeKey}'. Consider including them directly instead"
-              )
-              transitivelyUsed.sorted().joinTo(this, separator = "\n", postfix = "\n") { "- $it" }
-            }
-          }
-        }
-        unusedBinding.irElement?.let { irElement ->
-          diagnosticReporter.at(irElement, graphDeclaration.file).report(diagnosticFactory, message)
-          continue
-        }
-        reportCompat(
-          irDeclarations = sequenceOf(unusedBinding.reportableDeclaration, graphDeclaration),
-          factory = diagnosticFactory,
-          a = message,
-        )
       }
+      unusedBinding.irElement?.let { irElement ->
+        diagnosticReporter.at(irElement, graphDeclaration.file).report(diagnosticFactory, message)
+        continue
+      }
+
+      val graphDeclarationSource =
+        if (graphDeclaration.origin.isGraphImpl) {
+          graphDeclaration.getAllSuperclasses().find {
+            it.isAnnotatedWithAny(metroSymbols.classIds.graphExtensionAnnotations)
+          }
+        } else {
+          graphDeclaration
+        }
+
+      reportCompat(
+        irDeclarations = sequenceOf(unusedBinding.reportableDeclaration, graphDeclarationSource),
+        factory = diagnosticFactory,
+        a = message,
+      )
     }
   }
 
@@ -662,7 +627,7 @@ internal class DependencyGraphTransformer(
           IrGraphGenerator(
               metroContext = metroContext,
               traceScope = this,
-              dependencyGraphNodesByClass = dependencyGraphNodeCache::get,
+              graphNodesByClass = graphNodes::get,
               node = node,
               graphClass = metroGraph,
               bindingGraph = validationResult.bindingGraph,
@@ -674,9 +639,6 @@ internal class DependencyGraphTransformer(
               parentBindingContext = parentBindingContext,
             )
             .generate()
-
-        processedMetroDependencyGraphsByClass[validationResult.graphClassId] =
-          validationResult.sealResult
 
         // Generate child graphs with this graph's binding context as their parent
         for (childResult in validationResult.childValidationResults) {
@@ -744,13 +706,13 @@ internal class DependencyGraphTransformer(
 
   private fun implementCreatorFunctions(
     sourceGraph: IrClass,
-    creator: DependencyGraphNode.Creator?,
+    creator: GraphNode.Creator?,
     metroGraph: IrClass,
   ) {
     // NOTE: may not have a companion object if this graph is a contributed graph, which has no
     // static creators
     val companionObject = sourceGraph.companionObject() ?: return
-    val factoryCreator = creator?.expectAsOrNull<DependencyGraphNode.Creator.Factory>()
+    val factoryCreator = creator?.expectAsOrNull<GraphNode.Creator.Factory>()
     if (factoryCreator != null) {
       // TODO would be nice if we could just class delegate to the `Impl` object
       val implementFactoryFunction: IrClass.() -> Unit = {

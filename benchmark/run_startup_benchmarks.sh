@@ -36,6 +36,9 @@ INCLUDE_MACROBENCHMARK=false
 BINARY_METRICS_ONLY=false
 # Target for multiplatform benchmarks (jvm, js, wasmJs, native, all)
 MULTIPLATFORM_TARGET="all"
+# Feature flags for Metro (empty string means use default/auto)
+ENABLE_GRAPH_SHARDING=""
+ENABLE_SWITCHING_PROVIDERS=""
 
 # Script-specific print functions (styles differ from run_benchmarks.sh)
 print_header() {
@@ -114,6 +117,12 @@ show_usage() {
     echo "  --binary-metrics-only   Only collect binary metrics (skip JMH/benchmark runs)"
     echo "                          Useful for testing binary metrics collection quickly"
     echo ""
+    echo "Feature Options:"
+    echo "  --enable-graph-sharding     Enable Metro graph sharding (default: auto for 500+ modules)"
+    echo "  --no-enable-graph-sharding  Disable Metro graph sharding"
+    echo "  --enable-switching-providers Enable Metro switching providers (deferred class loading)"
+    echo "                              Also enables Dagger fastInit when running Dagger modes"
+    echo ""
     echo "Single Options:"
     echo "  --ref <ref>         Git ref (branch name/commit) or Metro version (e.g., 1.0.0)"
     echo "  --benchmark <type>  Benchmark type: jvm, jvm-r8, android, or all (default: jvm)"
@@ -124,6 +133,14 @@ show_usage() {
     echo "  --benchmark <type>  Benchmark type for compare: jvm, jvm-r8, android, or all (default: jvm)"
     echo "  --rerun-non-metro   Re-run non-metro modes on ref2 (default: only run metro on ref2)"
     echo "                      When disabled (default), ref2 uses ref1's non-metro results for comparison"
+    echo ""
+    echo "Feature Compare Options:"
+    echo "  --benchmark <type>  Benchmark type: jvm, jvm-r8, or all (default: jvm)"
+    echo "                      Runs Metro with four configurations:"
+    echo "                        - baseline: no sharding, no switching"
+    echo "                        - sharding: graph sharding enabled"
+    echo "                        - switching: switching providers enabled"
+    echo "                        - both: sharding + switching enabled"
     echo ""
     echo "Ref Types:"
     echo "  Refs can be either git refs or Metro versions. The script automatically detects"
@@ -166,44 +183,74 @@ show_usage() {
     echo "  $0 compare --ref1 1.0.0 --ref2 1.1.0  # Compare two released versions"
     echo "  $0 compare --ref1 1.0.0 --ref2 main   # Compare release to git branch"
     echo ""
+    echo "  $0 jvm --enable-switching-providers   # Single run with switching providers enabled"
+    echo ""
     echo "Results will be saved to: $RESULTS_DIR/"
 }
 
 # Parse mode string to generator arguments
 get_generator_args() {
     local mode="$1"
+    local args=""
+
     case "$mode" in
         metro)
-            echo "--mode metro"
+            args="--mode metro"
             ;;
         dagger-ksp)
-            echo "--mode dagger --processor ksp"
+            args="--mode dagger --processor ksp"
             ;;
         dagger-kapt)
-            echo "--mode dagger --processor kapt"
+            args="--mode dagger --processor kapt"
             ;;
         kotlin-inject-anvil)
-            echo "--mode kotlin_inject_anvil"
+            args="--mode kotlin_inject_anvil"
             ;;
         *)
             print_error "Unknown mode: $mode"
             exit 1
             ;;
     esac
+
+    # Add feature flags for Metro mode
+    if [ "$mode" = "metro" ]; then
+        if [ "$ENABLE_GRAPH_SHARDING" = "true" ]; then
+            args="$args --enable-graph-sharding"
+        elif [ "$ENABLE_GRAPH_SHARDING" = "false" ]; then
+            args="$args --no-enable-graph-sharding"
+        fi
+
+        if [ "$ENABLE_SWITCHING_PROVIDERS" = "true" ]; then
+            args="$args --enable-switching-providers"
+        fi
+    fi
+
+    # Add switching providers flag for Dagger modes (Dagger calls this fastInit)
+    if [[ "$mode" == dagger-* ]]; then
+        if [ "$ENABLE_SWITCHING_PROVIDERS" = "true" ]; then
+            args="$args --enable-switching-providers"
+        fi
+    fi
+
+    echo "$args"
 }
 
 # Get extra Gradle arguments for a mode (e.g., disable incremental for flaky KSP)
 get_gradle_args() {
     local mode="$1"
+    local args=""
+
     case "$mode" in
         dagger-ksp|dagger-kapt|kotlin-inject-anvil)
             # Disable incremental processing and build cache to avoid flaky KSP/KAPT builds
-            echo "--no-build-cache -Pksp.incremental=false -Pkotlin.incremental=false"
+            args="--no-build-cache -Pksp.incremental=false -Pkotlin.incremental=false"
             ;;
         *)
-            echo ""
+            args=""
             ;;
     esac
+
+    echo "$args"
 }
 
 # Extract class metrics from compiled AppComponent classes using javap
@@ -476,7 +523,8 @@ setup_for_mode() {
 # Run JMH benchmark only (no clean/generate)
 run_jvm_benchmark_only() {
     local mode="$1"
-    local output_dir="$RESULTS_DIR/${TIMESTAMP}/jvm_${mode}"
+    local output_suffix="${2:-$mode}"
+    local output_dir="$RESULTS_DIR/${TIMESTAMP}/jvm_${output_suffix}"
     mkdir -p "$output_dir"
 
     local gradle_args=$(get_gradle_args "$mode")
@@ -537,7 +585,8 @@ run_jvm_benchmark() {
 # Run JMH R8 benchmark only (no clean/generate)
 run_jvm_r8_benchmark_only() {
     local mode="${1:-metro}"
-    local output_dir="$RESULTS_DIR/${TIMESTAMP}/jvm-r8_${mode}"
+    local output_suffix="${2:-$mode}"
+    local output_dir="$RESULTS_DIR/${TIMESTAMP}/jvm-r8_${output_suffix}"
     mkdir -p "$output_dir"
 
     local jar_file="startup-jvm/minified-jar/build/libs/minified-jar.jar"
@@ -4407,6 +4456,18 @@ main() {
             --target)
                 MULTIPLATFORM_TARGET="$2"
                 shift 2
+                ;;
+            --enable-graph-sharding)
+                ENABLE_GRAPH_SHARDING="true"
+                shift
+                ;;
+            --no-enable-graph-sharding)
+                ENABLE_GRAPH_SHARDING="false"
+                shift
+                ;;
+            --enable-switching-providers)
+                ENABLE_SWITCHING_PROVIDERS="true"
+                shift
                 ;;
             *)
                 print_error "Unknown option: $1"

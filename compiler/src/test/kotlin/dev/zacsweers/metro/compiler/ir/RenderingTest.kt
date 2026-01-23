@@ -75,7 +75,7 @@ class RenderingTest : MetroCompilerTest() {
           enableFullBindingGraphValidation = true,
         ),
     ) {
-      val keysFile = reportsDir.resolve("keys-populated-ExampleGraph.txt").readText()
+      val keysFile = reportsDir.resolve("keys-populated-test_ExampleGraph_Impl.txt").readText()
       assertThat(keysFile)
         .isEqualTo(
           """

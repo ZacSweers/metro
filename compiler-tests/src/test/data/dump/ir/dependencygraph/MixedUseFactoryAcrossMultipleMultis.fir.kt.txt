@@ -487,26 +487,26 @@ interface AppGraph {
 
   @Provides
   @ElementsIntoSet
-  private fun provideHeaders(@Named(name = "other") otherHeaders: Set<Pair<String, String>>): Set<Pair<String, String>> {
+  fun provideHeaders(@Named(name = "other") otherHeaders: Set<Pair<String, String>>): Set<Pair<String, String>> {
     return otherHeaders
   }
 
   @Provides
   @Named(name = "other")
   @IntoSet
-  private fun provideInternalHeader(header: InternalHeader): Pair<String, String> {
+  fun provideInternalHeader(header: InternalHeader): Pair<String, String> {
     return to<String, String>(/* <this> = header.<get-key>(), */ that = header.<get-value>())
   }
 
   @Provides
   @ElementsIntoSet
   @Named(name = "other")
-  private fun provideOtherHeaders(): Set<Pair<String, String>> {
+  fun provideOtherHeaders(): Set<Pair<String, String>> {
     return emptySet<Pair<String, String>>()
   }
 
   @Provides
-  private fun provideString(): String {
+  fun provideString(): String {
     return "key"
   }
 

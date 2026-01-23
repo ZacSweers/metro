@@ -20,9 +20,9 @@ interface AppGraph {
     private val setOfInt: Set<Int>
       private get(): Set<Int> {
         return { // BLOCK
-          val tmp_0: Set<Int> = Companion.provideInts(instance = <this>.#thisGraphInstance)
+          val tmp_0: Set<Int> = <this>.#thisGraphInstance.provideInts()
           buildSet<Int>(capacity = 1.plus(other = tmp_0.<get-size>()), builderAction = local fun MutableSet<Int>.<anonymous>() {
-            $receiver.add(element = Companion.provide4(instance = <this>.#thisGraphInstance))
+            $receiver.add(element = <this>.#thisGraphInstance.provide4())
             $receiver.addAll(elements = tmp_0)
           }
 )
@@ -123,13 +123,13 @@ interface AppGraph {
 
   @Provides
   @IntoSet
-  private fun provide4(): Int {
+  fun provide4(): Int {
     return 4
   }
 
   @Provides
   @ElementsIntoSet
-  private fun provideInts(): Set<Int> {
+  fun provideInts(): Set<Int> {
     return setOf<Int>(elements = [1, 2, 3])
   }
 
@@ -137,3 +137,4 @@ interface AppGraph {
     abstract get
 
 }
+

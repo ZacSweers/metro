@@ -86,6 +86,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ContributedGraphBindingContainerExcludedFromParent.kt")
+    public void testContributedGraphBindingContainerExcludedFromParent() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ContributedGraphBindingContainerExcludedFromParent.kt");
+    }
+
+    @Test
     @TestMetadata("ContributesBindingScopeArgumentOrder.kt")
     public void testContributesBindingScopeArgumentOrder() {
       runTest("compiler-tests/src/test/data/box/aggregation/ContributesBindingScopeArgumentOrder.kt");
@@ -439,6 +445,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @Test
     public void testAllFilesPresentInCycles() {
       KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/cycles"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    }
+
+    @Test
+    @TestMetadata("AnotherSimpleCycle.kt")
+    public void testAnotherSimpleCycle() {
+      runTest("compiler-tests/src/test/data/box/cycles/AnotherSimpleCycle.kt");
     }
 
     @Test

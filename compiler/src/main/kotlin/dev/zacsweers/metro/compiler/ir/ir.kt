@@ -728,12 +728,9 @@ internal fun IrBuilderWithScope.dispatchReceiverFor(function: IrFunction): IrExp
 internal val IrClass.thisReceiverOrFail: IrValueParameter
   get() = this.thisReceiver ?: reportCompilerBug("No thisReceiver for $classId")
 
-internal fun IrExpression.doubleCheck(
-  irBuilder: IrBuilderWithScope,
-  symbols: Symbols,
-  typeKey: IrTypeKey,
-): IrExpression =
-  with(irBuilder) {
+context(scope: IrBuilderWithScope)
+internal fun IrExpression.doubleCheck(symbols: Symbols, typeKey: IrTypeKey): IrExpression =
+  with(scope) {
     val providerType = typeKey.type.wrapInProvider(symbols.metroProvider)
     irInvoke(
       dispatchReceiver = irGetObject(symbols.doubleCheckCompanionObject),

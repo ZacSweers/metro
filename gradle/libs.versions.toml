@@ -13,7 +13,7 @@
 # limitations under the License.
 
 [versions]
-agp = "8.12.0"
+agp = "8.13.2"
 androidx-lifecycle = "2.10.0"
 androidx-lint-gradle = "1.0.0-alpha05"
 annotation = "1.9.1"
@@ -23,22 +23,22 @@ circuit = "0.30.0"
 compose-jb = "1.10.0"
 jetbrains-lifecycle-navigation3 = "2.10.0-alpha07"
 jetbrains-navigation3 = "1.0.0-alpha06"
-dagger = "2.58"
+dagger = "2.59"
 gjf = "1.33.0"
 jdk = "24"
-robolectric = "4.16"
+robolectric = "4.16.1"
 jvmTarget = "11"
 kct = "0.12.1"
 kotlin = "2.2.20"
 kotlinInject = "0.9.0"
-metro = "0.9.4"
+metro = "0.10.0"
 kotlinInject-anvil = "0.1.6"
 kotlinx-benchmark = "0.4.15"
 kotlinx-coroutines = "1.10.2"
 kotlinx-serialization = "1.9.0"
 ksp = "2.3.4"
 ktfmt = "0.61"
-ktor = "3.3.3"
+ktor = "3.4.0"
 okhttp = "5.3.2"
 okio = "3.16.4"
 pluginId = "dev.zacsweers.metro.compiler"
@@ -71,7 +71,7 @@ mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.36.0" }
 metro = { id = "dev.zacsweers.metro", version.ref = "metro" }
 poko = { id = "dev.drewhamilton.poko", version.ref = "poko" }
 shadow = { id = "com.gradleup.shadow", version = "9.2.2" }
-spotless = { id = "com.diffplug.spotless", version = "8.1.0" }
+spotless = { id = "com.diffplug.spotless", version = "8.2.0" }
 testkit = { id = "com.autonomousapps.testkit", version = "0.17" }
 wire = { id = "com.squareup.wire", version.ref = "wire" }
 
@@ -79,6 +79,7 @@ wire = { id = "com.squareup.wire", version.ref = "wire" }
 androidx-activity = "androidx.activity:activity-compose:1.12.2"
 androidx-annotation = { module = "androidx.annotation:annotation", version.ref = "annotation" }
 androidx-appcompat = "androidx.appcompat:appcompat:1.7.1"
+androidx-collection = "androidx.collection:collection:1.6.0-beta01"
 androidx-core = "androidx.core:core-ktx:1.17.0"
 androidx-fragment = "androidx.fragment:fragment-ktx:1.8.9"
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }

@@ -57,8 +57,9 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         // Set non-annotation properties (only when directive is present or value is non-default)
         enabled = MetroDirectives.DISABLE_METRO !in module.directives
         generateAssistedFactories = MetroDirectives.GENERATE_ASSISTED_FACTORIES in module.directives
-        transformProvidersToPrivate =
-          MetroDirectives.DISABLE_TRANSFORM_PROVIDERS_TO_PRIVATE !in module.directives
+        module.directives.singleOrZeroValue(MetroDirectives.TRANSFORM_PROVIDERS_TO_PRIVATE)?.let {
+          transformProvidersToPrivate = it
+        }
         enableTopLevelFunctionInjection =
           MetroDirectives.ENABLE_TOP_LEVEL_FUNCTION_INJECTION in module.directives
         module.directives.singleOrZeroValue(MetroDirectives.SHRINK_UNUSED_BINDINGS)?.let {
@@ -75,6 +76,9 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         }
         module.directives.singleOrZeroValue(MetroDirectives.KEYS_PER_GRAPH_SHARD)?.let {
           keysPerGraphShard = it
+        }
+        module.directives.singleOrZeroValue(MetroDirectives.ENABLE_SWITCHING_PROVIDERS)?.let {
+          enableFastInit = it
         }
         enableFullBindingGraphValidation =
           MetroDirectives.ENABLE_FULL_BINDING_GRAPH_VALIDATION in module.directives
