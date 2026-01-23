@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir.graph
 import androidx.collection.ScatterMap
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.getAndAdd
+import dev.zacsweers.metro.compiler.getOrInit
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
 import dev.zacsweers.metro.compiler.ir.ClassFactory
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
@@ -59,7 +60,8 @@ internal class BindingLookup(
 ) {
 
   // Single cache for all bindings, storing lists to track duplicates naturally
-  private val bindingsCache = mutableMapOf<IrTypeKey, MutableList<IrBinding>>()
+  private val bindingsCache = mutableMapOf<IrTypeKey, IrBinding>()
+  private val duplicateBindings = mutableMapOf<IrTypeKey, MutableSet<IrBinding>>()
   private val classBindingsCache = mutableMapOf<IrContextualTypeKey, Set<IrBinding>>()
 
   private data class ParentGraphDepKey(val owner: IrClass, val typeKey: IrTypeKey)
@@ -109,16 +111,27 @@ internal class BindingLookup(
 
   /** Returns all bindings for similarity checking. */
   fun getAvailableBindings(): Map<IrTypeKey, IrBinding> {
-    return bindingsCache.mapValues { it.value.first() }
+    return bindingsCache.mapValues { it.value }
   }
 
   /** Returns all bindings for a given type key, or null if none exist. */
-  fun getBindings(typeKey: IrTypeKey): List<IrBinding>? = bindingsCache[typeKey]
+  fun getBindings(typeKey: IrTypeKey): IrBinding? = bindingsCache[typeKey]
 
   /** Returns the first binding for a given type key, or null if none exist. */
-  fun getBinding(typeKey: IrTypeKey): IrBinding? = bindingsCache[typeKey]?.firstOrNull()
+  fun getBinding(typeKey: IrTypeKey): IrBinding? = bindingsCache[typeKey]
 
   operator fun contains(typeKey: IrTypeKey): Boolean = typeKey in bindingsCache
+
+  private fun putBindingInner(binding: IrBinding) {
+    val previous = bindingsCache.put(binding.typeKey, binding)
+
+    if (previous != null) {
+      duplicateBindings.getOrInit(binding.typeKey).run {
+        add(previous)
+        add(binding)
+      }
+    }
+  }
 
   /**
    * Adds a binding to the cache. Multiple bindings for the same key are tracked as duplicates.
@@ -128,7 +141,7 @@ internal class BindingLookup(
    */
   context(context: IrMetroContext)
   fun putBinding(binding: IrBinding, isLocallyDeclared: Boolean = false) {
-    bindingsCache.getAndAdd(binding.typeKey, binding)
+    putBindingInner(binding)
 
     if (isLocallyDeclared) {
       locallyDeclaredKeys += binding.typeKey
@@ -177,6 +190,7 @@ internal class BindingLookup(
   // Nukes all the caches and declarations here
   fun clear() {
     bindingsCache.clear()
+    duplicateBindings.clear()
     classBindingsCache.clear()
     parentGraphDepCache.clear()
     lazyParentKeys.clear()
@@ -499,15 +513,13 @@ internal class BindingLookup(
       // Accumulate parameters
       accumulatedParameters = accumulatedParameters.mergeValueParametersWith(remappedParameters)
 
-      bindingsCache[mappedTypeKey]?.let {
-        for (cached in it) {
-          if (cached is IrBinding.MembersInjected) {
-            bindings += cached
-          } else {
-            reportCompilerBug(
-              "Found cached binding for $mappedTypeKey but wasn't a member injector! $cached"
-            )
-          }
+      bindingsCache[mappedTypeKey]?.let { cached ->
+        if (cached is IrBinding.MembersInjected) {
+          bindings += cached
+        } else {
+          reportCompilerBug(
+            "Found cached binding for $mappedTypeKey but wasn't a member injector! $cached"
+          )
         }
         supertypeInjectorKeys += IrContextualTypeKey(mappedTypeKey)
         continue
@@ -551,7 +563,7 @@ internal class BindingLookup(
       // Add this injector's key as a supertype for subsequent iterations
       supertypeInjectorKeys += contextKey
 
-      bindingsCache.getAndAdd(mappedTypeKey, binding)
+      putBindingInner(binding)
     }
     return bindings
   }
@@ -570,13 +582,12 @@ internal class BindingLookup(
       val key = contextKey.typeKey
 
       // First check cached bindings
-      bindingsCache[key]?.let { bindings ->
+      bindingsCache[key]?.let { binding ->
         // Report duplicates if there are multiple bindings
-        if (bindings.size > 1) {
-          onDuplicateBindings(key, bindings)
+        duplicateBindings[key]?.let {
+          onDuplicateBindings(key, it.toList())
         }
 
-        val binding = bindings.first()
         // Check if this is available from parent and is scoped
         if (binding.scope != null && parentContext?.contains(key) == true) {
           val token = parentContext.mark(key, binding.scope!!)
@@ -674,7 +685,8 @@ internal class BindingLookup(
           supertypeMembersInjectorKeys = emptyList(),
           supertypeDependencies = emptySet(),
         )
-      bindingsCache.getAndAdd(key, binding)
+
+      putBindingInner(binding)
       return bindings + binding
     }
 
@@ -693,7 +705,7 @@ internal class BindingLookup(
         supertypeMembersInjectorKeys = supertypeKeys,
         supertypeDependencies = mostDerivedBinding.supertypeDependencies,
       )
-    bindingsCache.getAndAdd(key, binding)
+    putBindingInner(binding)
     return bindings + binding
   }
 

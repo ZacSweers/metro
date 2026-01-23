@@ -293,7 +293,7 @@ internal class IrBindingGraph(
 
     val unusedKeys: Map<IrTypeKey, IrBinding.BoundInstance?> =
       unused.associateWith { key ->
-        val binding = bindingLookup.getBindings(key)?.getOrNull(0)
+        val binding = bindingLookup.getBindings(key)
         if (binding is IrBinding.BoundInstance && binding.isGraphInput) {
           binding
         } else {
