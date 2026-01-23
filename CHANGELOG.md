@@ -7,12 +7,12 @@ Changelog
 ### Enhancements
 
 - **[IR]** Add a dedicated `UNUSED_GRAPH_INPUT` diagnostic for `unusedGraphInputsSeverity` option.
-- **[IR/Graph Validation]** Reduce memory usage when processing long graph extension chains. This is a combination of a few things:
+- **[IR]** Reduce memory usage when processing long graph extension chains. This is a combination of a few things:
     - Using a (shaded) `ScatterMap` implementation from `androidx.collections`
     - Relinquishing binding lookup caches after graph validation completes
     - Caching IrBinding instances
     - Route almost all bindings through `BindingLookup` for lazy lookups rather than eagerly adding to the binding graph.
-        - This will also cut down graph analysis report sizes, as they should now be almost entirely free of unused bindings.
+- **[Graph Reporting]** Since all bindings are lazily retrieved from `BindingLookup` now, this will also cut down graph analysis report sizes, as they should now be almost entirely free of unused bindings.
 
 ### Fixes
 
