@@ -10,7 +10,6 @@ import android.content.ContentProvider
 import android.content.Context
 import android.content.Intent
 import com.google.common.truth.Truth.assertThat
-import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.Inject
