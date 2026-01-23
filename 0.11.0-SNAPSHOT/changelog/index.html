@@ -3330,16 +3330,14 @@
 <h3 id="enhancements">Enhancements<a class="headerlink" href="#enhancements" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>[IR]</strong> Add a dedicated <code>UNUSED_GRAPH_INPUT</code> diagnostic for <code>unusedGraphInputsSeverity</code> option.</li>
-<li><strong>[IR/Graph Validation]</strong> Reduce memory usage when processing long graph extension chains. This is a combination of a few things:<ul>
+<li><strong>[IR]</strong> Reduce memory usage when processing long graph extension chains. This is a combination of a few things:<ul>
 <li>Using a (shaded) <code>ScatterMap</code> implementation from <code>androidx.collections</code></li>
 <li>Relinquishing binding lookup caches after graph validation completes</li>
 <li>Caching IrBinding instances</li>
-<li>Route almost all bindings through <code>BindingLookup</code> for lazy lookups rather than eagerly adding to the binding graph.<ul>
-<li>This will also cut down graph analysis report sizes, as they should now be almost entirely free of unused bindings.</li>
+<li>Route almost all bindings through <code>BindingLookup</code> for lazy lookups rather than eagerly adding to the binding graph.</li>
 </ul>
 </li>
-</ul>
-</li>
+<li><strong>[Graph Reporting]</strong> Since all bindings are lazily retrieved from <code>BindingLookup</code> now, this will also cut down graph analysis report sizes, as they should now be almost entirely free of unused bindings.</li>
 </ul>
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
 <ul>
