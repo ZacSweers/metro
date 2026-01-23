@@ -12,6 +12,8 @@ Changelog
     - Relinquishing binding lookup caches after graph validation completes
     - Caching IrBinding instances
     - Route almost all bindings through `BindingLookup` for lazy lookups rather than eagerly adding to the binding graph.
+- **[IR]** Don't report subtypes of `Any` in similar binding hints.
+- **[IR]** Don't report multibinding elements in similar binding hints (only report the multibinding itself if relevant).
 - **[Graph Reporting]** Since all bindings are lazily retrieved from `BindingLookup` now, this will also cut down graph analysis report sizes, as they should now be almost entirely free of unused bindings.
 
 ### Fixes
