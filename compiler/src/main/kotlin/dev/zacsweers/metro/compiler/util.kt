@@ -85,6 +85,10 @@ internal inline fun <T> T.letIf(condition: Boolean, block: (T) -> T): T {
   return if (condition) block(this) else this
 }
 
+internal inline fun <T> T.alsoIf(condition: Boolean, block: (T) -> Unit): T = apply {
+  if (condition) block(this)
+}
+
 internal inline fun <T> T?.escapeIfNull(block: () -> Nothing): T {
   if (this == null) block()
   return this
