@@ -584,9 +584,7 @@ internal class BindingLookup(
       // First check cached bindings
       bindingsCache[key]?.let { binding ->
         // Report duplicates if there are multiple bindings
-        duplicateBindings[key]?.let {
-          onDuplicateBindings(key, it.toList())
-        }
+        duplicateBindings[key]?.let { onDuplicateBindings(key, it.toList()) }
 
         // Check if this is available from parent and is scoped
         if (binding.scope != null && parentContext?.contains(key) == true) {

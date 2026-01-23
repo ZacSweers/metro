@@ -261,11 +261,11 @@ internal class BindingGraphGenerator(
         // Only clear existing if they are NOT dynamic
         // If existing bindings are also dynamic, keep them for duplicate detection
         val existingAreDynamic =
-            when (existingBinding) {
-              is IrBinding.Provided -> existingBinding.providerFactory.isDynamic
-              is IrBinding.Alias -> existingBinding.bindsCallable?.isDynamic == true
-              else -> false
-            }
+          when (existingBinding) {
+            is IrBinding.Provided -> existingBinding.providerFactory.isDynamic
+            is IrBinding.Alias -> existingBinding.bindsCallable?.isDynamic == true
+            else -> false
+          }
         if (!existingAreDynamic) {
           // Dynamic binding replaces non-dynamic existing bindings
           bindingLookup.clearBindings(targetTypeKey)
