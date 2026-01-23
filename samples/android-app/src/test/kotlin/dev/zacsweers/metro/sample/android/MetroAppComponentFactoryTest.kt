@@ -40,7 +40,7 @@ class TestApp : Application(), MetroApplication {
   }
 }
 
-@DependencyGraph(scope = AppScope::class)
+@DependencyGraph(scope = Unit::class)
 interface TestAppGraph : MetroAppComponentProviders {
   @Provides fun provideString(): String = TEST_STRING
 }
@@ -81,19 +81,19 @@ class MetroAppComponentFactoryTest {
   // Test component classes
   @Inject
   @ActivityKey(TestActivity::class)
-  @ContributesIntoMap(AppScope::class)
+  @ContributesIntoMap(Unit::class)
   class TestActivity(val value: String) : Activity()
 
   @Inject
   @ServiceKey(TestService::class)
-  @ContributesIntoMap(AppScope::class)
+  @ContributesIntoMap(Unit::class)
   class TestService(val value: String) : Service() {
     override fun onBind(intent: Intent?) = null
   }
 
   @Inject
   @BroadcastReceiverKey(TestReceiver::class)
-  @ContributesIntoMap(AppScope::class)
+  @ContributesIntoMap(Unit::class)
   class TestReceiver(val value: String) : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
       lastInjectedValue = value
@@ -108,7 +108,7 @@ class MetroAppComponentFactoryTest {
 
   @Inject
   @ContentProviderKey(TestProvider::class)
-  @ContributesIntoMap(AppScope::class)
+  @ContributesIntoMap(Unit::class)
   class TestProvider(val value: String) : ContentProvider() {
     override fun onCreate() = true
 
