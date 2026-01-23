@@ -4,6 +4,8 @@
  */
 package dev.zacsweers.metro.compiler.ir.cache
 
+import androidx.collection.MutableScatterMap
+
 internal object IrThreadUnsafeCachesFactory : IrCachesFactory() {
   override fun <K : Any, V, CONTEXT> createCache(
     createValue: (K, CONTEXT) -> V
@@ -52,7 +54,7 @@ private class IrThreadUnsafeCacheWithPostCompute<K : Any, V, CONTEXT, DATA>(
   private val createValue: (K, CONTEXT) -> Pair<V, DATA>,
   private val postCompute: (K, V, DATA) -> Unit,
 ) : IrCache<K, V, CONTEXT>() {
-  private val map = mutableMapOf<K, V>()
+  private val map = MutableScatterMap<K, V>()
 
   override fun getValue(key: K, context: CONTEXT): V =
     map.getOrElse(key) {

@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import androidx.collection.MutableScatterMap
+import androidx.collection.MutableScatterSet
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.getAndAdd
@@ -27,27 +29,27 @@ private typealias Scope = ClassId
 
 internal class IrContributionData(private val metroContext: IrMetroContext) {
 
-  private val contributions = mutableMapOf<Scope, MutableSet<IrType>>()
-  private val externalContributions = mutableMapOf<Scope, Set<IrType>>()
-  private val scopeHintCache = mutableMapOf<Scope, CallableId>()
+  private val contributions = MutableScatterMap<Scope, MutableScatterSet<IrType>>()
+  private val externalContributions = MutableScatterMap<Scope, Set<IrType>>()
+  private val scopeHintCache = MutableScatterMap<Scope, CallableId>()
 
   private fun scopeHintFor(scope: Scope): CallableId =
     scopeHintCache.getOrPut(scope) { Symbols.CallableIds.scopeHint(scope) }
 
-  private val bindingContainerContributions = mutableMapOf<Scope, MutableSet<IrClass>>()
-  private val externalBindingContainerContributions = mutableMapOf<Scope, Set<IrClass>>()
+  private val bindingContainerContributions = MutableScatterMap<Scope, MutableScatterSet<IrClass>>()
+  private val externalBindingContainerContributions = MutableScatterMap<Scope, Set<IrClass>>()
 
   // Cache for findVisibleContributionClassesForScopeInHints results
   // This avoids redundant lookups when both findExternalContributions and
   // findExternalBindingContainerContributions are called for the same scope
-  private val visibleContributionClassesCache = mutableMapOf<Scope, Set<IrClass>>()
+  private val visibleContributionClassesCache = MutableScatterMap<Scope, Set<IrClass>>()
 
   fun addContribution(scope: Scope, contribution: IrType) {
     contributions.getAndAdd(scope, contribution)
   }
 
   fun getContributions(scope: Scope, callingDeclaration: IrDeclaration): Set<IrType> = buildSet {
-    contributions[scope]?.let(::addAll)
+    contributions[scope]?.forEach(::add)
     addAll(findExternalContributions(scope, callingDeclaration))
   }
 
@@ -59,7 +61,7 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
     scope: Scope,
     callingDeclaration: IrDeclaration,
   ): Set<IrClass> = buildSet {
-    bindingContainerContributions[scope]?.let(::addAll)
+    bindingContainerContributions[scope]?.forEach(::add)
     addAll(findExternalBindingContainerContributions(scope, callingDeclaration))
   }
 

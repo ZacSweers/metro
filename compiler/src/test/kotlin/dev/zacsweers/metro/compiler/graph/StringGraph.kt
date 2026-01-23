@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
+import androidx.collection.ScatterMap
+
 @Suppress("UNCHECKED_CAST")
 internal class StringGraph(
   newBindingStack: () -> StringBindingStack,
@@ -18,7 +20,7 @@ internal class StringGraph(
   computeBinding:
     (
       contextKey: StringContextualTypeKey,
-      currentBindings: Set<StringTypeKey>,
+      currentBindings: ScatterMap<StringTypeKey, *>,
       stack: StringBindingStack,
     ) -> Set<StringBinding> =
     { _, _, _ ->

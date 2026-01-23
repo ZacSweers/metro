@@ -25,6 +25,7 @@ import dev.zacsweers.metro.compiler.ir.MultibindsCallable
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.allCallableMembers
 import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
+import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.bindingContainerClasses
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
@@ -130,7 +131,11 @@ internal class GraphNodes(
 
     val graphClassId = graphDeclaration.classIdOrFail
 
-    return graphNodesByClass.getOrPut(graphClassId) {
+    graphNodesByClass[graphClassId]?.let {
+      return it
+    }
+
+    val node =
       traceNested("Build GraphNode") {
         Builder(
             this,
@@ -143,7 +148,18 @@ internal class GraphNodes(
           )
           .build()
       }
+
+    // Only cache regular @DependencyGraph-annotated nodes. Extensions/dynamic graphs are
+    // processed inline with their parents and don't need later lookups.
+    val isRegularDependencyGraph =
+      !graphDeclaration.origin.isSyntheticGeneratedGraph &&
+        (dependencyGraphAnno?.annotationClass?.classId in
+          metroContext.metroSymbols.classIds.dependencyGraphAnnotations)
+    if (isRegularDependencyGraph) {
+      graphNodesByClass[graphClassId] = node
     }
+
+    return node
   }
 
   private class Builder(
