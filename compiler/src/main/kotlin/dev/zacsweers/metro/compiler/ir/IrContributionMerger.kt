@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import androidx.collection.MutableScatterMap
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.coneTypeIfResolved
@@ -27,10 +28,14 @@ internal class IrContributionMerger(
 ) : IrMetroContext by metroContext {
 
   // Cache for scope-based contributions (before exclusions/replacements)
-  private val scopeContributionsCache = mutableMapOf<Set<ClassId>, ScopedContributions>()
+  private val scopeContributionsCache = MutableScatterMap<Set<ClassId>, ScopedContributions>(256)
 
   // Cache for fully processed contributions (after exclusions/replacements)
-  private val mergedContributionsCache = mutableMapOf<ContributionsCacheKey, IrContributions>()
+  private val mergedContributionsCache =
+    MutableScatterMap<ContributionsCacheKey, IrContributions>(256)
+
+  // Cache for parent exclusions by starting class - avoids recomputing hierarchy walks
+  private val parentExcludedCache = MutableScatterMap<ClassId, Set<ClassId>>()
 
   private data class ScopedContributions(
     val allContributions: Map<ClassId, List<IrType>>,
@@ -75,20 +80,54 @@ internal class IrContributionMerger(
     }
   }
 
-  private fun parentExcluded(callingDeclaration: IrDeclaration): Set<ClassId> =
-    generateSequence(callingDeclaration as? IrClass) {
-        it.takeIf { it.origin == Origins.GeneratedGraphExtension }?.parentAsClass
+  /**
+   * Computes and caches parent exclusions incrementally. Each cache entry contains the cumulative
+   * exclusions for that class and all its parents, so lookups at any level in the hierarchy are
+   * O(1) after the first computation.
+   */
+  private fun parentExcluded(callingDeclaration: IrDeclaration): Set<ClassId> {
+    val startingClass = callingDeclaration as? IrClass ?: return emptySet()
+    return parentExcludedForClass(startingClass)
+  }
+
+  private fun parentExcludedForClass(irClass: IrClass): Set<ClassId> {
+    val classId = irClass.classId ?: return emptySet()
+
+    // Check cache first - this includes all exclusions from this level and above
+    parentExcludedCache[classId]?.let {
+      return it
+    }
+
+    // Compute this level's own exclusions
+    val thisLevelExclusions =
+      irClass.sourceGraphIfMetroGraph
+        .annotationsIn(metroSymbols.classIds.graphLikeAnnotations)
+        .firstOrNull()
+        ?.excludedClasses()
+        ?.mapToClassIds()
+        .orEmpty()
+
+    // Get parent's cumulative exclusions (recursively, which also caches intermediate levels)
+    val parentExclusions =
+      if (irClass.origin == Origins.GeneratedGraphExtension) {
+        parentExcludedForClass(irClass.parentAsClass)
+      } else {
+        emptySet()
       }
-      .flatMap { clazz -> sequenceOf(clazz) + clazz.supertypes().mapNotNull { it.rawTypeOrNull() } }
-      .mapNotNull {
-        it
-          .annotationsIn(metroSymbols.classIds.graphLikeAnnotations)
-          .firstOrNull()
-          ?.excludedClasses()
-          ?.mapToClassIds()
+
+    // Combine and cache the cumulative result
+    val totalExclusions =
+      if (parentExclusions.isEmpty()) {
+        thisLevelExclusions
+      } else if (thisLevelExclusions.isEmpty()) {
+        parentExclusions
+      } else {
+        thisLevelExclusions + parentExclusions
       }
-      .flatten()
-      .toSet()
+
+    parentExcludedCache[classId] = totalExclusions
+    return totalExclusions
+  }
 
   fun computeContributions(
     primaryScope: ClassId,
