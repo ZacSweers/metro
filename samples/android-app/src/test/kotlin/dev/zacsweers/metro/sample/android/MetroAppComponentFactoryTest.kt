@@ -10,6 +10,8 @@ import android.content.ContentProvider
 import android.content.Context
 import android.content.Intent
 import com.google.common.truth.Truth.assertThat
+import dev.zacsweers.metro.AppScope
+import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.Provides
@@ -38,7 +40,7 @@ class TestApp : Application(), MetroApplication {
   }
 }
 
-@DependencyGraph
+@DependencyGraph(scope = AppScope::class)
 interface TestAppGraph : MetroAppComponentProviders {
   @Provides fun provideString(): String = TEST_STRING
 }
@@ -77,16 +79,21 @@ class MetroAppComponentFactoryTest {
   }
 
   // Test component classes
-  @Inject @ActivityKey(TestActivity::class) class TestActivity(val value: String) : Activity()
+  @Inject
+  @ActivityKey(TestActivity::class)
+  @ContributesIntoMap(AppScope::class)
+  class TestActivity(val value: String) : Activity()
 
   @Inject
   @ServiceKey(TestService::class)
+  @ContributesIntoMap(AppScope::class)
   class TestService(val value: String) : Service() {
     override fun onBind(intent: Intent?) = null
   }
 
   @Inject
   @BroadcastReceiverKey(TestReceiver::class)
+  @ContributesIntoMap(AppScope::class)
   class TestReceiver(val value: String) : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
       lastInjectedValue = value
@@ -101,6 +108,7 @@ class MetroAppComponentFactoryTest {
 
   @Inject
   @ContentProviderKey(TestProvider::class)
+  @ContributesIntoMap(AppScope::class)
   class TestProvider(val value: String) : ContentProvider() {
     override fun onCreate() = true
 
