@@ -596,6 +596,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("InjectedGenericsClassWorksWithBinds.kt")
+    public void testInjectedGenericsClassWorksWithBinds() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/InjectedGenericsClassWorksWithBinds.kt");
+    }
+
+    @Test
     @TestMetadata("MixedUseFactoryAcrossMultipleNestedMiddleMultis.kt")
     public void testMixedUseFactoryAcrossMultipleNestedMiddleMultis() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/MixedUseFactoryAcrossMultipleNestedMiddleMultis.kt");
