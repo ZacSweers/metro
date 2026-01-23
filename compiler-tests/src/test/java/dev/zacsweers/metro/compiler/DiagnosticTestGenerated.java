@@ -234,6 +234,18 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("DoNotSuggestSimilarBindingSubtypesForAny.kt")
+    public void testDoNotSuggestSimilarBindingSubtypesForAny() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/DoNotSuggestSimilarBindingSubtypesForAny.kt");
+    }
+
+    @Test
+    @TestMetadata("DoNotSuggestSimilarBindingsForMultibindingElements.kt")
+    public void testDoNotSuggestSimilarBindingsForMultibindingElements() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/DoNotSuggestSimilarBindingsForMultibindingElements.kt");
+    }
+
+    @Test
     @TestMetadata("GraphsCannotDirectlyExtendOtherGraphs.kt")
     public void testGraphsCannotDirectlyExtendOtherGraphs() {
       runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/GraphsCannotDirectlyExtendOtherGraphs.kt");

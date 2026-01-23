@@ -45,6 +45,7 @@ import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.types.IrSimpleType
+import org.jetbrains.kotlin.ir.types.isAny
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.makeNotNull
 import org.jetbrains.kotlin.ir.types.makeNullable
@@ -493,8 +494,12 @@ internal class IrBindingGraph(
     // Iterate through all bindings to find similar ones
     for ((bindingKey, binding) in allBindings) {
       if (bindingKey.type.hasErrorTypes()) {
-        error("wtf")
+        reportCompilerBug("Unexpected error type in all bindings")
+      } else if (bindingKey.multibindingKeyData != null) {
+        // Multibinding entry, don't look at this at all
+        continue
       }
+
       when {
         bindingKey.type == key.type && key.qualifier != bindingKey.qualifier -> {
           similarBindings.putIfAbsent(
@@ -528,7 +533,8 @@ internal class IrBindingGraph(
           similarBindings.putIfAbsent(bindingKey, SimilarBinding(bindingKey, binding, "Subtype"))
         }
 
-        key.type.type.isSubtypeOf(bindingKey.type, metroContext.irTypeSystemContext) -> {
+        !bindingKey.type.isAny() &&
+          key.type.type.isSubtypeOf(bindingKey.type, metroContext.irTypeSystemContext) -> {
           similarBindings.putIfAbsent(bindingKey, SimilarBinding(bindingKey, binding, "Supertype"))
         }
       }
