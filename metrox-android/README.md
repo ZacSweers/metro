@@ -37,7 +37,6 @@ For example, use `@ActivityKey` for an injected `Activity`:
 ```kotlin
 @ContributesIntoMap(AppScope::class, binding<Activity>())
 @ActivityKey(MainActivity::class)
-@Inject
 class MainActivity(private val fragmentFactory: FragmentFactory): AppCompatActivity()
 ```
 
