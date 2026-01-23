@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769134223888,
+  "lastUpdate": 1769136342716,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -3416,6 +3416,62 @@ window.BENCHMARK_DATA = {
             "value": 0.2523933507394786,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: +0.30%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "e86e46ec~1",
+          "message": "[before] Fix unusedGraphInputsSeverity option for graph ext",
+          "timestamp": "2026-01-23T02:11:45Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/e86e46ec04d25a8b2e5237a8df7aa3421e68061e"
+        },
+        "date": 1769136342716,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2116902154705585,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "e86e46ec04d25a8b2e5237a8df7aa3421e68061e",
+          "message": "[after] Fix unusedGraphInputsSeverity option for graph ext",
+          "timestamp": "2026-01-23T02:11:45Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/e86e46ec04d25a8b2e5237a8df7aa3421e68061e"
+        },
+        "date": 1769136342717,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.21429211571113654,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +1.23%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }

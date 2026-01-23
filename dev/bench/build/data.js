@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769134224030,
+  "lastUpdate": 1769136342866,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -3416,6 +3416,62 @@ window.BENCHMARK_DATA = {
             "value": 19678.134,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +2.01%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "e86e46ec~1",
+          "message": "[before] Fix unusedGraphInputsSeverity option for graph ext",
+          "timestamp": "2026-01-23T02:11:45Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/e86e46ec04d25a8b2e5237a8df7aa3421e68061e"
+        },
+        "date": 1769136342866,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19423.235999999997,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "e86e46ec04d25a8b2e5237a8df7aa3421e68061e",
+          "message": "[after] Fix unusedGraphInputsSeverity option for graph ext",
+          "timestamp": "2026-01-23T02:11:45Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/e86e46ec04d25a8b2e5237a8df7aa3421e68061e"
+        },
+        "date": 1769136342867,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19346.468,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -0.40%"
           }
         ]
       }
