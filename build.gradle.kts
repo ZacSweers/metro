@@ -137,6 +137,7 @@ allprojects {
         "**/ClassKey.kt",
         "**/DelegateFactory.kt",
         "**/DoubleCheck.kt",
+        "**/DoubleCheckCycleTest.kt",
         "**/DoubleCheckTest.kt",
         "**/ElementsIntoSet.kt",
         "**/InstanceFactory.kt",

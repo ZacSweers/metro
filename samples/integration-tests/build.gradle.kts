@@ -47,6 +47,7 @@ kotlin {
 
   sourceSets {
     commonTest { dependencies { implementation(libs.kotlin.test) } }
+    jvmTest { dependencies { implementation(libs.guava) } }
     maybeCreate("commonJvmMain").apply { dependsOn(commonMain.get()) }
     maybeCreate("commonWasmMain").apply { dependsOn(commonMain.get()) }
     maybeCreate("commonJvmTest").apply { dependsOn(commonTest.get()) }
