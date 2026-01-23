@@ -33,25 +33,32 @@ kotlin {
   wasmWasi { nodejs() }
 
   applyDefaultHierarchyTemplate {
-    group("commonWasm") {
-      withWasmJs()
-      withWasmWasi()
-    }
-    group("commonJvm") {
-      withAndroidTarget()
-      withJvm()
+    common {
+      group("concurrent") {
+        withAndroidTarget()
+        withJvm()
+        withNative()
+      }
+      group("commonWasm") {
+        withWasmJs()
+        withWasmWasi()
+      }
+      group("commonJvm") {
+        withAndroidTarget()
+        withJvm()
+      }
     }
   }
 
   configureOrCreateNativePlatforms()
 
   sourceSets {
-    commonTest { dependencies { implementation(libs.kotlin.test) } }
-    jvmTest { dependencies { implementation(libs.guava) } }
-    maybeCreate("commonJvmMain").apply { dependsOn(commonMain.get()) }
-    maybeCreate("commonWasmMain").apply { dependsOn(commonMain.get()) }
-    maybeCreate("commonJvmTest").apply { dependsOn(commonTest.get()) }
-    maybeCreate("commonWasmTest").apply { dependsOn(commonTest.get()) }
+    commonTest {
+      dependencies {
+        implementation(libs.kotlin.test)
+        implementation(libs.coroutines)
+      }
+    }
   }
 
   targets.configureEach {

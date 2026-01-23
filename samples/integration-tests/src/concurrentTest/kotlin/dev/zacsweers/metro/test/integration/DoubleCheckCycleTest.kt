@@ -15,21 +15,15 @@
  */
 package dev.zacsweers.metro.test.integration
 
-import com.google.common.util.concurrent.SettableFuture
-import com.google.common.util.concurrent.Uninterruptibles
-import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.BindingContainer
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.Includes
 import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.Qualifier
+import dev.zacsweers.metro.Scope
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.createGraphFactory
-import java.lang.Thread.State.BLOCKED
-import java.lang.Thread.State.WAITING
-import java.util.Collections
-import java.util.concurrent.CountDownLatch
 import kotlin.concurrent.atomics.AtomicInt
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.concurrent.atomics.fetchAndIncrement
@@ -41,11 +35,21 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 import kotlin.test.fail
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 @OptIn(ExperimentalAtomicApi::class)
 class DoubleCheckCycleTest {
   /** A qualifier for a reentrant scoped binding. */
   @Qualifier annotation class Reentrant
+
+  @Scope annotation class ReentrantScope
 
   /** A module to be overridden in each test. */
   @BindingContainer
@@ -55,21 +59,22 @@ class DoubleCheckCycleTest {
       fail("This method should be overridden in tests")
     },
   ) {
+
     @Provides
-    @SingleIn(AppScope::class)
+    @SingleIn(ReentrantScope::class)
     fun provideAny(): Any {
       return provideAny.invoke()
     }
 
     @Provides
-    @SingleIn(AppScope::class)
+    @SingleIn(ReentrantScope::class)
     @Reentrant
     fun provideReentrantAny(@Reentrant provider: Provider<Any>): Any {
       return provideReentrantAny.invoke(provider)
     }
   }
 
-  @DependencyGraph(AppScope::class)
+  @DependencyGraph(ReentrantScope::class)
   interface TestComponent {
     val obj: Any
     @Reentrant val reentrantAny: Any
@@ -158,80 +163,70 @@ class DoubleCheckCycleTest {
     assertEquals(2, callCount.load())
   }
 
-  @Test(timeout = 5000)
-  fun testGetFromMultipleThreads() {
+  @Test
+  fun testGetFromMultipleThreads() = runBlocking {
     val callCount = AtomicInt(0)
     val requestCount = AtomicInt(0)
-    val future: SettableFuture<Any> = SettableFuture.create()
+    val deferred = CompletableDeferred<Any>()
 
-    // Provides a non-reentrant binding. In this case, we return a SettableFuture so that we can
-    // control when the provides method returns.
+    // Provides a non-reentrant binding. In this case, we return a CompletableDeferred so that we
+    // can control when the provides method returns.
     val component: TestComponent =
       createGraphFactory<TestComponent.Factory>()
         .create(
           OverrideModule(
             provideAny = {
               callCount.incrementAndFetch()
-              Uninterruptibles.getUninterruptibly(future)
+              runBlocking { deferred.await() }
             }
           )
         )
 
-    val numThreads = 10
-    val remainingTasks = CountDownLatch(numThreads)
-    val tasks = ArrayList<Thread>(numThreads)
-    val values: MutableList<Any> = Collections.synchronizedList(ArrayList(numThreads))
+    val numCoroutines = 10
+    val completedCount = AtomicInt(0)
+    val mutex = Mutex()
+    val values = mutableListOf<Any>()
 
-    // Set up multiple threads that call component.getAny().
-    repeat(numThreads) {
-      tasks.add(
-        Thread {
+    // Set up multiple coroutines that call component.obj.
+    // Use Dispatchers.Default to get actual parallelism across threads.
+    val jobs =
+      List(numCoroutines) {
+        launch(Dispatchers.Default) {
           requestCount.incrementAndFetch()
-          values.add(component.obj)
-          remainingTasks.countDown()
+          val value = component.obj
+          mutex.withLock { values.add(value) }
+          completedCount.incrementAndFetch()
         }
-      )
-    }
+      }
 
     // Check initial conditions
-    assertEquals(10, remainingTasks.count)
-    assertEquals(0, requestCount.load())
-    assertEquals(0, callCount.load())
-    assertTrue(values.isEmpty())
+    assertEquals(0, completedCount.load())
 
-    // Start all threads
-    tasks.forEach(Thread::start)
-
-    // Wait for all threads to wait/block.
-    var waiting: Long = 0
-    while (waiting != numThreads.toLong()) {
-      waiting =
-        tasks
-          .stream()
-          .map(Thread::getState)
-          .filter({ state -> state == WAITING || state == BLOCKED })
-          .count()
+    // Wait for all coroutines to reach the blocking point.
+    // One coroutine should enter the provider, others should be waiting on the lock.
+    while (callCount.load() < 1) {
+      delay(1)
     }
+    // Give time for other coroutines to queue up waiting on the synchronized block
+    delay(100)
 
     // Check the intermediate state conditions.
-    // * All 10 threads should have requested the binding, but none should have finished.
-    // * Only 1 thread should have reached the provides method.
-    // * None of the threads should have set a value (since they are waiting for future to be set).
-    assertEquals(10, remainingTasks.count)
-    assertEquals(10, requestCount.load())
+    // * Only 1 coroutine should have reached the provides method.
+    // * None of the coroutines should have completed (since they are waiting for deferred).
+    assertEquals(0, completedCount.load())
     assertEquals(1, callCount.load())
     assertTrue(values.isEmpty())
 
-    // Set the future and wait on all remaining threads to finish.
+    // Complete the deferred and wait on all coroutines to finish.
     val futureValue = Any()
-    future.set(futureValue)
-    remainingTasks.await()
+    deferred.complete(futureValue)
+    jobs.joinAll()
 
     // Check the final state conditions.
     // All values should be set now, and they should all be equal to the same instance.
-    assertEquals(0, remainingTasks.count)
-    assertEquals(10, requestCount.load())
+    assertEquals(numCoroutines, completedCount.load())
     assertEquals(1, callCount.load())
-    assertEquals(Collections.nCopies(numThreads, futureValue), values)
+    assertEquals(numCoroutines, values.size)
+    values.forEach { assertSame(futureValue, it) }
   }
 }

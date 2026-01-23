@@ -61,6 +61,7 @@ allprojects {
     format("license") {
       licenseHeaderFile(rootProject.file("../spotless/spotless.kt"), "(package|@file:)")
       target("src/**/*.kt")
+      targetExclude("**/DoubleCheckCycleTest.kt")
     }
   }
 }
