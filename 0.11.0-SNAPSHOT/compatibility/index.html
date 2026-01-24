@@ -993,17 +993,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#ide-support_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        IDE Support
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#what-about-metros-stability" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1479,17 +1468,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#ide-support_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        IDE Support
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#what-about-metros-stability" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1664,46 +1642,6 @@
 </tr>
 <tr>
 <td>2.3.10-RC</td>
-</tr>
-<tr>
-<td>2.3.0</td>
-</tr>
-<tr>
-<td>2.2.21</td>
-</tr>
-<tr>
-<td>2.2.20</td>
-</tr>
-</tbody>
-</table>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Versions without dedicated compiler-compat modules will use the nearest available implementation <em>below</em> that version. See <a href="https://github.com/ZacSweers/metro/blob/main/compiler-compat/version-aliases.txt"><code>compiler-compat/version-aliases.txt</code></a> for the full list.</p>
-</div>
-<h2 id="ide-support_1">IDE Support<a class="headerlink" href="#ide-support_1" title="Permanent link">&para;</a></h2>
-<p>IDEs have their own compatibility story with Kotlin versions. The Kotlin IDE plugin embeds Kotlin versions built from source, so Metro&rsquo;s IDE support selects the nearest compatible version and tries to support the latest stable IntelliJ and Android Studio releases + the next IntelliJ EAP release.</p>
-<div class="admonition note">
-<p class="admonition-title">IntelliJ&rsquo;s unusual Kotlin tags</p>
-<p>IntelliJ sometimes publishes releases that do not use published Kotlin repo tags. For example, usually it uses a <code>2.3.20-dev-1234</code> version that exists on GitHub and is published to the Kotlin dev maven repo. However, sometimes it uses something like a <code>2.3.20-ij253-45</code> that (at the time of writing) doesn&rsquo;t appear to correspond to any public tag.</p>
-<p>While these do have artifacts in a known maven repository, it&rsquo;s unclear what git sha in the Kotlin repo these are from and thus unclear where they are in the <em>order</em> of dev builds. For now, Metro handles this by selecting the highest available <code>-dev-***</code> build for this base version (i.e. <code>2.3.20</code>), before then falling back to the other types (stable, beta, etc.)</p>
-<p>Please star this issue: <a href="https://youtrack.jetbrains.com/issue/KTIJ-37076">https://youtrack.jetbrains.com/issue/KTIJ-37076</a></p>
-</div>
-<div class="admonition note">
-<p class="admonition-title">Android Studio&rsquo;s custom versions</p>
-<p>Android Studio uses a custom version of the Kotlin compiler that does not necessarily correspond to any real published Kotlin version. For example, Android Studio Otter 2 (at the time of writing) declares <code>2.2.255-dev-255</code>, which isn&rsquo;t a real version. Android Studio Panda canaries declare <code>2.3.255-dev-255</code>. Similar to the mystery <code>ij</code> tags for IntelliJ versions above, metro best-effort supports this by just picking the nearest available compat context that is lower that Studio&rsquo;s declared version.</p>
-<p>Please star this issue: <a href="https://issuetracker.google.com/issues/474940910">https://issuetracker.google.com/issues/474940910</a></p>
-</div>
-<p><a href="https://github.com/ZacSweers/metro/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/ZacSweers/metro/actions/workflows/ci.yml/badge.svg" /></a></p>
-<p>The following Kotlin versions are tested via CI:</p>
-<table>
-<thead>
-<tr>
-<th>Kotlin Version</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>2.3.20-dev-5437</td>
 </tr>
 <tr>
 <td>2.3.0</td>
