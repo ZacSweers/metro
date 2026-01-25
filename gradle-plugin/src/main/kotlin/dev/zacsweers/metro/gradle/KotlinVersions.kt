@@ -9,6 +9,7 @@ internal object KotlinVersions {
   val kotlin230 = KotlinToolingVersion(2, 3, 0, null)
   val kotlin2320 = KotlinToolingVersion(2, 3, 20, null)
   val kotlin2320Beta1 = KotlinToolingVersion("2.3.20-Beta1")
+  val kotlin2320Beta2 = KotlinToolingVersion("2.3.20-Beta2")
   val kotlin2320Dev6204 = KotlinToolingVersion("2.3.20-dev-6204")
 
   fun supportsTopLevelFirGen(version: KotlinToolingVersion): Boolean {
