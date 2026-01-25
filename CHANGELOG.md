@@ -4,6 +4,18 @@ Changelog
 **Unreleased**
 --------------
 
+### New
+
+### Enhancements
+
+### Fixes
+
+- **[IR]** Don't try class binding lookups for nullable types. These must always be explicitly provided.
+
+### Changes
+
+### Contributors
+
 0.10.1
 ------
 

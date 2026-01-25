@@ -50,6 +50,7 @@ import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
+import org.jetbrains.kotlin.ir.util.isNullable
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.name.CallableId
 
@@ -609,6 +610,12 @@ internal class BindingLookup(
       // Check for optional bindings (Optional<T>)
       getOrCreateOptionalBindingIfNeeded(key)?.let { optionalBinding ->
         return setOf(optionalBinding)
+      }
+
+      if (contextKey.typeKey.type.isNullable()) {
+        // If we reach here, do not try to proceed to class lookups. We don't implicitly make an
+        // injected class satisfy a nullable binding of it
+        return emptySet()
       }
 
       // Finally, fall back to class-based lookup and cache the result
