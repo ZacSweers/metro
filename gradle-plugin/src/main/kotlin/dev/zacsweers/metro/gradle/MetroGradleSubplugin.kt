@@ -345,6 +345,8 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
             )
           )
           add(lazyOption("contributes-as-inject", extension.contributesAsInject))
+          add(lazyOption("enable-klib-params-check", extension.enableKlibParamsCheck))
+          add(lazyOption("patch-klib-params", extension.patchKlibParams))
           // Track whether we ordered the plugin before compose-compiler
           add(SubpluginOption("plugin-order-set", orderComposePlugin.toString()))
           reportsDir.orNull

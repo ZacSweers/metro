@@ -279,6 +279,35 @@ constructor(
     objects.booleanProperty("metro.contributesAsInject", true)
 
   /**
+   * Enable/disable klib parameter qualifier checking.
+   *
+   * This is automatically enabled for Kotlin versions `[2.3.0, 2.3.20-Beta2)` and disabled otherwise.
+   *
+   * See https://github.com/ZacSweers/metro/issues/1556 for more information.
+   */
+  public val enableKlibParamsCheck: Property<Boolean> =
+    objects
+      .booleanProperty()
+      .convention(
+        providers.provider {
+          toolingVersion >= KotlinVersions.kotlin230 &&
+            toolingVersion < KotlinVersions.kotlin2320Beta2
+        }
+      )
+
+  /**
+   * Enable/disable patching of klib parameter qualifiers to work around a kotlinc bug. Only applies when
+   * [enableKlibParamsCheck] is also enabled.
+   *
+   * When enabled, Metro will patch the affected parameter qualifiers at compile time and emit a warning
+   * instead of an error.
+   *
+   * See https://github.com/ZacSweers/metro/issues/1556 for more information.
+   */
+  public val patchKlibParams: Property<Boolean> =
+    objects.booleanProperty("metro.patchKlibParams", true)
+
+  /**
    * If set, the Metro compiler will dump verbose report diagnostics about resolved dependency
    * graphs to the given destination. Outputs are per-compilation granularity (i.e.
    * `build/metro/main/...`).

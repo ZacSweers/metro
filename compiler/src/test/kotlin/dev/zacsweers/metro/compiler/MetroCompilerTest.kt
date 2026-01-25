@@ -290,6 +290,12 @@ abstract class MetroCompilerTest {
               MetroOption.CONTRIBUTES_AS_INJECT -> {
                 processor.option(entry.raw.cliOption, contributesAsInject)
               }
+              MetroOption.ENABLE_KLIB_PARAMS_CHECK -> {
+                processor.option(entry.raw.cliOption, enableKlibParamsCheck)
+              }
+              MetroOption.PATCH_KLIB_PARAMS -> {
+                processor.option(entry.raw.cliOption, patchKlibParams)
+              }
               MetroOption.INTEROP_INCLUDE_JAVAX_ANNOTATIONS -> {
                 processor.option(entry.raw.cliOption, false)
               }

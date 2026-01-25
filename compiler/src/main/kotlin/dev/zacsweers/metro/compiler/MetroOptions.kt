@@ -660,6 +660,28 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  ENABLE_KLIB_PARAMS_CHECK(
+    RawMetroOption.boolean(
+      name = "enable-klib-params-check",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "Enable/disable klib parameter qualifier checking. Should be enabled for Kotlin versions [2.3.0, 2.3.20-Beta2).",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
+  PATCH_KLIB_PARAMS(
+    RawMetroOption.boolean(
+      name = "patch-klib-params",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "Enable/disable patching of klib parameter qualifiers to work around kotlinc bug. Only applies when enable-klib-params-check is also enabled.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   INTEROP_INCLUDE_JAVAX_ANNOTATIONS(
     RawMetroOption.boolean(
       name = "interop-include-javax-annotations",
@@ -886,6 +908,10 @@ public data class MetroOptions(
     MetroOption.CUSTOM_OPTIONAL_BINDING.raw.defaultValue.expectAs(),
   public val contributesAsInject: Boolean =
     MetroOption.CONTRIBUTES_AS_INJECT.raw.defaultValue.expectAs(),
+  public val enableKlibParamsCheck: Boolean =
+    MetroOption.ENABLE_KLIB_PARAMS_CHECK.raw.defaultValue.expectAs(),
+  public val patchKlibParams: Boolean =
+    MetroOption.PATCH_KLIB_PARAMS.raw.defaultValue.expectAs(),
   public val pluginOrderSet: Boolean? =
     MetroOption.PLUGIN_ORDER_SET.raw.defaultValue
       .expectAs<String>()
@@ -988,6 +1014,8 @@ public data class MetroOptions(
     public var customOptionalBindingAnnotations: MutableSet<ClassId> =
       base.customOptionalBindingAnnotations.toMutableSet()
     public var contributesAsInject: Boolean = base.contributesAsInject
+    public var enableKlibParamsCheck: Boolean = base.enableKlibParamsCheck
+    public var patchKlibParams: Boolean = base.patchKlibParams
     public var pluginOrderSet: Boolean? = base.pluginOrderSet
 
     private fun FqName.classId(name: String): ClassId {
@@ -1159,6 +1187,8 @@ public data class MetroOptions(
         customOriginAnnotations = customOriginAnnotations,
         customOptionalBindingAnnotations = customOptionalBindingAnnotations,
         contributesAsInject = contributesAsInject,
+        enableKlibParamsCheck = enableKlibParamsCheck,
+        patchKlibParams = patchKlibParams,
         pluginOrderSet = pluginOrderSet,
       )
     }
@@ -1328,6 +1358,10 @@ public data class MetroOptions(
               }
 
           CONTRIBUTES_AS_INJECT -> contributesAsInject = configuration.getAsBoolean(entry)
+
+          ENABLE_KLIB_PARAMS_CHECK -> enableKlibParamsCheck = configuration.getAsBoolean(entry)
+
+          PATCH_KLIB_PARAMS -> patchKlibParams = configuration.getAsBoolean(entry)
 
           INTEROP_INCLUDE_JAVAX_ANNOTATIONS -> {
             if (configuration.getAsBoolean(entry)) includeJavaxAnnotations()
