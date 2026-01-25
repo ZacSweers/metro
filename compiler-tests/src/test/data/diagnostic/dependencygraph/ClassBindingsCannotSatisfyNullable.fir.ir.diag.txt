@@ -1,0 +1,9 @@
+/ClassBindingsCannotSatisfyNullable.kt:(203,212): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: Foo?
+
+    Foo? is injected at
+        [AppGraph] View(…, foo)
+    View is requested at
+        [AppGraph] AppGraph.view
+
+Similar bindings:
+  - Foo (Non-nullable equivalent. Constructor-injected classes cannot implicitly satisfy nullable versions. Explicitly bind this type with `@Binds` separately if you want to use it for nullable bindings). Type: ConstructorInjected. Source: ClassBindingsCannotSatisfyNullable.kt:7:1

@@ -117,11 +117,8 @@ internal class BindingLookup(
     return bindingsCache.mapValues { it.value }
   }
 
-  /** Returns all bindings for a given type key, or null if none exist. */
-  fun getBindings(typeKey: IrTypeKey): IrBinding? = bindingsCache[typeKey]
-
   /** Returns the first binding for a given type key, or null if none exist. */
-  fun getBinding(typeKey: IrTypeKey): IrBinding? = bindingsCache[typeKey]
+  operator fun get(typeKey: IrTypeKey): IrBinding? = bindingsCache[typeKey]
 
   operator fun contains(typeKey: IrTypeKey): Boolean = typeKey in bindingsCache
 

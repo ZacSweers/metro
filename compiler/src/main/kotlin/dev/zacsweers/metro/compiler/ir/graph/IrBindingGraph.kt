@@ -173,7 +173,19 @@ internal class IrBindingGraph(
     return instanceKey in reservedContextKeys
   }
 
-  fun findBinding(key: IrTypeKey): IrBinding? = realGraph[key]
+  fun findBinding(key: IrTypeKey, allowLookup: Boolean = false): IrBinding? =
+    realGraph[key]
+      ?: run {
+        if (allowLookup) {
+          bindingLookup
+            .lookup(IrContextualTypeKey(key), realGraph.bindings, IrBindingStack.empty()) { _, _ ->
+              // handled separately
+            }
+            .firstOrNull()
+        } else {
+          null
+        }
+      }
 
   // For bindings we expect to already be cached
   fun requireBinding(key: IrTypeKey): IrBinding {
@@ -294,7 +306,7 @@ internal class IrBindingGraph(
 
     val unusedKeys: Map<IrTypeKey, IrBinding.BoundInstance?> =
       unused.associateWith { key ->
-        val binding = bindingLookup.getBindings(key)
+        val binding = bindingLookup[key]
         if (binding is IrBinding.BoundInstance && binding.isGraphInput) {
           binding
         } else {
@@ -452,7 +464,7 @@ internal class IrBindingGraph(
 
     // Same type with different qualifier
     if (key.qualifier != null) {
-      findBinding(key.copy(qualifier = null))?.let {
+      findBinding(key.copy(qualifier = null), allowLookup = true)?.let {
         similarBindings.putIfAbsent(
           it.typeKey,
           SimilarBinding(it.typeKey, it, "Different qualifier"),
@@ -469,12 +481,23 @@ internal class IrBindingGraph(
         key.type.makeNullable()
       }
     val equivalentKey = key.copy(type = equivalentType)
-    findBinding(equivalentKey)?.let {
-      val nullabilityDescription =
-        if (isNullable) "Non-nullable equivalent" else "Nullable equivalent"
+    findBinding(equivalentKey, allowLookup = true)?.let { similarBinding ->
+      val nullabilityDescription = buildString {
+        if (isNullable) {
+          append("Non-nullable equivalent")
+        } else {
+          append("Nullable equivalent")
+        }
+
+        if (isNullable && similarBinding is IrBinding.ConstructorInjected) {
+          append(
+            ". Constructor-injected classes cannot implicitly satisfy nullable versions. Explicitly bind this type with `@Binds` separately if you want to use it for nullable bindings"
+          )
+        }
+      }
       similarBindings.putIfAbsent(
-        it.typeKey,
-        SimilarBinding(it.typeKey, it, nullabilityDescription),
+        similarBinding.typeKey,
+        SimilarBinding(similarBinding.typeKey, similarBinding, nullabilityDescription),
       )
     }
 

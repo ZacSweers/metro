@@ -185,7 +185,7 @@ internal class BindingGraphGenerator(
       // typeKey is already the transformed multibinding key
       val targetTypeKey = providerFactory.typeKey
       val isDynamic = providerFactory.isDynamic
-      val existingBinding = bindingLookup.getBindings(targetTypeKey)
+      val existingBinding = bindingLookup[targetTypeKey]
 
       if (isDynamic && existingBinding != null) {
         // Only clear existing if they are not dynamic
@@ -255,7 +255,7 @@ internal class BindingGraphGenerator(
       // typeKey is already the transformed multibinding key
       val targetTypeKey = bindsCallable.typeKey
       val isDynamic = bindsCallable.isDynamic
-      val existingBinding = bindingLookup.getBindings(targetTypeKey)
+      val existingBinding = bindingLookup[targetTypeKey]
 
       if (isDynamic && existingBinding != null) {
         // Only clear existing if they are NOT dynamic

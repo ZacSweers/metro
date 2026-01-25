@@ -228,6 +228,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ClassBindingsCannotSatisfyNullable.kt")
+    public void testClassBindingsCannotSatisfyNullable() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/ClassBindingsCannotSatisfyNullable.kt");
+    }
+
+    @Test
     @TestMetadata("ConfigurableMaxIrErrors.kt")
     public void testConfigurableMaxIrErrors() {
       runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/ConfigurableMaxIrErrors.kt");
