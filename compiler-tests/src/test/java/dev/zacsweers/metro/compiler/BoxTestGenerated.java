@@ -86,6 +86,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ContributedGraphBindingContainerExcludedFromParent.kt")
+    public void testContributedGraphBindingContainerExcludedFromParent() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ContributedGraphBindingContainerExcludedFromParent.kt");
+    }
+
+    @Test
     @TestMetadata("ContributesBindingScopeArgumentOrder.kt")
     public void testContributesBindingScopeArgumentOrder() {
       runTest("compiler-tests/src/test/data/box/aggregation/ContributesBindingScopeArgumentOrder.kt");
@@ -587,6 +593,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("InitsAreChunkedWithCycleBox.kt")
     public void testInitsAreChunkedWithCycleBox() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/InitsAreChunkedWithCycleBox.kt");
+    }
+
+    @Test
+    @TestMetadata("InjectedGenericsClassWorksWithBinds.kt")
+    public void testInjectedGenericsClassWorksWithBinds() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/InjectedGenericsClassWorksWithBinds.kt");
     }
 
     @Test

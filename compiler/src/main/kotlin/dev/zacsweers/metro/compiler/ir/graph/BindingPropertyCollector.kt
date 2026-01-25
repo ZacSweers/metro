@@ -295,7 +295,16 @@ internal class BindingPropertyCollector(
     // Mark dependencies as factory accesses if:
     // - Explicitly Provider<T> or Lazy<T>
     // - This binding is in a factory path (factory.create() takes Provider params)
+    //
+    // For MembersInjected bindings with supertypes, skip dependencies that are covered by
+    // supertype injectors to avoid double-counting. The supertype injectors will be processed
+    // separately and their dependencies will be counted then.
+    val supertypeDependencies =
+      if (binding is IrBinding.MembersInjected) binding.supertypeDependencies else emptySet()
+
     for (dependency in binding.dependencies) {
+      // Skip dependencies covered by supertype injectors
+      if (dependency in supertypeDependencies) continue
       markAccess(dependency, isFactory = inFactoryPath || dependency.requiresProviderInstance)
     }
   }

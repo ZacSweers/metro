@@ -10,10 +10,12 @@ import android.content.ContentProvider
 import android.content.Context
 import android.content.Intent
 import com.google.common.truth.Truth.assertThat
-import dev.zacsweers.metro.DependencyGraph
+import dev.zacsweers.metro.AppScope
+import dev.zacsweers.metro.BindingContainer
+import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.Provides
-import dev.zacsweers.metro.createGraph
+import dev.zacsweers.metro.createDynamicGraphFactory
 import dev.zacsweers.metrox.android.ActivityKey
 import dev.zacsweers.metrox.android.BroadcastReceiverKey
 import dev.zacsweers.metrox.android.ContentProviderKey
@@ -34,12 +36,27 @@ const val EXTRA_DATA = "extra_data"
 
 class TestApp : Application(), MetroApplication {
   override val appComponentProviders: MetroAppComponentProviders by lazy {
-    createGraph<TestAppGraph>()
+    createDynamicGraphFactory<AppGraph.Factory>(TestBindings()).create(this)
+  }
+
+  init {
+    assertThat(appComponentProviders.activityProviders).hasSize(1)
+    assertThat(appComponentProviders.activityProviders)
+      .containsKey(MetroAppComponentFactoryTest.TestActivity::class.java)
+    assertThat(appComponentProviders.receiverProviders).hasSize(1)
+    assertThat(appComponentProviders.receiverProviders)
+      .containsKey(MetroAppComponentFactoryTest.TestReceiver::class.java)
+    assertThat(appComponentProviders.providerProviders).hasSize(1)
+    assertThat(appComponentProviders.providerProviders)
+      .containsKey(MetroAppComponentFactoryTest.TestProvider::class.java)
+    assertThat(appComponentProviders.serviceProviders).hasSize(1)
+    assertThat(appComponentProviders.serviceProviders)
+      .containsKey(MetroAppComponentFactoryTest.TestService::class.java)
   }
 }
 
-@DependencyGraph
-interface TestAppGraph : MetroAppComponentProviders {
+@BindingContainer
+class TestBindings {
   @Provides fun provideString(): String = TEST_STRING
 }
 
@@ -77,16 +94,21 @@ class MetroAppComponentFactoryTest {
   }
 
   // Test component classes
-  @Inject @ActivityKey(TestActivity::class) class TestActivity(val value: String) : Activity()
+  @Inject
+  @ActivityKey(TestActivity::class)
+  @ContributesIntoMap(AppScope::class)
+  class TestActivity(val value: String) : Activity()
 
   @Inject
   @ServiceKey(TestService::class)
+  @ContributesIntoMap(AppScope::class)
   class TestService(val value: String) : Service() {
     override fun onBind(intent: Intent?) = null
   }
 
   @Inject
   @BroadcastReceiverKey(TestReceiver::class)
+  @ContributesIntoMap(AppScope::class)
   class TestReceiver(val value: String) : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
       lastInjectedValue = value
@@ -101,6 +123,7 @@ class MetroAppComponentFactoryTest {
 
   @Inject
   @ContentProviderKey(TestProvider::class)
+  @ContributesIntoMap(AppScope::class)
   class TestProvider(val value: String) : ContentProvider() {
     override fun onCreate() = true
 

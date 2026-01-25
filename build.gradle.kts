@@ -3,6 +3,7 @@
 import com.diffplug.gradle.spotless.SpotlessExtension
 import com.diffplug.gradle.spotless.SpotlessExtensionPredeclare
 import com.diffplug.spotless.LineEnding
+import com.vanniktech.maven.publish.DeploymentValidation
 import com.vanniktech.maven.publish.MavenPublishBaseExtension
 import kotlinx.validation.ExperimentalBCVApi
 import org.jetbrains.dokka.gradle.DokkaExtension
@@ -137,6 +138,7 @@ allprojects {
         "**/ClassKey.kt",
         "**/DelegateFactory.kt",
         "**/DoubleCheck.kt",
+        "**/DoubleCheckCycleTest.kt",
         "**/DoubleCheckTest.kt",
         "**/ElementsIntoSet.kt",
         "**/InstanceFactory.kt",
@@ -213,7 +215,10 @@ subprojects {
       apply(plugin = "org.jetbrains.dokka")
     }
     configure<MavenPublishBaseExtension> {
-      publishToMavenCentral(automaticRelease = true, validateDeployment = false)
+      publishToMavenCentral(
+        automaticRelease = true,
+        validateDeployment = DeploymentValidation.VALIDATED,
+      )
     }
 
     // configuration required to produce unique META-INF/*.kotlin_module file names

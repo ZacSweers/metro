@@ -234,6 +234,18 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("DoNotSuggestSimilarBindingSubtypesForAny.kt")
+    public void testDoNotSuggestSimilarBindingSubtypesForAny() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/DoNotSuggestSimilarBindingSubtypesForAny.kt");
+    }
+
+    @Test
+    @TestMetadata("DoNotSuggestSimilarBindingsForMultibindingElements.kt")
+    public void testDoNotSuggestSimilarBindingsForMultibindingElements() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/DoNotSuggestSimilarBindingsForMultibindingElements.kt");
+    }
+
+    @Test
     @TestMetadata("GraphsCannotDirectlyExtendOtherGraphs.kt")
     public void testGraphsCannotDirectlyExtendOtherGraphs() {
       runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/GraphsCannotDirectlyExtendOtherGraphs.kt");
@@ -279,6 +291,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("UnusedGraphInputsAreReported.kt")
     public void testUnusedGraphInputsAreReported() {
       runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/UnusedGraphInputsAreReported.kt");
+    }
+
+    @Test
+    @TestMetadata("UnusedGraphInputsInGraphExtensionAreReported.kt")
+    public void testUnusedGraphInputsInGraphExtensionAreReported() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/UnusedGraphInputsInGraphExtensionAreReported.kt");
     }
 
     @Test
@@ -694,6 +712,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       @TestMetadata("MissingMemberInjectionShouldFailBinding2.kt")
       public void testMissingMemberInjectionShouldFailBinding2() {
         runTest("compiler-tests/src/test/data/diagnostic/inject/member/MissingMemberInjectionShouldFailBinding2.kt");
+      }
+
+      @Test
+      @TestMetadata("MultipleSubtypesWithCommonParentMemberInjectionsDoNotWarnAboutDupes.kt")
+      public void testMultipleSubtypesWithCommonParentMemberInjectionsDoNotWarnAboutDupes() {
+        runTest("compiler-tests/src/test/data/diagnostic/inject/member/MultipleSubtypesWithCommonParentMemberInjectionsDoNotWarnAboutDupes.kt");
       }
 
       @Test

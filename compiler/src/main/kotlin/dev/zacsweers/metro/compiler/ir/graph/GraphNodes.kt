@@ -25,6 +25,7 @@ import dev.zacsweers.metro.compiler.ir.MultibindsCallable
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.allCallableMembers
 import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
+import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.bindingContainerClasses
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
@@ -130,7 +131,11 @@ internal class GraphNodes(
 
     val graphClassId = graphDeclaration.classIdOrFail
 
-    return graphNodesByClass.getOrPut(graphClassId) {
+    graphNodesByClass[graphClassId]?.let {
+      return it
+    }
+
+    val node =
       traceNested("Build GraphNode") {
         Builder(
             this,
@@ -143,7 +148,18 @@ internal class GraphNodes(
           )
           .build()
       }
+
+    // Only cache regular @DependencyGraph-annotated nodes. Extensions/dynamic graphs are
+    // processed inline with their parents and don't need later lookups.
+    val isRegularDependencyGraph =
+      !graphDeclaration.origin.isSyntheticGeneratedGraph &&
+        (dependencyGraphAnno?.annotationClass?.classId in
+          metroContext.metroSymbols.classIds.dependencyGraphAnnotations)
+    if (isRegularDependencyGraph) {
+      graphNodesByClass[graphClassId] = node
     }
+
+    return node
   }
 
   private class Builder(
@@ -682,7 +698,10 @@ internal class GraphNodes(
               val contextKey =
                 IrContextualTypeKey.from(declaration, hasDefaultOverride = isOptionalBinding)
               if (metroFunction.annotations.isBinds) {
-                bindsFunctions += (metroFunction to contextKey)
+                // Only needed for native platform workarounds now
+                if (metroContext.platform.isNative()) {
+                  bindsFunctions += (metroFunction to contextKey)
+                }
               } else {
                 accessors += GraphAccessor(contextKey, metroFunction, isOptionalBinding)
               }
@@ -825,7 +844,10 @@ internal class GraphNodes(
               hasGraphExtensions = true
             } else {
               if (metroFunction.annotations.isBinds) {
-                bindsFunctions += (metroFunction to contextKey)
+                // Only needed for native platform workarounds now
+                if (metroContext.platform.isNative()) {
+                  bindsFunctions += (metroFunction to contextKey)
+                }
               } else {
                 accessors += GraphAccessor(contextKey, metroFunction, isOptionalBinding)
               }
@@ -835,6 +857,44 @@ internal class GraphNodes(
       }
 
       val creator = buildCreator()
+
+      // For synthetic graph extensions, also track the original factory creator
+      // This allows referencing original parameter declarations for reporting unused inputs
+      val originalCreator =
+        if (graphDeclaration.origin.isSyntheticGeneratedGraph) {
+          // Find the original factory interface in the parent graph
+          graphDeclaration.sourceGraphIfMetroGraph.nestedClasses
+            .singleOrNull { klass ->
+              klass.isAnnotatedWithAny(metroSymbols.classIds.graphExtensionFactoryAnnotations)
+            }
+            ?.let { factory ->
+              // Use cached creator if available, otherwise create and cache
+              factory.cachedFactoryCreator
+                ?: run {
+                  val createFunction = factory.singleAbstractFunction()
+                  val parameters = createFunction.parameters()
+                  // Compute binding container fields similar to buildCreator
+                  var bindingContainerFields = BitField()
+                  for ((i, parameter) in parameters.regularParameters.withIndex()) {
+                    if (parameter.isIncludes) {
+                      val parameterClass = parameter.typeKey.type.classOrNull?.owner ?: continue
+                      if (parameterClass.isBindingContainer()) {
+                        bindingContainerFields = bindingContainerFields.withSet(i)
+                      }
+                    }
+                  }
+                  GraphNode.Creator.Factory(
+                      factory,
+                      createFunction,
+                      parameters,
+                      bindingContainerFields,
+                    )
+                    .also { factory.cachedFactoryCreator = it }
+                }
+            }
+        } else {
+          null
+        }
 
       // Add parent node if it's a generated graph extension
       if (graphDeclaration.origin == Origins.GeneratedGraphExtension) {
@@ -1013,6 +1073,7 @@ internal class GraphNodes(
           accessors = accessors,
           injectors = injectors,
           creator = creator,
+          originalCreator = originalCreator,
           parentGraph = parentGraph,
           bindingContainers = managedBindingContainers,
           annotationDeclaredBindingContainers = annotationDeclaredBindingContainers,

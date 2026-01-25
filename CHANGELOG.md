@@ -4,14 +4,39 @@ Changelog
 **Unreleased**
 --------------
 
+0.10.1
+------
+
+_2026-01-23_
+
 ### Enhancements
 
 - **[IR]** Add a dedicated `UNUSED_GRAPH_INPUT` diagnostic for `unusedGraphInputsSeverity` option.
+- **[IR]** Reduce memory usage when processing long graph extension chains. This is a combination of a few things:
+    - Using a (shaded) `ScatterMap` implementation from `androidx.collections`
+    - Relinquishing binding lookup caches after graph validation completes
+    - Caching IrBinding instances
+    - Route almost all bindings through `BindingLookup` for lazy lookups rather than eagerly adding to the binding graph.
+- **[IR]** Don't report subtypes of `Any` in similar binding hints.
+- **[IR]** Don't report multibinding elements in similar binding hints (only report the multibinding itself if relevant).
+- **[Graph Reporting]** Since all bindings are lazily retrieved from `BindingLookup` now, this will also cut down graph analysis report sizes, as they should now be almost entirely free of unused bindings.
 
 ### Fixes
 
+- **[IR]** Fix exclusions not inherited from parent graphs.
+- **[IR]** When reporting unused graph inputs on graph extensions, report the diagnostic on the original source declaration if possible.
 - **[IR/Native]** Fix parameter type equality check in native compilations in constructor-injected class factories.
 - **[IR/Compat]** Fix compatibiltiy for source-less diagnostics in Kotlin `2.3.20-Beta1`.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@JoelWilcox](https://github.com/JoelWilcox)
+- [@japplin](https://github.com/japplin)
+- [@kevinguitar](https://github.com/kevinguitar)
+- [@jonamireh](https://github.com/jonamireh)
+- [@zsmb13](https://github.com/zsmb13)
 
 0.10.0
 ------

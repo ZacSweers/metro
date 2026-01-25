@@ -105,6 +105,7 @@ val shadowJar =
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
     mergeServiceFiles()
 
+    relocate("androidx.collection", "dev.zacsweers.metro.compiler.shaded.androidx.collection")
     relocate("com.squareup.wire", "dev.zacsweers.metro.compiler.shaded.com.squareup.wire")
     relocate("com.squareup.okio", "dev.zacsweers.metro.compiler.shaded.com.squareup.okio")
     relocate("com.jakewharton.picnic", "dev.zacsweers.metro.compiler.shaded.com.jakewharton.picnic")
@@ -143,7 +144,9 @@ dependencies {
   compileOnly(libs.kotlin.compiler)
   compileOnly(libs.kotlin.stdlib)
   compileOnly(libs.poko.annotations)
+  compileOnly(libs.androidx.collection)
 
+  add(embedded.name, libs.androidx.collection)
   add(embedded.name, libs.picnic)
   add(embedded.name, libs.wire.runtime)
   add(embedded.name, libs.kotlinx.serialization.json)
@@ -176,4 +179,5 @@ dependencies {
   testImplementation(libs.dagger.compiler)
   testImplementation(libs.dagger.runtime)
   testImplementation(libs.anvil.annotations)
+  testImplementation(libs.androidx.collection)
 }

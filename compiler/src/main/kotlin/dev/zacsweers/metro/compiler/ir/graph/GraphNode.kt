@@ -26,6 +26,7 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.irAttribute
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
@@ -168,6 +169,11 @@ internal sealed class GraphNode {
     /** TypeKey key is the injected type wrapped in MembersInjector. */
     val injectors: List<InjectorFunction>,
     val creator: Creator?,
+    /**
+     * For synthetic graph extensions, this references the original factory interface and its SAM
+     * method, allowing access to the original parameter declarations for reporting unused inputs.
+     */
+    val originalCreator: Creator.Factory? = null,
     override val parentGraph: GraphNode?,
     override val typeKey: IrTypeKey = IrTypeKey(sourceGraph.typeWith()),
     var proto: DependencyGraphProto? = null,
@@ -210,3 +216,7 @@ internal data class GraphExtensionAccessor(
   val isSimpleAccessor: Boolean
     get() = !isFactorySAM && !isFactory
 }
+
+/** Cached [GraphNode.Creator.Factory] for this graph extension factory's SAM function. */
+internal var IrClass.cachedFactoryCreator: GraphNode.Creator.Factory? by
+  irAttribute(copyByDefault = false)

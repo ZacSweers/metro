@@ -87,7 +87,7 @@ if grep -q "^## Tested Versions" "$DOCS_FILE"; then
     cat "$tested_tmpfile" >> "$tmpfile"
 
     # Append everything after the tested versions section (starting with the next ## header)
-    awk '/^## Tested Versions/ {in_tested=1; next} in_tested && /^## / {in_tested=0} !in_tested && /^## / {print; flag=1; next} flag {print}' "$DOCS_FILE" >> "$tmpfile"
+    awk '/^## Tested Versions/ {in_tested=1; seen=1; next} in_tested && /^## / {in_tested=0; print; next} in_tested {next} seen {print}' "$DOCS_FILE" >> "$tmpfile"
 else
     # Append the new section at the end
     cat "$DOCS_FILE" > "$tmpfile"

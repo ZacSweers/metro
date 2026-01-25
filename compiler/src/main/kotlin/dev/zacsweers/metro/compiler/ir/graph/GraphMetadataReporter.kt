@@ -40,6 +40,7 @@ internal class GraphMetadataReporter(
     val bindings =
       bindingGraph
         .bindingsSnapshot()
+        .asMap()
         .values
         .sortedBy { it.contextualTypeKey.render(short = false, includeQualifier = true) }
         .map { binding ->
