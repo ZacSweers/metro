@@ -11,6 +11,7 @@ Changelog
 ### Fixes
 
 - **[IR]** Don't try class binding lookups for nullable types. These must always be explicitly provided.
+- **[IR]** Disambiguate return-type overloads of generated `@Binds` functions for `@Contributes` annotations that contribute multiple interfaces of the same simple name but different package name.
 
 ### Changes
 

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
+import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.ir.IrContributionData
@@ -24,6 +25,7 @@ import dev.zacsweers.metro.compiler.ir.requireScope
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.joinSimpleNames
 import dev.zacsweers.metro.compiler.memoize
+import dev.zacsweers.metro.compiler.reserveName
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrStatement
@@ -39,6 +41,7 @@ import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
+import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.isLocal
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.visitors.IrTransformer
@@ -124,10 +127,17 @@ internal class ContributionTransformer(private val context: IrMetroContext) :
     if (classId !in transformedContributions) {
       val contributor = declaration.parentAsClass
       val contributions = getOrFindContributions(contributor, scope).orEmpty()
-      val bindsFunctions = mutableSetOf<IrSimpleFunction>()
-      for (contribution in contributions) {
-        if (contribution !is Contribution.BindingContribution) continue
-        with(contribution) { bindsFunctions += declaration.generateBindingFunction(metroContext) }
+
+      if (contributions.isNotEmpty()) {
+        val bindsFunctions = mutableSetOf<IrSimpleFunction>()
+        val nameAllocator = NameAllocator(mode = COUNT)
+        contributor.functions.forEach { nameAllocator.reserveName(it.name) }
+        for (contribution in contributions) {
+          if (contribution !is Contribution.BindingContribution) continue
+          with(contribution) {
+            bindsFunctions += declaration.generateBindingFunction(metroContext, nameAllocator)
+          }
+        }
       }
       declaration.dumpToMetroLog()
     }
@@ -172,7 +182,10 @@ internal class ContributionTransformer(private val context: IrMetroContext) :
       override val origin: ClassId
         get() = annotatedType.classIdOrFail
 
-      fun IrClass.generateBindingFunction(metroContext: IrMetroContext): IrSimpleFunction =
+      fun IrClass.generateBindingFunction(
+        metroContext: IrMetroContext,
+        nameAllocator: NameAllocator,
+      ): IrSimpleFunction =
         with(metroContext) {
           val (explicitBindingType, ignoreQualifier) = annotation.bindingTypeOrNull()
           val bindingType =
@@ -204,7 +217,7 @@ internal class ContributionTransformer(private val context: IrMetroContext) :
 
           // We need a unique name because addFakeOverrides() doesn't handle overloads with
           // different return types
-          val name = (callableName + suffix).asName()
+          val name = nameAllocator.newName(callableName + suffix).asName()
           addFunction {
               this.name = name
               this.returnType = bindingType

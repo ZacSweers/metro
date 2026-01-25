@@ -56,6 +56,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("ContributorsWithSameSimpleNamesSameOrigin.kt")
+    public void testContributorsWithSameSimpleNamesSameOrigin() {
+      runTest("compiler-tests/src/test/data/dump/ir/aggregation/ContributorsWithSameSimpleNamesSameOrigin.kt");
+    }
+
+    @Test
     @TestMetadata("MultipleContributionsOnlyProduceOneHintFile.kt")
     public void testMultipleContributionsOnlyProduceOneHintFile() {
       runTest("compiler-tests/src/test/data/dump/ir/aggregation/MultipleContributionsOnlyProduceOneHintFile.kt");
