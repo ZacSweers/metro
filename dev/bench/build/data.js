@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769318734527,
+  "lastUpdate": 1769376659572,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -3864,6 +3864,62 @@ window.BENCHMARK_DATA = {
             "value": 21303.132,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +9.59%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "74c93551~1",
+          "message": "[before] Skip assisted parameters when validating mirror ma",
+          "timestamp": "2026-01-25T20:56:32Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/74c93551249deec29cc60dabe31997121c0a5eef"
+        },
+        "date": 1769376659572,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19783.71,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "74c93551249deec29cc60dabe31997121c0a5eef",
+          "message": "[after] Skip assisted parameters when validating mirror ma",
+          "timestamp": "2026-01-25T20:56:32Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/74c93551249deec29cc60dabe31997121c0a5eef"
+        },
+        "date": 1769376659573,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19914.554,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +0.66%"
           }
         ]
       }
