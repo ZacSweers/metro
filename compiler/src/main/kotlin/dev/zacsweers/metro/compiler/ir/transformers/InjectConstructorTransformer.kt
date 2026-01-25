@@ -143,7 +143,8 @@ internal class InjectConstructorTransformer(
                 .owner
                 .parameters()
                 .allParameters
-            for ((i, mirrorP) in parameters.nonDispatchParameters.withIndex()) {
+            for ((i, mirrorP) in
+              parameters.nonDispatchParameters.filterNot { it.isAssisted }.withIndex()) {
               val createP = createFunctionParams[i]
               if (createP.typeKey != mirrorP.typeKey) {
                 reportCompat(
