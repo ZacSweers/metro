@@ -217,29 +217,34 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
       }
     }
 
-    project.dependencies.add(
-      kotlinCompilation.implementationConfigurationName,
-      "dev.zacsweers.metro:runtime:$VERSION",
-    )
-    if (kotlinCompilation.implementationConfigurationName == "metadataCompilationImplementation") {
-      project.dependencies.add("commonMainImplementation", "dev.zacsweers.metro:runtime:$VERSION")
-    }
-
     val isJvmTarget =
       kotlinCompilation.target.platformType == KotlinPlatformType.jvm ||
         kotlinCompilation.target.platformType == KotlinPlatformType.androidJvm
-    if (isJvmTarget) {
-      if (extension.interop.enableDaggerRuntimeInterop.getOrElse(false)) {
-        project.dependencies.add(
-          kotlinCompilation.implementationConfigurationName,
-          "dev.zacsweers.metro:interop-dagger:$VERSION",
-        )
+
+    if (extension.automaticallyAddRuntimeDependencies.get()) {
+      project.dependencies.add(
+        kotlinCompilation.implementationConfigurationName,
+        "dev.zacsweers.metro:runtime:$VERSION",
+      )
+      if (
+        kotlinCompilation.implementationConfigurationName == "metadataCompilationImplementation"
+      ) {
+        project.dependencies.add("commonMainImplementation", "dev.zacsweers.metro:runtime:$VERSION")
       }
-      if (extension.interop.enableGuiceRuntimeInterop.getOrElse(false)) {
-        project.dependencies.add(
-          kotlinCompilation.implementationConfigurationName,
-          "dev.zacsweers.metro:interop-guice:$VERSION",
-        )
+
+      if (isJvmTarget) {
+        if (extension.interop.enableDaggerRuntimeInterop.getOrElse(false)) {
+          project.dependencies.add(
+            kotlinCompilation.implementationConfigurationName,
+            "dev.zacsweers.metro:interop-dagger:$VERSION",
+          )
+        }
+        if (extension.interop.enableGuiceRuntimeInterop.getOrElse(false)) {
+          project.dependencies.add(
+            kotlinCompilation.implementationConfigurationName,
+            "dev.zacsweers.metro:interop-guice:$VERSION",
+          )
+        }
       }
     }
 

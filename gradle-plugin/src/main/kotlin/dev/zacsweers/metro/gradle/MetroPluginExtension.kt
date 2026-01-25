@@ -28,6 +28,10 @@ constructor(
   /** Controls whether Metro's compiler plugin will be enabled on this project. */
   public val enabled: Property<Boolean> = objects.booleanProperty("metro.enabled", true)
 
+  /** Controls whether Metro's runtime artifact dependencies should be automatically added. */
+  public val automaticallyAddRuntimeDependencies: Property<Boolean> =
+    objects.booleanProperty("metro.automaticallyAddRuntimeDependencies", true)
+
   /**
    * Maximum number of IR errors to report before exiting IR processing. Default is 20, must be > 0.
    */
