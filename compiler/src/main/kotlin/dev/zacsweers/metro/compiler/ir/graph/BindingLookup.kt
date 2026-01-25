@@ -173,7 +173,7 @@ internal class BindingLookup(
       }
 
       is IrBinding.MembersInjected -> {
-        hydrateMemberInjectionAncestors(binding.typeKey)
+        @Suppress("RETURN_VALUE_NOT_USED") hydrateMemberInjectionAncestors(binding.typeKey)
       }
 
       else -> {

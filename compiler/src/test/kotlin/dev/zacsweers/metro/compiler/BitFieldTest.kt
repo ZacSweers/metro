@@ -26,7 +26,9 @@ class BitFieldTest {
   @Test
   fun `isSet throws exception for negative index`() {
     val bitField = BitField(0)
-    assertFailsWith<IllegalArgumentException> { bitField.isSet(-1) }
+    assertFailsWith<IllegalArgumentException> {
+      @Suppress("RETURN_VALUE_NOT_USED") bitField.isSet(-1)
+    }
   }
 
   @Test

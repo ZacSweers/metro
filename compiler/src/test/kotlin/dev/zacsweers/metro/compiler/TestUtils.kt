@@ -182,6 +182,7 @@ class StaticMethod(val method: Method, val instance: Any? = null) {
   val name: String
     get() = method.name
 
+  @IgnorableReturnValue
   operator fun invoke(vararg args: Any?): Any? {
     try {
       return method.invoke(instance, *args)
@@ -340,6 +341,7 @@ fun Class<*>.implOrNull(): Class<*>? {
   return declaredClasses.singleOrNull { it.isAnnotationPresent(MetroImplMarker::class.java) }
 }
 
+@IgnorableReturnValue
 fun <T> Any.callFunction(name: String, vararg args: Any): T {
   @Suppress("UNCHECKED_CAST")
   return javaClass
@@ -531,7 +533,9 @@ private fun String.parseDiagnostics(): Map<DiagnosticSeverity, List<String>> {
     .let { parsed ->
       buildMap {
         putAll(parsed)
-        DiagnosticSeverity.entries.forEach { severity -> getOrPut(severity, ::emptyList) }
+        DiagnosticSeverity.entries.forEach { severity ->
+          @Suppress("RETURN_VALUE_NOT_USED") getOrPut(severity, ::emptyList)
+        }
       }
     }
 }

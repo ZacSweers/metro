@@ -123,8 +123,10 @@ class NameAllocatorTest {
   @Test
   fun tagReuseForbidden() {
     val nameAllocator = NameAllocator()
-    nameAllocator.newName("foo", 1)
-    assertThrows<IllegalArgumentException> { nameAllocator.newName("bar", 1) }
+    nameAllocator.reserveName("foo", 1)
+    assertThrows<IllegalArgumentException> {
+        @Suppress("RETURN_VALUE_NOT_USED") nameAllocator.newName("bar", 1)
+      }
       .hasMessageThat()
       .isEqualTo("tag 1 cannot be used for both 'foo' and 'bar'")
   }
@@ -132,7 +134,7 @@ class NameAllocatorTest {
   @Test
   fun useBeforeAllocateForbidden() {
     val nameAllocator = NameAllocator()
-    assertThrows<IllegalArgumentException> { nameAllocator[1] }
+    assertThrows<IllegalArgumentException> { @Suppress("RETURN_VALUE_NOT_USED") nameAllocator[1] }
       .hasMessageThat()
       .isEqualTo("unknown tag: 1")
   }
@@ -140,7 +142,7 @@ class NameAllocatorTest {
   @Test
   fun cloneUsage() {
     val outerAllocator = NameAllocator()
-    outerAllocator.newName("foo", 1)
+    outerAllocator.reserveName("foo", 1)
 
     val innerAllocator1 = outerAllocator.copy()
     assertThat(innerAllocator1.newName("bar", 2)).isEqualTo("bar")

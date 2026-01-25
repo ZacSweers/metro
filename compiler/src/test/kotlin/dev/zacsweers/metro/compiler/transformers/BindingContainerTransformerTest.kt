@@ -615,7 +615,6 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       previousCompilationResult = firstCompilation,
       options = metroOptions.withDaggerInterop(),
     ) {
-      ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertDiagnostics(
         """
         w: Included Dagger module 'ExampleModule' declares a `subcomponents` parameter but this will be ignored by Metro in interop.

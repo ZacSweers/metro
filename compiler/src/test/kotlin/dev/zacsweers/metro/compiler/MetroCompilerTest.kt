@@ -394,6 +394,7 @@ abstract class MetroCompilerTest {
     )
   }
 
+  @IgnorableReturnValue
   protected fun compile(
     vararg sourceFiles: SourceFile,
     metroEnabled: Boolean = true,
