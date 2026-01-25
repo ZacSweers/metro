@@ -29,6 +29,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INJECTED_CLASSES_MUST_B
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INTEROP_ANNOTATION_ARGS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INTEROP_ANNOTATION_ARGS_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.KNOWN_KOTLINC_BUG_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.KNOWN_KOTLINC_BUG_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.LOCAL_CLASSES_CANNOT_BE_INJECTED
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MAP_KEY_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MAP_KEY_TYPE_PARAM_ERROR
@@ -173,6 +174,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val METRO_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val METRO_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
   val KNOWN_KOTLINC_BUG_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val KNOWN_KOTLINC_BUG_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
   val SOURCELESS_METRO_ERROR by errorWithoutSource()
   val SOURCELESS_METRO_WARNING by errorWithoutSource()
 
@@ -301,6 +303,7 @@ private object FirMetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(METRO_ERROR, "{0}", TO_STRING)
         put(METRO_WARNING, "{0}", TO_STRING)
         put(KNOWN_KOTLINC_BUG_ERROR, "{0}", TO_STRING)
+        put(KNOWN_KOTLINC_BUG_WARNING, "{0}", TO_STRING)
         put(SOURCELESS_METRO_ERROR, "{0}")
         put(SOURCELESS_METRO_WARNING, "{0}")
         put(GRAPH_DEPENDENCY_CYCLE, "[Metro/GraphDependencyCycle] {0}", TO_STRING)
