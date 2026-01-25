@@ -359,6 +359,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       public void testExtensionsWithFactoriesMustUseThem() {
         runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/extensions/ExtensionsWithFactoriesMustUseThem.kt");
       }
+
+      @Test
+      @TestMetadata("OverridesAreTypeChecked.kt")
+      public void testOverridesAreTypeChecked() {
+        runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/extensions/OverridesAreTypeChecked.kt");
+      }
     }
 
     @Nested

@@ -109,6 +109,7 @@ internal class Symbols(
       metroRuntimeInternalPackage.child("GraphFactoryInvokeFunctionMarker".asName())
     val CallableMetadataClass =
       metroRuntimeInternalPackage.child(StringNames.CALLABLE_METADATA.asName())
+    val MetroContribution = ClassIds.metroContribution.asSingleFqName()
 
     fun scopeHint(scopeClassId: ClassId): FqName {
       return CallableIds.scopeHint(scopeClassId).asSingleFqName()

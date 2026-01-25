@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir.graph
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.decapitalizeUS
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ir.IrBindingContainerResolver
 import dev.zacsweers.metro.compiler.ir.IrContributionMerger
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -23,6 +24,8 @@ import dev.zacsweers.metro.compiler.ir.kClassReference
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.ir.render
+import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.scopeClassOrNull
 import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
@@ -44,8 +47,12 @@ import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationContainer
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
+import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
+import org.jetbrains.kotlin.ir.interpreter.hasAnnotation
+import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.util.addChild
@@ -54,7 +61,11 @@ import org.jetbrains.kotlin.ir.util.copyAnnotationsFrom
 import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.defaultType
+import org.jetbrains.kotlin.ir.util.functions
+import org.jetbrains.kotlin.ir.util.isSubtypeOf
+import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.name.Name
 
 internal data class SyntheticGraphParameter(
@@ -288,6 +299,8 @@ internal class SyntheticGraphGenerator(
 
     graphImpl.addFakeOverrides(irTypeSystemContext)
 
+    graphImpl.validateOverrides()
+
     return CreatedGraphImpl(graphAnno, graphImpl, factoryImpl)
   }
 
@@ -296,4 +309,129 @@ internal class SyntheticGraphGenerator(
     val graphImpl: IrClass,
     val factoryImpl: IrClass?,
   )
+
+  /**
+   * Validates that fake overrides in this class don't have incompatible return types from different
+   * supertypes. This catches cases like:
+   * ```
+   * interface A { val foo: Int }
+   * interface B { val foo: String }
+   * class C : A, B // Error: 'val foo: Int' clashes with 'val foo: String'
+   * ```
+   *
+   * Adapted from the kotlinc impl in FirImplementationMismatchChecker.kt
+   */
+  // https://github.com/ZacSweers/metro/issues/904
+  private fun IrClass.validateOverrides() {
+    // Check all fake override properties
+    for (property in properties) {
+      if (!property.isFakeOverride) continue
+      property.checkOverrideTypeCompatibility()
+    }
+
+    // Check all fake override functions
+    for (function in functions) {
+      if (!function.isFakeOverride) continue
+      function.checkOverrideTypeCompatibility()
+    }
+  }
+
+  /**
+   * Checks that all overridden symbols of this declaration have compatible return types. Two types
+   * are compatible if one is a subtype of the other.
+   *
+   * We check a single member's overridden symbol because this will manifest as incompatible
+   * ancestor overridden symbols.
+   */
+  private fun <S : IrSymbol> IrOverridableDeclaration<S>.checkOverrideTypeCompatibility() {
+    val overriddenSymbols = overriddenSymbols.toList()
+    if (overriddenSymbols.size < 2) return
+
+    // Get return types for each overridden declaration
+    val overriddenWithTypes =
+      overriddenSymbols.mapNotNull { symbol ->
+        val owner = symbol.owner
+        val returnType =
+          when (owner) {
+            is IrSimpleFunction -> owner.returnType
+            is IrProperty -> owner.getter?.returnType ?: return@mapNotNull null
+            else -> return@mapNotNull null
+          }
+        owner to returnType
+      }
+
+    if (overriddenWithTypes.size < 2) return
+
+    // Check all pairs for compatibility - find if there's any type that is compatible with all
+    // others
+    val hasCompatibleType =
+      overriddenWithTypes.any { (_, type1) ->
+        overriddenWithTypes.all { (_, type2) ->
+          type1.isSubtypeOf(type2, irTypeSystemContext) ||
+            type2.isSubtypeOf(type1, irTypeSystemContext)
+        }
+      }
+
+    if (hasCompatibleType) return
+
+    // Find a concrete clash to report
+    for (i in overriddenWithTypes.indices) {
+      for (j in i + 1 until overriddenWithTypes.size) {
+        val (decl1, type1) = overriddenWithTypes[i]
+        val (decl2, type2) = overriddenWithTypes[j]
+
+        if (
+          !type1.isSubtypeOf(type2, irTypeSystemContext) &&
+            !type2.isSubtypeOf(type1, irTypeSystemContext)
+        ) {
+          reportTypeClash(decl1, type1, decl2, type2)
+          return // Report only the first clash
+        }
+      }
+    }
+  }
+
+  private fun reportTypeClash(
+    decl1: IrOverridableDeclaration<*>,
+    type1: IrType,
+    decl2: IrOverridableDeclaration<*>,
+    type2: IrType,
+  ) {
+    val isProperty =
+      decl1 is IrProperty ||
+        (decl1 is IrSimpleFunction && decl1.correspondingPropertySymbol != null)
+    val kind = if (isProperty) "val" else "fun"
+    val typeMismatchKind = if (isProperty) "property" else "return"
+
+    val name1 =
+      when (decl1) {
+        is IrProperty -> decl1.name.asString()
+        is IrSimpleFunction ->
+          decl1.correspondingPropertySymbol?.owner?.name?.asString() ?: decl1.name.asString()
+      }
+
+    val parent1 = decl1.parentAsClass.originIfContribution
+    val parent2 = decl2.parentAsClass.originIfContribution
+    val parent1Name = parent1.kotlinFqName
+    val parent2Name = parent2.kotlinFqName
+
+    val message = buildString {
+      append("'$kind $name1: ${type1.render(short = false)}' defined in '$parent1Name' ")
+      append(
+        "clashes with '$kind $name1: ${type2.render(short = false)}' defined in '$parent2Name': "
+      )
+      append("$typeMismatchKind types are incompatible.")
+    }
+
+    metroContext.reportCompat(originDeclaration, MetroDiagnostics.METRO_ERROR, message)
+  }
+
+  private val IrClass.originIfContribution: IrClass
+    get() {
+      return if (hasAnnotation(Symbols.FqNames.MetroContribution)) {
+        parentAsClass
+      } else {
+        this
+      }
+    }
 }
