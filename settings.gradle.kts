@@ -70,3 +70,10 @@ develocity {
     }
   }
 }
+
+gradle.lifecycle.beforeProject {
+  apply(plugin = "metro.spotless")
+  if (project != rootProject) {
+    apply(plugin = "metro.base")
+  }
+}

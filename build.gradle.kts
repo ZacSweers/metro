@@ -52,10 +52,7 @@ dokka {
   }
 }
 
-allprojects { apply(plugin = "metro.spotless") }
-
 subprojects {
-  apply(plugin = "metro.base")
   group = project.property("GROUP") as String
   version = project.property("VERSION_NAME") as String
 }
