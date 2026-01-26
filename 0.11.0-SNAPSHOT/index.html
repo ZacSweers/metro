@@ -1432,7 +1432,7 @@
 <p>Snapshots of the development version are available in <a href="https://central.sonatype.com/repository/maven-snapshots/">Sonatype&rsquo;s <code>snapshots</code> repository</a>.</p>
 <h2 id="supported-platforms">Supported platforms<a class="headerlink" href="#supported-platforms" title="Permanent link">&para;</a></h2>
 <p>The compiler plugin itself supports all multiplatform project types. The first-party annotations artifact is also multiplatform and supports all common JVM, JS, and native targets.</p>
-<p>Contribution hint generation is <em>not</em> currently supported on native or Wasm targets until <a href="https://youtrack.jetbrains.com/issue/KT-58886">KT-58886</a> is resolved. They do work within the same compilation though.</p>
+<p>Contribution hint generation is <em>not</em> currently supported on native or Wasm targets until Kotlin <code>2.3.20-Beta1</code> or later. They do work within the same compilation though.</p>
 <h2 id="caveats">Caveats<a class="headerlink" href="#caveats" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Kotlin compiler plugins are not a stable API! Compiled outputs from this plugin <em>should</em> be stable, but usage in newer versions of kotlinc are not guaranteed to be stable. That said, Metro will strive to make matching releases available quickly and test against Kotlin prereleases eagerly.</li>
