@@ -1,6 +1,7 @@
 // Copyright (C) 2024 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 pluginManagement {
+  includeBuild("build-logic")
   repositories {
     mavenCentral()
     google()
