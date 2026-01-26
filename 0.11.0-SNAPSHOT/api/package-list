@@ -7,8 +7,10 @@ dev.zacsweers.metro.gradle.analysis
 dev.zacsweers.metro.gradle.artifacts
 module:interop-dagger
 dev.zacsweers.metro.interop.dagger
+dev.zacsweers.metro.interop.dagger.internal
 module:interop-guice
 dev.zacsweers.metro.interop.guice
+dev.zacsweers.metro.interop.guice.internal
 module:interop-jakarta
 dev.zacsweers.metro.interop.jakarta
 module:interop-javax
@@ -21,3 +23,4 @@ module:metrox-viewmodel-compose
 dev.zacsweers.metrox.viewmodel
 module:runtime
 dev.zacsweers.metro
+dev.zacsweers.metro.internal
