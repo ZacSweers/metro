@@ -19,3 +19,7 @@ plugins {
   alias(libs.plugins.mavenPublish) apply false // wat
   id("metro.spotless")
 }
+
+allprojects { apply(plugin = "metro.spotless") }
+
+subprojects { apply(plugin = "metro.base") }
