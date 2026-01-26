@@ -63,10 +63,4 @@ android {
   }
 
   buildTypes { release { isMinifyEnabled = false } }
-
-  compileOptions {
-    val javaVersion = libs.versions.jvmTarget.get().let(JavaVersion::toVersion)
-    sourceCompatibility = javaVersion
-    targetCompatibility = javaVersion
-  }
 }

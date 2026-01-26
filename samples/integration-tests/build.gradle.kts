@@ -15,12 +15,6 @@ android {
   namespace = "dev.zacsweers.metro.test.integration.android"
 
   buildFeatures { viewBinding = true }
-
-  compileOptions {
-    val javaVersion = libs.versions.jvmTarget.get().let(JavaVersion::toVersion)
-    sourceCompatibility = javaVersion
-    targetCompatibility = javaVersion
-  }
 }
 
 @OptIn(ExperimentalWasmDsl::class, ExperimentalKotlinGradlePluginApi::class)

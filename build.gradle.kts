@@ -1,23 +1,6 @@
 // Copyright (C) 2024 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-import com.diffplug.gradle.spotless.SpotlessExtension
-import com.diffplug.gradle.spotless.SpotlessExtensionPredeclare
-import com.diffplug.spotless.LineEnding
-import com.vanniktech.maven.publish.DeploymentValidation
-import com.vanniktech.maven.publish.MavenPublishBaseExtension
 import kotlinx.validation.ExperimentalBCVApi
-import org.jetbrains.dokka.gradle.DokkaExtension
-import org.jetbrains.dokka.gradle.engine.parameters.VisibilityModifier
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.dsl.KotlinJvmCompilerOptions
-import org.jetbrains.kotlin.gradle.dsl.KotlinProjectExtension
-import org.jetbrains.kotlin.gradle.plugin.KotlinBasePlugin
-import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsEnvSpec
-import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsRootPlugin
-import org.jetbrains.kotlin.gradle.targets.js.yarn.YarnPlugin
-import org.jetbrains.kotlin.gradle.targets.js.yarn.YarnRootEnvSpec
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
   alias(libs.plugins.kotlin.jvm) apply false
@@ -33,6 +16,7 @@ plugins {
   alias(libs.plugins.binaryCompatibilityValidator)
   alias(libs.plugins.poko) apply false
   alias(libs.plugins.wire) apply false
+  id("metro.yarnNode")
 }
 
 apiValidation {
@@ -68,189 +52,12 @@ dokka {
   }
 }
 
-val ktfmtVersion = libs.versions.ktfmt.get()
-
-spotless { predeclareDeps() }
-
-configure<SpotlessExtensionPredeclare> {
-  kotlin { ktfmt(ktfmtVersion).googleStyle().configure { it.setRemoveUnusedImports(true) } }
-  kotlinGradle { ktfmt(ktfmtVersion).googleStyle().configure { it.setRemoveUnusedImports(true) } }
-  java {
-    googleJavaFormat(libs.versions.gjf.get())
-      .reorderImports(true)
-      .reflowLongStrings(true)
-      .reorderImports(true)
-  }
-}
-
-// Configure spotless in subprojects
-allprojects {
-  apply(plugin = "com.diffplug.spotless")
-  configure<SpotlessExtension> {
-    setLineEndings(LineEnding.GIT_ATTRIBUTES_FAST_ALLSAME)
-    format("misc") {
-      target("*.gradle", "*.md", ".gitignore")
-      trimTrailingWhitespace()
-      leadingTabsToSpaces(2)
-      endWithNewline()
-    }
-    java {
-      googleJavaFormat(libs.versions.gjf.get())
-        .reorderImports(true)
-        .reflowLongStrings(true)
-        .reorderImports(true)
-      target("src/**/*.java")
-      trimTrailingWhitespace()
-      endWithNewline()
-      targetExclude("**/spotless.java")
-      targetExclude("**/src/test/data/**")
-      targetExclude("**/*Generated.java")
-    }
-    kotlin {
-      ktfmt(ktfmtVersion).googleStyle().configure { it.setRemoveUnusedImports(true) }
-      target("src/**/*.kt")
-      trimTrailingWhitespace()
-      endWithNewline()
-      targetExclude("**/spotless.kt")
-      targetExclude("**/src/test/data/**")
-    }
-    kotlinGradle {
-      ktfmt(ktfmtVersion).googleStyle().configure { it.setRemoveUnusedImports(true) }
-      target("*.kts")
-      trimTrailingWhitespace()
-      endWithNewline()
-      licenseHeaderFile(
-        rootProject.file("spotless/spotless.kt"),
-        "(import|plugins|buildscript|dependencies|pluginManagement|dependencyResolutionManagement)",
-      )
-    }
-    // Apply license formatting separately for kotlin files so we can prevent it from overwriting
-    // copied files
-    format("licenseKotlin") {
-      licenseHeaderFile(rootProject.file("spotless/spotless.kt"), "(package|@file:)")
-      target("src/**/*.kt")
-      targetExclude(
-        "**/src/test/data/**",
-        "**/AbstractMapFactory.kt",
-        "**/Assisted.kt",
-        "**/AssistedFactory.kt",
-        "**/BaseDoubleCheck.kt",
-        "**/ClassKey.kt",
-        "**/DelegateFactory.kt",
-        "**/DoubleCheck.kt",
-        "**/DoubleCheckCycleTest.kt",
-        "**/DoubleCheckTest.kt",
-        "**/ElementsIntoSet.kt",
-        "**/InstanceFactory.kt",
-        "**/InstanceFactoryTest.kt",
-        "**/IntKey.kt",
-        "**/IntoMap.kt",
-        "**/IntoSet.kt",
-        "**/KotlinToolingVersion.kt",
-        "**/LongKey.kt",
-        "**/MapFactory.kt",
-        "**/MapKey.kt",
-        "**/MapLazyFactory.kt",
-        "**/MapProviderFactory.kt",
-        "**/MapProviderFactoryTest.kt",
-        "**/MapProviderLazyFactory.kt",
-        "**/MembersInjector.kt",
-        "**/MemoizedSequence.kt",
-        "**/Multibinds.kt",
-        "**/NameAllocator.kt",
-        "**/NameAllocatorTest.kt",
-        "**/ProviderOfLazy.kt",
-        "**/SetFactory.kt",
-        "**/SetFactoryTest.kt",
-        "**/StringKey.kt",
-        "**/TopologicalSortTest.kt",
-        "**/collectionUtil.kt",
-        "**/ir/cache/*.kt",
-        "**/topologicalSort.kt",
-      )
-    }
-    format("licenseJava") {
-      licenseHeaderFile(rootProject.file("spotless/spotless.java"), "package")
-      target("src/**/*.java")
-      targetExclude("**/BetweennessCentrality.java")
-      targetExclude("**/*Generated.java")
-    }
-  }
-}
+allprojects { apply(plugin = "metro.spotless") }
 
 subprojects {
+  apply(plugin = "metro.base")
   group = project.property("GROUP") as String
   version = project.property("VERSION_NAME") as String
-
-  // Suppress native access warnings in forked JVMs (Java 22+)
-  tasks.withType<Test>().configureEach { jvmArgs("--enable-native-access=ALL-UNNAMED") }
-  tasks.withType<JavaExec>().configureEach { jvmArgs("--enable-native-access=ALL-UNNAMED") }
-
-  pluginManager.withPlugin("java") {
-    configure<JavaPluginExtension> {
-      toolchain { languageVersion.set(libs.versions.jdk.map(JavaLanguageVersion::of)) }
-    }
-    tasks.withType<JavaCompile>().configureEach {
-      options.release.set(libs.versions.jvmTarget.map(String::toInt))
-    }
-  }
-
-  plugins.withType<KotlinBasePlugin> {
-    project.tasks.withType<KotlinCompilationTask<*>>().configureEach {
-      compilerOptions {
-        progressiveMode.set(true)
-        if (this is KotlinJvmCompilerOptions) {
-          jvmTarget.set(libs.versions.jvmTarget.map(JvmTarget::fromTarget))
-          freeCompilerArgs.addAll("-jvm-default=no-compatibility", "-Xassertions=jvm")
-        }
-      }
-    }
-    if ("sample" !in project.path) {
-      configure<KotlinProjectExtension> { explicitApi() }
-    }
-  }
-
-  plugins.withId("com.vanniktech.maven.publish") {
-    if (project.path != ":compiler" && !project.path.startsWith(":compiler-compat")) {
-      apply(plugin = "org.jetbrains.dokka")
-    }
-    configure<MavenPublishBaseExtension> {
-      publishToMavenCentral(
-        automaticRelease = true,
-        validateDeployment = DeploymentValidation.VALIDATED,
-      )
-    }
-
-    // configuration required to produce unique META-INF/*.kotlin_module file names
-    tasks.withType<KotlinCompile>().configureEach {
-      compilerOptions { moduleName.set(project.property("POM_ARTIFACT_ID") as String) }
-    }
-  }
-
-  pluginManager.withPlugin("org.jetbrains.dokka") {
-    configure<DokkaExtension> {
-      basePublicationsDirectory.set(layout.buildDirectory.dir("dokkaDir"))
-      dokkaSourceSets.configureEach {
-        skipDeprecated.set(true)
-        documentedVisibilities.add(VisibilityModifier.Public)
-        reportUndocumented.set(true)
-        perPackageOption {
-          matchingRegex.set(".*\\.internal.*")
-          suppress.set(true)
-        }
-        sourceLink {
-          localDirectory.set(layout.projectDirectory.dir("src"))
-          val relPath = rootProject.projectDir.toPath().relativize(projectDir.toPath())
-          remoteUrl(
-            providers.gradleProperty("POM_SCM_URL").map { scmUrl ->
-              "$scmUrl/tree/main/$relPath/src"
-            }
-          )
-          remoteLineSuffix.set("#L")
-        }
-      }
-    }
-  }
 }
 
 dependencies {
@@ -264,14 +71,3 @@ dependencies {
   dokka(project(":metrox-viewmodel-compose"))
   dokka(project(":runtime"))
 }
-
-plugins.withType<YarnPlugin> {
-  the<YarnRootEnvSpec>().apply {
-    version = "1.22.22"
-    yarnLockAutoReplace = true
-    installationDirectory = projectDir
-    ignoreScripts = false
-  }
-}
-
-plugins.withType<NodeJsRootPlugin> { the<NodeJsEnvSpec>().apply { this.version = "24.4.1" } }
