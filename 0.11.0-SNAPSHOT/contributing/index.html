@@ -1396,6 +1396,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#testing-with-a-local-clone-included-build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing with a Local Clone (Included Build)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1618,6 +1629,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#testing-with-a-local-clone-included-build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing with a Local Clone (Included Build)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1826,6 +1848,31 @@
 <p>To publish to a local maven repo, run this:</p>
 <div class="highlight"><pre><span></span><code>./metrow<span class="w"> </span>publish<span class="w"> </span>--local<span class="w"> </span>--version<span class="w"> </span><span class="m">1</span>.0.0-LOCAL01<span class="w"> </span><span class="c1"># whatever version you want</span>
 </code></pre></div>
+<h3 id="testing-with-a-local-clone-included-build">Testing with a Local Clone (Included Build)<a class="headerlink" href="#testing-with-a-local-clone-included-build" title="Permanent link">&para;</a></h3>
+<p>If you want to test a consuming project against a local Metro clone without publishing, you can use Gradle&rsquo;s included build feature. Add this to your consuming project&rsquo;s <code>settings.gradle.kts</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// Check for local Metro clone path via gradle property or system property</span>
+<span class="kd">val</span><span class="w"> </span><span class="nv">metroLocalClone</span><span class="p">:</span><span class="w"> </span><span class="kt">String?</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">providers</span><span class="p">.</span><span class="na">gradleProperty</span><span class="p">(</span><span class="s">&quot;metro.localClone&quot;</span><span class="p">).</span><span class="na">orNull</span>
+<span class="w">  </span><span class="o">?:</span><span class="w"> </span><span class="n">System</span><span class="p">.</span><span class="na">getProperty</span><span class="p">(</span><span class="s">&quot;metro.localClone&quot;</span><span class="p">)</span>
+
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">metroLocalClone</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">null</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">includeBuild</span><span class="p">(</span><span class="n">metroLocalClone</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">dependencySubstitution</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="n">substitute</span><span class="p">(</span><span class="n">module</span><span class="p">(</span><span class="s">&quot;dev.zacsweers.metro:compiler&quot;</span><span class="p">)).</span><span class="na">using</span><span class="p">(</span><span class="n">project</span><span class="p">(</span><span class="s">&quot;:compiler&quot;</span><span class="p">))</span>
+<span class="w">      </span><span class="n">substitute</span><span class="p">(</span><span class="n">module</span><span class="p">(</span><span class="s">&quot;dev.zacsweers.metro:runtime&quot;</span><span class="p">)).</span><span class="na">using</span><span class="p">(</span><span class="n">project</span><span class="p">(</span><span class="s">&quot;:runtime&quot;</span><span class="p">))</span>
+<span class="w">      </span><span class="n">substitute</span><span class="p">(</span><span class="n">module</span><span class="p">(</span><span class="s">&quot;dev.zacsweers.metro:gradle-plugin&quot;</span><span class="p">)).</span><span class="na">using</span><span class="p">(</span><span class="n">project</span><span class="p">(</span><span class="s">&quot;:gradle-plugin&quot;</span><span class="p">))</span>
+<span class="w">      </span><span class="n">substitute</span><span class="p">(</span><span class="n">module</span><span class="p">(</span><span class="s">&quot;dev.zacsweers.metro:interop-dagger&quot;</span><span class="p">)).</span><span class="na">using</span><span class="p">(</span><span class="n">project</span><span class="p">(</span><span class="s">&quot;:interop-dagger&quot;</span><span class="p">))</span>
+<span class="w">      </span><span class="n">substitute</span><span class="p">(</span><span class="n">module</span><span class="p">(</span><span class="s">&quot;dev.zacsweers.metro:interop-guice&quot;</span><span class="p">)).</span><span class="na">using</span><span class="p">(</span><span class="n">project</span><span class="p">(</span><span class="s">&quot;:interop-guice&quot;</span><span class="p">))</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Then run your build with the property:</p>
+<div class="highlight"><pre><span></span><code>./gradlew<span class="w"> </span>compileKotlin<span class="w"> </span>-Pmetro.localClone<span class="o">=</span>/path/to/metro
+</code></pre></div>
+<p>Or add it to your <code>gradle.properties</code> (useful during active development):</p>
+<div class="highlight"><pre><span></span><code><span class="na">metro.localClone</span><span class="o">=</span><span class="s">/path/to/metro</span>
+</code></pre></div>
+<p>This approach is useful for debugging issues or testing changes without going through a full publish cycle.</p>
 <h2 id="debugging">Debugging<a class="headerlink" href="#debugging" title="Permanent link">&para;</a></h2>
 <p>There are a few different scenarios for debugging.</p>
 <h3 id="1-direct-compiler-debugging">1. Direct compiler debugging<a class="headerlink" href="#1-direct-compiler-debugging" title="Permanent link">&para;</a></h3>
