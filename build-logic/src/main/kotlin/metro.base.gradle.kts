@@ -43,7 +43,7 @@ plugins.withType<KotlinBasePlugin> {
 
   // TODO move this to a DSL
   // Configuration required to produce unique META-INF/*.kotlin_module file names
-  val artifactId = project.property("POM_ARTIFACT_ID")?.toString()
+  val artifactId = project.findProperty("POM_ARTIFACT_ID")?.toString()
   tasks.withType<KotlinCompilationTask<*>>().configureEach {
     compilerOptions {
       progressiveMode.convention(true)
