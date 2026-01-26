@@ -35,6 +35,7 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension {
 	public final fun getEnableFullBindingGraphValidation ()Lorg/gradle/api/provider/Property;
 	public final fun getEnableGraphImplClassAsReturnType ()Lorg/gradle/api/provider/Property;
 	public final fun getEnableGraphSharding ()Lorg/gradle/api/provider/Property;
+	public final fun getEnableKlibParamsCheck ()Lorg/gradle/api/provider/Property;
 	public final fun getEnableKotlinVersionCompatibilityChecks ()Lorg/gradle/api/provider/Property;
 	public final fun getEnableSwitchingProviders ()Lorg/gradle/api/provider/Property;
 	public final fun getEnableTopLevelFunctionInjection ()Lorg/gradle/api/provider/Property;
@@ -49,6 +50,7 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension {
 	public final fun getMaxIrErrors ()Lorg/gradle/api/provider/Property;
 	public final fun getNonPublicContributionSeverity ()Lorg/gradle/api/provider/Property;
 	public final fun getOptionalBindingBehavior ()Lorg/gradle/api/provider/Property;
+	public final fun getPatchKlibParams ()Lorg/gradle/api/provider/Property;
 	public final fun getPublicProviderSeverity ()Lorg/gradle/api/provider/Property;
 	public final fun getReportsDestination ()Lorg/gradle/api/file/DirectoryProperty;
 	public final fun getShrinkUnusedBindings ()Lorg/gradle/api/provider/Property;

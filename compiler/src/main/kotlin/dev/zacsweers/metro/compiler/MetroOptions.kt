@@ -910,8 +910,7 @@ public data class MetroOptions(
     MetroOption.CONTRIBUTES_AS_INJECT.raw.defaultValue.expectAs(),
   public val enableKlibParamsCheck: Boolean =
     MetroOption.ENABLE_KLIB_PARAMS_CHECK.raw.defaultValue.expectAs(),
-  public val patchKlibParams: Boolean =
-    MetroOption.PATCH_KLIB_PARAMS.raw.defaultValue.expectAs(),
+  public val patchKlibParams: Boolean = MetroOption.PATCH_KLIB_PARAMS.raw.defaultValue.expectAs(),
   public val pluginOrderSet: Boolean? =
     MetroOption.PLUGIN_ORDER_SET.raw.defaultValue
       .expectAs<String>()

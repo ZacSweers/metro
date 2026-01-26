@@ -281,7 +281,8 @@ constructor(
   /**
    * Enable/disable klib parameter qualifier checking.
    *
-   * This is automatically enabled for Kotlin versions `[2.3.0, 2.3.20-Beta2)` and disabled otherwise.
+   * This is automatically enabled for Kotlin versions `[2.3.0, 2.3.20-Beta2)` and disabled
+   * otherwise.
    *
    * See https://github.com/ZacSweers/metro/issues/1556 for more information.
    */
@@ -296,11 +297,11 @@ constructor(
       )
 
   /**
-   * Enable/disable patching of klib parameter qualifiers to work around a kotlinc bug. Only applies when
-   * [enableKlibParamsCheck] is also enabled.
+   * Enable/disable patching of klib parameter qualifiers to work around a kotlinc bug. Only applies
+   * when [enableKlibParamsCheck] is also enabled.
    *
-   * When enabled, Metro will patch the affected parameter qualifiers at compile time and emit a warning
-   * instead of an error.
+   * When enabled, Metro will patch the affected parameter qualifiers at compile time and emit a
+   * warning instead of an error.
    *
    * See https://github.com/ZacSweers/metro/issues/1556 for more information.
    */

@@ -25,13 +25,16 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
+import dev.zacsweers.metro.compiler.ir.patchQualifierAnnotation
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.reportCompat
+import dev.zacsweers.metro.compiler.ir.reportMirrorParamMismatch
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
+import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Optional
@@ -65,7 +68,6 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
-import org.jetbrains.kotlin.platform.konan.isNative
 
 internal class InjectConstructorTransformer(
   context: IrMetroContext,
@@ -134,33 +136,49 @@ internal class InjectConstructorTransformer(
           // Look up the injectable constructor for direct invocation optimization
           val externalTargetConstructor = targetConstructor()
 
-          if (platform.isNative()) {
-            // Validate qualifiers due to https://github.com/ZacSweers/metro/issues/1556
-            val createFunctionParams =
-              factoryCls
-                .requireStaticIshDeclarationContainer()
-                .requireSimpleFunction(Symbols.StringNames.CREATE)
-                .owner
-                .parameters()
-                .allParameters
-            for ((i, mirrorP) in
-              parameters.nonDispatchParameters.filterNot { it.isAssisted }.withIndex()) {
+          if (options.enableKlibParamsCheck) {
+            // Validate and optionally patch parameter types due to
+            // https://github.com/ZacSweers/metro/issues/1556
+            val staticContainer = factoryCls.requireStaticIshDeclarationContainer()
+
+            val newInstanceFunction by memoize {
+              staticContainer.requireSimpleFunction(Symbols.StringNames.NEW_INSTANCE).owner
+            }
+            val newInstanceFunctionParams by memoize {
+              newInstanceFunction.parameters().allParameters
+            }
+
+            val createFunction =
+              staticContainer.requireSimpleFunction(Symbols.StringNames.CREATE).owner
+            val createFunctionParams = createFunction.parameters().allParameters
+            val mirrorParams = parameters.nonDispatchParameters.filterNot { it.isAssisted }
+
+            for ((i, mirrorP) in mirrorParams.withIndex()) {
               val createP = createFunctionParams[i]
               if (createP.typeKey != mirrorP.typeKey) {
-                reportCompat(
-                  parameters.ir,
-                  MetroDiagnostics.KNOWN_KOTLINC_BUG_ERROR,
-                  """
-                Mirror/create function parameter type mismatch:
-                  - Source:         ${parameters.ir?.kotlinFqName?.asString()}
-                  - Mirror param:   ${mirrorP.typeKey}
-                  - create() param: ${createP.typeKey}
-
-                This is a known bug in the Kotlin compiler, follow https://github.com/ZacSweers/metro/issues/1556
-              """
-                    .trimIndent(),
-                )
-                return null
+                reportMirrorParamMismatch(parameters.ir, mirrorP, createP)
+                if (options.patchKlibParams) {
+                  // Patch the qualifier annotations to use the correct ones from the mirror
+                  // function
+                  val correctQualifier = mirrorP.contextualTypeKey.typeKey.qualifier?.ir
+                  patchQualifierAnnotation(
+                    createFunctionParams[i].asValueParameter,
+                    correctQualifier,
+                  )
+                  patchQualifierAnnotation(
+                    newInstanceFunctionParams[i].asValueParameter,
+                    correctQualifier,
+                  )
+                  // Also patch the factory constructor
+                  factoryCls.primaryConstructor
+                    ?.parameters()
+                    ?.regularParameters
+                    ?.getOrNull(i)
+                    ?.asValueParameter
+                    ?.let { patchQualifierAnnotation(it, correctQualifier) }
+                } else {
+                  return null
+                }
               }
             }
           }

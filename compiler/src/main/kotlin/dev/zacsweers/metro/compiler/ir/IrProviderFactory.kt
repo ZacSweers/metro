@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
-import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.memoize
@@ -17,12 +16,11 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isObject
-import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
+import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.Name
-import org.jetbrains.kotlin.platform.konan.isNative
 
 internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallable {
   /**
@@ -145,34 +143,45 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
       val rawTypeKey = contextKey.typeKey.copy(qualifier = callableMetadata.annotations.qualifier)
       val typeKey = rawTypeKey.transformIfIntoMultibinding(callableMetadata.annotations)
 
-      if (mirrorFunction.isExternalParent && context.platform.isNative()) {
-        // Validate qualifiers due to https://github.com/ZacSweers/metro/issues/1556
-        val createFunctionParams =
-          clazz
-            .requireStaticIshDeclarationContainer()
-            .requireSimpleFunction(Symbols.StringNames.CREATE)
-            .owner
-            .parameters()
-            .regularParameters
-            .drop(1) // Drop the dispatch receiver for this
+      if (mirrorFunction.isExternalParent && context.options.enableKlibParamsCheck) {
+        // Validate and optionally patch parameter types due to
+        // https://github.com/ZacSweers/metro/issues/1556
+        val staticContainer = clazz.requireStaticIshDeclarationContainer()
+        val newInstanceFunction by memoize {
+          staticContainer.requireSimpleFunction(callableMetadata.newInstanceName!!.asString()).owner
+        }
+        val newInstanceFunctionParams by memoize {
+          newInstanceFunction.parameters().regularParameters.drop(1) // Drop the dispatch receiver
+        }
 
-        for ((i, mirrorP) in
-          callableMetadata.mirrorFunction.parameters().nonDispatchParameters.withIndex()) {
+        val createFunction = staticContainer.requireSimpleFunction(Symbols.StringNames.CREATE).owner
+        val createFunctionParams =
+          createFunction.parameters().regularParameters.drop(1) // Drop the dispatch receiver
+        val mirrorParams = callableMetadata.mirrorFunction.parameters().nonDispatchParameters
+
+        for ((i, mirrorP) in mirrorParams.withIndex()) {
           val createP = createFunctionParams[i]
           if (createP.typeKey != mirrorP.typeKey) {
-            context.reportCompat(
-              callableMetadata.function,
-              MetroDiagnostics.KNOWN_KOTLINC_BUG_ERROR,
-              """
-                Mirror/create function parameter type mismatch:
-                  - Source:         ${callableMetadata.function.kotlinFqName.asString()}
-                  - Mirror param:   ${mirrorP.typeKey}
-                  - create() param: ${createP.typeKey}
+            reportMirrorParamMismatch(callableMetadata.function, mirrorP, createP)
 
-                This is a known bug in the Kotlin compiler, follow https://github.com/ZacSweers/metro/issues/1556
-              """
-                .trimIndent(),
-            )
+            if (context.options.patchKlibParams) {
+              // Patch the qualifier annotations to use the correct ones from the mirror function
+              val correctQualifier = mirrorP.contextualTypeKey.typeKey.qualifier?.ir
+              with(context) {
+                patchQualifierAnnotation(createFunctionParams[i].asValueParameter, correctQualifier)
+                patchQualifierAnnotation(
+                  newInstanceFunctionParams[i].asValueParameter,
+                  correctQualifier,
+                )
+                // Also patch the factory constructor (offset by 1 for dispatch receiver)
+                clazz.primaryConstructor
+                  ?.parameters()
+                  ?.regularParameters
+                  ?.getOrNull(i + 1)
+                  ?.asValueParameter
+                  ?.let { patchQualifierAnnotation(it, correctQualifier) }
+              }
+            }
           }
         }
       }

@@ -8,6 +8,8 @@ Changelog
 
 ### Enhancements
 
+- **[IR]** Automatically patch [#1556](https://github.com/ZacSweers/metro/issues/1556) issues between Kotlin versions `[2.3.0 - 2.3.20-Beta2)`. This is because this issue is more problematic than previously thought and actually appears to affect any compilation that consumes a KMP artifact. This auto-patching is best effort and a fix in kotlinx is targeting `2.3.20-Beta2`. If you have any issues, it can be disabled via the `patchKlibParams` Gradle DSL property.
+
 ### Fixes
 
 - **[IR]** Don't try class binding lookups for nullable types. These must always be explicitly provided.

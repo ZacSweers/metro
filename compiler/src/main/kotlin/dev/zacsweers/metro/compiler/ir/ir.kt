@@ -1552,6 +1552,56 @@ private fun List<IrConstructorCall>?.annotationsAnnotatedWith(
   }
 }
 
+/**
+ * Patches the qualifier annotation on an [IrValueParameter] to match the correct one.
+ *
+ * This is used to work around https://github.com/ZacSweers/metro/issues/1556 where klib
+ * deserialization can produce incorrect qualifier annotations on parameters.
+ */
+context(context: IrMetroContext)
+internal fun patchQualifierAnnotation(
+  parameter: IrValueParameter,
+  correctQualifier: IrConstructorCall?,
+) {
+  // Remove any existing qualifier annotations
+  parameter.annotations -=
+    parameter.annotationsAnnotatedWith(context.metroSymbols.classIds.qualifierAnnotations)
+  // Add the correct qualifier if present
+  correctQualifier?.let { parameter.annotations += it }
+}
+
+context(context: IrMetroContext)
+internal fun reportMirrorParamMismatch(
+  function: IrFunction?,
+  mirrorParameter: Parameter,
+  createParameter: Parameter,
+): Unit =
+  with(context) {
+    if (options.patchKlibParams) {
+      // We'll patch it
+      return
+    }
+    val diagnostic =
+      if (options.patchKlibParams) {
+        MetroDiagnostics.KNOWN_KOTLINC_BUG_WARNING
+      } else {
+        MetroDiagnostics.KNOWN_KOTLINC_BUG_ERROR
+      }
+
+    val message = buildString {
+      appendLine("Mirror/create function parameter type mismatch:")
+      appendLine("  - Source:         ${function?.kotlinFqName?.asString()}")
+      appendLine("  - Mirror param:   ${mirrorParameter.typeKey}")
+      appendLine("  - create() param: ${createParameter.typeKey}")
+      appendLine()
+      appendLine(
+        "This is a known bug in the Kotlin compiler, follow https://github.com/ZacSweers/metro/issues/1556"
+      )
+    }
+
+    reportCompat(function, diagnostic, message)
+  }
+
 context(context: IrMetroContext)
 internal fun IrClass.findInjectableConstructor(onlyUsePrimaryConstructor: Boolean): IrConstructor? {
   if (kind != ClassKind.CLASS) {
