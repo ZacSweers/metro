@@ -130,6 +130,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     public void testNoProvidesOnParams() {
       runTest("compiler-tests/src/test/data/diagnostic/bindingcontainer/NoProvidesOnParams.kt");
     }
+
+    @Test
+    @TestMetadata("SuspiciousIntoSetWithCollection.kt")
+    public void testSuspiciousIntoSetWithCollection() {
+      runTest("compiler-tests/src/test/data/diagnostic/bindingcontainer/SuspiciousIntoSetWithCollection.kt");
+    }
   }
 
   @Nested

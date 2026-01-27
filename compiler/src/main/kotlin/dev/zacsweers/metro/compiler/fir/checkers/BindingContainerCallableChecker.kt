@@ -15,6 +15,7 @@ import dev.zacsweers.metro.compiler.fir.findInjectConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
+import dev.zacsweers.metro.compiler.fir.render
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
 import dev.zacsweers.metro.compiler.fir.validateBindingSource
 import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
@@ -55,6 +56,8 @@ import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
+import org.jetbrains.kotlin.fir.types.isList
+import org.jetbrains.kotlin.fir.types.isSet
 import org.jetbrains.kotlin.fir.types.isSubtypeOf
 import org.jetbrains.kotlin.fir.types.renderReadableWithFqNames
 import org.jetbrains.kotlin.fir.types.type
@@ -355,6 +358,17 @@ internal object BindingContainerCallableChecker :
     }
 
     val returnType = returnTypeRef.coneTypeOrNull ?: return
+
+    // Report a warning if this is `@IntoSet` and also returns a `Set`, as it's probably not what
+    // they mean!
+    if (annotations.isIntoSet && (returnType.isSet || returnType.isList)) {
+      val render = returnType.render(short = true)
+      reporter.reportOn(
+        returnTypeRef.source ?: declaration.source,
+        MetroDiagnostics.SUSPICIOUS_SET_INTO_SET,
+        "Suspicious `@IntoSet` return type. This function returns a `$render`, which would create a Set<$render> multibinding. Did you mean to use `@ElementsIntoSet`? Or if this is intentional, suppress this warning with `@Suppress(\"${MetroDiagnostics.SUSPICIOUS_SET_INTO_SET.name}\")`",
+      )
+    }
 
     if (annotations.isProvides) {
       if (bodyExpression == null) {
