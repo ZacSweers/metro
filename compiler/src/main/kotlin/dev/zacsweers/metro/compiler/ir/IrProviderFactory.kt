@@ -143,7 +143,7 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
       val rawTypeKey = contextKey.typeKey.copy(qualifier = callableMetadata.annotations.qualifier)
       val typeKey = rawTypeKey.transformIfIntoMultibinding(callableMetadata.annotations)
 
-      if (mirrorFunction.isExternalParent && context.options.enableKlibParamsCheck) {
+      if (mirrorFunction.shouldCheckMirrorParamMismatches()) {
         // Validate and optionally patch parameter types due to
         // https://github.com/ZacSweers/metro/issues/1556
         val staticContainer = clazz.requireStaticIshDeclarationContainer()

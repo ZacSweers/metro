@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
+import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.computeMetroDefault
@@ -38,6 +39,7 @@ import org.jetbrains.kotlin.backend.jvm.ir.isWithFlexibleNullability
 import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
+import org.jetbrains.kotlin.config.LanguageFeature
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.DescriptorVisibility
@@ -170,7 +172,11 @@ import org.jetbrains.kotlin.load.java.JavaDescriptorVisibilities
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.StandardClassIds
+import org.jetbrains.kotlin.platform.TargetPlatform
+import org.jetbrains.kotlin.platform.isJs
+import org.jetbrains.kotlin.platform.isWasm
 import org.jetbrains.kotlin.platform.jvm.isJvm
+import org.jetbrains.kotlin.platform.konan.isNative
 import org.jetbrains.kotlin.types.Variance
 
 /** Finds the line and column of [this] within its file. */
@@ -1568,6 +1574,28 @@ internal fun patchQualifierAnnotation(
     parameter.annotationsAnnotatedWith(context.metroSymbols.classIds.qualifierAnnotations)
   // Add the correct qualifier if present
   correctQualifier?.let { parameter.annotations += it }
+}
+
+context(context: IrMetroContext)
+internal fun IrFunction.shouldCheckMirrorParamMismatches(): Boolean {
+  return isExternalParent &&
+    shouldCheckMirrorParamMismatches(context.options, context.platform) {
+      context.languageVersionSettings.supportsFeature(LanguageFeature.AnnotationsInMetadata)
+    }
+}
+
+internal inline fun shouldCheckMirrorParamMismatches(
+  options: MetroOptions,
+  platform: TargetPlatform?,
+  annotationsInMetadataEnabled: () -> Boolean,
+): Boolean {
+  return options.enableKlibParamsCheck &&
+    // Only on klib platforms by default
+    (platform.isNative() ||
+      platform.isWasm() ||
+      platform.isJs() ||
+      // Enabled on JVM IFF the AnnotationsInMetadata flag is enabled
+      (platform.isJvm() && annotationsInMetadataEnabled()))
 }
 
 context(context: IrMetroContext)

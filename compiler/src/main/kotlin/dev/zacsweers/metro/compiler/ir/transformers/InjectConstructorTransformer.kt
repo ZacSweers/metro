@@ -31,6 +31,7 @@ import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.reportMirrorParamMismatch
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
+import dev.zacsweers.metro.compiler.ir.shouldCheckMirrorParamMismatches
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
@@ -136,7 +137,7 @@ internal class InjectConstructorTransformer(
           // Look up the injectable constructor for direct invocation optimization
           val externalTargetConstructor = targetConstructor()
 
-          if (options.enableKlibParamsCheck) {
+          if (mirrorFunction.shouldCheckMirrorParamMismatches()) {
             // Validate and optionally patch parameter types due to
             // https://github.com/ZacSweers/metro/issues/1556
             val staticContainer = factoryCls.requireStaticIshDeclarationContainer()
