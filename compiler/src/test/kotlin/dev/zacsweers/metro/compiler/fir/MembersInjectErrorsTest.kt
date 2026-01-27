@@ -11,6 +11,67 @@ import org.junit.Test
 class MembersInjectErrorsTest : MetroCompilerTest() {
 
   @Test
+  fun `java classes cannot be used for member injection via graph inject function`() {
+    compile(
+      sourceJava(
+        """
+        public class JavaActivity {
+          @Inject String value;
+        }
+        """
+          .trimIndent()
+      ),
+      source(
+        """
+        @DependencyGraph
+        interface ExampleGraph {
+          fun inject(activity: JavaActivity)
+        }
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        "e: ExampleGraph.kt:8:14 Java class 'test.JavaActivity' cannot be used for member injection. Metro cannot generate injection code for Java classes. Convert the class to Kotlin or use constructor injection instead."
+      )
+    }
+  }
+
+  @Test
+  fun `java classes with injected setter cannot be used for member injection`() {
+    compile(
+      sourceJava(
+        """
+        public class JavaActivity {
+          private String value;
+
+          @Inject
+          public void setValue(String value) {
+            this.value = value;
+          }
+        }
+        """
+          .trimIndent()
+      ),
+      source(
+        """
+        @DependencyGraph
+        interface ExampleGraph {
+          fun inject(activity: JavaActivity)
+        }
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        "e: ExampleGraph.kt:8:14 Java class 'test.JavaActivity' cannot be used for member injection. Metro cannot generate injection code for Java classes. Convert the class to Kotlin or use constructor injection instead."
+      )
+    }
+  }
+
+  @Test
   fun `suspend functions are unsupported`() {
     compile(
       source(

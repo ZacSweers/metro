@@ -36,6 +36,7 @@ import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.directOverriddenSymbolsSafe
 import org.jetbrains.kotlin.fir.declarations.FirClass
+import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.constructors
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.classId
@@ -372,6 +373,17 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
               val parameter = callable.valueParameterSymbols[0]
               val clazz = parameter.resolvedReturnTypeRef.firClassLike(session) ?: continue
               val classSymbol = clazz.symbol as? FirClassSymbol<*> ?: continue
+
+              // Check if attempting member injection on a Java class
+              if (classSymbol.origin is FirDeclarationOrigin.Java) {
+                reporter.reportOn(
+                  parameter.source,
+                  MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+                  "Java class '${clazz.classId.asSingleFqName()}' cannot be used for member injection. Metro cannot generate injection code for Java classes. Convert the class to Kotlin or use constructor injection instead.",
+                )
+                continue
+              }
+
               val isInjected = classSymbol.findInjectLikeConstructors(session).isNotEmpty()
 
               parameter.validateBindingRef(annotations)
