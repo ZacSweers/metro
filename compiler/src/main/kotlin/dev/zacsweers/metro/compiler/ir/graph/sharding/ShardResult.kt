@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph.sharding
 
+import androidx.collection.IntObjectMap
 import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyContext
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.declarations.IrProperty
@@ -23,7 +24,7 @@ internal data class ShardResult(
    */
   fun registerProperties(
     bindingPropertyContext: BindingPropertyContext,
-    shardFields: Map<Int, IrProperty>,
+    shardFields: IntObjectMap<IrProperty>,
   ) {
     for (shard in shards) {
       val shardField = if (shard.isGraphAsShard) null else shardFields[shard.index]

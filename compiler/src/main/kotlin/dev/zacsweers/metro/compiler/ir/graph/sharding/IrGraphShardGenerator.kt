@@ -366,7 +366,7 @@ internal class IrGraphShardGenerator(
         for (dep in dependencies) {
           val depShardIndex = shardLookup.getShardIndex(dep.typeKey)
           when {
-            depShardIndex == null -> {
+            depShardIndex == -1 -> {
               // Dependency is a bound instance on main graph (not in any shard)
               // Shard needs graph access to reach it
               shardLookup.markNeedsGraphAccess(currentShardIndex)

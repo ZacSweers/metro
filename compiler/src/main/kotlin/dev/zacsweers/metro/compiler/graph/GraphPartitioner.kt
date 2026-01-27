@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
+import androidx.collection.MutableIntObjectMap
+import androidx.collection.MutableIntSet
+
 /**
  * Divides a dependency graph into balanced groups while keeping strongly connected components
  * together.
@@ -16,27 +19,27 @@ internal fun <T> GraphTopology<T>.partitionBySCCs(keysPerGraphShard: Int): List<
   // 1. Identify valid keys and pre-group multi-node components.
   // We do this upfront to avoid repeated expensive filtering inside the main loop.
   val validKeys = sortedKeys.filter { it in adjacency.forward }
-  val multiNodeGroups = mutableMapOf<Int, MutableList<T>>()
+  val multiNodeGroups = MutableIntObjectMap<MutableList<T>>()
 
   // Identify which component IDs represent cycles (size > 1)
   val multiNodeIds = components.filter { it.vertices.size > 1 }.mapTo(HashSet()) { it.id }
 
   // Populate the groups preserving topological order
   for (key in validKeys) {
-    val id = componentOf[key]
-    if (id != null && id in multiNodeIds) {
-      multiNodeGroups.getOrPut(id) { mutableListOf() }.add(key)
+    val id = componentOf.getOrDefault(key, -1)
+    if (id != -1 && id in multiNodeIds) {
+      multiNodeGroups.getOrPut(id, ::mutableListOf).add(key)
     }
   }
 
   // 2. Build the partitions
   return buildList {
     var currentBatch = mutableListOf<T>()
-    val processedComponents = mutableSetOf<Int>()
+    val processedComponents = MutableIntSet()
 
     for (key in validKeys) {
-      val componentId = componentOf[key]
-      val isMultiNode = componentId != null && componentId in multiNodeIds
+      val componentId = componentOf.getOrDefault(key, -1)
+      val isMultiNode = componentId != -1 && componentId in multiNodeIds
 
       // If this is a cycle we haven't processed yet, handle the whole group at once
       if (isMultiNode) {

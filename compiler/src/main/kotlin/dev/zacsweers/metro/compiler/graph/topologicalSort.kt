@@ -16,8 +16,17 @@
 
 package dev.zacsweers.metro.compiler.graph
 
+import androidx.collection.IntList
+import androidx.collection.IntObjectMap
+import androidx.collection.IntSet
+import androidx.collection.MutableIntList
+import androidx.collection.MutableIntObjectMap
+import androidx.collection.MutableIntSet
+import androidx.collection.MutableObjectIntMap
 import androidx.collection.MutableScatterMap
+import androidx.collection.ObjectIntMap
 import androidx.collection.ScatterMap
+import androidx.collection.emptyIntSet
 import dev.zacsweers.metro.compiler.filterToSet
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.getValue
@@ -148,8 +157,8 @@ internal data class GraphTopology<T>(
   val reachableKeys: Set<T>,
   val adjacency: GraphAdjacency<T>,
   val components: List<Component<T>>,
-  val componentOf: Map<T, Int>,
-  val componentDag: Map<Int, Set<Int>>,
+  val componentOf: ObjectIntMap<T>,
+  val componentDag: IntObjectMap<IntSet>,
 )
 
 /**
@@ -263,16 +272,17 @@ internal fun <V : Comparable<V>> topologicalSort(
     }
 
   // Expand each component back to its original vertices
-  val sortedKeys =
-    traceNested("Expand components") {
-      componentOrder.flatMap { id ->
-        val component = components[id]
-        if (component.vertices.size == 1) {
-          // Single vertex - no cycle
-          component.vertices
-        } else {
-          // Multiple vertices in a cycle - sort them respecting non-deferrable dependencies
-          val deferredInScc = component.vertices.filterToSet { it in deferredTypes }
+  val sortedKeys = ArrayList<V>(fullAdjacency.size)
+  traceNested("Expand components") {
+    componentOrder.forEach { id ->
+      val component = components[id]
+      if (component.vertices.size == 1) {
+        // Single vertex - no cycle
+        sortedKeys += component.vertices[0]
+      } else {
+        // Multiple vertices in a cycle - sort them respecting non-deferrable dependencies
+        val deferredInScc = component.vertices.filterToSet { it in deferredTypes }
+        sortedKeys +=
           sortVerticesInSCC(
               component.vertices,
               reachableAdjacency.forward,
@@ -280,9 +290,9 @@ internal fun <V : Comparable<V>> topologicalSort(
               deferredInScc,
             )
             .also { onSortedCycle(it) }
-        }
       }
     }
+  }
 
   return GraphTopology(
     // Expand each component back to its original vertices
@@ -300,7 +310,7 @@ internal fun <V : Comparable<V>> topologicalSort(
 private fun <V : Comparable<V>> findMinimalDeferralSet(
   vertices: List<V>,
   fullAdjacency: SortedMap<V, SortedSet<V>>,
-  componentOf: Map<V, Int>,
+  componentOf: ObjectIntMap<V>,
   componentId: Int,
   isDeferrable: (V, V) -> Boolean,
   isImplicitlyDeferrable: (V) -> Boolean,
@@ -502,7 +512,7 @@ internal data class Component<V>(val id: Int, val vertices: MutableList<V> = mut
 
 internal data class TarjanResult<V : Comparable<V>>(
   val components: List<Component<V>>,
-  val componentOf: Map<V, Int>,
+  val componentOf: ObjectIntMap<V>,
   /**
    * Adjacency (forward and reverse) filtered to only reachable vertices (built during SCC
    * traversal).
@@ -539,13 +549,13 @@ internal fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConne
 
   // DFS discovery time of each vertex
   // Analogous to "v.index" refs in the linked algo
-  val indexMap = mutableMapOf<V, Int>()
+  val indexMap = MutableObjectIntMap<V>()
   // The lowest discovery index that v can reach without
   // leaving the current DFS stack.
   // Analogous to "v.lowlink" refs in the linked algo
-  val lowLinkMap = mutableMapOf<V, Int>()
+  val lowLinkMap = MutableObjectIntMap<V>()
   // Mapping of V to the id of the SCC that v ends up in
-  val componentOf = mutableMapOf<V, Int>()
+  val componentOf = MutableObjectIntMap<V>()
   val components = mutableListOf<Component<V>>()
 
   // Build reachable adjacency (forward and reverse) during traversal (avoids separate filtering
@@ -569,18 +579,18 @@ internal fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConne
       if (w !in indexMap) {
         // Successor w has not yet been visited; recurse on it
         strongConnect(w)
-        lowLinkMap[v] = minOf(lowLinkMap.getValue(v), lowLinkMap.getValue(w))
+        lowLinkMap[v] = minOf(lowLinkMap[v], lowLinkMap[w])
       } else if (w in onStack) {
         // Successor w is in stack S and hence in the current SCC
         // If w is not on stack, then (v, w) is an edge pointing to an SCC already found and must be
         // ignored
         // See below regarding the next line
-        lowLinkMap[v] = minOf(lowLinkMap.getValue(v), indexMap.getValue(w))
+        lowLinkMap[v] = minOf(lowLinkMap[v], indexMap[w])
       }
     }
 
     // If v is a root node, pop the stack and generate an SCC
-    if (lowLinkMap.getValue(v) == indexMap.getValue(v)) {
+    if (lowLinkMap[v] == indexMap[v]) {
       val component = Component<V>(nextComponentId++)
       while (true) {
         val popped = stack.removeLast()
@@ -606,7 +616,7 @@ internal fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConne
   // Build reachable adjacency (forward and reverse) after traversal (we now know which vertices are
   // reachable)
   // This is done after traversal because we need to filter edges to only reachable targets
-  for (v in indexMap.keys) {
+  indexMap.forEachKey { v ->
     val edges = this[v]
     if (edges != null) {
       // Filter edges to only include reachable targets
@@ -642,23 +652,24 @@ internal fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConne
  */
 private fun <V> buildComponentDag(
   originalEdges: Map<V, Set<V>>,
-  componentOf: Map<V, Int>,
-): Map<Int, Set<Int>> {
-  val dag = mutableMapOf<Int, MutableSet<Int>>()
+  componentOf: ObjectIntMap<V>,
+): IntObjectMap<IntSet> {
+  val dag = MutableIntObjectMap<MutableIntSet>()
 
   for ((fromVertex, outs) in originalEdges) {
     // prerequisite side
-    val prereqComp = componentOf.getValue(fromVertex)
+    val prereqComp = componentOf[fromVertex]
     for (toVertex in outs) {
       // dependent side
-      val dependentComp = componentOf.getValue(toVertex)
+      val dependentComp = componentOf[toVertex]
       if (prereqComp != dependentComp) {
         // Reverse the arrow so Kahn sees "prereq → dependent"
-        dag.getAndAdd(dependentComp, prereqComp)
+        dag.getOrPut(dependentComp, ::MutableIntSet).add(prereqComp)
       }
     }
   }
-  return dag
+  @Suppress("UNCHECKED_CAST") // TODO why
+  return dag as IntObjectMap<IntSet>
 }
 
 /**
@@ -673,14 +684,10 @@ private fun <V> buildComponentDag(
  * @see <a href="https://en.wikipedia.org/wiki/Topological_sorting">Topological sorting</a>
  * @see <a href="https://www.interviewcake.com/concept/java/topological-sort">Topological sort</a>
  */
-private fun topologicallySortComponentDag(dag: Map<Int, Set<Int>>, componentCount: Int): List<Int> {
+private fun topologicallySortComponentDag(dag: IntObjectMap<IntSet>, componentCount: Int): IntList {
   val inDegree = IntArray(componentCount)
   // Avoid temporary list allocation from flatten()
-  for (children in dag.values) {
-    for (child in children) {
-      inDegree[child]++
-    }
-  }
+  dag.forEachValue { children -> children.forEach { child -> inDegree[child]++ } }
 
   /**
    * Why a [PriorityQueue] instead of a FIFO queue like [ArrayDeque]?
@@ -707,11 +714,11 @@ private fun topologicallySortComponentDag(dag: Map<Int, Set<Int>>, componentCoun
       }
     }
 
-  val order = mutableListOf<Int>()
+  val order = MutableIntList()
   while (queue.isNotEmpty()) {
     val c = queue.remove()
     order += c
-    for (n in dag[c].orEmpty()) {
+    dag.getOrDefault(c, emptyIntSet()).forEach { n ->
       if (--inDegree[n] == 0) {
         queue += n
       }

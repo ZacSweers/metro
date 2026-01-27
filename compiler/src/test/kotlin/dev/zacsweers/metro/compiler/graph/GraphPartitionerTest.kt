@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
+import androidx.collection.MutableObjectIntMap
+import androidx.collection.emptyIntObjectMap
 import com.google.common.truth.Truth.assertThat
 import java.util.SortedMap
 import java.util.SortedSet
@@ -264,7 +266,12 @@ class GraphPartitionerTest {
       reachableKeys = adjacency.keys.toSet(),
       adjacency = GraphAdjacency(adjacency, emptyMap()),
       components = components,
-      componentOf = componentOf,
-      componentDag = emptyMap(),
+      componentOf =
+        MutableObjectIntMap<String>().apply {
+          for ((k, v) in componentOf) {
+            put(k, v)
+          }
+        },
+      componentDag = emptyIntObjectMap(),
     )
 }
