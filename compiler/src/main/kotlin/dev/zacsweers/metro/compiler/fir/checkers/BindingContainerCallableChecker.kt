@@ -366,7 +366,7 @@ internal object BindingContainerCallableChecker :
       reporter.reportOn(
         returnTypeRef.source ?: declaration.source,
         MetroDiagnostics.SUSPICIOUS_SET_INTO_SET,
-        "Suspicious `@IntoSet` return type. This function returns a `$render`, which would create a Set<$render> multibinding. Did you mean to use `@ElementsIntoSet`? Or if this is intentional, suppress this warning with `@Suppress(\"${MetroDiagnostics.SUSPICIOUS_SET_INTO_SET.name}\")`",
+        "Suspicious `@IntoSet` return type. This declaration returns a `$render`, which would create a `Set<$render>` multibinding. Did you mean to use `@ElementsIntoSet`? Or if this is intentional, suppress this warning with `@Suppress(\"${MetroDiagnostics.SUSPICIOUS_SET_INTO_SET.name}\")`",
       )
     }
 

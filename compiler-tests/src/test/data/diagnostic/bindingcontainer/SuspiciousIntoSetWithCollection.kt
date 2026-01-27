@@ -7,5 +7,5 @@ object Bindings {
   fun provideIntSet(): <!SUSPICIOUS_SET_INTO_SET!>Set<Int><!> = setOf(1)
   @Provides
   @IntoSet
-  fun provideLongList(): <!SUSPICIOUS_SET_INTO_SET!>List<Long><!> = listOf(1)
+  val provideLongList: <!SUSPICIOUS_SET_INTO_SET!>List<Long><!> get() = listOf(1)
 }
