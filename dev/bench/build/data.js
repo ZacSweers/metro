@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769461353270,
+  "lastUpdate": 1769495473892,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -4144,6 +4144,62 @@ window.BENCHMARK_DATA = {
             "value": 21033.452,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +7.11%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "2192ae1e~1",
+          "message": "[before] Add suspicious into set diagnostic (#1746)",
+          "timestamp": "2026-01-27T05:54:49Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/2192ae1ed05bd3088e380c6c7a214f9ee479e9f3"
+        },
+        "date": 1769495473892,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 21940.379999999997,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "2192ae1ed05bd3088e380c6c7a214f9ee479e9f3",
+          "message": "[after] Add suspicious into set diagnostic (#1746)",
+          "timestamp": "2026-01-27T05:54:49Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/2192ae1ed05bd3088e380c6c7a214f9ee479e9f3"
+        },
+        "date": 1769495473893,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 22426.854,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +2.22%"
           }
         ]
       }
