@@ -73,9 +73,9 @@ internal fun <T : Comparable<T>> Iterable<T>.topologicalSort(
         put(key, Any())
       }
     }
-  val fullAdjacency = fakeMap.buildFullAdjacency(sourceToTarget, onMissing)
-  val (sortedKeys, _) = topologicalSort(fullAdjacency, isDeferrable, onCycle)
-  return sortedKeys
+  val adjacencyResult = fakeMap.buildFullAdjacency(sourceToTarget, onMissing)
+  val topology = topologicalSort(adjacencyResult.forward, isDeferrable, onCycle)
+  return topology.sortedKeys
 }
 
 internal fun <T> List<T>.isTopologicallySorted(sourceToTarget: (T) -> Iterable<T>): Boolean {
@@ -91,17 +91,18 @@ internal fun <T> List<T>.isTopologicallySorted(sourceToTarget: (T) -> Iterable<T
 internal fun <T : Comparable<T>> ScatterMap<T, *>.buildFullAdjacency(
   sourceToTarget: (T) -> Iterable<T>,
   onMissing: (source: T, missing: T) -> Unit,
-): SortedMap<T, SortedSet<T>> {
+): GraphAdjacency<T> {
   val map = this
 
   /**
    * Sort our map keys and list values here for better performance later (avoiding needing to
    * defensively sort in [computeStronglyConnectedComponents]).
    */
-  val adjacency = sortedMapOf<T, SortedSet<T>>()
+  val forward = sortedMapOf<T, SortedSet<T>>()
+  val reverse = mutableMapOf<T, MutableSet<T>>()
 
   forEachKey { key ->
-    val dependencies = adjacency.getOrPut(key, ::sortedSetOf)
+    val dependencies = forward.getOrPut(key, ::sortedSetOf)
 
     for (targetKey in sourceToTarget(key)) {
       if (targetKey !in map) {
@@ -111,13 +112,16 @@ internal fun <T : Comparable<T>> ScatterMap<T, *>.buildFullAdjacency(
         continue
       }
       dependencies += targetKey
+
+      // Build reverse adjacency: targetKey is depended on by key
+      reverse.getAndAdd(targetKey, key)
     }
   }
-  return adjacency
+  return GraphAdjacency(forward, reverse)
 }
 
 /**
- * Builds the full adjacency list.
+ * Builds the full adjacency list (both forward and reverse).
  * * Keeps all edges (strict _and_ deferrable).
  * * Prunes edges whose target isn't in [bindings], delegating the decision to [onMissing].
  */
@@ -125,7 +129,7 @@ internal fun <TypeKey : Comparable<TypeKey>, Binding : Any> buildFullAdjacency(
   bindings: ScatterMap<TypeKey, Binding>,
   dependenciesOf: (Binding) -> Iterable<TypeKey>,
   onMissing: (source: TypeKey, missing: TypeKey) -> Unit,
-): SortedMap<TypeKey, SortedSet<TypeKey>> {
+): GraphAdjacency<TypeKey> {
   return bindings.buildFullAdjacency(
     sourceToTarget = { key -> dependenciesOf(bindings.getValue(key)) },
     onMissing = onMissing,
@@ -149,6 +153,17 @@ internal data class GraphTopology<T>(
   val components: List<Component<T>>,
   val componentOf: Map<T, Int>,
   val componentDag: Map<Int, Set<Int>>,
+)
+
+/**
+ * Result of building adjacency maps, containing both forward and reverse mappings.
+ *
+ * @property forward Maps each vertex to its dependencies (outgoing edges).
+ * @property reverse Maps each vertex to its dependents (incoming edges).
+ */
+internal data class GraphAdjacency<T>(
+  val forward: SortedMap<T, SortedSet<T>>,
+  val reverse: Map<T, Set<T>>,
 )
 
 /**

@@ -117,7 +117,7 @@ internal open class MutableBindingGraph<
         bindings: ScatterMap<TypeKey, Binding>,
         stack: BindingStack,
         roots: Map<ContextualTypeKey, BindingStackEntry>,
-        adjacency: Map<TypeKey, Set<TypeKey>>,
+        adjacency: GraphAdjacency<TypeKey>,
       ) -> Unit =
       { _, _, _, _ -> /* noop */
       },
@@ -133,12 +133,13 @@ internal open class MutableBindingGraph<
     sealed = true
 
     /**
-     * Build the full adjacency mapping of keys to all their dependencies.
+     * Build the full adjacency mapping of keys to all their dependencies. Both forward and reverse
+     * adjacency are built in a single pass.
      *
      * Note that `onMissing` will gracefully allow missing targets that have default values (i.e.
      * optional bindings).
      */
-    val fullAdjacency =
+    val adjacency =
       traceNested("Build adjacency list") {
         buildFullAdjacency(
           bindings = bindings,
@@ -159,12 +160,13 @@ internal open class MutableBindingGraph<
           },
         )
       }
+    val fullAdjacency = adjacency.forward
 
     // Report all missing bindings _after_ building adjacency so we can backtrace where possible
     missingBindings.forEach { (key, stack) -> reportMissingBinding(key, stack) }
 
     // Validate bindings
-    validateBindings(bindings, stack, roots, fullAdjacency)
+    validateBindings(bindings, stack, roots, adjacency)
 
     val topo =
       traceNested("Sort and validate") {

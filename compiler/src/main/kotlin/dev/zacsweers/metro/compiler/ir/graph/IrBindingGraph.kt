@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.getValue
+import dev.zacsweers.metro.compiler.graph.GraphAdjacency
 import dev.zacsweers.metro.compiler.graph.MissingBindingHints
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
 import dev.zacsweers.metro.compiler.graph.partitionBySCCs
@@ -681,27 +682,14 @@ internal class IrBindingGraph(
     bindings: ScatterMap<IrTypeKey, IrBinding>,
     stack: IrBindingStack,
     roots: Map<IrContextualTypeKey, IrBindingStack.Entry>,
-    adjacency: Map<IrTypeKey, Set<IrTypeKey>>,
+    adjacency: GraphAdjacency<IrTypeKey>,
   ) {
-    val reverseAdjacency = buildReverseAdjacency(adjacency)
     val rootsByTypeKey = roots.mapKeys { it.key.typeKey }
     bindings.forEachValue { binding ->
-      checkScope(binding, stack, roots, adjacency)
-      validateMultibindings(binding, bindings, roots, adjacency)
-      validateAssistedInjection(binding, bindings, rootsByTypeKey, reverseAdjacency)
+      checkScope(binding, stack, roots, adjacency.forward)
+      validateMultibindings(binding, bindings, roots, adjacency.forward)
+      validateAssistedInjection(binding, bindings, rootsByTypeKey, adjacency.reverse)
     }
-  }
-
-  private fun buildReverseAdjacency(
-    adjacency: Map<IrTypeKey, Set<IrTypeKey>>
-  ): Map<IrTypeKey, Set<IrTypeKey>> {
-    val reverse = mutableMapOf<IrTypeKey, MutableSet<IrTypeKey>>()
-    for ((from, tos) in adjacency) {
-      for (to in tos) {
-        reverse.getAndAdd(to, from)
-      }
-    }
-    return reverse
   }
 
   // Check scoping compatibility
