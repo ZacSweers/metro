@@ -3496,6 +3496,7 @@
 <h3 id="new">New<a class="headerlink" href="#new" title="Permanent link">&para;</a></h3>
 <h3 id="enhancements">Enhancements<a class="headerlink" href="#enhancements" title="Permanent link">&para;</a></h3>
 <ul>
+<li><strong>[FIR]</strong> Add a diagnostic warning for <code>@IntoSet</code> callables returning collections, as these probably intended to use <code>@ElementsIntoSet</code>.</li>
 <li><strong>[IR]</strong> Automatically patch <a href="https://github.com/ZacSweers/metro/issues/1556">#1556</a> issues between Kotlin versions <code>[2.3.0 - 2.3.20-Beta2)</code>. This is because this issue is more problematic than previously thought and actually appears to affect any compilation that consumes a KMP artifact. This auto-patching is best effort and a fix in kotlinx is targeting <code>2.3.20-Beta2</code>. If you have any issues, it can be disabled via the <code>patchKlibParams</code> Gradle DSL property.</li>
 </ul>
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
