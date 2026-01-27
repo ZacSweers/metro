@@ -17,7 +17,6 @@ import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
-import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.Name
@@ -139,51 +138,26 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
       callableMetadata: IrCallableMetadata,
       /** Pre-computed real declaration for in-compilation case. If null, will be looked up. */
       realDeclaration: IrDeclaration? = null,
-    ): Metro {
+    ): Metro? {
       val rawTypeKey = contextKey.typeKey.copy(qualifier = callableMetadata.annotations.qualifier)
       val typeKey = rawTypeKey.transformIfIntoMultibinding(callableMetadata.annotations)
 
-      if (mirrorFunction.shouldCheckMirrorParamMismatches()) {
-        // Validate and optionally patch parameter types due to
-        // https://github.com/ZacSweers/metro/issues/1556
-        val staticContainer = clazz.requireStaticIshDeclarationContainer()
-        val newInstanceFunction by memoize {
-          staticContainer.requireSimpleFunction(callableMetadata.newInstanceName!!.asString()).owner
-        }
-        val newInstanceFunctionParams by memoize {
-          newInstanceFunction.parameters().regularParameters.drop(1) // Drop the dispatch receiver
+      // Validate and optionally patch parameter types due to
+      // https://github.com/ZacSweers/metro/issues/1556
+      val hadUnpatchedMismatch =
+        checkMirrorParamMismatches(
+          factoryClass = clazz,
+          newInstanceFunctionName = callableMetadata.newInstanceName!!.asString(),
+          mirrorFunction = callableMetadata.mirrorFunction,
+          mirrorParams = { callableMetadata.mirrorFunction.parameters().nonDispatchParameters },
+          reportingFunction = callableMetadata.function,
+          primaryConstructorParamOffset = 1,
+        ) {
+          it.parameters().regularParameters.drop(1) // Drop the dispatch receiver
         }
 
-        val createFunction = staticContainer.requireSimpleFunction(Symbols.StringNames.CREATE).owner
-        val createFunctionParams =
-          createFunction.parameters().regularParameters.drop(1) // Drop the dispatch receiver
-        val mirrorParams = callableMetadata.mirrorFunction.parameters().nonDispatchParameters
-
-        for ((i, mirrorP) in mirrorParams.withIndex()) {
-          val createP = createFunctionParams[i]
-          if (createP.typeKey != mirrorP.typeKey) {
-            reportMirrorParamMismatch(callableMetadata.function, mirrorP, createP)
-
-            if (context.options.patchKlibParams) {
-              // Patch the qualifier annotations to use the correct ones from the mirror function
-              val correctQualifier = mirrorP.contextualTypeKey.typeKey.qualifier?.ir
-              with(context) {
-                patchQualifierAnnotation(createFunctionParams[i].asValueParameter, correctQualifier)
-                patchQualifierAnnotation(
-                  newInstanceFunctionParams[i].asValueParameter,
-                  correctQualifier,
-                )
-                // Also patch the factory constructor (offset by 1 for dispatch receiver)
-                clazz.primaryConstructor
-                  ?.parameters()
-                  ?.regularParameters
-                  ?.getOrNull(i + 1)
-                  ?.asValueParameter
-                  ?.let { patchQualifierAnnotation(it, correctQualifier) }
-              }
-            }
-          }
-        }
+      if (hadUnpatchedMismatch) {
+        return null
       }
 
       return Metro(

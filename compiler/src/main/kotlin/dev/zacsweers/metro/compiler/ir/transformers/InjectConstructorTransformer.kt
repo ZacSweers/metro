@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.generatedClass
 import dev.zacsweers.metro.compiler.ir.ClassFactory
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
+import dev.zacsweers.metro.compiler.ir.checkMirrorParamMismatches
 import dev.zacsweers.metro.compiler.ir.contextParameters
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
 import dev.zacsweers.metro.compiler.ir.createAndAddTemporaryVariable
@@ -25,17 +26,12 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
-import dev.zacsweers.metro.compiler.ir.patchQualifierAnnotation
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.reportCompat
-import dev.zacsweers.metro.compiler.ir.reportMirrorParamMismatch
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
-import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
-import dev.zacsweers.metro.compiler.ir.shouldCheckMirrorParamMismatches
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
-import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Optional
@@ -137,51 +133,22 @@ internal class InjectConstructorTransformer(
           // Look up the injectable constructor for direct invocation optimization
           val externalTargetConstructor = targetConstructor()
 
-          if (mirrorFunction.shouldCheckMirrorParamMismatches()) {
-            // Validate and optionally patch parameter types due to
-            // https://github.com/ZacSweers/metro/issues/1556
-            val staticContainer = factoryCls.requireStaticIshDeclarationContainer()
-
-            val newInstanceFunction by memoize {
-              staticContainer.requireSimpleFunction(Symbols.StringNames.NEW_INSTANCE).owner
+          // Validate and optionally patch parameter types due to
+          // https://github.com/ZacSweers/metro/issues/1556
+          val hadUnpatchedMismatch =
+            checkMirrorParamMismatches(
+              factoryClass = factoryCls,
+              newInstanceFunctionName = Symbols.StringNames.NEW_INSTANCE,
+              mirrorFunction = mirrorFunction,
+              mirrorParams = { parameters.nonDispatchParameters.filterNot { it.isAssisted } },
+              reportingFunction = externalTargetConstructor,
+              primaryConstructorParamOffset = 0,
+            ) {
+              it.parameters().allParameters
             }
-            val newInstanceFunctionParams by memoize {
-              newInstanceFunction.parameters().allParameters
-            }
 
-            val createFunction =
-              staticContainer.requireSimpleFunction(Symbols.StringNames.CREATE).owner
-            val createFunctionParams = createFunction.parameters().allParameters
-            val mirrorParams = parameters.nonDispatchParameters.filterNot { it.isAssisted }
-
-            for ((i, mirrorP) in mirrorParams.withIndex()) {
-              val createP = createFunctionParams[i]
-              if (createP.typeKey != mirrorP.typeKey) {
-                reportMirrorParamMismatch(parameters.ir, mirrorP, createP)
-                if (options.patchKlibParams) {
-                  // Patch the qualifier annotations to use the correct ones from the mirror
-                  // function
-                  val correctQualifier = mirrorP.contextualTypeKey.typeKey.qualifier?.ir
-                  patchQualifierAnnotation(
-                    createFunctionParams[i].asValueParameter,
-                    correctQualifier,
-                  )
-                  patchQualifierAnnotation(
-                    newInstanceFunctionParams[i].asValueParameter,
-                    correctQualifier,
-                  )
-                  // Also patch the factory constructor
-                  factoryCls.primaryConstructor
-                    ?.parameters()
-                    ?.regularParameters
-                    ?.getOrNull(i)
-                    ?.asValueParameter
-                    ?.let { patchQualifierAnnotation(it, correctQualifier) }
-                } else {
-                  return null
-                }
-              }
-            }
+          if (hadUnpatchedMismatch) {
+            return null
           }
 
           val wrapper = ClassFactory.MetroFactory(factoryCls, parameters, externalTargetConstructor)

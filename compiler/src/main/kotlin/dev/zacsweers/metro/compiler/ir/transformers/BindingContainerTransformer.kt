@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir.transformers
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.capitalizeUS
+import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.generatedClass
@@ -401,7 +402,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
         sourceAnnotations = reference.annotations,
         callableMetadata = callableMetadata,
         realDeclaration = realDeclaration,
-      )
+      ) ?: exitProcessing()
 
     factoryCls.dumpToMetroLog()
 
@@ -680,7 +681,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
       mirrorFunction,
       sourceAnnotations,
       callableMetadata,
-    )
+    ) ?: exitProcessing()
   }
 
   private fun loadExternalBindingContainer(

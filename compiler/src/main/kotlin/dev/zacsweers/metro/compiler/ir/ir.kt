@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.ifNotEmpty
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
+import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInLazy
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.isGraphImpl
@@ -1576,8 +1577,69 @@ internal fun patchQualifierAnnotation(
   correctQualifier?.let { parameter.annotations += it }
 }
 
+/**
+ * Checks and optionally patches mismatches between mirror function parameters and their
+ * corresponding generated function parameters.
+ *
+ * This is used to work around https://github.com/ZacSweers/metro/issues/1556 where klib
+ * deserialization can produce incorrect qualifier annotations on parameters.
+ *
+ * @param factoryClass the factory class containing the create/newInstance functions
+ * @param newInstanceFunctionName the name of the newInstance function to look up
+ * @param mirrorParams the parameters from the mirror function to compare against
+ * @param reportingFunction the function to report diagnostics on (for error messages)
+ * @param primaryConstructorParamOffset offset when indexing into primary constructor params
+ * @param extractParams function to extract the list of [Parameter]s from a function
+ * @return true if there was an unpatched mismatch, false otherwise
+ */
 context(context: IrMetroContext)
-internal fun IrFunction.shouldCheckMirrorParamMismatches(): Boolean {
+internal fun checkMirrorParamMismatches(
+  factoryClass: IrClass,
+  newInstanceFunctionName: String,
+  mirrorFunction: IrSimpleFunction,
+  mirrorParams: () -> List<Parameter>,
+  reportingFunction: IrFunction?,
+  primaryConstructorParamOffset: Int,
+  extractParams: (IrFunction) -> List<Parameter>,
+): Boolean {
+  if (!factoryClass.shouldCheckMirrorParamMismatches()) return false
+
+  val staticContainer = factoryClass.requireStaticIshDeclarationContainer()
+
+  val newInstanceFunction by memoize {
+    staticContainer.requireSimpleFunction(newInstanceFunctionName).owner
+  }
+  val newInstanceFunctionParams by memoize { extractParams(newInstanceFunction) }
+
+  val createFunction = staticContainer.requireSimpleFunction(Symbols.StringNames.CREATE).owner
+  val createFunctionParams = extractParams(createFunction)
+
+  var hadUnpatchedMismatch = false
+  for ((i, mirrorP) in mirrorParams().withIndex()) {
+    val createP = createFunctionParams[i]
+    if (createP.typeKey != mirrorP.typeKey) {
+      reportMirrorParamMismatch(reportingFunction ?: mirrorFunction, mirrorP, createP)
+
+      if (context.options.patchKlibParams) {
+        val correctQualifier = mirrorP.contextualTypeKey.typeKey.qualifier?.ir
+        patchQualifierAnnotation(createFunctionParams[i].asValueParameter, correctQualifier)
+        patchQualifierAnnotation(newInstanceFunctionParams[i].asValueParameter, correctQualifier)
+        factoryClass.primaryConstructor
+          ?.parameters()
+          ?.regularParameters
+          ?.getOrNull(i + primaryConstructorParamOffset)
+          ?.asValueParameter
+          ?.let { patchQualifierAnnotation(it, correctQualifier) }
+      } else {
+        hadUnpatchedMismatch = true
+      }
+    }
+  }
+  return hadUnpatchedMismatch
+}
+
+context(context: IrMetroContext)
+internal fun IrDeclarationParent.shouldCheckMirrorParamMismatches(): Boolean {
   return isExternalParent &&
     shouldCheckMirrorParamMismatches(context.options, context.platform) {
       context.languageVersionSettings.supportsFeature(LanguageFeature.AnnotationsInMetadata)
@@ -1599,7 +1661,7 @@ internal inline fun shouldCheckMirrorParamMismatches(
 }
 
 context(context: IrMetroContext)
-internal fun reportMirrorParamMismatch(
+private fun reportMirrorParamMismatch(
   function: IrFunction?,
   mirrorParameter: Parameter,
   createParameter: Parameter,
