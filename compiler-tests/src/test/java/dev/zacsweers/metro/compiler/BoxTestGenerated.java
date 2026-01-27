@@ -1185,6 +1185,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("AssistedFactoryCanBeInjectedChildScopedTypes.kt")
+      public void testAssistedFactoryCanBeInjectedChildScopedTypes() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedFactoryCanBeInjectedChildScopedTypes.kt");
+      }
+
+      @Test
       @TestMetadata("AssistedTypesCanBeExplicitlyProvided.kt")
       public void testAssistedTypesCanBeExplicitlyProvided() {
         runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedTypesCanBeExplicitlyProvided.kt");
