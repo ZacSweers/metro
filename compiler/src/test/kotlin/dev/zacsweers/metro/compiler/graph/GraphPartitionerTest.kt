@@ -267,7 +267,7 @@ class GraphPartitionerTest {
       adjacency = GraphAdjacency(adjacency, emptyMap()),
       components = components,
       componentOf =
-        MutableObjectIntMap<String>().apply {
+        MutableObjectIntMap<String>(componentOf.size).apply {
           for ((k, v) in componentOf) {
             put(k, v)
           }
