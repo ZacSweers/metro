@@ -127,15 +127,6 @@ private constructor(
         )
       }
 
-      if (
-        accessType != AccessType.INSTANCE &&
-          binding is IrBinding.ConstructorInjected &&
-          binding.isAssisted
-      ) {
-        // Should be caught in FIR
-        reportCompilerBug("Assisted inject factories should only be accessed as instances")
-      }
-
       // If we're initializing the field for this key, don't ever try to reach for an existing
       // provider for it.
       // This is important for cases like DelegateFactory and breaking cycles.
