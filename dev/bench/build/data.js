@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769495473892,
+  "lastUpdate": 1769538048793,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -4200,6 +4200,62 @@ window.BENCHMARK_DATA = {
             "value": 22426.854,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +2.22%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "92732260~1",
+          "message": "[before] Limit jvm param patching to certain conditions (#1",
+          "timestamp": "2026-01-27T12:40:34-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/92732260955888cd0c7c81e9b9dde627b6337992"
+        },
+        "date": 1769538048793,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 22032.124,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "92732260955888cd0c7c81e9b9dde627b6337992",
+          "message": "[after] Limit jvm param patching to certain conditions (#1",
+          "timestamp": "2026-01-27T12:40:34-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/92732260955888cd0c7c81e9b9dde627b6337992"
+        },
+        "date": 1769538048794,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 21301.170000000002,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -3.32%"
           }
         ]
       }
