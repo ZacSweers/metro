@@ -298,7 +298,7 @@ internal class IrBindingGraph(
       traceNested("compute shard groups") {
         val maxPerShard = metroContext.options.keysPerGraphShard
         val enableSharding = metroContext.options.enableGraphSharding
-        if (enableSharding && topologyResult.adjacency.size > maxPerShard) {
+        if (enableSharding && topologyResult.adjacency.forward.size > maxPerShard) {
           topologyResult.partitionBySCCs(maxPerShard)
         } else {
           null

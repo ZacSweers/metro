@@ -3,7 +3,8 @@
 package dev.zacsweers.metro.compiler.graph
 
 import com.google.common.truth.Truth.assertThat
-import java.util.*
+import java.util.SortedMap
+import java.util.SortedSet
 import kotlin.test.Test
 
 class GraphPartitionerTest {
@@ -261,7 +262,7 @@ class GraphPartitionerTest {
       sortedKeys = sortedKeys,
       deferredTypes = emptySet(),
       reachableKeys = adjacency.keys.toSet(),
-      adjacency = adjacency,
+      adjacency = GraphAdjacency(adjacency, emptyMap()),
       components = components,
       componentOf = componentOf,
       componentDag = emptyMap(),

@@ -15,7 +15,7 @@ package dev.zacsweers.metro.compiler.graph
 internal fun <T> GraphTopology<T>.partitionBySCCs(keysPerGraphShard: Int): List<List<T>> {
   // 1. Identify valid keys and pre-group multi-node components.
   // We do this upfront to avoid repeated expensive filtering inside the main loop.
-  val validKeys = sortedKeys.filter { it in adjacency }
+  val validKeys = sortedKeys.filter { it in adjacency.forward }
   val multiNodeGroups = mutableMapOf<Int, MutableList<T>>()
 
   // Identify which component IDs represent cycles (size > 1)
