@@ -14,7 +14,7 @@ pluginManagement {
     maven("https://redirector.kotlinlang.org/maven/intellij-dependencies/")
   }
   plugins {
-    id("com.gradle.develocity") version "4.3.1"
+    id("com.gradle.develocity") version "4.3.2"
     id("com.android.settings") version "8.13.2"
   }
 }
