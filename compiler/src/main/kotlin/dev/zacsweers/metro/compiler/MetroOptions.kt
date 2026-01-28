@@ -754,6 +754,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  FORCE_ENABLE_FIR_IN_IDE(
+    RawMetroOption.boolean(
+      name = "force-enable-fir-in-ide",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "Force enable Metro's FIR extensions in IDE even if the compat layer cannot be determined.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   PLUGIN_ORDER_SET(
     RawMetroOption(
       name = "plugin-order-set",
@@ -911,6 +922,8 @@ public data class MetroOptions(
   public val enableKlibParamsCheck: Boolean =
     MetroOption.ENABLE_KLIB_PARAMS_CHECK.raw.defaultValue.expectAs(),
   public val patchKlibParams: Boolean = MetroOption.PATCH_KLIB_PARAMS.raw.defaultValue.expectAs(),
+  public val forceEnableFirInIde: Boolean =
+    MetroOption.FORCE_ENABLE_FIR_IN_IDE.raw.defaultValue.expectAs(),
   public val pluginOrderSet: Boolean? =
     MetroOption.PLUGIN_ORDER_SET.raw.defaultValue
       .expectAs<String>()
@@ -1015,6 +1028,7 @@ public data class MetroOptions(
     public var contributesAsInject: Boolean = base.contributesAsInject
     public var enableKlibParamsCheck: Boolean = base.enableKlibParamsCheck
     public var patchKlibParams: Boolean = base.patchKlibParams
+    public var forceEnableFirInIde: Boolean = base.forceEnableFirInIde
     public var pluginOrderSet: Boolean? = base.pluginOrderSet
 
     private fun FqName.classId(name: String): ClassId {
@@ -1188,6 +1202,7 @@ public data class MetroOptions(
         contributesAsInject = contributesAsInject,
         enableKlibParamsCheck = enableKlibParamsCheck,
         patchKlibParams = patchKlibParams,
+        forceEnableFirInIde = forceEnableFirInIde,
         pluginOrderSet = pluginOrderSet,
       )
     }
@@ -1383,6 +1398,7 @@ public data class MetroOptions(
           INTEROP_INCLUDE_GUICE_ANNOTATIONS -> {
             if (configuration.getAsBoolean(entry)) includeGuiceAnnotations()
           }
+          FORCE_ENABLE_FIR_IN_IDE -> forceEnableFirInIde = configuration.getAsBoolean(entry)
           PLUGIN_ORDER_SET -> {
             pluginOrderSet =
               configuration.getAsString(entry).takeUnless(String::isBlank)?.toBooleanStrict()

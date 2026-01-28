@@ -19,6 +19,8 @@ Changelog
 
 ### Changes
 
+- **[IR]** Disable FIR IDE support by default on `255` patch versions that Android Studio canaries/nightlies report, as they report a fake Kotlin version that Metro can't resolve a proper compat layer for. Please star this issue: https://issuetracker.google.com/issues/474940910
+
 ### Contributors
 
 0.10.1

@@ -40,6 +40,7 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension {
 	public final fun getEnableSwitchingProviders ()Lorg/gradle/api/provider/Property;
 	public final fun getEnableTopLevelFunctionInjection ()Lorg/gradle/api/provider/Property;
 	public final fun getEnabled ()Lorg/gradle/api/provider/Property;
+	public final fun getForceEnableFirInIde ()Lorg/gradle/api/provider/Property;
 	public final fun getGenerateAssistedFactories ()Lorg/gradle/api/provider/Property;
 	public final fun getGenerateContributionHints ()Lorg/gradle/api/provider/Property;
 	public final fun getGenerateContributionHintsInFir ()Lorg/gradle/api/provider/Property;

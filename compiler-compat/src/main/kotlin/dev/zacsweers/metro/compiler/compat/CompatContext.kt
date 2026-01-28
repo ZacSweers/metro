@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.compat
 
-import java.io.FileNotFoundException
 import java.util.ServiceLoader
 import org.jetbrains.kotlin.GeneratedDeclarationKey
 import org.jetbrains.kotlin.KtFakeSourceElementKind
@@ -145,21 +144,39 @@ public interface CompatContext {
 
     /** Attempts to get the current compiler version or throws and exception if it cannot. */
     public val currentVersion: String
-      get() = loadCompilerVersion()
+      get() = loadCompilerVersionString()
 
     public fun create(): CompatContext
 
     public companion object Companion {
       private const val COMPILER_VERSION_FILE = "META-INF/compiler.version"
 
-      internal fun loadCompilerVersion(): String {
+      public fun loadCompilerVersion(): KotlinToolingVersion {
+        return KotlinToolingVersion(loadCompilerVersionString())
+      }
+
+      public fun loadCompilerVersionOrNull(): KotlinToolingVersion? {
+        return loadCompilerVersionStringOrNull()?.let(::KotlinToolingVersion)
+      }
+
+      public fun loadCompilerVersionString(): String {
+        return loadCompilerVersionStringOrNull()
+          ?: throw AssertionError(
+            "'$COMPILER_VERSION_FILE' not found in the classpath or was blank"
+          )
+      }
+
+      public fun loadCompilerVersionStringOrNull(): String? {
         val inputStream =
-          FirExtensionRegistrar::class.java.classLoader!!.getResourceAsStream(COMPILER_VERSION_FILE)
-            ?: throw FileNotFoundException("'$COMPILER_VERSION_FILE' not found in the classpath")
-        return inputStream.bufferedReader().use { it.readText() }
+          FirExtensionRegistrar::class.java.classLoader?.getResourceAsStream(COMPILER_VERSION_FILE)
+            ?: return null
+        return inputStream.bufferedReader().use { it.readText() }.takeUnless { it.isBlank() }
       }
     }
   }
+
+  /** Attempts to get the current compiler version. */
+  public val currentVersion: KotlinToolingVersion
 
   /**
    * Returns the ClassLikeDeclaration where the Fir object has been defined or null if no proper
