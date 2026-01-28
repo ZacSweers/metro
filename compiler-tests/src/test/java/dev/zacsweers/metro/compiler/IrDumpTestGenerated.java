@@ -23,6 +23,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
   }
 
   @Test
+  @TestMetadata("AssistedInjectClassFactoriesGetReused.kt")
+  public void testAssistedInjectClassFactoriesGetReused() {
+    runTest("compiler-tests/src/test/data/dump/ir/AssistedInjectClassFactoriesGetReused.kt");
+  }
+
+  @Test
   @TestMetadata("MultibindingsHaveConsistentOrderAcrossContributedGraph.kt")
   public void testMultibindingsHaveConsistentOrderAcrossContributedGraph() {
     runTest("compiler-tests/src/test/data/dump/ir/MultibindingsHaveConsistentOrderAcrossContributedGraph.kt");

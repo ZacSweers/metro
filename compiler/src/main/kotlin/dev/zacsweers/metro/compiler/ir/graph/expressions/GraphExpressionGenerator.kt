@@ -336,11 +336,12 @@ private constructor(
           }
         }
 
-        is Assisted -> {
+        is AssistedFactory -> {
           // Example9_Factory_Impl.create(example9Provider);
           val factoryImpl = assistedFactoryTransformer.getOrGenerateImplClass(binding.type)
 
-          val targetBinding = bindingGraph.requireBinding(binding.target.typeKey)
+          // The target binding is stored directly on the Assisted binding (not in the graph)
+          val targetBinding = binding.targetBinding
 
           // Assisted-inject factories don't implement Provider
           val delegateFactory =

@@ -836,7 +836,7 @@ internal class IrBindingGraph(
         bindings
           .asMap()
           .values
-          .find { it is IrBinding.Assisted && it.target.typeKey == binding.typeKey }
+          .find { it is IrBinding.AssistedFactory && it.targetBinding.typeKey == binding.typeKey }
           ?.typeKey
           // Check in the class itself for @AssistedFactory
           ?: binding.typeKey.type.rawTypeOrNull()?.let { rawType ->
@@ -869,7 +869,7 @@ internal class IrBindingGraph(
     reverseAdjacency[binding.typeKey]?.let { dependents ->
       for (dependentKey in dependents) {
         val dependentBinding = bindings[dependentKey] ?: continue
-        if (dependentBinding !is IrBinding.Assisted) {
+        if (dependentBinding !is IrBinding.AssistedFactory) {
           reportInvalidBinding(
             dependentBinding.parameters.allParameters
               .find { it.typeKey == binding.typeKey }

@@ -109,7 +109,6 @@ configure<SpotlessExtension> {
   format("licenseJava") {
     licenseHeaderFile(spotlessDir.resolve("spotless.java"), "package")
     target("src/**/*.java")
-    targetExclude("**/BetweennessCentrality.java")
-    targetExclude("**/*Generated.java")
+    targetExclude("**/BetweennessCentrality.java", "**/*Generated.java")
   }
 }

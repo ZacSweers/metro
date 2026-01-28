@@ -708,29 +708,17 @@ internal class IrGraphGenerator(
           injectorRoots.add(injector.contextKey)
         }
       }
-      val collectedProperties =
-        BindingPropertyCollector(
-            metroContext,
-            graph = bindingGraph,
-            sortedKeys = sealResult.sortedKeys,
-            roots = roots,
-            injectorRoots = injectorRoots,
-            extraKeeps = bindingGraph.keeps(),
-            deferredTypes = sealResult.deferredTypes,
-          )
-          .collect()
-
-      val collectedTypeKeys = collectedProperties.entries.groupBy { it.key.typeKey }
-
-      // Build init order: iterate sorted keys and collect any properties for reachable bindings
-      // For multibindings (especially maps), there may be multiple contextual variants
-      buildList(collectedProperties.size) {
-        sealResult.sortedKeys.forEach { key ->
-          if (key in sealResult.reachableKeys) {
-            collectedTypeKeys[key]?.forEach { (_, prop) -> add(prop) }
-          }
-        }
-      }
+      BindingPropertyCollector(
+          metroContext = metroContext,
+          graph = bindingGraph,
+          sortedKeys = sealResult.sortedKeys,
+          roots = roots,
+          injectorRoots = injectorRoots,
+          extraKeeps = bindingGraph.keeps(),
+          deferredTypes = sealResult.deferredTypes,
+          reachableKeys = sealResult.reachableKeys,
+        )
+        .collect()
     }
 
   /**
@@ -775,6 +763,7 @@ internal class IrGraphGenerator(
     val metadata =
       computeBindingMetadata(binding, propertyType, collectedContextKey, collectedIsProviderType)
     ShardBinding(
+      binding = binding,
       typeKey = binding.typeKey,
       contextKey = metadata.contextKey,
       propertyKind = metadata.propertyKind,
@@ -983,15 +972,9 @@ internal class IrGraphGenerator(
     shardDeferredProperties: MutableList<DeferredPropertyInfo>,
     switchingProvider: SwitchingProviderGenerator.SwitchingProvider?,
   ) {
-    // Pre-fetch all bindings to avoid repeated lookups in the loop
-    val bindingsMap =
-      shard.properties.keys.associateWith { contextKey ->
-        bindingGraph.requireBinding(contextKey.typeKey)
-      }
-
     for ((contextKey, propertyInfo) in shard.properties) {
-      val binding = bindingsMap.getValue(contextKey)
       val shardBinding = propertyInfo.shardBinding
+      val binding = shardBinding.binding
       val isProviderType = contextKey.isWrappedInProvider
       val isScoped = shardBinding.isScoped
       val isDeferred = shardBinding.isDeferred
