@@ -86,11 +86,41 @@ data class BindingMetadata(
 Represents a dependency edge:
 ```kotlin
 data class DependencyMetadata(
-  val key: String,           // Type key of the dependency
-  val isDeferrable: Boolean, // Wrapped in Provider/Lazy (breaks cycles)
-  val isAssisted: Boolean,   // Assisted injection parameter
+  val key: String,            // Type key of the dependency
+  val hasDefault: Boolean,    // Has a default value
+  val wrapperType: String?,   // Wrapper type if wrapped (e.g., "Provider", "Lazy")
+) {
+  val isDeferrable: Boolean   // Computed: true if wrapperType != null
+}
+```
+
+### AssistedTargetMetadata
+For `Assisted` factory bindings, the encapsulated target is exposed via nested metadata.
+This has the same structure as `BindingMetadata` plus `assistedParameters`:
+```kotlin
+data class AssistedTargetMetadata(
+  val key: String,                                   // Target type key
+  val bindingKind: String,                           // Usually "ConstructorInjected"
+  val scope: String? = null,
+  val isScoped: Boolean = false,
+  val nameHint: String,
+  val dependencies: List<DependencyMetadata>,        // Target's actual dependencies
+  val origin: String? = null,
+  val declaration: String? = null,
+  val multibinding: MultibindingMetadata? = null,
+  val optionalWrapper: OptionalWrapperMetadata? = null,
+  val isSynthetic: Boolean = false,
+  val assistedParameters: List<AssistedParameterMetadata>,  // Call-time parameters
+)
+
+data class AssistedParameterMetadata(
+  val key: String,   // Type key
+  val name: String,  // Parameter name
 )
 ```
+
+Since assisted-inject targets are encapsulated within their factory bindings (not in the main graph),
+their information is exposed through `BindingMetadata.assistedTarget` for visualization.
 
 Note: Accessors are tracked only in the `roots` object, not as dependencies of the graph's BoundInstance binding.
 The `BindingGraph` class creates edges from the graph to accessor targets when building the graph structure,
@@ -158,7 +188,8 @@ Links between nodes have different types for visual distinction:
 | `normal` | Gray | Solid | Regular dependency |
 | `accessor` | Light Blue | Solid, thick | Graph entry point (exposed property) |
 | `deferrable` | Cyan | Dashed | Provider/Lazy wrapped (breaks cycles) |
-| `assisted` | Orange | Solid, thick | Assisted injection |
+| `assisted` | Red | Solid, thick | Assisted factory to its target's dependencies |
+| `assisted-factory` | Red | Dashed, thick | Assisted factory to its assisted-inject target |
 | `multibinding` | Purple | Solid | Multibinding source contribution |
 | `alias` | Gray | Dotted | Type alias/binding |
 | `optional` | Gray | Dashed, faded | Has default value |
@@ -172,7 +203,8 @@ Nodes are colored by binding kind:
 - **Alias** - Gray (synthetic)
 - **BoundInstance** - Light Blue
 - **Multibinding** - Pink
-- **Assisted** - Peach
+- **Assisted Factory** - Red (factory that creates assisted-inject instances)
+- **Assisted Inject** - Red (target of assisted injection, encapsulated in factory)
 - **Scoped bindings** - Magenta border
 
 Synthetic nodes (generated/internal) have reduced opacity (0.6).
