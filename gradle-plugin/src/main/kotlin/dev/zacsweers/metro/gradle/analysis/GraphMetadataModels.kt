@@ -75,6 +75,43 @@ public data class BindingMetadata(
   val aliasTarget: String? = null,
   /** True if this is a generated/synthetic binding (e.g., alias, contribution). */
   val isSynthetic: Boolean = false,
+  /**
+   * For Assisted factory bindings, contains metadata about the encapsulated target binding.
+   * Assisted-inject targets are not in the main graph; their info is exposed here.
+   */
+  val assistedTarget: AssistedTargetMetadata? = null,
+)
+
+/**
+ * Metadata for an assisted-inject target binding encapsulated within an Assisted factory.
+ * Since assisted-inject targets are not in the main binding graph, their information is
+ * exposed through this nested structure on the factory binding.
+ *
+ * This has the same structure as [BindingMetadata] plus [assistedParameters].
+ */
+@Serializable
+public data class AssistedTargetMetadata(
+  val key: String,
+  val bindingKind: String,
+  val scope: String? = null,
+  val isScoped: Boolean = false,
+  val nameHint: String,
+  /** The target's actual dependencies (not Provider-wrapped). */
+  val dependencies: List<DependencyMetadata>,
+  val origin: String? = null,
+  val declaration: String? = null,
+  val multibinding: MultibindingMetadata? = null,
+  val optionalWrapper: OptionalWrapperMetadata? = null,
+  val isSynthetic: Boolean = false,
+  /** Parameters injected at call time (not from the graph). */
+  val assistedParameters: List<AssistedParameterMetadata> = emptyList(),
+)
+
+/** Metadata for an assisted parameter (injected at call time). */
+@Serializable
+public data class AssistedParameterMetadata(
+  val key: String,
+  val name: String,
 )
 
 /** Metadata for a dependency reference. */
@@ -84,8 +121,6 @@ public data class DependencyMetadata(
   val hasDefault: Boolean,
   /** Wrapper type if wrapped (e.g., "Provider", "Lazy"). Null if not wrapped. */
   val wrapperType: String? = null,
-  /** True if this is an assisted parameter. */
-  val isAssisted: Boolean = false,
 ) {
   /** True if wrapped in Provider/Lazy (breaks cycles). */
   val isDeferrable: Boolean

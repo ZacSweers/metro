@@ -79,8 +79,7 @@ class MetroArtifactsTest {
                   "dependencies": [
                     {
                       "key": "test.AppGraph",
-                      "hasDefault": false,
-                      "isAssisted": false
+                      "hasDefault": false
                     }
                   ],
                   "isSynthetic": false,
