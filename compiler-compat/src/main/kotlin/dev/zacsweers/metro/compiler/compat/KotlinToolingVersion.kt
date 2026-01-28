@@ -43,14 +43,14 @@ internal fun KotlinToolingVersion(
   )
 }
 
-internal class KotlinToolingVersion(
-  val major: Int,
-  val minor: Int,
-  val patch: Int,
-  val classifier: String?,
+public class KotlinToolingVersion(
+  public val major: Int,
+  public val minor: Int,
+  public val patch: Int,
+  public val classifier: String?,
 ) : Comparable<KotlinToolingVersion>, Serializable {
 
-  enum class Maturity {
+  public enum class Maturity {
     SNAPSHOT,
     DEV,
     MILESTONE,
@@ -60,7 +60,7 @@ internal class KotlinToolingVersion(
     STABLE,
   }
 
-  val maturity: Maturity = run {
+  public val maturity: Maturity = run {
     val classifier = this.classifier?.lowercase()
     when {
       classifier == null || classifier.matches(Regex("""(release-)?\d+""")) -> Maturity.STABLE

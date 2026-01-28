@@ -309,6 +309,17 @@ constructor(
     objects.booleanProperty("metro.patchKlibParams", true)
 
   /**
+   * Force enable Metro's FIR extensions in IDE even if the compat layer cannot be determined.
+   *
+   * This is useful when working with IDE versions where Metro cannot automatically detect the
+   * correct compatibility layer.
+   *
+   * Disabled by default.
+   */
+  public val forceEnableFirInIde: Property<Boolean> =
+    objects.booleanProperty("metro.forceEnableFirInIde", false)
+
+  /**
    * If set, the Metro compiler will dump verbose report diagnostics about resolved dependency
    * graphs to the given destination. Outputs are per-compilation granularity (i.e.
    * `build/metro/main/...`).
