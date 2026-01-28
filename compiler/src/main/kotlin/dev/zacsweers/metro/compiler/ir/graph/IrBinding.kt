@@ -347,17 +347,29 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override fun toString() = renderDescriptionDiagnostic(short = true, underlineTypeKey = false)
   }
 
+  /**
+   * Models an `@AssistedFactory` binding.
+   *
+   * The assisted factory encapsulates the assisted-inject target class. The target's
+   * `ConstructorInjected` binding is stored directly here and does not participate in the main
+   * binding graph. This design ensure the assisted-inject type cannot be considered for deferral
+   * (its `MetroFactory` doesn't implement `Provider`)
+   */
   @Poko
   class Assisted(
     @Poko.Skip override val type: IrClass,
-    val target: IrContextualTypeKey,
+    @Poko.Skip val targetBinding: ConstructorInjected,
     @Poko.Skip val function: IrSimpleFunction,
     override val annotations: MetroAnnotations<IrAnnotation>,
     override val parameters: Parameters,
     override val typeKey: IrTypeKey,
+    /**
+     * Dependencies are the [targetBinding]'s non-assisted dependencies, wrapped in Provider. This
+     * allows proper cycle detection at the Assisted binding level. Pre-computed at construction
+     * time since wrapping requires [IrMetroContext].
+     */
+    override val dependencies: List<IrContextualTypeKey>,
   ) : IrBinding, BindingWithAnnotations, InjectedClassBinding<Assisted> {
-    // Dependencies are handled by the target class
-    override val dependencies: List<IrContextualTypeKey> = listOf(target)
     override val nameHint: String = type.name.asString()
     override val scope: IrAnnotation? = null
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
@@ -370,11 +382,12 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
       if (mapKey == null) return this
       return Assisted(
         type,
-        target,
+        targetBinding,
         function,
         annotations.copy(mapKey = mapKey),
         parameters,
         typeKey,
+        dependencies,
       )
     }
 

@@ -33,6 +33,7 @@ import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer.MemberInjectClass
+import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.metroAnnotations
@@ -804,9 +805,44 @@ internal class BindingLookup(
         trackFunctionCall(sourceGraph, classFactory.function)
       } else if (classAnnotations.isAssistedFactory) {
         val function = irClass.singleAbstractFunction().asMemberOf(key.type)
-        // Mark as wrapped for convenience in graph resolution to note that this whole node is
-        // inherently deferrable
-        val targetContextualTypeKey = IrContextualTypeKey.from(function, wrapInProvider = true)
+
+        // Get the target assisted-inject class from the function's return type
+        val targetType = function.returnType
+        val targetClass = targetType.rawType()
+        val targetClassFactory =
+          findClassFactory(targetClass)
+            ?: run {
+              val message =
+                "AssistedFactory ${irClass.classId} targets ${targetClass.classId} but no " +
+                  "@AssistedInject constructor was found"
+              context.reportCompat(irClass, MetroDiagnostics.METRO_ERROR, message)
+              return@getOrPut emptySet()
+            }
+
+        val targetKey = IrTypeKey(targetType)
+        val targetAnnotations = targetClass.metroAnnotations(context.metroSymbols.classIds)
+        val targetRemapper = targetClass.deepRemapperFor(targetType)
+
+        // Create the target's ConstructorInjected binding (NOT added to graph)
+        val targetBinding =
+          targetClass.cachedConstructorInjectedBinding.takeIf {
+            targetRemapper == NOOP_TYPE_REMAPPER
+          }
+            ?: IrBinding.ConstructorInjected(
+                type = targetClass,
+                classFactory = targetClassFactory.remapTypes(targetRemapper),
+                annotations = targetAnnotations,
+                typeKey = targetKey,
+                // Assisted-inject classes don't have member injections in this context
+                injectedMembers = emptySet(),
+              )
+              .alsoIf(targetRemapper == NOOP_TYPE_REMAPPER) {
+                targetClass.cachedConstructorInjectedBinding = it
+              }
+
+        // Wrap target's dependencies in Provider for proper cycle detection
+        val wrappedDependencies = targetBinding.dependencies.map { dep -> dep.wrapInProvider() }
+
         bindings +=
           irClass.cacheAssistedBinding.takeIf {
             // Allow use of cached instances if no generics
@@ -814,11 +850,12 @@ internal class BindingLookup(
           }
             ?: IrBinding.Assisted(
                 type = irClass,
+                targetBinding = targetBinding,
                 function = function,
                 annotations = classAnnotations,
                 typeKey = key,
                 parameters = function.parameters(),
-                target = targetContextualTypeKey,
+                dependencies = wrappedDependencies,
               )
               .alsoIf(remapper == NOOP_TYPE_REMAPPER) { irClass.cacheAssistedBinding = it }
       } else if (contextKey.hasDefault) {
