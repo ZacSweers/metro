@@ -3,6 +3,8 @@
 package dev.zacsweers.metro.compiler.ir.graph
 
 import dev.zacsweers.metro.compiler.graph.WrappedType
+import dev.zacsweers.metro.compiler.graph.WrappedType.Canonical
+import dev.zacsweers.metro.compiler.graph.WrappedType.Provider
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -144,11 +146,12 @@ internal class GraphMetadataReporter(
   }
 
   /**
-   * Builds JSON for a binding. Used for both graph bindings and encapsulated assisted targets.
+   * Builds JSON for a binding. Used for both graph bindings and encapsulated assisted-inject
+   * targets.
    *
    * @param binding The binding to serialize
    * @param graphTypeKeyRendered The graph's type key (for detecting the graph's own BoundInstance).
-   *   Pass null when serializing assisted targets (they're not in the graph).
+   *   Pass null when serializing assisted-inject targets (they're not in the graph).
    */
   private fun buildBindingJson(binding: IrBinding, graphTypeKeyRendered: String?): JsonObject {
     return buildJsonObject {
@@ -242,10 +245,10 @@ internal class GraphMetadataReporter(
     }
   }
 
-  /** Builds JSON for an assisted factory's encapsulated target binding. */
+  /** Builds JSON for an assisted factory's encapsulated assisted-inject target binding. */
   private fun buildAssistedTargetJson(assistedFactory: IrBinding.AssistedFactory): JsonObject {
     // Reuse the standard binding serialization, passing null for graphTypeKeyRendered
-    // since assisted targets are not in the main graph
+    // since assisted-inject targets are not in the main graph
     return buildBindingJson(assistedFactory.targetBinding, graphTypeKeyRendered = null)
   }
 

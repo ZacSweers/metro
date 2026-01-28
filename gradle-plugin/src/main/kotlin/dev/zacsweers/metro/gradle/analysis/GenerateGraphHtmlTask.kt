@@ -735,7 +735,7 @@ ${packages.mapIndexed { i, pkg ->
               <div class="edge-legend-item"><span class="edge-line injects"></span> Injects (member injection)</div>
               <div class="edge-legend-item"><span class="edge-line inherited"></span> Inherited binding (from parent)</div>
               <div class="edge-legend-item"><span class="edge-line deferrable"></span> Deferrable (Provider/Lazy)</div>
-              <div class="edge-legend-item"><span class="edge-line assisted"></span> Assisted injection</div>
+              <div class="edge-legend-item"><span class="edge-line assisted"></span> Assisted factory → inject</div>
               <div class="edge-legend-item"><span class="edge-line multibinding"></span> Multibinding source</div>
               <div class="edge-legend-item"><span class="edge-line alias"></span> Alias (type binding)</div>
               <div class="edge-legend-item"><span class="edge-line default"></span> Default value (fallback)</div>
@@ -876,7 +876,7 @@ ${packages.mapIndexed { i, pkg ->
                 'boundinstance': 'bound instance (graph @Provides input)',
                 'inherited': 'inherited binding (from parent graph)',
                 'deferrable': 'depends on (Provider/Lazy)',
-                'assisted': 'assisted injects',
+                'assisted': 'assisted factory creates',
                 'multibinding': 'multibinding source',
                 'alias': 'is an alias to',
                 'default': 'default value (fallback available)',
@@ -2187,7 +2187,7 @@ internal object Colors {
 
   // Edge type colors (for special edge types)
   const val EDGE_DEFERRABLE = SUBWAY_TEAL // Provider/Lazy
-  const val EDGE_ASSISTED = SUBWAY_RED // assisted injection
+  const val EDGE_ASSISTED = SUBWAY_RED // assisted factory → assisted-inject
   const val EDGE_INHERITED = SUBWAY_ORANGE // inherited from parent - match extension color
   const val EDGE_MULTIBINDING = SUBWAY_PURPLE // multibinding contributions
 

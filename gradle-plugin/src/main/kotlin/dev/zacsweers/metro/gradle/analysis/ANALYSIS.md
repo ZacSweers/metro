@@ -183,17 +183,17 @@ Always strip the annotation prefix before extracting package/display name.
 
 Links between nodes have different types for visual distinction:
 
-| Edge Type | Color | Style | Description |
-|-----------|-------|-------|-------------|
-| `normal` | Gray | Solid | Regular dependency |
-| `accessor` | Light Blue | Solid, thick | Graph entry point (exposed property) |
-| `deferrable` | Cyan | Dashed | Provider/Lazy wrapped (breaks cycles) |
-| `assisted` | Red | Solid, thick | Assisted factory to its target's dependencies |
-| `assisted-factory` | Red | Dashed, thick | Assisted factory to its assisted-inject target |
-| `multibinding` | Purple | Solid | Multibinding source contribution |
-| `alias` | Gray | Dotted | Type alias/binding |
-| `optional` | Gray | Dashed, faded | Has default value |
-| `inherited` | Magenta | Dashed | Inherited binding from parent graph |
+| Edge Type          | Color      | Style         | Description                                       |
+|--------------------|------------|---------------|---------------------------------------------------|
+| `normal`           | Gray       | Solid         | Regular dependency                                |
+| `accessor`         | Light Blue | Solid, thick  | Graph entry point (exposed property)              |
+| `deferrable`       | Cyan       | Dashed        | Provider/Lazy wrapped (breaks cycles)             |
+| `assisted-inject`  | Red        | Solid, thick  | Assisted inject type to its target's dependencies |
+| `assisted-factory` | Red        | Dashed, thick | Assisted factory to its assisted-inject target    |
+| `multibinding`     | Purple     | Solid         | Multibinding source contribution                  |
+| `alias`            | Gray       | Dotted        | Type alias/binding                                |
+| `optional`         | Gray       | Dashed, faded | Has default value                                 |
+| `inherited`        | Magenta    | Dashed        | Inherited binding from parent graph               |
 
 ## Node Categories
 
@@ -213,12 +213,12 @@ Synthetic nodes (generated/internal) have reduced opacity (0.6).
 
 The main graph and graph extensions have distinct visual styles via shape and size:
 
-| Node Type | Shape | Size | Description |
-|-----------|-------|------|-------------|
-| **Main Graph** | Diamond | 28 | The root `@DependencyGraph` node |
-| **Graph Extension** | RoundRect | 22 | `@GraphExtension` nodes |
-| **Scoped Binding** | Circle | 20 | Any scoped binding (with magenta border) |
-| **Regular Binding** | Circle | 12 | Standard bindings |
+| Node Type           | Shape     | Size | Description                              |
+|---------------------|-----------|------|------------------------------------------|
+| **Main Graph**      | Diamond   | 28   | The root `@DependencyGraph` node         |
+| **Graph Extension** | RoundRect | 22   | `@GraphExtension` nodes                  |
+| **Scoped Binding**  | Circle    | 20   | Any scoped binding (with magenta border) |
+| **Regular Binding** | Circle    | 12   | Standard bindings                        |
 
 The tooltip displays special labels: `◆ GRAPH` for the main graph and `▢ EXTENSION` for extensions.
 
