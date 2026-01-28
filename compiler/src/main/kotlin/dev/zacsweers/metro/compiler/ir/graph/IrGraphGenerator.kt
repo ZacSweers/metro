@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
+import androidx.collection.IntObjectMap
+import androidx.collection.MutableIntObjectMap
+import androidx.collection.emptyIntObjectMap
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
@@ -778,9 +781,12 @@ internal class IrGraphGenerator(
    * Returns a map from shard index to the property used to access that shard. Returns empty map for
    * graph-as-shard mode.
    */
-  private fun IrClass.createShardFieldProperties(shardResult: ShardResult): Map<Int, IrProperty> =
+  private fun IrClass.createShardFieldProperties(
+    shardResult: ShardResult
+  ): IntObjectMap<IrProperty> =
     if (!shardResult.isGraphAsShard) {
-      shardResult.shards.associate { shard ->
+      val result = MutableIntObjectMap<IrProperty>(shardResult.shards.size)
+      shardResult.shards.forEach { shard ->
         val shardField =
           addProperty {
               name = propertyNameAllocator.newName("shard${shard.index + 1}").asName()
@@ -792,16 +798,17 @@ internal class IrGraphGenerator(
                 visibility = DescriptorVisibilities.INTERNAL
               }
             }
-        shard.index to shardField
+        result[shard.index] = shardField
       }
+      result
     } else {
-      emptyMap()
+      emptyIntObjectMap()
     }
 
   /** Adds shard instantiation statements to the constructor for nested shards. */
   private fun initShardFields(
     shardResult: ShardResult,
-    shardFields: Map<Int, IrProperty>,
+    shardFields: IntObjectMap<IrProperty>,
     constructorStatements: MutableList<InitStatement>,
   ) {
     if (shardResult.isGraphAsShard) return
@@ -834,7 +841,7 @@ internal class IrGraphGenerator(
    */
   private fun processShards(
     shardResult: ShardResult,
-    shardFields: Map<Int, IrProperty>,
+    shardFields: IntObjectMap<IrProperty>,
     ancestorGraphProperties: Map<IrTypeKey, List<IrProperty>>,
     expressionGeneratorFactory: GraphExpressionGenerator.Factory,
     thisReceiverParameter: IrValueParameter,
@@ -855,7 +862,7 @@ internal class IrGraphGenerator(
   /** Processes a single shard, generating its property initializers and constructor code. */
   private fun processShard(
     shard: Shard,
-    shardFields: Map<Int, IrProperty>,
+    shardFields: IntObjectMap<IrProperty>,
     ancestorGraphProperties: Map<IrTypeKey, List<IrProperty>>,
     expressionGeneratorFactory: GraphExpressionGenerator.Factory,
     thisReceiverParameter: IrValueParameter,

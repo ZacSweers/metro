@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
+import androidx.collection.emptyIntObjectMap
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.asName
@@ -351,7 +352,7 @@ internal class SwitchingProviderGenerator(
           shardThisReceiver = switchingProviderThisReceiver,
           currentShardIndex = ShardExpressionContext.SWITCHING_PROVIDER_SHARD_INDEX,
           // Inherit shard fields from the parent context if we're in a shard
-          shardFields = shardExprContext?.shardFields ?: emptyMap(),
+          shardFields = shardExprContext?.shardFields ?: emptyIntObjectMap(),
           ancestorGraphProperties = shardExprContext?.ancestorGraphProperties ?: emptyMap(),
           // For SwitchingProvider inside a shard, include the shard's graph property for
           // cross-shard access (this.graph.shardGraphProperty.shardField.property)

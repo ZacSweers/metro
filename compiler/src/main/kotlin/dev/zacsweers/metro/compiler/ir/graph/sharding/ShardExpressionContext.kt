@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph.sharding
 
+import androidx.collection.IntObjectMap
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.graph.parentGraphInstanceProperty
 import org.jetbrains.kotlin.ir.declarations.IrProperty
@@ -42,7 +43,7 @@ internal class ShardExpressionContext(
    */
   val currentShardIndex: Int,
   /** Map of shard index to shard field property on the main class (for cross-shard access). */
-  val shardFields: Map<Int, IrProperty>,
+  val shardFields: IntObjectMap<IrProperty>,
   /**
    * For extension graphs (inner classes), maps ancestor graph type keys to the property chain
    * needed to access that ancestor from this graph. For example, to access the parent graph from an

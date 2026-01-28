@@ -4,7 +4,10 @@ Changelog
 **Unreleased**
 --------------
 
-### New
+0.10.2
+------
+
+_2026-01-28_
 
 ### Enhancements
 
@@ -16,10 +19,6 @@ Changelog
 - **[IR]** Don't try class binding lookups for nullable types. These must always be explicitly provided.
 - **[IR]** Disambiguate return-type overloads of generated `@Binds` functions for `@Contributes` annotations that contribute multiple interfaces of the same simple name but different package name.
 - **[IR]** Skip assisted parameters when validating parameter type matching on native compilations.
-
-### Changes
-
-### Contributors
 
 0.10.1
 ------

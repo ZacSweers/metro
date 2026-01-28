@@ -117,7 +117,7 @@ internal open class MutableBindingGraph<
         bindings: ScatterMap<TypeKey, Binding>,
         stack: BindingStack,
         roots: Map<ContextualTypeKey, BindingStackEntry>,
-        adjacency: Map<TypeKey, Set<TypeKey>>,
+        adjacency: GraphAdjacency<TypeKey>,
       ) -> Unit =
       { _, _, _, _ -> /* noop */
       },
@@ -135,7 +135,7 @@ internal open class MutableBindingGraph<
     /**
      * Build the full adjacency mapping of keys to all their dependencies.
      *
-     * Note that `onMissing` will gracefully allow missing targets that have default values (i.e.
+     * Note that `onMissing` will gracefully allow missing targets that have default values (i.e.,
      * optional bindings).
      */
     val fullAdjacency =
@@ -163,9 +163,6 @@ internal open class MutableBindingGraph<
     // Report all missing bindings _after_ building adjacency so we can backtrace where possible
     missingBindings.forEach { (key, stack) -> reportMissingBinding(key, stack) }
 
-    // Validate bindings
-    validateBindings(bindings, stack, roots, fullAdjacency)
-
     val topo =
       traceNested("Sort and validate") {
         val allKeeps =
@@ -177,11 +174,15 @@ internal open class MutableBindingGraph<
         sortAndValidate(roots, allKeeps, fullAdjacency, stack, onSortedCycle)
       }
 
+    // Validate bindings using the reachable adjacency computed during topo sort.
+    // This is more efficient as it only includes reachable bindings/edges.
+    validateBindings(bindings, stack, roots, topo.adjacency)
+
     traceNested("Compute binding indices") {
       // If it depends itself or something that comes later in the topo sort, it
       // must be deferred. This is how we handle cycles that are broken by deferrable
       // types like Provider/Lazy/...
-      // O(1) “does A depend on B?”
+      // O(1) ("does A depend on B?")
       for ((i, key) in topo.sortedKeys.withIndex()) {
         bindingIndices.put(key, i)
       }
