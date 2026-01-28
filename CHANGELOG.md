@@ -9,6 +9,7 @@ Changelog
 ### Enhancements
 
 - **[IR]**: Use `androidx.collection` primitive and scatter collections in a few more places to further help improve memory performance.
+- **[IR]**: Don't attempt to generate a graph impl if validation at any level in processing fails, as this could result in obscure extra errors getting reported after the relevant initial error.
 
 ### Fixes
 
