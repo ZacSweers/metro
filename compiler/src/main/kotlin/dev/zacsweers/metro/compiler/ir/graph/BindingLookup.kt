@@ -875,4 +875,5 @@ internal var IrClass.cachedConstructorInjectedBinding: IrBinding.ConstructorInje
   irAttribute(copyByDefault = false)
 
 /** Cached [IrBinding.AssistedFactory] binding for this class factory. */
-internal var IrClass.cacheAssistedFactoryBinding: IrBinding.AssistedFactory? by irAttribute(copyByDefault = false)
+internal var IrClass.cacheAssistedFactoryBinding: IrBinding.AssistedFactory? by
+  irAttribute(copyByDefault = false)

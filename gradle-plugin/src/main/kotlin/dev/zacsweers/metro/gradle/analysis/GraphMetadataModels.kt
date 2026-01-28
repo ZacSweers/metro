@@ -83,9 +83,9 @@ public data class BindingMetadata(
 )
 
 /**
- * Metadata for an assisted-inject target binding encapsulated within an Assisted factory.
- * Since assisted-inject targets are not in the main binding graph, their information is
- * exposed through this nested structure on the factory binding.
+ * Metadata for an assisted-inject target binding encapsulated within an Assisted factory. Since
+ * assisted-inject targets are not in the main binding graph, their information is exposed through
+ * this nested structure on the factory binding.
  *
  * This has the same structure as [BindingMetadata] plus [assistedParameters].
  */
@@ -108,11 +108,7 @@ public data class AssistedTargetMetadata(
 )
 
 /** Metadata for an assisted parameter (injected at call time). */
-@Serializable
-public data class AssistedParameterMetadata(
-  val key: String,
-  val name: String,
-)
+@Serializable public data class AssistedParameterMetadata(val key: String, val name: String)
 
 /** Metadata for a dependency reference. */
 @Serializable
