@@ -195,9 +195,10 @@ internal class IrBindingGraph(
 
   fun requireBinding(contextKey: IrContextualTypeKey): IrBinding {
     return realGraph[contextKey.typeKey]
-      ?: run {
-        if (contextKey.hasDefault) return IrBinding.Absent(contextKey.typeKey)
-        exitProcessing()
+      ?: if (contextKey.hasDefault) {
+        IrBinding.Absent(contextKey.typeKey)
+      } else {
+        reportCompilerBug("No expected binding found for key $contextKey")
       }
   }
 

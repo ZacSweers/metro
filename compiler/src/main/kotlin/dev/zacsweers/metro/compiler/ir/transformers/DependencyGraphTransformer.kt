@@ -94,6 +94,7 @@ internal data class ValidationResult(
   val childValidationResults: List<ValidationResult>,
   /** Context keys this graph uses from parent (reported back for extraKeeps). */
   val usedParentContextKeys: Set<IrContextualTypeKey>,
+  val hasErrors: Boolean,
 )
 
 internal class DependencyGraphTransformer(
@@ -274,7 +275,8 @@ internal class DependencyGraphTransformer(
             parentContext,
           )
         }
-      if (validationResult.sealResult.hasErrors) {
+
+      if (validationResult.hasErrors) {
         val result = validationResult.sealResult
         return result
       }
@@ -349,6 +351,7 @@ internal class DependencyGraphTransformer(
     // Collect child validation results for deferred generation (populated if there are extensions)
     val childValidationResults = mutableListOf<ValidationResult>()
     var usedParentContextKeys: Set<IrContextualTypeKey> = emptySet()
+    var hasErrors = false
 
     // Before validating/sealing the parent graph, analyze contributed child graphs to
     // determine any parent-scoped static bindings that are required by children and
@@ -436,6 +439,12 @@ internal class DependencyGraphTransformer(
 
         childValidationResults.add(childValidation)
 
+        if (childValidation.hasErrors) {
+          hasErrors = true
+          // Don't try to do further processing here
+          continue
+        }
+
         // Capture the used keys for this graph extension
         val usedContextKeys = localParentContext.usedContextKeys()
 
@@ -501,6 +510,10 @@ internal class DependencyGraphTransformer(
 
     sealResult.reportUnusedInputs(dependencyGraphDeclaration)
 
+    if (sealResult.hasErrors) {
+      hasErrors = true
+    }
+
     // Build validation result (may have errors - caller will check)
     val validationResult =
       ValidationResult(
@@ -511,9 +524,10 @@ internal class DependencyGraphTransformer(
         graphExtensionGenerator = graphExtensionGenerator,
         childValidationResults = childValidationResults,
         usedParentContextKeys = usedParentContextKeys,
+        hasErrors = hasErrors,
       )
 
-    if (sealResult.hasErrors) {
+    if (hasErrors) {
       // Return early with errors - caller will handle
       return validationResult
     }
