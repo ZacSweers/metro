@@ -125,7 +125,10 @@ internal class BindingLookup(
   private fun putBindingInner(binding: IrBinding) {
     val previous = bindingsCache.put(binding.typeKey, binding)
 
-    if (previous != null) {
+    /** Only track as duplicate if it's a different binding instance. The same binding instance can
+     * be added through multiple paths (e.g., inherited from parent and also directly contributed),
+     * which is not a true duplicate. */
+    if (previous != null && previous !== binding) {
       duplicateBindings.getOrInit(binding.typeKey).run {
         add(previous)
         add(binding)
