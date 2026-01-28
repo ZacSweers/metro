@@ -4,6 +4,21 @@ Changelog
 **Unreleased**
 --------------
 
+### New
+
+### Enhancements
+
+- **[IR]**: Use `androidx.collection` primitive and scatter collections in a few more places to further help improve memory performance.
+
+### Fixes
+
+### Changes
+
+- **[IR]**: Rework assisted inject bindings to be encapsulated by their consuming assisted factory bindings in graph validation.
+    - This ensures these classes can't accidentally participate in `SwitchingProvider`s or valid cycle breaking with `DelegateFactory`, as both of those require `Provider` types and assisted-inject types' factories don't implement `Provider`.
+
+### Contributors
+
 0.10.2
 ------
 
