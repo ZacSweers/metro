@@ -174,7 +174,7 @@ internal class GraphMetadataReporter(
       val dependencies =
         when {
           isGraphBinding -> JsonArray(emptyList())
-          binding is IrBinding.Assisted -> JsonArray(emptyList())
+          binding is IrBinding.AssistedFactory -> JsonArray(emptyList())
           else -> buildDependenciesArray(binding.dependencies, binding)
         }
       put("dependencies", dependencies)
@@ -214,7 +214,7 @@ internal class GraphMetadataReporter(
       if (binding is IrBinding.Alias) {
         put("aliasTarget", JsonPrimitive(binding.aliasedType.render(short = false)))
       }
-      if (binding is IrBinding.Assisted) {
+      if (binding is IrBinding.AssistedFactory) {
         put("assistedTarget", buildAssistedTargetJson(binding))
       }
 
@@ -243,10 +243,10 @@ internal class GraphMetadataReporter(
   }
 
   /** Builds JSON for an assisted factory's encapsulated target binding. */
-  private fun buildAssistedTargetJson(assisted: IrBinding.Assisted): JsonObject {
+  private fun buildAssistedTargetJson(assistedFactory: IrBinding.AssistedFactory): JsonObject {
     // Reuse the standard binding serialization, passing null for graphTypeKeyRendered
     // since assisted targets are not in the main graph
-    return buildBindingJson(assisted.targetBinding, graphTypeKeyRendered = null)
+    return buildBindingJson(assistedFactory.targetBinding, graphTypeKeyRendered = null)
   }
 
   private fun buildDependenciesArray(

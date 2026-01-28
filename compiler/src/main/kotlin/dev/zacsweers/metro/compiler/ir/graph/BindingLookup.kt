@@ -844,11 +844,11 @@ internal class BindingLookup(
         val wrappedDependencies = targetBinding.dependencies.map { dep -> dep.wrapInProvider() }
 
         bindings +=
-          irClass.cacheAssistedBinding.takeIf {
+          irClass.cacheAssistedFactoryBinding.takeIf {
             // Allow use of cached instances if no generics
             remapper == NOOP_TYPE_REMAPPER
           }
-            ?: IrBinding.Assisted(
+            ?: IrBinding.AssistedFactory(
                 type = irClass,
                 targetBinding = targetBinding,
                 function = function,
@@ -857,7 +857,7 @@ internal class BindingLookup(
                 parameters = function.parameters(),
                 dependencies = wrappedDependencies,
               )
-              .alsoIf(remapper == NOOP_TYPE_REMAPPER) { irClass.cacheAssistedBinding = it }
+              .alsoIf(remapper == NOOP_TYPE_REMAPPER) { irClass.cacheAssistedFactoryBinding = it }
       } else if (contextKey.hasDefault) {
         bindings += IrBinding.Absent(key)
       } else {
@@ -874,5 +874,5 @@ internal class BindingLookup(
 internal var IrClass.cachedConstructorInjectedBinding: IrBinding.ConstructorInjected? by
   irAttribute(copyByDefault = false)
 
-/** Cached [IrBinding.ConstructorInjected] binding for this class factory. */
-internal var IrClass.cacheAssistedBinding: IrBinding.Assisted? by irAttribute(copyByDefault = false)
+/** Cached [IrBinding.AssistedFactory] binding for this class factory. */
+internal var IrClass.cacheAssistedFactoryBinding: IrBinding.AssistedFactory? by irAttribute(copyByDefault = false)

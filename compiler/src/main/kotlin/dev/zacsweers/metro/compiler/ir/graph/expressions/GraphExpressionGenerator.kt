@@ -336,7 +336,7 @@ private constructor(
           }
         }
 
-        is Assisted -> {
+        is AssistedFactory -> {
           // Example9_Factory_Impl.create(example9Provider);
           val factoryImpl = assistedFactoryTransformer.getOrGenerateImplClass(binding.type)
 

@@ -356,7 +356,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
    * (its `MetroFactory` doesn't implement `Provider`)
    */
   @Poko
-  class Assisted(
+  class AssistedFactory(
     @Poko.Skip override val type: IrClass,
     @Poko.Skip val targetBinding: ConstructorInjected,
     @Poko.Skip val function: IrSimpleFunction,
@@ -369,7 +369,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
      * time since wrapping requires [IrMetroContext].
      */
     override val dependencies: List<IrContextualTypeKey>,
-  ) : IrBinding, BindingWithAnnotations, InjectedClassBinding<Assisted> {
+  ) : IrBinding, BindingWithAnnotations, InjectedClassBinding<AssistedFactory> {
     override val nameHint: String = type.name.asString()
     override val scope: IrAnnotation? = null
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
@@ -378,9 +378,9 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
 
     override val isImplicitlyDeferrable: Boolean = true
 
-    override fun withMapKey(mapKey: IrAnnotation?): Assisted {
+    override fun withMapKey(mapKey: IrAnnotation?): AssistedFactory {
       if (mapKey == null) return this
-      return Assisted(
+      return AssistedFactory(
         type,
         targetBinding,
         function,

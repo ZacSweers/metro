@@ -115,7 +115,7 @@ internal class BindingPropertyCollector(
       is GraphDependency,
       is Alias,
       is Absent,
-      is Assisted,
+      is AssistedFactory,
       is GraphExtension,
       // Multibindings use GETTER properties, never FIELD (this check is redundant but explicit)
       is Multibinding,
@@ -262,7 +262,7 @@ internal class BindingPropertyCollector(
 
     // Track assisted-inject target usage. Only targets used by multiple Assisted bindings
     // need FIELD properties for sharing. Single-use targets are inlined.
-    if (binding is IrBinding.Assisted) {
+    if (binding is IrBinding.AssistedFactory) {
       val targetBinding = binding.targetBinding
       val targetKey = targetBinding.typeKey
       val (existingBinding, count) = assistedTargetCounts[targetKey] ?: (targetBinding to 0)
