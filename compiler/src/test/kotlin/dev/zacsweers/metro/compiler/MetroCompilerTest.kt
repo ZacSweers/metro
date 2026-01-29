@@ -326,6 +326,12 @@ abstract class MetroCompilerTest {
               MetroOption.PLUGIN_ORDER_SET -> {
                 processor.option(entry.raw.cliOption, pluginOrderSet?.toString().orEmpty())
               }
+              MetroOption.COMPILER_VERSION -> {
+                processor.option(
+                  entry.raw.cliOption,
+                  this@toPluginOptions.compilerVersion.orEmpty(),
+                )
+              }
             }
           yield(option)
         }

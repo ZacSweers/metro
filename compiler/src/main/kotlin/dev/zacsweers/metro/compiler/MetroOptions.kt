@@ -776,6 +776,18 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
       valueMapper = { it },
     )
+  ),
+  COMPILER_VERSION(
+    RawMetroOption(
+      name = "compiler-version",
+      defaultValue = "",
+      valueDescription = "<version>",
+      description =
+        "Override the Kotlin compiler version Metro operates with. If set, Metro will behave as if running in this Kotlin environment (e.g., 2.3.20-dev-1234).",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it },
+    )
   );
 
   companion object {
@@ -929,6 +941,8 @@ public data class MetroOptions(
       .expectAs<String>()
       .takeUnless(String::isBlank)
       ?.toBooleanStrict(),
+  public val compilerVersion: String? =
+    MetroOption.COMPILER_VERSION.raw.defaultValue.expectAs<String>().takeUnless(String::isBlank),
 ) {
 
   public val reportsEnabled: Boolean
@@ -1030,6 +1044,7 @@ public data class MetroOptions(
     public var patchKlibParams: Boolean = base.patchKlibParams
     public var forceEnableFirInIde: Boolean = base.forceEnableFirInIde
     public var pluginOrderSet: Boolean? = base.pluginOrderSet
+    public var compilerVersion: String? = base.compilerVersion
 
     private fun FqName.classId(name: String): ClassId {
       return ClassId(this, Name.identifier(name))
@@ -1204,6 +1219,7 @@ public data class MetroOptions(
         patchKlibParams = patchKlibParams,
         forceEnableFirInIde = forceEnableFirInIde,
         pluginOrderSet = pluginOrderSet,
+        compilerVersion = compilerVersion,
       )
     }
 
@@ -1402,6 +1418,9 @@ public data class MetroOptions(
           PLUGIN_ORDER_SET -> {
             pluginOrderSet =
               configuration.getAsString(entry).takeUnless(String::isBlank)?.toBooleanStrict()
+          }
+          COMPILER_VERSION -> {
+            compilerVersion = configuration.getAsString(entry).takeUnless(String::isBlank)
           }
         }
       }

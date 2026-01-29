@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler
 
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.compat.KotlinToolingVersion
 import dev.zacsweers.metro.compiler.fir.MetroFirExtensionRegistrar
 import dev.zacsweers.metro.compiler.ir.MetroIrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
@@ -38,11 +39,13 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
 
     if (!options.enabled) return
 
-    val version by memoize { CompatContext.Factory.loadCompilerVersionOrNull() }
+    val version =
+      options.compilerVersion?.let(::KotlinToolingVersion)
+        ?: CompatContext.Factory.loadCompilerVersionOrNull()
 
     val enableFir =
-      options.forceEnableFirInIde ||
-        (version != null && version!!.patch != ANDROID_STUDIO_CANARY_PATCH)
+      version != null &&
+        (version.patch != ANDROID_STUDIO_CANARY_PATCH || options.forceEnableFirInIde)
 
     if (!enableFir) {
       // While the option is about FIR, this really also means we can't/don't enable IR
@@ -82,7 +85,7 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
       messageCollector.report(CompilerMessageSeverity.INFO, "Metro options:\n$options")
     }
 
-    val compatContext = CompatContext.getInstance()
+    val compatContext = CompatContext.create(version)
 
     FirExtensionRegistrarAdapter.registerExtension(
       MetroFirExtensionRegistrar(classIds, options, compatContext)

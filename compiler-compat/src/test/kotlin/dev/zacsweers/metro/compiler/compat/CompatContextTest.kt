@@ -20,6 +20,11 @@ class CompatContextTest {
     }
   }
 
+  internal fun CompatContext.Companion.resolveFactory(
+    factories: Sequence<CompatContext.Factory>,
+    testVersionString: String,
+  ) = resolveFactory(KotlinToolingVersion(testVersionString), factories)
+
   // Regression test for https://github.com/ZacSweers/metro/issues/1544
   @Test
   fun `stable version does select latest RC factory`() {

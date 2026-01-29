@@ -161,7 +161,7 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
     if (!options.enabled) return
 
     val classIds = ClassIds.fromOptions(options)
-    val compatContext = CompatContext.getInstance()
+    val compatContext = CompatContext.create()
     FirExtensionRegistrarAdapter.registerExtension(
       MetroFirExtensionRegistrar(
         classIds,

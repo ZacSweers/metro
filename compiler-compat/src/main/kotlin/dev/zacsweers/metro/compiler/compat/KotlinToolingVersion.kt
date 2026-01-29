@@ -8,7 +8,7 @@ package dev.zacsweers.metro.compiler.compat
 
 import java.io.Serializable
 
-internal fun KotlinToolingVersion(kotlinVersionString: String): KotlinToolingVersion {
+public fun KotlinToolingVersion(kotlinVersionString: String): KotlinToolingVersion {
   val baseVersion = kotlinVersionString.split("-", limit = 2)[0]
   val classifier = kotlinVersionString.split("-", limit = 2).getOrNull(1)
 

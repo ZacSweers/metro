@@ -46,11 +46,6 @@ import org.jetbrains.kotlin.name.Name
 
 public interface CompatContext {
   public companion object Companion {
-    private val _instance: CompatContext by lazy { create() }
-
-    // TODO ehhhh
-    public fun getInstance(): CompatContext = _instance
-
     private fun loadFactories(): Sequence<Factory> {
       return ServiceLoader.load(Factory::class.java, Factory::class.java.classLoader).asSequence()
     }
@@ -58,7 +53,7 @@ public interface CompatContext {
     /**
      * Load [factories][Factory] and pick the highest compatible version (by [Factory.minVersion]).
      *
-     * dev track versions are special cased to avoid issues with divergent release tracks.
+     * `dev` track versions are special-cased to avoid issues with divergent release tracks.
      *
      * When the current version is a dev build:
      * 1. First, look for dev track factories and compare only within the dev track
@@ -68,9 +63,10 @@ public interface CompatContext {
      * factory just because beta > dev in maturity ordering.
      */
     internal fun resolveFactory(
+      knownVersion: KotlinToolingVersion? = null,
       factories: Sequence<Factory> = loadFactories(),
-      testVersionString: String? = null,
     ): Factory {
+      // TODO short-circuit if we hit a factory with the exact version
       val factoryDataList =
         factories
           .mapNotNull { factory ->
@@ -85,9 +81,7 @@ public interface CompatContext {
           .toList()
 
       val currentVersion =
-        testVersionString?.let { KotlinToolingVersion(it) }
-          ?: factoryDataList.firstOrNull()?.version
-          ?: error("No factories available")
+        knownVersion ?: factoryDataList.firstOrNull()?.version ?: error("No factories available")
 
       val targetFactory = resolveFactoryForVersion(currentVersion, factoryDataList)
       return targetFactory
@@ -136,7 +130,8 @@ public interface CompatContext {
         ?.factory
     }
 
-    private fun create(): CompatContext = resolveFactory().create()
+    public fun create(knownVersion: KotlinToolingVersion? = null): CompatContext =
+      resolveFactory(knownVersion).create()
   }
 
   public interface Factory {

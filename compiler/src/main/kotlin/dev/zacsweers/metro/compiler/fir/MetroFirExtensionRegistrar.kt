@@ -44,12 +44,18 @@ public class MetroFirExtensionRegistrar(
     ::loadExternalContributionExtensions,
 ) : FirExtensionRegistrar() {
   override fun ExtensionRegistrarContext.configurePlugin() {
-    +MetroFirBuiltIns.getFactory(classIds, options)
+    +MetroFirBuiltIns.getFactory(classIds, options, compatContext)
     +::MetroFirCheckers
     +supertypeGenerator("Supertypes - graph factory", ::GraphFactoryFirSupertypeGenerator, false)
     +supertypeGenerator(
       "Supertypes - contributed interfaces",
-      { ContributedInterfaceSupertypeGenerator(it, loadExternalContributionExtensions) },
+      { session, compatContext ->
+        ContributedInterfaceSupertypeGenerator(
+          session,
+          compatContext,
+          loadExternalContributionExtensions,
+        )
+      },
       true,
     )
     +supertypeGenerator(
@@ -58,9 +64,9 @@ public class MetroFirExtensionRegistrar(
       false,
     )
     if (options.transformProvidersToPrivate) {
-      +::FirProvidesStatusTransformer
+      +{ session: FirSession -> FirProvidesStatusTransformer(session, compatContext) }
     }
-    +::FirAccessorOverrideStatusTransformer
+    +{ session: FirSession -> FirAccessorOverrideStatusTransformer(session, compatContext) }
 
     // Register the composite declaration generator that includes external extensions
     +compositeDeclarationGenerator()
@@ -83,49 +89,49 @@ public class MetroFirExtensionRegistrar(
       // Build list of native Metro generators
       val nativeExtensions = buildList {
         add(
-          wrapNativeGenerator("FirGen - InjectedClass", true) { session ->
-            InjectedClassFirGenerator(session, compatContext)
-          }(session)
+          wrapNativeGenerator("FirGen - InjectedClass", true, ::InjectedClassFirGenerator)(session)
         )
 
         if (options.generateAssistedFactories) {
           add(
-            wrapNativeGenerator("FirGen - AssistedFactory", true) { session ->
-              AssistedFactoryFirGenerator(session, compatContext)
-            }(session)
+            wrapNativeGenerator("FirGen - AssistedFactory", true, ::AssistedFactoryFirGenerator)(
+              session
+            )
           )
         }
 
         add(
-          wrapNativeGenerator("FirGen - ProvidesFactory", true) { session ->
-            ProvidesFactoryFirGenerator(session, compatContext)
-          }(session)
+          wrapNativeGenerator("FirGen - ProvidesFactory", true, ::ProvidesFactoryFirGenerator)(
+            session
+          )
         )
 
         add(
-          wrapNativeGenerator("FirGen - BindingMirrorClass", true) { session ->
-            BindingMirrorClassFirGenerator(session, compatContext)
-          }(session)
+          wrapNativeGenerator(
+            "FirGen - BindingMirrorClass",
+            true,
+            ::BindingMirrorClassFirGenerator,
+          )(session)
         )
 
         add(
-          wrapNativeGenerator("FirGen - ContributionsGenerator", true) { session ->
-            ContributionsFirGenerator(session, compatContext)
-          }(session)
+          wrapNativeGenerator("FirGen - ContributionsGenerator", true, ::ContributionsFirGenerator)(
+            session
+          )
         )
 
         if (options.generateContributionHints && options.generateContributionHintsInFir) {
           add(
-            wrapNativeGenerator("FirGen - ContributionHints", true) { session ->
-              ContributionHintFirGenerator(session, compatContext)
-            }(session)
+            wrapNativeGenerator("FirGen - ContributionHints", true, ::ContributionHintFirGenerator)(
+              session
+            )
           )
         }
 
         add(
-          wrapNativeGenerator("FirGen - DependencyGraph", true) { session ->
-            DependencyGraphFirGenerator(session, compatContext)
-          }(session)
+          wrapNativeGenerator("FirGen - DependencyGraph", true, ::DependencyGraphFirGenerator)(
+            session
+          )
         )
       }
 
@@ -142,7 +148,7 @@ public class MetroFirExtensionRegistrar(
   private fun wrapNativeGenerator(
     tag: String,
     enableLogging: Boolean,
-    factory: (FirSession) -> FirDeclarationGenerationExtension,
+    factory: (FirSession, CompatContext) -> FirDeclarationGenerationExtension,
   ): (FirSession) -> FirDeclarationGenerationExtension {
     return { session ->
       val logger =
@@ -152,9 +158,9 @@ public class MetroFirExtensionRegistrar(
           MetroLogger.NONE
         }
       if (logger == MetroLogger.NONE) {
-        factory(session)
+        factory(session, compatContext)
       } else {
-        LoggingFirDeclarationGenerationExtension(session, logger, factory(session))
+        LoggingFirDeclarationGenerationExtension(session, logger, factory(session, compatContext))
       }
     }
   }
@@ -190,7 +196,7 @@ public class MetroFirExtensionRegistrar(
 
   private fun supertypeGenerator(
     tag: String,
-    delegate: ((FirSession) -> FirSupertypeGenerationExtension),
+    delegate: ((FirSession, CompatContext) -> FirSupertypeGenerationExtension),
     enableLogging: Boolean = false,
   ): FirSupertypeGenerationExtension.Factory {
     return FirSupertypeGenerationExtension.Factory { session ->
@@ -202,9 +208,9 @@ public class MetroFirExtensionRegistrar(
         }
       val extension =
         if (logger == MetroLogger.NONE) {
-          delegate(session)
+          delegate(session, compatContext)
         } else {
-          LoggingFirSupertypeGenerationExtension(session, logger, delegate(session))
+          LoggingFirSupertypeGenerationExtension(session, logger, delegate(session, compatContext))
         }
       extension.kotlinOnly()
     }
