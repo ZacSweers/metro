@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769640616253,
+  "lastUpdate": 1769645167230,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -4368,6 +4368,62 @@ window.BENCHMARK_DATA = {
             "value": 22633.322,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +1.25%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "1c3e03cc~1",
+          "message": "[before] Rework how assisted-inject bindings are modeled (#",
+          "timestamp": "2026-01-28T23:29:41Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/1c3e03cc34dd697c618c6fc785af38344ab851b8"
+        },
+        "date": 1769645167230,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 21712.512,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "1c3e03cc34dd697c618c6fc785af38344ab851b8",
+          "message": "[after] Rework how assisted-inject bindings are modeled (#",
+          "timestamp": "2026-01-28T23:29:41Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/1c3e03cc34dd697c618c6fc785af38344ab851b8"
+        },
+        "date": 1769645167231,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 21100.988,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -2.82%"
           }
         ]
       }
