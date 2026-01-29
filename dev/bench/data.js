@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769707742906,
+  "lastUpdate": 1769729288024,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -4536,6 +4536,62 @@ window.BENCHMARK_DATA = {
             "value": 0.21167067613486293,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -3.55%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "05a0e00b~1",
+          "message": "[before] Gate FIR IDE support on bad studio versions (#1758",
+          "timestamp": "2026-01-29T22:50:54Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/05a0e00b4d96534b1d1f1feb307ddd72eb3eb915"
+        },
+        "date": 1769729288024,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.21491408595819755,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "05a0e00b4d96534b1d1f1feb307ddd72eb3eb915",
+          "message": "[after] Gate FIR IDE support on bad studio versions (#1758",
+          "timestamp": "2026-01-29T22:50:54Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/05a0e00b4d96534b1d1f1feb307ddd72eb3eb915"
+        },
+        "date": 1769729288025,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2200016358664724,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +2.37%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }

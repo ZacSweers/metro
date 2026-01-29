@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769707743033,
+  "lastUpdate": 1769729288151,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -4536,6 +4536,62 @@ window.BENCHMARK_DATA = {
             "value": 21543.91,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -0.98%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "05a0e00b~1",
+          "message": "[before] Gate FIR IDE support on bad studio versions (#1758",
+          "timestamp": "2026-01-29T22:50:54Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/05a0e00b4d96534b1d1f1feb307ddd72eb3eb915"
+        },
+        "date": 1769729288151,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 21394.432,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "05a0e00b4d96534b1d1f1feb307ddd72eb3eb915",
+          "message": "[after] Gate FIR IDE support on bad studio versions (#1758",
+          "timestamp": "2026-01-29T22:50:54Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/05a0e00b4d96534b1d1f1feb307ddd72eb3eb915"
+        },
+        "date": 1769729288152,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 21807.916,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +1.93%"
           }
         ]
       }
