@@ -14,6 +14,7 @@ import org.gradle.api.problems.Problems
 import org.gradle.api.problems.Severity
 import org.gradle.api.provider.Provider
 import org.jetbrains.kotlin.buildtools.api.ExperimentalBuildToolsApi
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 import org.jetbrains.kotlin.gradle.dsl.kotlinExtension
 import org.jetbrains.kotlin.gradle.plugin.FilesSubpluginOption
@@ -43,10 +44,10 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
 
   private val problemReporter = problems.reporter
 
-  @OptIn(ExperimentalBuildToolsApi::class)
+  @OptIn(ExperimentalBuildToolsApi::class, ExperimentalKotlinGradlePluginApi::class)
   override fun apply(target: Project) {
     val compilerVersionProvider =
-      target.kotlinExtension.compilerVersion?.map { KotlinToolingVersion(it) }
+      target.kotlinExtension.compilerVersion.map { KotlinToolingVersion(it) }
         ?: target.provider { target.kotlinToolingVersion }
 
     val extension =

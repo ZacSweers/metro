@@ -27,9 +27,10 @@ public final class dev/zacsweers/metro/gradle/MetroGradleSubplugin : org/jetbrai
 }
 
 public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension {
-	public fun <init> (Lorg/jetbrains/kotlin/tooling/core/KotlinToolingVersion;Lorg/gradle/api/file/ProjectLayout;Lorg/gradle/api/model/ObjectFactory;Lorg/gradle/api/provider/ProviderFactory;)V
+	public fun <init> (Lorg/gradle/api/provider/Provider;Lorg/gradle/api/file/ProjectLayout;Lorg/gradle/api/model/ObjectFactory;Lorg/gradle/api/provider/ProviderFactory;)V
 	public final fun getAutomaticallyAddRuntimeDependencies ()Lorg/gradle/api/provider/Property;
 	public final fun getChunkFieldInits ()Lorg/gradle/api/provider/Property;
+	public final fun getCompilerVersion ()Lorg/gradle/api/provider/Property;
 	public final fun getContributesAsInject ()Lorg/gradle/api/provider/Property;
 	public final fun getDebug ()Lorg/gradle/api/provider/Property;
 	public final fun getEnableFullBindingGraphValidation ()Lorg/gradle/api/provider/Property;
