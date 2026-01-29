@@ -84,12 +84,12 @@ public val myNewOption: Property<Boolean> =
   objects.booleanProperty("metro.myNewOption", false)
 ```
 
-For options that should support gradle properties:
+For options that should support Gradle properties:
 ```kotlin
 objects.booleanProperty("metro.propertyName", defaultValue)
 ```
 
-For options without gradle property support:
+For options without Gradle property support:
 ```kotlin
 objects.property(Boolean::class.java).convention(false)
 ```
