@@ -24,7 +24,7 @@ This artifact depends on `metrox-viewmodel` transitively.
 
 ### 1. Set up your graph
 
-Set up your dependency graph and ViewModels for injection using [`metrox-viewmodel`](metrox-viewmodel.md#core-components).
+Set up your dependency graph and ViewModels for injection using [`metrox-viewmodel`](/metrox-viewmodel#core-components).
 
 ### 2. Provide LocalMetroViewModelFactory
 
