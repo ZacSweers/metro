@@ -1,6 +1,7 @@
-# Adding a New Metro Compiler Option
-
-This skill documents how to add a new compiler option to Metro.
+---
+name: add-compiler-option
+description: Adds a new compiler option to Metro.
+---
 
 ## Files to Update
 
