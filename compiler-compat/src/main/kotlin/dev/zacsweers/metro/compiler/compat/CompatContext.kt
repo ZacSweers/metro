@@ -405,6 +405,7 @@ public interface CompatContext {
     message =
       "usages of IrDeclarationOrigin constants are getting inlined and causing runtime failures, so we have a non-inline version to defeat this inlining",
   )
+  @IgnorableReturnValue
   public fun IrProperty.addBackingFieldCompat(builder: IrFieldBuilder.() -> Unit = {}): IrField
 
   @CompatApi(

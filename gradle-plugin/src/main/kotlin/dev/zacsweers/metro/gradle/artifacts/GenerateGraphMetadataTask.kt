@@ -54,9 +54,9 @@ public abstract class GenerateGraphMetadataTask : DefaultTask() {
   /** The output file where the consolidated metadata will be written. */
   @get:OutputFile public abstract val outputFile: RegularFileProperty
 
+  @OptIn(ExperimentalSerializationApi::class)
   private val json = Json {
     prettyPrint = true
-    @OptIn(ExperimentalSerializationApi::class)
     prettyPrintIndent = "  "
     encodeDefaults = true
   }

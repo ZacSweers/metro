@@ -86,11 +86,41 @@ data class BindingMetadata(
 Represents a dependency edge:
 ```kotlin
 data class DependencyMetadata(
-  val key: String,           // Type key of the dependency
-  val isDeferrable: Boolean, // Wrapped in Provider/Lazy (breaks cycles)
-  val isAssisted: Boolean,   // Assisted injection parameter
+  val key: String,            // Type key of the dependency
+  val hasDefault: Boolean,    // Has a default value
+  val wrapperType: String?,   // Wrapper type if wrapped (e.g., "Provider", "Lazy")
+) {
+  val isDeferrable: Boolean   // Computed: true if wrapperType != null
+}
+```
+
+### AssistedTargetMetadata
+For `Assisted` factory bindings, the encapsulated target is exposed via nested metadata.
+This has the same structure as `BindingMetadata` plus `assistedParameters`:
+```kotlin
+data class AssistedTargetMetadata(
+  val key: String,                                   // Target type key
+  val bindingKind: String,                           // Usually "ConstructorInjected"
+  val scope: String? = null,
+  val isScoped: Boolean = false,
+  val nameHint: String,
+  val dependencies: List<DependencyMetadata>,        // Target's actual dependencies
+  val origin: String? = null,
+  val declaration: String? = null,
+  val multibinding: MultibindingMetadata? = null,
+  val optionalWrapper: OptionalWrapperMetadata? = null,
+  val isSynthetic: Boolean = false,
+  val assistedParameters: List<AssistedParameterMetadata>,  // Call-time parameters
+)
+
+data class AssistedParameterMetadata(
+  val key: String,   // Type key
+  val name: String,  // Parameter name
 )
 ```
+
+Since assisted-inject targets are encapsulated within their factory bindings (not in the main graph),
+their information is exposed through `BindingMetadata.assistedTarget` for visualization.
 
 Note: Accessors are tracked only in the `roots` object, not as dependencies of the graph's BoundInstance binding.
 The `BindingGraph` class creates edges from the graph to accessor targets when building the graph structure,
@@ -153,16 +183,17 @@ Always strip the annotation prefix before extracting package/display name.
 
 Links between nodes have different types for visual distinction:
 
-| Edge Type | Color | Style | Description |
-|-----------|-------|-------|-------------|
-| `normal` | Gray | Solid | Regular dependency |
-| `accessor` | Light Blue | Solid, thick | Graph entry point (exposed property) |
-| `deferrable` | Cyan | Dashed | Provider/Lazy wrapped (breaks cycles) |
-| `assisted` | Orange | Solid, thick | Assisted injection |
-| `multibinding` | Purple | Solid | Multibinding source contribution |
-| `alias` | Gray | Dotted | Type alias/binding |
-| `optional` | Gray | Dashed, faded | Has default value |
-| `inherited` | Magenta | Dashed | Inherited binding from parent graph |
+| Edge Type          | Color      | Style         | Description                                       |
+|--------------------|------------|---------------|---------------------------------------------------|
+| `normal`           | Gray       | Solid         | Regular dependency                                |
+| `accessor`         | Light Blue | Solid, thick  | Graph entry point (exposed property)              |
+| `deferrable`       | Cyan       | Dashed        | Provider/Lazy wrapped (breaks cycles)             |
+| `assisted-inject`  | Red        | Solid, thick  | Assisted inject type to its target's dependencies |
+| `assisted-factory` | Red        | Dashed, thick | Assisted factory to its assisted-inject target    |
+| `multibinding`     | Purple     | Solid         | Multibinding source contribution                  |
+| `alias`            | Gray       | Dotted        | Type alias/binding                                |
+| `optional`         | Gray       | Dashed, faded | Has default value                                 |
+| `inherited`        | Magenta    | Dashed        | Inherited binding from parent graph               |
 
 ## Node Categories
 
@@ -172,7 +203,8 @@ Nodes are colored by binding kind:
 - **Alias** - Gray (synthetic)
 - **BoundInstance** - Light Blue
 - **Multibinding** - Pink
-- **Assisted** - Peach
+- **Assisted Factory** - Red (factory that creates assisted-inject instances)
+- **Assisted Inject** - Red (target of assisted injection, encapsulated in factory)
 - **Scoped bindings** - Magenta border
 
 Synthetic nodes (generated/internal) have reduced opacity (0.6).
@@ -181,12 +213,12 @@ Synthetic nodes (generated/internal) have reduced opacity (0.6).
 
 The main graph and graph extensions have distinct visual styles via shape and size:
 
-| Node Type | Shape | Size | Description |
-|-----------|-------|------|-------------|
-| **Main Graph** | Diamond | 28 | The root `@DependencyGraph` node |
-| **Graph Extension** | RoundRect | 22 | `@GraphExtension` nodes |
-| **Scoped Binding** | Circle | 20 | Any scoped binding (with magenta border) |
-| **Regular Binding** | Circle | 12 | Standard bindings |
+| Node Type           | Shape     | Size | Description                              |
+|---------------------|-----------|------|------------------------------------------|
+| **Main Graph**      | Diamond   | 28   | The root `@DependencyGraph` node         |
+| **Graph Extension** | RoundRect | 22   | `@GraphExtension` nodes                  |
+| **Scoped Binding**  | Circle    | 20   | Any scoped binding (with magenta border) |
+| **Regular Binding** | Circle    | 12   | Standard bindings                        |
 
 The tooltip displays special labels: `◆ GRAPH` for the main graph and `▢ EXTENSION` for extensions.
 

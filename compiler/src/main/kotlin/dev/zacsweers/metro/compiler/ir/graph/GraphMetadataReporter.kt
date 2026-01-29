@@ -3,6 +3,8 @@
 package dev.zacsweers.metro.compiler.ir.graph
 
 import dev.zacsweers.metro.compiler.graph.WrappedType
+import dev.zacsweers.metro.compiler.graph.WrappedType.Canonical
+import dev.zacsweers.metro.compiler.graph.WrappedType.Provider
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -43,67 +45,7 @@ internal class GraphMetadataReporter(
         .asMap()
         .values
         .sortedBy { it.contextualTypeKey.render(short = false, includeQualifier = true) }
-        .map { binding ->
-          buildJsonObject {
-            put(
-              "key",
-              JsonPrimitive(
-                binding.contextualTypeKey.render(short = false, includeQualifier = true)
-              ),
-            )
-            val bindingKind = binding.javaClass.simpleName ?: binding.javaClass.name
-            put("bindingKind", JsonPrimitive(bindingKind))
-            binding.scope?.let { put("scope", JsonPrimitive(it.render(short = false))) }
-            put("isScoped", JsonPrimitive(binding.isScoped()))
-            put("nameHint", JsonPrimitive(binding.nameHint))
-            // For the graph's own binding (BoundInstance), dependencies are empty -
-            // accessors are tracked separately in the "roots" object
-            val isGraphBinding =
-              binding is IrBinding.BoundInstance &&
-                binding.contextualTypeKey.render(short = false, includeQualifier = true) ==
-                  graphTypeKeyRendered
-            val dependencies =
-              if (isGraphBinding) {
-                JsonArray(emptyList())
-              } else {
-                buildDependenciesArray(binding.dependencies, binding)
-              }
-            put("dependencies", dependencies)
-            // Determine if this is a synthetic/generated binding
-            val isSynthetic =
-              when {
-                // Alias bindings without a source declaration are synthetic
-                binding is IrBinding.Alias && binding.bindsCallable == null -> true
-                // MetroContribution types are synthetic
-                binding.contextualTypeKey
-                  .render(short = false, includeQualifier = true)
-                  .contains("MetroContribution") -> true
-                // CustomWrapper bindings are synthetic
-                binding is IrBinding.CustomWrapper -> true
-                // MembersInjected bindings are synthetic
-                binding is IrBinding.MembersInjected -> true
-                else -> false
-              }
-            put("isSynthetic", JsonPrimitive(isSynthetic))
-            binding.reportableDeclaration?.let { declaration ->
-              declaration.locationOrNull()?.render(short = true)?.let { location ->
-                put("origin", JsonPrimitive(location))
-              }
-              put("declaration", JsonPrimitive(declaration.name.asString()))
-            }
-            when (binding) {
-              is Multibinding -> put("multibinding", binding.toJson())
-              else -> put("multibinding", JsonNull)
-            }
-            when (binding) {
-              is CustomWrapper -> put("optionalWrapper", binding.toJson())
-              else -> put("optionalWrapper", JsonNull)
-            }
-            if (binding is IrBinding.Alias) {
-              put("aliasTarget", JsonPrimitive(binding.aliasedType.render(short = false)))
-            }
-          }
-        }
+        .map { binding -> buildBindingJson(binding, graphTypeKeyRendered) }
 
     // Build roots object with accessors and injectors
     val rootsJson = buildJsonObject {
@@ -203,6 +145,113 @@ internal class GraphMetadataReporter(
     return JsonArray(annotations.map { JsonPrimitive(it.render(short = false)) })
   }
 
+  /**
+   * Builds JSON for a binding. Used for both graph bindings and encapsulated assisted-inject
+   * targets.
+   *
+   * @param binding The binding to serialize
+   * @param graphTypeKeyRendered The graph's type key (for detecting the graph's own BoundInstance).
+   *   Pass null when serializing assisted-inject targets (they're not in the graph).
+   */
+  private fun buildBindingJson(binding: IrBinding, graphTypeKeyRendered: String?): JsonObject {
+    return buildJsonObject {
+      put(
+        "key",
+        JsonPrimitive(binding.contextualTypeKey.render(short = false, includeQualifier = true)),
+      )
+      val bindingKind = binding.javaClass.simpleName ?: binding.javaClass.name
+      put("bindingKind", JsonPrimitive(bindingKind))
+      binding.scope?.let { put("scope", JsonPrimitive(it.render(short = false))) }
+      put("isScoped", JsonPrimitive(binding.isScoped()))
+      put("nameHint", JsonPrimitive(binding.nameHint))
+
+      // For the graph's own binding (BoundInstance), dependencies are empty -
+      // accessors are tracked separately in the "roots" object.
+      // For Assisted factories, dependencies are empty - the factory only "depends on" its target,
+      // and the target's actual dependencies are shown in the assistedTarget object.
+      val isGraphBinding =
+        graphTypeKeyRendered != null &&
+          binding is IrBinding.BoundInstance &&
+          binding.contextualTypeKey.render(short = false, includeQualifier = true) ==
+            graphTypeKeyRendered
+      val dependencies =
+        when {
+          isGraphBinding -> JsonArray(emptyList())
+          binding is IrBinding.AssistedFactory -> JsonArray(emptyList())
+          else -> buildDependenciesArray(binding.dependencies, binding)
+        }
+      put("dependencies", dependencies)
+
+      // Determine if this is a synthetic/generated binding
+      val isSynthetic =
+        when {
+          // Alias bindings without a source declaration are synthetic
+          binding is IrBinding.Alias && binding.bindsCallable == null -> true
+          // MetroContribution types are synthetic
+          binding.contextualTypeKey
+            .render(short = false, includeQualifier = true)
+            .contains("MetroContribution") -> true
+          // CustomWrapper bindings are synthetic
+          binding is IrBinding.CustomWrapper -> true
+          // MembersInjected bindings are synthetic
+          binding is IrBinding.MembersInjected -> true
+          else -> false
+        }
+      put("isSynthetic", JsonPrimitive(isSynthetic))
+
+      binding.reportableDeclaration?.let { declaration ->
+        declaration.locationOrNull()?.render(short = true)?.let { location ->
+          put("origin", JsonPrimitive(location))
+        }
+        put("declaration", JsonPrimitive(declaration.name.asString()))
+      }
+
+      when (binding) {
+        is Multibinding -> put("multibinding", binding.toJson())
+        else -> put("multibinding", JsonNull)
+      }
+      when (binding) {
+        is CustomWrapper -> put("optionalWrapper", binding.toJson())
+        else -> put("optionalWrapper", JsonNull)
+      }
+      if (binding is IrBinding.Alias) {
+        put("aliasTarget", JsonPrimitive(binding.aliasedType.render(short = false)))
+      }
+      if (binding is IrBinding.AssistedFactory) {
+        put("assistedTarget", buildAssistedTargetJson(binding))
+      }
+
+      // For assisted-inject targets, add the assisted parameters
+      if (binding is IrBinding.ConstructorInjected && binding.isAssisted) {
+        put(
+          "assistedParameters",
+          buildJsonArray {
+            for (param in binding.parameters.regularParameters.filter { it.isAssisted }) {
+              add(
+                buildJsonObject {
+                  put(
+                    "key",
+                    JsonPrimitive(
+                      param.contextualTypeKey.render(short = false, includeQualifier = true)
+                    ),
+                  )
+                  put("name", JsonPrimitive(param.name.asString()))
+                }
+              )
+            }
+          },
+        )
+      }
+    }
+  }
+
+  /** Builds JSON for an assisted factory's encapsulated assisted-inject target binding. */
+  private fun buildAssistedTargetJson(assistedFactory: IrBinding.AssistedFactory): JsonObject {
+    // Reuse the standard binding serialization, passing null for graphTypeKeyRendered
+    // since assisted-inject targets are not in the main graph
+    return buildBindingJson(assistedFactory.targetBinding, graphTypeKeyRendered = null)
+  }
+
   private fun buildDependenciesArray(
     deps: List<IrContextualTypeKey>,
     binding: IrBinding? = null,
@@ -225,17 +274,6 @@ internal class GraphMetadataReporter(
             if (wrapperType != null) {
               put("wrapperType", JsonPrimitive(wrapperType))
             }
-            // Check if this dependency is from an assisted parameter
-            val isAssisted =
-              when (binding) {
-                is Assisted -> {
-                  // Assisted factories have their target as a dependency, which is the assisted
-                  // type
-                  dependency == binding.target
-                }
-                else -> false
-              }
-            put("isAssisted", JsonPrimitive(isAssisted))
           }
         )
       }

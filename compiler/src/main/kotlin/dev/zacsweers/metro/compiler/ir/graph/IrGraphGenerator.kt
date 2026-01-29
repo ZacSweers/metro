@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
+import androidx.collection.IntObjectMap
+import androidx.collection.MutableIntObjectMap
+import androidx.collection.emptyIntObjectMap
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
@@ -705,29 +708,17 @@ internal class IrGraphGenerator(
           injectorRoots.add(injector.contextKey)
         }
       }
-      val collectedProperties =
-        BindingPropertyCollector(
-            metroContext,
-            graph = bindingGraph,
-            sortedKeys = sealResult.sortedKeys,
-            roots = roots,
-            injectorRoots = injectorRoots,
-            extraKeeps = bindingGraph.keeps(),
-            deferredTypes = sealResult.deferredTypes,
-          )
-          .collect()
-
-      val collectedTypeKeys = collectedProperties.entries.groupBy { it.key.typeKey }
-
-      // Build init order: iterate sorted keys and collect any properties for reachable bindings
-      // For multibindings (especially maps), there may be multiple contextual variants
-      buildList(collectedProperties.size) {
-        sealResult.sortedKeys.forEach { key ->
-          if (key in sealResult.reachableKeys) {
-            collectedTypeKeys[key]?.forEach { (_, prop) -> add(prop) }
-          }
-        }
-      }
+      BindingPropertyCollector(
+          metroContext = metroContext,
+          graph = bindingGraph,
+          sortedKeys = sealResult.sortedKeys,
+          roots = roots,
+          injectorRoots = injectorRoots,
+          extraKeeps = bindingGraph.keeps(),
+          deferredTypes = sealResult.deferredTypes,
+          reachableKeys = sealResult.reachableKeys,
+        )
+        .collect()
     }
 
   /**
@@ -772,6 +763,7 @@ internal class IrGraphGenerator(
     val metadata =
       computeBindingMetadata(binding, propertyType, collectedContextKey, collectedIsProviderType)
     ShardBinding(
+      binding = binding,
       typeKey = binding.typeKey,
       contextKey = metadata.contextKey,
       propertyKind = metadata.propertyKind,
@@ -789,9 +781,12 @@ internal class IrGraphGenerator(
    * Returns a map from shard index to the property used to access that shard. Returns empty map for
    * graph-as-shard mode.
    */
-  private fun IrClass.createShardFieldProperties(shardResult: ShardResult): Map<Int, IrProperty> =
+  private fun IrClass.createShardFieldProperties(
+    shardResult: ShardResult
+  ): IntObjectMap<IrProperty> =
     if (!shardResult.isGraphAsShard) {
-      shardResult.shards.associate { shard ->
+      val result = MutableIntObjectMap<IrProperty>(shardResult.shards.size)
+      shardResult.shards.forEach { shard ->
         val shardField =
           addProperty {
               name = propertyNameAllocator.newName("shard${shard.index + 1}").asName()
@@ -803,16 +798,17 @@ internal class IrGraphGenerator(
                 visibility = DescriptorVisibilities.INTERNAL
               }
             }
-        shard.index to shardField
+        result[shard.index] = shardField
       }
+      result
     } else {
-      emptyMap()
+      emptyIntObjectMap()
     }
 
   /** Adds shard instantiation statements to the constructor for nested shards. */
   private fun initShardFields(
     shardResult: ShardResult,
-    shardFields: Map<Int, IrProperty>,
+    shardFields: IntObjectMap<IrProperty>,
     constructorStatements: MutableList<InitStatement>,
   ) {
     if (shardResult.isGraphAsShard) return
@@ -845,7 +841,7 @@ internal class IrGraphGenerator(
    */
   private fun processShards(
     shardResult: ShardResult,
-    shardFields: Map<Int, IrProperty>,
+    shardFields: IntObjectMap<IrProperty>,
     ancestorGraphProperties: Map<IrTypeKey, List<IrProperty>>,
     expressionGeneratorFactory: GraphExpressionGenerator.Factory,
     thisReceiverParameter: IrValueParameter,
@@ -866,7 +862,7 @@ internal class IrGraphGenerator(
   /** Processes a single shard, generating its property initializers and constructor code. */
   private fun processShard(
     shard: Shard,
-    shardFields: Map<Int, IrProperty>,
+    shardFields: IntObjectMap<IrProperty>,
     ancestorGraphProperties: Map<IrTypeKey, List<IrProperty>>,
     expressionGeneratorFactory: GraphExpressionGenerator.Factory,
     thisReceiverParameter: IrValueParameter,
@@ -976,15 +972,9 @@ internal class IrGraphGenerator(
     shardDeferredProperties: MutableList<DeferredPropertyInfo>,
     switchingProvider: SwitchingProviderGenerator.SwitchingProvider?,
   ) {
-    // Pre-fetch all bindings to avoid repeated lookups in the loop
-    val bindingsMap =
-      shard.properties.keys.associateWith { contextKey ->
-        bindingGraph.requireBinding(contextKey.typeKey)
-      }
-
     for ((contextKey, propertyInfo) in shard.properties) {
-      val binding = bindingsMap.getValue(contextKey)
       val shardBinding = propertyInfo.shardBinding
+      val binding = shardBinding.binding
       val isProviderType = contextKey.isWrappedInProvider
       val isScoped = shardBinding.isScoped
       val isDeferred = shardBinding.isDeferred

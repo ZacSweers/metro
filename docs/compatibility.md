@@ -8,8 +8,9 @@ Pre-release versions are normally only tested during their development cycle. Af
 
 | Kotlin version  | Metro versions (inclusive) | Notes                                |
 |-----------------|----------------------------|--------------------------------------|
+| 2.3.20-Beta2    | 0.10.0 -                   |                                      |
 | 2.3.20-Beta1    | 0.10.0 -                   |                                      |
-| 2.3.20-dev-7791 | 0.10.0 -                   |                                      |
+| 2.3.20-dev-7791 | 0.10.0 - [0.10.2]          |                                      |
 | 2.3.20-dev-5437 | 0.9.1 -                    |                                      |
 | 2.3.10-RC       | 0.9.1 -                    |                                      |
 | 2.3.0           | 0.9.1 -                    | [1]                                  |
@@ -55,8 +56,8 @@ The following Kotlin versions are tested via CI:
 
 | Kotlin Version  |
 |-----------------|
-| 2.3.20-dev-7791 |
 | 2.3.20-dev-5437 |
+| 2.3.20-Beta2    |
 | 2.3.20-Beta1    |
 | 2.3.10-RC       |
 | 2.3.0           |

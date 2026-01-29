@@ -4,12 +4,14 @@ package dev.zacsweers.metro.compiler.ir.graph.sharding
 
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.graph.PropertyKind
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.name.Name
 
 /** Models a shard binding before its property is created. */
 internal data class ShardBinding(
+  val binding: IrBinding,
   val typeKey: IrTypeKey,
   val contextKey: IrContextualTypeKey,
   val propertyKind: PropertyKind,

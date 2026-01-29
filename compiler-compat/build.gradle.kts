@@ -4,7 +4,8 @@ plugins { alias(libs.plugins.kotlin.jvm) }
 
 kotlin {
   compilerOptions {
-    freeCompilerArgs.add("-Xcontext-parameters")
+    freeCompilerArgs.addAll("-Xcontext-parameters", "-Xreturn-value-checker=full")
+
     optIn.addAll(
       "org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi",
       "org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI",

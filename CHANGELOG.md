@@ -8,6 +8,27 @@ Changelog
 
 ### Enhancements
 
+- **[IR]**: Use `androidx.collection` primitive and scatter collections in a few more places to further help improve memory performance.
+- **[IR]**: Don't attempt to generate a graph impl if validation at any level in processing fails, as this could result in obscure extra errors getting reported after the relevant initial error.
+
+### Fixes
+
+### Changes
+
+- **[FIR]** Disable FIR IDE support by default on `255` patch versions that Android Studio canaries/nightlies report, as they report a fake Kotlin version that Metro can't resolve a proper compat layer for. Please star this issue: https://issuetracker.google.com/issues/474940910
+- **[IR]**: Rework assisted inject bindings to be encapsulated by their consuming assisted factory bindings in graph validation.
+    - This ensures these classes can't accidentally participate in `SwitchingProvider`s or valid cycle breaking with `DelegateFactory`, as both of those require `Provider` types and assisted-inject types' factories don't implement `Provider`.
+- Fold `2.3.20-dev-7791` compat into `2.3.20-Beta2` compat, meaning the former is no longer tested on CI.
+
+### Contributors
+
+0.10.2
+------
+
+_2026-01-28_
+
+### Enhancements
+
 - **[FIR]** Add a diagnostic warning for `@IntoSet` callables returning collections, as these probably intended to use `@ElementsIntoSet`.
 - **[IR]** Automatically patch [#1556](https://github.com/ZacSweers/metro/issues/1556) issues between Kotlin versions `[2.3.0 - 2.3.20-Beta2)` for any klib-using compilation or JVM compilation that enables the `-Xannotations-in-metadata` compiler option (which isn't enabled by default). This auto-patching is best effort and a fix in kotlinx is targeting `2.3.20-Beta2`. If you have any issues, it can be disabled via the `patchKlibParams` Gradle DSL property.
 
@@ -16,12 +37,6 @@ Changelog
 - **[IR]** Don't try class binding lookups for nullable types. These must always be explicitly provided.
 - **[IR]** Disambiguate return-type overloads of generated `@Binds` functions for `@Contributes` annotations that contribute multiple interfaces of the same simple name but different package name.
 - **[IR]** Skip assisted parameters when validating parameter type matching on native compilations.
-
-### Changes
-
-- **[IR]** Disable FIR IDE support by default on `255` patch versions that Android Studio canaries/nightlies report, as they report a fake Kotlin version that Metro can't resolve a proper compat layer for. Please star this issue: https://issuetracker.google.com/issues/474940910
-
-### Contributors
 
 0.10.1
 ------

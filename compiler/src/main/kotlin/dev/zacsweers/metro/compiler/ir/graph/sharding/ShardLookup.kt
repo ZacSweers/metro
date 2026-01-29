@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph.sharding
 
-import dev.zacsweers.metro.compiler.getAndAdd
+import androidx.collection.MutableIntObjectMap
+import androidx.collection.MutableIntSet
+import androidx.collection.MutableObjectIntMap
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 
 /**
@@ -13,26 +15,26 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
  */
 internal class ShardLookup {
   /** Maps each typeKey to the shard index that owns it. */
-  private val bindingToShard = mutableMapOf<IrTypeKey, Int>()
+  private val bindingToShard = MutableObjectIntMap<IrTypeKey>()
 
   /** Maps shard index to the set of shard indices it depends on. */
-  private val shardDependencies = mutableMapOf<Int, MutableSet<Int>>()
+  private val shardDependencies = MutableIntObjectMap<MutableIntSet>()
 
   /** Shards that need access to the graph reference (for cross-shard or bound instance access). */
-  private val shardsNeedingGraphAccess = mutableSetOf<Int>()
+  private val shardsNeedingGraphAccess = MutableIntSet()
 
   /** Assigns a binding to a shard. */
   fun assignToShard(typeKey: IrTypeKey, shardIndex: Int) {
     bindingToShard[typeKey] = shardIndex
   }
 
-  /** Gets the shard index for a binding, or null if not assigned. */
-  fun getShardIndex(typeKey: IrTypeKey): Int? = bindingToShard[typeKey]
+  /** Gets the shard index for a binding, or -1 if not assigned. */
+  fun getShardIndex(typeKey: IrTypeKey): Int = bindingToShard.getOrDefault(typeKey, -1)
 
   /** Records that [fromShard] depends on [toShard]. */
   fun addShardDependency(fromShard: Int, toShard: Int) {
     if (fromShard != toShard) {
-      shardDependencies.getAndAdd(fromShard, toShard)
+      shardDependencies.getOrPut(fromShard, ::MutableIntSet).add(toShard)
     }
   }
 

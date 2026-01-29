@@ -1,6 +1,6 @@
 // Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-package dev.zacsweers.metro.compiler.compat.k2320_dev_7791
+package dev.zacsweers.metro.compiler.compat.k2320_beta2
 
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.compat.k2320_beta1.CompatContextImpl as DelegateType
@@ -10,7 +10,6 @@ import org.jetbrains.kotlin.diagnostics.DiagnosticContext
 import org.jetbrains.kotlin.diagnostics.KtDiagnostic
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticWithoutSource
 import org.jetbrains.kotlin.diagnostics.KtSourcelessDiagnosticFactory
-import org.jetbrains.kotlin.ir.IrDiagnosticReporter
 
 public class CompatContextImpl : CompatContext by DelegateType() {
   override val supportsExternalRepeatableAnnotations: Boolean = true
@@ -33,15 +32,8 @@ public class CompatContextImpl : CompatContext by DelegateType() {
     return create(message, location, context)
   }
 
-  override fun IrDiagnosticReporter.reportCompat(
-    factory: KtSourcelessDiagnosticFactory,
-    message: String,
-  ) {
-    report(factory, message)
-  }
-
   public class Factory : CompatContext.Factory {
-    override val minVersion: String = "2.3.20-dev-7791"
+    override val minVersion: String = "2.3.20-Beta2"
 
     override fun create(): CompatContext = CompatContextImpl()
   }
