@@ -175,9 +175,6 @@ public interface CompatContext {
     }
   }
 
-  /** Attempts to get the current compiler version. */
-  public val currentVersion: KotlinToolingVersion
-
   /**
    * Returns the ClassLikeDeclaration where the Fir object has been defined or null if no proper
    * declaration has been found. The containing symbol is resolved using the declaration-site
