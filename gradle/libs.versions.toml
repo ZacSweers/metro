@@ -88,7 +88,7 @@ androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-ru
 androidx-lint-gradle = { module = "androidx.lint:lint-gradle", version.ref = "androidx-lint-gradle" }
 androidx-material3 = "com.google.android.material:material:1.13.0"
 androidx-viewmodelKtx = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "androidx-lifecycle" }
-androidx-work = "androidx.work:work-runtime:2.11.0"
+androidx-work = "androidx.work:work-runtime:2.11.1"
 androidx-test = "androidx.test:core-ktx:1.7.0"
 androidx-test-runner = "androidx.test:runner:1.7.0"
 androidx-test-rules = "androidx.test:rules:1.7.0"
