@@ -1,6 +1,8 @@
 # Sponsoring
 
-TODO link
+If Metro has improved your developer experience or saved your team's build times, I’d appreciate the support!
+
+Full pitch and ROI napkin math here: https://www.zacsweers.dev/sponsoring-metro/
 
 ## How to Sponsor
 
