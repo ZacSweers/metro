@@ -7,12 +7,15 @@ import androidx.tracing.Tracer
 import androidx.tracing.wire.TraceDriver
 import androidx.tracing.wire.TraceSink
 import java.nio.file.Path
+import kotlin.contracts.InvocationKind
+import kotlin.contracts.contract
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.io.path.createDirectories
 import kotlin.io.path.deleteIfExists
 import okio.blackholeSink
 import okio.buffer
 
+@Suppress("LEAKED_IN_PLACE_LAMBDA", "WRONG_INVOCATION_KIND")
 @IgnorableReturnValue
 context(scope: TraceScope)
 internal inline fun <T> trace(
@@ -20,6 +23,7 @@ internal inline fun <T> trace(
   category: String = scope.tracer.category,
   crossinline block: TraceScope.() -> T,
 ): T {
+  contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
   return scope.tracer.trace(category = category, name = name) { scope.block() }
 }
 
