@@ -17,6 +17,7 @@
 
 package dev.zacsweers.metro.compiler
 
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import org.jetbrains.kotlin.name.Name
@@ -167,7 +168,7 @@ private val RESERVED_KEYWORDS = KEYWORDS + CROSS_PLATFORM_RESERVED_KEYWORDS
 internal class NameAllocator
 private constructor(
   allocatedNames: Set<String>,
-  private val tagToName: MutableMap<Any, String>,
+  private val tagToName: ConcurrentHashMap<Any, String>,
   private val mode: Mode,
 ) {
   /**
@@ -203,16 +204,20 @@ private constructor(
       if (preallocateKeywords) {
         RESERVED_KEYWORDS
       } else {
-        mutableSetOf()
+        emptySet()
       },
-    tagToName = mutableMapOf(),
+    tagToName = ConcurrentHashMap(),
     mode = mode,
   )
 
-  // TODO use explicit backing field in 2.3.0+
-  private val allocatedNames: MutableSet<String> = allocatedNames.toMutableSet()
+  private val allocatedNames =
+    ConcurrentHashMap<String, Unit>().apply {
+      for (allocated in allocatedNames) {
+        put(allocated, Unit)
+      }
+    }
 
-  fun allocatedNames(): Set<String> = allocatedNames
+  fun allocatedNames(): Set<String> = allocatedNames.keys
 
   fun reserveName(suggestedName: String, tag: Any = Uuid.random().toString()) {
     @Suppress("RETURN_VALUE_NOT_USED")
@@ -238,7 +243,7 @@ private constructor(
     val result = buildString {
       append(cleanedSuggestion)
       var count = 1
-      while (!allocatedNames.add(toString())) {
+      while (allocatedNames.putIfAbsent(toString(), Unit) != null) {
         if (!generateNewIfExisting) break
         when (mode) {
           UNDERSCORE -> append('_')
@@ -250,7 +255,7 @@ private constructor(
       }
     }
 
-    val replaced = tagToName.put(tag, result)
+    val replaced = tagToName.putIfAbsent(tag, result)
     if (replaced != null) {
       tagToName[tag] = replaced // Put things back as they were!
       throw IllegalArgumentException("tag $tag cannot be used for both '$replaced' and '$result'")
@@ -270,7 +275,7 @@ private constructor(
    * @return A deep copy of this NameAllocator.
    */
   fun copy(): NameAllocator {
-    return NameAllocator(allocatedNames.toMutableSet(), tagToName.toMutableMap(), mode = mode)
+    return NameAllocator(allocatedNames.keys, ConcurrentHashMap(tagToName), mode = mode)
   }
 
   internal enum class Mode {
