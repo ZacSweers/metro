@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769729288151,
+  "lastUpdate": 1769803036146,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -4592,6 +4592,62 @@ window.BENCHMARK_DATA = {
             "value": 21807.916,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +1.93%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "befec4d9~1",
+          "message": "[before] Add androidx tracing (#1767)",
+          "timestamp": "2026-01-30T14:16:40-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/befec4d9616a01de7f167fc3ddc94e90d9c8f6d7"
+        },
+        "date": 1769803036146,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 21936.71,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "befec4d9616a01de7f167fc3ddc94e90d9c8f6d7",
+          "message": "[after] Add androidx tracing (#1767)",
+          "timestamp": "2026-01-30T14:16:40-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/befec4d9616a01de7f167fc3ddc94e90d9c8f6d7"
+        },
+        "date": 1769803036147,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 21663.574,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -1.25%"
           }
         ]
       }
