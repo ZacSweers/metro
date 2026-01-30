@@ -101,6 +101,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       valueMapper = { it },
     )
   ),
+  TRACE_DESTINATION(
+    RawMetroOption(
+      name = "trace-destination",
+      defaultValue = "",
+      valueDescription = "Path to a directory to dump Metro trace information",
+      description = "Path to a directory to dump Metro trace information",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it },
+    )
+  ),
   GENERATE_ASSISTED_FACTORIES(
     RawMetroOption.boolean(
       name = "generate-assisted-factories",
@@ -803,6 +814,11 @@ public data class MetroOptions(
       .expectAs<String>()
       .takeUnless(String::isBlank)
       ?.let(Paths::get),
+  private val rawTraceDestination: Path? =
+    MetroOption.TRACE_DESTINATION.raw.defaultValue
+      .expectAs<String>()
+      .takeUnless(String::isBlank)
+      ?.let(Paths::get),
   public val generateAssistedFactories: Boolean =
     MetroOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue.expectAs(),
   public val generateThrowsAnnotations: Boolean =
@@ -958,12 +974,26 @@ public data class MetroOptions(
     }
   }
 
+  public val traceEnabled: Boolean
+    get() = rawTraceDestination != null
+
+  @OptIn(ExperimentalPathApi::class)
+  public val traceDir: Lazy<Path?> = lazy {
+    rawTraceDestination?.apply {
+      if (exists()) {
+        deleteRecursively()
+      }
+      createDirectories()
+    }
+  }
+
   public fun toBuilder(): Builder = Builder(this)
 
   public class Builder(base: MetroOptions = MetroOptions()) {
     public var debug: Boolean = base.debug
     public var enabled: Boolean = base.enabled
     public var reportsDestination: Path? = base.rawReportsDestination
+    public var traceDestination: Path? = base.rawTraceDestination
     public var generateAssistedFactories: Boolean = base.generateAssistedFactories
     public var generateThrowsAnnotations: Boolean = base.generateThrowsAnnotations
     public var enableTopLevelFunctionInjection: Boolean = base.enableTopLevelFunctionInjection
@@ -1164,6 +1194,7 @@ public data class MetroOptions(
         debug = debug,
         enabled = enabled,
         rawReportsDestination = reportsDestination,
+        rawTraceDestination = traceDestination,
         generateAssistedFactories = generateAssistedFactories,
         generateThrowsAnnotations = generateThrowsAnnotations,
         enableTopLevelFunctionInjection = enableTopLevelFunctionInjection,
@@ -1259,6 +1290,11 @@ public data class MetroOptions(
 
           REPORTS_DESTINATION -> {
             reportsDestination =
+              configuration.getAsString(entry).takeUnless(String::isBlank)?.let(Paths::get)
+          }
+
+          TRACE_DESTINATION -> {
+            traceDestination =
               configuration.getAsString(entry).takeUnless(String::isBlank)?.let(Paths::get)
           }
 

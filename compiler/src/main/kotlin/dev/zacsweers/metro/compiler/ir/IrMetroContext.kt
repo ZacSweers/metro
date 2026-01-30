@@ -63,7 +63,6 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
   fun loggerFor(type: MetroLogger.Type): MetroLogger
 
   val logFile: Path?
-  val traceLogFile: Path?
   val lookupFile: Path?
   val expectActualFile: Path?
 
@@ -84,12 +83,6 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
     @Suppress("DEPRECATION")
     messageCollector.report(CompilerMessageSeverity.LOGGING, "$LOG_PREFIX $message")
     logFile?.appendText("$message\n")
-  }
-
-  fun logTrace(message: String) {
-    @Suppress("DEPRECATION")
-    messageCollector.report(CompilerMessageSeverity.LOGGING, "$LOG_PREFIX $message")
-    traceLogFile?.appendText("$message\n")
   }
 
   fun logVerbose(message: String) {
@@ -210,17 +203,9 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
           }
         }
       }
-      override val traceLogFile: Path? by lazy {
-        reportsDir?.let {
-          it.resolve("traceLog.txt").apply {
-            deleteIfExists()
-            createFile()
-          }
-        }
-      }
 
       override val traceDriver: TraceDriver by lazy {
-        val tracePath = reportsDir?.resolve("trace")
+        val tracePath = options.traceDir.value
         val sink =
           if (tracePath == null) {
             TraceSink(sequenceId = 1, blackholeSink().buffer(), EmptyCoroutineContext)

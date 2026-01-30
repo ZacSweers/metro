@@ -360,6 +360,23 @@ constructor(
       )
 
   /**
+   * If set, the Metro compiler will dump compiler trace information to the given destination.
+   * Outputs are per-compilation granularity (i.e. `build/metro-traces/main/...`).
+   *
+   * Unlike [reportsDestination], this is designed for low-overhead performance tracing and can be
+   * used in realistic scenarios without significantly impacting compilation performance.
+   *
+   * Optionally, you can specify a `metro.traceDestination` gradle property whose value is a
+   * _relative_ path from the project's **build** directory.
+   */
+  public val traceDestination: DirectoryProperty =
+    objects
+      .directoryProperty()
+      .convention(
+        providers.gradleProperty("metro.traceDestination").flatMap { layout.buildDirectory.dir(it) }
+      )
+
+  /**
    * Configures interop to support in generated code, usually from another DI framework.
    *
    * This is primarily for supplying custom annotations and custom runtime intrinsic types (i.e.

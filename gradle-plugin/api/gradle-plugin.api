@@ -58,6 +58,7 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension {
 	public final fun getShrinkUnusedBindings ()Lorg/gradle/api/provider/Property;
 	public final fun getStatementsPerInitFun ()Lorg/gradle/api/provider/Property;
 	public final fun getSupportedHintContributionPlatforms ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getTraceDestination ()Lorg/gradle/api/file/DirectoryProperty;
 	public final fun getTransformProvidersToPrivate ()Lorg/gradle/api/provider/Property;
 	public final fun getUnusedGraphInputsSeverity ()Lorg/gradle/api/provider/Property;
 	public final fun getWarnOnInjectAnnotationPlacement ()Lorg/gradle/api/provider/Property;

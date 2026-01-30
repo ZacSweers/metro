@@ -362,6 +362,16 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
             ?.let { FilesSubpluginOption("reports-destination", listOf(it.asFile)) }
             ?.let(::add)
 
+          val traceDir =
+            extension.traceDestination.map { baseDir ->
+              listOf(kotlinCompilation.target.name, kotlinCompilation.name)
+                .filter(String::isNotBlank)
+                .fold(baseDir) { dir, segment -> dir.dir(segment) }
+            }
+          traceDir.orNull
+            ?.let { FilesSubpluginOption("trace-destination", listOf(it.asFile)) }
+            ?.let(::add)
+
           if (isJvmTarget) {
             add(
               SubpluginOption(

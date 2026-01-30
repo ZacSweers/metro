@@ -97,6 +97,11 @@ abstract class MetroCompilerTest {
                   entry.raw.cliOption,
                   reportsDir.value?.absolutePathString().orEmpty(),
                 )
+              MetroOption.TRACE_DESTINATION ->
+                processor.option(
+                  entry.raw.cliOption,
+                  traceDir.value?.absolutePathString().orEmpty(),
+                )
               MetroOption.GENERATE_ASSISTED_FACTORIES ->
                 processor.option(entry.raw.cliOption, generateAssistedFactories)
               MetroOption.GENERATE_THROWS_ANNOTATIONS ->
