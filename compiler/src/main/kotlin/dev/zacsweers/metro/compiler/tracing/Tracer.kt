@@ -2,118 +2,62 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.tracing
 
-import kotlin.contracts.InvocationKind
-import kotlin.contracts.contract
-import kotlin.time.TimeSource
-import kotlin.time.TimeSource.Monotonic.ValueTimeMark
+import androidx.tracing.TraceDriver
+import androidx.tracing.Tracer
+import androidx.tracing.wire.TraceDriver
+import androidx.tracing.wire.TraceSink
+import java.nio.file.Path
+import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.io.path.createDirectories
+import kotlin.io.path.deleteIfExists
+import okio.blackholeSink
+import okio.buffer
 
-internal interface Tracer {
-  val tag: String
-  val description: String
-  val diagnosticTag: String
-    get() = tag.replace('.', '_')
+@IgnorableReturnValue
+context(scope: TraceScope)
+internal inline fun <T> trace(
+  name: String,
+  category: String = scope.tracer.category,
+  crossinline block: TraceScope.() -> T,
+): T {
+  return scope.tracer.trace(category = category, name = name) { scope.block() }
+}
 
-  fun start()
+@JvmInline
+internal value class TracingSession(private val traceDriver: TraceDriver) : AutoCloseable {
+  val tracer: Tracer
+    get() = traceDriver.tracer
 
-  fun stop()
-
-  fun nested(description: String, tag: String = this.tag): Tracer
+  override fun close() {
+    traceDriver.close()
+  }
 
   companion object {
-    val NONE: Tracer =
-      object : Tracer {
-        override val tag: String = ""
-        override val description: String = ""
-
-        override fun start() {
-          // No op
+    fun create(tracePath: Path?): TracingSession {
+      val sink =
+        if (tracePath == null) {
+          TraceSink(sequenceId = 1, blackholeSink().buffer(), EmptyCoroutineContext)
+        } else {
+          tracePath.deleteIfExists()
+          tracePath.createDirectories()
+          TraceSink(sequenceId = 1, directory = tracePath.toFile())
         }
-
-        override fun stop() {
-          // No op
-        }
-
-        override fun nested(description: String, tag: String): Tracer {
-          return NONE
-        }
-      }
+      val driver = TraceDriver(sink = sink, isEnabled = tracePath != null)
+      return TracingSession(driver)
+    }
   }
 }
-
-private class SimpleTracer(
-  override val tag: String,
-  override val description: String,
-  private val level: Int,
-  private val log: (String) -> Unit,
-  private val onFinished: (String, String, Long) -> Unit,
-) : Tracer {
-
-  private var mark: ValueTimeMark? = null
-  private inline val running
-    get() = mark != null
-
-  override fun start() {
-    check(!running) { "Tracer already started" }
-    val tagPrefix = if (level == 0) "[$tag] " else ""
-    log("$tagPrefix${"  ".repeat(level)}▶ $description")
-    mark = TimeSource.Monotonic.markNow()
-  }
-
-  override fun stop() {
-    check(running) { "Tracer not started" }
-    val elapsed = mark!!.elapsedNow()
-    mark = null
-    onFinished(tag, description, elapsed.inWholeMilliseconds)
-    val tagPrefix = if (level == 0) "[$tag] " else ""
-    log("$tagPrefix${"  ".repeat(level)}◀ $description (${elapsed.inWholeMilliseconds} ms)")
-  }
-
-  override fun nested(description: String, tag: String): Tracer =
-    SimpleTracer(tag, description, level + 1, log, onFinished)
-}
-
-@IgnorableReturnValue
-context(scope: TraceScope)
-internal inline fun <T> traceNested(
-  description: String,
-  tag: String = scope.tracer.tag,
-  block: TraceScope.() -> T,
-): T {
-  contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
-  return scope.tracer.nested(description, tag).trace(block)
-}
-
-@IgnorableReturnValue
-context(scope: TraceScope)
-internal inline fun <T> trace(block: TraceScope.() -> T): T {
-  contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
-  return scope.tracer.trace(block)
-}
-
-@IgnorableReturnValue
-internal inline fun <T> Tracer.trace(block: TraceScope.() -> T): T {
-  contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
-  start()
-  try {
-    return TraceScope(this).block()
-  } finally {
-    stop()
-  }
-}
-
-internal fun tracer(
-  tag: String,
-  description: String,
-  log: (String) -> Unit,
-  onFinished: (String, String, Long) -> Unit,
-): Tracer = SimpleTracer(tag, description, 0, log, onFinished)
 
 internal interface TraceScope {
-  val tracer: Tracer
+  val tracer: MetroTracer
+
+  val diagnosticTag: String
+    get() = tracer.category.replace('.', '_')
 
   companion object {
-    operator fun invoke(tracer: Tracer): TraceScope = TraceScopeImpl(tracer)
+    operator fun invoke(tracer: Tracer, category: String): TraceScope =
+      TraceScopeImpl(MetroTracer(tracer, category))
   }
 }
 
-@JvmInline internal value class TraceScopeImpl(override val tracer: Tracer) : TraceScope
+@JvmInline internal value class TraceScopeImpl(override val tracer: MetroTracer) : TraceScope
