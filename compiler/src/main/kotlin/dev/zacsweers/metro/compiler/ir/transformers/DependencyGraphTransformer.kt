@@ -334,6 +334,7 @@ internal class DependencyGraphTransformer(
       trace("Build binding graph") {
         BindingGraphGenerator(
             metroContext,
+            this,
             node,
             injectConstructorTransformer,
             membersInjectorTransformer,
