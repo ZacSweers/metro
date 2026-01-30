@@ -40,7 +40,7 @@ public class MetroIrGenerationExtension(
         expectActualTracker,
       )
 
-    context.tracingSession.use { context.generateInner(moduleFragment) }
+    context.traceDriver.use { context.generateInner(moduleFragment) }
   }
 
   private fun IrMetroContext.generateInner(moduleFragment: IrModuleFragment) {

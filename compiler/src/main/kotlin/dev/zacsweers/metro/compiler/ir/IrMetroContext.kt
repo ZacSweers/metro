@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import androidx.tracing.TraceDriver
+import androidx.tracing.wire.TraceDriver
+import androidx.tracing.wire.TraceSink
 import dev.zacsweers.metro.compiler.LOG_PREFIX
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.MetroOptions
@@ -12,14 +15,17 @@ import dev.zacsweers.metro.compiler.ir.cache.IrCachesFactory
 import dev.zacsweers.metro.compiler.ir.cache.IrThreadUnsafeCachesFactory
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
-import dev.zacsweers.metro.compiler.tracing.TracingSession
 import java.io.File
 import java.nio.file.Path
+import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.io.path.appendText
+import kotlin.io.path.createDirectories
 import kotlin.io.path.createFile
 import kotlin.io.path.createParentDirectories
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.writeText
+import okio.blackholeSink
+import okio.buffer
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
@@ -52,7 +58,7 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
 
   val reportsDir: Path?
 
-  val tracingSession: TracingSession
+  val traceDriver: TraceDriver
 
   fun loggerFor(type: MetroLogger.Type): MetroLogger
 
@@ -213,9 +219,17 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
         }
       }
 
-      override val tracingSession: TracingSession by lazy {
+      override val traceDriver: TraceDriver by lazy {
         val tracePath = reportsDir?.resolve("trace")
-        TracingSession.create(tracePath)
+        val sink =
+          if (tracePath == null) {
+            TraceSink(sequenceId = 1, blackholeSink().buffer(), EmptyCoroutineContext)
+          } else {
+            tracePath.deleteIfExists()
+            tracePath.createDirectories()
+            TraceSink(sequenceId = 1, directory = tracePath.toFile())
+          }
+        TraceDriver(sink = sink, isEnabled = tracePath != null)
       }
 
       override val lookupFile: Path? by lazy {
@@ -281,7 +295,7 @@ internal fun writeDiagnostic(fileName: () -> String, text: () -> String) {
 
 context(context: IrMetroContext)
 internal inline fun traceWithScope(category: String, body: TraceScope.() -> Unit) {
-  val session = context.tracingSession
+  val driver = context.traceDriver
   check(category.isNotBlank()) { "Category must not be blank" }
-  TraceScope(session.tracer, category).body()
+  TraceScope(driver.tracer, category).body()
 }
