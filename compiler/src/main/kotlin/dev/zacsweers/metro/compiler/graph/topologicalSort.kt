@@ -31,7 +31,7 @@ import dev.zacsweers.metro.compiler.filterToSet
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.getValue
 import dev.zacsweers.metro.compiler.tracing.TraceScope
-import dev.zacsweers.metro.compiler.tracing.traceNested
+import dev.zacsweers.metro.compiler.tracing.trace
 import java.util.Collections.emptySortedSet
 import java.util.PriorityQueue
 import java.util.SortedMap
@@ -227,10 +227,10 @@ internal fun <V : Comparable<V>> topologicalSort(
   // Also builds reachable adjacency (forward and reverse) in the same pass (avoiding separate
   // filter)
   val (components, componentOf, reachableAdjacency) =
-    traceNested("Compute SCCs") { fullAdjacency.computeStronglyConnectedComponents(roots) }
+    trace("Compute SCCs") { fullAdjacency.computeStronglyConnectedComponents(roots) }
 
   // Check for cycles
-  traceNested("Check for cycles") {
+  trace("Check for cycles") {
     for (component in components) {
       val vertices = component.vertices
 
@@ -263,17 +263,15 @@ internal fun <V : Comparable<V>> topologicalSort(
   }
 
   val componentDag =
-    traceNested("Build component DAG") {
-      buildComponentDag(reachableAdjacency.forward, componentOf)
-    }
+    trace("Build component DAG") { buildComponentDag(reachableAdjacency.forward, componentOf) }
   val componentOrder =
-    traceNested("Topo sort component DAG") {
+    trace("Topo sort component DAG") {
       topologicallySortComponentDag(componentDag, components.size)
     }
 
   // Expand each component back to its original vertices
   val sortedKeys = ArrayList<V>(fullAdjacency.size)
-  traceNested("Expand components") {
+  trace("Expand components") {
     componentOrder.forEach { id ->
       val component = components[id]
       if (component.vertices.size == 1) {

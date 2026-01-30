@@ -27,6 +27,8 @@ import dev.zacsweers.metro.compiler.joinSimpleNames
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reserveName
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import dev.zacsweers.metro.compiler.tracing.TraceScope
+import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
@@ -54,8 +56,10 @@ import org.jetbrains.kotlin.name.ClassId
  *    overrides of them.
  * 3. Collects contribution data while transforming for use by the dependency graph.
  */
-internal class ContributionTransformer(private val context: IrMetroContext) :
-  IrTransformer<IrContributionData>(), IrMetroContext by context {
+internal class ContributionTransformer(
+  private val context: IrMetroContext,
+  traceScope: TraceScope,
+) : IrTransformer<IrContributionData>(), IrMetroContext by context, TraceScope by traceScope {
 
   private val transformedContributions = mutableSetOf<ClassId>()
 
@@ -78,22 +82,30 @@ internal class ContributionTransformer(private val context: IrMetroContext) :
     // TODO others?
     val shouldSkip = declaration.isLocal
     if (shouldSkip) {
-      return super.visitClass(declaration, data)
+      return declaration
     }
 
-    val isBindingContainer by memoize { declaration.isBindingContainer() }
+    trace("Transform ${declaration.name} bindings") {
+      val isBindingContainer by memoize { declaration.isBindingContainer() }
 
-    // First, perform transformations
-    if (declaration.origin == Origins.MetroContributionClassDeclaration) {
-      val metroContributionAnno =
-        declaration.findAnnotations(Symbols.ClassIds.metroContribution).first()
-      val scope = metroContributionAnno.requireScope()
-      transformContributionClass(declaration, scope)
-      collectContributionDataFromContribution(declaration, data, scope, isBindingContainer)
-    } else if (declaration.isAnnotatedWithAny(context.metroSymbols.classIds.graphLikeAnnotations)) {
-      transformGraphLike(declaration)
-    } else if (isBindingContainer) {
-      collectContributionDataFromContainer(declaration, data)
+      // First, perform transformations
+      if (declaration.origin == Origins.MetroContributionClassDeclaration) {
+        trace("Transform contribution") {
+          val metroContributionAnno =
+            declaration.findAnnotations(Symbols.ClassIds.metroContribution).first()
+          val scope = metroContributionAnno.requireScope()
+          transformContributionClass(declaration, scope)
+          collectContributionDataFromContribution(declaration, data, scope, isBindingContainer)
+        }
+      } else if (
+        declaration.isAnnotatedWithAny(context.metroSymbols.classIds.graphLikeAnnotations)
+      ) {
+        trace("Transform graphlike") { transformGraphLike(declaration) }
+      } else if (isBindingContainer) {
+        trace("Collect contributions from container") {
+          collectContributionDataFromContainer(declaration, data)
+        }
+      }
     }
 
     return super.visitClass(declaration, data)

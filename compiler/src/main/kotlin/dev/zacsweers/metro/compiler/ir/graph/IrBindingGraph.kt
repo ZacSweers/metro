@@ -37,7 +37,7 @@ import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.safePathString
 import dev.zacsweers.metro.compiler.tracing.TraceScope
-import dev.zacsweers.metro.compiler.tracing.traceNested
+import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
@@ -231,7 +231,7 @@ internal class IrBindingGraph(
   context(traceScope: TraceScope)
   fun seal(onError: (List<GraphError>) -> Unit): BindingGraphResult {
     val topologyResult =
-      traceNested("seal graph") {
+      trace("seal graph") {
         val roots = buildMap {
           putAll(accessors)
           putAll(injectors)
@@ -288,15 +288,15 @@ internal class IrBindingGraph(
       }
     }
 
-    traceNested("check empty multibindings") { checkEmptyMultibindings(onError) }
-    traceNested("check for absent bindings") {
+    trace("check empty multibindings") { checkEmptyMultibindings(onError) }
+    trace("check for absent bindings") {
       check(!realGraph.bindings.any { _, v -> v is IrBinding.Absent }) {
         "Found absent bindings in the binding graph: ${dumpGraph("Absent bindings", short = true)}"
       }
     }
 
     val shardGroups =
-      traceNested("compute shard groups") {
+      trace("compute shard groups") {
         val maxPerShard = metroContext.options.keysPerGraphShard
         val enableSharding = metroContext.options.enableGraphSharding
         if (enableSharding && topologyResult.adjacency.forward.size > maxPerShard) {

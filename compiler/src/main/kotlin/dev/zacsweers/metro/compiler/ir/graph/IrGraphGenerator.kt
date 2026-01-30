@@ -60,7 +60,7 @@ import dev.zacsweers.metro.compiler.newName
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.suffixIfNot
 import dev.zacsweers.metro.compiler.tracing.TraceScope
-import dev.zacsweers.metro.compiler.tracing.traceNested
+import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.DescriptorVisibility
 import org.jetbrains.kotlin.ir.IrStatement
@@ -280,7 +280,7 @@ internal class IrGraphGenerator(
             propertyNameAllocator = propertyNameAllocator,
             classNameAllocator = classNameAllocator,
           )
-          .generateShards(diagnosticTag = tracer.diagnosticTag)
+          .generateShards(diagnosticTag = diagnosticTag)
 
       if (shardResult != null) {
         // Create shard field properties on the main class (only for nested shards)
@@ -312,10 +312,10 @@ internal class IrGraphGenerator(
         }
       }
 
-      traceNested("Implement overrides") { node.implementOverrides(expressionGeneratorFactory) }
+      trace("Implement overrides") { node.implementOverrides(expressionGeneratorFactory) }
 
       if (!graphClass.origin.isSyntheticGeneratedGraph) {
-        traceNested("Generate Metro metadata") {
+        trace("Generate Metro metadata") {
           // Finally, generate metadata
           val graphProto = node.toProto(bindingGraph = bindingGraph)
           graphMetadataReporter.write(node, bindingGraph)
@@ -695,7 +695,7 @@ internal class IrGraphGenerator(
    * they should be initialized.
    */
   private fun collectBindingProperties(): List<BindingPropertyCollector.CollectedProperty> =
-    traceNested("Collect binding properties") {
+    trace("Collect binding properties") {
       // Injector roots are specifically from inject() functions - they don't create
       // MembersInjector instances, so their dependencies are scalar accesses
       val injectorRoots = mutableSetOf<IrContextualTypeKey>()
@@ -744,10 +744,10 @@ internal class IrGraphGenerator(
       }
       .toList()
       .also { propertyBindings ->
-        writeDiagnostic("keys-providerProperties-${tracer.diagnosticTag}.txt") {
+        writeDiagnostic("keys-providerProperties-${diagnosticTag}.txt") {
           propertyBindings.joinToString("\n") { it.binding.typeKey.toString() }
         }
-        writeDiagnostic("keys-scopedProviderProperties-${tracer.diagnosticTag}.txt") {
+        writeDiagnostic("keys-scopedProviderProperties-${diagnosticTag}.txt") {
           propertyBindings
             .filter { it.binding.isScoped() }
             .joinToString("\n") { it.binding.typeKey.toString() }

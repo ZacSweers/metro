@@ -11,8 +11,8 @@ import dev.zacsweers.metro.compiler.ir.cache.IrCache
 import dev.zacsweers.metro.compiler.ir.cache.IrCachesFactory
 import dev.zacsweers.metro.compiler.ir.cache.IrThreadUnsafeCachesFactory
 import dev.zacsweers.metro.compiler.symbols.Symbols
-import dev.zacsweers.metro.compiler.tracing.Tracer
-import dev.zacsweers.metro.compiler.tracing.tracer
+import dev.zacsweers.metro.compiler.tracing.TraceScope
+import dev.zacsweers.metro.compiler.tracing.TracingSession
 import java.io.File
 import java.nio.file.Path
 import kotlin.io.path.appendText
@@ -35,6 +35,7 @@ import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.parentDeclarationsWithSelf
 
 internal interface IrMetroContext : IrPluginContext, CompatContext {
+  // TODO inline extension?
   val metroContext
     get() = this
 
@@ -51,11 +52,12 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
 
   val reportsDir: Path?
 
+  val tracingSession: TracingSession
+
   fun loggerFor(type: MetroLogger.Type): MetroLogger
 
   val logFile: Path?
   val traceLogFile: Path?
-  val timingsFile: Path?
   val lookupFile: Path?
   val expectActualFile: Path?
 
@@ -87,10 +89,6 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
   fun logVerbose(message: String) {
     @Suppress("DEPRECATION")
     messageCollector.report(CompilerMessageSeverity.STRONG_WARNING, "$LOG_PREFIX $message")
-  }
-
-  fun logTiming(tag: String, description: String, durationMs: Long) {
-    timingsFile?.appendText("\n$tag,$description,${durationMs}")
   }
 
   fun logLookup(
@@ -215,14 +213,9 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
         }
       }
 
-      override val timingsFile: Path? by lazy {
-        reportsDir?.let {
-          it.resolve("timings.csv").apply {
-            deleteIfExists()
-            createFile()
-            appendText("tag,description,durationMs")
-          }
-        }
+      override val tracingSession: TracingSession by lazy {
+        val tracePath = reportsDir?.resolve("trace")
+        TracingSession.create(tracePath)
       }
 
       override val lookupFile: Path? by lazy {
@@ -287,11 +280,8 @@ internal fun writeDiagnostic(fileName: () -> String, text: () -> String) {
 }
 
 context(context: IrMetroContext)
-internal fun tracer(tag: String, description: String): Tracer =
-  if (context.traceLogFile != null || context.timingsFile != null || context.debug) {
-    check(tag.isNotBlank()) { "Tag must not be blank" }
-    check(description.isNotBlank()) { "description must not be blank" }
-    tracer(tag, description, context::logTrace, context::logTiming)
-  } else {
-    Tracer.NONE
-  }
+internal inline fun traceWithScope(category: String, body: TraceScope.() -> Unit) {
+  val session = context.tracingSession
+  check(category.isNotBlank()) { "Category must not be blank" }
+  TraceScope(session.tracer, category).body()
+}

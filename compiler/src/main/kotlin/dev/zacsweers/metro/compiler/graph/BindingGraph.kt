@@ -14,7 +14,7 @@ import dev.zacsweers.metro.compiler.joinWithDynamicSeparatorTo
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.TraceScope
-import dev.zacsweers.metro.compiler.tracing.traceNested
+import dev.zacsweers.metro.compiler.tracing.trace
 import java.util.SortedMap
 import java.util.SortedSet
 import java.util.TreeSet
@@ -139,7 +139,7 @@ internal open class MutableBindingGraph<
      * optional bindings).
      */
     val fullAdjacency =
-      traceNested("Build adjacency list") {
+      trace("Build adjacency list") {
         buildFullAdjacency(
           bindings = bindings,
           dependenciesOf = { binding -> binding.dependencies.map { it.typeKey } },
@@ -164,7 +164,7 @@ internal open class MutableBindingGraph<
     missingBindings.forEach { (key, stack) -> reportMissingBinding(key, stack) }
 
     val topo =
-      traceNested("Sort and validate") {
+      trace("Sort and validate") {
         val allKeeps =
           if (shrinkUnusedBindings) {
             keep.keys.mapToSet { it.typeKey }
@@ -178,7 +178,7 @@ internal open class MutableBindingGraph<
     // This is more efficient as it only includes reachable bindings/edges.
     validateBindings(bindings, stack, roots, topo.adjacency)
 
-    traceNested("Compute binding indices") {
+    trace("Compute binding indices") {
       // If it depends itself or something that comes later in the topo sort, it
       // must be deferred. This is how we handle cycles that are broken by deferrable
       // types like Provider/Lazy/...
@@ -219,7 +219,7 @@ internal open class MutableBindingGraph<
     // it while we're validating it.
     val bindingQueue = ArrayDeque<Binding>().apply { bindings.forEachValue(::add) }
 
-    traceNested("Populate bindings") {
+    trace("Populate bindings") {
       while (bindingQueue.isNotEmpty()) {
         val binding = bindingQueue.removeFirst()
         if (binding.typeKey !in bindings && !binding.isTransient) {
@@ -266,7 +266,7 @@ internal open class MutableBindingGraph<
 
     // Run topo sort. It gives back either a valid order or calls onCycle for errors
     val result =
-      traceNested("Topo sort") {
+      trace("Topo sort") {
         topologicalSort(
           fullAdjacency = fullAdjacency,
           roots = sortedRootKeys,

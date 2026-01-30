@@ -18,6 +18,7 @@ import dev.zacsweers.metro.compiler.ir.transformers.TransformerContextAccess
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.md5base64
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.tracing.TraceScope
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationContainer
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -40,6 +41,7 @@ internal class IrDynamicGraphGenerator(
 
   private data class CacheKey(val targetGraphClassId: ClassId, val containerKeys: Set<IrTypeKey>)
 
+  context(traceScope: TraceScope)
   fun getOrBuildDynamicGraph(
     targetType: IrType,
     containerTypes: Set<IrType>,
@@ -82,6 +84,7 @@ internal class IrDynamicGraphGenerator(
       }
   }
 
+  context(traceScope: TraceScope)
   private fun generateDynamicGraph(
     targetType: IrType,
     containerTypeKeys: Set<IrTypeKey>,
@@ -118,6 +121,7 @@ internal class IrDynamicGraphGenerator(
         parentGraph = null,
         originDeclaration = containingFunction,
         containerToAddTo = containerToAddTo,
+        traceScope = traceScope,
       )
 
     // Extend the target type (graph interface or factory interface)
