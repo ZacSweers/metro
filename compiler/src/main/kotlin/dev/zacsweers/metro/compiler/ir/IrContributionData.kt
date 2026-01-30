@@ -11,6 +11,8 @@ import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import dev.zacsweers.metro.compiler.tracing.TraceScope
+import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
@@ -48,6 +50,7 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
     contributions.getAndAdd(scope, contribution)
   }
 
+  context(traceScope: TraceScope)
   fun getContributions(scope: Scope, callingDeclaration: IrDeclaration): Set<IrType> = buildSet {
     contributions[scope]?.forEach(::add)
     addAll(findExternalContributions(scope, callingDeclaration))
@@ -57,6 +60,7 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
     bindingContainerContributions.getAndAdd(scope, contribution)
   }
 
+  context(traceScope: TraceScope)
   fun getBindingContainerContributions(
     scope: Scope,
     callingDeclaration: IrDeclaration,
@@ -142,6 +146,7 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
   // Note: Origin classes may be looked up multiple times if they contribute to multiple scopes.
   // findVisibleContributionClassesForScopeInHints is cached per scope, so redundant lookups
   // within the same scope are avoided.
+  context(traceScope: TraceScope)
   private fun findExternalContributions(
     scope: Scope,
     callingDeclaration: IrDeclaration,
@@ -149,18 +154,21 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
     // Track the lookup before checking the cache so all callers register their dependency
     trackScopeHintLookup(scope, callingDeclaration)
     return externalContributions.getOrPut(scope) {
-      val contributingClasses =
-        findVisibleContributionClassesForScopeInHints(
-          scope,
-          callingDeclaration = callingDeclaration,
-        )
-      getScopedContributions(contributingClasses, scope, bindingContainersOnly = false)
+      trace("Look up external contributions for $scope") {
+        val contributingClasses =
+          findVisibleContributionClassesForScopeInHints(
+            scope,
+            callingDeclaration = callingDeclaration,
+          )
+        getScopedContributions(contributingClasses, scope, bindingContainersOnly = false)
+      }
     }
   }
 
   // Note: Origin classes may be looked up multiple times if they contribute to multiple scopes.
   // findVisibleContributionClassesForScopeInHints is cached per scope, so redundant lookups
   // within the same scope are avoided.
+  context(traceScope: TraceScope)
   private fun findExternalBindingContainerContributions(
     scope: Scope,
     callingDeclaration: IrDeclaration,
@@ -168,53 +176,59 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
     // Track the lookup before checking the cache so all callers register their dependency
     trackScopeHintLookup(scope, callingDeclaration)
     return externalBindingContainerContributions.getOrPut(scope) {
-      val contributingClasses =
-        findVisibleContributionClassesForScopeInHints(scope, callingDeclaration)
-      getScopedContributions(contributingClasses, scope, bindingContainersOnly = true)
-        .mapNotNullToSet {
-          it.classOrNull?.owner?.takeIf { irClass ->
-            with(metroContext) { irClass.isBindingContainer() }
+      trace("Look up external contributions for $scope") {
+        val contributingClasses =
+          findVisibleContributionClassesForScopeInHints(scope, callingDeclaration)
+        getScopedContributions(contributingClasses, scope, bindingContainersOnly = true)
+          .mapNotNullToSet {
+            it.classOrNull?.owner?.takeIf { irClass ->
+              with(metroContext) { irClass.isBindingContainer() }
+            }
           }
-        }
+      }
     }
   }
 
   // Replacement processing is intentionally NOT done here. It's handled in
   // IrContributionMerger.computeContributions() after exclusions are applied, so that
   // excluded classes don't have their `replaces` effect applied.
+  context(traceScope: TraceScope)
   private fun getScopedContributions(
     contributingClasses: Collection<IrClass>,
     scope: Scope,
     bindingContainersOnly: Boolean,
-  ): Set<IrType> {
-    return contributingClasses
-      .let { contributions ->
-        if (bindingContainersOnly) {
-          contributions.filter { irClass -> with(metroContext) { irClass.isBindingContainer() } }
-        } else {
-          contributions.filterNot { irClass -> with(metroContext) { irClass.isBindingContainer() } }
-        }
-      }
-      .flatMapToSet { irClass ->
-        with(metroContext) {
-          if (irClass.isBindingContainer()) {
-            setOf(irClass.defaultType)
+  ): Set<IrType> =
+    trace("Get scoped contributions for $scope") {
+      contributingClasses
+        .let { contributions ->
+          if (bindingContainersOnly) {
+            contributions.filter { irClass -> with(metroContext) { irClass.isBindingContainer() } }
           } else {
-            irClass.nestedClasses.mapNotNullToSet { nestedClass ->
-              val metroContribution =
-                nestedClass.findAnnotations(Symbols.ClassIds.metroContribution).singleOrNull()
-                  ?: return@mapNotNullToSet null
-              val contributionScope =
-                metroContribution.scopeOrNull()
-                  ?: reportCompilerBug("No scope found for @MetroContribution annotation")
-              if (contributionScope == scope) {
-                nestedClass.defaultType
-              } else {
-                null
+            contributions.filterNot { irClass ->
+              with(metroContext) { irClass.isBindingContainer() }
+            }
+          }
+        }
+        .flatMapToSet { irClass ->
+          with(metroContext) {
+            if (irClass.isBindingContainer()) {
+              setOf(irClass.defaultType)
+            } else {
+              irClass.nestedClasses.mapNotNullToSet { nestedClass ->
+                val metroContribution =
+                  nestedClass.findAnnotations(Symbols.ClassIds.metroContribution).singleOrNull()
+                    ?: return@mapNotNullToSet null
+                val contributionScope =
+                  metroContribution.scopeOrNull()
+                    ?: reportCompilerBug("No scope found for @MetroContribution annotation")
+                if (contributionScope == scope) {
+                  nestedClass.defaultType
+                } else {
+                  null
+                }
               }
             }
           }
         }
-      }
-  }
+    }
 }

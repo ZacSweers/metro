@@ -90,12 +90,14 @@ internal class ContributionTransformer(
 
       // First, perform transformations
       if (declaration.origin == Origins.MetroContributionClassDeclaration) {
-        trace("Transform contribution") {
+        trace("Transform and collect contribution") {
           val metroContributionAnno =
             declaration.findAnnotations(Symbols.ClassIds.metroContribution).first()
           val scope = metroContributionAnno.requireScope()
-          transformContributionClass(declaration, scope)
-          collectContributionDataFromContribution(declaration, data, scope, isBindingContainer)
+          trace("Transform class") { transformContributionClass(declaration, scope) }
+          trace("Collect contribution data") {
+            collectContributionDataFromContribution(declaration, data, scope, isBindingContainer)
+          }
         }
       } else if (
         declaration.isAnnotatedWithAny(context.metroSymbols.classIds.graphLikeAnnotations)
