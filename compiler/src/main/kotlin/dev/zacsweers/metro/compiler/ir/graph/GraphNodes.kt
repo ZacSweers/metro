@@ -65,6 +65,7 @@ import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
 import java.util.EnumSet
+import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.irCall
@@ -108,8 +109,9 @@ internal class GraphNodes(
   private val contributionMerger: IrContributionMerger,
 ) : IrMetroContext by metroContext {
 
-  // Keyed by the source declaration
-  private val graphNodesByClass = mutableMapOf<ClassId, GraphNode>()
+  // Keyed by the source declaration. Thread-safe for concurrent access during parallel graph
+  // validation.
+  private val graphNodesByClass = ConcurrentHashMap<ClassId, GraphNode>()
 
   operator fun get(classId: ClassId) = graphNodesByClass[classId]
 
@@ -163,7 +165,7 @@ internal class GraphNodes(
         (dependencyGraphAnno?.annotationClass?.classId in
           metroContext.metroSymbols.classIds.dependencyGraphAnnotations)
     if (isRegularDependencyGraph) {
-      graphNodesByClass[graphClassId] = node
+      graphNodesByClass.putIfAbsent(graphClassId, node)
     }
 
     return node

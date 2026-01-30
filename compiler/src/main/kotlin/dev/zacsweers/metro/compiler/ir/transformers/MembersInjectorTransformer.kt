@@ -49,6 +49,7 @@ import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Optional
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.irBlockBody
@@ -115,8 +116,9 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
     }
   }
 
-  private val generatedInjectors = mutableMapOf<ClassId, Optional<MemberInjectClass>>()
-  private val injectorParamsByClass = mutableMapOf<ClassId, List<Parameters>>()
+  // Thread-safe for concurrent access during parallel graph validation.
+  private val generatedInjectors = ConcurrentHashMap<ClassId, Optional<MemberInjectClass>>()
+  private val injectorParamsByClass = ConcurrentHashMap<ClassId, List<Parameters>>()
 
   fun visitClass(declaration: IrClass) {
     @Suppress("RETURN_VALUE_NOT_USED") getOrGenerateInjector(declaration)
@@ -393,12 +395,12 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
 
     val result =
       processTypes(allTypes) { clazz, classId, nameAllocator ->
-        injectorParamsByClass.getOrPut(classId) {
+        injectorParamsByClass.computeIfAbsent(classId) {
           // Check for Dagger injector first if we're in Dagger mode or interop is enabled
           if (isDagger || options.enableDaggerRuntimeInterop) {
             val daggerParams = clazz.tryDeriveDaggerMemberInjectParameters(nameAllocator)
             if (daggerParams != null) {
-              return@getOrPut daggerParams
+              return@computeIfAbsent daggerParams
             }
           }
 
