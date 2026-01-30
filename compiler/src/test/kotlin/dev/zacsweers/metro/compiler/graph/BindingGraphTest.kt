@@ -4,14 +4,14 @@ package dev.zacsweers.metro.compiler.graph
 
 import androidx.collection.ScatterMap
 import com.google.common.truth.Truth.assertThat
+import dev.zacsweers.metro.compiler.testTraceScope
 import dev.zacsweers.metro.compiler.tracing.TraceScope
-import dev.zacsweers.metro.compiler.tracing.Tracer
 import kotlin.test.assertFails
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 import org.junit.Test
 
-class BindingGraphTest : TraceScope by TraceScope(Tracer.NONE) {
+class BindingGraphTest : TraceScope by testTraceScope() {
 
   @Test
   fun put() {
