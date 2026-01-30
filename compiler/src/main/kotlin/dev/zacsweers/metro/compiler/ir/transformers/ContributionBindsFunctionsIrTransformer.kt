@@ -78,40 +78,41 @@ internal class ContributionTransformer(
    */
   private val contributionsByClass = mutableMapOf<ClassId, Map<ClassId, Set<Contribution>>>()
 
-  override fun visitClass(declaration: IrClass, data: IrContributionData): IrStatement {
-    // TODO others?
-    val shouldSkip = declaration.isLocal
-    if (shouldSkip) {
-      return declaration
-    }
+  override fun visitClass(declaration: IrClass, data: IrContributionData): IrStatement =
+    trace("Visit ${declaration.name}") {
+      // TODO others?
+      val shouldSkip = declaration.isLocal
+      if (shouldSkip) {
+        return@trace declaration
+      }
 
-    trace("Transform ${declaration.name} bindings") {
-      val isBindingContainer by memoize { declaration.isBindingContainer() }
+      trace("Transform ${declaration.name} bindings") {
+        val isBindingContainer by memoize { declaration.isBindingContainer() }
 
-      // First, perform transformations
-      if (declaration.origin == Origins.MetroContributionClassDeclaration) {
-        trace("Transform and collect contribution") {
-          val metroContributionAnno =
-            declaration.findAnnotations(Symbols.ClassIds.metroContribution).first()
-          val scope = metroContributionAnno.requireScope()
-          trace("Transform class") { transformContributionClass(declaration, scope) }
-          trace("Collect contribution data") {
-            collectContributionDataFromContribution(declaration, data, scope, isBindingContainer)
+        // First, perform transformations
+        if (declaration.origin == Origins.MetroContributionClassDeclaration) {
+          trace("Transform and collect contribution") {
+            val metroContributionAnno =
+              declaration.findAnnotations(Symbols.ClassIds.metroContribution).first()
+            val scope = metroContributionAnno.requireScope()
+            trace("Transform class") { transformContributionClass(declaration, scope) }
+            trace("Collect contribution data") {
+              collectContributionDataFromContribution(declaration, data, scope, isBindingContainer)
+            }
+          }
+        } else if (
+          declaration.isAnnotatedWithAny(context.metroSymbols.classIds.graphLikeAnnotations)
+        ) {
+          trace("Transform graphlike") { transformGraphLike(declaration) }
+        } else if (isBindingContainer) {
+          trace("Collect contributions from container") {
+            collectContributionDataFromContainer(declaration, data)
           }
         }
-      } else if (
-        declaration.isAnnotatedWithAny(context.metroSymbols.classIds.graphLikeAnnotations)
-      ) {
-        trace("Transform graphlike") { transformGraphLike(declaration) }
-      } else if (isBindingContainer) {
-        trace("Collect contributions from container") {
-          collectContributionDataFromContainer(declaration, data)
-        }
       }
-    }
 
-    return super.visitClass(declaration, data)
-  }
+      return@trace super.visitClass(declaration, data)
+    }
 
   private fun collectContributionDataFromContribution(
     declaration: IrClass,
