@@ -110,6 +110,7 @@ internal typealias InitStatement =
 internal class IrGraphGenerator(
   metroContext: IrMetroContext,
   traceScope: TraceScope,
+  private val diagnosticTag: String,
   private val graphNodesByClass: (ClassId) -> GraphNode?,
   private val node: GraphNode.Local,
   private val graphClass: IrClass,

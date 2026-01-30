@@ -50,6 +50,7 @@ import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
+import dev.zacsweers.metro.compiler.tracing.diagnosticTag
 import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.backend.common.IrElementTransformerVoidWithContext
 import org.jetbrains.kotlin.backend.common.ScopeWithIr
@@ -262,17 +263,19 @@ internal class DependencyGraphTransformer(
     }
 
     val tag = dependencyGraphDeclaration.kotlinFqName.shortName().asString()
+    val diagnosticTag = dependencyGraphDeclaration.diagnosticTag
 
     // Phase 1: Validate the entire graph tree (recursively validates children)
-    return trace("[$tag] Transform dependency graph", tag) {
+    return trace("[$tag] Transform dependency graph") {
       val validationResult =
-        trace("Prepare and validate", tag) {
+        trace("Prepare and validate") {
           validateDependencyGraph(
             graphClassId,
             dependencyGraphDeclaration,
             dependencyGraphAnno,
             metroGraph,
             parentContext,
+            diagnosticTag,
           )
         }
 
@@ -308,6 +311,7 @@ internal class DependencyGraphTransformer(
     dependencyGraphAnno: IrConstructorCall,
     metroGraph: IrClass,
     parentContext: ParentContext?,
+    diagnosticTag: String,
   ): ValidationResult {
     val node =
       graphNodes.getOrComputeNode(
@@ -316,6 +320,7 @@ internal class DependencyGraphTransformer(
           dependencyGraphDeclaration,
           metroContext.loggerFor(MetroLogger.Type.GraphNodeConstruction),
         ),
+        diagnosticTag,
         metroGraph,
         dependencyGraphAnno,
       ) as GraphNode.Local
@@ -425,13 +430,14 @@ internal class DependencyGraphTransformer(
         // Validate the child graph (generation is deferred until after parent generates)
         val childTag = contributedGraph.kotlinFqName.shortName().asString()
         val childValidation =
-          trace("[$childTag] Validate child graph", childTag) {
+          trace("[$childTag] Validate child graph") {
             validateDependencyGraph(
               contributedGraph.classIdOrFail,
               contributedGraph,
               contributedGraph.annotationsIn(metroSymbols.dependencyGraphAnnotations).single(),
               contributedGraph,
               localParentContext,
+              diagnosticTag,
             )
           }
 
@@ -629,16 +635,14 @@ internal class DependencyGraphTransformer(
     val node = validationResult.node
     val metroGraph = node.metroGraphOrFail
 
-    trace(
-      "[${metroGraph.kotlinFqName.shortName().asString()}] Generate graph",
-      metroGraph.kotlinFqName.asString(),
-    ) {
+    trace("[${metroGraph.kotlinFqName.shortName().asString()}] Generate graph") {
       try {
         // Generate this graph's implementation
         val bindingPropertyContext =
           IrGraphGenerator(
               metroContext = metroContext,
               traceScope = this,
+              diagnosticTag = metroGraph.diagnosticTag,
               graphNodesByClass = graphNodes::get,
               node = node,
               graphClass = metroGraph,

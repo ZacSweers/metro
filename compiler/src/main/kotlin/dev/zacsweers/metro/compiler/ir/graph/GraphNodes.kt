@@ -119,13 +119,20 @@ internal class GraphNodes(
   fun getOrComputeNode(
     graphDeclaration: IrClass,
     bindingStack: IrBindingStack,
+    diagnosticTag: String,
     metroGraph: IrClass? = null,
     dependencyGraphAnno: IrConstructorCall? = null,
   ): GraphNode {
     if (!graphDeclaration.origin.isSyntheticGeneratedGraph) {
       val sourceGraph = graphDeclaration.sourceGraphIfMetroGraph
       if (sourceGraph != graphDeclaration) {
-        return getOrComputeNode(sourceGraph, bindingStack, metroGraph, dependencyGraphAnno)
+        return getOrComputeNode(
+          sourceGraph,
+          bindingStack,
+          diagnosticTag,
+          metroGraph,
+          dependencyGraphAnno,
+        )
       }
     }
 
@@ -146,7 +153,7 @@ internal class GraphNodes(
             metroGraph,
             dependencyGraphAnno,
           )
-          .build()
+          .build(diagnosticTag)
       }
 
     // Only cache regular @DependencyGraph-annotated nodes. Extensions/dynamic graphs are
@@ -243,7 +250,7 @@ internal class GraphNodes(
       }
     }
 
-    private fun buildCreator(): GraphNode.Creator? {
+    private fun buildCreator(diagnosticTag: String): GraphNode.Creator? {
       var bindingContainerFields = BitField()
       fun populateBindingContainerFields(parameters: Parameters) {
         for ((i, parameter) in parameters.regularParameters.withIndex()) {
@@ -342,7 +349,7 @@ internal class GraphNodes(
                 } else {
                   sourceGraph
                 }
-              nodeCache.getOrComputeNode(nodeKey, bindingStack)
+              nodeCache.getOrComputeNode(nodeKey, bindingStack, diagnosticTag)
             }
 
           // Still tie to the parameter key because that's what gets the instance binding
@@ -425,7 +432,7 @@ internal class GraphNodes(
     }
 
     context(traceScope: TraceScope)
-    fun build(): GraphNode {
+    fun build(diagnosticTag: String): GraphNode {
       if (graphDeclaration.isExternalParent || !isGraph) {
         return buildExternalGraphOrBindingContainer()
       }
@@ -867,7 +874,7 @@ internal class GraphNodes(
         }
       }
 
-      val creator = trace("Build creator") { buildCreator() }
+      val creator = trace("Build creator") { buildCreator(diagnosticTag) }
 
       // For synthetic graph extensions, also track the original factory creator
       // This allows referencing original parameter declarations for reporting unused inputs
@@ -923,7 +930,7 @@ internal class GraphNodes(
               parentGraphClass.kotlinFqName.asString(),
             )
           ) {
-            nodeCache.getOrComputeNode(parentGraphClass, bindingStack)
+            nodeCache.getOrComputeNode(parentGraphClass, bindingStack, diagnosticTag)
           }
         parentGraph = node
 
