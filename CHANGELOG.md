@@ -10,6 +10,14 @@ Changelog
 
 ### Enhancements
 
+- **[FIR]**: When reporting diagnostics about types that are aliases, include the aliased type in the message. This is helpful for messages like below
+    ```kotlin
+    typealias UserId = String
+    interface Bindings {
+      // error: Binds receiver type `kotlin.String` is the same type and qualifier as the bound type `UserId (kotlin.String)`.
+      @Binds fun String.bind(): UserId
+    }
+    ```
 - **[IR]**: Use `androidx.collection` primitive and scatter collections in a few more places to further help improve memory performance.
 - **[IR]**: Don't attempt to generate a graph impl if validation at any level in processing fails, as this could result in obscure extra errors getting reported after the relevant initial error.
 
