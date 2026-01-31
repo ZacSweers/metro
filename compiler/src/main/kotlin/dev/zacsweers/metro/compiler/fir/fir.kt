@@ -116,6 +116,7 @@ import org.jetbrains.kotlin.fir.types.ConeTypeProjection
 import org.jetbrains.kotlin.fir.types.FirTypeProjectionWithVariance
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.FirUserTypeRef
+import org.jetbrains.kotlin.fir.types.abbreviatedType
 import org.jetbrains.kotlin.fir.types.builder.buildUserTypeRef
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
@@ -1277,12 +1278,21 @@ internal fun FirClassLikeSymbol<*>.isBindingContainer(session: FirSession): Bool
   }
 }
 
-internal fun ConeKotlinType.render(short: Boolean): String {
-  return buildString { renderType(short, this@render) }
+internal fun ConeKotlinType.render(short: Boolean, includeAbbreviation: Boolean = !short): String {
+  return buildString { renderType(short, this@render, includeAbbreviation) }
 }
 
 // Custom renderer that excludes annotations
-internal fun StringBuilder.renderType(short: Boolean, type: ConeKotlinType) {
+internal fun StringBuilder.renderType(
+  short: Boolean,
+  type: ConeKotlinType,
+  includeAbbreviation: Boolean = !short,
+) {
+  val abbreviatedType = if (includeAbbreviation) type.abbreviatedType else null
+  if (abbreviatedType != null) {
+    renderType(short, abbreviatedType, includeAbbreviation = false)
+    append(" (")
+  }
   val renderer =
     object :
       ConeTypeRendererForReadability(
@@ -1295,6 +1305,9 @@ internal fun StringBuilder.renderType(short: Boolean, type: ConeKotlinType) {
       }
     }
   renderer.render(type)
+  if (abbreviatedType != null) {
+    append(')')
+  }
 }
 
 // Original in kotlinc was removed

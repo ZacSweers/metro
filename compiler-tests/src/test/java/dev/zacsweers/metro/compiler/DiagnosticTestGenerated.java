@@ -136,6 +136,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     public void testSuspiciousIntoSetWithCollection() {
       runTest("compiler-tests/src/test/data/diagnostic/bindingcontainer/SuspiciousIntoSetWithCollection.kt");
     }
+
+    @Test
+    @TestMetadata("TypeAliasesAreSpecifiedInDiagnostics.kt")
+    public void testTypeAliasesAreSpecifiedInDiagnostics() {
+      runTest("compiler-tests/src/test/data/diagnostic/bindingcontainer/TypeAliasesAreSpecifiedInDiagnostics.kt");
+    }
   }
 
   @Nested

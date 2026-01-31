@@ -67,15 +67,19 @@ internal class FirContextualTypeKey(
     }
   }
 
-  override fun toString(): String = render(short = true)
+  override fun toString(): String = render(short = true, includeAbbreviation = true)
 
-  fun render(short: Boolean, includeQualifier: Boolean = true): String = buildString {
+  fun render(
+    short: Boolean,
+    includeAbbreviation: Boolean,
+    includeQualifier: Boolean = true,
+  ): String = buildString {
     append(
       wrappedType.render { type ->
         if (type == typeKey.type) {
-          typeKey.render(short, includeQualifier)
+          typeKey.render(short, includeQualifier, includeAbbreviation)
         } else {
-          buildString { renderType(short, type) }
+          buildString { renderType(short, type, includeAbbreviation) }
         }
       }
     )
