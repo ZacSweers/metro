@@ -15,6 +15,7 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.NOOP_TYPE_REMAPPER
 import dev.zacsweers.metro.compiler.ir.ParentContext
+import dev.zacsweers.metro.compiler.ir.ParentContextReader
 import dev.zacsweers.metro.compiler.ir.allowEmpty
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.asMemberOf
@@ -60,7 +61,7 @@ internal class BindingLookup(
   private val sourceGraph: IrClass,
   private val findClassFactory: (IrClass) -> ClassFactory?,
   private val findMemberInjectors: (IrClass) -> List<MemberInjectClass>,
-  private val parentContext: ParentContext?,
+  private val parentContext: ParentContextReader?,
 ) {
 
   // Single cache for all bindings, storing lists to track duplicates naturally

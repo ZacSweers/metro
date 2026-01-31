@@ -14,7 +14,10 @@ import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrContributionMerger
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.ParentContext
+import dev.zacsweers.metro.compiler.ir.ParentContextReader
+import dev.zacsweers.metro.compiler.ir.UsedKeyCollector
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
@@ -52,6 +55,8 @@ import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.diagnosticTag
 import dev.zacsweers.metro.compiler.tracing.trace
+import java.util.concurrent.Callable
+import java.util.concurrent.ExecutorService
 import org.jetbrains.kotlin.backend.common.IrElementTransformerVoidWithContext
 import org.jetbrains.kotlin.backend.common.ScopeWithIr
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -98,11 +103,22 @@ internal data class ValidationResult(
   val hasErrors: Boolean,
 )
 
+/** Result of validating a single graph extension (used during parallel validation). */
+private data class ExtensionValidationTask(
+  val contributedGraphKey: IrTypeKey,
+  val contributedGraph: IrClass,
+  val accessor: MetroSimpleFunction,
+  val isDirectExtension: Boolean,
+  val validation: ValidationResult,
+  val usedContextKeys: Set<IrContextualTypeKey>,
+)
+
 internal class DependencyGraphTransformer(
   context: IrMetroContext,
   private val contributionData: IrContributionData,
   traceScope: TraceScope,
   hintGenerator: HintGenerator,
+  private val executorService: ExecutorService?,
 ) :
   IrElementTransformerVoidWithContext(),
   TransformerContextAccess,
@@ -310,7 +326,7 @@ internal class DependencyGraphTransformer(
     dependencyGraphDeclaration: IrClass,
     dependencyGraphAnno: IrConstructorCall,
     metroGraph: IrClass,
-    parentContext: ParentContext?,
+    parentContextReader: ParentContextReader?,
     diagnosticTag: String,
   ): ValidationResult {
     val node =
@@ -339,7 +355,7 @@ internal class DependencyGraphTransformer(
             injectConstructorTransformer,
             membersInjectorTransformer,
             contributionData,
-            parentContext,
+            parentContextReader,
           )
           .generate()
       }
@@ -363,7 +379,11 @@ internal class DependencyGraphTransformer(
     if (node.graphExtensions.isNotEmpty()) {
       // Collect parent-available scoped binding keys to match against
       // @Binds not checked because they cannot be scoped!
-      val localParentContext = parentContext ?: ParentContext(metroContext)
+      // If parent is a real ParentContext, reuse it (sequential mode - shares context stack).
+      // If parent is a snapshot-backed reader (parallel mode), create fresh and inherit keys.
+      val localParentContext =
+        (parentContextReader as? ParentContext)
+          ?: ParentContext(metroContext).apply { parentContextReader?.let { inheritFrom(it) } }
 
       // This instance
       localParentContext.add(node.typeKey)
@@ -412,23 +432,23 @@ internal class DependencyGraphTransformer(
       localParentContext.pushParentGraph(node)
 
       // Second pass on graph extensions to actually process them and create GraphExtension bindings
-      for ((contributedGraphKey, accessors) in node.graphExtensions) {
-        val extensionAccessor = accessors.first() // Only need one for below linking
+      // Can run in parallel if executor is available
+      fun validateExtension(
+        contributedGraphKey: IrTypeKey,
+        accessor: MetroSimpleFunction,
+        reader: ParentContextReader,
+        usedKeysProvider: () -> Set<IrContextualTypeKey>,
+      ): ExtensionValidationTask {
 
-        val accessor = extensionAccessor.accessor
-
-        // Determine the actual graph extension type key
-        val actualGraphExtensionTypeKey = contributedGraphKey
-
-        // Generate the contributed graph class
+        // Generate the contributed graph class (thread-safe cache)
         val contributedGraph =
           graphExtensionGenerator.getOrBuildGraphExtensionImpl(
-            actualGraphExtensionTypeKey,
+            contributedGraphKey,
             node.sourceGraph,
             accessor,
           )
 
-        // Validate the child graph (generation is deferred until after parent generates)
+        // Validate the child graph
         val childTag = contributedGraph.kotlinFqName.shortName().asString()
         val childValidation =
           trace("[$childTag] Validate child graph") {
@@ -437,56 +457,90 @@ internal class DependencyGraphTransformer(
               contributedGraph,
               contributedGraph.annotationsIn(metroSymbols.dependencyGraphAnnotations).single(),
               contributedGraph,
-              localParentContext,
+              reader,
               diagnosticTag,
             )
           }
 
-        childValidationResults.add(childValidation)
+        return ExtensionValidationTask(
+          contributedGraphKey = contributedGraphKey,
+          contributedGraph = contributedGraph,
+          accessor = accessor,
+          isDirectExtension = contributedGraphKey in directExtensions,
+          validation = childValidation,
+          usedContextKeys = usedKeysProvider(),
+        )
+      }
 
-        if (childValidation.hasErrors) {
+      val extensionTasks: List<ExtensionValidationTask> =
+        if (executorService != null && node.graphExtensions.size > 1) {
+          // Parallel mode: create snapshot and validate children concurrently
+          val snapshot = localParentContext.snapshot()
+          node.graphExtensions
+            .map { (contributedGraphKey, accessors) ->
+              executorService.submit(
+                Callable {
+                  val collector = UsedKeyCollector()
+                  validateExtension(
+                    contributedGraphKey,
+                    accessors.first().accessor,
+                    snapshot.asReader(collector),
+                    collector::keys,
+                  )
+                }
+              )
+            }
+            .map { it.get() }
+        } else {
+          // Sequential mode: use shared parent context directly
+          node.graphExtensions.map { (contributedGraphKey, accessors) ->
+            validateExtension(
+              contributedGraphKey,
+              accessors.first().accessor,
+              localParentContext,
+              localParentContext::usedContextKeys,
+            )
+          }
+        }
+
+      // Merge results sequentially
+      for (task in extensionTasks) {
+        childValidationResults.add(task.validation)
+
+        if (task.validation.hasErrors) {
           hasErrors = true
-          // Don't try to do further processing here
           continue
         }
 
-        // Capture the used keys for this graph extension
-        val usedContextKeys = localParentContext.usedContextKeys()
-
-        if (contributedGraphKey in directExtensions) {
+        if (task.isDirectExtension) {
           val binding =
             IrBinding.GraphExtension(
-              typeKey = contributedGraphKey,
+              typeKey = task.contributedGraphKey,
               parent = node.sourceGraph,
-              accessor = accessor.ir,
+              accessor = task.accessor.ir,
               parentGraphKey = node.typeKey,
             )
 
-          // Replace the binding with the updated version
-          bindingGraph.addBinding(contributedGraphKey, binding, IrBindingStack.empty())
+          bindingGraph.addBinding(task.contributedGraphKey, binding, IrBindingStack.empty())
 
-          // Necessary since we don't treat graph extensions as part of roots
           bindingGraph.keep(
             binding.contextualTypeKey,
             IrBindingStack.Entry.generatedExtensionAt(
               binding.contextualTypeKey,
               node.sourceGraph.kotlinFqName.asString(),
-              accessor.ir,
+              task.accessor.ir,
             ),
           )
         }
 
         writeDiagnostic({
-          "parent-keys-used-${node.sourceGraph.name}-by-${contributedGraph.name}.txt"
+          "parent-keys-used-${node.sourceGraph.name}-by-${task.contributedGraph.name}.txt"
         }) {
-          usedContextKeys.sortedBy { it.typeKey }.joinToString(separator = "\n")
+          task.usedContextKeys.sortedBy { it.typeKey }.joinToString(separator = "\n")
         }
 
-        // For any key both child uses and parent has as a scoped static binding,
-        // mark it as a keep in the parent graph so it materializes during seal
-        for (contextKey in usedContextKeys) {
+        for (contextKey in task.usedContextKeys) {
           bindingGraph.keep(contextKey, IrBindingStack.Entry.simpleTypeRef(contextKey))
-          // Track that children need this context key - used by BindingPropertyCollector
           bindingGraph.reserveContextKey(contextKey)
         }
       }
@@ -539,12 +593,12 @@ internal class DependencyGraphTransformer(
 
     // Mark bindings from enclosing parents to ensure they're generated there
     // Only applicable in graph extensions
-    if (parentContext != null) {
+    if (parentContextReader != null) {
       for (key in sealResult.reachableKeys) {
         val isSelfKey =
           key == node.typeKey || key == node.metroGraph?.generatedGraphExtensionData?.typeKey
-        if (!isSelfKey && key in parentContext) {
-          @Suppress("RETURN_VALUE_NOT_USED") parentContext.mark(key)
+        if (!isSelfKey && key in parentContextReader) {
+          @Suppress("RETURN_VALUE_NOT_USED") parentContextReader.mark(key)
         }
       }
     }

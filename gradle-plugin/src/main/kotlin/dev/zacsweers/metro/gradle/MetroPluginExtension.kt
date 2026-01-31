@@ -333,6 +333,15 @@ constructor(
       .convention(compilerVersion.map { it.toString() })
 
   /**
+   * Number of threads to use for Metro's compiler.
+   *
+   * 0 (default) disables parallelism.
+   */
+  @DelicateMetroGradleApi("Parallel graph validation is an experimental feature")
+  public val parallelMetroThreads: Property<Int> =
+    objects.intProperty("metro.parallelMetroThreads", 0)
+
+  /**
    * If set, the Metro compiler will dump verbose report diagnostics about resolved dependency
    * graphs to the given destination. Outputs are per-compilation granularity (i.e.
    * `build/metro/main/...`).

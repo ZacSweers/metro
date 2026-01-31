@@ -11,6 +11,8 @@ import dev.zacsweers.metro.compiler.ir.transformers.DependencyGraphTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.HintGenerator
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.trace
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
@@ -40,10 +42,21 @@ public class MetroIrGenerationExtension(
         expectActualTracker,
       )
 
-    context.traceDriver.use { context.generateInner(moduleFragment) }
+    context.traceDriver.use {
+      if (options.parallelMetroThreads > 0) {
+        Executors.newFixedThreadPool(options.parallelMetroThreads).use { executorService ->
+          context.generateInner(moduleFragment, executorService)
+        }
+      } else {
+        context.generateInner(moduleFragment, null)
+      }
+    }
   }
 
-  private fun IrMetroContext.generateInner(moduleFragment: IrModuleFragment) {
+  private fun IrMetroContext.generateInner(
+    moduleFragment: IrModuleFragment,
+    executorService: ExecutorService?,
+  ) {
     log("Starting IR processing of ${moduleFragment.name.asString()}")
     try {
       traceWithScope(moduleFragment.name.asString().removePrefix("<").removeSuffix(">")) {
@@ -65,6 +78,7 @@ public class MetroIrGenerationExtension(
                 contributionData,
                 this,
                 HintGenerator(metroContext, moduleFragment),
+                executorService,
               )
             moduleFragment.transform(dependencyGraphTransformer, null)
           }

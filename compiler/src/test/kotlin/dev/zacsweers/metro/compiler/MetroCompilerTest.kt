@@ -337,6 +337,9 @@ abstract class MetroCompilerTest {
                   this@toPluginOptions.compilerVersion.orEmpty(),
                 )
               }
+              MetroOption.PARALLEL_METRO_THREADS -> {
+                processor.option(entry.raw.cliOption, parallelMetroThreads)
+              }
             }
           yield(option)
         }

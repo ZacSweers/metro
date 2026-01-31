@@ -45,14 +45,6 @@ class GenerateProjectsCommand : CliktCommand() {
       )
       .flag(default = false)
 
-  private val transformProvidersToPrivate by
-    option(
-        "--transform-providers-to-private",
-        help =
-          "Transform @Provides functions to private (Metro mode only). Disabled by default for better R8 optimization.",
-      )
-      .flag("--no-transform-providers-to-private", default = false)
-
   private val enableReports by
     option("--enable-reports", help = "Enable Metro graph reports for debugging (Metro mode only).")
       .flag(default = false)
@@ -1161,7 +1153,6 @@ class PlainDataProcessor {
   fun metroDsl(): String {
     val options =
       mutableListOf<String>().apply {
-        if (!transformProvidersToPrivate) add("  transformProvidersToPrivate.set(false)")
         if (enableSharding) add("  enableGraphSharding.set(true)")
         if (enableSwitchingProviders) add("  enableSwitchingProviders.set(true)")
         if (enableReports)

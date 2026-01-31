@@ -81,6 +81,14 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
       return
     }
 
+    if (options.parallelMetroThreads < 0) {
+      messageCollector.report(
+        CompilerMessageSeverity.ERROR,
+        "parallelMetroThreads must be non-negative but was ${options.keysPerGraphShard}",
+      )
+      return
+    }
+
     if (options.debug) {
       messageCollector.report(CompilerMessageSeverity.INFO, "Metro options:\n$options")
     }

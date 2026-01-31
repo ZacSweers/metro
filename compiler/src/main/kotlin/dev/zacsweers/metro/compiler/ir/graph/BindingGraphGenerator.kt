@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.MultibindsCallable
 import dev.zacsweers.metro.compiler.ir.ParentContext
+import dev.zacsweers.metro.compiler.ir.ParentContextReader
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.isBindingContainer
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
@@ -52,7 +53,7 @@ internal class BindingGraphGenerator(
   private val injectConstructorTransformer: InjectConstructorTransformer,
   private val membersInjectorTransformer: MembersInjectorTransformer,
   private val contributionData: IrContributionData,
-  private val parentContext: ParentContext?,
+  private val parentContext: ParentContextReader?,
 ) : IrMetroContext by metroContext, TraceScope by traceScope {
 
   private val ProviderFactory.isDynamic: Boolean
