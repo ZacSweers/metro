@@ -1291,7 +1291,7 @@ internal fun StringBuilder.renderType(
   val abbreviatedType = if (includeAbbreviation) type.abbreviatedType else null
   if (abbreviatedType != null) {
     renderType(short, abbreviatedType, includeAbbreviation = false)
-    append(" (")
+    append(" (typealias to ")
   }
   val renderer =
     object :

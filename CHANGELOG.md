@@ -14,7 +14,7 @@ Changelog
     ```kotlin
     typealias UserId = String
     interface Bindings {
-      // error: Binds receiver type `kotlin.String` is the same type and qualifier as the bound type `UserId (kotlin.String)`.
+      // error: Binds receiver type `kotlin.String` is the same type and qualifier as the bound type `UserId (typealias to kotlin.String)`.
       @Binds fun String.bind(): UserId
     }
     ```

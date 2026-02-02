@@ -1,3 +1,3 @@
-/TypeAliasesAreSpecifiedInDiagnostics.kt:(236,240): error: Binds receiver type `kotlin.String` is the same type and qualifier as the bound type `UserId (kotlin.String)`.
+/TypeAliasesAreSpecifiedInDiagnostics.kt:(236,240): error: Binds receiver type `kotlin.String` is the same type and qualifier as the bound type `UserId (typealias to kotlin.String)`.
 
-/TypeAliasesAreSpecifiedInDiagnostics.kt:(272,282): error: Binds receiver type `kotlin.String` is the same type and qualifier as the bound type `AppGraph.NestedUserId (kotlin.String)`.
+/TypeAliasesAreSpecifiedInDiagnostics.kt:(272,282): error: Binds receiver type `kotlin.String` is the same type and qualifier as the bound type `AppGraph.NestedUserId (typealias to kotlin.String)`.
