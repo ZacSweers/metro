@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769803036146,
+  "lastUpdate": 1770091849006,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -4648,6 +4648,62 @@ window.BENCHMARK_DATA = {
             "value": 21663.574,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -1.25%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "56cf30be~1",
+          "message": "[before] Improve alias diagnostics in FIR (#1773)",
+          "timestamp": "2026-02-03T03:34:14Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/56cf30bececcdc1915644a585b92d25b6f986362"
+        },
+        "date": 1770091849006,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20010.57,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "56cf30bececcdc1915644a585b92d25b6f986362",
+          "message": "[after] Improve alias diagnostics in FIR (#1773)",
+          "timestamp": "2026-02-03T03:34:14Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/56cf30bececcdc1915644a585b92d25b6f986362"
+        },
+        "date": 1770091849007,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20262.311999999998,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +1.26%"
           }
         ]
       }

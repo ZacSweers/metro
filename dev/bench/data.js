@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769803036014,
+  "lastUpdate": 1770091848879,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -4648,6 +4648,62 @@ window.BENCHMARK_DATA = {
             "value": 0.22204361778683493,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: +4.78%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "56cf30be~1",
+          "message": "[before] Improve alias diagnostics in FIR (#1773)",
+          "timestamp": "2026-02-03T03:34:14Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/56cf30bececcdc1915644a585b92d25b6f986362"
+        },
+        "date": 1770091848879,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2177330296181749,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "56cf30bececcdc1915644a585b92d25b6f986362",
+          "message": "[after] Improve alias diagnostics in FIR (#1773)",
+          "timestamp": "2026-02-03T03:34:14Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/56cf30bececcdc1915644a585b92d25b6f986362"
+        },
+        "date": 1770091848880,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.21035905575237815,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: -3.39%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
