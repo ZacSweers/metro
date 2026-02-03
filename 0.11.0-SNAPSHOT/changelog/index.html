@@ -3604,6 +3604,13 @@
 </ul>
 <h3 id="enhancements">Enhancements<a class="headerlink" href="#enhancements" title="Permanent link">&para;</a></h3>
 <ul>
+<li><strong>[FIR]</strong>: When reporting diagnostics about types that are aliases, include the aliased type in the message. This is helpful for messages like below<br />
+    <div class="highlight"><pre><span></span><code><span class="k">typealias</span><span class="w"> </span><span class="n">UserId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kt">String</span>
+<span class="kd">interface</span><span class="w"> </span><span class="nc">Bindings</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="c1">// error: Binds receiver type `kotlin.String` is the same type and qualifier as the bound type `UserId (typealias to kotlin.String)`.</span>
+<span class="w">  </span><span class="nd">@Binds</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="n">String</span><span class="p">.</span><span class="nf">bind</span><span class="p">():</span><span class="w"> </span><span class="n">UserId</span>
+<span class="p">}</span>
+</code></pre></div></li>
 <li><strong>[IR]</strong>: Use <code>androidx.collection</code> primitive and scatter collections in a few more places to further help improve memory performance.</li>
 <li><strong>[IR]</strong>: Don&rsquo;t attempt to generate a graph impl if validation at any level in processing fails, as this could result in obscure extra errors getting reported after the relevant initial error.</li>
 </ul>
