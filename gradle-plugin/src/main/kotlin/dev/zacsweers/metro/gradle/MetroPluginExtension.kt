@@ -7,10 +7,10 @@ import org.gradle.api.Action
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.ProjectLayout
 import org.gradle.api.model.ObjectFactory
+import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.Provider
 import org.gradle.api.provider.ProviderFactory
-import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.SetProperty
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 import org.jetbrains.kotlin.tooling.core.KotlinToolingVersion
@@ -328,9 +328,7 @@ constructor(
    *
    * Null by default (uses the detected runtime Kotlin version).
    */
-  public val compilerVersion: Property<String> =
-    objects
-      .metroProperty("metro.compilerVersion", "")
+  public val compilerVersion: Property<String> = objects.metroProperty("metro.compilerVersion", "")
 
   /**
    * Compiler version aliases mapping fake IDE versions to their real compiler versions.

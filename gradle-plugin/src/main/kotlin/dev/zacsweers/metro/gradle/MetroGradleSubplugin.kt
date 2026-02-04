@@ -356,9 +356,14 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
           add(lazyOption("patch-klib-params", extension.patchKlibParams))
           add(lazyOption("force-enable-fir-in-ide", extension.forceEnableFirInIde))
           add(lazyOption("compiler-version", extension.compilerVersion))
-          add(lazyOption("compiler-version-aliases", extension.compilerVersionAliases.map { map ->
-            map.entries.joinToString(":") { "${it.key}=${it.value}" }
-          }))
+          add(
+            lazyOption(
+              "compiler-version-aliases",
+              extension.compilerVersionAliases.map { map ->
+                map.entries.joinToString(":") { "${it.key}=${it.value}" }
+              },
+            )
+          )
           // Track whether we ordered the plugin before compose-compiler
           add(SubpluginOption("plugin-order-set", orderComposePlugin.toString()))
           reportsDir.orNull
