@@ -3617,12 +3617,11 @@
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
 <h3 id="changes">Changes<a class="headerlink" href="#changes" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>[FIR]</strong> Disable FIR IDE support by default on <code>255</code> patch versions that Android Studio canaries/nightlies report, as they report a fake Kotlin version that Metro can&rsquo;t resolve a proper compat layer for. Please star this issue: <a href="https://issuetracker.google.com/issues/474940910">https://issuetracker.google.com/issues/474940910</a></li>
+<li><strong>[FIR/IR]</strong> Add aliases for a bunch of &ldquo;known&rdquo; mappings for Kotlin IDE plugin versions to Kotlin versions. This is still best-effort but should hopefully be more robust, especially in situations like Android Studio canaries (which do not report real Kotlin versions). Please star this issue: <a href="https://issuetracker.google.com/issues/474940910">https://issuetracker.google.com/issues/474940910</a></li>
 <li><strong>[IR]</strong>: Rework assisted inject bindings to be encapsulated by their consuming assisted factory bindings in graph validation.<ul>
 <li>This ensures these classes can&rsquo;t accidentally participate in <code>SwitchingProvider</code>s or valid cycle breaking with <code>DelegateFactory</code>, as both of those require <code>Provider</code> types and assisted-inject types&rsquo; factories don&rsquo;t implement <code>Provider</code>.</li>
 </ul>
 </li>
-<li><strong>[Gradle]</strong>: If <code>kotlin.compilerVersion</code> is set, Metro will now defer to it for the detected compiler version (particularly for compatibility detection). If not set, it will default to the Kotlin Gradle plugin version.</li>
 <li>Fold <code>2.3.20-dev-7791</code> compat into <code>2.3.20-Beta2</code> compat, meaning the former is no longer tested on CI.</li>
 </ul>
 <h3 id="contributors">Contributors<a class="headerlink" href="#contributors" title="Permanent link">&para;</a></h3>
