@@ -310,4 +310,24 @@ class CompatContextTest {
     // dev-5437 < Beta1 semantically, so only 2.3.0 matches
     assertThat(resolved.minVersion).isEqualTo("2.3.0")
   }
+
+  @Test
+  fun `factory resolution works with aliased version`() {
+    // Simulate an IDE reporting a fake version like 2.3.255-dev-255
+    // After aliasing to 2.3.20-Beta2, factory resolution should pick the right factory
+    val fakeVersion = KotlinToolingVersion("2.3.255-dev-255")
+    val userAliases = mapOf("2.3.255-dev-255" to "2.3.20-Beta2")
+    val aliasedVersion = CompilerVersionAliases.resolve(fakeVersion, userAliases)
+
+    val factory230 = FakeFactory(minVersion = "2.3.0", reportedCurrentVersion = "2.3.20-Beta2")
+    val factoryBeta =
+      FakeFactory(minVersion = "2.3.20-Beta1", reportedCurrentVersion = "2.3.20-Beta2")
+
+    val factories = sequenceOf(factory230, factoryBeta)
+    val resolved =
+      CompatContext.resolveFactory(factories, testVersionString = aliasedVersion.toString())
+
+    // Aliased version 2.3.20-Beta2 >= 2.3.20-Beta1, so should select Beta1 factory
+    assertThat(resolved.minVersion).isEqualTo("2.3.20-Beta1")
+  }
 }
