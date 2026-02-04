@@ -12,19 +12,14 @@ public object CompilerVersionAliases {
    * This is primarily used to map fake IDE compiler versions (e.g., Android Studio canary builds
    * reporting `2.3.255-dev-255`) to their real compiler versions.
    */
-  public fun resolve(
+  public fun map(
     version: KotlinToolingVersion,
     userAliases: Map<String, String> = emptyMap(),
   ): KotlinToolingVersion {
     val versionString = version.toString()
     // User aliases take priority
-    userAliases[versionString]?.let {
-      return KotlinToolingVersion(it)
-    }
     // Then check built-in aliases
-    BUILT_IN_COMPILER_VERSION_ALIASES[versionString]?.let {
-      return KotlinToolingVersion(it)
-    }
-    return version
+    val alias = userAliases[versionString] ?: BUILT_IN_COMPILER_VERSION_ALIASES[versionString]
+    return alias?.let(::KotlinToolingVersion) ?: version
   }
 }

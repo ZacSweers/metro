@@ -799,6 +799,27 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
       valueMapper = { it },
     )
+  ),
+  COMPILER_VERSION_ALIASES(
+    RawMetroOption(
+      name = "compiler-version-aliases",
+      defaultValue = emptyMap(),
+      valueDescription = "<from1=to1:from2=to2>",
+      description =
+        "Compiler version aliases mapping fake IDE versions to real compiler versions. Format: from1=to1:from2=to2",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { value ->
+        if (value.isBlank()) {
+          emptyMap()
+        } else {
+          value.split(":").associate { entry ->
+            val (from, to) = entry.split("=", limit = 2)
+            from to to
+          }
+        }
+      },
+    )
   );
 
   companion object {
@@ -959,6 +980,8 @@ public data class MetroOptions(
       ?.toBooleanStrict(),
   public val compilerVersion: String? =
     MetroOption.COMPILER_VERSION.raw.defaultValue.expectAs<String>().takeUnless(String::isBlank),
+  public val compilerVersionAliases: Map<String, String> =
+    MetroOption.COMPILER_VERSION_ALIASES.raw.defaultValue.expectAs(),
 ) {
 
   public val reportsEnabled: Boolean
@@ -1075,6 +1098,7 @@ public data class MetroOptions(
     public var forceEnableFirInIde: Boolean = base.forceEnableFirInIde
     public var pluginOrderSet: Boolean? = base.pluginOrderSet
     public var compilerVersion: String? = base.compilerVersion
+    public var compilerVersionAliases: Map<String, String> = base.compilerVersionAliases
 
     private fun FqName.classId(name: String): ClassId {
       return ClassId(this, Name.identifier(name))
@@ -1251,6 +1275,7 @@ public data class MetroOptions(
         forceEnableFirInIde = forceEnableFirInIde,
         pluginOrderSet = pluginOrderSet,
         compilerVersion = compilerVersion,
+        compilerVersionAliases = compilerVersionAliases,
       )
     }
 
@@ -1458,6 +1483,9 @@ public data class MetroOptions(
           COMPILER_VERSION -> {
             compilerVersion = configuration.getAsString(entry).takeUnless(String::isBlank)
           }
+          COMPILER_VERSION_ALIASES -> {
+            compilerVersionAliases = configuration.getAsMap(entry)
+          }
         }
       }
     }
@@ -1479,6 +1507,11 @@ public data class MetroOptions(
 
     private fun <E> CompilerConfiguration.getAsSet(option: MetroOption): Set<E> {
       @Suppress("UNCHECKED_CAST") val typed = option.raw as RawMetroOption<Set<E>>
+      return get(typed.key, typed.defaultValue)
+    }
+
+    private fun <K, V> CompilerConfiguration.getAsMap(option: MetroOption): Map<K, V> {
+      @Suppress("UNCHECKED_CAST") val typed = option.raw as RawMetroOption<Map<K, V>>
       return get(typed.key, typed.defaultValue)
     }
   }

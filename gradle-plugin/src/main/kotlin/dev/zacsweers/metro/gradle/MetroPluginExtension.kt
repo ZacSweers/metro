@@ -10,6 +10,7 @@ import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.Provider
 import org.gradle.api.provider.ProviderFactory
+import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.SetProperty
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 import org.jetbrains.kotlin.tooling.core.KotlinToolingVersion
@@ -330,7 +331,20 @@ constructor(
   public val compilerVersion: Property<String> =
     objects
       .metroProperty("metro.compilerVersion", "")
-      .convention(compilerVersion.map { it.toString() })
+
+  /**
+   * Compiler version aliases mapping fake IDE versions to their real compiler versions.
+   *
+   * This is useful for IDE builds (e.g., Android Studio canary) that report a fake Kotlin compiler
+   * version. When Metro detects a compiler version that matches an alias key, it will use the
+   * corresponding value as the real version.
+   *
+   * User-defined aliases take priority over built-in aliases.
+   *
+   * Empty by default.
+   */
+  public val compilerVersionAliases: MapProperty<String, String> =
+    objects.mapProperty(String::class.java, String::class.java).convention(emptyMap())
 
   /**
    * If set, the Metro compiler will dump verbose report diagnostics about resolved dependency

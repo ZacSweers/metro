@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler
 
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.compat.CompilerVersionAliases
 import dev.zacsweers.metro.compiler.compat.KotlinToolingVersion
 import dev.zacsweers.metro.compiler.fir.MetroFirExtensionRegistrar
 import dev.zacsweers.metro.compiler.ir.MetroIrGenerationExtension
@@ -41,11 +42,11 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
 
     val version =
       options.compilerVersion?.let(::KotlinToolingVersion)
-        ?: CompatContext.Factory.loadCompilerVersionOrNull()
+        ?: CompatContext.Factory.loadCompilerVersionOrNull()?.let {
+          CompilerVersionAliases.map(it, options.compilerVersionAliases)
+        }
 
-    val enableFir =
-      version != null &&
-        (version.patch != ANDROID_STUDIO_CANARY_PATCH || options.forceEnableFirInIde)
+    val enableFir = version != null || options.forceEnableFirInIde
 
     if (!enableFir) {
       // While the option is about FIR, this really also means we can't/don't enable IR
@@ -54,6 +55,17 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
       )
       return
     }
+
+    val compatContext =
+      try {
+        CompatContext.create(version)
+      } catch (t: Throwable) {
+        System.err.println(
+          "[METRO] Skipping enabling Metro extensions, unable to create CompatContext for version $version"
+        )
+        t.printStackTrace()
+        return
+      }
 
     val classIds = ClassIds.fromOptions(options)
 
@@ -64,6 +76,10 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
       } else {
         configuration.messageCollector
       }
+
+    if (options.debug) {
+      messageCollector.report(CompilerMessageSeverity.INFO, "Metro options:\n$options")
+    }
 
     if (options.maxIrErrorsCount < 1) {
       messageCollector.report(
@@ -80,12 +96,6 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
       )
       return
     }
-
-    if (options.debug) {
-      messageCollector.report(CompilerMessageSeverity.INFO, "Metro options:\n$options")
-    }
-
-    val compatContext = CompatContext.create(version)
 
     FirExtensionRegistrarAdapter.registerExtension(
       MetroFirExtensionRegistrar(classIds, options, compatContext)
