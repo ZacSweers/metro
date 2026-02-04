@@ -25,10 +25,9 @@ Changelog
 
 ### Changes
 
-- **[FIR]** Disable FIR IDE support by default on `255` patch versions that Android Studio canaries/nightlies report, as they report a fake Kotlin version that Metro can't resolve a proper compat layer for. Please star this issue: https://issuetracker.google.com/issues/474940910
+- **[FIR/IR]** Add aliases for a bunch of "known" mappings for Kotlin IDE plugin versions to Kotlin versions. This is still best-effort but should hopefully be more robust, especially in situations like Android Studio canaries (which do not report real Kotlin versions). Please star this issue: https://issuetracker.google.com/issues/474940910
 - **[IR]**: Rework assisted inject bindings to be encapsulated by their consuming assisted factory bindings in graph validation.
     - This ensures these classes can't accidentally participate in `SwitchingProvider`s or valid cycle breaking with `DelegateFactory`, as both of those require `Provider` types and assisted-inject types' factories don't implement `Provider`.
-- **[Gradle]**: If `kotlin.compilerVersion` is set, Metro will now defer to it for the detected compiler version (particularly for compatibility detection). If not set, it will default to the Kotlin Gradle plugin version.
 - Fold `2.3.20-dev-7791` compat into `2.3.20-Beta2` compat, meaning the former is no longer tested on CI.
 
 ### Contributors
