@@ -88,6 +88,7 @@ import org.jetbrains.kotlin.diagnostics.rendering.BaseDiagnosticRendererFactory
 import org.jetbrains.kotlin.diagnostics.rendering.CommonRenderers.STRING
 import org.jetbrains.kotlin.diagnostics.warning0
 import org.jetbrains.kotlin.diagnostics.warning1
+import org.jetbrains.kotlin.diagnostics.warningWithoutSource
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtElement
 
@@ -178,10 +179,10 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val KNOWN_KOTLINC_BUG_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val KNOWN_KOTLINC_BUG_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
   val SOURCELESS_METRO_ERROR by errorWithoutSource()
-  val SOURCELESS_METRO_WARNING by errorWithoutSource()
+  val SOURCELESS_METRO_WARNING by warningWithoutSource()
 
   override fun getRendererFactory(): BaseDiagnosticRendererFactory {
-    return FirMetroErrorMessages
+    return MetroErrorMessages
   }
 }
 
@@ -189,7 +190,7 @@ internal fun AbstractKtDiagnosticFactory.asSourcelessFactory(): KtSourcelessDiag
   return KtSourcelessDiagnosticFactory(name, severity, rendererFactory)
 }
 
-private object FirMetroErrorMessages : BaseDiagnosticRendererFactory() {
+private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
   override val MAP by
     KtDiagnosticFactoryToRendererMap("Metro") { map ->
       map.apply {
