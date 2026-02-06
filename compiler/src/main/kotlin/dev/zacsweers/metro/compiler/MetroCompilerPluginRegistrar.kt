@@ -21,13 +21,15 @@ import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
 public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
 
   private companion object {
-    /**
-     * This is Android Studio canary/nightly builds, which don't report a real version. They do
-     * always have '255' as a patch number though.
-     *
-     * We disable FIR in these by default due to not being able to resolve a real version.
-     */
-    const val ANDROID_STUDIO_CANARY_PATCH = 255
+    val isIde by lazy {
+      try {
+        // Try to look up an IntelliJ-only class
+        Class.forName("org.jetbrains.kotlin.analysis.low.level.api.fir.sessions.LLFirSession")
+        true
+      } catch (_: ClassNotFoundException) {
+        false
+      }
+    }
   }
 
   public val pluginId: String = PLUGIN_ID
@@ -46,7 +48,7 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
           CompilerVersionAliases.map(it, options.compilerVersionAliases)
         }
 
-    val enableFir = version != null || options.forceEnableFirInIde
+    val enableFir = version != null || (isIde && options.forceEnableFirInIde)
 
     if (!enableFir) {
       // While the option is about FIR, this really also means we can't/don't enable IR
@@ -78,6 +80,10 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
       }
 
     if (options.debug) {
+      messageCollector.report(
+        CompilerMessageSeverity.INFO,
+        "Metro mode: ${if (isIde) "IDE" else "CLI"}",
+      )
       messageCollector.report(CompilerMessageSeverity.INFO, "Metro options:\n$options")
     }
 
@@ -101,22 +107,24 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
       MetroFirExtensionRegistrar(classIds, options, compatContext)
     )
 
-    val lookupTracker = configuration.get(CommonConfigurationKeys.LOOKUP_TRACKER)
-    val expectActualTracker: ExpectActualTracker =
-      configuration.get(
-        CommonConfigurationKeys.EXPECT_ACTUAL_TRACKER,
-        ExpectActualTracker.DoNothing,
+    if (!isIde) {
+      val lookupTracker = configuration.get(CommonConfigurationKeys.LOOKUP_TRACKER)
+      val expectActualTracker: ExpectActualTracker =
+        configuration.get(
+          CommonConfigurationKeys.EXPECT_ACTUAL_TRACKER,
+          ExpectActualTracker.DoNothing,
+        )
+      IrGenerationExtension.registerExtension(
+        MetroIrGenerationExtension(
+          messageCollector = configuration.messageCollector,
+          classIds = classIds,
+          options = options,
+          lookupTracker = lookupTracker,
+          expectActualTracker = expectActualTracker,
+          compatContext = compatContext,
+        )
       )
-    IrGenerationExtension.registerExtension(
-      MetroIrGenerationExtension(
-        messageCollector = configuration.messageCollector,
-        classIds = classIds,
-        options = options,
-        lookupTracker = lookupTracker,
-        expectActualTracker = expectActualTracker,
-        compatContext = compatContext,
-      )
-    )
+    }
   }
 }
 
