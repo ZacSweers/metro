@@ -27,6 +27,23 @@ dependencyResolutionManagement {
   }
 }
 
+plugins { id("com.gradle.develocity") version "4.3.2" }
+
 rootProject.name = "metro-ide-integration-tests"
 
 includeBuild("..") { name = "metro" }
+
+develocity {
+  buildScan {
+    termsOfUseUrl = "https://gradle.com/terms-of-service"
+    termsOfUseAgree = "yes"
+
+    tag(if (System.getenv("CI").isNullOrBlank()) "Local" else "CI")
+
+    obfuscation {
+      username { "Redacted" }
+      hostname { "Redacted" }
+      ipAddresses { addresses -> addresses.map { "0.0.0.0" } }
+    }
+  }
+}

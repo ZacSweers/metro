@@ -9,7 +9,7 @@ plugins {
   id("metro.spotless")
 }
 
-kotlin { jvmToolchain(21) }
+metroProject { jvmTarget.set("21") }
 
 repositories {
   mavenCentral()
