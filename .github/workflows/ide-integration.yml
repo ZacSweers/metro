@@ -80,8 +80,7 @@ jobs:
 
       - name: Run IDE tests
         run: |
-          cd ide-integration-tests
-          ./gradlew test
+          ./gradlew -p ide-integration-tests test
 
       - name: Upload logs
         if: failure()
