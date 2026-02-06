@@ -103,7 +103,6 @@ jobs:
       - build-metro
     name: "IDE / ${{ matrix.ide }}"
     runs-on: ubuntu-latest
-    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -151,6 +150,7 @@ jobs:
         run: ide-integration-tests/download-ides.sh
 
       - name: Run IDE tests
+        timeout-minutes: 10
         run: |
           ./gradlew -p ide-integration-tests test --quiet
 
