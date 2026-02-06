@@ -31,7 +31,11 @@ plugins { id("com.gradle.develocity") version "4.3.2" }
 
 rootProject.name = "metro-ide-integration-tests"
 
-includeBuild("..") { name = "metro" }
+// Skip the Metro included build when artifacts are pre-built (e.g., CI matrix jobs).
+// This avoids configuring the full Metro project (and downloading Konan, etc.).
+if (System.getenv("METRO_PREBUILT") == null) {
+  includeBuild("..") { name = "metro" }
+}
 
 develocity {
   buildScan {

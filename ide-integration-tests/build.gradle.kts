@@ -36,7 +36,10 @@ dependencies {
 }
 
 tasks.test {
-  dependsOn(gradle.includedBuild("metro").task(":installForFunctionalTest"))
+  // When METRO_PREBUILT is set, artifacts are already in build/functionalTestRepo (e.g., from CI).
+  gradle.includedBuilds.find { it.name == "metro" }?.let {
+    dependsOn(it.task(":installForFunctionalTest"))
+  }
   useJUnitPlatform()
   // IDE Starter tests need significant memory and time
   jvmArgs("-Xmx4g")
