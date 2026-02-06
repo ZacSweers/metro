@@ -126,6 +126,40 @@ This file defines which IDE versions to test. Format:
 
 ---
 
+## Test Assertions
+
+The smoke test verifies Metro's IDE integration by checking diagnostics and inlay hints in `test-project/src/main/kotlin/TestSources.kt`. Expected results are declared inline using special comments.
+
+### `METRO_DIAGNOSTIC`
+
+Declares an expected diagnostic (error or warning) from Metro. Place the comment above the code that triggers it.
+
+```kotlin
+// METRO_DIAGNOSTIC: DIAGNOSTIC_ID,SEVERITY,description
+```
+
+- **DIAGNOSTIC_ID**: The Metro diagnostic ID (e.g., `ASSISTED_INJECTION_ERROR`). Matched against `[ID]` in the highlight description.
+- **SEVERITY**: Must match exactly (e.g., `ERROR`, `WARNING`).
+- **description**: Human-readable note for test readability. Included in failure messages.
+
+The test verifies the highlighted source text appears within a few lines after the comment.
+
+### `METRO_INLAY`
+
+Declares an expected inlay hint. Place the comment above the code that receives the inlay.
+
+```kotlin
+// METRO_INLAY: substring
+```
+
+The test checks that an inlay whose text contains `substring` appears within ~10 lines after the comment. Both inline inlays (e.g., `: ...MetroContributionToAppScope`) and block inlays (e.g., generated `@AssistedFactory` interfaces) are collected.
+
+### Unexpected errors
+
+The test also fails on any `ERROR`-severity highlight that isn't covered by a `METRO_DIAGNOSTIC` comment (e.g., `UNRESOLVED_REFERENCE`), catching regressions in generated code resolution.
+
+---
+
 ## Troubleshooting
 
 **404 errors downloading Android Studio:**
