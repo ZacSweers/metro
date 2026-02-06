@@ -108,10 +108,22 @@ public interface CompatContext {
         if (devMatch != null) {
           return devMatch
         }
-        // Fall back to non-DEV factories
+
+        // Fall back to non-DEV factories.
+        // Use the base version (strip dev classifier) for comparison, because
+        // 2.2.20-dev-5812 is a dev build OF 2.2.20 and should match the 2.2.20 factory,
+        // but KotlinToolingVersion ordering puts DEV < STABLE so the comparison would
+        // otherwise exclude it.
         val nonDevFactories =
           factoryDataList.filter { !KotlinToolingVersion(it.factory.minVersion).isDev }
-        return findHighestCompatibleFactory(currentVersion, nonDevFactories)
+        val baseVersion =
+          KotlinToolingVersion(
+            currentVersion.major,
+            currentVersion.minor,
+            currentVersion.patch,
+            null,
+          )
+        return findHighestCompatibleFactory(baseVersion, nonDevFactories)
       }
 
       // For non-DEV versions, only consider non-DEV factories
