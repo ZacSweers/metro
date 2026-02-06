@@ -1,0 +1,89 @@
+name: IDE Integration Tests
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**/*.md'
+  pull_request:
+    paths:
+      - 'ide-integration-tests/**'
+  workflow_dispatch:
+    inputs:
+      ide:
+        description: 'IDE to test (e.g., "IU:2025.3.2") or "all"'
+        type: string
+        default: 'all'
+
+concurrency:
+  group: 'ide-${{ github.head_ref || github.ref }}'
+  cancel-in-progress: true
+
+jobs:
+  generate-matrix:
+    name: Generate IDE matrix
+    runs-on: ubuntu-latest
+    outputs:
+      ide-matrix: ${{ steps.matrix.outputs.ide-matrix }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Generate IDE matrix
+        id: matrix
+        # language=bash
+        run: |
+          input_ide="${{ github.event.inputs.ide }}"
+          if [[ -n "$input_ide" ]] && [[ "$input_ide" != "all" ]]; then
+            json=$(echo "[\"$input_ide\"]" | jq -c .)
+          else
+            # Read non-comment, non-empty lines; strip trailing comments
+            json=$(grep -v '^#' ide-integration-tests/ide-versions.txt \
+              | grep -v '^[[:space:]]*$' \
+              | sed 's/ #.*//' \
+              | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          fi
+          echo "ide-matrix=$json" >> "$GITHUB_OUTPUT"
+
+  ide-tests:
+    needs: generate-matrix
+    name: "IDE / ${{ matrix.ide }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        ide: ${{ fromJson(needs.generate-matrix.outputs.ide-matrix) }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version-file: .github/workflows/.java-version
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - name: Install aria2
+        run: sudo apt-get install -y aria2
+
+      - name: Filter IDE version for this matrix entry
+        run: echo "${{ matrix.ide }}" > ide-integration-tests/ide-versions.txt
+
+      - name: Download IDE
+        run: ide-integration-tests/download-ides.sh
+
+      - name: Run IDE tests
+        run: |
+          cd ide-integration-tests
+          ./gradlew test
+
+      - name: Upload logs
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: ide-logs-${{ matrix.ide }}
+          path: |
+            ide-integration-tests/**/build/reports/**
+            ide-integration-tests/**/out/ide-tests/**

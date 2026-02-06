@@ -64,12 +64,23 @@ print_channel() {
   fi
 
   while IFS=$'\t' read -r ch version name filename; do
+    # Extract short display name: "Android Studio Panda 1 | 2025.3.1 RC 1" -> "Panda 1 RC 1"
+    short_name="${name#Android Studio }"  # "Panda 1 | 2025.3.1 RC 1"
+    codename="${short_name%% |*}"          # "Panda 1"
+    marketing="${short_name##* | }"        # "2025.3.1 RC 1"
+    prerelease=$(echo "$marketing" | sed 's/^[0-9.]*[[:space:]]*//')  # "RC 1" or ""
+    if [ -n "$prerelease" ]; then
+      display="$codename $prerelease"
+    else
+      display="$codename"
+    fi
+
     echo "  $name"
     echo "    Version: $version"
     if [[ "$channel" != "Release" && -n "$filename" ]]; then
-      echo "    ide-versions.txt: AS:$version:$filename"
+      echo "    ide-versions.txt: AS:$version:$filename # $display"
     else
-      echo "    ide-versions.txt: AS:$version"
+      echo "    ide-versions.txt: AS:$version # $display"
     fi
     echo ""
   done <<< "$items"

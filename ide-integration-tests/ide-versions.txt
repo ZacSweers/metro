@@ -1,4 +1,4 @@
-# Format: <product>:<version>[:<filename_prefix>]
+# Format: <product>:<version>[:<filename_prefix>] [# Display Name]
 # Products: IU (IntelliJ Ultimate), AS (Android Studio)
 #
 # IU uses marketing version (e.g., 2025.3.2)
@@ -12,4 +12,4 @@
 #   or use: curl -s 'https://jb.gg/android-studio-releases-list.xml' | grep -A5 'version="2025.3.1.6"'
 #
 IU:2025.3.2
-AS:2025.3.1.6:android-studio-panda1-rc1
+AS:2025.3.1.6:android-studio-panda1-rc1 # Panda 1 RC 1
