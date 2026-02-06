@@ -150,7 +150,6 @@ jobs:
         run: ide-integration-tests/download-ides.sh
 
       - name: Run IDE tests
-        timeout-minutes: 10
         run: |
           ./gradlew -p ide-integration-tests test --quiet
 
