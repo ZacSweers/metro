@@ -135,58 +135,180 @@ def fetch_history(ref):
 VERSION_RE = re.compile(r"(\d+\.\d+\.\d+-[a-zA-Z0-9._-]+)")
 
 
+def fetch_kotlin_tags(prefix):
+    """Fetch tags from JetBrains/kotlin matching a prefix."""
+    raw = gh_api(
+        f"repos/JetBrains/kotlin/git/matching-refs/tags/{prefix}",
+        jq_filter=".[].ref",
+    )
+    if not raw:
+        return []
+    return [t.replace("refs/tags/", "") for t in raw.splitlines() if t.strip()]
+
+
+def get_merge_base(ij_tag):
+    """Get the merge base commit SHA between master and an ij tag in JetBrains/kotlin."""
+    result = gh_api(
+        f"repos/JetBrains/kotlin/compare/master...{ij_tag}",
+        jq_filter=".merge_base_commit.sha",
+    )
+    return result if result else None
+
+
+def compare_commits(tag, commit_sha):
+    """Compare a tag to a commit. Returns 'identical', 'ahead', 'behind', or 'error'."""
+    result = gh_api(
+        f"repos/JetBrains/kotlin/compare/{tag}...{commit_sha}",
+        jq_filter=".status",
+    )
+    return result if result else "error"
+
+
 def resolve_to_dev_build(tag, kotlin_version):
-    """Resolve an -ij version to the nearest dev build, mirroring resolve-ij-kotlin-version.sh."""
+    """Resolve an -ij version to the nearest dev build using git ancestry in JetBrains/kotlin.
+
+    This uses the merge-base between the ij tag and master to find the exact dev build
+    that the ij branch diverged from, rather than relying on timestamp correlation.
+    """
     if "-dev-" in kotlin_version and "-ij" not in kotlin_version:
         return kotlin_version
     if "-ij" not in kotlin_version:
         return kotlin_version
 
-    ij_base_m = re.match(r"^(\d+\.\d+\.\d+)", kotlin_version)
-    ij_base = ij_base_m.group(1) if ij_base_m else None
+    # Parse: "2.2.20-ij252-24" -> base="2.2.20", platform="252", build="24"
+    ij_match = re.match(r"^(\d+\.\d+\.\d+)-ij(\d+)-(\d+)$", kotlin_version)
+    if not ij_match:
+        return kotlin_version
 
-    history = fetch_history(tag)
+    ij_base = ij_match.group(1)
+    ij_platform = ij_match.group(2)
+    ij_build = int(ij_match.group(3))
 
-    last_dev_version = None
-    first_ij_date = None
+    # Find the matching ij tag in JetBrains/kotlin
+    ij_tag_prefix = f"build-{ij_base}-ij{ij_platform}-"
+    ij_tags = fetch_kotlin_tags(ij_tag_prefix)
+    if not ij_tags:
+        return kotlin_version
 
-    for date, message in history:
-        m = VERSION_RE.search(message)
-        if not m:
-            continue
-        version = m.group(1)
-        short_date = date.split("T")[0]
+    # Find the tag with the closest build number
+    best_ij_tag = None
+    best_diff = 999999
+    for t in ij_tags:
+        m = re.search(r"-(\d+)$", t)
+        if m:
+            tag_build = int(m.group(1))
+            diff = tag_build - ij_build
+            if diff == 0:
+                best_ij_tag = t
+                break
+            elif diff > 0 and diff < best_diff:
+                best_diff = diff
+                best_ij_tag = t
+            elif best_ij_tag is None:
+                best_ij_tag = t
+                best_diff = abs(diff)
 
-        if "-ij" in version:
-            first_ij_date = short_date  # history is newest-first, so this tracks the oldest
-        elif "-dev-" in version:
-            if last_dev_version is None:
-                last_dev_version = version
+    if not best_ij_tag:
+        return kotlin_version
 
-    # Check if dev base matches ij label base
-    if last_dev_version:
-        dev_base_m = re.match(r"^(\d+\.\d+\.\d+)", last_dev_version)
-        dev_base = dev_base_m.group(1) if dev_base_m else None
-        if not ij_base or ij_base == dev_base:
-            return last_dev_version
+    # Find the merge base with master
+    merge_base = get_merge_base(best_ij_tag)
+    if not merge_base:
+        return kotlin_version
 
-    # Search master for nearest dev build with matching base
-    if ij_base:
-        master_history = fetch_history("master")
-        fallback = None
-        for mdate, mmessage in master_history:
-            m = VERSION_RE.search(mmessage)
-            if not m:
-                continue
-            mversion = m.group(1)
-            if re.match(rf"^{re.escape(ij_base)}-dev-\d", mversion):
-                mshort_date = mdate.split("T")[0]
-                if first_ij_date and mshort_date <= first_ij_date:
-                    return mversion
-                fallback = mversion
+    # Find dev tags with matching base version
+    dev_tag_prefix = f"build-{ij_base}-dev-"
+    dev_tags = fetch_kotlin_tags(dev_tag_prefix)
+    if not dev_tags:
+        return kotlin_version
 
-        if fallback:
-            return fallback
+    # Extract and sort build numbers
+    dev_nums = []
+    for t in dev_tags:
+        m = re.search(r"-(\d+)$", t)
+        if m:
+            dev_nums.append(int(m.group(1)))
+    dev_nums = sorted(set(dev_nums))
+
+    if not dev_nums:
+        return kotlin_version
+
+    # Binary search: find the highest dev tag that is an ancestor of merge base
+    def check_tag(num):
+        tag = f"build-{ij_base}-dev-{num}"
+        status = compare_commits(tag, merge_base)
+        if status in ("identical", "ahead"):
+            return "ancestor"
+        elif status == "behind":
+            return "too_new"
+        return "error"
+
+    low, high = 0, len(dev_nums) - 1
+    best_num = None
+
+    while low <= high:
+        mid = (low + high) // 2
+        num = dev_nums[mid]
+        result = check_tag(num)
+
+        if result == "ancestor":
+            best_num = num
+            low = mid + 1
+        elif result == "too_new":
+            high = mid - 1
+        else:
+            high = mid - 1
+
+    if best_num is not None:
+        return f"{ij_base}-dev-{best_num}"
+
+    # If no match found, try related base versions.
+    # The ij label (e.g., 2.3.20-ij253-105) might actually branch from a different
+    # version's dev track (e.g., 2.3.0-dev-9992).
+    base_parts = ij_base.split(".")
+    if len(base_parts) == 3 and base_parts[2] != "0":
+        # Try X.Y.0 if the base is X.Y.Z where Z > 0
+        alt_base = f"{base_parts[0]}.{base_parts[1]}.0"
+        alt_dev_tag_prefix = f"build-{alt_base}-dev-"
+        alt_dev_tags = fetch_kotlin_tags(alt_dev_tag_prefix)
+
+        if alt_dev_tags:
+            alt_dev_nums = []
+            for t in alt_dev_tags:
+                m = re.search(r"-(\d+)$", t)
+                if m:
+                    alt_dev_nums.append(int(m.group(1)))
+            alt_dev_nums = sorted(set(alt_dev_nums))
+
+            if alt_dev_nums:
+                # Binary search on alternative base
+                def check_alt_tag(num):
+                    tag = f"build-{alt_base}-dev-{num}"
+                    status = compare_commits(tag, merge_base)
+                    if status in ("identical", "ahead"):
+                        return "ancestor"
+                    elif status == "behind":
+                        return "too_new"
+                    return "error"
+
+                alt_low, alt_high = 0, len(alt_dev_nums) - 1
+                alt_best_num = None
+
+                while alt_low <= alt_high:
+                    alt_mid = (alt_low + alt_high) // 2
+                    alt_num = alt_dev_nums[alt_mid]
+                    alt_result = check_alt_tag(alt_num)
+
+                    if alt_result == "ancestor":
+                        alt_best_num = alt_num
+                        alt_low = alt_mid + 1
+                    elif alt_result == "too_new":
+                        alt_high = alt_mid - 1
+                    else:
+                        alt_high = alt_mid - 1
+
+                if alt_best_num is not None:
+                    return f"{alt_base}-dev-{alt_best_num}"
 
     return kotlin_version
 
