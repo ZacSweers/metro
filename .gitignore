@@ -1,4 +1,5 @@
 **/build
+out/
 **/.idea/*
 !.idea/externalDependencies.xml
 !.idea/kotlinTestDataPluginTestDataPaths.xml

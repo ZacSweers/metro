@@ -1,0 +1,12 @@
+# IDE Starter test output
+out/
+.intellijPlatform/
+*/allure-results/
+
+# Gradle
+build/
+.gradle/
+
+# IntelliJ
+.idea/
+*.iml
