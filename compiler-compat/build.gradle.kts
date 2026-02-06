@@ -33,11 +33,11 @@ buildConfig {
     // https://github.com/JetBrains/intellij-community/blob/idea/<intellij-version>/.idea/libraries/kotlinc_kotlin_compiler_common.xml
     """
     mapOf(
-      // IntelliJ IDEA 2025.2.2 (eap)
-      "2.2.20-ij252-17" to "2.2.20-dev-5812",
+       // IntelliJ IDEA 2025.2.2 (eap)
+      "2.2.20-ij252-17" to "2.2.20-dev-5810",
       // IntelliJ IDEA 2025.2.6.1 (stable)
       // IntelliJ IDEA 2025.2.4 (rc)
-      "2.2.20-ij252-24" to "2.2.20-dev-5812",
+      "2.2.20-ij252-24" to "2.2.20-dev-5810",
       // Android Studio Otter 3 Feature Drop | 2025.2.3 (stable)
       // Android Studio Otter 3 Feature Drop | 2025.2.3 RC 3 (beta)
       // Android Studio Otter 3 Feature Drop | 2025.2.3 RC 2 (beta)
@@ -47,19 +47,19 @@ buildConfig {
       // Android Studio Otter 2 Feature Drop | 2025.2.2 RC 2 (beta)
       // Android Studio Otter | 2025.2.1 Patch 1 (stable)
       // Android Studio Otter | 2025.2.1 (stable)
-      "2.2.255-dev-255" to "2.2.20-dev-5812",
-      // IntelliJ IDEA 2025.3.1 (rc)
-      "2.3.20-ij253-45" to "2.3.20-dev-3964",
+      "2.2.255-dev-255" to "2.2.20-dev-5810",
+      // IntelliJ IDEA 2025.3.3 (eap)
       // IntelliJ IDEA 2025.3.2 (stable)
-      // IntelliJ IDEA 2025.3.2 (eap)
-      "2.3.20-ij253-87" to "2.3.20-dev-3964",
+      "2.3.20-ij253-105" to "2.3.0-dev-9992",
+      // IntelliJ IDEA 2025.3.1 (rc)
+      "2.3.20-ij253-45" to "2.3.0-dev-9992",
+      // Android Studio Panda 2 | 2025.3.2 Canary 3 (canary)
       // Android Studio Panda 1 | 2025.3.1 RC 1 (beta)
       // Android Studio Panda 2 | 2025.3.2 Canary 2 (canary)
       // Android Studio Panda 2 | 2025.3.2 Canary 1 (canary)
       // Android Studio Panda 1 | 2025.3.1 Canary 5 (canary)
       // Android Studio Panda 1 | 2025.3.1 Canary 4 (canary)
-      // Android Studio Panda 1 | 2025.3.1 Canary 3 (canary)
-      "2.3.255-dev-255" to "2.3.20-dev-3964",
+      "2.3.255-dev-255" to "2.3.0-dev-9992",
     )
     """
       .trimIndent(),
