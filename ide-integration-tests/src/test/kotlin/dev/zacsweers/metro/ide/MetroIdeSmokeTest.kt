@@ -1,0 +1,225 @@
+// Copyright (C) 2026 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
+package dev.zacsweers.metro.ide
+
+import com.intellij.driver.client.service
+import com.intellij.driver.sdk.FileEditorManager
+import com.intellij.driver.sdk.WaitForException
+import com.intellij.driver.sdk.getHighlights
+import com.intellij.driver.sdk.openFile
+import com.intellij.driver.sdk.singleProject
+import com.intellij.driver.sdk.waitForIndicators
+import com.intellij.ide.starter.community.model.BuildType
+import com.intellij.ide.starter.driver.engine.runIdeWithDriver
+import com.intellij.ide.starter.ide.IdeProductProvider
+import com.intellij.ide.starter.junit5.hyphenateWithClass
+import com.intellij.ide.starter.models.TestCase
+import com.intellij.ide.starter.project.LocalProjectInfo
+import com.intellij.ide.starter.report.ErrorReporterToCI
+import com.intellij.ide.starter.runner.CurrentTestMethod
+import com.intellij.ide.starter.runner.Starter
+import java.nio.file.Path
+import kotlin.io.path.readLines
+import kotlin.test.fail
+import kotlin.time.Duration.Companion.minutes
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.MethodSource
+
+/**
+ * Patterns that indicate an error is Metro-related and should be reported. We filter IN Metro
+ * errors rather than trying to filter OUT all unrelated IDE errors.
+ */
+private val METRO_ERROR_PATTERNS = listOf("metro", "dev.zacsweers.metro", "Metro")
+
+@Suppress("NewApi") // idk why lint is running here
+class MetroIdeSmokeTest {
+
+  companion object {
+    @JvmStatic
+    fun ideVersions(): List<Arguments> =
+      Path.of(System.getProperty("metro.ideVersions"))
+        .readLines()
+        .filter { it.isNotBlank() && !it.startsWith("#") }
+        .map { line ->
+          val parts = line.split(":")
+          Arguments.of(parts[0], parts[1])
+        }
+  }
+
+  @ParameterizedTest
+  @MethodSource("ideVersions")
+  fun check(product: String, version: String) {
+    // IU uses marketing version (e.g., "2025.3.2") with RELEASE buildType
+    // AS uses build number (e.g., "2024.2.1.11") directly
+    // NOTE: Run ./download-ides.sh first
+    val ideProduct =
+      when (product) {
+        "IU" -> IdeProductProvider.IU.copy(version = version, buildType = BuildType.RELEASE.type)
+        "AS" -> IdeProductProvider.AI.copy(buildNumber = version)
+        else -> error("Unknown product: $product")
+      }
+
+    val testProject = Path.of(System.getProperty("metro.testProject")).toAbsolutePath()
+
+    val testCase = TestCase(ideProduct, LocalProjectInfo(testProject))
+
+    val testContext =
+      Starter.newContext(CurrentTestMethod.hyphenateWithClass(), testCase)
+        .prepareProjectCleanImport()
+        .addProjectToTrustedLocations()
+        .applyVMOptionsPatch {
+          // Enable third-party compiler plugins (like Metro) in the Kotlin IDE plugin's FIR
+          // analysis.
+          // RegistryValue falls back to system properties, so this works for Registry.get() calls.
+          addSystemProperty("kotlin.k2.only.bundled.compiler.plugins.enabled", false)
+
+          // Disable VCS integration to avoid git popups for IDE-generated files
+          addSystemProperty("vcs.log.index.git", false)
+          addSystemProperty("git.showDialogsOnUnversionedFiles", false)
+        }
+
+    // Collect highlight descriptions inside the driver block, assert after IDE closes.
+    // This lets us check the IDE logs first for a more useful error message.
+    var highlightDescriptions = emptyList<String>()
+    var analysisException: WaitForException? = null
+
+    val result =
+      testContext.runIdeWithDriver().useDriverAndCloseIde {
+        // Wait for Gradle import + indexing to complete.
+        // Call twice — the first may return during a brief gap before Gradle import starts.
+        waitForIndicators(10.minutes)
+        waitForIndicators(5.minutes)
+
+        // Open the test source file and wait for code analysis to complete.
+        // This triggers FIR analysis with Metro extensions.
+        try {
+          openFile("src/main/kotlin/TestSources.kt", singleProject())
+        } catch (e: WaitForException) {
+          analysisException = e
+          return@useDriverAndCloseIde
+        }
+
+        val project = singleProject()
+        val editor = service<FileEditorManager>(project).getSelectedTextEditor()
+        checkNotNull(editor) { "No editor open after opening TestSources.kt" }
+
+        val document = editor.getDocument()
+        val highlights = getHighlights(document, project)
+        highlightDescriptions =
+          highlights.filter { it.getSeverity().getName() == "ERROR" }.map { it.getDescription() }
+      }
+
+    // Check for IDE runtime failure (e.g. process crash)
+    result.failureError?.let { fail("IDE run failed", it) }
+
+    val logsDir = result.runContext.logsDir
+
+    // If openFile timed out, analysis likely crashed. Check logs for Metro FIR errors.
+    if (analysisException != null) {
+      val metroErrors = collectMetroErrors(logsDir)
+      fail(
+        buildString {
+          appendLine("Analysis timed out (WaitForException), suggesting a FIR crash.")
+          if (metroErrors.isNotEmpty()) {
+            appendLine("Metro-related errors found:")
+            metroErrors.forEach { e ->
+              appendLine("  ${e.messageText}")
+              appendLine("  ${e.stackTraceContent}")
+            }
+          } else {
+            // No structured errors found — fall back to scanning idea.log directly
+            val logCrashes = findMetroLogCrashes(logsDir)
+            if (logCrashes != null) {
+              appendLine("Metro-related crashes found in idea.log:")
+              appendLine(logCrashes)
+            } else {
+              appendLine("No Metro-related errors found in logs.")
+            }
+          }
+        },
+        analysisException,
+      )
+    }
+
+    // Verify Metro extensions were actually loaded by checking idea.log.
+    // Check this before highlights — if extensions weren't enabled, highlights will be empty.
+    val ideaLogLines = logsDir.resolve("idea.log").readLines()
+    val skipPattern = "Skipping enabling Metro extensions"
+    val skipIndex = ideaLogLines.indexOfFirst { it.contains(skipPattern) }
+    if (skipIndex != -1) {
+      val context = ideaLogLines.subList(skipIndex, minOf(skipIndex + 6, ideaLogLines.size))
+      fail("Metro extensions were not enabled!\n" + context.joinToString("\n"))
+    }
+
+    // Verify Metro's FIR checker produces expected diagnostics.
+    // The test file contains an AssistedFactory with mismatched params, which should be flagged.
+    val hasAssistedFactoryError =
+      highlightDescriptions.any { desc ->
+        desc.contains("assisted", ignoreCase = true) ||
+          desc.contains("parameter", ignoreCase = true)
+      }
+
+    check(hasAssistedFactoryError) {
+      "Expected Metro to report an assisted factory parameter mismatch error.\n" +
+        "Found ${highlightDescriptions.size} error highlight(s):\n" +
+        highlightDescriptions.joinToString("\n") { "  - $it" }
+    }
+
+    // Scan IDE logs for internal errors collected by the performance testing plugin.
+    // These are exceptions caught by the IDE's MessageBus and written to an errors/ directory.
+    // We only report Metro-related errors — other IDE errors are ignored.
+    val metroErrors = collectMetroErrors(logsDir)
+
+    if (metroErrors.isNotEmpty()) {
+      fail(
+        "Metro caused ${metroErrors.size} internal error(s) during analysis:\n" +
+          metroErrors.joinToString("\n---\n") { e -> "${e.messageText}\n${e.stackTraceContent}" }
+      )
+    }
+  }
+}
+
+/** Check if an error is Metro-related based on message or stack trace. */
+private fun isMetroRelatedError(messageText: String, stackTrace: String): Boolean {
+  return METRO_ERROR_PATTERNS.any { pattern ->
+    messageText.contains(pattern, ignoreCase = true) ||
+      stackTrace.contains(pattern, ignoreCase = true)
+  }
+}
+
+/** Collect Metro-related errors from the IDE's error reporter output. */
+private fun collectMetroErrors(logsDir: Path) =
+  ErrorReporterToCI.collectErrors(logsDir).filter { error ->
+    isMetroRelatedError(error.messageText, error.stackTraceContent)
+  }
+
+/**
+ * Scan idea.log for Metro-related crash stack traces. Returns context lines around each occurrence
+ * of `dev.zacsweers.metro` in the log, capturing the exception cause.
+ */
+private fun findMetroLogCrashes(logsDir: Path): String? {
+  val lines =
+    try {
+      logsDir.resolve("idea.log").readLines()
+    } catch (_: Exception) {
+      return null
+    }
+
+  val metroIndices = lines.indices.filter { i -> lines[i].contains("dev.zacsweers.metro") }
+
+  if (metroIndices.isEmpty()) return null
+
+  // Collect context windows around each Metro mention, merging overlaps
+  val contextLines =
+    buildSet {
+        for (idx in metroIndices) {
+          for (i in maxOf(0, idx - 5)..minOf(lines.lastIndex, idx + 2)) {
+            add(i)
+          }
+        }
+      }
+      .sorted()
+
+  return contextLines.joinToString("\n") { lines[it] }
+}

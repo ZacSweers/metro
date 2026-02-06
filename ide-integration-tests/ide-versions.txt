@@ -1,0 +1,15 @@
+# Format: <product>:<version>[:<filename_prefix>]
+# Products: IU (IntelliJ Ultimate), AS (Android Studio)
+#
+# IU uses marketing version (e.g., 2025.3.2)
+#
+# AS uses 4-component build number from https://jb.gg/android-studio-releases-list.xml
+#   Stable: "2025.2.3" -> "2025.2.3.1", version only (standard filename pattern)
+#   Preview: RC/Canary need explicit filename_prefix since filenames differ from version
+#            e.g., "2025.3.1 RC 1" has version "2025.3.1.6" but filename "android-studio-panda1-rc1"
+#
+# To find preview filenames: check https://jb.gg/android-studio-releases-list.xml
+#   or use: curl -s 'https://jb.gg/android-studio-releases-list.xml' | grep -A5 'version="2025.3.1.6"'
+#
+IU:2025.3.2
+AS:2025.3.1.6:android-studio-panda1-rc1
