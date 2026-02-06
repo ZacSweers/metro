@@ -96,13 +96,10 @@ public class MetroFirExtensionRegistrar(
 
       // Build list of native Metro generators
       val nativeExtensions = buildList {
-        if (isCli) {
-          add(
-            wrapNativeGenerator("FirGen - InjectedClass", true, ::InjectedClassFirGenerator)(
-              session
-            )
-          )
-        }
+        // Don't gate on isCli because this also handles top-level function gen
+        add(
+          wrapNativeGenerator("FirGen - InjectedClass", true, ::InjectedClassFirGenerator)(session)
+        )
 
         if (options.generateAssistedFactories) {
           add(
@@ -144,13 +141,13 @@ public class MetroFirExtensionRegistrar(
               )(session)
             )
           }
-
-          add(
-            wrapNativeGenerator("FirGen - DependencyGraph", true, ::DependencyGraphFirGenerator)(
-              session
-            )
-          )
         }
+
+        add(
+          wrapNativeGenerator("FirGen - DependencyGraph", true, ::DependencyGraphFirGenerator)(
+            session
+          )
+        )
       }
 
       CompositeMetroFirDeclarationGenerationExtension(
