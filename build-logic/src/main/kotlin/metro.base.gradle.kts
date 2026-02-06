@@ -100,3 +100,9 @@ pluginManager.withPlugin("org.jetbrains.dokka") {
     }
   }
 }
+
+plugins.withId("com.autonomousapps.testkit") {
+  rootProject.tasks.named("installForFunctionalTest") {
+    dependsOn(tasks.named("installForFunctionalTest"))
+  }
+}
