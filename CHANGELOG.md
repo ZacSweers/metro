@@ -11,7 +11,6 @@ Changelog
 
 ### Enhancements
 
-- Lower minimum supported compiler version to `2.2.20-dev-5774` to support `Android Studio Otter 3 Feature Drop 2025.2.3`.
 - **[FIR]**: When reporting diagnostics about types that are aliases, include the aliased type in the message. This is helpful for messages like below
     ```kotlin
     typealias UserId = String
