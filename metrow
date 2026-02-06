@@ -103,8 +103,12 @@ case "$1" in
 
    "clean")
        echo "Cleaning..."
-       ./gradlew clean
-       ./gradlew -p samples clean
+       ./gradlew clean --quiet
+       ./gradlew -p samples clean --quiet
+       ./gradlew -p benchmark clean --quiet
+       rm -rf out
+       rm -rf .gradle
+       rm -rf .kotlin
        ;;
 
    "format")
