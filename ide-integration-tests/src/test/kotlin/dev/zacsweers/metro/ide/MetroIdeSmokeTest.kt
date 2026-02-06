@@ -145,11 +145,12 @@ class MetroIdeSmokeTest {
           addSystemProperty("vcs.log.index.git", false)
           addSystemProperty("git.showDialogsOnUnversionedFiles", false)
 
-          // Suppress Android Studio consent/data-sharing dialog that blocks on CI
+          // Suppress first-run dialogs that block on CI
           addSystemProperty("jb.consents.confirmation.enabled", false)
           addSystemProperty("idea.initially.ask.config", "never")
-          // Suppress studio's first run stuff
           addSystemProperty("disable.android.first.run", true)
+          addSystemProperty("jb.privacy.policy.text", "<!--999.999-->")
+          addSystemProperty("ide.show.tips.on.startup.default.value", false)
         }
 
     // Collect highlights and inlays inside the driver block, assert after IDE closes.
