@@ -1456,7 +1456,7 @@ internal inline fun FirSession.isCli(): Boolean {
 @Suppress("NOTHING_TO_INLINE")
 internal inline fun FirSession.isIde(): Boolean {
   contract { returns(true) implies (this@isIde !is FirCliSession) }
-  return this is FirCliSession
+  return this !is FirCliSession
 }
 
 context(compatContext: CompatContext)
