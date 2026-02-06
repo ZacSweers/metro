@@ -101,6 +101,7 @@ public class MetroFirExtensionRegistrar(
           wrapNativeGenerator("FirGen - InjectedClass", true, ::InjectedClassFirGenerator)(session)
         )
 
+        // Don't gate on isCli because these are user-visible
         if (options.generateAssistedFactories) {
           add(
             wrapNativeGenerator("FirGen - AssistedFactory", true, ::AssistedFactoryFirGenerator)(
@@ -108,6 +109,13 @@ public class MetroFirExtensionRegistrar(
             )
           )
         }
+
+        // These need to run in the IDE for supertype merging inlays to be visible
+        add(
+          wrapNativeGenerator("FirGen - ContributionsGenerator", true, ::ContributionsFirGenerator)(
+            session
+          )
+        )
 
         if (isCli) {
           add(
@@ -121,14 +129,6 @@ public class MetroFirExtensionRegistrar(
               "FirGen - BindingMirrorClass",
               true,
               ::BindingMirrorClassFirGenerator,
-            )(session)
-          )
-
-          add(
-            wrapNativeGenerator(
-              "FirGen - ContributionsGenerator",
-              true,
-              ::ContributionsFirGenerator,
             )(session)
           )
 

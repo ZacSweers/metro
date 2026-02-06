@@ -2,8 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.ide
 
+import com.intellij.driver.client.Remote
 import com.intellij.driver.client.service
+import com.intellij.driver.sdk.DeclarativeInlayRenderer
 import com.intellij.driver.sdk.FileEditorManager
+import com.intellij.driver.sdk.Inlay
 import com.intellij.driver.sdk.WaitForException
 import com.intellij.driver.sdk.getHighlights
 import com.intellij.driver.sdk.openFile
@@ -20,17 +23,76 @@ import com.intellij.ide.starter.runner.CurrentTestMethod
 import com.intellij.ide.starter.runner.Starter
 import java.nio.file.Path
 import kotlin.io.path.readLines
+import kotlin.io.path.readText
 import kotlin.test.fail
 import kotlin.time.Duration.Companion.minutes
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
 
+/** Extended InlayModel that includes block element access (not in our SDK version). */
+@Remote("com.intellij.openapi.editor.InlayModel")
+private interface InlayModelWithBlocks {
+  fun getInlineElementsInRange(startOffset: Int, endOffset: Int): List<Inlay>
+
+  fun getBlockElementsInRange(startOffset: Int, endOffset: Int): List<Inlay>
+}
+
 /**
  * Patterns that indicate an error is Metro-related and should be reported. We filter IN Metro
  * errors rather than trying to filter OUT all unrelated IDE errors.
  */
 private val METRO_ERROR_PATTERNS = listOf("metro", "dev.zacsweers.metro", "Metro")
+
+private data class ExpectedDiagnostic(
+  val diagnosticId: String,
+  val severity: String,
+  val description: String,
+  /** 0-indexed line in the source where the diagnostic is expected (the line after the comment). */
+  val expectedLine: Int,
+)
+
+private data class ExpectedInlay(
+  val text: String,
+  /** 0-indexed line in the source where the inlay is expected (the line after the comment). */
+  val expectedLine: Int,
+)
+
+/** Builds a lookup from character offset to 0-indexed line number. */
+private fun buildLineOffsets(sourceText: String): List<Int> {
+  val lineStarts = mutableListOf(0)
+  sourceText.forEachIndexed { i, c -> if (c == '\n') lineStarts.add(i + 1) }
+  return lineStarts
+}
+
+private fun offsetToLine(lineStarts: List<Int>, offset: Int): Int {
+  val idx = lineStarts.binarySearch(offset)
+  return if (idx >= 0) idx else -(idx + 1) - 1
+}
+
+/** Parses `// METRO_DIAGNOSTIC: DIAGNOSTIC_ID,SEVERITY,description` comments from a source file. */
+private fun parseExpectedDiagnostics(sourceText: String): List<ExpectedDiagnostic> {
+  return sourceText.lines().mapIndexedNotNull { index, line ->
+    val match = line.trim().removePrefix("// METRO_DIAGNOSTIC: ").takeIf { it != line.trim() }
+    match?.split(",", limit = 3)?.let { parts ->
+      require(parts.size == 3) { "METRO_DIAGNOSTIC must have 3 comma-separated fields: $line" }
+      ExpectedDiagnostic(
+        diagnosticId = parts[0].trim(),
+        severity = parts[1].trim(),
+        description = parts[2].trim(),
+        expectedLine = index + 1,
+      )
+    }
+  }
+}
+
+/** Parses `// METRO_INLAY: substring` comments from a source file. */
+private fun parseExpectedInlays(sourceText: String): List<ExpectedInlay> {
+  return sourceText.lines().mapIndexedNotNull { index, line ->
+    val text = line.trim().removePrefix("// METRO_INLAY: ").takeIf { it != line.trim() }?.trim()
+    text?.let { ExpectedInlay(text = it, expectedLine = index + 1) }
+  }
+}
 
 @Suppress("NewApi") // idk why lint is running here
 class MetroIdeSmokeTest {
@@ -62,6 +124,11 @@ class MetroIdeSmokeTest {
 
     val testProject = Path.of(System.getProperty("metro.testProject")).toAbsolutePath()
 
+    // Parse expected diagnostics and inlays from the test source file
+    val sourceText = testProject.resolve("src/main/kotlin/TestSources.kt").readText()
+    val expectedDiagnostics = parseExpectedDiagnostics(sourceText)
+    val expectedInlays = parseExpectedInlays(sourceText)
+
     val testCase = TestCase(ideProduct, LocalProjectInfo(testProject))
 
     val testContext =
@@ -79,17 +146,25 @@ class MetroIdeSmokeTest {
           addSystemProperty("git.showDialogsOnUnversionedFiles", false)
         }
 
-    // Collect highlight descriptions inside the driver block, assert after IDE closes.
+    // Collect highlights and inlays inside the driver block, assert after IDE closes.
     // This lets us check the IDE logs first for a more useful error message.
-    var highlightDescriptions = emptyList<String>()
+    data class HighlightData(
+      val severity: String,
+      val description: String?,
+      val highlightedText: String?,
+    )
+    data class InlayData(val offset: Int, val text: String?, val isBlock: Boolean)
+
+    val collectedHighlights = mutableListOf<HighlightData>()
+    val collectedInlays = mutableListOf<InlayData>()
     var analysisException: WaitForException? = null
 
     val result =
       testContext.runIdeWithDriver().useDriverAndCloseIde {
         // Wait for Gradle import + indexing to complete.
-        // Call twice — the first may return during a brief gap before Gradle import starts.
+        // waitSmartLongEnough (default=true) requires 10 consecutive seconds with no indicators
+        // before returning, which is enough to catch the brief gap before Gradle import starts.
         waitForIndicators(10.minutes)
-        waitForIndicators(5.minutes)
 
         // Open the test source file and wait for code analysis to complete.
         // This triggers FIR analysis with Metro extensions.
@@ -105,9 +180,36 @@ class MetroIdeSmokeTest {
         checkNotNull(editor) { "No editor open after opening TestSources.kt" }
 
         val document = editor.getDocument()
+
+        // Collect highlights
         val highlights = getHighlights(document, project)
-        highlightDescriptions =
-          highlights.filter { it.getSeverity().getName() == "ERROR" }.map { it.getDescription() }
+        collectedHighlights +=
+          highlights.map {
+            HighlightData(it.getSeverity().getName(), it.getDescription(), it.getText())
+          }
+
+        // Collect inlays (both inline and block)
+        val inlayModel = cast(editor.getInlayModel(), InlayModelWithBlocks::class)
+        val docLength = document.getText().length
+        fun collectInlays(inlays: List<Inlay>, isBlock: Boolean) =
+          inlays.map { inlay ->
+            val text =
+              if (isBlock) {
+                // We can't really get much out of these
+                inlay.getRenderer().toString()
+              } else {
+                cast(inlay.getRenderer(), DeclarativeInlayRenderer::class)
+                  .getPresentationList()
+                  .getEntries()
+                  .joinToString("") { it.getText() }
+              }
+            InlayData(offset = inlay.getOffset(), text = text, isBlock = isBlock)
+          }
+        val inlineInlays =
+          collectInlays(inlayModel.getInlineElementsInRange(0, docLength), isBlock = false)
+        val blockInlays =
+          collectInlays(inlayModel.getBlockElementsInRange(0, docLength), isBlock = true)
+        collectedInlays += inlineInlays + blockInlays
       }
 
     // Check for IDE runtime failure (e.g. process crash)
@@ -152,18 +254,75 @@ class MetroIdeSmokeTest {
       fail("Metro extensions were not enabled!\n" + context.joinToString("\n"))
     }
 
-    // Verify Metro's FIR checker produces expected diagnostics.
-    // The test file contains an AssistedFactory with mismatched params, which should be flagged.
-    val hasAssistedFactoryError =
-      highlightDescriptions.any { desc ->
-        desc.contains("assisted", ignoreCase = true) ||
-          desc.contains("parameter", ignoreCase = true)
-      }
+    // Verify expected diagnostics are present at the correct location
+    val errors = mutableListOf<String>()
+    val sourceLines = sourceText.lines()
+    val lineStarts = buildLineOffsets(sourceText)
 
-    check(hasAssistedFactoryError) {
-      "Expected Metro to report an assisted factory parameter mismatch error.\n" +
-        "Found ${highlightDescriptions.size} error highlight(s):\n" +
-        highlightDescriptions.joinToString("\n") { "  - $it" }
+    for (expected in expectedDiagnostics) {
+      // Check a window of lines after the comment since the diagnostic may be a few lines down
+      val nearbyLines =
+        (expected.expectedLine..minOf(expected.expectedLine + 5, sourceLines.lastIndex))
+          .joinToString("\n") { sourceLines[it] }
+      val found =
+        collectedHighlights.any { h ->
+          h.severity == expected.severity &&
+            h.description?.contains("[${expected.diagnosticId}]") == true &&
+            (h.highlightedText == null || nearbyLines.contains(h.highlightedText))
+        }
+      if (!found) {
+        errors +=
+          "Missing expected ${expected.severity} [${expected.diagnosticId}] near line ${expected.expectedLine + 1}: ${expected.description}"
+      }
+    }
+
+    // Check for unexpected ERROR diagnostics (e.g., UNRESOLVED_REFERENCE)
+    val expectedErrorIds =
+      expectedDiagnostics.filter { it.severity == "ERROR" }.map { it.diagnosticId }.toSet()
+    val unexpectedErrors =
+      collectedHighlights.filter { h ->
+        h.severity == "ERROR" &&
+          expectedErrorIds.none { id -> h.description?.contains("[$id]") == true }
+      }
+    for (unexpected in unexpectedErrors) {
+      errors += "Unexpected ERROR: ${unexpected.description}"
+    }
+
+    // Verify expected inlays are present at the correct location
+    for (expected in expectedInlays) {
+      val found =
+        collectedInlays.any { inlay ->
+          val inlayLine = offsetToLine(lineStarts, inlay.offset)
+          val lineMatch = inlayLine in expected.expectedLine..(expected.expectedLine + 10)
+          val textMatch = inlay.text?.contains(expected.text) == true
+          lineMatch && textMatch
+        }
+      if (!found) {
+        errors +=
+          "Missing expected inlay containing '${expected.text}' near line ${expected.expectedLine + 1}"
+      }
+    }
+
+    // TODO Assert on companion object inlay once we have a test case for it
+
+    if (errors.isNotEmpty()) {
+      val allHighlightsSummary =
+        collectedHighlights
+          .filter { it.description != null }
+          .joinToString("\n") {
+            "  [${it.severity}] ${it.description} (text='${it.highlightedText}')"
+          }
+      val allInlaySummary =
+        collectedInlays.joinToString("\n") {
+          val line = offsetToLine(lineStarts, it.offset) + 1
+          "  [${if (it.isBlock) "block" else "inline"} line $line] ${it.text ?: "(no text)"}"
+        }
+      fail(
+        "Smoke test failures:\n" +
+          errors.joinToString("\n") { "  - $it" } +
+          "\n\nAll highlights with descriptions:\n$allHighlightsSummary" +
+          "\n\nAll inlays:\n$allInlaySummary"
+      )
     }
 
     // Scan IDE logs for internal errors collected by the performance testing plugin.

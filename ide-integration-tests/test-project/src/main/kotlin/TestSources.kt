@@ -4,29 +4,22 @@ package test
 
 import dev.zacsweers.metro.*
 
-// ======== ERROR DIAGNOSTIC ========
-// Mismatched assisted factory parameters
+// METRO_DIAGNOSTIC: ASSISTED_INJECTION_ERROR,ERROR,AssistedWithMismatchedParams factory is missing 'name' parameter
 @AssistedInject
 class AssistedWithMismatchedParams(@Assisted val id: Int, @Assisted val name: String) {
   @AssistedFactory
   interface Factory {
-    // ERROR: Missing 'name' param
     fun create(id: Int): AssistedWithMismatchedParams
   }
 }
 
-// ======== WARNING DIAGNOSTIC ========
-// Should suggest moving @Inject to class level
+// METRO_DIAGNOSTIC: SUGGEST_CLASS_INJECTION,WARNING,SuggestClassInject has @Inject on constructor should be on class
 class SuggestClassInject @Inject constructor(val dep: String)
 
-// ======== GENERATED ASSISTED FACTORY ========
-// Factory interface should be generated as a nested type
+// METRO_INLAY: AssistedFactory
 @AssistedInject
 class AssistedWithGeneratedFactory(@Assisted val id: Int, val injectedDep: String) {
-  // IDE should show generated:
-  // fun interface Factory {
-  //   fun create(id: Int): AssistedWithGeneratedFactory
-  // }
+  // IDE inlay shows a generated assisted factory here
 }
 
 // Test usage of generated factory
@@ -34,14 +27,14 @@ fun useGeneratedFactory(factory: AssistedWithGeneratedFactory.Factory) {
   val instance = factory.create(42)
 }
 
-// ======== GENERATED TOP-LEVEL FUNCTION ========
+// Generate and use a top-level injected function class
 @Inject fun MyApp(@Assisted value: String, injected: Int) {}
 
 fun useGeneratedApp(app: MyApp) {
   app(value = "app")
 }
 
-// ======== GENERATED SUPERTYPE ========
+// Viewing generated supertypes
 @ContributesTo(AppScope::class)
 interface Base {
   val int: Int
@@ -49,9 +42,10 @@ interface Base {
   @Provides fun provideInt(): Int = 3
 }
 
+// METRO_INLAY: MetroContributionToAppScope
 @DependencyGraph(AppScope::class) interface AppGraph
 
 fun useGraphWithSupertype() {
-  // Supertype is added
+  // Supertype is added so this resolves
   createGraph<AppGraph>().int
 }
