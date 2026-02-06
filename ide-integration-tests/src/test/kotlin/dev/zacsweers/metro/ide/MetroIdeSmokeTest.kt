@@ -144,6 +144,10 @@ class MetroIdeSmokeTest {
           // Disable VCS integration to avoid git popups for IDE-generated files
           addSystemProperty("vcs.log.index.git", false)
           addSystemProperty("git.showDialogsOnUnversionedFiles", false)
+
+          // Suppress Android Studio consent/data-sharing dialog that blocks on CI
+          addSystemProperty("jb.consents.confirmation.enabled", false)
+          addSystemProperty("idea.initially.ask.config", "never")
         }
 
     // Collect highlights and inlays inside the driver block, assert after IDE closes.
@@ -259,6 +263,13 @@ class MetroIdeSmokeTest {
     val sourceLines = sourceText.lines()
     val lineStarts = buildLineOffsets(sourceText)
 
+    // Match a highlight to an expected diagnostic ID. The [ID] bracket format isn't always
+    // present (depends on IDE version), so also match the ID without brackets.
+    fun highlightMatchesId(description: String?, id: String): Boolean {
+      if (description == null) return false
+      return description.contains("[$id]") || description.contains(id)
+    }
+
     for (expected in expectedDiagnostics) {
       // Check a window of lines after the comment since the diagnostic may be a few lines down
       val nearbyLines =
@@ -267,7 +278,7 @@ class MetroIdeSmokeTest {
       val found =
         collectedHighlights.any { h ->
           h.severity == expected.severity &&
-            h.description?.contains("[${expected.diagnosticId}]") == true &&
+            highlightMatchesId(h.description, expected.diagnosticId) &&
             (h.highlightedText == null || nearbyLines.contains(h.highlightedText))
         }
       if (!found) {
@@ -282,7 +293,7 @@ class MetroIdeSmokeTest {
     val unexpectedErrors =
       collectedHighlights.filter { h ->
         h.severity == "ERROR" &&
-          expectedErrorIds.none { id -> h.description?.contains("[$id]") == true }
+          expectedErrorIds.none { id -> highlightMatchesId(h.description, id) }
       }
     for (unexpected in unexpectedErrors) {
       errors += "Unexpected ERROR: ${unexpected.description}"
