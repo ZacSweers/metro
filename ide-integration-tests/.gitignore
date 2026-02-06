@@ -1,7 +1,7 @@
 # IDE Starter test output
 out/
 .intellijPlatform/
-*/allure-results/
+allure-results/
 
 # Gradle
 build/
