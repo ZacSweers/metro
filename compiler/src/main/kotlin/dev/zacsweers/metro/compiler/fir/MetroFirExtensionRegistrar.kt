@@ -35,6 +35,7 @@ import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension
 public class MetroFirExtensionRegistrar(
   private val classIds: ClassIds,
   private val options: MetroOptions,
+  private val isIde: Boolean,
   private val compatContext: CompatContext,
   private val loadExternalDeclarationExtensions:
     (FirSession, MetroOptions) -> List<MetroFirDeclarationGenerationExtension> =
@@ -58,15 +59,19 @@ public class MetroFirExtensionRegistrar(
       },
       true,
     )
-    +supertypeGenerator(
-      "Supertypes - provider factories",
-      ::ProvidesFactorySupertypeGenerator,
-      false,
-    )
+
+    // These are types
+    if (!isIde) {
+      +supertypeGenerator(
+        "Supertypes - provider factories",
+        ::ProvidesFactorySupertypeGenerator,
+        false,
+      )
+      +{ session: FirSession -> FirAccessorOverrideStatusTransformer(session, compatContext) }
+    }
     if (options.transformProvidersToPrivate) {
       +{ session: FirSession -> FirProvidesStatusTransformer(session, compatContext) }
     }
-    +{ session: FirSession -> FirAccessorOverrideStatusTransformer(session, compatContext) }
 
     // Register the composite declaration generator that includes external extensions
     +compositeDeclarationGenerator()
@@ -83,14 +88,21 @@ public class MetroFirExtensionRegistrar(
    */
   private fun compositeDeclarationGenerator(): FirDeclarationGenerationExtension.Factory {
     return FirDeclarationGenerationExtension.Factory { session ->
+      // Don't use isIde as isCli() is available here and a bit more precise
+      val isCli = session.isCli()
+
       // Load external extensions via ServiceLoader
       val externalExtensions = loadExternalDeclarationExtensions(session, options)
 
       // Build list of native Metro generators
       val nativeExtensions = buildList {
-        add(
-          wrapNativeGenerator("FirGen - InjectedClass", true, ::InjectedClassFirGenerator)(session)
-        )
+        if (isCli) {
+          add(
+            wrapNativeGenerator("FirGen - InjectedClass", true, ::InjectedClassFirGenerator)(
+              session
+            )
+          )
+        }
 
         if (options.generateAssistedFactories) {
           add(
@@ -100,39 +112,45 @@ public class MetroFirExtensionRegistrar(
           )
         }
 
-        add(
-          wrapNativeGenerator("FirGen - ProvidesFactory", true, ::ProvidesFactoryFirGenerator)(
-            session
-          )
-        )
-
-        add(
-          wrapNativeGenerator(
-            "FirGen - BindingMirrorClass",
-            true,
-            ::BindingMirrorClassFirGenerator,
-          )(session)
-        )
-
-        add(
-          wrapNativeGenerator("FirGen - ContributionsGenerator", true, ::ContributionsFirGenerator)(
-            session
-          )
-        )
-
-        if (options.generateContributionHints && options.generateContributionHintsInFir) {
+        if (isCli) {
           add(
-            wrapNativeGenerator("FirGen - ContributionHints", true, ::ContributionHintFirGenerator)(
+            wrapNativeGenerator("FirGen - ProvidesFactory", true, ::ProvidesFactoryFirGenerator)(
+              session
+            )
+          )
+
+          add(
+            wrapNativeGenerator(
+              "FirGen - BindingMirrorClass",
+              true,
+              ::BindingMirrorClassFirGenerator,
+            )(session)
+          )
+
+          add(
+            wrapNativeGenerator(
+              "FirGen - ContributionsGenerator",
+              true,
+              ::ContributionsFirGenerator,
+            )(session)
+          )
+
+          if (options.generateContributionHints && options.generateContributionHintsInFir) {
+            add(
+              wrapNativeGenerator(
+                "FirGen - ContributionHints",
+                true,
+                ::ContributionHintFirGenerator,
+              )(session)
+            )
+          }
+
+          add(
+            wrapNativeGenerator("FirGen - DependencyGraph", true, ::DependencyGraphFirGenerator)(
               session
             )
           )
         }
-
-        add(
-          wrapNativeGenerator("FirGen - DependencyGraph", true, ::DependencyGraphFirGenerator)(
-            session
-          )
-        )
       }
 
       CompositeMetroFirDeclarationGenerationExtension(

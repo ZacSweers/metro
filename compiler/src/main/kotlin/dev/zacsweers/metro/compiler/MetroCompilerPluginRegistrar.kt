@@ -104,7 +104,7 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
     }
 
     FirExtensionRegistrarAdapter.registerExtension(
-      MetroFirExtensionRegistrar(classIds, options, compatContext)
+      MetroFirExtensionRegistrar(classIds, options, isIde, compatContext)
     )
 
     if (!isIde) {
