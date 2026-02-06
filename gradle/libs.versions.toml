@@ -190,7 +190,7 @@ slf4jNop = "org.slf4j:slf4j-nop:2.0.17"
 
 junit = { module = "junit:junit", version = "4.13.2" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
-junit-jupiter-platformLauncher = { module = "org.junit.jupiter:junit-platform-launcher", version.ref = "junit-jupiter" }
+junit-jupiter-platformLauncher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit-jupiter" }
 ksp-symbolProcessing = { module = "com.google.devtools.ksp:symbol-processing", version.ref = "ksp" }
 ksp-symbolProcessing-api = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }
 ksp-symbolProcessing-commonDeps = { module = "com.google.devtools.ksp:symbol-processing-common-deps", version.ref = "ksp" }

@@ -69,7 +69,11 @@ jobs:
         run: sudo apt-get install -y aria2
 
       - name: Filter IDE version for this matrix entry
-        run: echo "${{ matrix.ide }}" > ide-integration-tests/ide-versions.txt
+        run: |
+          echo "${{ matrix.ide }}" > ide-integration-tests/ide-versions.txt
+          echo "IDE_SLUG=${IDE//:/-}" >> "$GITHUB_ENV"
+        env:
+          IDE: ${{ matrix.ide }}
 
       - name: Download IDE
         run: ide-integration-tests/download-ides.sh
@@ -83,7 +87,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v6
         with:
-          name: ide-logs-${{ matrix.ide }}
+          name: ide-logs-${{ env.IDE_SLUG }}
           path: |
             ide-integration-tests/**/build/reports/**
             ide-integration-tests/**/out/ide-tests/**
