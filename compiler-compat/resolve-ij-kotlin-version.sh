@@ -54,24 +54,47 @@ fetch_kotlin_version() {
 
 # Try exact tag first
 KOTLIN_VERSION=""
+EXACT_TAG_MATCH=true
 KOTLIN_VERSION=$(fetch_kotlin_version "$TAG") || true
 
 if [ -z "$KOTLIN_VERSION" ]; then
-  # Exact tag not found — find the nearest tag for the same platform version
+  # Exact tag not found — try build series first (e.g., 253.30387.*)
   PLATFORM_MAJOR=$(echo "$INTELLIJ_VERSION" | cut -d. -f1)
-  echo "Tag '$TAG' not found, searching for nearest idea/$PLATFORM_MAJOR.* tag..."
+  BUILD_MIDDLE=$(echo "$INTELLIJ_VERSION" | cut -d. -f2)
+  BUILD_SERIES="$PLATFORM_MAJOR.$BUILD_MIDDLE"
 
-  NEAREST_TAG=$(gh api \
-    "repos/JetBrains/intellij-community/git/matching-refs/tags/idea/$PLATFORM_MAJOR." \
+  echo "Tag '$TAG' not found, searching for nearest idea/$BUILD_SERIES.* tag..."
+
+  SERIES_TAG=$(gh api \
+    "repos/JetBrains/intellij-community/git/matching-refs/tags/idea/$BUILD_SERIES." \
     -q '.[].ref' 2>/dev/null |
     sed 's|refs/tags/||' |
     sort -t. -k1,1n -k2,2n -k3,3n |
     tail -1 || true)
 
-  if [ -n "$NEAREST_TAG" ]; then
-    TAG="$NEAREST_TAG"
-    echo "Using nearest tag: $TAG"
+  if [ -n "$SERIES_TAG" ]; then
+    TAG="$SERIES_TAG"
+    echo "Using build series tag: $TAG"
     KOTLIN_VERSION=$(fetch_kotlin_version "$TAG") || true
+  fi
+
+  # If still not found, fall back to platform major (e.g., 253.*)
+  if [ -z "$KOTLIN_VERSION" ]; then
+    EXACT_TAG_MATCH=false
+    echo "No build series tag found, searching for nearest idea/$PLATFORM_MAJOR.* tag..."
+
+    NEAREST_TAG=$(gh api \
+      "repos/JetBrains/intellij-community/git/matching-refs/tags/idea/$PLATFORM_MAJOR." \
+      -q '.[].ref' 2>/dev/null |
+      sed 's|refs/tags/||' |
+      sort -t. -k1,1n -k2,2n -k3,3n |
+      tail -1 || true)
+
+    if [ -n "$NEAREST_TAG" ]; then
+      TAG="$NEAREST_TAG"
+      echo "Using nearest tag: $TAG"
+      KOTLIN_VERSION=$(fetch_kotlin_version "$TAG") || true
+    fi
   fi
 
   if [ -z "$KOTLIN_VERSION" ]; then
@@ -82,6 +105,12 @@ fi
 
 echo "Platform tag: $TAG"
 echo "Kotlin version: $KOTLIN_VERSION"
+if [ "$EXACT_TAG_MATCH" = false ]; then
+  echo ""
+  echo "WARNING: Used fallback tag. The Kotlin version above is from a different"
+  echo "IntelliJ build. The actual IDE may report a different -ij build number."
+  echo "Check the IDE's bundled Kotlin version using: ./extract-kotlin-compiler-txt.sh"
+fi
 echo ""
 
 # Extract components from the Kotlin version
@@ -359,6 +388,15 @@ echo "  Merge base:         ${MERGE_BASE:0:10}"
 echo "  Dev tag:            $BEST_DEV_TAG"
 echo "  Dev version:        $BEST_DEV_VERSION"
 echo ""
-echo "Suggested alias (based on git ancestry):"
-echo "  \"$ALIAS_FROM\" to \"$BEST_DEV_VERSION\""
+if [ "$EXACT_TAG_MATCH" = true ]; then
+  echo "Suggested alias (based on git ancestry):"
+  echo "  \"$KOTLIN_VERSION\" to \"$BEST_DEV_VERSION\""
+else
+  echo "Dev build resolved, but exact Kotlin version unknown (used fallback tag)."
+  echo "To create an alias, first find the actual Kotlin version in your IDE using:"
+  echo "  ./extract-kotlin-compiler-txt.sh \"/path/to/IntelliJ IDEA.app\""
+  echo ""
+  echo "Then add an alias like:"
+  echo "  \"<actual-ij-version>\" to \"$BEST_DEV_VERSION\""
+fi
 echo ""

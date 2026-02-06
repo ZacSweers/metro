@@ -27,42 +27,22 @@ buildConfig {
   buildConfigField(
     "kotlin.collections.Map<String, String>",
     "BUILT_IN_COMPILER_VERSION_ALIASES",
-    // Known fake-to-real version mappings for IDE builds.
-    // Android Studio canary builds report a fake version like "2.3.255-dev-255".
-    // The real version can be found by checking the IntelliJ tag for the studio build number:
-    // https://github.com/JetBrains/intellij-community/blob/idea/<intellij-version>/.idea/libraries/kotlinc_kotlin_compiler_common.xml
-    """
-    mapOf(
-       // IntelliJ IDEA 2025.2.2 (eap)
-      "2.2.20-ij252-17" to "2.2.20-dev-5810",
-      // IntelliJ IDEA 2025.2.6.1 (stable)
-      // IntelliJ IDEA 2025.2.4 (rc)
-      "2.2.20-ij252-24" to "2.2.20-dev-5810",
-      // Android Studio Otter 3 Feature Drop | 2025.2.3 (stable)
-      // Android Studio Otter 3 Feature Drop | 2025.2.3 RC 3 (beta)
-      // Android Studio Otter 3 Feature Drop | 2025.2.3 RC 2 (beta)
-      // Android Studio Otter 3 Feature Drop | 2025.2.3 RC 1 (beta)
-      // Android Studio Otter 2 Feature Drop | 2025.2.2 Patch 1 (stable)
-      // Android Studio Otter 2 Feature Drop | 2025.2.2 (stable)
-      // Android Studio Otter 2 Feature Drop | 2025.2.2 RC 2 (beta)
-      // Android Studio Otter | 2025.2.1 Patch 1 (stable)
-      // Android Studio Otter | 2025.2.1 (stable)
-      "2.2.255-dev-255" to "2.2.20-dev-5810",
-      // IntelliJ IDEA 2025.3.3 (eap)
-      // IntelliJ IDEA 2025.3.2 (stable)
-      "2.3.20-ij253-105" to "2.3.0-dev-9992",
-      // IntelliJ IDEA 2025.3.1 (rc)
-      "2.3.20-ij253-45" to "2.3.0-dev-9992",
-      // Android Studio Panda 2 | 2025.3.2 Canary 3 (canary)
-      // Android Studio Panda 1 | 2025.3.1 RC 1 (beta)
-      // Android Studio Panda 2 | 2025.3.2 Canary 2 (canary)
-      // Android Studio Panda 2 | 2025.3.2 Canary 1 (canary)
-      // Android Studio Panda 1 | 2025.3.1 Canary 5 (canary)
-      // Android Studio Panda 1 | 2025.3.1 Canary 4 (canary)
-      "2.3.255-dev-255" to "2.3.0-dev-9992",
-    )
-    """
-      .trimIndent(),
+    providers
+      .fileContents(layout.projectDirectory.file("ide-mappings.txt"))
+      .asText
+      // Known tags-to-real version mappings for IDE builds.
+      // Android Studio canary builds report a fake version like "2.3.255-dev-255".
+      // The real version can be found by checking the IntelliJ tag for the studio build number:
+      // https://github.com/JetBrains/intellij-community/blob/idea/<intellij-version>/.idea/libraries/kotlinc_kotlin_compiler_common.xml
+      .map { text ->
+        text
+          .lineSequence()
+          .filter { it.isNotBlank() && !it.startsWith("#") }
+          .joinToString(prefix = "mapOf(\n", postfix = "\n)", separator = "\n,") { line ->
+            val (from, to) = line.split('=', limit = 2)
+            "  \"$from\" to \"$to\""
+          }
+      },
   )
 }
 

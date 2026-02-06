@@ -482,22 +482,61 @@ def main():
     # build in a major and it's too old, all builds in that major will be too.
     skipped_majors = set()
 
+    # Cache for build-series tags (e.g., "253.30387" -> nearest tag)
+    build_series_cache = {}
+
+    def find_nearest_tag_for_series(series_prefix):
+        """Find the nearest idea/<series_prefix>.* tag."""
+        raw = gh_api(
+            f"repos/JetBrains/intellij-community/git/matching-refs/tags/idea/{series_prefix}.",
+            jq_filter=".[].ref",
+        )
+        if not raw:
+            return None
+        tags = [t.replace("refs/tags/", "") for t in raw.splitlines() if t.strip()]
+        if not tags:
+            return None
+
+        # Sort by numeric segments and return the last (highest)
+        def sort_key(t):
+            parts = t.replace("idea/", "").split(".")
+            return tuple(int(p) if p.isdigit() else 0 for p in parts)
+
+        tags.sort(key=sort_key)
+        return tags[-1]
+
     def resolve_tag_for_build(build):
-        """Try exact idea/<build> tag, fall back to nearest tag for the major."""
+        """Try exact idea/<build> tag, then build series, then platform major.
+        Returns (tag, kotlin_version, is_exact_match)."""
+        # 1. Try exact tag
         tag = f"idea/{build}"
         kv = fetch_kotlin_version(tag)
         if kv:
-            return tag, kv
+            return tag, kv, True  # Exact match
 
-        major = build.split(".")[0]
+        # 2. Try build series (e.g., 253.30387.90 -> try 253.30387.*)
+        parts = build.split(".")
+        if len(parts) >= 2:
+            series_prefix = f"{parts[0]}.{parts[1]}"
+            if series_prefix not in build_series_cache:
+                build_series_cache[series_prefix] = find_nearest_tag_for_series(series_prefix)
+            series_tag = build_series_cache[series_prefix]
+            if series_tag:
+                kv = fetch_kotlin_version(series_tag)
+                if kv:
+                    # Same build series, likely same Kotlin version
+                    return series_tag, kv, True
+
+        # 3. Fall back to platform major (e.g., 253.*)
+        major = parts[0]
         if major not in nearest_tag_cache:
             nearest_tag_cache[major] = find_nearest_tag(major)
         nearest = nearest_tag_cache[major]
         if nearest:
             kv = fetch_kotlin_version(nearest)
             if kv:
-                return nearest, kv
-        return None, None
+                return nearest, kv, False  # Different build series
+        return None, None, False
 
     # Cache: dev build resolution per (tag, kotlin_version) to avoid duplicate
     # gh api calls for the same tag's commit history
@@ -520,7 +559,7 @@ def main():
 
         print(f"━━━ {representative} (build {build}) ━━━")
 
-        tag, kotlin_version = resolve_tag_for_build(build)
+        tag, kotlin_version, is_exact_match = resolve_tag_for_build(build)
 
         if not kotlin_version:
             print(f"  Could not resolve Kotlin version, skipping")
@@ -536,7 +575,7 @@ def main():
             print()
             continue
 
-        print(f"  Tag: {tag}")
+        print(f"  Tag: {tag}" + ("" if is_exact_match else " (fallback)"))
         print(f"  Kotlin version: {kotlin_version}")
 
         # Resolve to dev build (cached per tag+version)
@@ -552,6 +591,7 @@ def main():
             "tag": tag,
             "kotlin_version": kotlin_version,
             "dev_version": dev_version,
+            "is_exact_match": is_exact_match,
         }
 
     # Build alias mappings — one entry per release
@@ -565,18 +605,26 @@ def main():
         info = resolved[build]
         kotlin_version = info["kotlin_version"]
         dev_version = info["dev_version"]
+        is_exact_match = info["is_exact_match"]
 
         for release in entries:
             if release["is_android_studio"]:
                 # Android Studio: generate fake version from kotlin major.minor
+                # This works even with fallback tags since all AS builds for a
+                # platform major use the same fake version pattern (X.Y.255-dev-255)
                 km = re.match(r"^(\d+\.\d+)", kotlin_version)
                 if km:
                     fake_version = f"{km.group(1)}.255-dev-255"
                     alias_entries.append((release["ide_name"], fake_version, dev_version))
             else:
                 # IntelliJ IDEA: use the ij version as alias source
-                if "-ij" in kotlin_version:
+                # Only generate alias if we found the exact tag - fallback tags have
+                # different ij build numbers so the alias wouldn't match at runtime
+                if "-ij" in kotlin_version and is_exact_match:
                     alias_entries.append((release["ide_name"], kotlin_version, dev_version))
+                elif "-ij" in kotlin_version:
+                    print(f"  WARNING: Skipping IntelliJ alias for {release['ide_name']} - "
+                          f"used fallback tag, actual ij version unknown")
 
     # Deduplicate: group by (fake_version, alias_target)
     alias_map = OrderedDict()  # fake_version -> alias_target
@@ -617,18 +665,24 @@ def main():
     print("═══════════════════════════════════════════════════════════════════════════")
     print()
 
-    # buildConfig-ready Kotlin map
-    print("Suggested buildConfig:")
-    print("  mapOf(")
+    # Write to ide-mappings.txt
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    output_file = os.path.join(script_dir, "ide-mappings.txt")
 
-    for fake_version in sorted(alias_map.keys()):
-        alias_target = alias_map[fake_version]
-        comments = alias_comments.get(fake_version, [])
-        for comment in comments:
-            print(f"    // {comment}")
-        print(f'    "{fake_version}" to "{alias_target}",')
+    with open(output_file, "w") as f:
+        f.write("# IDE Kotlin version alias mappings\n")
+        f.write("# Generated by fetch-all-ide-kotlin-versions.py\n")
+        f.write("# Format: <ide-version>=<dev-version>\n")
+        f.write("#\n")
 
-    print("  )")
+        for fake_version in sorted(alias_map.keys()):
+            alias_target = alias_map[fake_version]
+            comments = alias_comments.get(fake_version, [])
+            for comment in comments:
+                f.write(f"# {comment}\n")
+            f.write(f"{fake_version}={alias_target}\n")
+
+    print(f"Written to: {output_file}")
     print()
 
 
