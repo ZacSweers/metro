@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.interop
 
-import com.google.devtools.ksp.impl.KSPCoreEnvironment
 import com.google.devtools.ksp.impl.KotlinSymbolProcessing
 import com.google.devtools.ksp.processing.KSPJvmConfig
 import com.google.devtools.ksp.processing.SymbolProcessorProvider
@@ -12,8 +11,6 @@ import dev.zacsweers.metro.compiler.test.JVM_TARGET
 import java.io.File
 import java.util.EnumSet
 import java.util.ServiceLoader
-import ksp.com.intellij.openapi.application.ApplicationManager as ShadedKspApplicationManager
-import ksp.com.intellij.openapi.util.Disposer as ShadedKspDisposer
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.MessageRenderer
 import org.jetbrains.kotlin.cli.common.messages.PrintingMessageCollector
