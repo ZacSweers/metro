@@ -306,7 +306,13 @@ internal open class MutableBindingGraph<
                 val prevReq = if (i == 0) finalPath.last() else finalPath[i - 1]
                 val callingBinding = bindings.getValue(prevReq)
                 val contextKey =
-                  callingBinding.dependencies.first { it.typeKey == currentDep && !it.isDeferrable }
+                  callingBinding.dependencies.firstOrNull {
+                    it.typeKey == currentDep && !it.isDeferrable
+                  }
+                    ?: reportCompilerBug(
+                      "Found a hard cycle, but no scalar dependency exists from " +
+                        "${prevReq.render(short = true)} to ${currentDep.render(short = true)}."
+                    )
                 add(stack.newBindingStackEntry(contextKey, callingBinding, roots))
               }
             }
