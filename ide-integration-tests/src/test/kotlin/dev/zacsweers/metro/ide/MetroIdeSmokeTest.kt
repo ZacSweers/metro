@@ -22,6 +22,7 @@ import com.intellij.ide.starter.report.ErrorReporterToCI
 import com.intellij.ide.starter.runner.CurrentTestMethod
 import com.intellij.ide.starter.runner.Starter
 import java.nio.file.Path
+import kotlin.io.path.notExists
 import kotlin.io.path.readLines
 import kotlin.io.path.readText
 import kotlin.test.fail
@@ -152,6 +153,17 @@ class MetroIdeSmokeTest {
           addSystemProperty("jb.privacy.policy.text", "<!--999.999-->")
           addSystemProperty("ide.show.tips.on.startup.default.value", false)
         }
+
+    if (product == "AS") {
+      val analyticsPrefs =
+        Path.of(System.getProperty("user.home"), ".android").resolve("analytics.settings")
+      if (analyticsPrefs.notExists()) {
+        fail(
+          "${analyticsPrefs.toAbsolutePath()} doesn't not exist. Android Studio needs this to be present or " +
+            "else it pops up an analytics consent dialog that stalls the test"
+        )
+      }
+    }
 
     // Collect highlights and inlays inside the driver block, assert after IDE closes.
     // This lets us check the IDE logs first for a more useful error message.

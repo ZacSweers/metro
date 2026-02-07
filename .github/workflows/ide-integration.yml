@@ -146,6 +146,16 @@ jobs:
         env:
           IDE: ${{ matrix.ide }}
 
+      # Pre-populate Android Studio's analytics consent to suppress ConsentDialog on CI.
+      # AS has its own consent dialog (com.android.tools.idea.stats.ConsentDialog) separate from
+      # the JB platform one. It checks AnalyticsSettings.optedIn which reads
+      # ~/.android/analytics.settings.
+      - name: Pre-populate Android Studio analytics consent
+        if: startsWith(matrix.ide, 'AS')
+        run: |
+          mkdir -p ~/.android
+          echo '{"hasOptedIn":true}' > ~/.android/analytics.settings
+
       - name: Download IDE
         run: ide-integration-tests/download-ides.sh
 
