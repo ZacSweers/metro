@@ -21,12 +21,14 @@ import com.intellij.ide.starter.project.LocalProjectInfo
 import com.intellij.ide.starter.report.ErrorReporterToCI
 import com.intellij.ide.starter.runner.CurrentTestMethod
 import com.intellij.ide.starter.runner.Starter
+import java.nio.file.Files
 import java.nio.file.Path
+import kotlin.io.path.createDirectories
 import kotlin.io.path.readLines
 import kotlin.io.path.readText
+import kotlin.io.path.writeText
 import kotlin.test.fail
 import kotlin.time.Duration.Companion.minutes
-import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
@@ -113,15 +115,6 @@ class MetroIdeSmokeTest {
   @ParameterizedTest
   @MethodSource("ideVersions")
   fun check(product: String, version: String) {
-    // Android Studio on CI is blocked by an undismissable ConsentDialog.
-    // This is a known issue with the IDE Starter framework for AS.
-    // https://github.com/JetBrains/intellij-ide-starter/blob/4b6a1b7f8e1262814ea9b5541c2fe08a50b2b09b/intellij.tools.ide.starter.examples/testSrc/com/intellij/ide/starter/examples/junit5/ImportAndroidGradleProject.kt#L18
-    val isCI = System.getenv("CI") != null
-    assumeTrue(
-      !(isCI && product == "AS"),
-      "Android Studio tests are skipped on CI due to ConsentDialog",
-    )
-
     // IU uses marketing version (e.g., "2025.3.2") with RELEASE buildType
     // AS uses build number (e.g., "2024.2.1.11") directly
     // NOTE: Run ./download-ides.sh first
@@ -138,6 +131,40 @@ class MetroIdeSmokeTest {
     val sourceText = testProject.resolve("src/main/kotlin/TestSources.kt").readText()
     val expectedDiagnostics = parseExpectedDiagnostics(sourceText)
     val expectedInlays = parseExpectedInlays(sourceText)
+
+    // For Android Studio, suppress the ConsentDialog that blocks the IDE on startup.
+    // This mirrors the approach used by Android Studio's own test infrastructure
+    // (AnalyticsTestUtils.kt in JetBrains/android). The ConsentDialog checks multiple
+    // conditions in order — we pre-populate data to satisfy all of them:
+    //   1. AnalyticsSettings.optedIn → reads analytics.settings (hasOptedIn:true)
+    //   2. ConsentOptions.getConsents() → reads consentOptions/accepted file
+    //   3. hasUserBeenPromptedForOptIn → reads lastOptinPromptVersion from analytics.settings
+    data class AsConsentDirs(val commonDataDir: Path, val androidPrefsDir: Path)
+
+    val asConsentDirs =
+      if (product == "AS") {
+        // Pre-populate the IJ consent file so ConsentOptions thinks the user already responded.
+        // Location: PathManager.getCommonDataPath()/consentOptions/accepted
+        val commonDataDir = Files.createTempDirectory("idea-common-data")
+        commonDataDir
+          .resolve("consentOptions")
+          .createDirectories()
+          .resolve("accepted")
+          .writeText("rsch.send.usage.stat:1.0:0:${System.currentTimeMillis()}")
+
+        // Pre-populate analytics.settings with hasOptedIn:true AND a far-future
+        // lastOptinPromptVersion so the re-prompt check also passes.
+        val androidPrefsDir = Files.createTempDirectory("android-prefs")
+        androidPrefsDir
+          .resolve("analytics.settings")
+          .writeText(
+            """{"userId":"00000000-0000-0000-0000-000000000000","hasOptedIn":true,"debugDisablePublishing":true,"saltSkew":-1,"lastOptinPromptVersion":"9999.9999"}"""
+          )
+
+        AsConsentDirs(commonDataDir, androidPrefsDir)
+      } else {
+        null
+      }
 
     val testCase = TestCase(ideProduct, LocalProjectInfo(testProject))
 
@@ -161,6 +188,17 @@ class MetroIdeSmokeTest {
           addSystemProperty("disable.android.first.run", true)
           addSystemProperty("jb.privacy.policy.text", "<!--999.999-->")
           addSystemProperty("ide.show.tips.on.startup.default.value", false)
+
+          if (asConsentDirs != null) {
+            addSystemProperty(
+              "idea.common.data.path",
+              asConsentDirs.commonDataDir.toAbsolutePath().toString(),
+            )
+            addSystemProperty(
+              "ANDROID_PREFS_ROOT",
+              asConsentDirs.androidPrefsDir.toAbsolutePath().toString(),
+            )
+          }
         }
 
     // Collect highlights and inlays inside the driver block, assert after IDE closes.

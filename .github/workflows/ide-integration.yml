@@ -37,12 +37,9 @@ jobs:
           if [[ -n "$input_ide" ]] && [[ "$input_ide" != "all" ]]; then
             json=$(echo "[\"$input_ide\"]" | jq -c .)
           else
-            # Read non-comment, non-empty lines; strip trailing comments.
-            # Skip AS (Android Studio) entries — its ConsentDialog blocks the IDE Starter framework on CI.
-            # https://github.com/JetBrains/intellij-ide-starter/blob/4b6a1b7f8e1262814ea9b5541c2fe08a50b2b09b/intellij.tools.ide.starter.examples/testSrc/com/intellij/ide/starter/examples/junit5/ImportAndroidGradleProject.kt#L18
+            # Read non-comment, non-empty lines; strip trailing comments
             json=$(grep -v '^#' ide-integration-tests/ide-versions.txt \
               | grep -v '^[[:space:]]*$' \
-              | grep -v '^AS:' \
               | sed 's/ #.*//' \
               | jq -R -s -c 'split("\n") | map(select(length > 0))')
           fi
