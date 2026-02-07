@@ -168,8 +168,6 @@ class Ksp2AdditionalSourceProvider(testServices: TestServices) :
           .ifEmpty { EnumSet.of(CompilerMessageSeverity.ERROR, CompilerMessageSeverity.EXCEPTION) }
           .let { EnumSet.copyOf(it) }
       logger.reportAll(reportToCompilerSeverity)
-
-      clearKspLeaks()
     }
 
     val kotlinKspTestFiles =
@@ -177,19 +175,6 @@ class Ksp2AdditionalSourceProvider(testServices: TestServices) :
     val javaKspTestFiles =
       javaOutput.walkTopDown().filter { it.isFile }.map { it.toTestFile() }.toList()
     return kotlinKspTestFiles + javaKspTestFiles
-  }
-
-  /**
-   * KSP leaks its core environment because its CLI appears to be intended for single-shot use and
-   * stores stuff in ThreadLocals.
-   *
-   * The Gradle plugin doesn't seem to run into this because it runs all the tasks in an isolated
-   * classloader that dies between task runs.
-   */
-  private fun clearKspLeaks() {
-    KSPCoreEnvironment.instance_prop.remove()
-    // Doesn't _seem_ necessary but just in case, since it does appear to spin this up
-    ShadedKspApplicationManager.getApplication()?.let(ShadedKspDisposer::dispose)
   }
 
   private companion object {
