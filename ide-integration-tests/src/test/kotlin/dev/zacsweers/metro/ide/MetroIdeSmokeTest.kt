@@ -151,6 +151,10 @@ class MetroIdeSmokeTest {
           addSystemProperty("disable.android.first.run", true)
           addSystemProperty("jb.privacy.policy.text", "<!--999.999-->")
           addSystemProperty("ide.show.tips.on.startup.default.value", false)
+
+          // Mark as unit-test mode so Android Studio's ConsentDialog is suppressed.
+          // AS checks GuiTestingService.isInTestingMode() which delegates to isUnitTestMode().
+          addSystemProperty("idea.is.unit.test", true)
         }
 
     // Collect highlights and inlays inside the driver block, assert after IDE closes.
