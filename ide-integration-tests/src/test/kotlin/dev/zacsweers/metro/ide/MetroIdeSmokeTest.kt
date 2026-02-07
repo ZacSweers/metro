@@ -21,13 +21,12 @@ import com.intellij.ide.starter.project.LocalProjectInfo
 import com.intellij.ide.starter.report.ErrorReporterToCI
 import com.intellij.ide.starter.runner.CurrentTestMethod
 import com.intellij.ide.starter.runner.Starter
-import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.readLines
 import kotlin.io.path.readText
-import kotlin.io.path.writeText
 import kotlin.test.fail
 import kotlin.time.Duration.Companion.minutes
+import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
@@ -114,6 +113,15 @@ class MetroIdeSmokeTest {
   @ParameterizedTest
   @MethodSource("ideVersions")
   fun check(product: String, version: String) {
+    // Android Studio on CI is blocked by an undismissable ConsentDialog.
+    // This is a known issue with the IDE Starter framework for AS.
+    // https://github.com/JetBrains/intellij-ide-starter/blob/4b6a1b7f8e1262814ea9b5541c2fe08a50b2b09b/intellij.tools.ide.starter.examples/testSrc/com/intellij/ide/starter/examples/junit5/ImportAndroidGradleProject.kt#L18
+    val isCI = System.getenv("CI") != null
+    assumeTrue(
+      !(isCI && product == "AS"),
+      "Android Studio tests are skipped on CI due to ConsentDialog",
+    )
+
     // IU uses marketing version (e.g., "2025.3.2") with RELEASE buildType
     // AS uses build number (e.g., "2024.2.1.11") directly
     // NOTE: Run ./download-ides.sh first
@@ -130,24 +138,6 @@ class MetroIdeSmokeTest {
     val sourceText = testProject.resolve("src/main/kotlin/TestSources.kt").readText()
     val expectedDiagnostics = parseExpectedDiagnostics(sourceText)
     val expectedInlays = parseExpectedInlays(sourceText)
-
-    // For Android Studio, pre-populate analytics consent so the ConsentDialog doesn't block.
-    // AS checks AnalyticsSettings.optedIn which reads from analytics.settings in the
-    // Android prefs directory. AnalyticsPaths.getAndroidSettingsHome() resolves via:
-    //   1. ANDROID_PREFS_ROOT (env var, then system property)
-    //   2. ANDROID_SDK_HOME (env var, then system property)
-    //   3. $user.home/.android (fallback)
-    // We set ANDROID_PREFS_ROOT as a system property pointing to a temp dir with the file.
-    val analyticsJson =
-      """{"userId":"00000000-0000-0000-0000-000000000000","hasOptedIn":true,"debugDisablePublishing":true,"saltValue":-1234567890123456789,"saltSkew":0}"""
-    val androidPrefsRoot =
-      if (product == "AS") {
-        Files.createTempDirectory("android-prefs").also { dir ->
-          dir.resolve("analytics.settings").writeText(analyticsJson)
-        }
-      } else {
-        null
-      }
 
     val testCase = TestCase(ideProduct, LocalProjectInfo(testProject))
 
@@ -171,10 +161,6 @@ class MetroIdeSmokeTest {
           addSystemProperty("disable.android.first.run", true)
           addSystemProperty("jb.privacy.policy.text", "<!--999.999-->")
           addSystemProperty("ide.show.tips.on.startup.default.value", false)
-
-          if (androidPrefsRoot != null) {
-            addSystemProperty("ANDROID_PREFS_ROOT", androidPrefsRoot.toAbsolutePath().toString())
-          }
         }
 
     // Collect highlights and inlays inside the driver block, assert after IDE closes.

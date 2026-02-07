@@ -37,9 +37,12 @@ jobs:
           if [[ -n "$input_ide" ]] && [[ "$input_ide" != "all" ]]; then
             json=$(echo "[\"$input_ide\"]" | jq -c .)
           else
-            # Read non-comment, non-empty lines; strip trailing comments
+            # Read non-comment, non-empty lines; strip trailing comments.
+            # Skip AS (Android Studio) entries — its ConsentDialog blocks the IDE Starter framework on CI.
+            # https://github.com/JetBrains/intellij-ide-starter/blob/4b6a1b7f8e1262814ea9b5541c2fe08a50b2b09b/intellij.tools.ide.starter.examples/testSrc/com/intellij/ide/starter/examples/junit5/ImportAndroidGradleProject.kt#L18
             json=$(grep -v '^#' ide-integration-tests/ide-versions.txt \
               | grep -v '^[[:space:]]*$' \
+              | grep -v '^AS:' \
               | sed 's/ #.*//' \
               | jq -R -s -c 'split("\n") | map(select(length > 0))')
           fi
@@ -145,18 +148,6 @@ jobs:
           echo "IDE_SLUG=${IDE//:/-}" >> "$GITHUB_ENV"
         env:
           IDE: ${{ matrix.ide }}
-
-      # Pre-populate Android Studio's analytics consent to suppress ConsentDialog on CI.
-      # The test code also handles this via ANDROID_PREFS_ROOT system property, but setting
-      # the env var here provides extra coverage in case the IDE process inherits it.
-      # AnalyticsPaths resolves the prefs dir via ANDROID_PREFS_ROOT > ANDROID_SDK_HOME > $HOME/.android.
-      - name: Pre-populate Android Studio analytics consent
-        if: startsWith(matrix.ide, 'AS')
-        run: |
-          PREFS_DIR="${ANDROID_PREFS_ROOT:-$HOME/.android}"
-          mkdir -p "$PREFS_DIR"
-          echo '{"userId":"00000000-0000-0000-0000-000000000000","hasOptedIn":true,"debugDisablePublishing":true,"saltValue":-1234567890123456789,"saltSkew":0}' > "$PREFS_DIR/analytics.settings"
-          echo "ANDROID_PREFS_ROOT=$PREFS_DIR" >> "$GITHUB_ENV"
 
       - name: Download IDE
         run: ide-integration-tests/download-ides.sh
