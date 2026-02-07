@@ -154,10 +154,8 @@ class MetroIdeSmokeTest {
 
           if (product == "AS") {
             // Android Studio has its own ConsentDialog (com.android.tools.idea.stats.ConsentDialog)
-            // separate from the JB platform one. It checks GuiTestingService.isInTestingMode()
-            // which
-            // returns true when idea.is.unit.test=true, bypassing the dialog entirely.
-            addSystemProperty("idea.is.unit.test", true)
+            // separate from the JB platform one. Suppress it by pre-populating
+            // ~/.android/analytics.settings with hasOptedIn=true (done in CI workflow).
           }
         }
 

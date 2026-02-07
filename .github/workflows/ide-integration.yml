@@ -154,7 +154,7 @@ jobs:
         if: startsWith(matrix.ide, 'AS')
         run: |
           mkdir -p ~/.android
-          echo '{"hasOptedIn":true}' > ~/.android/analytics.settings
+          echo '{"userId":"00000000-0000-0000-0000-000000000000","hasOptedIn":true,"debugDisablePublishing":true,"saltValue":-1234567890123456789,"saltSkew":0}' > ~/.android/analytics.settings
 
       - name: Download IDE
         run: ide-integration-tests/download-ides.sh
