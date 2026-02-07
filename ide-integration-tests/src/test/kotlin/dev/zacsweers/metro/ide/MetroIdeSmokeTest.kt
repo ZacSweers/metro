@@ -151,12 +151,6 @@ class MetroIdeSmokeTest {
           addSystemProperty("disable.android.first.run", true)
           addSystemProperty("jb.privacy.policy.text", "<!--999.999-->")
           addSystemProperty("ide.show.tips.on.startup.default.value", false)
-
-          if (product == "AS") {
-            // Android Studio has its own ConsentDialog (com.android.tools.idea.stats.ConsentDialog)
-            // separate from the JB platform one. Suppress it by pre-populating
-            // ~/.android/analytics.settings with hasOptedIn=true (done in CI workflow).
-          }
         }
 
     // Collect highlights and inlays inside the driver block, assert after IDE closes.
