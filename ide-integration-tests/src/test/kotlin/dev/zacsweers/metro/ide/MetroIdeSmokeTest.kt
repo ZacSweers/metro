@@ -133,15 +133,24 @@ class MetroIdeSmokeTest {
 
     // For Android Studio, pre-populate analytics consent so the ConsentDialog doesn't block.
     // AS checks AnalyticsSettings.optedIn which reads from $ANDROID_USER_HOME/analytics.settings.
-    // We set ANDROID_USER_HOME on the IDE process via VMOptions env to guarantee it's visible.
+    // AndroidLocationsSingleton resolves the prefs dir via:
+    //   1. ANDROID_USER_HOME system property
+    //   2. ANDROID_USER_HOME env var
+    //   3. $HOME/.android (fallback)
+    // We write the file to both a temp dir (pointed to by system property) and $HOME/.android
+    // to cover all resolution paths.
+    val analyticsJson =
+      """{"userId":"00000000-0000-0000-0000-000000000000","hasOptedIn":true,"debugDisablePublishing":true,"saltValue":-1234567890123456789,"saltSkew":0}"""
     val androidUserHome =
       if (product == "AS") {
+        // Write to $HOME/.android/ as the default fallback path
+        val defaultAndroidDir = Path.of(System.getProperty("user.home"), ".android")
+        Files.createDirectories(defaultAndroidDir)
+        defaultAndroidDir.resolve("analytics.settings").writeText(analyticsJson)
+
+        // Also create a temp dir for the system property approach
         Files.createTempDirectory("android-prefs").also { dir ->
-          dir
-            .resolve("analytics.settings")
-            .writeText(
-              """{"userId":"00000000-0000-0000-0000-000000000000","hasOptedIn":true,"debugDisablePublishing":true,"saltValue":-1234567890123456789,"saltSkew":0}"""
-            )
+          dir.resolve("analytics.settings").writeText(analyticsJson)
         }
       } else {
         null
@@ -171,6 +180,7 @@ class MetroIdeSmokeTest {
           addSystemProperty("ide.show.tips.on.startup.default.value", false)
 
           if (androidUserHome != null) {
+            addSystemProperty("ANDROID_USER_HOME", androidUserHome.toAbsolutePath().toString())
             withEnv("ANDROID_USER_HOME", androidUserHome.toAbsolutePath().toString())
           }
         }

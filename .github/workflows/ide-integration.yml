@@ -146,6 +146,17 @@ jobs:
         env:
           IDE: ${{ matrix.ide }}
 
+      # Pre-populate Android Studio's analytics consent to suppress ConsentDialog on CI.
+      # The test code also handles this, but setting the env var here provides extra coverage
+      # in case the IDE process inherits it.
+      - name: Pre-populate Android Studio analytics consent
+        if: startsWith(matrix.ide, 'AS')
+        run: |
+          PREFS_DIR="${ANDROID_USER_HOME:-$HOME/.android}"
+          mkdir -p "$PREFS_DIR"
+          echo '{"userId":"00000000-0000-0000-0000-000000000000","hasOptedIn":true,"debugDisablePublishing":true,"saltValue":-1234567890123456789,"saltSkew":0}' > "$PREFS_DIR/analytics.settings"
+          echo "ANDROID_USER_HOME=$PREFS_DIR" >> "$GITHUB_ENV"
+
       - name: Download IDE
         run: ide-integration-tests/download-ides.sh
 
