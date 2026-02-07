@@ -12,6 +12,9 @@ out/
 local.properties
 .DS_Store
 
+# Generated file from IDE integration testing
+**/gradle-daemon-jvm.properties
+
 gradle-plugin/docs/
 docs/code-of-conduct.md
 docs/contributing.md
