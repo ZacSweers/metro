@@ -5,6 +5,7 @@ import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 plugins {
   alias(libs.plugins.kotlin.jvm)
   alias(libs.plugins.intellijPlatform)
+  alias(libs.plugins.gradleTestRetry)
   id("metro.base")
   id("metro.spotless")
 }
@@ -55,4 +56,11 @@ tasks.test {
   )
   // Suppress "Could not find installation home path" warning from Driver SDK logging
   systemProperty("idea.home.path", layout.projectDirectory.asFile.absolutePath)
+
+  retry {
+    maxRetries.set(1)
+    maxFailures.set(1)
+    failOnPassedAfterRetry.set(true)
+    failOnSkippedAfterRetry.set(true)
+  }
 }

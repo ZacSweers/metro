@@ -58,6 +58,7 @@ binaryCompatibilityValidator = { id = "org.jetbrains.kotlinx.binary-compatibilit
 buildConfig = { id = "com.github.gmazzo.buildconfig", version = "6.0.7" }
 compose = { id = "org.jetbrains.compose", version.ref = "compose-jb" }
 dokka = { id = "org.jetbrains.dokka", version = "2.1.0" }
+gradleTestRetry = { id = "org.gradle.test-retry", version = "1.6.4" }
 intellijPlatform = { id = "org.jetbrains.intellij.platform", version = "2.11.0" }
 jmh = { id = "me.champeau.jmh", version = "0.7.3" }
 kotlin-allopen = { id = "org.jetbrains.kotlin.plugin.allopen", version.ref = "kotlin" }
