@@ -134,7 +134,6 @@ class BindingGraphTest : TraceScope by testTraceScope() {
       }
 
     val message = exception.message!!
-    println(message)
 
     val cycleLine = message.lines().find { it.contains("-->") }?.trim() ?: ""
 
