@@ -132,23 +132,16 @@ class MetroIdeSmokeTest {
     val expectedInlays = parseExpectedInlays(sourceText)
 
     // For Android Studio, pre-populate analytics consent so the ConsentDialog doesn't block.
-    // AS checks AnalyticsSettings.optedIn which reads from $ANDROID_USER_HOME/analytics.settings.
-    // AndroidLocationsSingleton resolves the prefs dir via:
-    //   1. ANDROID_USER_HOME system property
-    //   2. ANDROID_USER_HOME env var
-    //   3. $HOME/.android (fallback)
-    // We write the file to both a temp dir (pointed to by system property) and $HOME/.android
-    // to cover all resolution paths.
+    // AS checks AnalyticsSettings.optedIn which reads from analytics.settings in the
+    // Android prefs directory. AnalyticsPaths.getAndroidSettingsHome() resolves via:
+    //   1. ANDROID_PREFS_ROOT (env var, then system property)
+    //   2. ANDROID_SDK_HOME (env var, then system property)
+    //   3. $user.home/.android (fallback)
+    // We set ANDROID_PREFS_ROOT as a system property pointing to a temp dir with the file.
     val analyticsJson =
       """{"userId":"00000000-0000-0000-0000-000000000000","hasOptedIn":true,"debugDisablePublishing":true,"saltValue":-1234567890123456789,"saltSkew":0}"""
-    val androidUserHome =
+    val androidPrefsRoot =
       if (product == "AS") {
-        // Write to $HOME/.android/ as the default fallback path
-        val defaultAndroidDir = Path.of(System.getProperty("user.home"), ".android")
-        Files.createDirectories(defaultAndroidDir)
-        defaultAndroidDir.resolve("analytics.settings").writeText(analyticsJson)
-
-        // Also create a temp dir for the system property approach
         Files.createTempDirectory("android-prefs").also { dir ->
           dir.resolve("analytics.settings").writeText(analyticsJson)
         }
@@ -179,9 +172,8 @@ class MetroIdeSmokeTest {
           addSystemProperty("jb.privacy.policy.text", "<!--999.999-->")
           addSystemProperty("ide.show.tips.on.startup.default.value", false)
 
-          if (androidUserHome != null) {
-            addSystemProperty("ANDROID_USER_HOME", androidUserHome.toAbsolutePath().toString())
-            withEnv("ANDROID_USER_HOME", androidUserHome.toAbsolutePath().toString())
+          if (androidPrefsRoot != null) {
+            addSystemProperty("ANDROID_PREFS_ROOT", androidPrefsRoot.toAbsolutePath().toString())
           }
         }
 
