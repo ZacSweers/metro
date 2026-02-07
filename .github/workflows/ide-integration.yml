@@ -173,7 +173,7 @@ jobs:
           name: ide-logs-${{ env.IDE_SLUG }}
           path: |
             ide-integration-tests/**/build/reports/**
-            ide-integration-tests/**/out/ide-tests/**
+            out/ide-tests/**
 
   ide-integration:
     if: always()
