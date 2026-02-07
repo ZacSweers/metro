@@ -21,9 +21,11 @@ import com.intellij.ide.starter.project.LocalProjectInfo
 import com.intellij.ide.starter.report.ErrorReporterToCI
 import com.intellij.ide.starter.runner.CurrentTestMethod
 import com.intellij.ide.starter.runner.Starter
+import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.readLines
 import kotlin.io.path.readText
+import kotlin.io.path.writeText
 import kotlin.test.fail
 import kotlin.time.Duration.Companion.minutes
 import org.junit.jupiter.params.ParameterizedTest
@@ -129,6 +131,22 @@ class MetroIdeSmokeTest {
     val expectedDiagnostics = parseExpectedDiagnostics(sourceText)
     val expectedInlays = parseExpectedInlays(sourceText)
 
+    // For Android Studio, pre-populate analytics consent so the ConsentDialog doesn't block.
+    // AS checks AnalyticsSettings.optedIn which reads from $ANDROID_USER_HOME/analytics.settings.
+    // We set ANDROID_USER_HOME on the IDE process via VMOptions env to guarantee it's visible.
+    val androidUserHome =
+      if (product == "AS") {
+        Files.createTempDirectory("android-prefs").also { dir ->
+          dir
+            .resolve("analytics.settings")
+            .writeText(
+              """{"userId":"00000000-0000-0000-0000-000000000000","hasOptedIn":true,"debugDisablePublishing":true,"saltValue":-1234567890123456789,"saltSkew":0}"""
+            )
+        }
+      } else {
+        null
+      }
+
     val testCase = TestCase(ideProduct, LocalProjectInfo(testProject))
 
     val testContext =
@@ -152,9 +170,9 @@ class MetroIdeSmokeTest {
           addSystemProperty("jb.privacy.policy.text", "<!--999.999-->")
           addSystemProperty("ide.show.tips.on.startup.default.value", false)
 
-          // Mark as unit-test mode so Android Studio's ConsentDialog is suppressed.
-          // AS checks GuiTestingService.isInTestingMode() which delegates to isUnitTestMode().
-          addSystemProperty("idea.is.unit.test", true)
+          if (androidUserHome != null) {
+            withEnv("ANDROID_USER_HOME", androidUserHome.toAbsolutePath().toString())
+          }
         }
 
     // Collect highlights and inlays inside the driver block, assert after IDE closes.
