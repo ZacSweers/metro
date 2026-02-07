@@ -183,7 +183,7 @@ class MetroIdeSmokeTest {
         // Wait for Gradle import + indexing to complete.
         // waitSmartLongEnough (default=true) requires 10 consecutive seconds with no indicators
         // before returning, which is enough to catch the brief gap before Gradle import starts.
-        waitForIndicators(10.minutes)
+        waitForIndicators(3.minutes)
 
         // Open the test source file and wait for code analysis to complete.
         // This triggers FIR analysis with Metro extensions.
