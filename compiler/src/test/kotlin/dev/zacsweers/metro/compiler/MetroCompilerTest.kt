@@ -76,9 +76,6 @@ abstract class MetroCompilerTest {
       kotlincArguments +=
         listOf("-jvm-default=no-compatibility", "-Xverify-ir=error", "-Xverify-ir-visibility")
 
-      // TODO test enabling IC?
-      //  kotlincArguments += "-Xenable-incremental-compilation"
-
       if (previousCompilationResult != null) {
         addPreviousResultToClasspath(previousCompilationResult)
       }
