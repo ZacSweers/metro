@@ -30,6 +30,10 @@ Changelog
 
 - **[FIR/IR]** Add aliases for a bunch of "known" mappings for Kotlin IDE plugin versions to Kotlin versions. This is still best-effort but should hopefully be more robust, especially in situations like Android Studio canaries (which do not report real Kotlin versions). Please star this issue: https://issuetracker.google.com/issues/474940910
 - **[FIR]**: One downside of the above is that it revealed that Android Studio Otter 3 is effectively running on Kotlin 2.2.0, which is just a bit too far back to still support. However, now that Studio is switching to monthly releases it should track upstream IJ changes much quicker and Studio Panda is in RC1 now.
+    - Previously, an incompatible version could cause the IDE file analysis to hang or error out if IDE support was enabled. Now, Metro's IDE support will gracefully degrade on incompatible IDE versions. This includes Android Studio Otter as of this version. Android Studio Panda is tested and ready though!
+        ```
+        2026-02-08 01:14:27,225 [  56672]   INFO - STDERR - [METRO] Skipping enabling Metro extensions in IDE. Detected Kotlin version '2.2.255-dev-255' is not supported for IDE use (CLI_ONLY).
+        ```
 - **[IR]**: Rework assisted inject bindings to be encapsulated by their consuming assisted factory bindings in graph validation.
     - This ensures these classes can't accidentally participate in `SwitchingProvider`s or valid cycle breaking with `DelegateFactory`, as both of those require `Provider` types and assisted-inject types' factories don't implement `Provider`.
 - Fold `2.3.20-dev-7791` compat into `2.3.20-Beta2` compat, meaning the former is no longer tested on CI.

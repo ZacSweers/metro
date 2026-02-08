@@ -328,7 +328,7 @@ class CompatContextTest {
     // After aliasing to 2.3.20-Beta2, factory resolution should pick the right factory
     val fakeVersion = KotlinToolingVersion("2.3.255-dev-255")
     val userAliases = mapOf("2.3.255-dev-255" to "2.3.20-Beta2")
-    val aliasedVersion = CompilerVersionAliases.map(fakeVersion, userAliases)
+    val aliasedVersion = CompilerVersionAliases.map(fakeVersion, userAliases)!!
 
     val factory230 = FakeFactory(minVersion = "2.3.0", reportedCurrentVersion = "2.3.20-Beta2")
     val factoryBeta =

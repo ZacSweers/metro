@@ -44,8 +44,15 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
 
     val version =
       options.compilerVersion?.let(::KotlinToolingVersion)
-        ?: CompatContext.Factory.loadCompilerVersionOrNull()?.let {
-          CompilerVersionAliases.map(it, options.compilerVersionAliases)
+        ?: CompatContext.Factory.loadCompilerVersionOrNull()?.let { rawVersion ->
+          CompilerVersionAliases.map(rawVersion, options.compilerVersionAliases)
+            ?: run {
+              System.err.println(
+                "[METRO] Skipping enabling Metro extensions in IDE. " +
+                  "Detected Kotlin version '$rawVersion' is not supported for IDE use (CLI_ONLY)."
+              )
+              return
+            }
         }
 
     val enableFir = version != null || (isIde && options.forceEnableFirInIde)

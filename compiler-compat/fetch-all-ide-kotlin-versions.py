@@ -34,6 +34,27 @@ def parse_kotlin_base_version(version_str):
     return (0, 0, 0)
 
 
+def read_cli_only_entries(filepath):
+    """Read existing ide-mappings.txt and return a dict of version -> list of comment lines
+    for entries marked as CLI_ONLY."""
+    cli_only = OrderedDict()  # version -> list of comment lines
+    if not os.path.exists(filepath):
+        return cli_only
+    pending_comments = []
+    with open(filepath) as f:
+        for line in f:
+            line = line.rstrip("\n")
+            if line.startswith("#"):
+                pending_comments.append(line)
+            elif "=CLI_ONLY" in line:
+                version = line.split("=", 1)[0]
+                cli_only[version] = pending_comments
+                pending_comments = []
+            else:
+                pending_comments = []
+    return cli_only
+
+
 def read_kotlin_version_from_toml():
     """Try to read the kotlin version from gradle/libs.versions.toml relative to this script."""
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -438,6 +459,13 @@ def main():
     channels = set(args.channels.split(","))
     min_kotlin = parse_kotlin_base_version(args.min_kotlin)
 
+    # Read existing CLI_ONLY entries to preserve them
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    output_file = os.path.join(script_dir, "ide-mappings.txt")
+    cli_only_entries = read_cli_only_entries(output_file)
+    if cli_only_entries:
+        print(f"Preserving {len(cli_only_entries)} CLI_ONLY entries: {', '.join(cli_only_entries.keys())}")
+
     # Check for gh CLI
     try:
         subprocess.run(["gh", "auth", "status"], capture_output=True, timeout=10)
@@ -639,6 +667,16 @@ def main():
         if ide_name not in alias_comments[fake_version]:
             alias_comments[fake_version].append(ide_name)
 
+    # Apply CLI_ONLY overrides
+    for version in cli_only_entries:
+        if version in alias_map:
+            alias_map[version] = "CLI_ONLY"
+        else:
+            # Preserve CLI_ONLY entries even if the version wasn't found in this run
+            alias_map[version] = "CLI_ONLY"
+            if version not in alias_comments:
+                alias_comments[version] = []
+
     # Output
     print()
     print("═══════════════════════════════════════════════════════════════════════════")
@@ -646,7 +684,7 @@ def main():
     print("═══════════════════════════════════════════════════════════════════════════")
     print()
 
-    if not alias_entries:
+    if not alias_entries and not cli_only_entries:
         print("No aliases needed (all versions are already dev builds).")
         print()
         return
@@ -666,8 +704,6 @@ def main():
     print()
 
     # Write to ide-mappings.txt
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    output_file = os.path.join(script_dir, "ide-mappings.txt")
 
     with open(output_file, "w") as f:
         f.write("# IDE Kotlin version alias mappings\n")
@@ -678,8 +714,13 @@ def main():
         for fake_version in sorted(alias_map.keys()):
             alias_target = alias_map[fake_version]
             comments = alias_comments.get(fake_version, [])
-            for comment in comments:
-                f.write(f"# {comment}\n")
+            if alias_target == "CLI_ONLY" and not comments and fake_version in cli_only_entries:
+                # Preserve original comments from existing file
+                for comment_line in cli_only_entries[fake_version]:
+                    f.write(f"{comment_line}\n")
+            else:
+                for comment in comments:
+                    f.write(f"# {comment}\n")
             f.write(f"{fake_version}={alias_target}\n")
 
     print(f"Written to: {output_file}")
