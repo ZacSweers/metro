@@ -198,6 +198,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     public void testCyclesShouldFailAcrossMultipleGraphs() {
       runTest("compiler-tests/src/test/data/diagnostic/cycles/CyclesShouldFailAcrossMultipleGraphs.kt");
     }
+
+    @Test
+    @TestMetadata("ProvidesSccShouldNotCrashReporter.kt")
+    public void testProvidesSccShouldNotCrashReporter() {
+      runTest("compiler-tests/src/test/data/diagnostic/cycles/ProvidesSccShouldNotCrashReporter.kt");
+    }
   }
 
   @Nested
