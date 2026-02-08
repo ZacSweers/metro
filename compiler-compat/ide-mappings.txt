@@ -3,10 +3,10 @@
 # Format: <ide-version>=<dev-version>
 #
 # IntelliJ IDEA 2025.2.2 (eap)
-2.2.20-ij252-17=2.2.20-dev-5810
+2.2.20-ij252-17=CLI_ONLY
 # IntelliJ IDEA 2025.2.6.1 (stable)
 # IntelliJ IDEA 2025.2.4 (rc)
-2.2.20-ij252-24=2.2.20-dev-5810
+2.2.20-ij252-24=CLI_ONLY
 # Android Studio Otter 3 Feature Drop | 2025.2.3 (stable)
 # Android Studio Otter 3 Feature Drop | 2025.2.3 RC 3 (beta)
 # Android Studio Otter 3 Feature Drop | 2025.2.3 RC 2 (beta)
