@@ -286,24 +286,21 @@ internal open class MutableBindingGraph<
               else bindings.getValue(from).dependencies.any { it.typeKey == to && !it.isDeferrable }
             }
 
-            var cyclePath: List<TypeKey>? = null
-            for (candidate in sccVertices) {
-              cyclePath =
+            val cyclePath: List<TypeKey> =
+              sccVertices.firstNotNullOfOrNull { candidate ->
                 findSimpleCycle(
                   startNode = candidate,
                   sccNodes = sccSet,
                   fullAdjacency = fullAdjacency,
                   isEdgeAllowed = isHardEdge,
                 )
-              if (cyclePath != null) break
-            }
+              } ?: sccVertices
 
-            val finalPath = cyclePath ?: sccVertices
             val entriesInCycle = buildList {
-              val size = finalPath.size
+              val size = cyclePath.size
               for (i in 0..size) {
-                val currentDep = finalPath[i % size]
-                val prevReq = if (i == 0) finalPath.last() else finalPath[i - 1]
+                val currentDep = cyclePath[i % size]
+                val prevReq = if (i == 0) cyclePath.last() else cyclePath[i - 1]
                 val callingBinding = bindings.getValue(prevReq)
                 val contextKey =
                   callingBinding.dependencies.firstOrNull {
