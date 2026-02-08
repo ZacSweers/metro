@@ -37,9 +37,13 @@ pluginManager.withPlugin("java") {
 }
 
 // Suppress native access warnings in forked JVMs (Java 22+)
-tasks.withType<Test>().configureEach { jvmArgs("--enable-native-access=ALL-UNNAMED") }
+tasks.withType<Test>().configureEach {
+  jvmArgs("--enable-native-access=ALL-UNNAMED", "--sun-misc-unsafe-memory-access=allow")
+}
 
-tasks.withType<JavaExec>().configureEach { jvmArgs("--enable-native-access=ALL-UNNAMED") }
+tasks.withType<JavaExec>().configureEach {
+  jvmArgs("--enable-native-access=ALL-UNNAMED", "--sun-misc-unsafe-memory-access=allow")
+}
 
 // Kotlin configuration
 plugins.withType<KotlinBasePlugin> {
