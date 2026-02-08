@@ -18,7 +18,7 @@ Don't bother running code formatting, I'll handle that in commits.
 
 ### Documentation
 - `./gradlew dokkaHtml` - Generate API documentation
-- `docs/` - Contains all markdown documentation
+- `docs/` - Contains all Markdown documentation
 
 ### Benchmarks
 - `cd benchmark && ./run_benchmarks.sh metro` - Run performance benchmarks
@@ -99,10 +99,11 @@ To create a new test, add a source file under the appropriate directory and then
 
 ### Important Notes
 
-- Kotlin compiler plugins are not stable APIs - Metro tracks Kotlin releases closely
-- FIR is for analysis/validation, IR is for code generation - don't mix concerns
+- Kotlin compiler plugins are not stable APIs – Metro tracks Kotlin releases closely
+- FIR is for analysis/validation, IR is for code generation – don't mix concerns
 - Always run API validation (`apiCheck`) when changing public APIs
 - Use existing test infrastructure patterns rather than creating new test types
-- Don't run gradle commands with unnecessary flags like `--info`, `--no-daemon`, etc.
-- Don't cd into a module directory and run gradle commands - use `./gradlew` instead from the directory that wrapper is in.
+- Don't run Gradle commands with unnecessary flags like `--info`, `--no-daemon`, etc.
+- Don't cd into a module directory and run Gradle commands - use `./gradlew` instead from the directory that wrapper is in.
 - Do not run tests automatically, prompt first.
+- Do not try reading `.gradle/caches` or anything similar, prefer reading sources rather than jars.

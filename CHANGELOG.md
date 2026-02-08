@@ -6,7 +6,8 @@ Changelog
 
 ### New
 
-- Metro's compiler now embeds `androidx.tracing` and can produce perfetto traces of its IR transformations
+- Metro's compiler now embeds `androidx.tracing` and can produce perfetto traces of its IR transformations.
+- **[FIR]**: Metro now does early detection of whether or not it's running in the IDE or CLI. If it's in the IDE, Metro will disable any FIR generators that do not generate user-visible code.
 
 ### Enhancements
 
@@ -18,6 +19,8 @@ Changelog
       @Binds fun String.bind(): UserId
     }
     ```
+- **[FIR]**: Add full integration tests for FIR-based IDE features.
+    - This is really only in the changelog because getting Android Studio to not show its blocking analytics consent dialog on CI might be the most difficult technical problem this project has faced so far and what's a changelog for if not the occasional itsfinallyover.gif bragging rights.
 - **[IR]**: Use `androidx.collection` primitive and scatter collections in a few more places to further help improve memory performance.
 - **[IR]**: Don't attempt to generate a graph impl if validation at any level in processing fails, as this could result in obscure extra errors getting reported after the relevant initial error.
 
@@ -26,11 +29,20 @@ Changelog
 ### Changes
 
 - **[FIR/IR]** Add aliases for a bunch of "known" mappings for Kotlin IDE plugin versions to Kotlin versions. This is still best-effort but should hopefully be more robust, especially in situations like Android Studio canaries (which do not report real Kotlin versions). Please star this issue: https://issuetracker.google.com/issues/474940910
+- **[FIR]**: One downside of the above is that it revealed that Android Studio Otter 3 is effectively running on Kotlin 2.2.0, which is just a bit too far back to still support. However, now that Studio is switching to monthly releases it should track upstream IJ changes much quicker and Studio Panda is in RC1 now.
 - **[IR]**: Rework assisted inject bindings to be encapsulated by their consuming assisted factory bindings in graph validation.
     - This ensures these classes can't accidentally participate in `SwitchingProvider`s or valid cycle breaking with `DelegateFactory`, as both of those require `Provider` types and assisted-inject types' factories don't implement `Provider`.
 - Fold `2.3.20-dev-7791` compat into `2.3.20-Beta2` compat, meaning the former is no longer tested on CI.
+- Test Kotlin `2.3.20-Beta2`.
+- Test Kotlin `2.3.10`.
+- Drop testing of Kotlin `2.3.10-RC`.
 
 ### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@kevinguitar](https://github.com/kevinguitar)
+- [@DaniilPavlenko](https://github.com/DaniilPavlenko)
 
 0.10.2
 ------

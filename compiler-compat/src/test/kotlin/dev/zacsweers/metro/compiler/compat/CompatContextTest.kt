@@ -110,15 +110,15 @@ class CompatContextTest {
   }
 
   @Test
-  fun `dev version selects older stable factory`() {
+  fun `dev version matches its base stable factory`() {
     val factory220 = FakeFactory(minVersion = "2.2.20", reportedCurrentVersion = "2.3.0-dev-123")
     val factory230 = FakeFactory(minVersion = "2.3.0", reportedCurrentVersion = "2.3.0-dev-123")
 
     val factories = sequenceOf(factory220, factory230)
     val resolved = CompatContext.resolveFactory(factories, testVersionString = "2.3.0-dev-123")
 
-    // dev is older than 2.3.0 release, so should use 2.2.20
-    assertThat(resolved.minVersion).isEqualTo("2.2.20")
+    // dev build of 2.3.0 should match the 2.3.0 factory (base version is used for comparison)
+    assertThat(resolved.minVersion).isEqualTo("2.3.0")
   }
 
   @Test
@@ -306,9 +306,20 @@ class CompatContextTest {
     val factories = sequenceOf(factoryStable, factoryBeta)
     val resolved = CompatContext.resolveFactory(factories, testVersionString = "2.3.20-dev-5437")
 
-    // No dev factories, should fall back to highest compatible non-dev
-    // dev-5437 < Beta1 semantically, so only 2.3.0 matches
-    assertThat(resolved.minVersion).isEqualTo("2.3.0")
+    // No dev factories, should fall back to highest compatible non-dev.
+    // Dev build's base version (2.3.20) is used for comparison, so Beta1 matches.
+    assertThat(resolved.minVersion).isEqualTo("2.3.20-Beta1")
+  }
+
+  @Test
+  fun `dev version maps to same base stable factory`() {
+    val factory220 = FakeFactory(minVersion = "2.2.20", reportedCurrentVersion = "2.2.20-dev-5812")
+
+    val factories = sequenceOf(factory220)
+    val resolved = CompatContext.resolveFactory(factories, testVersionString = "2.2.20-dev-5812")
+
+    // 2.2.20-dev-5812 is a dev build OF 2.2.20, should match the 2.2.20 factory
+    assertThat(resolved.minVersion).isEqualTo("2.2.20")
   }
 
   @Test

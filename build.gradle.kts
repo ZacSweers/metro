@@ -54,6 +54,10 @@ dokka {
 
 allprojects { apply(plugin = "metro.spotless") }
 
+tasks.register("installForFunctionalTest") {
+  description = "Publishes all Metro artifacts to build/functionalTestRepo"
+}
+
 subprojects {
   apply(plugin = "metro.base")
   group = project.property("GROUP") as String

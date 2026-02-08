@@ -35,7 +35,15 @@ Use `resolve-ij-kotlin-version.sh` to trace an `-ij`-suffixed Kotlin version bac
 ./resolve-ij-kotlin-version.sh 252.28238.7 2.3.255-dev-255
 ```
 
-This walks the commit history of `kotlinc_kotlin_compiler_common.xml` in `JetBrains/intellij-community` to find the last `-dev-` build before the `-ij` branch was cut. Requires `gh` (GitHub CLI).
+This uses git ancestry analysis in `JetBrains/kotlin` to find the exact dev build:
+
+1. Fetches the Kotlin version (e.g., `2.2.20-ij252-24`) from `intellij-community`
+2. Finds the corresponding build tag (e.g., `build-2.2.20-ij252-25`) in `JetBrains/kotlin`
+3. Computes the merge-base between that tag and `master`
+4. Uses binary search to find the dev tag at that merge-base (e.g., `build-2.2.20-dev-5810`)
+
+This is more accurate than timestamp-based correlation because it uses actual git history.
+Requires `gh` (GitHub CLI).
 
 ### Fetching All IDE Kotlin Version Aliases
 

@@ -164,10 +164,13 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
     val compatContext = CompatContext.create()
     FirExtensionRegistrarAdapter.registerExtension(
       MetroFirExtensionRegistrar(
-        classIds,
-        options,
-        compatContext,
-        { session, options -> listOf(GenerateImplExtension.Factory().create(session, options)) },
+        classIds = classIds,
+        options = options,
+        isIde = false,
+        compatContext = compatContext,
+        loadExternalDeclarationExtensions = { session, options ->
+          listOf(GenerateImplExtension.Factory().create(session, options))
+        },
       ) { session, options ->
         listOf(GenerateImplContributionExtension.Factory().create(session, options))
       }

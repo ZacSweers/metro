@@ -2,6 +2,32 @@
 
 set -euo pipefail
 
+# Subprojects that can be targeted with -p flag
+ALL_SUBPROJECTS=("samples" "benchmark" "ide-integration-tests")
+
+# Run a gradle command across root and specified subprojects
+# Usage: run_gradle_all "command args" [subprojects...]
+# If no subprojects specified, runs on root + all subprojects
+run_gradle_all() {
+    local cmd="$1"
+    shift
+    local subprojects=("$@")
+
+    if [[ ${#subprojects[@]} -eq 0 ]]; then
+        subprojects=("${ALL_SUBPROJECTS[@]}")
+    fi
+
+    # Run on root project
+    # shellcheck disable=SC2086  # Word splitting is intentional
+    ./gradlew $cmd
+
+    # Run on each subproject
+    for project in "${subprojects[@]}"; do
+        # shellcheck disable=SC2086
+        ./gradlew -p "$project" $cmd
+    done
+}
+
 # Function to run checks with optional compiler version
 run_checks() {
     local compiler_version="$1"
@@ -103,14 +129,13 @@ case "$1" in
 
    "clean")
        echo "Cleaning..."
-       ./gradlew clean
-       ./gradlew -p samples clean
+       run_gradle_all "clean --quiet"
+       rm -rf out .gradle .kotlin
        ;;
 
    "format")
        echo "Applying formatting..."
-       ./gradlew spotlessApply --no-configuration-cache
-       ./gradlew -p samples spotlessApply --no-configuration-cache
+       run_gradle_all "spotlessApply --no-configuration-cache --quiet"
        ;;
 
    "regen")
@@ -118,14 +143,16 @@ case "$1" in
        # Annoyingly, the apiDump and package lock tasks have caching issues
        # https://youtrack.jetbrains.com/issue/KT-69684
        find . -type d -name "api" -exec find {} -name "*.api" -delete \;
-       rm -rf kotlin-js-store
-       rm -rf samples/kotlin-js-store
-       ./gradlew clean --quiet
-       ./gradlew spotlessApply apiDump kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks --no-build-cache --no-configuration-cache --quiet
-       cd samples
-       ./gradlew clean --quiet
-       ./gradlew spotlessApply kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --no-configuration-cache --quiet
-       cd ..
+       rm -rf kotlin-js-store samples/kotlin-js-store
+
+       run_gradle_all "clean --quiet"
+       run_gradle_all "spotlessApply --no-configuration-cache --quiet"
+
+       # apiDump only exists in root project
+       ./gradlew apiDump --rerun-tasks --no-build-cache --no-configuration-cache --quiet
+
+       # Yarn locks only in root and samples
+       run_gradle_all "kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks --no-build-cache --no-configuration-cache --quiet" "samples"
        ;;
 
    "gen-compat")
