@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770534932971,
+  "lastUpdate": 1770573936728,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -4872,6 +4872,62 @@ window.BENCHMARK_DATA = {
             "value": 22081.3,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -0.78%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Heorhii Popov",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Heorhii Popov",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "cbcf5454~1",
+          "message": "[before] Fix/cycle reporter accuracy (#1785)",
+          "timestamp": "2026-02-08T17:29:10Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/cbcf5454eb1388063d17da974d94a3bd8c647546"
+        },
+        "date": 1770573936728,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 21128.804,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Heorhii Popov",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Heorhii Popov",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "cbcf5454eb1388063d17da974d94a3bd8c647546",
+          "message": "[after] Fix/cycle reporter accuracy (#1785)",
+          "timestamp": "2026-02-08T17:29:10Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/cbcf5454eb1388063d17da974d94a3bd8c647546"
+        },
+        "date": 1770573936729,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20960.47,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -0.80%"
           }
         ]
       }
