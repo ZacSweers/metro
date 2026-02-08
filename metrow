@@ -43,6 +43,21 @@ run_checks() {
     ./gradlew check -x dokkaGeneratePublicationHtml $version_flag
 }
 
+# Function to run tests with optional compiler version
+run_tests() {
+    local compiler_version="$1"
+    local version_flag=""
+
+    if [[ -n "$compiler_version" ]]; then
+        version_flag="-Pmetro.testCompilerVersion=$compiler_version"
+        echo "Running tests with Kotlin version $compiler_version..."
+    else
+        echo "Running tests..."
+    fi
+
+    ./gradlew :compiler:test :compiler-tests:test :gradle-plugin:functionalTest :runtime:allTests $version_flag --quiet -x logLinkDokkaGeneratePublicationHtml
+}
+
 case "$1" in
    "publish")
        version=""
@@ -127,6 +142,48 @@ case "$1" in
        ./gradlew -p samples check
        ;;
 
+   "test")
+       all=false
+       version=""
+
+       while [[ $# -gt 1 ]]; do
+           case "$2" in
+               --all)
+                   all=true
+                   shift
+                   ;;
+               --version)
+                   version="$3"
+                   shift 2
+                   ;;
+               *)
+                   echo "Unknown test argument: $2"
+                   exit 1
+                   ;;
+           esac
+       done
+
+       if [[ "$all" = true ]]; then
+           echo "Running tests against all compiler versions..."
+
+           if [[ ! -f "scripts/generate-ci-matrix.sh" ]]; then
+               echo "Error: scripts/generate-ci-matrix.sh not found"
+               exit 1
+           fi
+
+           versions=$(./scripts/generate-ci-matrix.sh --versions-only | tr '\n' ' ')
+
+           echo "Testing against versions: $versions"
+
+           for ver in $versions; do
+               echo "=== Testing with Kotlin $ver ==="
+               run_tests "$ver" || exit 1
+           done
+       else
+           run_tests "$version"
+       fi
+       ;;
+
    "clean")
        echo "Cleaning..."
        run_gradle_all "clean --quiet"
@@ -164,13 +221,17 @@ case "$1" in
        ;;
 
    *)
-       echo "Usage: metrow (publish|check|clean|format|regen|gen-compat)"
+       echo "Usage: metrow (publish|check|test|clean|format|regen|gen-compat)"
        echo ""
        echo "publish options:"
        echo "  --version <version>  Specify version for publishing"
        echo "  --local              Publish locally"
        echo ""
        echo "check options:"
+       echo "  --all                Test against all available compiler versions"
+       echo "  --version <version>  Test against specific compiler version"
+       echo ""
+       echo "test options:"
        echo "  --all                Test against all available compiler versions"
        echo "  --version <version>  Test against specific compiler version"
        exit 1
