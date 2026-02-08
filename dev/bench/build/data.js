@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770507790006,
+  "lastUpdate": 1770534932971,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -4816,6 +4816,62 @@ window.BENCHMARK_DATA = {
             "value": 22971.102,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -1.69%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "02791af0~1",
+          "message": "[before] Add graceful degredation for incompatible IDEs (#1",
+          "timestamp": "2026-02-08T06:38:08Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/02791af0eb95e6e8122f751ba3aa06b35f30cb6f"
+        },
+        "date": 1770534932971,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 22255.43,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "02791af0eb95e6e8122f751ba3aa06b35f30cb6f",
+          "message": "[after] Add graceful degredation for incompatible IDEs (#1",
+          "timestamp": "2026-02-08T06:38:08Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/02791af0eb95e6e8122f751ba3aa06b35f30cb6f"
+        },
+        "date": 1770534932972,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 22081.3,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -0.78%"
           }
         ]
       }
