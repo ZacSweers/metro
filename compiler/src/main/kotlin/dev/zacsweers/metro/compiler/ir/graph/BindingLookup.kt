@@ -159,18 +159,14 @@ internal class BindingLookup(
             is Alias ->
               binding.bindsCallable?.callableMetadata?.annotations?.qualifier to
                 binding.contextualTypeKey.typeKey.type
-
-            else -> null to null
           }
-        if (valueType != null) {
-          val multibindingTypeKey =
-            computeMultibindingTypeKey(
-              annotations = binding.annotations,
-              valueType = valueType,
-              qualifier = qualifier,
-            )
-          registerMultibindingContribution(multibindingTypeKey, binding.typeKey)
-        }
+        val multibindingTypeKey =
+          computeMultibindingTypeKey(
+            annotations = binding.annotations,
+            valueType = valueType,
+            qualifier = qualifier,
+          )
+        registerMultibindingContribution(multibindingTypeKey, binding.typeKey)
       }
 
       is IrBinding.MembersInjected -> {

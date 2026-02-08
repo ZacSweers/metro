@@ -22,6 +22,8 @@ import dev.zacsweers.metro.compiler.fir.requireContainingClassSymbol
 import dev.zacsweers.metro.compiler.fir.resolvedAdditionalScopesClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
+import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
+import dev.zacsweers.metro.compiler.fir.toSymbolCompat
 import dev.zacsweers.metro.compiler.fir.validateApiDeclaration
 import dev.zacsweers.metro.compiler.fir.validateBindingRef
 import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
@@ -43,8 +45,6 @@ import org.jetbrains.kotlin.fir.declarations.utils.isOverride
 import org.jetbrains.kotlin.fir.dispatchReceiverClassLookupTagOrNull
 import org.jetbrains.kotlin.fir.dispatchReceiverClassTypeOrNull
 import org.jetbrains.kotlin.fir.resolve.firClassLike
-import org.jetbrains.kotlin.fir.resolve.toClassSymbol
-import org.jetbrains.kotlin.fir.resolve.toSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
@@ -127,7 +127,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
 
     for (supertypeRef in declaration.superTypeRefs) {
       val supertype = supertypeRef.coneType as? ConeClassLikeType ?: continue
-      val supertypeClass = supertype.lookupTag.toSymbol(session) ?: continue
+      val supertypeClass = supertype.lookupTag.toSymbolCompat(session) ?: continue
       if (supertypeClass.isAnnotatedWithAny(session, classIds.graphLikeAnnotations)) {
         reporter.reportOn(
           supertypeRef.source ?: declaration.source,
@@ -187,7 +187,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
       val returnType = callable.resolvedReturnTypeRef.coneType
 
       // Check if it's a graph extension creator
-      val returnTypeClassSymbol = returnType.toClassSymbol(session)
+      val returnTypeClassSymbol = returnType.toClassSymbolCompat(session)
       val isGraphExtensionCreator =
         returnTypeClassSymbol?.isAnnotatedWithAny(
           session,
@@ -227,9 +227,10 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
 
         val graphExtensionClass =
           callable.directOverriddenSymbolsSafe().firstNotNullOfOrNull { overriddenSymbol ->
-            overriddenSymbol.dispatchReceiverClassTypeOrNull()?.toClassSymbol(session)?.takeIf {
-              it.isAnnotatedWithAny(session, classIds.graphExtensionFactoryAnnotations)
-            }
+            overriddenSymbol
+              .dispatchReceiverClassTypeOrNull()
+              ?.toClassSymbolCompat(session)
+              ?.takeIf { it.isAnnotatedWithAny(session, classIds.graphExtensionFactoryAnnotations) }
           }
         if (graphExtensionClass != null) {
           validateGraphExtension(

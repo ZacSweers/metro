@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
 import dev.zacsweers.metro.compiler.fir.isResolved
 import dev.zacsweers.metro.compiler.fir.singleAbstractFunction
+import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
 import dev.zacsweers.metro.compiler.fir.validateApiDeclaration
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.isPlatformType
@@ -26,7 +27,6 @@ import org.jetbrains.kotlin.fir.analysis.checkers.toClassLikeSymbol
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
-import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 
 internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.Common) {
   private val NON_INCLUDES_KINDS = setOf(ClassKind.ENUM_CLASS, ClassKind.ANNOTATION_CLASS)
@@ -76,7 +76,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
         return
       }
 
-    val targetGraph = createFunction.resolvedReturnType.toClassSymbol(session)
+    val targetGraph = createFunction.resolvedReturnType.toClassSymbolCompat(session)
     val targetGraphAnnotation =
       targetGraph
         ?.resolvedCompilerAnnotationsWithClassIds
