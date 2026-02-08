@@ -3620,6 +3620,9 @@
 <li><strong>[IR]</strong>: Don&rsquo;t attempt to generate a graph impl if validation at any level in processing fails, as this could result in obscure extra errors getting reported after the relevant initial error.</li>
 </ul>
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>[IR]</strong>: Avoid <code>IllegalStateException: No value parameter found</code> issues when reconstructing dependency cycle stacks to report cycle errors.</li>
+</ul>
 <h3 id="changes">Changes<a class="headerlink" href="#changes" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>[FIR/IR]</strong> Add aliases for a bunch of &ldquo;known&rdquo; mappings for Kotlin IDE plugin versions to Kotlin versions. This is still best-effort but should hopefully be more robust, especially in situations like Android Studio canaries (which do not report real Kotlin versions). Please star this issue: <a href="https://issuetracker.google.com/issues/474940910">https://issuetracker.google.com/issues/474940910</a></li>
@@ -3643,6 +3646,7 @@
 <ul>
 <li><a href="https://github.com/kevinguitar">@kevinguitar</a></li>
 <li><a href="https://github.com/DaniilPavlenko">@DaniilPavlenko</a></li>
+<li><a href="https://github.com/heorhiipopov">@heorhiipopov</a></li>
 </ul>
 <h2 id="0102">0.10.2<a class="headerlink" href="#0102" title="Permanent link">&para;</a></h2>
 <p><em>2026-01-28</em></p>
