@@ -45,6 +45,7 @@ Special thanks to the following contributors for contributing to this release!
 
 - [@kevinguitar](https://github.com/kevinguitar)
 - [@DaniilPavlenko](https://github.com/DaniilPavlenko)
+- [@heorhiipopov](https://github.com/heorhiipopov)
 
 0.10.2
 ------
