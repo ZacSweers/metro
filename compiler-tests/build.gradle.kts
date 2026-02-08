@@ -82,13 +82,13 @@ if (testKotlinVersion >= KotlinToolingVersion(KotlinVersion(2, 3))) {
     }
 } else {
   generatorConfigToUse = "generator220"
-  compilerTestFrameworkVersion = libs.versions.kotlin.get()
-  reflectVersion = libs.versions.kotlin.get()
+  compilerTestFrameworkVersion = "2.2.20"
+  reflectVersion = "2.2.20"
 }
 
 dependencies {
   // 2.3.0 changed the test gen APIs around into different packages
-  "generator220CompileOnly"(libs.kotlin.compilerTestFramework)
+  "generator220CompileOnly"("org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.2.20")
   "generator230CompileOnly"(
     "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$compilerTestFrameworkVersion"
   )
