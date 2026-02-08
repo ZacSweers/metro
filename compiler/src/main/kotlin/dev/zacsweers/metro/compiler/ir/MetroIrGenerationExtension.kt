@@ -40,7 +40,24 @@ public class MetroIrGenerationExtension(
         expectActualTracker,
       )
 
-    context.traceDriver.use { context.generateInner(moduleFragment) }
+    context.traceDriver.use {
+      context.generateInner(moduleFragment)
+      if (options.traceEnabled) {
+        // Find and print the trace file
+        options.traceDir.value?.let { traceDir ->
+          traceDir
+            .toFile()
+            .walkTopDown()
+            .find { it.extension == "perfetto-trace" }
+            ?.let {
+              context.log(
+                // Trailing space intentional for terminal linkifying
+                "Metro trace written to file://${it.absolutePath} "
+              )
+            }
+        }
+      }
+    }
   }
 
   private fun IrMetroContext.generateInner(moduleFragment: IrModuleFragment) {
