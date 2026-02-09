@@ -212,6 +212,7 @@ abstract class MetroProject(
     Repositories(
       mutableListOf<Repository>().apply {
         addAll(defaults)
+        add(Repository.ofMaven("https://packages.jetbrains.team/maven/p/kt/bootstrap"))
         add(Repository.ofMaven("https://packages.jetbrains.team/maven/p/kt/dev/"))
         add(Repository.ofMaven("https://packages.jetbrains.team/maven/p/ij/intellij-dependencies/"))
       }
