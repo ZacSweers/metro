@@ -1,0 +1,229 @@
+@AssistedInject
+class NotReused {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @AssistedMarker
+  object MetroFactory {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    fun invoke(): NotReused {
+      return MetroFactory.newInstance()
+    }
+
+    fun create(): MetroFactory {
+      return MetroFactory
+    }
+
+    fun newInstance(): NotReused {
+      return NotReused()
+    }
+
+    fun mirrorFunction(): NotReused {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@AssistedInject
+class Reused {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @AssistedMarker
+  object MetroFactory {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    fun invoke(): Reused {
+      return MetroFactory.newInstance()
+    }
+
+    fun create(): MetroFactory {
+      return MetroFactory
+    }
+
+    fun newInstance(): Reused {
+      return Reused()
+    }
+
+    fun mirrorFunction(): Reused {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@DependencyGraph
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val reusedFactory: MetroFactory
+      field = MetroFactory.create()
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val notReusedFactory: NotReusedFactory
+      override get(): NotReusedFactory {
+        return Companion.create(delegateFactory = MetroFactory.create()).invoke()
+      }
+
+    override val reusedFactory1: ReusedFactory1
+      override get(): ReusedFactory1 {
+        return Companion.create(delegateFactory = <this>.#reusedFactory).invoke()
+      }
+
+    override val reusedFactory2: ReusedFactory2
+      override get(): ReusedFactory2 {
+        return Companion.create(delegateFactory = <this>.#reusedFactory).invoke()
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  abstract val notReusedFactory: NotReusedFactory
+    abstract get
+
+  abstract val reusedFactory1: ReusedFactory1
+    abstract get
+
+  abstract val reusedFactory2: ReusedFactory2
+    abstract get
+
+}
+
+@AssistedFactory
+interface NotReusedFactory {
+  class Impl : NotReusedFactory {
+    private /* final field */ val delegateFactory: MetroFactory = delegateFactory
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(delegateFactory: MetroFactory): Provider<NotReusedFactory> {
+        return Companion.invoke<NotReusedFactory>(value = Impl(delegateFactory = delegateFactory))
+      }
+
+    }
+
+    private constructor(delegateFactory: MetroFactory) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override fun create(): NotReused {
+      return <this>.#delegateFactory.invoke()
+    }
+
+  }
+
+  abstract fun create(): NotReused
+
+}
+
+@AssistedFactory
+interface ReusedFactory1 {
+  class Impl : ReusedFactory1 {
+    private /* final field */ val delegateFactory: MetroFactory = delegateFactory
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(delegateFactory: MetroFactory): Provider<ReusedFactory1> {
+        return Companion.invoke<ReusedFactory1>(value = Impl(delegateFactory = delegateFactory))
+      }
+
+    }
+
+    private constructor(delegateFactory: MetroFactory) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override fun create(): Reused {
+      return <this>.#delegateFactory.invoke()
+    }
+
+  }
+
+  abstract fun create(): Reused
+
+}
+
+@AssistedFactory
+interface ReusedFactory2 {
+  class Impl : ReusedFactory2 {
+    private /* final field */ val delegateFactory: MetroFactory = delegateFactory
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(delegateFactory: MetroFactory): Provider<ReusedFactory2> {
+        return Companion.invoke<ReusedFactory2>(value = Impl(delegateFactory = delegateFactory))
+      }
+
+    }
+
+    private constructor(delegateFactory: MetroFactory) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override fun create(): Reused {
+      return <this>.#delegateFactory.invoke()
+    }
+
+  }
+
+  abstract fun create(): Reused
+
+}
+

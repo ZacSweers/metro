@@ -2,7 +2,7 @@
 
 ViewModel integration for Metro. This artifact provides core utilities for injecting ViewModels using Metro's dependency injection.
 
-For Compose-specific APIs (`LocalMetroViewModelFactory`, `metroViewModel()`, etc.), see the [`metrox-viewmodel-compose`](metrox-viewmodel-compose.md) artifact.
+For Compose-specific APIs (`LocalMetroViewModelFactory`, `metroViewModel()`, etc.), see the [`metrox-viewmodel-compose`](/metrox-viewmodel-compose) artifact.
 
 > Should I use this?
 
@@ -81,7 +81,7 @@ class DetailsViewModel(@Assisted val id: String) : ViewModel() {
   // ...
 
   @AssistedFactory
-  @ViewModelAssistedFactoryKey(Factory::class)
+  @ViewModelAssistedFactoryKey(DetailsViewModel::class)
   @ContributesIntoMap(AppScope::class)
   fun interface Factory : ViewModelAssistedFactory {
     override fun create(extras: CreationExtras): DetailsViewModel {

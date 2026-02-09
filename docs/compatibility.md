@@ -8,8 +8,9 @@ Pre-release versions are normally only tested during their development cycle. Af
 
 | Kotlin version  | Metro versions (inclusive) | Notes                                |
 |-----------------|----------------------------|--------------------------------------|
+| 2.3.20-Beta2    | 0.10.0 -                   |                                      |
 | 2.3.20-Beta1    | 0.10.0 -                   |                                      |
-| 2.3.20-dev-7791 | 0.10.0 -                   |                                      |
+| 2.3.20-dev-7791 | 0.10.0 - [0.10.2]          |                                      |
 | 2.3.20-dev-5437 | 0.9.1 -                    |                                      |
 | 2.3.10-RC       | 0.9.1 -                    |                                      |
 | 2.3.0           | 0.9.1 -                    | [1]                                  |
@@ -55,16 +56,26 @@ The following Kotlin versions are tested via CI:
 
 | Kotlin Version  |
 |-----------------|
-| 2.3.20-dev-7791 |
 | 2.3.20-dev-5437 |
+| 2.3.20-Beta2    |
 | 2.3.20-Beta1    |
-| 2.3.10-RC       |
+| 2.3.10          |
 | 2.3.0           |
 | 2.2.21          |
 | 2.2.20          |
 
 !!! note
     Versions without dedicated compiler-compat modules will use the nearest available implementation _below_ that version. See [`compiler-compat/version-aliases.txt`](https://github.com/ZacSweers/metro/blob/main/compiler-compat/version-aliases.txt) for the full list.
+
+### IDE Tested Versions
+
+[![IDE Integration Tests](https://github.com/ZacSweers/metro/actions/workflows/ide-integration.yml/badge.svg)](https://github.com/ZacSweers/metro/actions/workflows/ide-integration.yml)
+
+The following IDE versions are tested via IDE integration tests:
+
+| IntelliJ IDEA | Android Studio            |
+|---------------|---------------------------|
+| 2025.3.2      | 2025.3.1.6 (Panda 1 RC 1) |
 
 ## What about Metro's stability?
 

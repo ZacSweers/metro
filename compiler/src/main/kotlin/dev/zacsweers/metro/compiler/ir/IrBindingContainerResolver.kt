@@ -4,6 +4,8 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
+import dev.zacsweers.metro.compiler.tracing.TraceScope
+import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.name.ClassId
@@ -22,20 +24,22 @@ internal class IrBindingContainerResolver(private val transformer: BindingContai
    * Resolves all binding containers transitively starting from the given roots. This method handles
    * caching and cycle detection to build the transitive closure of all included binding containers.
    */
-  fun resolve(roots: Set<IrClass>): Set<BindingContainer> {
-    if (roots.isEmpty()) return emptySet()
-    if (roots.size == 1) return resolve(roots.first())
+  context(traceScope: TraceScope)
+  fun resolve(roots: Set<IrClass>): Set<BindingContainer> =
+    trace("Resolve binding containers") {
+      if (roots.isEmpty()) return@trace emptySet()
+      if (roots.size == 1) return@trace resolve(roots.first())
 
-    val result = mutableSetOf<BindingContainer>()
-    // Path tracking for cycle detection within the current traversal stack
-    val path = mutableSetOf<ClassId>()
+      val result = mutableSetOf<BindingContainer>()
+      // Path tracking for cycle detection within the current traversal stack
+      val path = mutableSetOf<ClassId>()
 
-    for (root in roots) {
-      result.addAll(getOrComputeClosure(root, path))
+      for (root in roots) {
+        result.addAll(getOrComputeClosure(root, path))
+      }
+
+      return@trace result
     }
-
-    return result
-  }
 
   fun resolve(root: IrClass): Set<BindingContainer> {
     return getOrComputeClosure(root, mutableSetOf())
@@ -49,6 +53,7 @@ internal class IrBindingContainerResolver(private val transformer: BindingContai
    * Resolves all binding containers transitively starting from the given roots. This method handles
    * caching and cycle detection to build the transitive closure of all included binding containers.
    */
+  context(traceScope: TraceScope)
   internal fun resolveTransitiveClosure(roots: Set<IrClass>): Set<IrClass> {
     return resolve(roots).mapTo(mutableSetOf()) { it.ir }
   }

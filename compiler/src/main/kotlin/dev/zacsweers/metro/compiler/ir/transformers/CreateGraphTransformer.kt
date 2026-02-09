@@ -16,6 +16,7 @@ import dev.zacsweers.metro.compiler.ir.withIrBuilder
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import dev.zacsweers.metro.compiler.tracing.TraceScope
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irGetObject
@@ -42,7 +43,8 @@ import org.jetbrains.kotlin.ir.util.primaryConstructor
 internal class CreateGraphTransformer(
   metroContext: IrMetroContext,
   private val dynamicGraphGenerator: IrDynamicGraphGenerator,
-) : IrMetroContext by metroContext {
+  traceScope: TraceScope,
+) : IrMetroContext by metroContext, TraceScope by traceScope {
 
   private val IrCall.targetGraphType: IrType
     get() = typeArguments[0] ?: reportCompilerBug("Missing type argument for ${symbol.owner.name}")

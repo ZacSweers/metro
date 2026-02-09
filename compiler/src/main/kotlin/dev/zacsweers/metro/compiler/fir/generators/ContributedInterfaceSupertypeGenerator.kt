@@ -12,7 +12,6 @@ import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.argumentAsOrNull
 import dev.zacsweers.metro.compiler.fir.classIds
-import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
 import dev.zacsweers.metro.compiler.fir.memoizedAllSessionsSequence
@@ -77,9 +76,10 @@ import org.jetbrains.kotlin.name.StandardClassIds
 
 internal class ContributedInterfaceSupertypeGenerator(
   session: FirSession,
+  compatContext: CompatContext,
   private val loadExternalContributionExtensions:
     (FirSession, MetroOptions) -> List<MetroContributionExtension>,
-) : FirSupertypeGenerationExtension(session), CompatContext by session.compatContext {
+) : FirSupertypeGenerationExtension(session), CompatContext by compatContext {
 
   /** External contribution extensions loaded via ServiceLoader. */
   private val externalContributionExtensions: List<MetroContributionExtension> by lazy {

@@ -68,6 +68,12 @@ plugins:
 extra:
   version:
     provider: mike
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/ZacSweers/metro
+    - icon: material/heart
+      link: https://github.com/sponsors/zacsweers
+      name: Sponsor on GitHub
 
 markdown_extensions:
   - smarty
@@ -84,7 +90,9 @@ markdown_extensions:
   - pymdownx.magiclink
   - pymdownx.smartsymbols
   - pymdownx.superfences
-  - pymdownx.emoji
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - pymdownx.details
   - pymdownx.tabbed:
       alternate_style: true
@@ -133,4 +141,5 @@ nav:
   - 'Discussions ⏏': https://github.com/ZacSweers/metro/discussions
   - 'Change Log': changelog.md
   - 'Contributing': contributing.md
+  - 'Sponsoring': sponsoring.md
   - 'CoC': code-of-conduct.md

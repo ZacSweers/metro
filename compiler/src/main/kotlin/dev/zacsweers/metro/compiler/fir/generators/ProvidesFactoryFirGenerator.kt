@@ -10,7 +10,6 @@ import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
 import dev.zacsweers.metro.compiler.fir.classIds
-import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isCli
@@ -368,8 +367,10 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
   }
 }
 
-internal class ProvidesFactorySupertypeGenerator(session: FirSession) :
-  FirSupertypeGenerationExtension(session), CompatContext by session.compatContext {
+internal class ProvidesFactorySupertypeGenerator(
+  session: FirSession,
+  compatContext: CompatContext,
+) : FirSupertypeGenerationExtension(session), CompatContext by compatContext {
 
   override fun needTransformSupertypes(declaration: FirClassLikeDeclaration): Boolean {
     return declaration.symbol.hasOrigin(Keys.ProviderFactoryClassDeclaration)

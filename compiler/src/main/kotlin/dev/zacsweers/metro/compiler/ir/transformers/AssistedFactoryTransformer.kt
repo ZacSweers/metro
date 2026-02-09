@@ -34,6 +34,7 @@ import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer.AssistedFactoryFunction.Companion.toAssistedFactoryFunction
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
+import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.proto.AssistedFactoryImplProto
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -496,7 +497,7 @@ internal sealed interface AssistedFactoryImpl {
             args = listOf(delegateFactory),
             typeHint = createFunction.returnType,
           )
-          .convertTo(targetType)
+          .convertTo(targetType.wrapInProvider())
       }
     }
   }

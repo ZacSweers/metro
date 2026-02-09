@@ -101,6 +101,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       valueMapper = { it },
     )
   ),
+  TRACE_DESTINATION(
+    RawMetroOption(
+      name = "trace-destination",
+      defaultValue = "",
+      valueDescription = "Path to a directory to dump Metro trace information",
+      description = "Path to a directory to dump Metro trace information",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it },
+    )
+  ),
   GENERATE_ASSISTED_FACTORIES(
     RawMetroOption.boolean(
       name = "generate-assisted-factories",
@@ -754,6 +765,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  FORCE_ENABLE_FIR_IN_IDE(
+    RawMetroOption.boolean(
+      name = "force-enable-fir-in-ide",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "Force enable Metro's FIR extensions in IDE even if the compat layer cannot be determined.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   PLUGIN_ORDER_SET(
     RawMetroOption(
       name = "plugin-order-set",
@@ -764,6 +786,39 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it },
+    )
+  ),
+  COMPILER_VERSION(
+    RawMetroOption(
+      name = "compiler-version",
+      defaultValue = "",
+      valueDescription = "<version>",
+      description =
+        "Override the Kotlin compiler version Metro operates with. If set, Metro will behave as if running in this Kotlin environment (e.g., 2.3.20-dev-1234).",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it },
+    )
+  ),
+  COMPILER_VERSION_ALIASES(
+    RawMetroOption(
+      name = "compiler-version-aliases",
+      defaultValue = emptyMap(),
+      valueDescription = "<from1=to1:from2=to2>",
+      description =
+        "Compiler version aliases mapping fake IDE versions to real compiler versions. Format: from1=to1:from2=to2",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { value ->
+        if (value.isBlank()) {
+          emptyMap()
+        } else {
+          value.split(":").associate { entry ->
+            val (from, to) = entry.split("=", limit = 2)
+            from to to
+          }
+        }
+      },
     )
   );
 
@@ -777,6 +832,11 @@ public data class MetroOptions(
   public val enabled: Boolean = MetroOption.ENABLED.raw.defaultValue.expectAs(),
   private val rawReportsDestination: Path? =
     MetroOption.REPORTS_DESTINATION.raw.defaultValue
+      .expectAs<String>()
+      .takeUnless(String::isBlank)
+      ?.let(Paths::get),
+  private val rawTraceDestination: Path? =
+    MetroOption.TRACE_DESTINATION.raw.defaultValue
       .expectAs<String>()
       .takeUnless(String::isBlank)
       ?.let(Paths::get),
@@ -911,11 +971,17 @@ public data class MetroOptions(
   public val enableKlibParamsCheck: Boolean =
     MetroOption.ENABLE_KLIB_PARAMS_CHECK.raw.defaultValue.expectAs(),
   public val patchKlibParams: Boolean = MetroOption.PATCH_KLIB_PARAMS.raw.defaultValue.expectAs(),
+  public val forceEnableFirInIde: Boolean =
+    MetroOption.FORCE_ENABLE_FIR_IN_IDE.raw.defaultValue.expectAs(),
   public val pluginOrderSet: Boolean? =
     MetroOption.PLUGIN_ORDER_SET.raw.defaultValue
       .expectAs<String>()
       .takeUnless(String::isBlank)
       ?.toBooleanStrict(),
+  public val compilerVersion: String? =
+    MetroOption.COMPILER_VERSION.raw.defaultValue.expectAs<String>().takeUnless(String::isBlank),
+  public val compilerVersionAliases: Map<String, String> =
+    MetroOption.COMPILER_VERSION_ALIASES.raw.defaultValue.expectAs(),
 ) {
 
   public val reportsEnabled: Boolean
@@ -931,12 +997,26 @@ public data class MetroOptions(
     }
   }
 
+  public val traceEnabled: Boolean
+    get() = rawTraceDestination != null
+
+  @OptIn(ExperimentalPathApi::class)
+  public val traceDir: Lazy<Path?> = lazy {
+    rawTraceDestination?.apply {
+      if (exists()) {
+        deleteRecursively()
+      }
+      createDirectories()
+    }
+  }
+
   public fun toBuilder(): Builder = Builder(this)
 
   public class Builder(base: MetroOptions = MetroOptions()) {
     public var debug: Boolean = base.debug
     public var enabled: Boolean = base.enabled
     public var reportsDestination: Path? = base.rawReportsDestination
+    public var traceDestination: Path? = base.rawTraceDestination
     public var generateAssistedFactories: Boolean = base.generateAssistedFactories
     public var generateThrowsAnnotations: Boolean = base.generateThrowsAnnotations
     public var enableTopLevelFunctionInjection: Boolean = base.enableTopLevelFunctionInjection
@@ -1015,7 +1095,10 @@ public data class MetroOptions(
     public var contributesAsInject: Boolean = base.contributesAsInject
     public var enableKlibParamsCheck: Boolean = base.enableKlibParamsCheck
     public var patchKlibParams: Boolean = base.patchKlibParams
+    public var forceEnableFirInIde: Boolean = base.forceEnableFirInIde
     public var pluginOrderSet: Boolean? = base.pluginOrderSet
+    public var compilerVersion: String? = base.compilerVersion
+    public var compilerVersionAliases: Map<String, String> = base.compilerVersionAliases
 
     private fun FqName.classId(name: String): ClassId {
       return ClassId(this, Name.identifier(name))
@@ -1135,6 +1218,7 @@ public data class MetroOptions(
         debug = debug,
         enabled = enabled,
         rawReportsDestination = reportsDestination,
+        rawTraceDestination = traceDestination,
         generateAssistedFactories = generateAssistedFactories,
         generateThrowsAnnotations = generateThrowsAnnotations,
         enableTopLevelFunctionInjection = enableTopLevelFunctionInjection,
@@ -1188,7 +1272,10 @@ public data class MetroOptions(
         contributesAsInject = contributesAsInject,
         enableKlibParamsCheck = enableKlibParamsCheck,
         patchKlibParams = patchKlibParams,
+        forceEnableFirInIde = forceEnableFirInIde,
         pluginOrderSet = pluginOrderSet,
+        compilerVersion = compilerVersion,
+        compilerVersionAliases = compilerVersionAliases,
       )
     }
 
@@ -1228,6 +1315,11 @@ public data class MetroOptions(
 
           REPORTS_DESTINATION -> {
             reportsDestination =
+              configuration.getAsString(entry).takeUnless(String::isBlank)?.let(Paths::get)
+          }
+
+          TRACE_DESTINATION -> {
+            traceDestination =
               configuration.getAsString(entry).takeUnless(String::isBlank)?.let(Paths::get)
           }
 
@@ -1383,9 +1475,16 @@ public data class MetroOptions(
           INTEROP_INCLUDE_GUICE_ANNOTATIONS -> {
             if (configuration.getAsBoolean(entry)) includeGuiceAnnotations()
           }
+          FORCE_ENABLE_FIR_IN_IDE -> forceEnableFirInIde = configuration.getAsBoolean(entry)
           PLUGIN_ORDER_SET -> {
             pluginOrderSet =
               configuration.getAsString(entry).takeUnless(String::isBlank)?.toBooleanStrict()
+          }
+          COMPILER_VERSION -> {
+            compilerVersion = configuration.getAsString(entry).takeUnless(String::isBlank)
+          }
+          COMPILER_VERSION_ALIASES -> {
+            compilerVersionAliases = configuration.getAsMap(entry)
           }
         }
       }
@@ -1408,6 +1507,11 @@ public data class MetroOptions(
 
     private fun <E> CompilerConfiguration.getAsSet(option: MetroOption): Set<E> {
       @Suppress("UNCHECKED_CAST") val typed = option.raw as RawMetroOption<Set<E>>
+      return get(typed.key, typed.defaultValue)
+    }
+
+    private fun <K, V> CompilerConfiguration.getAsMap(option: MetroOption): Map<K, V> {
+      @Suppress("UNCHECKED_CAST") val typed = option.raw as RawMetroOption<Map<K, V>>
       return get(typed.key, typed.defaultValue)
     }
   }

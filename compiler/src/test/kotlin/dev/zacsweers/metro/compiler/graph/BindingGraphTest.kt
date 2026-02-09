@@ -4,14 +4,14 @@ package dev.zacsweers.metro.compiler.graph
 
 import androidx.collection.ScatterMap
 import com.google.common.truth.Truth.assertThat
+import dev.zacsweers.metro.compiler.testTraceScope
 import dev.zacsweers.metro.compiler.tracing.TraceScope
-import dev.zacsweers.metro.compiler.tracing.Tracer
 import kotlin.test.assertFails
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 import org.junit.Test
 
-class BindingGraphTest : TraceScope by TraceScope(Tracer.NONE) {
+class BindingGraphTest : TraceScope by testTraceScope() {
 
   @Test
   fun put() {
@@ -104,6 +104,51 @@ class BindingGraphTest : TraceScope by TraceScope(Tracer.NONE) {
         """
           .trimIndent()
       )
+  }
+
+  @Test
+  fun `seal ignores soft cycles and reports only the hard cycle within a complex SCC`() {
+    val a = "A".typeKey
+    val b = "B".typeKey
+    val c = "C".typeKey
+    val d = "D".typeKey
+
+    // SCC: {A, B, C, D}
+    // Legal cycle: A -> B -> Provider<A>
+    // Illegal cycle : D -> B -> C -> D
+
+    val aBinding = a.toBinding(b.contextualTypeKey)
+    val bBinding = b.toBinding("Provider<A>".contextualTypeKey, c.contextualTypeKey)
+    val cBinding = c.toBinding(d.contextualTypeKey)
+    val dBinding = d.toBinding(b.contextualTypeKey)
+
+    val bindingGraph = newStringBindingGraph()
+    bindingGraph.tryPut(aBinding)
+    bindingGraph.tryPut(bBinding)
+    bindingGraph.tryPut(cBinding)
+    bindingGraph.tryPut(dBinding)
+
+    val exception =
+      assertFailsWith<IllegalStateException> {
+        val _ = bindingGraph.seal(shrinkUnusedBindings = false)
+      }
+
+    val message = exception.message!!
+
+    val cycleLine = message.lines().find { it.contains("-->") }?.trim() ?: ""
+
+    // Must contain B, C, and D, not A
+    assertThat(cycleLine).contains("B")
+    assertThat(cycleLine).contains("C")
+    assertThat(cycleLine).contains("D")
+    assertThat(cycleLine).doesNotContain("A")
+
+    // Verify Trace
+    val traceSection = message.substringAfter("Trace:")
+    assertThat(traceSection).doesNotContain("A")
+    assertThat(traceSection).contains("B")
+    assertThat(traceSection).contains("C")
+    assertThat(traceSection).contains("D")
   }
 
   @Test

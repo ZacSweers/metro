@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.compat
 
-import java.io.FileNotFoundException
 import java.util.ServiceLoader
 import org.jetbrains.kotlin.GeneratedDeclarationKey
 import org.jetbrains.kotlin.KtFakeSourceElementKind
@@ -47,11 +46,6 @@ import org.jetbrains.kotlin.name.Name
 
 public interface CompatContext {
   public companion object Companion {
-    private val _instance: CompatContext by lazy { create() }
-
-    // TODO ehhhh
-    public fun getInstance(): CompatContext = _instance
-
     private fun loadFactories(): Sequence<Factory> {
       return ServiceLoader.load(Factory::class.java, Factory::class.java.classLoader).asSequence()
     }
@@ -59,7 +53,7 @@ public interface CompatContext {
     /**
      * Load [factories][Factory] and pick the highest compatible version (by [Factory.minVersion]).
      *
-     * dev track versions are special cased to avoid issues with divergent release tracks.
+     * `dev` track versions are special-cased to avoid issues with divergent release tracks.
      *
      * When the current version is a dev build:
      * 1. First, look for dev track factories and compare only within the dev track
@@ -69,9 +63,10 @@ public interface CompatContext {
      * factory just because beta > dev in maturity ordering.
      */
     internal fun resolveFactory(
+      knownVersion: KotlinToolingVersion? = null,
       factories: Sequence<Factory> = loadFactories(),
-      testVersionString: String? = null,
     ): Factory {
+      // TODO short-circuit if we hit a factory with the exact version
       val factoryDataList =
         factories
           .mapNotNull { factory ->
@@ -86,9 +81,7 @@ public interface CompatContext {
           .toList()
 
       val currentVersion =
-        testVersionString?.let { KotlinToolingVersion(it) }
-          ?: factoryDataList.firstOrNull()?.version
-          ?: error("No factories available")
+        knownVersion ?: factoryDataList.firstOrNull()?.version ?: error("No factories available")
 
       val targetFactory = resolveFactoryForVersion(currentVersion, factoryDataList)
       return targetFactory
@@ -115,10 +108,22 @@ public interface CompatContext {
         if (devMatch != null) {
           return devMatch
         }
-        // Fall back to non-DEV factories
+
+        // Fall back to non-DEV factories.
+        // Use the base version (strip dev classifier) for comparison, because
+        // 2.2.20-dev-5812 is a dev build OF 2.2.20 and should match the 2.2.20 factory,
+        // but KotlinToolingVersion ordering puts DEV < STABLE so the comparison would
+        // otherwise exclude it.
         val nonDevFactories =
           factoryDataList.filter { !KotlinToolingVersion(it.factory.minVersion).isDev }
-        return findHighestCompatibleFactory(currentVersion, nonDevFactories)
+        val baseVersion =
+          KotlinToolingVersion(
+            currentVersion.major,
+            currentVersion.minor,
+            currentVersion.patch,
+            null,
+          )
+        return findHighestCompatibleFactory(baseVersion, nonDevFactories)
       }
 
       // For non-DEV versions, only consider non-DEV factories
@@ -137,7 +142,8 @@ public interface CompatContext {
         ?.factory
     }
 
-    private fun create(): CompatContext = resolveFactory().create()
+    public fun create(knownVersion: KotlinToolingVersion? = null): CompatContext =
+      resolveFactory(knownVersion).create()
   }
 
   public interface Factory {
@@ -145,18 +151,33 @@ public interface CompatContext {
 
     /** Attempts to get the current compiler version or throws and exception if it cannot. */
     public val currentVersion: String
-      get() = loadCompilerVersion()
+      get() = loadCompilerVersionString()
 
     public fun create(): CompatContext
 
     public companion object Companion {
       private const val COMPILER_VERSION_FILE = "META-INF/compiler.version"
 
-      internal fun loadCompilerVersion(): String {
+      public fun loadCompilerVersion(): KotlinToolingVersion {
+        return KotlinToolingVersion(loadCompilerVersionString())
+      }
+
+      public fun loadCompilerVersionOrNull(): KotlinToolingVersion? {
+        return loadCompilerVersionStringOrNull()?.let(::KotlinToolingVersion)
+      }
+
+      public fun loadCompilerVersionString(): String {
+        return loadCompilerVersionStringOrNull()
+          ?: throw AssertionError(
+            "'$COMPILER_VERSION_FILE' not found in the classpath or was blank"
+          )
+      }
+
+      public fun loadCompilerVersionStringOrNull(): String? {
         val inputStream =
-          FirExtensionRegistrar::class.java.classLoader!!.getResourceAsStream(COMPILER_VERSION_FILE)
-            ?: throw FileNotFoundException("'$COMPILER_VERSION_FILE' not found in the classpath")
-        return inputStream.bufferedReader().use { it.readText() }
+          FirExtensionRegistrar::class.java.classLoader?.getResourceAsStream(COMPILER_VERSION_FILE)
+            ?: return null
+        return inputStream.bufferedReader().use { it.readText() }.takeUnless { it.isBlank() }
       }
     }
   }
@@ -388,6 +409,7 @@ public interface CompatContext {
     message =
       "usages of IrDeclarationOrigin constants are getting inlined and causing runtime failures, so we have a non-inline version to defeat this inlining",
   )
+  @IgnorableReturnValue
   public fun IrProperty.addBackingFieldCompat(builder: IrFieldBuilder.() -> Unit = {}): IrField
 
   @CompatApi(

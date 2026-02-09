@@ -13,16 +13,27 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinProjectExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinBasePlugin
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 
+interface MetroProjectExtension {
+  val jvmTarget: Property<String>
+}
+
 val catalog = rootProject.extensions.getByType<VersionCatalogsExtension>().named("libs")
 val jdkVersion = catalog.findVersion("jdk").get().requiredVersion
 val jvmTargetVersion = catalog.findVersion("jvmTarget").get().requiredVersion
 
+val metroExtension =
+  project.extensions.create<MetroProjectExtension>("metroProject").apply {
+    jvmTarget.convention(jvmTargetVersion)
+  }
+
 // Java configuration
 pluginManager.withPlugin("java") {
   extensions.configure<JavaPluginExtension> {
-    toolchain { languageVersion.set(JavaLanguageVersion.of(jdkVersion)) }
+    toolchain { languageVersion.convention(JavaLanguageVersion.of(jdkVersion)) }
   }
-  tasks.withType<JavaCompile>().configureEach { options.release.set(jvmTargetVersion.toInt()) }
+  tasks.withType<JavaCompile>().configureEach {
+    options.release.convention(metroExtension.jvmTarget.map(String::toInt))
+  }
 }
 
 // Suppress native access warnings in forked JVMs (Java 22+)
@@ -48,7 +59,7 @@ plugins.withType<KotlinBasePlugin> {
     compilerOptions {
       progressiveMode.convention(true)
       if (this is KotlinJvmCompilerOptions) {
-        jvmTarget.convention(JvmTarget.fromTarget(jvmTargetVersion))
+        jvmTarget.convention(metroExtension.jvmTarget.map(JvmTarget::fromTarget))
         jvmDefault.convention(JvmDefaultMode.NO_COMPATIBILITY)
         freeCompilerArgs.addAll("-Xassertions=jvm", "-Xannotation-default-target=param-property")
         artifactId?.let(moduleName::convention)
@@ -98,5 +109,11 @@ pluginManager.withPlugin("org.jetbrains.dokka") {
         remoteLineSuffix.convention("#L")
       }
     }
+  }
+}
+
+plugins.withId("com.autonomousapps.testkit") {
+  rootProject.tasks.named("installForFunctionalTest") {
+    dependsOn(tasks.named("installForFunctionalTest"))
   }
 }
