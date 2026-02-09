@@ -70,6 +70,8 @@ constructor(
    *   jvm/android targets.
    * - Prior to Kotlin 2.3.20-Beta1, top-level function injection is not yet compatible with
    *   incremental compilation on any platform
+   * - Kotlin/JS does not support this with incremental compilation enabled. See
+   *   https://youtrack.jetbrains.com/issue/KT-82395
    */
   @DelicateMetroGradleApi(
     "Top-level function injection is experimental and does not work yet in all cases. See the kdoc."
@@ -79,7 +81,10 @@ constructor(
       .booleanProperty()
       .convention(
         compilerVersion.map {
-          // Kotlin 2.3.20-Beta1, top-level declaration gen is fully supported
+          // Kotlin 2.3.20-Beta1, top-level declaration gen is fully supported on all platforms are
+          // supported except JS
+          // https://youtrack.jetbrains.com/issue/KT-82395
+          // https://youtrack.jetbrains.com/issue/KT-82989
           KotlinVersions.supportsTopLevelFirGen(it)
         }
       )
@@ -102,6 +107,8 @@ constructor(
    *   targets.
    * - Prior to Kotlin 2.3.20-Beta1, FIR contribution hint gen is not yet compatible with
    *   incremental compilation on any platform
+   * - Kotlin/JS does not support this with incremental compilation enabled. See
+   *   https://youtrack.jetbrains.com/issue/KT-82395
    */
   @DelicateMetroGradleApi(
     "FIR contribution hint gen is experimental and does not work yet in all cases. See the kdoc."
@@ -111,7 +118,11 @@ constructor(
       .booleanProperty()
       .convention(
         compilerVersion.map {
-          // Kotlin 2.3.20-Beta1, FIR hint gen is fully supported
+          // Kotlin 2.3.20-Beta1, FIR hint gen is fully supported on all platforms are supported
+          // except JS
+          // https://youtrack.jetbrains.com/issue/KT-82395
+          // https://youtrack.jetbrains.com/issue/KT-82989
+          KotlinPlatformType.entries.filterNot { it == KotlinPlatformType.js }
           KotlinVersions.supportsTopLevelFirGen(it)
         }
       )
@@ -123,6 +134,9 @@ constructor(
    * **Warnings** Prior to Kotlin 2.3.20, contribution hint gen is
    * - ...only compatible with jvm/android targets.
    * - ...does not support incremental compilation on any targets.
+   *
+   * Kotlin/JS does not support this with incremental compilation enabled. See
+   * https://youtrack.jetbrains.com/issue/KT-82395
    */
   @DelicateMetroGradleApi(
     "Contribution hint gen does not work yet in all platforms on all Kotlin versions. See the kdoc."
@@ -131,10 +145,12 @@ constructor(
     objects
       .setProperty(KotlinPlatformType::class.javaObjectType)
       .convention(
-        compilerVersion.map {
-          if (KotlinVersions.supportsTopLevelFirGen(it)) {
-            // Kotlin 2.3.20, all platforms are supported
-            KotlinPlatformType.entries
+        compilerVersion.map { version ->
+          if (KotlinVersions.supportsTopLevelFirGen(version)) {
+            // Kotlin 2.3.20, all platforms are supported except JS
+            // https://youtrack.jetbrains.com/issue/KT-82395
+            // https://youtrack.jetbrains.com/issue/KT-82989
+            KotlinPlatformType.entries.filterNot { it == KotlinPlatformType.js }
           } else {
             // Only jvm/android work prior to Kotlin 2.3.20
             setOf(KotlinPlatformType.common, KotlinPlatformType.jvm, KotlinPlatformType.androidJvm)
