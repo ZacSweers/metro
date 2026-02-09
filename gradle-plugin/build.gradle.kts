@@ -36,7 +36,6 @@ buildConfig {
   }
   buildConfigField("String", "VERSION", providers.gradleProperty("VERSION_NAME").map { "\"$it\"" })
   buildConfigField("String", "PLUGIN_ID", libs.versions.pluginId.map { "\"$it\"" })
-  buildConfigField("String", "BASE_KOTLIN_VERSION", libs.versions.kotlin.map { "\"$it\"" })
 
   // Collect all supported Kotlin versions from compiler-compat modules
   val versionAliasesFile =

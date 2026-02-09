@@ -31,10 +31,9 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
   KotlinCompilerPluginSupportPlugin {
 
   private companion object {
-    val gradleMetroKotlinVersion by
-      lazy(LazyThreadSafetyMode.NONE) {
-        KotlinVersion.fromVersion(BASE_KOTLIN_VERSION.substringBeforeLast('.'))
-      }
+    val minKotlinVersion by lazy {
+      SUPPORTED_KOTLIN_VERSIONS.minOf { KotlinVersion.fromVersion(it.substringBeforeLast('.')) }
+    }
 
     val PROBLEM_GROUP: ProblemGroup = ProblemGroup.create("metro-group", "Metro Problems")
 
@@ -214,12 +213,12 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
         project.providers.systemProperty(COMPILER_VERSION_OVERRIDE).orElse(VERSION),
       )
 
-      // Ensure that the languageVersion is 2.x
+      // Ensure that the languageVersion is compatible
       task.doFirst { innerTask ->
         val compilerOptions = (innerTask as KotlinCompilationTask<*>).compilerOptions
         val languageVersion = compilerOptions.languageVersion.orNull ?: return@doFirst
-        check(languageVersion >= gradleMetroKotlinVersion) {
-          "Compilation task '${innerTask.name}' targets language version '${languageVersion.version}' but Metro requires Kotlin '${gradleMetroKotlinVersion.version}' or later."
+        check(languageVersion >= minKotlinVersion) {
+          "Compilation task '${innerTask.name}' targets language version '${languageVersion.version}' but Metro requires Kotlin '${minKotlinVersion.version}' or later."
         }
       }
     }
